@@ -187,6 +187,7 @@ public class JsonObject {
     public Object getObject(@NonNull String key) {
         return objectMap.get(key);
     }
+
     public Object getObject(@NonNull String key, Object defaultValue) {
         Object value = getObject(key);
         return null == value ? defaultValue : value;
@@ -194,13 +195,13 @@ public class JsonObject {
 
     public String getString(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof String) {
-            return (String) value;
+        try {
+            return ValueUtil.valueToString(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get String value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected String for key '" + key + "', but got '" + value.getClass().getName() + "'");
     }
+
     public String getString(@NonNull String key, String defaultValue) {
         String value = getString(key);
         return null == value ? defaultValue : value;
@@ -208,13 +209,9 @@ public class JsonObject {
 
     public String getAsString(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof String) {
-            return (String) value;
-        }
-        return String.valueOf(value);
+        return ValueUtil.valueAsString(value);
     }
+
     public String getAsString(@NonNull String key, String defaultValue) {
         String value = getAsString(key);
         return null == value ? defaultValue : value;
@@ -222,18 +219,13 @@ public class JsonObject {
 
     public Long getLong(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsLong((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as Long: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToLong(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Long value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public long getLong(@NonNull String key, long defaultValue) {
         Long value = getLong(key);
         return null == value ? defaultValue : value;
@@ -241,18 +233,13 @@ public class JsonObject {
 
     public Integer getInteger(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsInteger((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as Integer: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToInteger(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Integer value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public int getInteger(@NonNull String key, int defaultValue) {
         Integer value = getInteger(key);
         return null == value ? defaultValue : value;
@@ -260,18 +247,13 @@ public class JsonObject {
 
     public Short getShort(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsShort((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as Short: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToShort(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Short value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public short getShort(@NonNull String key, short defaultValue) {
         Short value = getShort(key);
         return null == value ? defaultValue : value;
@@ -279,18 +261,13 @@ public class JsonObject {
 
     public Byte getByte(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsByte((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as Byte: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToByte(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Byte value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public byte getByte(@NonNull String key, byte defaultValue) {
         Byte value = getByte(key);
         return null == value ? defaultValue : value;
@@ -298,18 +275,13 @@ public class JsonObject {
 
     public Double getDouble(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsDouble((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as Double: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToDouble(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Double value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public double getDouble(@NonNull String key, double defaultValue) {
         Double value = getDouble(key);
         return null == value ? defaultValue : value;
@@ -317,18 +289,13 @@ public class JsonObject {
 
     public Float getFloat(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsFloat((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as Float: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToFloat(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Float value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public float getFloat(@NonNull String key, float defaultValue) {
         Float value = getFloat(key);
         return null == value ? defaultValue : value;
@@ -336,18 +303,13 @@ public class JsonObject {
 
     public BigInteger getBigInteger(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsBigInteger((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as BigInteger: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToBigInteger(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get BigInteger value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public BigInteger getBigInteger(@NonNull String key, BigInteger defaultValue) {
         BigInteger value = getBigInteger(key);
         return null == value ? defaultValue : value;
@@ -355,18 +317,13 @@ public class JsonObject {
 
     public BigDecimal getBigDecimal(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Number) {
-            try {
-                return NumberUtil.valueAsBigDecimal((Number) value);
-            } catch (Exception e) {
-                throw new JsonException("Failed to parse key '" + key + "' as BigDecimal: " + e.getMessage());
-            }
+        try {
+            return ValueUtil.valueToBigDecimal(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get BigDecimal value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected a numeric value for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public BigDecimal getBigDecimal(@NonNull String key, BigDecimal defaultValue) {
         BigDecimal value = getBigDecimal(key);
         return null == value ? defaultValue : value;
@@ -374,14 +331,13 @@ public class JsonObject {
 
     public Boolean getBoolean(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof Boolean) {
-            return (Boolean) value;
+        try {
+            return ValueUtil.valueToBoolean(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Boolean value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected Boolean for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public boolean getBoolean(@NonNull String key, boolean defaultValue) {
         Boolean value = getBoolean(key);
         return null == value ? defaultValue : value;
@@ -389,14 +345,13 @@ public class JsonObject {
 
     public JsonObject getJsonObject(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof JsonObject) {
-            return (JsonObject) value;
+        try {
+            return ValueUtil.valueToJsonObject(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get JsonObject value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected JsonObject for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public JsonObject getJsonObject(@NonNull String key, JsonObject defaultValue) {
         JsonObject value = getJsonObject(key);
         return null == value ? defaultValue : value;
@@ -404,18 +359,18 @@ public class JsonObject {
 
     public JsonArray getJsonArray(@NonNull String key) {
         Object value = getObject(key);
-        if (value == null) {
-            return null;
-        } else if (value instanceof JsonArray) {
-            return (JsonArray) value;
+        try {
+            return ValueUtil.valueToJsonArray(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get JsonArray value of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Expected JsonArray for key '" + key + "', but got '" +
-                value.getClass().getName() + "'");
     }
+
     public JsonArray getJsonArray(@NonNull String key, JsonArray defaultValue) {
         JsonArray value = getJsonArray(key);
         return null == value ? defaultValue : value;
     }
+
 
     /**
      * Returns the JsonObject at the given key.
@@ -463,6 +418,7 @@ public class JsonObject {
         }
         throw new JsonException("Cannot convert value of key '" + key + "' to unsupported type: " + clazz.getName());
     }
+
     @SuppressWarnings("unchecked")
     public <T> T get(@NonNull String key, T... reified) {
         if (reified.length > 0) throw new JsonException("`reified` should be empty.");
@@ -476,7 +432,7 @@ public class JsonObject {
 
     public void put(@NonNull String key, Object value) {
         try {
-            value = ValueUtil.convertToJsonValue(value);
+            value = ValueUtil.objectToValue(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value of key '' to JSON-compatible Value: " + e.getMessage());
         }
@@ -645,21 +601,8 @@ public class JsonObject {
     }
 
 
-    /// convert
+    /// by path
 
-//    public static JsonObject parse(String json) {
-//        return parse(new StringReader(json));
-//    }
-//
-//    public static JsonObject parse(Reader reader) {
-//        if (null == reader) throw new JsonException("reader is null");
-//        JsonObjectProxy jop = JsonProxyFactory.parseJsonObjectProxy(reader);
-//        return new JsonObject(jop);
-//    }
-
-
-//    /// by path
-//
 //    // jsonPath like '$.attr[0].name', support JsonObject and JsonArray
 //    @SuppressWarnings("unchecked")
 //    public <T> T getByPath(String jsonPath, T... reified) {
@@ -675,8 +618,8 @@ public class JsonObject {
 //            return jaNodePair.getLeft().get(jaNodePair.getRight(), reified);
 //        }
 //    }
-//
-//
+
+
 ////    @SuppressWarnings("unchecked")
 ////    public <T> T getByPath(String jsonPath, T... reified) {
 ////        if (reified.length > 0) throw new JsonException("This should not have any values.");

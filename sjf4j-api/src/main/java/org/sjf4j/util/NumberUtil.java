@@ -26,7 +26,7 @@ public class NumberUtil {
     }
 
 
-    public static Long valueAsLong(Number value) {
+    public static Long numberAsLong(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof Long) {
@@ -39,8 +39,8 @@ public class NumberUtil {
         return ((Number) value).longValue();
     }
 
-    public static Integer valueAsInteger(Number value) {
-        Long longValue = valueAsLong(value);
+    public static Integer numberAsInteger(Number value) {
+        Long longValue = numberAsLong(value);
         if (longValue == null) {
             return null;
         } else if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
@@ -49,8 +49,8 @@ public class NumberUtil {
         return longValue.intValue();
     }
 
-    public static Short valueAsShort(Number value) {
-        Long longValue = valueAsLong(value);
+    public static Short numberAsShort(Number value) {
+        Long longValue = numberAsLong(value);
         if (longValue == null) {
             return null;
         } else if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
@@ -59,8 +59,8 @@ public class NumberUtil {
         return longValue.shortValue();
     }
 
-    public static Byte valueAsByte(Number value) {
-        Long longValue = valueAsLong(value);
+    public static Byte numberAsByte(Number value) {
+        Long longValue = numberAsLong(value);
         if (longValue == null) {
             return null;
         } else if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
@@ -69,7 +69,7 @@ public class NumberUtil {
         return longValue.byteValue();
     }
 
-    public static Double valueAsDouble(Number value) {
+    public static Double numberAsDouble(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof Double) {
@@ -82,7 +82,7 @@ public class NumberUtil {
         return dValue;
     }
 
-    public static Float valueAsFloat(Number value) {
+    public static Float numberAsFloat(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof Float) {
@@ -95,7 +95,7 @@ public class NumberUtil {
         return fValue;
     }
 
-    public static BigInteger valueAsBigInteger(Number value) {
+    public static BigInteger numberAsBigInteger(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof BigInteger) {
@@ -110,7 +110,7 @@ public class NumberUtil {
         return BigInteger.valueOf(((Number) value).longValue());
     }
 
-    public static BigDecimal valueAsBigDecimal(Number value) {
+    public static BigDecimal numberAsBigDecimal(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof BigDecimal) {
@@ -122,6 +122,7 @@ public class NumberUtil {
         }
         return BigDecimal.valueOf(((Number) value).longValue());
     }
+
 
     public static Number stringToNumber(String num) {
         if (num == null || num.isEmpty()) {

@@ -170,7 +170,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsLong((Number) value);
+                return NumberUtil.numberAsLong((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to Long: " + e.getMessage());
@@ -186,7 +186,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsInteger((Number) value);
+                return NumberUtil.numberAsInteger((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to Integer: " + e.getMessage());
@@ -202,7 +202,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsShort((Number) value);
+                return NumberUtil.numberAsShort((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to Short: " + e.getMessage());
@@ -218,7 +218,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsByte((Number) value);
+                return NumberUtil.numberAsByte((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to Byte: " + e.getMessage());
@@ -234,7 +234,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsDouble((Number) value);
+                return NumberUtil.numberAsDouble((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to Double: " + e.getMessage());
@@ -250,7 +250,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsFloat((Number) value);
+                return NumberUtil.numberAsFloat((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to Float: " + e.getMessage());
@@ -266,7 +266,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsBigInteger((Number) value);
+                return NumberUtil.numberAsBigInteger((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to BigInteger: " + e.getMessage());
@@ -282,7 +282,7 @@ public class JsonArray {
             return null;
         } else if (value instanceof Number) {
             try {
-                return NumberUtil.valueAsBigDecimal((Number) value);
+                return NumberUtil.numberAsBigDecimal((Number) value);
             } catch (Exception e) {
                 throw new JsonException("Failed to convert numeric value at index " + idx +
                         " to BigDecimal: " + e.getMessage());
@@ -369,7 +369,7 @@ public class JsonArray {
 
     public void add(Object value) {
         try {
-            value = ValueUtil.convertToJsonValue(value);
+            value = ValueUtil.objectToValue(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value to JSON-compatible Value: " + e.getMessage());
         }
@@ -378,7 +378,7 @@ public class JsonArray {
 
     public void add(int idx, Object value) {
         try {
-            value = ValueUtil.convertToJsonValue(value);
+            value = ValueUtil.objectToValue(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx +
                     " to JSON-compatible Value: " + e.getMessage());
@@ -388,7 +388,7 @@ public class JsonArray {
 
     public void set(int idx, Object value) {
         try {
-            value = ValueUtil.convertToJsonValue(value);
+            value = ValueUtil.objectToValue(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx +
                     " to JSON-compatible Value: " + e.getMessage());
