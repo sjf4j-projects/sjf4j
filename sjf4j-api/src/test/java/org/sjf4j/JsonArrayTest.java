@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -10,21 +11,22 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@Slf4j
 class JsonArrayTest {
 
     @TestFactory
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    JsonFacadeFactory.usingJacksonAsDefaultJsonFacade();
+                    FacadeFactory.usingJacksonAsDefault();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    JsonFacadeFactory.usingGsonAsDefaultJsonFacade();
+                    FacadeFactory.usingGsonAsDefault();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    JsonFacadeFactory.usingFastjson2AsDefaultJsonFacade();
+                    FacadeFactory.usingFastjson2AsDefault();
                     testAll();
                 })
         );
@@ -39,6 +41,8 @@ class JsonArrayTest {
         testArray1();
         testArray2();
         testCopy();
+        testByPath1();
+        testByPath2();
     }
 
     public void testGetter1() {
@@ -153,6 +157,26 @@ class JsonArrayTest {
         a1.getJsonArray(2).getJsonArray(1).set(1, 7);
         assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInteger(1));
         assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
+    }
+
+    public void testByPath1() {
+        JsonArray ja1 = JsonArray.fromJson("[2,3,{}]");
+        assertEquals("[2,3,{}]", ja1.getObjectByPath("$").toString());
+        assertEquals((byte) 3, ja1.getByteByPath("$[1]"));
+
+        ja1.putByPathIfAbsent("$[1]", 9);
+        ja1.putByPath("$[2].a.b", "yes");
+        log.info("ja1: {}", ja1);
+        assertEquals("[2,3,{\"a\":{\"b\":\"yes\"}}]", ja1.toJson());
+    }
+
+    public void testByPath2() {
+        JsonArray ja1 = JsonArray.fromJson("[2,3,{}]");
+        ja1.putByPath("$[2]", new JsonArray());
+        ja1.putByPath("$[2][0].a.b", "yes");
+        ja1.putByPathIfNonNull("$[2][1]", null);
+        log.info("ja1={}", ja1);
+        assertEquals("[2,3,[{\"a\":{\"b\":\"yes\"}}]]", ja1.toJson());
     }
 
 }

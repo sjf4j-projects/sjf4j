@@ -1,7 +1,6 @@
 package org.sjf4j;
 
 import lombok.NonNull;
-import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.ValueUtil;
 
 import java.io.Reader;
@@ -16,17 +15,17 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class JsonObject {
+public class JsonObject extends JsonContainer {
 
-    protected Map<String, Object> objectMap;
+    protected Map<String, Object> valueMap;
 
 
     public JsonObject() {
-        objectMap = new LinkedHashMap<>();
+        valueMap = new LinkedHashMap<>();
     }
 
     public JsonObject(@NonNull JsonObject target) {
-        this.objectMap = target.objectMap;
+        this.valueMap = target.valueMap;
     }
 
     public JsonObject(@NonNull Map<String, ?> map) {
@@ -83,6 +82,17 @@ public class JsonObject {
         this(key1, value1, key2, value2, key3, value3, key4, value4, key5, value5, key6, value6);
         put(key7, value7);
     }
+    public JsonObject(@NonNull String key1, Object value1,
+                      @NonNull String key2, Object value2,
+                      @NonNull String key3, Object value3,
+                      @NonNull String key4, Object value4,
+                      @NonNull String key5, Object value5,
+                      @NonNull String key6, Object value6,
+                      @NonNull String key7, Object value7,
+                      @NonNull String key8, Object value8) {
+        this(key1, value1, key2, value2, key3, value3, key4, value4, key5, value5, key6, value6, key7, value7);
+        put(key8, value8);
+    }
 
     /// Subclass
 
@@ -100,11 +110,11 @@ public class JsonObject {
     /// Json
 
     public static JsonObject fromJson(@NonNull String input) {
-        return fromJson(new StringReader(input), JsonFacadeFactory.getDefaultJsonFacade());
+        return fromJson(new StringReader(input), FacadeFactory.getDefaultJsonFacade());
     }
 
     public static JsonObject fromJson(@NonNull Reader input) {
-        return fromJson(input, JsonFacadeFactory.getDefaultJsonFacade());
+        return fromJson(input, FacadeFactory.getDefaultJsonFacade());
     }
 
     public static JsonObject fromJson(@NonNull String input, @NonNull JsonFacade jsonFacade) {
@@ -116,7 +126,7 @@ public class JsonObject {
     }
 
     public String toJson() {
-        return toJson(JsonFacadeFactory.getDefaultJsonFacade());
+        return toJson(FacadeFactory.getDefaultJsonFacade());
     }
 
     public String toJson(@NonNull JsonFacade jsonFacade) {
@@ -126,7 +136,7 @@ public class JsonObject {
     }
 
     public void toJson(@NonNull Writer output) {
-        toJson(output, JsonFacadeFactory.getDefaultJsonFacade());
+        toJson(output, FacadeFactory.getDefaultJsonFacade());
     }
 
     public void toJson(@NonNull Writer output, @NonNull JsonFacade jsonFacade) {
@@ -143,7 +153,7 @@ public class JsonObject {
 
     @Override
     public int hashCode() {
-        return objectMap.hashCode();
+        return valueMap.hashCode();
     }
 
     @Override
@@ -151,27 +161,28 @@ public class JsonObject {
         if (object == this) return true;
         if (object == null) return false;
         if (object instanceof JsonObject) {
-            return objectMap.equals(((JsonObject) object).objectMap);
+            return valueMap.equals(((JsonObject) object).valueMap);
         }
         return false;
     }
 
     /// Map
 
+    @Override
     public int size() {
-        return objectMap.size();
+        return valueMap.size();
     }
 
     public boolean isEmpty() {
-        return objectMap.isEmpty();
+        return valueMap.isEmpty();
     }
 
     public Set<String> keySet() {
-        return objectMap.keySet();
+        return valueMap.keySet();
     }
 
     public boolean containsKey(@NonNull String key) {
-        return objectMap.containsKey(key);
+        return valueMap.containsKey(key);
     }
 
     public Set<Map.Entry<String, Object>> entrySet() {
@@ -179,13 +190,13 @@ public class JsonObject {
     }
 
     public Map<String, Object> toMap() {
-        return Collections.unmodifiableMap(objectMap);
+        return Collections.unmodifiableMap(valueMap);
     }
 
     /// getter
 
     public Object getObject(@NonNull String key) {
-        return objectMap.get(key);
+        return valueMap.get(key);
     }
 
     public Object getObject(@NonNull String key, Object defaultValue) {
@@ -194,8 +205,8 @@ public class JsonObject {
     }
 
     public String getString(@NonNull String key) {
-        Object value = getObject(key);
         try {
+            Object value = getObject(key);
             return ValueUtil.valueToString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String value of key '" + key + "': " + e.getMessage(), e);
@@ -371,20 +382,6 @@ public class JsonObject {
         return null == value ? defaultValue : value;
     }
 
-
-    /**
-     * Returns the JsonObject at the given key.
-     * If absent, creates an empty one and puts it back.
-     */
-    public JsonObject getOrCreateJsonObject(@NonNull String key) {
-        JsonObject jo = getJsonObject(key);
-        if (null == jo) {
-            jo = new JsonObject();
-            put(key, jo);
-        }
-        return jo;
-    }
-
     @SuppressWarnings("unchecked")
     public <T> T get(@NonNull String key, @NonNull Class<T> clazz) {
         if (Object.class.equals(clazz)) {
@@ -416,7 +413,7 @@ public class JsonObject {
         } else if (BigDecimal.class.equals(clazz)) {
             return (T) getBigDecimal(key);
         }
-        throw new JsonException("Cannot convert value of key '" + key + "' to unsupported type: " + clazz.getName());
+        throw new JsonException("Failed to get unsupported type " + clazz.getName() + " of key '" + key + "'");
     }
 
     @SuppressWarnings("unchecked")
@@ -428,15 +425,16 @@ public class JsonObject {
     }
 
 
-    /// putter
+    /// Putter
 
     public void put(@NonNull String key, Object value) {
         try {
             value = ValueUtil.objectToValue(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value of key '' to JSON-compatible Value: " + e.getMessage());
+            throw new JsonException("Failed to convert value of key '" + key + "' to JSON-compatible Value: " +
+                    e.getMessage());
         }
-        objectMap.put(key, value);
+        valueMap.put(key, value);
     }
 
     public void putIfNonNull(@NonNull String key, Object value) {
@@ -449,6 +447,28 @@ public class JsonObject {
         if (!containsKey(key)) {
             put(key, value);
         }
+    }
+
+    /**
+     * Returns the JsonObject at the given key.
+     * If absent, creates an empty one and puts it back.
+     */
+    public JsonObject createJsonObjectIfAbsent(@NonNull String key) {
+        JsonObject jo = getJsonObject(key);
+        if (null == jo) {
+            jo = new JsonObject();
+            put(key, jo);
+        }
+        return jo;
+    }
+
+    public JsonArray createJsonArrayIfAbsent(@NonNull String key) {
+        JsonArray ja = getJsonArray(key);
+        if (null == ja) {
+            ja = new JsonArray();
+            put(key, ja);
+        }
+        return ja;
     }
 
     public void putAll(@NonNull JsonObject jsonObject) {
@@ -466,14 +486,14 @@ public class JsonObject {
     }
 
     public void remove(@NonNull String key) {
-        objectMap.remove(key);
+        valueMap.remove(key);
     }
 
     public void clear() {
-        objectMap.clear();
+        valueMap.clear();
     }
 
-    /// copy / merge
+    /// Copy, merge
 
     public JsonObject deepCopy() {
         JsonObject copy = new JsonObject();
@@ -600,376 +620,5 @@ public class JsonObject {
         }
     }
 
-
-    /// by path
-
-//    // jsonPath like '$.attr[0].name', support JsonObject and JsonArray
-//    @SuppressWarnings("unchecked")
-//    public <T> T getByPath(String jsonPath, T... reified) {
-//        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
-//
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().get(joNodePair.getRight(), reified);
-//        } else {
-//            return jaNodePair.getLeft().get(jaNodePair.getRight(), reified);
-//        }
-//    }
-
-
-////    @SuppressWarnings("unchecked")
-////    public <T> T getByPath(String jsonPath, T... reified) {
-////        if (reified.length > 0) throw new JsonException("This should not have any values.");
-////
-////        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-////        if (null == joNodePair) return null;
-////
-////        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-////        if (null == jaNodePair) {
-////            return joNodePair.getLeft().get(joNodePair.getRight());
-////        } else {
-////            return jaNodePair.getLeft().get(jaNodePair.getRight());
-////        }
-////
-////        Class<?> rt = reified.getClass().getComponentType();
-////        if (rt.equals(String.class)) {
-////            return (T) getString(key);
-////        } else if (rt.equals(Short.class)) {
-////            return (T) getShort(key);
-////        }
-////        return (T) get(key);
-////    }
-//
-//    public String getStringByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getString(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getString(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public String getStringByPath(String jsonPath, String defaultValue) {
-//        String value = getStringByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public Long getLongByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getLong(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getLong(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public long getLongByPath(String jsonPath, long defaultValue) {
-//        Long value = getLongByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public Integer getIntegerByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getInteger(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getInteger(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public int getIntegerByPath(String jsonPath, int defaultValue) {
-//        Integer value = getIntegerByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public Short getShortByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getShort(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getShort(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public short getShortByPath(String jsonPath, short defaultValue) {
-//        Short value = getShortByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public Double getDoubleByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getDouble(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getDouble(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public double getDoubleByPath(String jsonPath, double defaultValue) {
-//        Double value = getDoubleByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public Float getFloatByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getFloat(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getFloat(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public float getFloatByPath(String jsonPath, float defaultValue) {
-//        Float value = getFloatByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public Boolean getBooleanByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getBoolean(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getBoolean(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public boolean getBooleanByPath(String jsonPath, boolean defaultValue) {
-//        Boolean value = getBooleanByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public JsonObject getJsonObjectByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getJsonObject(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getJsonObject(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public JsonObject getJsonObjectByPath(String jsonPath, JsonObject defaultValue) {
-//        JsonObject value = getJsonObjectByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public JsonObject createByPathIfAbsent(String jsonPath) {
-//        JsonObject jo = getJsonObjectByPath(jsonPath);
-//        if (null == jo) {
-//            jo = new JsonObject();
-//            putByPath(jsonPath, jo);
-//        }
-//        return jo;
-//    }
-//
-//    public JsonArray getJsonArrayByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return null;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().getJsonArray(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getLeft().getJsonArray(jaNodePair.getRight());
-//        }
-//    }
-//
-//    public JsonArray getJsonArrayByPath(String jsonPath, JsonArray defaultValue) {
-//        JsonArray value = getJsonArrayByPath(jsonPath);
-//        return null == value ? defaultValue : value;
-//    }
-//
-//    public boolean containsByPath(String jsonPath) {
-//        Pair<JsonObject, String> joNodePair = findLastSecondNode(this, jsonPath);
-//        if (null == joNodePair) return false;
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(joNodePair.getLeft(), joNodePair.getRight());
-//        if (null == jaNodePair) {
-//            return joNodePair.getLeft().containsKey(joNodePair.getRight());
-//        } else {
-//            return jaNodePair.getRight() >= 0 && jaNodePair.getRight() < jaNodePair.getLeft().size();
-//        }
-//    }
-//
-//
-//    /**
-//     *
-//     * @param jsonPath like '$.a.b.x', only support JsonObject and JsonArray
-//     * @param value
-//     * @return
-//     */
-//    public void putByPath(String jsonPath, Object value) {
-//        if (null == jsonPath || !jsonPath.startsWith("$.") || jsonPath.length() < 3) {
-//            throw new JsonException("Invalid jsonPath: " + jsonPath);
-//        }
-//
-////        String[] nodes = jsonPath.split("\\.");
-//        String[] nodes = splitJsonPath(jsonPath);
-//        // $, a, b, ..., x
-//
-//        JsonObject tempJo = this;
-//        for (int i=1; i<nodes.length-1; i++) {
-//            Pair<JsonArray, Integer> jaNodePair = tryArrayNode(tempJo, nodes[i]);
-//            if (null == jaNodePair) {
-//                if (null == tempJo.getJsonObject(nodes[i])) {
-//                    tempJo.put(nodes[i], new JsonObject());
-//                }
-//                tempJo = tempJo.getJsonObject(nodes[i]);
-//            } else {
-//                JsonArray tempJa = jaNodePair.getLeft();
-//                int idx = jaNodePair.getRight();
-//                if (idx >= tempJa.size() || idx < 0) {
-//                    throw new JsonException("Array index '" + nodes[i] + "' is out of JsonArray size '" +
-//                            tempJa.size() + "'.");
-//                }
-//                tempJo = jaNodePair.getLeft().getJsonObject(jaNodePair.getRight());
-//                if (null == tempJo) {
-//                    throw new JsonException("Invalid pathNode: " + nodes[i]);
-//                }
-//            }
-//        }
-//
-//        Pair<JsonArray, Integer> jaNodePair = tryArrayNode(tempJo, nodes[nodes.length-1]);
-//        if (null == jaNodePair) {
-//            tempJo.put(nodes[nodes.length-1], value);
-//        } else {
-//            jaNodePair.getLeft().add(jaNodePair.getRight(), value);
-//        }
-//    }
-//
-//    public void putByPathIfNonNull(String jsonPath, Object value) {
-//        if (null != value) {
-//            putByPath(jsonPath, value);
-//        }
-//    }
-//
-//    public void putByPathIfAbsent(String jsonPath, Object value) {
-//        if (!containsByPath(jsonPath)) {
-//            putByPath(jsonPath, value);
-//        }
-//    }
-//
-//    public void removeByPath(String jsonPath) {
-//        if (null == jsonPath || !jsonPath.startsWith("$.") || jsonPath.length() < 3) {
-//            throw new JsonException("Invalid jsonPath: " + jsonPath);
-//        }
-//
-//        String[] nodes = jsonPath.split("\\.");
-//        // $, a, b, ..., x
-//
-//        JsonObject tempJo = this;
-//        for (int i=1; i<nodes.length-1; i++) {
-//            Pair<JsonArray, Integer> jaNodePair = tryArrayNode(tempJo, nodes[i]);
-//            if (null == jaNodePair) {
-//                if (null == tempJo.getJsonObject(nodes[i])) {
-//                    tempJo.put(nodes[i], new JsonObject());
-//                }
-//                tempJo = tempJo.getJsonObject(nodes[i]);
-//            } else {
-//                tempJo = jaNodePair.getLeft().getJsonObject(jaNodePair.getRight());
-//                if (null == tempJo) {
-//                    throw new JsonException("Invalid pathNode: " + nodes[i]);
-//                }
-//            }
-//        }
-//        tempJo.remove(nodes[nodes.length-1]);
-//    }
-//
-//
-//    /// private
-//
-//    /**
-//     * abc[12]  => jsonArray, 12
-//     *
-//     */
-//    private static Pair<JsonArray, Integer> tryArrayNode(JsonObject jsonObject, String pathNode) {
-//        if (pathNode.endsWith("]")) {
-//            String[] ss = pathNode.split("\\[");
-//            if (ss.length == 2) {
-//                String key = ss[0];
-//                try {
-//                    int idx = Integer.parseInt(ss[1].substring(0, ss[1].length()-1));
-//                    JsonArray tempJa = jsonObject.getJsonArray(key);
-//                    if (null == tempJa) {
-//                        throw new JsonException("The value for the pathNode '" + pathNode + "' is not a JsonArray.");
-//                    } else {
-//                        return new Pair<>(tempJa, idx);
-//                    }
-//                } catch (NumberFormatException e) {
-//                    throw new JsonException("Invalid pathNode: " + pathNode);
-//                }
-//            } else {
-//                throw new JsonException("Invalid pathNode: " + pathNode);
-//            }
-//        }
-//        return null;
-//    }
-//
-//    private static Pair<JsonObject, String> findLastSecondNode(JsonObject jsonObject, String jsonPath) {
-//        if (null == jsonPath || !jsonPath.startsWith("$.") || jsonPath.length() < 3) {
-//            throw new JsonException("Invalid jsonPath: " + jsonPath);
-//        }
-//
-//        String[] nodes = splitJsonPath(jsonPath);
-//        // $, a, b, ..., x
-//
-//        JsonObject tempJo = jsonObject;
-//        for (int i=1; i<nodes.length-1; i++) {
-//            Pair<JsonArray, Integer> jaNodePair = tryArrayNode(tempJo, nodes[i]);
-//            if (null == jaNodePair) {
-//                tempJo = tempJo.getJsonObject(nodes[i]);
-//                if (null == tempJo) {
-//                    return null;
-//                }
-//            } else {
-//                JsonArray ja = jaNodePair.getLeft();
-//                if (null == ja) {
-//                    return null;
-//                } else {
-//                    tempJo = ja.getJsonObject(jaNodePair.getRight());
-//                    if (null == tempJo) {
-//                        return null;
-//                    }
-//                }
-//            }
-//        }
-//        return new Pair<>(tempJo, nodes[nodes.length-1]);
-//    }
-//
-//    // TODO: There are still incomplete escaping problems.
-//    // If 'a\' is key, then '$.a\.b.c' could be mistakenly recognized as {"a.b":{"c": ...}}.
-//    private static String[] splitJsonPath(String jsonPath) {
-//        String[] nodes = jsonPath.split("(?<!\\\\)\\.");
-//        for (int i=0; i<nodes.length; i++) {
-//            nodes[i] = nodes[i].replace("\\.", ".");
-//        }
-//        return nodes;
-//    }
 
 }

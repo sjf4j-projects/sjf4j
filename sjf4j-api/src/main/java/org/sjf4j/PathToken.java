@@ -12,8 +12,7 @@ public abstract class PathToken {
         public final String name;
         public Field(@NonNull String name) { this.name = name; }
 
-
-        public String stringInPath;
+        private String stringInPath;
         @Override public String toString() {
             if (stringInPath == null) {
                 if (shouldArrayStyle(name)) {

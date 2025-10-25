@@ -3,7 +3,6 @@ package org.sjf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.sjf4j.fastjson2.Fastjson2JsonFacade;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -20,15 +19,15 @@ class JsonObjectTest {
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    JsonFacadeFactory.usingJacksonAsDefaultJsonFacade();
+                    FacadeFactory.usingJacksonAsDefault();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    JsonFacadeFactory.usingGsonAsDefaultJsonFacade();
+                    FacadeFactory.usingGsonAsDefault();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    JsonFacadeFactory.usingFastjson2AsDefaultJsonFacade();
+                    FacadeFactory.usingFastjson2AsDefault();
                     testAll();
                 })
         );
@@ -42,9 +41,9 @@ class JsonObjectTest {
         testParse2();
         testParse3();
         testMerge1();
-//        testByPath1();
-//        testByPath2();
-//        testByPath3();
+        testByPath1();
+        testByPath2();
+        testByPath3();
         testBoolean1();
         testCast1();
         testGeneric1();
@@ -110,13 +109,13 @@ class JsonObjectTest {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-//        assert(jo1.containsByPath("$.friends.jack"));
-//        jo1.putByPathIfAbsent("$.friends.jack", "bad");
-//        assertEquals(JsonObject.fromJson(json1), jo1);
-//
-//        jo1.putByPathIfAbsent("$.friends.mark", "bad");
-//        String json2 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20],\"sex\":false},\"mark\":\"bad\"},\"sex\":true}";
-//        assertEquals(JsonObject.fromJson(json2), jo1);
+        assert(jo1.containsByPath("$.friends.jack"));
+        jo1.putByPathIfAbsent("$.friends.jack", "bad");
+        assertEquals(JsonObject.fromJson(json1), jo1);
+
+        jo1.putByPathIfAbsent("$.friends.mark", "bad");
+        String json2 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]},\"mark\":\"bad\"},\"sex\":true}";
+        assertEquals(JsonObject.fromJson(json2), jo1);
     }
 
     public void testParse1() {
@@ -204,61 +203,62 @@ class JsonObjectTest {
 //        System.out.println(jo7);
     }
 
-//    /**
-//     * ByPath
-//     */
-//    public void testByPath1() {
-//        JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"dodo\"],\"attr\":{\"aa\":\"bb\"}," +
-//                "\"nested\":[{},{},{\"yes\":[{},{\"no\":5}]}]}");
-//        assertEquals("bb", jo1.getByPath("$.attr.aa"));
-//        jo1.putByPath("$.x.y.z", 555);
-//        assertEquals(555, (Integer) jo1.getByPath("$.x.y.z"));
-//
-//        assertThrows(JsonException.class, () -> {
-//            jo1.putByPath("$.duck.yes", "no");
-//        });
-//
-//        jo1.putByPath("$.num", "6");
-//        assertEquals("6", jo1.getString("num"));
-//        System.out.println(jo1);
-//
-//        // array in path
-//        assertEquals("dodo", jo1.getStringByPath("$.duck[1]"));
-//
-//        jo1.putByPath("$.duck[1]", "xixi");
-//        assertEquals("xixi", jo1.getStringByPath("$.duck[1]"));
-//        System.out.println(jo1.toJson());
-//
-//        assertEquals(5, jo1.getIntegerByPath("$.nested[2].yes[1].no"));
-//
-//        assertNull(jo1.getStringByPath("$.duck[5]"));
-//        assertEquals("jiji", jo1.getStringByPath("$.duck[5]", "jiji"));
-//    }
-//
-//    public void testByPath2() {
-//        JsonObject jo1 = JsonObject.parse("{\"isYes\":false,\"isNo\":true, \"ss.ss\":[1]}");
-//        assertEquals(1, jo1.getIntegerByPath("$.ss\\.ss[0]"));
-//
-//        jo1.putByPath("$.query.idea\\.fqmn", "::bad::good");
-//        assertEquals("::bad::good", jo1.getStringByPath("$.query.idea\\.fqmn"));
-//        assertEquals("::bad::good", jo1.getJsonObject("query").getString("idea.fqmn"));
-//        System.out.println("jo1: " + jo1);
-//    }
-//
-//    public void testByPath3() {
-//        JsonObject jo1 = new JsonObject();
-//        assertThrows(JsonException.class, () -> jo1.putByPath("$.a.b[1].c", "444"));
-//
-//        JsonObject jo2 = new JsonObject();
-//        jo2.putByPath("$.a.b", new JsonArray());
-//        assertThrows(JsonException.class, () -> jo2.putByPath("$.a.b[1].c", "444"));
-//
-//        JsonObject jo3 = new JsonObject();
-//        jo3.putByPath("$.a.b", new JsonArray(0, new JsonObject("d", "99")));
-//        jo3.putByPath("$.a.b[1].c", "444");
-//        assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
-//        //FIXME: this is a bug!
-//    }
+    /**
+     * ByPath
+     */
+    public void testByPath1() {
+        JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"dodo\"],\"attr\":{\"aa\":\"bb\"}," +
+                "\"nested\":[{},{},{\"yes\":[{},{\"no\":5}]}]}");
+        assertEquals("bb", jo1.getObjectByPath("$.attr.aa"));
+        jo1.putByPath("$.x.y.z", 555);
+        assertEquals(555, (Integer) jo1.getObjectByPath("$.x.y.z"));
+
+        assertThrows(JsonException.class, () -> {
+            jo1.putByPath("$.duck.yes", "no");
+        });
+
+        jo1.putByPath("$.num", "6");
+        assertEquals("6", jo1.getString("num"));
+        System.out.println(jo1);
+
+        // array in path
+        assertEquals("dodo", jo1.getStringByPath("$.duck[1]"));
+
+        jo1.putByPath("$.duck[1]", "xixi");
+        assertEquals("xixi", jo1.getStringByPath("$.duck[1]"));
+        System.out.println(jo1.toJson());
+
+        assertEquals(5, jo1.getIntegerByPath("$.nested[2].yes[1].no"));
+
+        assertNull(jo1.getStringByPath("$.duck[5]"));
+        assertEquals("jiji", jo1.getStringByPath("$.duck[5]", "jiji"));
+    }
+
+    public void testByPath2() {
+        JsonObject jo1 = JsonObject.fromJson("{\"isYes\":false,\"isNo\":true, \"ss.ss\":[1]}");
+        assertNull(jo1.getIntegerByPath("$.ss\\.ss[0]"));
+        assertEquals(1, jo1.getIntegerByPath("$['ss.ss'][0]"));
+
+        jo1.putByPath("$.query['idea.fqmn']", "::bad::good");
+        assertEquals("::bad::good", jo1.getStringByPath("$.query['idea.fqmn']"));
+        assertEquals("::bad::good", jo1.getJsonObject("query").getString("idea.fqmn"));
+        System.out.println("jo1: " + jo1);
+    }
+
+    public void testByPath3() {
+        JsonObject jo1 = new JsonObject();
+        assertThrows(JsonException.class, () -> jo1.putByPath("$.a.b[1].c", "444"));
+
+        JsonObject jo2 = new JsonObject();
+        jo2.putByPath("$.a.b", new JsonArray());
+        assertThrows(JsonException.class, () -> jo2.putByPath("$.a.b[1].c", "444"));
+
+        JsonObject jo3 = new JsonObject();
+        jo3.putByPath("$.a.b", new JsonArray(0, new JsonObject("d", "99")));
+        jo3.putByPath("$.a.b[1].c", "444");
+        assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
+        //FIXME: this is a bug!
+    }
 
     public void testBoolean1() {
         // Boolean

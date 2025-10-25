@@ -9,7 +9,7 @@ import org.sjf4j.gson.GsonJsonFacade;
 import org.sjf4j.jackson.JacksonJsonFacade;
 
 
-public class JsonFacadeFactory {
+public class FacadeFactory {
 
     private static boolean fastjson2Present;
     private static boolean jacksonPresent;
@@ -19,7 +19,7 @@ public class JsonFacadeFactory {
     private static JsonFacade defaultJsonFacade;
 
     static {
-        ClassLoader loader = JsonFacadeFactory.class.getClassLoader();
+        ClassLoader loader = FacadeFactory.class.getClassLoader();
 
         try {
             loader.loadClass("com.fasterxml.jackson.databind.ObjectMapper");
@@ -47,27 +47,27 @@ public class JsonFacadeFactory {
     public static JsonFacade getDefaultJsonFacade() {
         if (defaultJsonFacade == null) {
             if (jacksonPresent) {
-                usingJacksonAsDefaultJsonFacade();
+                usingJacksonAsDefault();
             } else if (gsonPresent) {
-                usingGsonAsDefaultJsonFacade();
+                usingGsonAsDefault();
             } else if (fastjson2Present) {
-                usingFastjson2AsDefaultJsonFacade();
+                usingFastjson2AsDefault();
             } else {
-                throw new JsonException("No supported JSON library found: please add Jackson/Gson/Fastjson2/... to the classpath");
+                throw new JsonException("No supported JSON library found: Please add Jackson/Gson/Fastjson2/... to the classpath");
             }
         }
         return defaultJsonFacade;
     }
 
-    public static void usingJacksonAsDefaultJsonFacade() {
+    public static void usingJacksonAsDefault() {
         defaultJsonFacade = new JacksonJsonFacade(new ObjectMapper());
     }
 
-    public static void usingGsonAsDefaultJsonFacade() {
+    public static void usingGsonAsDefault() {
         defaultJsonFacade = new GsonJsonFacade(new Gson());
     }
 
-    public static void usingFastjson2AsDefaultJsonFacade() {
+    public static void usingFastjson2AsDefault() {
         defaultJsonFacade = new Fastjson2JsonFacade();
     }
 
