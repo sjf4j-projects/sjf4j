@@ -1,11 +1,11 @@
-package org.sjf4j.fastjson2;
+package org.sjf4j.facades.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
-import org.sjf4j.JsonFacade;
+import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.JsonObject;
 
 import java.io.Reader;
@@ -35,40 +35,40 @@ public class Fastjson2JsonFacade implements JsonFacade {
     }
 
     @Override
-    public JsonObject readObject(Reader input) {
+    public JsonObject readObject(@NonNull Reader input) {
         try {
             return SimpleJsonReader.readObject(input, readerFeatures);
         } catch (Exception e) {
-            throw new JsonException("Failed to deserialize input into JsonObject: " + e.getMessage(), e);
+            throw new JsonException("Failed to deserialize JSON into JsonObject: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public JsonArray readArray(Reader input) {
+    public JsonArray readArray(@NonNull Reader input) {
         try {
             return SimpleJsonReader.readArray(input, readerFeatures);
         } catch (Exception e) {
-            throw new JsonException("Failed to deserialize input into JsonArray: " + e.getMessage(), e);
+            throw new JsonException("Failed to deserialize JSON into JsonArray: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void write(Writer output, JsonObject jo) {
+    public void writeObject(@NonNull Writer output, JsonObject jo) {
         try {
             String json = SimpleJsonWriter.toJson(jo, writerFeatures);
             output.write(json);
         } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonObject: " + e.getMessage(), e);
+            throw new JsonException("Failed to serialize JsonObject to JSON: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void write(Writer output, JsonArray ja) {
+    public void writeArray(@NonNull Writer output, JsonArray ja) {
         try {
             String json = SimpleJsonWriter.toJson(ja, writerFeatures);
             output.write(json);
         } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonArray: " + e.getMessage(), e);
+            throw new JsonException("Failed to serialize JsonArray to JSON: " + e.getMessage(), e);
         }
     }
 

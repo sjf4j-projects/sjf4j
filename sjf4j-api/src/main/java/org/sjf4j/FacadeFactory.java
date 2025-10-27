@@ -4,9 +4,12 @@ package org.sjf4j;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import lombok.Setter;
-import org.sjf4j.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.gson.GsonJsonFacade;
-import org.sjf4j.jackson.JacksonJsonFacade;
+import org.sjf4j.facades.JsonFacade;
+import org.sjf4j.facades.YamlFacade;
+import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facades.gson.GsonJsonFacade;
+import org.sjf4j.facades.jackson.JacksonJsonFacade;
+import org.sjf4j.facades.snake.SnakeYamlFacade;
 
 
 public class FacadeFactory {
@@ -14,9 +17,13 @@ public class FacadeFactory {
     private static boolean fastjson2Present;
     private static boolean jacksonPresent;
     private static boolean gsonPresent;
-
     @Setter
     private static JsonFacade defaultJsonFacade;
+
+
+    private static boolean snakePresent;
+    @Setter
+    private static YamlFacade defaultYamlFacade;
 
     static {
         ClassLoader loader = FacadeFactory.class.getClassLoader();
@@ -42,6 +49,13 @@ public class FacadeFactory {
             fastjson2Present = false;
         }
 
+        try {
+            loader.loadClass("org.yaml.snakeyaml.Yaml");
+            snakePresent = true;
+        } catch (Throwable e) {
+            snakePresent = false;
+        }
+
     }
 
     public static JsonFacade getDefaultJsonFacade() {
@@ -53,7 +67,7 @@ public class FacadeFactory {
             } else if (fastjson2Present) {
                 usingFastjson2AsDefault();
             } else {
-                throw new JsonException("No supported JSON library found: Please add Jackson/Gson/Fastjson2/... to the classpath");
+                throw new JsonException("No supported JSON library found: Please add Jackson/Gson/Fastjson2... to the classpath");
             }
         }
         return defaultJsonFacade;
@@ -71,4 +85,21 @@ public class FacadeFactory {
         defaultJsonFacade = new Fastjson2JsonFacade();
     }
 
+
+    public static YamlFacade getDefaultYamlFacade() {
+        if (defaultYamlFacade == null) {
+            if (snakePresent) {
+                usingSnakeAsDefault();
+            } else {
+                throw new JsonException("No supported YAML library found: Please add SnakeYaml/... to the classpath");
+            }
+        }
+        return defaultYamlFacade;
+    }
+
+    public static void usingSnakeAsDefault() {
+        defaultYamlFacade = new SnakeYamlFacade();
+    }
 }
+
+

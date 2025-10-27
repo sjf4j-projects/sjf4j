@@ -1,7 +1,8 @@
 package org.sjf4j;
 
 import lombok.NonNull;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.facades.JsonFacade;
+import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.util.ValueUtil;
 
 import java.io.Reader;
@@ -67,7 +68,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
 
-    /// Json
+    /// JSON Facade
 
     public static JsonArray fromJson(@NonNull String input) {
         return fromJson(new StringReader(input), FacadeFactory.getDefaultJsonFacade());
@@ -100,7 +101,43 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public void toJson(@NonNull Writer output, @NonNull JsonFacade jsonFacade) {
-        jsonFacade.write(output, this);
+        jsonFacade.writeArray(output, this);
+    }
+
+    /// YAML Facade
+
+    public static JsonArray fromYaml(@NonNull String input) {
+        return fromYaml(new StringReader(input), FacadeFactory.getDefaultYamlFacade());
+    }
+
+    public static JsonArray fromYaml(@NonNull Reader input) {
+        return fromYaml(input, FacadeFactory.getDefaultYamlFacade());
+    }
+
+    public static JsonArray fromYaml(@NonNull String input, @NonNull YamlFacade yamlFacade) {
+        return fromYaml(new StringReader(input), yamlFacade);
+    }
+
+    public static JsonArray fromYaml(@NonNull Reader input, @NonNull YamlFacade yamlFacade) {
+        return yamlFacade.readArray(input);
+    }
+
+    public String toYaml() {
+        return toYaml(FacadeFactory.getDefaultYamlFacade());
+    }
+
+    public String toYaml(@NonNull YamlFacade yamlFacade) {
+        StringWriter output = new StringWriter();
+        toYaml(output, yamlFacade);
+        return output.toString();
+    }
+
+    public void toYaml(@NonNull Writer output) {
+        toYaml(output, FacadeFactory.getDefaultYamlFacade());
+    }
+
+    public void toYaml(@NonNull Writer output, @NonNull YamlFacade yamlFacade) {
+        yamlFacade.writeArray(output, this);
     }
 
 

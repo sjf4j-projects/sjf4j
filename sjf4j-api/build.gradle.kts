@@ -15,8 +15,9 @@ configurations {
 
 dependencies {
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.18.4")
-    compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
     compileOnly("com.google.code.gson:gson:2.13.1")
+    compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
+    compileOnly("org.yaml:snakeyaml:2.5")
 
     compileOnly("org.slf4j:slf4j-api:2.0.17")
     compileOnly("org.projectlombok:lombok:1.18.38")
@@ -30,8 +31,9 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
-    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("com.google.code.gson:gson:2.13.1")
+    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
+    testImplementation("org.yaml:snakeyaml:2.5")
 }
 
 tasks.test {

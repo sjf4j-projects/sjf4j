@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -13,6 +14,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@Slf4j
 class JsonObjectTest {
 
     @TestFactory
@@ -52,6 +54,7 @@ class JsonObjectTest {
         testOrder1();
         testNumber1();
         testNumber2();
+        testYaml1();
     }
 
     public void testGetter1() {
@@ -395,6 +398,16 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
         System.out.println("jo1: " + jo1);
         assertEquals(1e200, jo1.getDouble("big"));
+    }
+
+    public void testYaml1() {
+        String json1 = "{\"s1\":\"haha\",\"i2\":null,\"f3\":99.9,\"b4\":true,\"s\\\"5\":\"00\"}";
+        JsonObject jo1 = JsonObject.fromJson(json1);
+        String ya1 = jo1.toYaml();
+        log.info("ya1: \n{}", ya1);
+
+        JsonObject jo2 = JsonObject.fromYaml(ya1);
+        assertEquals(jo1, jo2);
     }
 
 

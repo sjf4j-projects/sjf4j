@@ -123,7 +123,6 @@ public class NumberUtil {
         return BigDecimal.valueOf(((Number) value).longValue());
     }
 
-
     public static Number stringToNumber(String num) {
         if (num == null || num.isEmpty()) {
             throw new IllegalArgumentException("Number is empty");

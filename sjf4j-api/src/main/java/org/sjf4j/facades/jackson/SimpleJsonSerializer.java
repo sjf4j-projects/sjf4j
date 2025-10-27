@@ -1,4 +1,4 @@
-package org.sjf4j.jackson;
+package org.sjf4j.facades.jackson;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;

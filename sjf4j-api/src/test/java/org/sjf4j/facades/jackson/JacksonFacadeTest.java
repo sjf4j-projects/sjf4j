@@ -1,4 +1,4 @@
-package org.sjf4j.jackson;
+package org.sjf4j.facades.jackson;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,7 +12,7 @@ import java.io.StringReader;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-public class JacksonSerDeTest {
+public class JacksonFacadeTest {
 
     @Test
     public void testSerDe1() throws IOException {

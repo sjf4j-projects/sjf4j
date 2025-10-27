@@ -1,4 +1,4 @@
-package org.sjf4j.jackson;
+package org.sjf4j.facades.jackson;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
-import org.sjf4j.JsonFacade;
+import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.JsonObject;
 
 import java.io.Reader;
@@ -25,12 +25,12 @@ public class JacksonJsonFacade implements JsonFacade {
     }
 
     @Override
-    public JsonObject readObject(Reader reader) {
+    public JsonObject readObject(@NonNull Reader reader) {
         Object value;
         try {
             value = objectMapper.readValue(reader, Object.class);
         } catch (Exception e) {
-            throw new JsonException("Failed to deserialize input into JsonObject: " + e.getMessage(), e);
+            throw new JsonException("Failed to deserialize JSON into JsonObject: " + e.getMessage(), e);
         }
 
         if (value instanceof JsonObject) {
@@ -42,12 +42,12 @@ public class JacksonJsonFacade implements JsonFacade {
     }
 
     @Override
-    public JsonArray readArray(Reader reader) {
+    public JsonArray readArray(@NonNull Reader reader) {
         Object value;
         try {
             value = objectMapper.readValue(reader, Object.class);
         } catch (Exception e) {
-            throw new JsonException("Failed to deserialize input into JsonArray: " + e.getMessage(), e);
+            throw new JsonException("Failed to deserialize JSON into JsonArray: " + e.getMessage(), e);
         }
 
         if (value instanceof JsonArray) {
@@ -59,20 +59,20 @@ public class JacksonJsonFacade implements JsonFacade {
     }
 
     @Override
-    public void write(Writer writer, JsonObject jo) {
+    public void writeObject(@NonNull Writer writer, JsonObject jo) {
         try {
             objectMapper.writeValue(writer, jo);
         } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonObject: " + e.getMessage(), e);
+            throw new JsonException("Failed to serialize JsonObject to JSON: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void write(Writer writer, JsonArray ja) {
+    public void writeArray(@NonNull Writer writer, JsonArray ja) {
         try {
             objectMapper.writeValue(writer, ja);
         } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonArray: " + e.getMessage(), e);
+            throw new JsonException("Failed to serialize JsonArray to JSON: " + e.getMessage(), e);
         }
     }
 

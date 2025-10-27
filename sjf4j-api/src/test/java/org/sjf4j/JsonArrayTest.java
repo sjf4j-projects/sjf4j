@@ -43,6 +43,7 @@ class JsonArrayTest {
         testCopy();
         testByPath1();
         testByPath2();
+        testYaml1();
     }
 
     public void testGetter1() {
@@ -178,5 +179,16 @@ class JsonArrayTest {
         log.info("ja1={}", ja1);
         assertEquals("[2,3,[{\"a\":{\"b\":\"yes\"}}]]", ja1.toJson());
     }
+
+    public void testYaml1() {
+        String json1 = "[\"number\",5,null,[\"gaga\",\"haha\"],45,{\"aa\":\"bb\"}]";
+        JsonArray ja1 = JsonArray.fromJson(json1);
+        String ya1 = ja1.toYaml();
+        log.info("ya1: \n{}", ya1);
+
+        JsonArray ja2 = JsonArray.fromYaml(ya1);
+        assertEquals(ja1, ja2);
+    }
+
 
 }

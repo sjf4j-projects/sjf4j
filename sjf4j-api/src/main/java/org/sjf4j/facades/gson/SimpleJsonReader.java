@@ -1,4 +1,4 @@
-package org.sjf4j.gson;
+package org.sjf4j.facades.gson;
 
 
 import com.google.gson.stream.JsonReader;

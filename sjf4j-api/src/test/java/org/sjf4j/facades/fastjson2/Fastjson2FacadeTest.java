@@ -1,4 +1,4 @@
-package org.sjf4j.fastjson2;
+package org.sjf4j.facades.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
@@ -11,7 +11,7 @@ import java.io.StringReader;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-public class Fastjson2SerDeTest {
+public class Fastjson2FacadeTest {
 
     @Test
     public void testSerDe1() {
