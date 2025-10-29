@@ -43,7 +43,7 @@ public class SnakeYamlFacade implements YamlFacade {
             Event ev;
             if (!((ev = parser.getEvent()) instanceof StreamStartEvent)) throw new IllegalStateException("Malformed YAML");
             if (!((ev = parser.getEvent()) instanceof DocumentStartEvent)) throw new IllegalStateException("Malformed YAML");
-            value = SimpleParser.readAny(parser);
+            value = SimpleSnakeParser.readAny(parser);
             if (!((ev = parser.getEvent()) instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
             if (!((ev = parser.getEvent()) instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
         } catch (Exception e) {
@@ -66,7 +66,7 @@ public class SnakeYamlFacade implements YamlFacade {
             Event ev;
             if (!((ev = parser.getEvent()) instanceof StreamStartEvent)) throw new IllegalStateException("Malformed YAML");
             if (!((ev = parser.getEvent()) instanceof DocumentStartEvent)) throw new IllegalStateException("Malformed YAML");
-            value = SimpleParser.readAny(parser);
+            value = SimpleSnakeParser.readAny(parser);
             if (!((ev = parser.getEvent()) instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
             if (!((ev = parser.getEvent()) instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
         } catch (Exception e) {
@@ -87,7 +87,7 @@ public class SnakeYamlFacade implements YamlFacade {
             Emitter emitter = new Emitter(output, dumperOptions);
             emitter.emit(new StreamStartEvent(null, null));
             emitter.emit(new DocumentStartEvent(null, null, false, null, null));
-            SimpleEmitter.write(emitter, jo);
+            SimpleSnakeEmitter.write(emitter, jo);
             emitter.emit(new DocumentEndEvent(null, null, false));
             emitter.emit(new StreamEndEvent(null, null));
         } catch (Exception e) {
@@ -101,7 +101,7 @@ public class SnakeYamlFacade implements YamlFacade {
             Emitter emitter = new Emitter(output, dumperOptions);
             emitter.emit(new StreamStartEvent(null, null));
             emitter.emit(new DocumentStartEvent(null, null, false, null, null));
-            SimpleEmitter.write(emitter, ja);
+            SimpleSnakeEmitter.write(emitter, ja);
             emitter.emit(new DocumentEndEvent(null, null, false));
             emitter.emit(new StreamEndEvent(null, null));
         } catch (Exception e) {

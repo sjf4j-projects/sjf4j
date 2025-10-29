@@ -3,7 +3,7 @@ package org.sjf4j;
 import lombok.NonNull;
 import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.facades.YamlFacade;
-import org.sjf4j.util.ValueUtil;
+import org.sjf4j.util.ObjectHandler;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 public class JsonObject extends JsonContainer {
 
@@ -101,9 +102,7 @@ public class JsonObject extends JsonContainer {
     public <T extends JsonObject> T cast(@NonNull Class<T> clazz) {
         try {
             Constructor<T> constructor = clazz.getConstructor(JsonObject.class);
-            T newObj = constructor.newInstance(this);
-//            newObj.objectMap = objectMap;
-            return newObj;
+            return constructor.newInstance(this);
         } catch (Throwable e) {
             throw new JsonException("Failed to cast JsonObject to '" + clazz.getName() + "'", e);
         }
@@ -223,12 +222,18 @@ public class JsonObject extends JsonContainer {
         return valueMap.containsKey(key);
     }
 
-    public Set<Map.Entry<String, Object>> entrySet() {
-        return toMap().entrySet();
+    public void forEach(BiConsumer<String, Object> action) {
+        for (Map.Entry<String, Object> entry : valueMap.entrySet()){
+            action.accept(entry.getKey(), entry.getValue());
+        }
     }
 
     public Map<String, Object> toMap() {
         return Collections.unmodifiableMap(valueMap);
+    }
+
+    public Set<Map.Entry<String, Object>> entrySet() {
+        return toMap().entrySet();
     }
 
     /// getter
@@ -238,220 +243,196 @@ public class JsonObject extends JsonContainer {
     }
 
     public Object getObject(@NonNull String key, Object defaultValue) {
-        Object value = getObject(key);
-        return null == value ? defaultValue : value;
+        Object object = getObject(key);
+        return object == null ? defaultValue : object;
     }
 
     public String getString(@NonNull String key) {
         try {
-            Object value = getObject(key);
-            return ValueUtil.valueToString(value);
+            Object object = getObject(key);
+            return ObjectHandler.objectToString(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get String of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public String getString(@NonNull String key, String defaultValue) {
-        String value = getString(key);
-        return null == value ? defaultValue : value;
+        String object = getString(key);
+        return object == null ? defaultValue : object;
     }
 
     public String getAsString(@NonNull String key) {
-        Object value = getObject(key);
-        return ValueUtil.valueAsString(value);
+        Object object = getObject(key);
+        return ObjectHandler.objectAsString(object);
     }
 
     public String getAsString(@NonNull String key, String defaultValue) {
-        String value = getAsString(key);
-        return null == value ? defaultValue : value;
+        String object = getAsString(key);
+        return object == null ? defaultValue : object;
     }
 
     public Long getLong(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToLong(value);
+            return ObjectHandler.objectToLong(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Long of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public long getLong(@NonNull String key, long defaultValue) {
-        Long value = getLong(key);
-        return null == value ? defaultValue : value;
+        Long object = getLong(key);
+        return object == null ? defaultValue : object;
     }
 
     public Integer getInteger(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToInteger(value);
+            return ObjectHandler.objectToInteger(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Integer of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public int getInteger(@NonNull String key, int defaultValue) {
-        Integer value = getInteger(key);
-        return null == value ? defaultValue : value;
+        Integer object = getInteger(key);
+        return object == null ? defaultValue : object;
     }
 
     public Short getShort(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToShort(value);
+            return ObjectHandler.objectToShort(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Short of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public short getShort(@NonNull String key, short defaultValue) {
-        Short value = getShort(key);
-        return null == value ? defaultValue : value;
+        Short object = getShort(key);
+        return object == null ? defaultValue : object;
     }
 
     public Byte getByte(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToByte(value);
+            return ObjectHandler.objectToByte(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Byte of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public byte getByte(@NonNull String key, byte defaultValue) {
-        Byte value = getByte(key);
-        return null == value ? defaultValue : value;
+        Byte object = getByte(key);
+        return object == null ? defaultValue : object;
     }
 
     public Double getDouble(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToDouble(value);
+            return ObjectHandler.objectToDouble(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Double of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public double getDouble(@NonNull String key, double defaultValue) {
-        Double value = getDouble(key);
-        return null == value ? defaultValue : value;
+        Double object = getDouble(key);
+        return object == null ? defaultValue : object;
     }
 
     public Float getFloat(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToFloat(value);
+            return ObjectHandler.objectToFloat(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Float of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public float getFloat(@NonNull String key, float defaultValue) {
-        Float value = getFloat(key);
-        return null == value ? defaultValue : value;
+        Float object = getFloat(key);
+        return object == null ? defaultValue : object;
     }
 
     public BigInteger getBigInteger(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToBigInteger(value);
+            return ObjectHandler.objectToBigInteger(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigInteger of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public BigInteger getBigInteger(@NonNull String key, BigInteger defaultValue) {
-        BigInteger value = getBigInteger(key);
-        return null == value ? defaultValue : value;
+        BigInteger object = getBigInteger(key);
+        return object == null ? defaultValue : object;
     }
 
     public BigDecimal getBigDecimal(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToBigDecimal(value);
+            return ObjectHandler.objectToBigDecimal(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigDecimal of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public BigDecimal getBigDecimal(@NonNull String key, BigDecimal defaultValue) {
-        BigDecimal value = getBigDecimal(key);
-        return null == value ? defaultValue : value;
+        BigDecimal object = getBigDecimal(key);
+        return object == null ? defaultValue : object;
     }
 
     public Boolean getBoolean(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToBoolean(value);
+            return ObjectHandler.objectToBoolean(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Boolean of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public boolean getBoolean(@NonNull String key, boolean defaultValue) {
-        Boolean value = getBoolean(key);
-        return null == value ? defaultValue : value;
+        Boolean object = getBoolean(key);
+        return object == null ? defaultValue : object;
     }
 
     public JsonObject getJsonObject(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToJsonObject(value);
+            return ObjectHandler.objectToJsonObject(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonObject of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public JsonObject getJsonObject(@NonNull String key, JsonObject defaultValue) {
-        JsonObject value = getJsonObject(key);
-        return null == value ? defaultValue : value;
+        JsonObject object = getJsonObject(key);
+        return object == null ? defaultValue : object;
     }
 
     public JsonArray getJsonArray(@NonNull String key) {
-        Object value = getObject(key);
+        Object object = getObject(key);
         try {
-            return ValueUtil.valueToJsonArray(value);
+            return ObjectHandler.objectToJsonArray(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray value of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonArray of key '" + key + "': " + e.getMessage(), e);
         }
     }
 
     public JsonArray getJsonArray(@NonNull String key, JsonArray defaultValue) {
-        JsonArray value = getJsonArray(key);
-        return null == value ? defaultValue : value;
+        JsonArray object = getJsonArray(key);
+        return object == null ? defaultValue : object;
     }
 
     @SuppressWarnings("unchecked")
     public <T> T get(@NonNull String key, @NonNull Class<T> clazz) {
-        if (Object.class.equals(clazz)) {
-            return (T) getObject(key);
-        } else if (JsonObject.class.equals(clazz)) {
-            return (T) getJsonObject(key);
-        } else if (JsonObject.class.isAssignableFrom(clazz)) {
-            return (T) getJsonObject(key).cast((Class<? extends JsonObject>) clazz);
-        } else if (JsonArray.class.equals(clazz)) {
-            return (T) getJsonArray(key);
-        } else if (String.class.equals(clazz)) {
-            return (T) getString(key);
-        } else if (Boolean.class.equals(clazz)) {
-            return (T) getBoolean(key);
-        } else if (Long.class.equals(clazz)) {
-            return (T) getLong(key);
-        } else if (Integer.class.equals(clazz)) {
-            return (T) getInteger(key);
-        } else if (Short.class.equals(clazz)) {
-            return (T) getShort(key);
-        } else if (Byte.class.equals(clazz)) {
-            return (T) getByte(key);
-        } else if (Double.class.equals(clazz)) {
-            return (T) getDouble(key);
-        } else if (Float.class.equals(clazz)) {
-            return (T) getFloat(key);
-        } else if (BigInteger.class.equals(clazz)) {
-            return (T) getBigInteger(key);
-        } else if (BigDecimal.class.equals(clazz)) {
-            return (T) getBigDecimal(key);
+        Object object = getObject(key);
+        try {
+            return ObjectHandler.objectTo(object, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get " + clazz.getName() + " of key '" + key + "': " + e.getMessage(), e);
         }
-        throw new JsonException("Failed to get unsupported type " + clazz.getName() + " of key '" + key + "'");
     }
 
     @SuppressWarnings("unchecked")
@@ -467,9 +448,9 @@ public class JsonObject extends JsonContainer {
 
     public void put(@NonNull String key, Object value) {
         try {
-            value = ValueUtil.objectToValue(value);
+            value = ObjectHandler.checkAndWrap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value of key '" + key + "' to JSON-compatible Value: " +
+            throw new JsonException("Failed to convert value of key '" + key + "' to JSON-convertible object: " +
                     e.getMessage());
         }
         valueMap.put(key, value);

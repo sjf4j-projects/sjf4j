@@ -3,19 +3,22 @@ package org.sjf4j;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.Array;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 @Slf4j
 public class JsonWalker {
 
-    public static void walkValues(@NonNull JsonContainer container, @NonNull BiConsumer<JsonPath, Object> consumer) {
+    public static void walkValues(@NonNull Object container,
+                                  @NonNull BiConsumer<JsonPath, Object> consumer) {
         JsonPath path = new JsonPath();
         walkValuesRecursively(container, path, consumer);
     }
 
-    public static void walkContainersBottomUp(@NonNull JsonContainer container,
-                                              @NonNull BiConsumer<JsonPath, JsonContainer> consumer) {
+    public static void walkContainersBottomUp(@NonNull Object container,
+                                              @NonNull BiConsumer<JsonPath, Object> consumer) {
         JsonPath path = new JsonPath();
         walkContainersBottomUpRecursively(container, path, consumer);
     }
@@ -23,55 +26,86 @@ public class JsonWalker {
 
     /// private
 
-    private static void walkValuesRecursively(@NonNull JsonContainer container, @NonNull JsonPath path,
+    private static void walkValuesRecursively(Object container, @NonNull JsonPath path,
                                               @NonNull BiConsumer<JsonPath, Object> consumer) {
-        if (container instanceof JsonObject) {
-            JsonObject jo = (JsonObject) container;
-            for (Map.Entry<String, Object> entry : jo.entrySet()) {
+        if (container == null) {
+            consumer.accept(path, null);
+        } else if (container instanceof JsonObject) {
+            for (Map.Entry<String, Object> entry : ((JsonObject) container).entrySet()) {
                 JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey()));
                 Object node = entry.getValue();
-                if (node instanceof JsonContainer) {
-                    walkValuesRecursively((JsonContainer) node, newPath, consumer);
-                } else {
-                    consumer.accept(newPath, node);
-                }
+                walkValuesRecursively(node, newPath, consumer);
+            }
+        } else if (container instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
+                JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey().toString()));
+                Object node = entry.getValue();
+                walkValuesRecursively(node, newPath, consumer);
             }
         } else if (container instanceof JsonArray) {
             JsonArray ja = (JsonArray) container;
             for (int i = 0; i < ja.size(); i++) {
                 JsonPath newPath = path.copy().push(new PathToken.Index(i));
                 Object node = ja.getObject(i);
-                if (node instanceof JsonContainer) {
-                    walkValuesRecursively((JsonContainer) node, newPath, consumer);
-                } else {
-                    consumer.accept(newPath, node);
-                }
+                walkValuesRecursively(node, newPath, consumer);
             }
+        } else if (container instanceof List) {
+            List<?> list = (List<?>) container;
+            for (int i = 0; i < list.size(); i++) {
+                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                Object node = list.get(i);
+                walkValuesRecursively(node, newPath, consumer);
+            }
+        } else if (container.getClass().isArray()) {
+            for (int i = 0; i < Array.getLength(consumer); i++) {
+                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                Object node = Array.get(consumer, i);
+                walkValuesRecursively(node, newPath, consumer);
+            }
+        } else {
+            consumer.accept(path, container);
         }
     }
 
-    private static void walkContainersBottomUpRecursively(@NonNull JsonContainer container, @NonNull JsonPath path,
-                                                          @NonNull BiConsumer<JsonPath, JsonContainer> consumer) {
+    private static void walkContainersBottomUpRecursively(Object container, @NonNull JsonPath path,
+                                                          @NonNull BiConsumer<JsonPath, Object> consumer) {
         if (container instanceof JsonObject) {
-            JsonObject jo = (JsonObject) container;
-            for (Map.Entry<String, Object> entry : jo.entrySet()) {
+            for (Map.Entry<String, Object> entry : ((JsonObject) container).entrySet()) {
                 JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey()));
                 Object node = entry.getValue();
-                if (node instanceof JsonContainer) {
-                    walkContainersBottomUpRecursively((JsonContainer) node, newPath, consumer);
-                }
-                consumer.accept(newPath, jo);
+                walkContainersBottomUpRecursively(node, newPath, consumer);
             }
+            consumer.accept(path, container);
+        } else if (container instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
+                JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey().toString()));
+                Object node = entry.getValue();
+                walkContainersBottomUpRecursively(node, newPath, consumer);
+            }
+            consumer.accept(path, container);
         } else if (container instanceof JsonArray) {
             JsonArray ja = (JsonArray) container;
             for (int i = 0; i < ja.size(); i++) {
                 JsonPath newPath = path.copy().push(new PathToken.Index(i));
                 Object node = ja.getObject(i);
-                if (node instanceof JsonContainer) {
-                    walkContainersBottomUpRecursively((JsonContainer) node, newPath, consumer);
-                }
-                consumer.accept(newPath, ja);
+                walkContainersBottomUpRecursively(node, newPath, consumer);
             }
+            consumer.accept(path, container);
+        } else if (container instanceof List) {
+            List<?> list = (List<?>) container;
+            for (int i = 0; i < list.size(); i++) {
+                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                Object node = list.get(i);
+                walkContainersBottomUpRecursively(node, newPath, consumer);
+            }
+            consumer.accept(path, container);
+        } else if (container != null && container.getClass().isArray()) {
+            for (int i = 0; i < Array.getLength(container); i++) {
+                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                Object node = Array.get(container, i);
+                walkContainersBottomUpRecursively(node, newPath, consumer);
+            }
+            consumer.accept(path, container);
         }
     }
 

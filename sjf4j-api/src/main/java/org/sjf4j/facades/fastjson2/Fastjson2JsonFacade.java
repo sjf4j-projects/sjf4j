@@ -36,27 +36,45 @@ public class Fastjson2JsonFacade implements JsonFacade {
 
     @Override
     public JsonObject readObject(@NonNull Reader input) {
+        Object value;
         try {
-            return SimpleJsonReader.readObject(input, readerFeatures);
+            JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
+            value = SimpleFastjson2Reader.readAny(reader);
         } catch (Exception e) {
             throw new JsonException("Failed to deserialize JSON into JsonObject: " + e.getMessage(), e);
+        }
+
+        if (value instanceof JsonObject) {
+            return (JsonObject) value;
+        } else {
+            throw new JsonException("Expected JsonObject but got '" +
+                    (value == null ? "[null]" : value.getClass().getName()) + "'");
         }
     }
 
     @Override
     public JsonArray readArray(@NonNull Reader input) {
+        Object value;
         try {
-            return SimpleJsonReader.readArray(input, readerFeatures);
+            JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
+            value = SimpleFastjson2Reader.readAny(reader);
         } catch (Exception e) {
             throw new JsonException("Failed to deserialize JSON into JsonArray: " + e.getMessage(), e);
+        }
+
+        if (value instanceof JsonArray) {
+            return (JsonArray) value;
+        } else {
+            throw new JsonException("Expected JsonArray but got '" +
+                    (value == null ? "[null]" : value.getClass().getName()) + "'");
         }
     }
 
     @Override
     public void writeObject(@NonNull Writer output, JsonObject jo) {
-        try {
-            String json = SimpleJsonWriter.toJson(jo, writerFeatures);
-            output.write(json);
+        try (JSONWriter writer = JSONWriter.of(writerFeatures)) {
+            SimpleFastjson2Writer.writeAny(writer, jo);
+            output.write(writer.toString());
         } catch (Exception e) {
             throw new JsonException("Failed to serialize JsonObject to JSON: " + e.getMessage(), e);
         }
@@ -64,9 +82,9 @@ public class Fastjson2JsonFacade implements JsonFacade {
 
     @Override
     public void writeArray(@NonNull Writer output, JsonArray ja) {
-        try {
-            String json = SimpleJsonWriter.toJson(ja, writerFeatures);
-            output.write(json);
+        try (JSONWriter writer = JSONWriter.of(writerFeatures)) {
+            SimpleFastjson2Writer.writeAny(writer, ja);
+            output.write(writer.toString());
         } catch (Exception e) {
             throw new JsonException("Failed to serialize JsonArray to JSON: " + e.getMessage(), e);
         }

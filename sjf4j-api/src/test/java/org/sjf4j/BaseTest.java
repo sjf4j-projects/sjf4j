@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 public class BaseTest {
 
     @Test
@@ -22,8 +24,10 @@ public class BaseTest {
 
     @Test
     public void testBase2() {
-        long n = Long.parseLong("9999999999999999999999");
-        System.out.println("n : " + n);
+        assertThrows(Exception.class, () -> {
+            long n = Long.parseLong("9999999999999999999999");
+        });
+
 
     }
 

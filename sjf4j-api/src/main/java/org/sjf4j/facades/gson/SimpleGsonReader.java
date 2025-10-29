@@ -5,28 +5,28 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.util.NumberHandler;
 
 import java.io.IOException;
 
-public class SimpleJsonReader {
+public class SimpleGsonReader {
 
     public static Object readAny(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
+            case NULL:
+                reader.nextNull();
+                return null;
+            case STRING:
+                return reader.nextString();
+            case NUMBER:
+                return NumberHandler.stringToNumber(reader.nextString());
+            case BOOLEAN:
+                return reader.nextBoolean();
             case BEGIN_OBJECT:
                 return readObject(reader);
             case BEGIN_ARRAY:
                 return readArray(reader);
-            case STRING:
-                return reader.nextString();
-            case NUMBER:
-                return readNumber(reader);
-            case BOOLEAN:
-                return reader.nextBoolean();
-            case NULL:
-                reader.nextNull();
-                return null;
             default:
                 throw new IllegalStateException("Unexpected token: " + token);
         }
@@ -55,9 +55,5 @@ public class SimpleJsonReader {
         return ja;
     }
 
-    public static Object readNumber(JsonReader reader) throws IOException {
-        String num = reader.nextString();
-        return NumberUtil.stringToNumber(num);
-    }
 
 }

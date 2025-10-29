@@ -303,7 +303,10 @@ class JsonObjectTest {
         assertNotNull(attr);
         assertEquals(1, attr.size());
 
-        float f = jo1.get("num");
+        assertThrows(JsonException.class, () -> {
+            float f = jo1.get("num");
+        });
+        float f = jo1.getFloat("num");
         System.out.println("f: " + f);
         assertEquals(5.0, f);
 
@@ -409,7 +412,6 @@ class JsonObjectTest {
         JsonObject jo2 = JsonObject.fromYaml(ya1);
         assertEquals(jo1, jo2);
     }
-
 
 
 }

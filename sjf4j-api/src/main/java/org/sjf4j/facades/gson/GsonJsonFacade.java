@@ -22,10 +22,10 @@ public class GsonJsonFacade implements JsonFacade {
 
     @Override
     public JsonObject readObject(@NonNull Reader input) {
-        JsonReader reader = gson.newJsonReader(input);
         Object value;
         try {
-            value = SimpleJsonReader.readAny(reader);
+            JsonReader reader = gson.newJsonReader(input);
+            value = SimpleGsonReader.readAny(reader);
         } catch (Exception e) {
             throw new JsonException("Failed to deserialize JSON into JsonObject: " + e.getMessage(), e);
         }
@@ -40,10 +40,10 @@ public class GsonJsonFacade implements JsonFacade {
 
     @Override
     public JsonArray readArray(@NonNull Reader input) {
-        JsonReader reader = gson.newJsonReader(input);
         Object value;
         try {
-            value = SimpleJsonReader.readAny(reader);
+            JsonReader reader = gson.newJsonReader(input);
+            value = SimpleGsonReader.readAny(reader);
         } catch (Exception e) {
             throw new JsonException("Failed to deserialize JSON into JsonArray: " + e.getMessage(), e);
         }
@@ -60,7 +60,7 @@ public class GsonJsonFacade implements JsonFacade {
     public void writeObject(@NonNull Writer output, JsonObject jo) {
         try {
             JsonWriter writer = gson.newJsonWriter(output);
-            SimpleJsonWriter.writeValue(writer, jo);
+            SimpleGsonWriter.writeAny(writer, jo);
         } catch (Exception e) {
             throw new JsonException("Failed to serialize JsonObject to JSON: " + e.getMessage(), e);
         }
@@ -70,7 +70,7 @@ public class GsonJsonFacade implements JsonFacade {
     public void writeArray(@NonNull Writer output, JsonArray ja) {
         try {
             JsonWriter writer = gson.newJsonWriter(output);
-            SimpleJsonWriter.writeValue(writer, ja);
+            SimpleGsonWriter.writeAny(writer, ja);
         } catch (Exception e) {
             throw new JsonException("Failed to serialize JsonArray to JSON: " + e.getMessage(), e);
         }

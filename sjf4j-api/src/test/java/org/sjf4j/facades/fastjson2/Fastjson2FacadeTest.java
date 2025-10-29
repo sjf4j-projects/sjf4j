@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 
 import java.io.StringReader;
+import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -16,8 +17,12 @@ public class Fastjson2FacadeTest {
     @Test
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
-        JsonObject jo1 = SimpleJsonReader.readObject(new StringReader(json1), new JSONReader.Feature[0]);
-        String res1 = SimpleJsonWriter.toJson(jo1, new JSONWriter.Feature[0]);
+
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+        JsonObject jo1 = facade.readObject(new StringReader(json1));
+        StringWriter sw = new StringWriter();
+        facade.writeObject(sw, jo1);
+        String res1 = sw.toString();
         log.info("res1: {}", res1);
         assertEquals(json1, res1);
     }

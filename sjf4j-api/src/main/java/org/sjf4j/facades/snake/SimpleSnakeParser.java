@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.util.NumberHandler;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.Event;
 import org.yaml.snakeyaml.events.MappingEndEvent;
@@ -16,7 +16,7 @@ import org.yaml.snakeyaml.parser.Parser;
 
 
 @Slf4j
-public class SimpleParser {
+public class SimpleSnakeParser {
 
     public static Object readAny(Parser parser) {
         Event event = parser.peekEvent();
@@ -79,7 +79,7 @@ public class SimpleParser {
         }
 
         if (isNumeric(v)) {
-            return NumberUtil.stringToNumber(v);
+            return NumberHandler.stringToNumber(v);
         } else {
             return v;
         }

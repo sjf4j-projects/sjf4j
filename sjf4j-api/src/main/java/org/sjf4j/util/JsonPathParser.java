@@ -2,13 +2,12 @@ package org.sjf4j.util;
 
 import lombok.NonNull;
 import org.sjf4j.JsonException;
-import org.sjf4j.JsonPath;
 import org.sjf4j.PathToken;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class JsonPathUtil {
+public class JsonPathParser {
 
 
     public static List<PathToken> compile(@NonNull String expr) {

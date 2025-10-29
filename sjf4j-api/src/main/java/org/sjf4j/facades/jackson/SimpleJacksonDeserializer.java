@@ -10,7 +10,7 @@ import org.sjf4j.JsonObject;
 
 import java.io.IOException;
 
-public class SimpleJsonDeserializer extends JsonDeserializer<Object> {
+public class SimpleJacksonDeserializer extends JsonDeserializer<Object> {
 
 
     @Override

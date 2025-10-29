@@ -3,7 +3,7 @@ package org.sjf4j;
 import lombok.NonNull;
 import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.facades.YamlFacade;
-import org.sjf4j.util.ValueUtil;
+import org.sjf4j.util.ObjectHandler;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 public class JsonArray extends JsonContainer implements Iterable<Object> {
 
@@ -176,7 +177,14 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return Collections.unmodifiableList(valueList);
     }
 
+    public void forEach(BiConsumer<Integer, Object> action) {
+        for (int i = 0; i < valueList.size(); i++) {
+            action.accept(i, valueList.get(i));
+        }
+    }
+
     @Override
+    @NonNull
     public Iterator<Object> iterator() {
         return toList().iterator();
     }
@@ -210,179 +218,179 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     public String getString(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToString(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToString(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get String at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public String getString(int idx, String defaultValue) {
-        String value = getString(idx);
-        return value == null ? defaultValue : value;
+        String object = getString(idx);
+        return object == null ? defaultValue : object;
     }
 
     public String getAsString(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueAsString(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectAsString(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get as String value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get as String at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public Long getLong(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToLong(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToLong(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Long at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public long getLong(int idx, long defaultValue) {
-        Long value = getLong(idx);
-        return value == null ? defaultValue : value;
+        Long object = getLong(idx);
+        return object == null ? defaultValue : object;
     }
 
     public Integer getInteger(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToInteger(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToInteger(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Integer at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public int getInteger(int idx, int defaultValue) {
-        Integer value = getInteger(idx);
-        return value == null ? defaultValue : value;
+        Integer object = getInteger(idx);
+        return object == null ? defaultValue : object;
     }
 
     public Short getShort(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToShort(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToShort(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Short at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public short getShort(int idx, short defaultValue) {
-        Short value = getShort(idx);
-        return value == null ? defaultValue : value;
+        Short object = getShort(idx);
+        return object == null ? defaultValue : object;
     }
 
     public Byte getByte(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToByte(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToByte(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Byte at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public byte getByte(int idx, byte defaultValue) {
-        Byte value = getByte(idx);
-        return value == null ? defaultValue : value;
+        Byte object = getByte(idx);
+        return object == null ? defaultValue : object;
     }
 
     public Double getDouble(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToDouble(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToDouble(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Double at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public double getDouble(int idx, double defaultValue) {
-        Double value = getDouble(idx);
-        return value == null ? defaultValue : value;
+        Double object = getDouble(idx);
+        return object == null ? defaultValue : object;
     }
 
     public Float getFloat(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToFloat(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToFloat(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Float at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public float getFloat(int idx, float defaultValue) {
-        Float value = getFloat(idx);
-        return value == null ? defaultValue : value;
+        Float object = getFloat(idx);
+        return object == null ? defaultValue : object;
     }
 
     public BigInteger getBigInteger(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToBigInteger(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToBigInteger(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigInteger at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public BigInteger getBigInteger(int idx, BigInteger defaultValue) {
-        BigInteger value = getBigInteger(idx);
-        return value == null ? defaultValue : value;
+        BigInteger object = getBigInteger(idx);
+        return object == null ? defaultValue : object;
     }
 
     public BigDecimal getBigDecimal(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToBigDecimal(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToBigDecimal(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigDecimal at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public BigDecimal getBigDecimal(int idx, BigDecimal defaultValue) {
-        BigDecimal value = getBigDecimal(idx);
-        return value == null ? defaultValue : value;
+        BigDecimal object = getBigDecimal(idx);
+        return object == null ? defaultValue : object;
     }
 
     public Boolean getBoolean(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToBoolean(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToBoolean(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get Boolean at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public boolean getString(int idx, boolean defaultValue) {
-        Boolean value = getBoolean(idx);
-        return value == null ? defaultValue : value;
+        Boolean object = getBoolean(idx);
+        return object == null ? defaultValue : object;
     }
 
     public JsonObject getJsonObject(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToJsonObject(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToJsonObject(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonObject at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public JsonObject getJsonObject(int idx, JsonObject defaultValue) {
-        JsonObject value = getJsonObject(idx);
-        return value == null ? defaultValue : value;
+        JsonObject object = getJsonObject(idx);
+        return object == null ? defaultValue : object;
     }
 
     public JsonArray getJsonArray(int idx) {
         try {
-            Object value = getObject(idx);
-            return ValueUtil.valueToJsonArray(value);
+            Object object = getObject(idx);
+            return ObjectHandler.objectToJsonArray(object);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray value at index " + idx + " : " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonArray at index " + idx + " : " + e.getMessage(), e);
         }
     }
 
     public JsonArray getJsonArray(int idx, JsonArray defaultValue) {
-        JsonArray value = getJsonArray(idx);
-        return value == null ? defaultValue : value;
+        JsonArray object = getJsonArray(idx);
+        return object == null ? defaultValue : object;
     }
 
     @SuppressWarnings("unchecked")
@@ -429,9 +437,9 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     public void add(Object value) {
         try {
-            value = ValueUtil.objectToValue(value);
+            value = ObjectHandler.checkAndWrap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value to JSON-compatible Value: " + e.getMessage());
+            throw new JsonException("Failed to convert value to JSON-convertible object: " + e.getMessage());
         }
         valueList.add(value);
     }
@@ -442,9 +450,9 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
             throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + valueList.size());
         }
         try {
-            value = ValueUtil.objectToValue(value);
+            value = ObjectHandler.checkAndWrap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to JSON-compatible Value: " +
+            throw new JsonException("Failed to convert value at index " + idx + " to JSON-convertible object: " +
                     e.getMessage());
         }
         valueList.add(pidx, value);
@@ -456,9 +464,9 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + valueList.size());
         }
         try {
-            value = ValueUtil.objectToValue(value);
+            value = ObjectHandler.checkAndWrap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to JSON-compatible Value: " +
+            throw new JsonException("Failed to convert value at index " + idx + " to JSON-convertible object: " +
                     e.getMessage());
         }
         valueList.set(pidx, value);

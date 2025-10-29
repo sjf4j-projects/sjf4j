@@ -3,13 +3,11 @@ package org.sjf4j.facades.snakeyaml;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.facades.snake.SnakeYamlFacade;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

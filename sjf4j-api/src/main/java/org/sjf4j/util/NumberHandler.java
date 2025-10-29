@@ -5,7 +5,7 @@ import lombok.NonNull;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public class NumberUtil {
+public class NumberHandler {
 
     public final static int MAX_NUMBER_DIGITS = 100;
     public final static BigInteger BI_MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
@@ -122,6 +122,7 @@ public class NumberUtil {
         }
         return BigDecimal.valueOf(((Number) value).longValue());
     }
+
 
     public static Number stringToNumber(String num) {
         if (num == null || num.isEmpty()) {
