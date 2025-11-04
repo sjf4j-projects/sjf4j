@@ -18,8 +18,8 @@ public class JacksonJsonFacade implements JsonFacade {
 
     public JacksonJsonFacade(@NonNull ObjectMapper objectMapper) {
         SimpleModule module = new SimpleModule();
-        module.addDeserializer(Object.class, new SimpleJacksonDeserializer());
-        module.addSerializer(Object.class, new SimpleJacksonSerializer());
+        module.addDeserializer(Object.class, new JacksonDeserializer());
+        module.addSerializer(Object.class, new JacksonSerializer());
         objectMapper.registerModule(module);
         this.objectMapper = objectMapper;
     }

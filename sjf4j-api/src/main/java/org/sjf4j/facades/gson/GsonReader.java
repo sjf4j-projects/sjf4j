@@ -5,11 +5,11 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.util.NumberHandler;
+import org.sjf4j.util.NumberUtil;
 
 import java.io.IOException;
 
-public class SimpleGsonReader {
+public class GsonReader {
 
     public static Object readAny(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
@@ -20,7 +20,7 @@ public class SimpleGsonReader {
             case STRING:
                 return reader.nextString();
             case NUMBER:
-                return NumberHandler.stringToNumber(reader.nextString());
+                return NumberUtil.stringToNumber(reader.nextString());
             case BOOLEAN:
                 return reader.nextBoolean();
             case BEGIN_OBJECT:

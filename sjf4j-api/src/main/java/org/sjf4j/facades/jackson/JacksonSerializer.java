@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.util.ValueHandler;
+import org.sjf4j.ObjectRegistry;
+import org.sjf4j.PojoRegistry;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -14,14 +16,14 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-public class SimpleJacksonSerializer extends JsonSerializer<Object> {
+public class JacksonSerializer extends JsonSerializer<Object> {
 
     @Override
     public void serialize(Object object, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-        Object value = ValueHandler.object2Value(object);
+        Object value = ObjectRegistry.tryObject2Value(object);
         if (value == null) {
             gen.writeNull();
-        } else if (value instanceof String || value instanceof Character) {
+        } else if (value instanceof CharSequence || value instanceof Character) {
             gen.writeString(value.toString());
         } else if (value instanceof Number) {
             if (value instanceof Long || value instanceof Integer) {
@@ -69,10 +71,25 @@ public class SimpleJacksonSerializer extends JsonSerializer<Object> {
                 serialize(Array.get(value, i), gen, serializers);
             }
             gen.writeEndArray();
+        } else if (PojoRegistry.hasPojo(value.getClass())) {
+            gen.writeStartObject();
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
+                    PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
+                gen.writeFieldName(entry.getKey());
+                Object subValue = null;
+                try {
+                    subValue = entry.getValue().getGetter().invoke(value);
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
+                            value.getClass().getName(), e);
+                }
+                serialize(subValue, gen, serializers);
+            }
+            gen.writeEndObject();
         } else {
             throw new IllegalStateException("Unsupported object type '" + object.getClass().getName() +
                     "', expected one of [JsonObject, JsonArray, String, Number, Boolean] or a type registered in " +
-                    "ValueRegistry, or a Map/List/Array of such elements.");
+                    "ObjectRegistry or a valid POJO, or a Map/List/Array of such elements.");
         }
     }
 

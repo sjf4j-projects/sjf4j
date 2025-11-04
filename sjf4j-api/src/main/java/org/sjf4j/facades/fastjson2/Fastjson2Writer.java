@@ -2,13 +2,12 @@ package org.sjf4j.facades.fastjson2;
 
 
 import com.alibaba.fastjson2.JSONWriter;
-import lombok.NonNull;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.util.ValueHandler;
+import org.sjf4j.ObjectRegistry;
+import org.sjf4j.PojoRegistry;
 
-import java.io.StringWriter;
-import java.io.Writer;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -16,14 +15,14 @@ import java.util.List;
 import java.util.Map;
 
 
-public class SimpleFastjson2Writer {
+public class Fastjson2Writer {
 
 
     public static void writeAny(JSONWriter writer, Object object) {
-        Object value = ValueHandler.object2Value(object);
+        Object value = ObjectRegistry.tryObject2Value(object);
         if (value == null) {
             writer.writeNull();
-        } else if (value instanceof String || value instanceof Character) {
+        } else if (value instanceof CharSequence || value instanceof Character) {
             writer.writeString(value.toString());
         } else if (value instanceof Number) {
             if (value instanceof Long || value instanceof Integer) {
@@ -77,10 +76,26 @@ public class SimpleFastjson2Writer {
                 writeAny(writer, Array.get(value, i));
             }
             writer.endArray();
+        } else if (PojoRegistry.hasPojo(value.getClass())) {
+            writer.startObject();
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
+                    PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
+                writer.writeName(entry.getKey());
+                writer.writeColon();
+                Object subValue = null;
+                try {
+                    subValue = entry.getValue().getGetter().invoke(value);
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
+                            value.getClass().getName(), e);
+                }
+                writeAny(writer, subValue);
+            }
+            writer.endObject();
         } else {
             throw new IllegalStateException("Unsupported object type '" + object.getClass().getName() +
                     "', expected one of [JsonObject, JsonArray, String, Number, Boolean] or a type registered in " +
-                    "ValueRegistry, or a Map/List/Array of such elements.");
+                    "ObjectRegistry or a valid POJO, or a Map/List/Array of such elements.");
         }
     }
 

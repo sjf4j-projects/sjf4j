@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 
 import java.math.BigDecimal;
 
-public class SimpleFastjson2Reader {
+public class Fastjson2Reader {
 
     public static Object readAny(JSONReader reader) {
         if (reader.nextIfNull()) {
@@ -17,10 +17,10 @@ public class SimpleFastjson2Reader {
             Number n = reader.readNumber();
             if (n instanceof BigDecimal) {
                 double f = n.doubleValue();
-                if (Double.isFinite(f)) return f;
+                if (Double.isFinite(f)) return f;   // Double is more popular and faster
             }
             return n;
-        } else if (reader.current() == 't' || reader.current() == 'f') { // I got it!
+        } else if (reader.current() == 't' || reader.current() == 'f') { // Catch it!
             return reader.readBool();
         } else if (reader.nextIfObjectStart()) {
             JsonObject jo = new JsonObject();
@@ -43,11 +43,7 @@ public class SimpleFastjson2Reader {
     }
 
 
-/**
- * Since the streaming API of Fastjson2 is rather confusing,
- * it's better to use the official `JSON.parseObject` and then convert it to JsonObject.
- * TODO: Perhaps it will be re-implemented in the future.
- */
+
 //    public static JsonObject readObject(Reader input, JSONReader.Feature[] readerFeatures) {
 //        JSONObject fastjo = JSON.parseObject(input, readerFeatures);
 //        return convertObject(fastjo);

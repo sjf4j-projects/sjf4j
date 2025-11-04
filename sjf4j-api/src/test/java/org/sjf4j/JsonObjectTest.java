@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.sjf4j.util.ObjectUtil;
+import org.sjf4j.util.ObjectUtilTest;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -55,6 +57,7 @@ class JsonObjectTest {
         testNumber1();
         testNumber2();
         testYaml1();
+        testPojo1();
     }
 
     public void testGetter1() {
@@ -88,7 +91,6 @@ class JsonObjectTest {
 
     }
 
-    @Test
     public void testPutter1() {
         JsonObject jo = new JsonObject();
         assertEquals("{}", jo.toString());
@@ -411,6 +413,31 @@ class JsonObjectTest {
 
         JsonObject jo2 = JsonObject.fromYaml(ya1);
         assertEquals(jo1, jo2);
+    }
+
+    public static class Address {
+        public String city;
+        public String street;
+    }
+
+    public static class Person {
+        public String name;
+        public ObjectUtilTest.Address address;
+    }
+
+    public void testPojo1() {
+        JsonObject jo = new JsonObject(
+                "name", "Bob",
+                "address", new JsonObject(
+                        "city", "New York",
+                        "street", "5th Ave"));
+        Person p1 = jo.toPojo(Person.class);
+        assertEquals("Bob", p1.name);
+        assertEquals("New York", p1.address.city);
+        assertEquals("5th Ave", p1.address.street);
+
+        JsonObject back = JsonObject.fromPojo(p1);
+        assertEquals("Bob", back.getString("name"));
     }
 
 

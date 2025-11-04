@@ -1,19 +1,20 @@
 package org.sjf4j.converters;
 
-import org.sjf4j.ValueConverter;
+import org.sjf4j.ObjectConverter;
 
+import java.lang.reflect.Type;
 import java.time.OffsetDateTime;
 
-public class OffsetDateTimeConverter implements ValueConverter {
+public class OffsetDateTimeConverter implements ObjectConverter {
 
 
     @Override
-    public Class<OffsetDateTime> getObjectClass() {
+    public Type getObjectType() {
         return OffsetDateTime.class;
     }
 
     @Override
-    public Class<String> getValueClass() {
+    public Type getValueType() {
         return String.class;
     }
 

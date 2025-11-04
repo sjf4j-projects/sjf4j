@@ -136,6 +136,7 @@ class JsonArrayTest {
         assertEquals(3, list.get(1));
     }
 
+    @Test
     public void testArray2() {
         int[] ii = {1,2,3};
         JsonArray ja1 = new JsonArray(ii);

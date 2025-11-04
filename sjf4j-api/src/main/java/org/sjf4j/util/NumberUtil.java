@@ -1,27 +1,28 @@
 package org.sjf4j.util;
 
 import lombok.NonNull;
+import org.sjf4j.JsonException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public class NumberHandler {
+public class NumberUtil {
 
-    public final static int MAX_NUMBER_DIGITS = 100;
-    public final static BigInteger BI_MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
-    public final static BigInteger BI_MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
-    public final static BigDecimal BD_MIN_LONG = BigDecimal.valueOf(Long.MIN_VALUE);
-    public final static BigDecimal BD_MAX_LONG = BigDecimal.valueOf(Long.MAX_VALUE);
+    private final static int MAX_NUMBER_DIGITS = 100;
+    private final static BigInteger BI_MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
+    private final static BigInteger BI_MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
+    private final static BigDecimal BD_MIN_LONG = BigDecimal.valueOf(Long.MIN_VALUE);
+    private final static BigDecimal BD_MAX_LONG = BigDecimal.valueOf(Long.MAX_VALUE);
 
-    public static boolean inLongRange(@NonNull BigInteger value) {
+    private static boolean inLongRange(@NonNull BigInteger value) {
         return (value.compareTo(BI_MIN_LONG) >= 0) && (value.compareTo(BI_MAX_LONG) <= 0);
     }
 
-    public static boolean inLongRange(@NonNull BigDecimal value) {
+    private static boolean inLongRange(@NonNull BigDecimal value) {
         return (value.compareTo(BD_MIN_LONG) >= 0) && (value.compareTo(BD_MAX_LONG) <= 0);
     }
 
-    public static boolean inLongRange(double value) {
+    private static boolean inLongRange(double value) {
         return (value >= Long.MIN_VALUE) && (value <= Long.MAX_VALUE);
     }
 
@@ -121,6 +122,31 @@ public class NumberHandler {
             return BigDecimal.valueOf(((Number) value).doubleValue());
         }
         return BigDecimal.valueOf(((Number) value).longValue());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T numberAs(Number value, Class<T> clazz) {
+        if (clazz == null || clazz.isAssignableFrom(value.getClass())) {
+            return (T) value;
+        } else if (clazz == long.class || clazz == Long.class) {
+            return (T) NumberUtil.numberAsLong(value);
+        } else if (clazz == int.class || clazz == Integer.class) {
+            return (T) NumberUtil.numberAsInteger( value);
+        } else if (clazz == short.class || clazz == Short.class) {
+            return (T) NumberUtil.numberAsShort(value);
+        } else if (clazz == byte.class || clazz == Byte.class) {
+            return (T) NumberUtil.numberAsByte(value);
+        } else if (clazz == double.class || clazz == Double.class) {
+            return (T) NumberUtil.numberAsDouble(value);
+        } else if (clazz == float.class || clazz == Float.class) {
+            return (T) NumberUtil.numberAsFloat(value);
+        } else if (clazz == BigInteger.class) {
+            return (T) NumberUtil.numberAsBigInteger(value);
+        } else if (clazz == BigDecimal.class) {
+            return (T) NumberUtil.numberAsBigDecimal(value);
+        } else {
+            throw new JsonException("Cannot convert value " + value.getClass() + " to object " + clazz);
+        }
     }
 
 

@@ -10,11 +10,11 @@ import java.time.ZonedDateTime;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Slf4j
-public class ValueConverterTest {
+public class ObjectConverterTest {
 
     @Test
     public void testOne1() {
-        ValueRegistry.putConverter(OffsetDateTime.class, new OffsetDateTimeConverter());
+        ObjectRegistry.putConverter(OffsetDateTime.class, new OffsetDateTimeConverter());
         JsonObject jo1 = new JsonObject("aa", "bb");
         jo1.put("t1", OffsetDateTime.now());
         log.info("jo1: {}", jo1);

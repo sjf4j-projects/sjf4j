@@ -7,7 +7,7 @@ import org.sjf4j.PathToken;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JsonPathParser {
+public class JsonPathUtil {
 
 
     public static List<PathToken> compile(@NonNull String expr) {

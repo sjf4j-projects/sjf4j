@@ -3,6 +3,12 @@ package org.sjf4j;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -117,5 +123,21 @@ public class JsonPathTest {
         assertEquals(JsonArray.class, container2.getClass());
         assertEquals(0, jo1.getJsonArrayByPath("$.book[2].tags['gg mm']").size());
     }
+
+    @Test
+    public void testMapList1() {
+        JsonObject jo1 = new JsonObject("names", new int[]{1,2,3});
+        Map<String, List<JsonObject>> map = new HashMap<>();
+        List<JsonObject> lis = new ArrayList<>();
+        lis.add(new JsonObject("kk", "ll"));
+        map.put("lis", lis);
+        jo1.put("map", map);
+
+        log.info("jo1={}", jo1);
+        assertEquals(2, new JsonPath("$.names[1]").getLong(jo1));
+        assertEquals("ll", new JsonPath("$.map.lis[0].kk").getString(jo1));
+        assertEquals(ArrayList.class, new JsonPath("$.map.lis").getObject(jo1).getClass());
+    }
+
 
 }
