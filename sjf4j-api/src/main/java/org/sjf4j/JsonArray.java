@@ -511,17 +511,18 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// Copy, merge
 
     public JsonArray deepCopy() {
-        JsonArray copy = new JsonArray();
-        for (int i = 0; i < size(); i++) {
-            Object value = getObject(i);
-            if (value instanceof JsonObject) {
-                value = ((JsonObject) value).deepCopy();
-            } else if (value instanceof JsonArray) {
-                value = ((JsonArray) value).deepCopy();
-            }
-            copy.add(value);
-        }
-        return copy;
+//        JsonArray copy = new JsonArray();
+//        for (int i = 0; i < size(); i++) {
+//            Object value = getObject(i);
+//            if (value instanceof JsonObject) {
+//                value = ((JsonObject) value).deepCopy();
+//            } else if (value instanceof JsonArray) {
+//                value = ((JsonArray) value).deepCopy();
+//            }
+//            copy.add(value);
+//        }
+//        return copy;
+        return (JsonArray) ObjectUtil.object2Value(this);
     }
 
     public void merge(JsonArray target, boolean targetWin, boolean needCopy) {

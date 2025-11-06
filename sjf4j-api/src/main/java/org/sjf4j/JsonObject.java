@@ -10,27 +10,32 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class JsonObject extends JsonContainer {
 
     protected Map<String, Object> valueMap;
-
+    protected Map<String, PojoRegistry.FieldInfo> fieldMap;
 
     public JsonObject() {
-        valueMap = new LinkedHashMap<>();
+        if (this.getClass() != JsonObject.class) {
+            fieldMap = PojoRegistry.registerOrElseThrow(this.getClass()).getFields();
+        }
     }
 
-    public JsonObject(@NonNull JsonObject target) {
-        this.valueMap = target.valueMap;
-    }
+//    public JsonObject(@NonNull JsonObject target) {
+//        this.valueMap = target.valueMap;
+//    }
 
     public JsonObject(@NonNull Map<String, ?> map) {
         this();
@@ -100,15 +105,111 @@ public class JsonObject extends JsonContainer {
 
     /// Subclass
 
-    @Deprecated
-    public <T extends JsonObject> T cast(@NonNull Class<T> clazz) {
-        try {
-            Constructor<T> constructor = clazz.getConstructor(JsonObject.class);
-            return constructor.newInstance(this);
-        } catch (Throwable e) {
-            throw new JsonException("Failed to cast JsonObject to '" + clazz.getName() + "'", e);
+//    @Deprecated
+//    public <T extends JsonObject> T cast(@NonNull Class<T> clazz) {
+//        //TODO
+//        try {
+//            Constructor<T> constructor = clazz.getConstructor(JsonObject.class);
+//            return constructor.newInstance(this);
+//        } catch (Throwable e) {
+//            throw new JsonException("Failed to cast JsonObject to '" + clazz.getName() + "'", e);
+//        }
+//    }
+
+    /// Map
+
+    @Override
+    public String toString() {
+        return toJson();
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = valueMap == null ? 0 : valueMap.hashCode();
+        if (fieldMap != null) {
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+                hash += Objects.hashCode(entry.getKey()) ^ Objects.hashCode(invokeGetter(entry.getValue(), this));
+            }
+        }
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object target) {
+        if (target == this) return true;
+        if (target == null) return false;
+        if (target.getClass() != this.getClass()) return false;
+        if (!Objects.equals(valueMap, ((JsonObject) target).valueMap)) return false;
+        if (fieldMap != null) {
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+                if (!Objects.equals(invokeGetter(entry.getValue(),this), invokeGetter(entry.getValue(),target))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int size() {
+        return (fieldMap == null ? 0 : fieldMap.size()) + (valueMap == null ? 0 : valueMap.size());
+//        return valueMap.size();
+    }
+
+    public boolean isEmpty() {
+        return size() == 0;
+//        return valueMap.isEmpty();
+    }
+
+    public Set<String> keySet() {
+        if (fieldMap == null) {
+            return valueMap == null ? Collections.emptySet() : valueMap.keySet();
+        } else if (valueMap == null) {
+            return fieldMap.keySet();
+        } else {
+            Set<String> merged = fieldMap.keySet();
+            merged.addAll(valueMap.keySet());
+            return merged;
         }
     }
+
+    public boolean containsKey(@NonNull String key) {
+        return (fieldMap != null && fieldMap.containsKey(key)) || (valueMap != null && valueMap.containsKey(key));
+//        return valueMap.containsKey(key);
+    }
+
+    public void forEach(BiConsumer<String, Object> action) {
+        if (fieldMap != null) {
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+                action.accept(entry.getKey(), invokeGetter(entry.getValue(), this));
+            }
+        }
+        if (valueMap != null) {
+            for (Map.Entry<String, Object> entry : valueMap.entrySet()){
+                action.accept(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private Map<String, Object> toMap() {
+        if (fieldMap == null) {
+            return valueMap == null ? Collections.emptyMap() : Collections.unmodifiableMap(valueMap);
+        } else {
+            Map<String, Object> merged = new LinkedHashMap<>();
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+                merged.put(entry.getKey(), invokeGetter(entry.getValue(), this));
+            }
+            if (valueMap != null) {
+                merged.putAll(valueMap);
+            }
+            return merged;
+        }
+    }
+
+    public Set<Map.Entry<String, Object>> entrySet() {
+        return toMap().entrySet();
+    }
+
 
     /// JSON Facade
 
@@ -189,70 +290,50 @@ public class JsonObject extends JsonContainer {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T toPojo(Class<T> type) {
+    public <T> T toPojo(Type type) {
         return (T) ObjectUtil.value2Object(this, type);
-    }
-
-
-    /// Object
-
-    @Override
-    public String toString() {
-        return toJson();
-    }
-
-    @Override
-    public int hashCode() {
-        return valueMap.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object object) {
-        if (object == this) return true;
-        if (object == null) return false;
-        if (object instanceof JsonObject) {
-            return valueMap.equals(((JsonObject) object).valueMap);
-        }
-        return false;
-    }
-
-    /// Map
-
-    @Override
-    public int size() {
-        return valueMap.size();
-    }
-
-    public boolean isEmpty() {
-        return valueMap.isEmpty();
-    }
-
-    public Set<String> keySet() {
-        return valueMap.keySet();
-    }
-
-    public boolean containsKey(@NonNull String key) {
-        return valueMap.containsKey(key);
-    }
-
-    public void forEach(BiConsumer<String, Object> action) {
-        for (Map.Entry<String, Object> entry : valueMap.entrySet()){
-            action.accept(entry.getKey(), entry.getValue());
-        }
-    }
-
-    protected Map<String, Object> toMap() {
-        return Collections.unmodifiableMap(valueMap);
-    }
-
-    public Set<Map.Entry<String, Object>> entrySet() {
-        return toMap().entrySet();
     }
 
     /// getter
 
+    private Object invokeGetter(@NonNull PojoRegistry.FieldInfo fi, Object receiver) {
+        MethodHandle getter = fi.getGetter();
+        if (getter != null) {
+            try {
+                return getter.invoke(receiver);
+            } catch (Throwable e) {
+                throw new JsonException("Failed to invoke getter for field '" + fi.getName() + "' of " +
+                        receiver.getClass(), e);
+            }
+        } else {
+            throw new JsonException("No getter available for field '" + fi.getName() + "' of " + this.getClass());
+        }
+    }
+
+    private void invokeSetter(@NonNull PojoRegistry.FieldInfo fi, Object receiver, Object object) {
+        MethodHandle setter = fi.getSetter();
+        if (setter == null) {
+            throw new JsonException("No setter available for field '" + fi.getName() + "' of " + receiver.getClass());
+        }
+        try {
+            setter.invoke(receiver, object);
+        } catch (Throwable e) {
+            throw new JsonException("Failed to invoke setter for field '" + fi.getName() + "' of " +
+                    receiver.getClass() + " with value " + object.getClass(), e);
+        }
+    }
+
     public Object getObject(@NonNull String key) {
-        return valueMap.get(key);
+        if (fieldMap != null) {
+            PojoRegistry.FieldInfo fi = fieldMap.get(key);
+            if (fi != null) {
+                return invokeGetter(fi, this);
+            }
+        }
+        if (valueMap != null) {
+            return valueMap.get(key);
+        }
+        return null;
     }
 
     public Object getObject(@NonNull String key, Object defaultValue) {
@@ -469,22 +550,32 @@ public class JsonObject extends JsonContainer {
 
     public void put(@NonNull String key, Object object) {
         object = ObjectUtil.wrapObject(object);
-        if (ObjectUtil.isValidOrConvertible(object)) {
-            valueMap.put(key, object);
-        } else {
-            throw new JsonException("Not a valid JSON value or a JSON-convertible object of key " + key);
+        if (!ObjectUtil.isValidOrConvertible(object)) {
+            throw new JsonException("Invalid JSON value for key '" + key + "': object of " + object.getClass() +
+                    " cannot be directly stored or converted to a JSON-compatible value.");
+        }
+        if (fieldMap != null) {
+            PojoRegistry.FieldInfo fi = fieldMap.get(key);
+            if (fi != null) {
+                invokeSetter(fi, this, object);
+                return;
+            }
+        }
+        if (valueMap == null) {
+            valueMap = new LinkedHashMap<>();
+        }
+        valueMap.put(key, object);
+    }
+
+    public void putIfNonNull(@NonNull String key, Object object) {
+        if (object != null) {
+            put(key, object);
         }
     }
 
-    public void putIfNonNull(@NonNull String key, Object value) {
-        if (null != value) {
-            put(key, value);
-        }
-    }
-
-    public void putIfAbsent(@NonNull String key, Object value) {
+    public void putIfAbsent(@NonNull String key, Object object) {
         if (!containsKey(key)) {
-            put(key, value);
+            put(key, object);
         }
     }
 
@@ -525,28 +616,34 @@ public class JsonObject extends JsonContainer {
     }
 
     public void remove(@NonNull String key) {
-        valueMap.remove(key);
+        if (valueMap != null) {
+            valueMap.remove(key);
+        }
     }
 
     public void clear() {
-        valueMap.clear();
+        if (valueMap != null) {
+            valueMap.clear();
+        }
     }
 
     /// Copy, merge
 
     public JsonObject deepCopy() {
-        JsonObject copy = new JsonObject();
-        for (String key : keySet()) {
-            Object value = getObject(key);
-            if (value instanceof JsonObject) {
-                copy.put(key, ((JsonObject) value).deepCopy());
-            } else if (value instanceof JsonArray) {
-                copy.put(key, ((JsonArray) value).deepCopy());
-            } else {
-                copy.put(key, value);
-            }
-        }
-        return copy;
+//        //TODO
+//        JsonObject copy = new JsonObject();
+//        for (String key : keySet()) {
+//            Object value = getObject(key);
+//            if (value instanceof JsonObject) {
+//                copy.put(key, ((JsonObject) value).deepCopy());
+//            } else if (value instanceof JsonArray) {
+//                copy.put(key, ((JsonArray) value).deepCopy());
+//            } else {
+//                copy.put(key, value);
+//            }
+//        }
+//        return copy;
+        return (JsonObject) ObjectUtil.object2Value(this);
     }
 
     /**
@@ -563,6 +660,7 @@ public class JsonObject extends JsonContainer {
      *
      */
     public void merge(JsonObject target, boolean targetWin, boolean needCopy) {
+        //TODO
         if (target == null) return;
         for (String key : target.keySet()) {
             Object tarValue = target.getObject(key);
@@ -646,14 +744,18 @@ public class JsonObject extends JsonContainer {
             jo.putIfAbsent(key, value);
             return this;
         }
-//        public Builder putByPath(String jsonPath, Object value) {
-//            jo.putByPath(jsonPath, value);
-//            return this;
-//        }
-//        public Builder putByPathIfAbsent(String jsonPath, Object value) {
-//            jo.putByPathIfAbsent(jsonPath, value);
-//            return this;
-//        }
+        public Builder putByPath(String jsonPath, Object value) {
+            jo.putByPath(jsonPath, value);
+            return this;
+        }
+        public Builder putByPathIfNonNull(String jsonPath, Object value) {
+            jo.putByPathIfNonNull(jsonPath, value);
+            return this;
+        }
+        public Builder putByPathIfAbsent(String jsonPath, Object value) {
+            jo.putByPathIfAbsent(jsonPath, value);
+            return this;
+        }
         public JsonObject build() {
             return jo;
         }

@@ -71,7 +71,7 @@ public class JacksonSerializer extends JsonSerializer<Object> {
                 serialize(Array.get(value, i), gen, serializers);
             }
             gen.writeEndArray();
-        } else if (PojoRegistry.hasPojo(value.getClass())) {
+        } else if (PojoRegistry.isPojo(value.getClass())) {
             gen.writeStartObject();
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {

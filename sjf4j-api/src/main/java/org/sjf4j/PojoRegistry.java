@@ -12,10 +12,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -37,6 +35,16 @@ public class PojoRegistry {
         return pojoInfo;
     }
 
+    public static PojoInfo registerOrElseThrow(@NonNull Class<?> type) {
+        PojoInfo pi = register(type);
+        pi.isPojoOrElseThrow();
+        return pi;
+    }
+
+    public static void remove(@NonNull Class<?> type) {
+        POJO_CACHE.remove(type);
+    }
+
     public static PojoInfo getPojoInfo(@NonNull Class<?> type) {
         return POJO_CACHE.get(type);
     }
@@ -49,9 +57,10 @@ public class PojoRegistry {
         return null;
     }
 
-    public static boolean hasPojo(@NonNull Class<?> type) {
+    public static boolean isPojo(@NonNull Class<?> type) {
         return register(type).isPojo();
     }
+
 
     /// Private
 
@@ -61,7 +70,7 @@ public class PojoRegistry {
         String pkg = type.getPackage() == null ? "" : type.getPackage().getName();
         if (pkg.startsWith("java.") || pkg.startsWith("javax.") || pkg.startsWith("jakarta.")) {
             log.warn("Skipping Java system class: {}", type);
-            return new PojoInfo(null, null);
+            return new PojoInfo(type, null, null);
         }
 
         // Constructor
@@ -81,15 +90,15 @@ public class PojoRegistry {
                     constructor = lookup.unreflectConstructor(con);
                 } catch (Exception e2) {
 //                    throw new JsonException("Cannot access no-argument constructor of type " + type.getName());
-                    log.warn("Cannot access no-argument constructor of class {}", type.getName());
+                    log.warn("Cannot access no-args constructor of class {}", type.getName());
                 }
             }
         } catch (NoSuchMethodException e) {
 //            throw new JsonException("Missing no-argument constructor.");
-            log.warn("Missing no-argument constructor of class {}", type.getName());
+            log.warn("Missing no-args constructor of class {}", type.getName());
         }
         if (constructor == null) {
-            return new PojoInfo(null, null);
+            return new PojoInfo(type, null, null);
         }
 
         // Fields
@@ -125,7 +134,7 @@ public class PojoRegistry {
             }
         }
 
-        return new PojoInfo(constructor, fields);
+        return new PojoInfo(type, constructor, fields);
     }
 
 
@@ -133,21 +142,34 @@ public class PojoRegistry {
 
     @Getter @Setter
     public static class PojoInfo {
+        private Class<?> type;
         private MethodHandle constructor;
         private Map<String, FieldInfo> fields;
 
-        public PojoInfo(MethodHandle constructor) {
-            this(constructor, null);
+        public PojoInfo(Class<?> type, MethodHandle constructor) {
+            this(type, constructor, null);
         }
 
-        public PojoInfo(MethodHandle constructor, Map<String, FieldInfo> fields) {
+        public PojoInfo(Class<?> type, MethodHandle constructor, Map<String, FieldInfo> fields) {
+            this.type = type;
             this.constructor = constructor;
             this.fields = fields;
         }
 
         public boolean isPojo() {
-            return constructor != null && fields != null && !fields.isEmpty();
+            return constructor != null &&
+                    (JsonObject.class.isAssignableFrom(type) || (fields != null && !fields.isEmpty()));
         }
+
+        public void isPojoOrElseThrow() {
+            if (constructor == null) {
+                throw new JsonException("No-args constructor not found for POJO " + type);
+            }
+            if (!JsonObject.class.isAssignableFrom(type) && (fields == null || fields.isEmpty())) {
+                throw new JsonException("POJO " + type + " has no accessible fields and is not a JsonObject");
+            }
+        }
+
     }
 
     @Getter @Setter

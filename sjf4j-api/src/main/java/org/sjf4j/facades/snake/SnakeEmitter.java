@@ -71,7 +71,7 @@ public class SnakeEmitter {
                 writeAny(emitter, Array.get(value, i));
             }
             emitter.emit(new SequenceEndEvent(null, null));
-        } else if (PojoRegistry.hasPojo(value.getClass())) {
+        } else if (PojoRegistry.isPojo(value.getClass())) {
             emitter.emit(new MappingStartEvent(null, null, true, null, null,
                     DumperOptions.FlowStyle.BLOCK));
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :

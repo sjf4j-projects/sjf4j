@@ -40,6 +40,19 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testCompile2() {
+        String s1 = "/a/b/0/c";
+        JsonPath path1 = JsonPath.compile(s1);
+        log.info("path1: {}", path1);
+        assertEquals("$.a.b[0].c", path1.toString());
+
+        String s2 = "/a~0/0/b~1'/c~/d e";
+        JsonPath path2 = JsonPath.compile(s2);
+        log.info("path2: {}", path2);
+        assertEquals("$['a~'][0]['b/\\'']['c~']['d e']", path2.toString());
+    }
+
+    @Test
     public void testFindOne1() {
         String json1 = "{\n" +
                 "  \"book\": [\n" +
@@ -55,12 +68,14 @@ public class JsonPathTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
 
         assertEquals("B", JsonPath.compile("$.book[1]['title']").findOne(jo1));
+        assertEquals("B", JsonPath.compile("/book/1/title").findOne(jo1));
         assertEquals(10, JsonPath.compile("$.book[0].price").findOne(jo1));
         assertEquals("classic", JsonPath.compile("$.book[0].tags[0]").findOne(jo1));
         assertEquals(new JsonArray(), JsonPath.compile("$.emptyArray").findOne(jo1));
         assertEquals(new JsonObject(), JsonPath.compile("$['emptyObject']").findOne(jo1));
         assertNull(JsonPath.compile("$.nullValue").findOne(jo1));
         assertEquals("v1", JsonPath.compile("$['weird.keys']['key with spaces']").findOne(jo1));
+        assertEquals("v1", JsonPath.compile("/weird.keys/key with spaces").findOne(jo1));
 
         log.info("$: {}", JsonPath.compile("$").findOne(jo1));
         assertEquals(JsonObject.class, JsonPath.compile("$").findOne(jo1).getClass());

@@ -51,7 +51,7 @@ public class PojoRegistryTest {
     }
 
     @Test
-    public void testHasPojo1() {
-        assertTrue(PojoRegistry.hasPojo(Role.class));
+    public void testIsPojo1() {
+        assertTrue(PojoRegistry.isPojo(Role.class));
     }
 }

@@ -3,6 +3,7 @@ package org.sjf4j;
 import lombok.Getter;
 import lombok.NonNull;
 import org.sjf4j.util.JsonPathUtil;
+import org.sjf4j.util.JsonPointerUtil;
 import org.sjf4j.util.ValueUtil;
 
 import java.lang.reflect.Array;
@@ -28,8 +29,15 @@ public class JsonPath {
         push(new PathToken.Root());
     }
 
-    public JsonPath(String expr) {
-        this.tokens = JsonPathUtil.compile(expr);
+    public JsonPath(@NonNull String expr) {
+        if (expr.startsWith("$")) {
+            this.tokens = JsonPathUtil.compile(expr);
+        } else if (expr.startsWith("/")) {
+            this.tokens = JsonPointerUtil.compile(expr);
+        } else {
+            throw new JsonException("Invalid path expression '" + expr + "'. " +
+                    "Must start with '$' for JSON Path or '/' for JSON Pointer.");
+        }
         this.rawExpr = expr;
     }
     
@@ -437,9 +445,10 @@ public class JsonPath {
                 }
             } else if (pt instanceof PathToken.Wildcard) {
                 if (value instanceof JsonObject) {
-                    for (Map.Entry<String, Object> entry : ((JsonObject) value).entrySet()) {
-                        _findAllRecursively(entry.getValue(), i + 1, result);
-                    }
+                    final int finalI = i;
+                    ((JsonObject) value).forEach((k, v) -> {
+                        _findAllRecursively(v, finalI + 1, result);
+                    });
                 } else if (value instanceof JsonArray) {
                     for (Object val : ((JsonArray) value)) {
                         _findAllRecursively(val, i + 1, result);

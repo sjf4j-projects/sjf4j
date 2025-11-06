@@ -58,7 +58,7 @@ public class GsonWriter {
                 writeAny(writer, Array.get(value, i));
             }
             writer.endArray();
-        } else if (PojoRegistry.hasPojo(value.getClass())) {
+        } else if (PojoRegistry.isPojo(value.getClass())) {
             writer.beginObject();
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {

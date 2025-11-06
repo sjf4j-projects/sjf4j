@@ -40,11 +40,11 @@ public class Fastjson2Writer {
             writer.writeBool((Boolean) value);
         } else if (value instanceof JsonObject) {
             writer.startObject();
-            for (Map.Entry<String, Object> entry : ((JsonObject) value).entrySet()) {
-                writer.writeName(entry.getKey());
+            ((JsonObject) value).forEach((k, v) -> {
+                writer.writeName(k);
                 writer.writeColon();
-                writeAny(writer, entry.getValue());
-            }
+                writeAny(writer, v);
+            });
             writer.endObject();
         } else if (value instanceof Map) {
             writer.startObject();
@@ -76,7 +76,7 @@ public class Fastjson2Writer {
                 writeAny(writer, Array.get(value, i));
             }
             writer.endArray();
-        } else if (PojoRegistry.hasPojo(value.getClass())) {
+        } else if (PojoRegistry.isPojo(value.getClass())) {
             writer.startObject();
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {

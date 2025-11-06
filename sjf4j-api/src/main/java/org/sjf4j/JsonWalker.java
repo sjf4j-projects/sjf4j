@@ -31,16 +31,15 @@ public class JsonWalker {
         if (container == null) {
             consumer.accept(path, null);
         } else if (container instanceof JsonObject) {
-            for (Map.Entry<String, Object> entry : ((JsonObject) container).entrySet()) {
-                JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey()));
-                Object node = entry.getValue();
-                walkValuesRecursively(node, newPath, consumer);
-            }
+            ((JsonObject) container).forEach((k, v) -> {
+                JsonPath newPath = path.copy().push(new PathToken.Field(k));
+                walkValuesRecursively(v, newPath, consumer);
+            });
         } else if (container instanceof Map) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
                 JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey().toString()));
                 Object node = entry.getValue();
-                walkValuesRecursively(node, newPath, consumer);
+                walkValuesRecursively(entry.getValue(), newPath, consumer);
             }
         } else if (container instanceof JsonArray) {
             JsonArray ja = (JsonArray) container;
@@ -70,11 +69,10 @@ public class JsonWalker {
     private static void walkContainersBottomUpRecursively(Object container, @NonNull JsonPath path,
                                                           @NonNull BiConsumer<JsonPath, Object> consumer) {
         if (container instanceof JsonObject) {
-            for (Map.Entry<String, Object> entry : ((JsonObject) container).entrySet()) {
-                JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey()));
-                Object node = entry.getValue();
-                walkContainersBottomUpRecursively(node, newPath, consumer);
-            }
+            ((JsonObject) container).forEach((k, v) -> {
+                JsonPath newPath = path.copy().push(new PathToken.Field(k));
+                walkContainersBottomUpRecursively(v, newPath, consumer);
+            });
             consumer.accept(path, container);
         } else if (container instanceof Map) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {

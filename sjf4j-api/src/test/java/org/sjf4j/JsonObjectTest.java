@@ -49,7 +49,6 @@ class JsonObjectTest {
         testByPath2();
         testByPath3();
         testBoolean1();
-        testCast1();
         testGeneric1();
         testDefaultValue1();
         testPutMap1();
@@ -277,20 +276,20 @@ class JsonObjectTest {
         public MyObject() {
             super();
         }
-        public MyObject(JsonObject target) {
-            super(target);
-        }
+//        public MyObject(JsonObject target) {
+//            super(target);
+//        }
     }
 
-    public void testCast1() {
-        // generics
-        JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"attr\":{\"aa\":\"bb\"}}");
-
-        MyObject obj = jo1.getJsonObject("attr").cast(MyObject.class);
-        System.out.println("MyObject: " + obj);
-        assertInstanceOf(JsonObject.class, obj);
-        assertEquals("bb", obj.getString("aa"));
-    }
+//    public void testCast1() {
+//        // generics
+//        JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"attr\":{\"aa\":\"bb\"}}");
+//
+//        MyObject obj = jo1.getJsonObject("attr").cast(MyObject.class);
+//        System.out.println("MyObject: " + obj);
+//        assertInstanceOf(JsonObject.class, obj);
+//        assertEquals("bb", obj.getString("aa"));
+//    }
 
     public void testGeneric1() {
         // T get(key, T... reified)
