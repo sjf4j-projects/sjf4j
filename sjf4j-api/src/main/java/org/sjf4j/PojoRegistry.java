@@ -24,15 +24,19 @@ public class PojoRegistry {
     private static final Map<Class<?>, PojoInfo> POJO_CACHE = new ConcurrentHashMap<>();
 
     public static PojoInfo register(@NonNull Class<?> type) {
-        PojoInfo pojoInfo = POJO_CACHE.get(type);
-        if (pojoInfo == null) {
-            if (RecordUtil.isRecordClass(type)) {
-                throw new JsonException("Not support Record now");
-            } else {
-                pojoInfo = POJO_CACHE.computeIfAbsent(type, PojoRegistry::analyzePojo);
-            }
+        if (RecordUtil.isRecordClass(type)) {
+            throw new JsonException("Not support Record now");
         }
-        return pojoInfo;
+        return POJO_CACHE.computeIfAbsent(type, PojoRegistry::analyzePojo);
+//        PojoInfo pojoInfo = POJO_CACHE.get(type);
+//        if (pojoInfo == null) {
+//            if (RecordUtil.isRecordClass(type)) {
+//                throw new JsonException("Not support Record now");
+//            } else {
+//                pojoInfo = POJO_CACHE.computeIfAbsent(type, PojoRegistry::analyzePojo);
+//            }
+//        }
+//        return pojoInfo;
     }
 
     public static PojoInfo registerOrElseThrow(@NonNull Class<?> type) {

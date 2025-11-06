@@ -12,7 +12,7 @@ public abstract class JsonContainer {
     /// By path
 
     public boolean containsByPath(@NonNull String path) {
-        return JsonPath.compile(path).contains(this);
+        return JsonPath.compile(path).hasNonNull(this);
     }
 
     // Object
@@ -127,12 +127,12 @@ public abstract class JsonContainer {
         JsonPath.compile(path).put(this, value);
     }
 
-    public void putByPathIfNonNull(@NonNull String path, Object value) {
-        JsonPath.compile(path).putIfNonNull(this, value);
+    public void putNonNullByPath(@NonNull String path, Object value) {
+        JsonPath.compile(path).putNonNull(this, value);
     }
 
-    public void putByPathIfAbsent(@NonNull String path, Object value) {
-        JsonPath.compile(path).putIfAbsent(this, value);
+    public void putByPathIfAbsentOrNull(@NonNull String path, Object value) {
+        JsonPath.compile(path).putIfAbsentOrNull(this, value);
     }
 
     public void removeByPath(@NonNull String path) {

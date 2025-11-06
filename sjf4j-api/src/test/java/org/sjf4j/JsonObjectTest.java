@@ -2,10 +2,7 @@ package org.sjf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.sjf4j.util.ObjectUtil;
-import org.sjf4j.util.ObjectUtilTest;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -15,6 +12,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @Slf4j
 class JsonObjectTest {
@@ -57,6 +55,14 @@ class JsonObjectTest {
         testNumber2();
         testYaml1();
         testPojo1();
+        testHashCodeEquals();
+        testClear();
+        testPutNonNull();
+        testComputeIfAbsentOrNull();
+        testBuilder();
+        testEntrySetKeySet();
+        testRemoveByPath();
+        testEdgeCases();
     }
 
     public void testGetter1() {
@@ -114,10 +120,10 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
 
         assert(jo1.containsByPath("$.friends.jack"));
-        jo1.putByPathIfAbsent("$.friends.jack", "bad");
+        jo1.putByPathIfAbsentOrNull("$.friends.jack", "bad");
         assertEquals(JsonObject.fromJson(json1), jo1);
 
-        jo1.putByPathIfAbsent("$.friends.mark", "bad");
+        jo1.putByPathIfAbsentOrNull("$.friends.mark", "bad");
         String json2 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]},\"mark\":\"bad\"},\"sex\":true}";
         assertEquals(JsonObject.fromJson(json2), jo1);
     }
@@ -304,10 +310,8 @@ class JsonObjectTest {
         assertNotNull(attr);
         assertEquals(1, attr.size());
 
-        assertThrows(JsonException.class, () -> {
-            float f = jo1.get("num");
-        });
-        float f = jo1.getFloat("num");
+//        float f = jo1.getFloat("num");
+        float f = jo1.get("num");
         System.out.println("f: " + f);
         assertEquals(5.0, f);
 
@@ -421,7 +425,7 @@ class JsonObjectTest {
 
     public static class Person {
         public String name;
-        public ObjectUtilTest.Address address;
+        public Address address;
     }
 
     public void testPojo1() {
@@ -437,6 +441,164 @@ class JsonObjectTest {
 
         JsonObject back = JsonObject.fromPojo(p1);
         assertEquals("Bob", back.getString("name"));
+    }
+
+    // ========== 补充测试用例 ==========
+
+    public void testHashCodeEquals() {
+        JsonObject jo1 = JsonObject.fromJson("{\"a\":1,\"b\":\"test\"}");
+        JsonObject jo2 = JsonObject.fromJson("{\"a\":1,\"b\":\"test\"}");
+        JsonObject jo3 = JsonObject.fromJson("{\"a\":1,\"b\":\"test2\"}");
+        
+        assertEquals(jo1.hashCode(), jo2.hashCode());
+        assertEquals(jo1, jo2);
+        assertNotEquals(jo1, jo3);
+        assertNotEquals(jo1, null);
+        assertEquals(jo1, jo1); // 自反性
+    }
+
+    public void testClear() {
+        JsonObject jo = new JsonObject("a", 1, "b", "test");
+        assertFalse(jo.isEmpty());
+        assertEquals(2, jo.size());
+        
+        jo.clear();
+        assertTrue(jo.isEmpty());
+        assertEquals(0, jo.size());
+        assertFalse(jo.containsKey("a"));
+    }
+
+    public void testPutNonNull() {
+        JsonObject jo = new JsonObject();
+        
+        jo.putNonNull("a", "value");
+        assertEquals("value", jo.getString("a"));
+        
+        jo.putNonNull("b", null);
+        assertFalse(jo.containsKey("b"));
+        
+        jo.putNonNull("c", 0);
+        assertEquals(0, jo.getInteger("c"));
+    }
+
+    public void testComputeIfAbsentOrNull() {
+        JsonObject jo = new JsonObject();
+        
+        JsonObject nested = jo.computeIfAbsentOrNull("nested", k -> new JsonObject());
+        assertNotNull(nested);
+        assertEquals(nested, jo.getJsonObject("nested"));
+        
+        JsonObject nested2 = jo.computeIfAbsentOrNull("nested", k -> new JsonObject());
+        assertEquals(nested, nested2); // 应该返回同一个对象
+        
+        JsonArray array = jo.computeIfAbsentOrNull("array", k -> new JsonArray());
+        assertNotNull(array);
+        assertEquals(array, jo.getJsonArray("array"));
+        
+        JsonArray array2 = jo.computeIfAbsentOrNull("array", k -> new JsonArray());
+        assertEquals(array, array2);
+    }
+
+    public void testBuilder() {
+        JsonObject jo = JsonObject.builder()
+                .put("name", "Alice")
+                .put("age", 25)
+                .putNonNull("email", "alice@example.com")
+                .putIfAbsent("name", "Bob") // 已存在，不会覆盖
+                .put("status", true)
+                .build();
+        
+        assertEquals("Alice", jo.getString("name")); // 没有被覆盖
+        assertEquals(25, jo.getInteger("age"));
+        assertEquals("alice@example.com", jo.getString("email"));
+        assertTrue(jo.getBoolean("status"));
+        
+        // 测试路径操作
+        JsonObject jo2 = JsonObject.builder()
+                .putByPath("$.user.name", "Bob")
+                .putNonNullByPath("$.user.age", 30)
+                .putByPathIfAbsentOrNull("$.user.email", "bob@example.com")
+                .build();
+        
+        assertEquals("Bob", jo2.getStringByPath("$.user.name"));
+        assertEquals(30, jo2.getIntegerByPath("$.user.age"));
+        assertEquals("bob@example.com", jo2.getStringByPath("$.user.email"));
+    }
+
+    public void testEntrySetKeySet() {
+        JsonObject jo = new JsonObject("a", 1, "b", "test", "c", true);
+        
+        assertEquals(3, jo.keySet().size());
+        assertTrue(jo.keySet().contains("a"));
+        assertTrue(jo.keySet().contains("b"));
+        assertTrue(jo.keySet().contains("c"));
+        
+        assertEquals(3, jo.entrySet().size());
+        jo.entrySet().forEach(entry -> {
+            assertTrue(jo.containsKey(entry.getKey()));
+            assertNotNull(entry.getValue());
+        });
+        
+        // 测试keySet的顺序
+        List<String> keys = new java.util.ArrayList<>(jo.keySet());
+        assertEquals("a", keys.get(0));
+        assertEquals("b", keys.get(1));
+        assertEquals("c", keys.get(2));
+    }
+
+    public void testRemoveByPath() {
+        JsonObject jo = JsonObject.fromJson("{\"a\":{\"b\":{\"c\":123}},\"array\":[1,2,3]}");
+        
+        assertTrue(jo.containsByPath("$.a.b.c"));
+        jo.removeByPath("$.a.b.c");
+        assertFalse(jo.containsByPath("$.a.b.c"));
+        assertTrue(jo.containsByPath("$.a.b")); // 父对象还在
+        
+        assertTrue(jo.containsByPath("$.array[1]"));
+        jo.removeByPath("$.array[1]");
+        assertEquals(2, jo.getJsonArray("array").size());
+        assertEquals(1, jo.getJsonArray("array").getInteger(0));
+        assertEquals(3, jo.getJsonArray("array").getInteger(1));
+    }
+
+    public void testEdgeCases() {
+        // 测试空对象
+        JsonObject empty = new JsonObject();
+        assertTrue(empty.isEmpty());
+        assertEquals(0, empty.size());
+        assertNull(empty.getObject("nonexist"));
+        
+        // 测试null值
+        JsonObject jo = new JsonObject();
+        jo.put("nullKey", null);
+        assertTrue(jo.containsKey("nullKey"));
+        assertNull(jo.getObject("nullKey"));
+        
+        // 测试特殊字符键
+        jo.put("key.with.dots", "value1");
+        jo.put("key-with-dashes", "value2");
+        jo.put("key_with_underscores", "value3");
+        assertEquals("value1", jo.getString("key.with.dots"));
+        assertEquals("value2", jo.getString("key-with-dashes"));
+        assertEquals("value3", jo.getString("key_with_underscores"));
+        
+        // 测试空字符串键
+        jo.put("", "emptyKey");
+        assertEquals("emptyKey", jo.getString(""));
+        
+        // 测试非常大的数字
+        jo.put("bigInt", new BigInteger("999999999999999999999999999"));
+        assertInstanceOf(BigInteger.class, jo.getObject("bigInt"));
+        
+        // 测试嵌套深度
+        JsonObject nested = new JsonObject();
+        for (int i = 0; i < 10; i++) {
+            JsonObject next = new JsonObject();
+            nested.put("level" + i, next);
+            nested = next;
+        }
+        nested.put("final", "value");
+        assertNotNull(nested);
     }
 
 

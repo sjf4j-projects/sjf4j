@@ -121,7 +121,7 @@ public class JsonPath {
     
     /// Get
 
-    public boolean contains(@NonNull JsonContainer container) {
+    public boolean hasNonNull(@NonNull JsonContainer container) {
         return findOne(container) != null;
     }
 
@@ -370,16 +370,16 @@ public class JsonPath {
         }
     }
 
-    public void putIfNonNull(@NonNull JsonContainer container, Object value) {
+    public void putNonNull(@NonNull JsonContainer container, Object value) {
         if (null != value) { put(container, value); }
     }
 
-    public void putIfAbsent(@NonNull JsonContainer container, Object value) {
-        if (!contains(container)) { put(container, value); }
+    public void putIfAbsentOrNull(@NonNull JsonContainer container, Object value) {
+        if (!hasNonNull(container)) { put(container, value); }
     }
 
     public void remove(@NonNull JsonContainer container) {
-        if (contains(container)) {
+        if (hasNonNull(container)) {
             Object lastContainer = _autoCreateContainers(container);
             PathToken lastToken = peek();
             if (lastToken instanceof PathToken.Field) {
@@ -402,7 +402,6 @@ public class JsonPath {
                     throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
                             container.getClass().getName() + "'");
                 }
-
             }
         }
     }
@@ -490,9 +489,9 @@ public class JsonPath {
                     if (container == null) {
                         PathToken nextPt = tokens.get(i + 1);
                         if (nextPt instanceof PathToken.Field) {
-                            container = jo.createJsonObjectIfAbsent(key);
+                            container = jo.computeIfAbsentOrNull(key, k -> new JsonObject());
                         } else if (nextPt instanceof PathToken.Index) {
-                            container = jo.createJsonArrayIfAbsent(key);
+                            container = jo.computeIfAbsentOrNull(key, k -> new JsonArray());
                         } else {
                             throw new JsonException("Unexpected path token " + pt);
                         }

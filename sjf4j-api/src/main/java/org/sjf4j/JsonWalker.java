@@ -39,7 +39,7 @@ public class JsonWalker {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
                 JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey().toString()));
                 Object node = entry.getValue();
-                walkValuesRecursively(entry.getValue(), newPath, consumer);
+                walkValuesRecursively(node, newPath, consumer);
             }
         } else if (container instanceof JsonArray) {
             JsonArray ja = (JsonArray) container;
@@ -56,9 +56,9 @@ public class JsonWalker {
                 walkValuesRecursively(node, newPath, consumer);
             }
         } else if (container.getClass().isArray()) {
-            for (int i = 0; i < Array.getLength(consumer); i++) {
+            for (int i = 0; i < Array.getLength(container); i++) {
                 JsonPath newPath = path.copy().push(new PathToken.Index(i));
-                Object node = Array.get(consumer, i);
+                Object node = Array.get(container, i);
                 walkValuesRecursively(node, newPath, consumer);
             }
         } else {

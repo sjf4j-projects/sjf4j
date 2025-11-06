@@ -10,6 +10,8 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.reflect.Array;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -17,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -36,40 +39,108 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         this();
         addAll(objects);
     }
-    public JsonArray(short... objects) {
-        this();
-        addAll(objects);
-    }
-    public JsonArray(int... objects) {
-        this();
-        addAll(objects);
-    }
-    public JsonArray(long... objects) {
-        this();
-        addAll(objects);
-    }
-    public JsonArray(float... objects) {
-        this();
-        addAll(objects);
-    }
-    public JsonArray(double... objects) {
-        this();
-        addAll(objects);
-    }
-    public JsonArray(char... objects) {
-        this();
-        addAll(objects);
-    }
-    public JsonArray(boolean... objects) {
-        this();
-        addAll(objects);
-    }
+//    public JsonArray(short... objects) {
+//        this();
+//        addAll(objects);
+//    }
+//    public JsonArray(int... objects) {
+//        this();
+//        addAll(objects);
+//    }
+//    public JsonArray(long... objects) {
+//        this();
+//        addAll(objects);
+//    }
+//    public JsonArray(float... objects) {
+//        this();
+//        addAll(objects);
+//    }
+//    public JsonArray(double... objects) {
+//        this();
+//        addAll(objects);
+//    }
+//    public JsonArray(char... objects) {
+//        this();
+//        addAll(objects);
+//    }
+//    public JsonArray(boolean... objects) {
+//        this();
+//        addAll(objects);
+//    }
 
     public JsonArray(Collection<?> objects) {
         this();
         addAll(objects);
     }
 
+    /// Object
+
+    @Override
+    public String toString() {
+        return toJson();
+    }
+
+    @Override
+    public int hashCode() {
+        return valueList.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object target) {
+        if (target instanceof JsonArray) {
+            return valueList.equals(((JsonArray) target).valueList);
+        }
+        return false;
+    }
+
+    @Override
+    public int size() {
+        return valueList.size();
+    }
+
+    public boolean isEmpty() {
+        return valueList.isEmpty();
+    }
+
+    private List<Object> toList() {
+        return Collections.unmodifiableList(valueList);
+    }
+
+    public void forEach(Consumer<Object> action) {
+        for (int i = 0; i < valueList.size(); i++) {
+            action.accept(valueList.get(i));
+        }
+    }
+
+    public void forEach(BiConsumer<Integer, Object> action) {
+        for (int i = 0; i < valueList.size(); i++) {
+            action.accept(i, valueList.get(i));
+        }
+    }
+
+    @Override
+    @NonNull
+    public Iterator<Object> iterator() {
+        return toList().iterator();
+    }
+
+    private int posIndex(int idx) {
+        return idx < 0 ? valueList.size() + idx : idx;
+    }
+
+    public boolean containsIndex(int idx) {
+        idx = posIndex(idx);
+        return idx >= 0 && idx < valueList.size();
+    }
+
+    public boolean contains(Object value) {
+        for (Object o : valueList) {
+            if (Objects.equals(o, value)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /// JSON Facade
 
@@ -143,67 +214,15 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         yamlFacade.writeArray(output, this);
     }
 
+    /// POJO
 
-    /// Object
-
-    @Override
-    public String toString() {
-        return toJson();
+    public static JsonArray fromPojo(Object pojo) {
+        return (JsonArray) ObjectUtil.object2Value(pojo);
     }
 
-    @Override
-    public int hashCode() {
-        return valueList.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object target) {
-        if (target instanceof JsonArray) {
-            return valueList.equals(((JsonArray) target).valueList);
-        }
-        return false;
-    }
-
-    /// List
-
-    @Override
-    public int size() {
-        return valueList.size();
-    }
-
-    public boolean isEmpty() {
-        return valueList.isEmpty();
-    }
-
-    public List<Object> toList() {
-        return Collections.unmodifiableList(valueList);
-    }
-
-    public void forEach(Consumer<Object> action) {
-        for (int i = 0; i < valueList.size(); i++) {
-            action.accept(valueList.get(i));
-        }
-    }
-
-    public void forEach(BiConsumer<Integer, Object> action) {
-        for (int i = 0; i < valueList.size(); i++) {
-            action.accept(i, valueList.get(i));
-        }
-    }
-
-    @Override
-    @NonNull
-    public Iterator<Object> iterator() {
-        return toList().iterator();
-    }
-
-    private int posIndex(int idx) {
-        return idx < 0 ? valueList.size() + idx : idx;
-    }
-
-    public boolean containsIndex(int idx) {
-        idx = posIndex(idx);
-        return idx >= 0 && idx < valueList.size();
+    @SuppressWarnings("unchecked")
+    public <T> T toPojo(Type type) {
+        return (T) ObjectUtil.value2Object(this, type);
     }
 
 
@@ -220,7 +239,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public Object getObject(int idx, Object defaultValue) {
-        Object value = getFloat(idx);
+        Object value = getObject(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -368,7 +387,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         }
     }
 
-    public boolean getString(int idx, boolean defaultValue) {
+    public boolean getBoolean(int idx, boolean defaultValue) {
         Boolean value = getBoolean(idx);
         return value == null ? defaultValue : value;
     }
@@ -459,7 +478,16 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public void addAll(Object... values) {
-        for (Object v : values) { add(v); }
+        for (Object v : values) {
+            if (v != null && v.getClass().isArray()) {
+                int len = Array.getLength(v);
+                for (int i = 0; i < len; i++) {
+                    add(Array.get(v, i));
+                }
+            } else {
+                add(v);
+            }
+        }
     }
 
     public void addAll(short... values) {

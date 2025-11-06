@@ -14,16 +14,15 @@ import org.sjf4j.facades.snake.SnakeYamlFacade;
 
 public class FacadeFactory {
 
+    @Setter
+    private static volatile JsonFacade defaultJsonFacade;
     private static boolean fastjson2Present;
     private static boolean jacksonPresent;
     private static boolean gsonPresent;
+
     @Setter
-    private static JsonFacade defaultJsonFacade;
-
-
+    private static volatile YamlFacade defaultYamlFacade;
     private static boolean snakePresent;
-    @Setter
-    private static YamlFacade defaultYamlFacade;
 
     static {
         ClassLoader loader = FacadeFactory.class.getClassLoader();

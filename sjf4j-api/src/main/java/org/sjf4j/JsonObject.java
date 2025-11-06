@@ -11,7 +11,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -21,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class JsonObject extends JsonContainer {
 
@@ -176,6 +176,10 @@ public class JsonObject extends JsonContainer {
     public boolean containsKey(@NonNull String key) {
         return (fieldMap != null && fieldMap.containsKey(key)) || (valueMap != null && valueMap.containsKey(key));
 //        return valueMap.containsKey(key);
+    }
+
+    public boolean hasNonNull(@NonNull String key) {
+        return getObject(key) != null;
     }
 
     public void forEach(BiConsumer<String, Object> action) {
@@ -567,7 +571,7 @@ public class JsonObject extends JsonContainer {
         valueMap.put(key, object);
     }
 
-    public void putIfNonNull(@NonNull String key, Object object) {
+    public void putNonNull(@NonNull String key, Object object) {
         if (object != null) {
             put(key, object);
         }
@@ -579,26 +583,20 @@ public class JsonObject extends JsonContainer {
         }
     }
 
-    /**
-     * Returns the JsonObject at the given key.
-     * If absent, creates an empty one and puts it back.
-     */
-    public JsonObject createJsonObjectIfAbsent(@NonNull String key) {
-        JsonObject jo = getJsonObject(key);
-        if (null == jo) {
-            jo = new JsonObject();
-            put(key, jo);
+    public void putIfAbsentOrNull(@NonNull String key, Object object) {
+        if (getObject(key) == null) {
+            put(key, object);
         }
-        return jo;
     }
 
-    public JsonArray createJsonArrayIfAbsent(@NonNull String key) {
-        JsonArray ja = getJsonArray(key);
-        if (null == ja) {
-            ja = new JsonArray();
-            put(key, ja);
+    @SuppressWarnings("unchecked")
+    public <T> T computeIfAbsentOrNull(@NonNull String key, @NonNull Function<String, ? extends T> mappingFunction) {
+        T value = get(key);
+        if (value == null) {
+            value = mappingFunction.apply(key);
+            put(key, value);
         }
-        return ja;
+        return value;
     }
 
     public void putAll(@NonNull JsonObject jsonObject) {
@@ -714,16 +712,16 @@ public class JsonObject extends JsonContainer {
         return new Builder(this);
     }
 
-    public Builder getBuilder(@NonNull String key) {
-        JsonObject jo = getJsonObject(key);
-        if (null == jo) {
-            jo = new JsonObject();
-            put(key, jo);
-        }
-        return new Builder(jo);
-    }
+//    public Builder getBuilder(@NonNull String key) {
+//        JsonObject jo = getJsonObject(key);
+//        if (null == jo) {
+//            jo = new JsonObject();
+//            put(key, jo);
+//        }
+//        return new Builder(jo);
+//    }
 
-    public static Builder newBuilder() {
+    public static Builder builder() {
         return new Builder(new JsonObject());
     }
 
@@ -736,24 +734,28 @@ public class JsonObject extends JsonContainer {
             jo.put(key, value);
             return this;
         }
-        public Builder putIfNonNull(@NonNull String key, Object value) {
-            jo.putIfNonNull(key, value);
+        public Builder putNonNull(@NonNull String key, Object value) {
+            jo.putNonNull(key, value);
             return this;
         }
         public Builder putIfAbsent(@NonNull String key, Object value) {
             jo.putIfAbsent(key, value);
             return this;
         }
-        public Builder putByPath(String jsonPath, Object value) {
-            jo.putByPath(jsonPath, value);
+        public Builder putIfAbsentOrNull(@NonNull String key, Object value) {
+            jo.putIfAbsentOrNull(key, value);
             return this;
         }
-        public Builder putByPathIfNonNull(String jsonPath, Object value) {
-            jo.putByPathIfNonNull(jsonPath, value);
+        public Builder putByPath(String path, Object value) {
+            jo.putByPath(path, value);
             return this;
         }
-        public Builder putByPathIfAbsent(String jsonPath, Object value) {
-            jo.putByPathIfAbsent(jsonPath, value);
+        public Builder putNonNullByPath(String path, Object value) {
+            jo.putNonNullByPath(path, value);
+            return this;
+        }
+        public Builder putByPathIfAbsentOrNull(String path, Object value) {
+            jo.putByPathIfAbsentOrNull(path, value);
             return this;
         }
         public JsonObject build() {

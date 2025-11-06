@@ -174,6 +174,10 @@ public class ValueUtil {
             return null;
         } else if (clazz.isAssignableFrom(value.getClass())) {
             return (T) value;
+        } else if (Number.class.isAssignableFrom(clazz)) {
+            if (value instanceof Number) {
+                return NumberUtil.numberAs((Number) value, clazz);
+            }
         } else if (clazz.isPrimitive()) {
             if (clazz == boolean.class && value instanceof Boolean) {
                 return (T) value;
