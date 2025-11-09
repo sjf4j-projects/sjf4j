@@ -1,15 +1,13 @@
 package org.sjf4j;
 
-import java.lang.reflect.Type;
+public interface ObjectConverter<O, N> {
 
-public interface ObjectConverter {
+    Class<O> getObjectType();
 
-    Type getObjectType();
+    Class<N> getNodeType();
 
-    Type getValueType();
+    N object2Node(O object);
 
-    Object object2Value(Object object);
-
-    Object value2Object(Object value);
+    O node2Object(N node);
 
 }

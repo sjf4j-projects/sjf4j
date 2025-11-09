@@ -1,9 +1,12 @@
 package org.sjf4j.util;
 
+import lombok.Getter;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-public abstract class TypeReference<T> {
+@Getter
+public abstract class TypeReference<T> implements Type {
     private final Type type;
 
     protected TypeReference() {
@@ -15,7 +18,9 @@ public abstract class TypeReference<T> {
         }
     }
 
-    public Type getType() {
-        return type;
+    @Override
+    public String toString() {
+        return type.toString();
     }
+
 }

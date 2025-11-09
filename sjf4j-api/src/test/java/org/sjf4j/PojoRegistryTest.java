@@ -54,4 +54,15 @@ public class PojoRegistryTest {
     public void testIsPojo1() {
         assertTrue(PojoRegistry.isPojo(Role.class));
     }
+
+    @Test
+    public void testInvoke1() {
+        Person p1 = new Person();
+        PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(Person.class);
+        PojoRegistry.FieldInfo fi = pi.getFields().get("name");
+
+        fi.invokeSetter(p1, "hahaha");
+        String name1 = (String) fi.invokeGetter(p1);
+
+    }
 }

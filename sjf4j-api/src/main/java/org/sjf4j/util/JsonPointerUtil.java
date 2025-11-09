@@ -25,4 +25,28 @@ public class JsonPointerUtil {
         return tokens;
     }
 
+
+    public static String genExpr(@NonNull List<PathToken> tokens) {
+        StringBuilder sb = new StringBuilder();
+        for (PathToken token : tokens) {
+            if (token instanceof PathToken.Root) {
+                sb.append("/");
+            } else if (token instanceof PathToken.Index) {
+                sb.append(((PathToken.Index) token).index);
+                sb.append("/");
+            } else if (token instanceof PathToken.Field) {
+                String name = ((PathToken.Field) token).name
+                        .replace("~", "~0")
+                        .replace("/", "~1");
+                sb.append(name);
+                sb.append("/");
+            }
+        }
+        if (sb.length() > 1 && sb.charAt(sb.length() - 1) == '/') {
+            sb.deleteCharAt(sb.length() - 1);
+        }
+        return sb.toString();
+    }
+
+
 }

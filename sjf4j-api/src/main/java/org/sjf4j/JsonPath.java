@@ -16,11 +16,11 @@ import java.util.Map;
 public class JsonPath {
 
     @Getter
-    private String rawExpr;
+    private String raw;
     private final List<PathToken> tokens;
 
     private JsonPath(JsonPath target) {
-        this.rawExpr = target.rawExpr;
+        this.raw = target.raw;
         this.tokens = new ArrayList<>(target.tokens);
     }
 
@@ -38,7 +38,7 @@ public class JsonPath {
             throw new JsonException("Invalid path expression '" + expr + "'. " +
                     "Must start with '$' for JSON Path or '/' for JSON Pointer.");
         }
-        this.rawExpr = expr;
+        this.raw = expr;
     }
     
     public static JsonPath compile(@NonNull String expr) {
@@ -46,11 +46,13 @@ public class JsonPath {
         return new JsonPath(expr);
     }
 
+    public String toExpr() {
+        return JsonPathUtil.genExpr(tokens);
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (PathToken t : tokens) sb.append(t);
-        return sb.toString();
+        return toExpr();
     }
 
     public JsonPath push(@NonNull PathToken token) {
@@ -130,7 +132,7 @@ public class JsonPath {
         try {
             return findOne(container);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Object by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Object by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -145,7 +147,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueToString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get String by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -160,7 +162,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Long by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -175,7 +177,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Integer by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -190,7 +192,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Short by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -205,7 +207,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Byte by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -220,7 +222,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Double by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -235,7 +237,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Float by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -250,7 +252,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigInteger by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -265,7 +267,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueAsBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigDecimal by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -280,7 +282,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueToBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Boolean by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -295,7 +297,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueToJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonObject by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
@@ -310,7 +312,7 @@ public class JsonPath {
             Object value = findOne(container);
             return ValueUtil.valueToJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray by path '" + getRawExpr() + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonArray by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 

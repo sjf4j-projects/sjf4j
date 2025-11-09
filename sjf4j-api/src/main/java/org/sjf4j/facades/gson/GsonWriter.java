@@ -3,9 +3,8 @@ package org.sjf4j.facades.gson;
 import com.google.gson.stream.JsonWriter;
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.ObjectRegistry;
+import org.sjf4j.ConverterRegistry;
 import org.sjf4j.PojoRegistry;
 
 import java.io.IOException;
@@ -17,7 +16,7 @@ public class GsonWriter {
 
 
     public static void writeAny(@NonNull JsonWriter writer, Object object) throws IOException {
-        Object value = ObjectRegistry.tryObject2Value(object);
+        Object value = ConverterRegistry.tryObject2Node(object);
         if (value == null) {
             writer.nullValue();
         } else if (value instanceof CharSequence || value instanceof Character) {
@@ -28,10 +27,14 @@ public class GsonWriter {
             writer.value((Boolean) value);
         } else if (value instanceof JsonObject) {
             writer.beginObject();
-            for (Map.Entry<String, Object> entry : ((JsonObject) value).entrySet()) {
-                writer.name(entry.getKey());
-                writeAny(writer, entry.getValue());
-            }
+            ((JsonObject) value).forEach((k, v) -> {
+                try {
+                    writer.name(k);
+                    writeAny(writer, v);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             writer.endObject();
         } else if (value instanceof Map) {
             writer.beginObject();
@@ -63,14 +66,8 @@ public class GsonWriter {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
                 writer.name(entry.getKey());
-                Object subValue = null;
-                try {
-                    subValue = entry.getValue().getGetter().invoke(value);
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
-                            value.getClass().getName(), e);
-                }
-                writeAny(writer, subValue);
+                Object vv = entry.getValue().invokeGetter(value);
+                writeAny(writer, vv);
             }
             writer.endObject();
         } else {

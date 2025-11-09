@@ -4,15 +4,12 @@ import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.ObjectRegistry;
+import org.sjf4j.PojoRegistry;
 
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ValueUtil {
 
@@ -143,8 +140,12 @@ public class ValueUtil {
             return (JsonObject) value;
         } else if (value instanceof Map) {
             return new JsonObject((Map<String, Object>) value);
+        } else if (PojoRegistry.isPojo(value.getClass())) {
+            //fixme
+
+
         }
-        throw new JsonException("Expected value type JsonObject or Map, but got " + value.getClass().getName());
+        throw new JsonException("Expected value type JsonObject/Map/POJO, but got " + value.getClass().getName());
     }
 
     public static JsonArray valueToJsonArray(Object value) {
@@ -164,8 +165,10 @@ public class ValueUtil {
             return (JsonArray) value;
         } else if (value instanceof List) {
             return new JsonArray((List<Object>) value);
+        } else if (value.getClass().isArray()) {
+            return new JsonArray(value);
         }
-        throw new JsonException("Expected value type JsonArray or List, but got " + value.getClass().getName());
+        throw new JsonException("Expected value type JsonArray/List/Array, but got " + value.getClass().getName());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

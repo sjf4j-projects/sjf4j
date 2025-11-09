@@ -11,6 +11,7 @@ import org.sjf4j.JsonObject;
 
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Type;
 
 public class GsonJsonFacade implements JsonFacade {
 
@@ -18,6 +19,24 @@ public class GsonJsonFacade implements JsonFacade {
 
     public GsonJsonFacade(@NonNull Gson gson) {
         this.gson = gson;
+    }
+
+//    public Object readNode(@NonNull Reader input, Type nodetype) {
+//        try {
+//            JsonReader reader = gson.newJsonReader(input);
+//            return GsonReader.readAny(reader, nodetype);
+//        } catch (Exception e) {
+//            throw new JsonException("Failed to deserialize JSON-text into Node: " + e.getMessage(), e);
+//        }
+//    }
+
+    public void writeNode(@NonNull Writer output, Object node) {
+        try {
+            JsonWriter writer = gson.newJsonWriter(output);
+            GsonWriter.writeAny(writer, node);
+        } catch (Exception e) {
+            throw new JsonException("Failed to serialize Node to JSON-text: " + e.getMessage(), e);
+        }
     }
 
     @Override

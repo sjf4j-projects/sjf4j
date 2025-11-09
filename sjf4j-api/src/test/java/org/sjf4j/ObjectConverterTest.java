@@ -14,7 +14,7 @@ public class ObjectConverterTest {
 
     @Test
     public void testOne1() {
-        ObjectRegistry.putConverter(OffsetDateTime.class, new OffsetDateTimeConverter());
+        ConverterRegistry.putConverter(new OffsetDateTimeConverter());
         JsonObject jo1 = new JsonObject("aa", "bb");
         jo1.put("t1", OffsetDateTime.now());
         log.info("jo1: {}", jo1);

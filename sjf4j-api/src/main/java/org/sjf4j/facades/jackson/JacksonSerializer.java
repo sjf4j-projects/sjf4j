@@ -4,9 +4,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.ObjectRegistry;
+import org.sjf4j.ConverterRegistry;
 import org.sjf4j.PojoRegistry;
 
 import java.io.IOException;
@@ -20,7 +19,7 @@ public class JacksonSerializer extends JsonSerializer<Object> {
 
     @Override
     public void serialize(Object object, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-        Object value = ObjectRegistry.tryObject2Value(object);
+        Object value = ConverterRegistry.tryObject2Node(object);
         if (value == null) {
             gen.writeNull();
         } else if (value instanceof CharSequence || value instanceof Character) {
@@ -41,10 +40,14 @@ public class JacksonSerializer extends JsonSerializer<Object> {
             gen.writeBoolean((Boolean) value);
         } else if (value instanceof JsonObject) {
             gen.writeStartObject();
-            for (Map.Entry<String, Object> entry : ((JsonObject) value).entrySet()) {
-                gen.writeFieldName(entry.getKey());
-                serialize(entry.getValue(), gen, serializers);
-            }
+            ((JsonObject) value).forEach((k, v) -> {
+                try {
+                    gen.writeFieldName(k);
+                    serialize(v, gen, serializers);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             gen.writeEndObject();
         } else if (value instanceof Map) {
             gen.writeStartObject();
@@ -76,14 +79,8 @@ public class JacksonSerializer extends JsonSerializer<Object> {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
                 gen.writeFieldName(entry.getKey());
-                Object subValue = null;
-                try {
-                    subValue = entry.getValue().getGetter().invoke(value);
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
-                            value.getClass().getName(), e);
-                }
-                serialize(subValue, gen, serializers);
+                Object vv = entry.getValue().invokeGetter(value);
+                serialize(vv, gen, serializers);
             }
             gen.writeEndObject();
         } else {

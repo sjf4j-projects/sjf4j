@@ -112,6 +112,12 @@ public class JsonPathUtil {
     }
 
 
+    public static String genExpr(List<PathToken> tokens) {
+        StringBuilder sb = new StringBuilder();
+        for (PathToken t : tokens) sb.append(t);
+        return sb.toString();
+    }
+
     /// private
 
     private static boolean isNameChar(char c) {

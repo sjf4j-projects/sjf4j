@@ -8,6 +8,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.util.NumberUtil;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 
 public class GsonReader {
 

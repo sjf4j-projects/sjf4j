@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 
 public final class RecordUtil {
 
@@ -24,7 +25,7 @@ public final class RecordUtil {
         GET_RECORD_COMPONENTS_METHOD = getComponents;
     }
 
-    public static boolean isRecordClass(Class<?> clazz) {
+    public static boolean isRecordClass(Type clazz) {
         if (!RECORD_SUPPORTED) return false;
         try {
             return (boolean) IS_RECORD_METHOD.invoke(clazz);
@@ -33,7 +34,7 @@ public final class RecordUtil {
         }
     }
 
-    public static Object[] getRecordComponents(Class<?> clazz) {
+    public static Object[] getRecordComponents(Type clazz) {
         if (!RECORD_SUPPORTED) return null;
         try {
             return (Object[]) GET_RECORD_COMPONENTS_METHOD.invoke(clazz);

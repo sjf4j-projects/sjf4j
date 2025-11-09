@@ -4,7 +4,7 @@ import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.ObjectRegistry;
+import org.sjf4j.ConverterRegistry;
 import org.sjf4j.PojoRegistry;
 
 import java.lang.reflect.Array;
@@ -42,7 +42,7 @@ public class ObjectUtil {
                 Boolean.class == type ||
                 JsonObject.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type) ||
                 JsonArray.class.isAssignableFrom(type) || List.class.isAssignableFrom(type) || type.isArray() ||
-                ObjectRegistry.hasConverter(type) ||
+                ConverterRegistry.hasConverter(type) ||
                 PojoRegistry.isPojo(type);
     }
 
@@ -50,7 +50,7 @@ public class ObjectUtil {
     /// Facade
 
     public static Object object2Value(Object object) {
-        Object value = ObjectRegistry.tryObject2Value(object);
+        Object value = ConverterRegistry.tryObject2Node(object);
         if (value == null) {
             return null;
         } else if (value instanceof CharSequence || value instanceof Character || 
@@ -92,14 +92,8 @@ public class ObjectUtil {
             JsonObject jo = new JsonObject();
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
-                Object v = null;
-                try {
-                    v = entry.getValue().getGetter().invoke(value);
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
-                            value.getClass().getName(), e);
-                }
-                jo.put(entry.getKey(), object2Value(v));
+                Object vv = entry.getValue().invokeGetter(value);
+                jo.put(entry.getKey(), object2Value(vv));
             }
             return jo;
         } else {
@@ -124,8 +118,8 @@ public class ObjectUtil {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object value2Object(Object value, Class<?> objectType) {
-        if (ObjectRegistry.hasConverter(objectType)) {
-            return ObjectRegistry.tryValue2Object(value, objectType);
+        if (ConverterRegistry.hasConverter(objectType)) {
+            return ConverterRegistry.tryNode2Object(value, objectType);
         }
 
         if (value == null) {
@@ -171,21 +165,10 @@ public class ObjectUtil {
                 }
                 Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
                 ((JsonObject) value).forEach((k, v) -> {
-                    if (fields.containsKey(k)) {
-                        PojoRegistry.FieldInfo fi = fields.get(k);
-                        if (fi.getSetter() != null) {
-                            Object vv = value2Object(v, fi.getType());
-                            if (vv != null) {
-                                try {
-                                    fi.getSetter().invoke(pjo, vv);
-                                } catch (Throwable e) {
-                                    throw new JsonException("Failed to invoke setter for field '" + k +
-                                            "' in JsonObject " + objectType, e);
-                                }
-                            }
-                        } else {
-                            throw new JsonException("No setter available for field '" + fi.getName() + "' of " + objectType);
-                        }
+                    PojoRegistry.FieldInfo fi = fields.get(k);
+                    if (fi != null) {
+                        Object vv = value2Object(v, fi.getType());
+                        fi.invokeSetter(pjo, vv);
                     } else {
                         pjo.put(k, value2Object(v, Object.class));
                     }
@@ -193,26 +176,19 @@ public class ObjectUtil {
                 return pjo;
             } else if (PojoRegistry.isPojo(objectType)) {
                 PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(objectType);
-                Object pojo = null;
+                Object pojo;
                 try {
                     pojo = pi.getConstructor().invoke();
                 } catch (Throwable e) {
                     throw new JsonException("Failed to invoke constructor in POJO " + objectType, e);
                 }
-                for (Map.Entry<String, Object> entry : ((JsonObject) value).entrySet()) {
-                    PojoRegistry.FieldInfo fi = pi.getFields().get(entry.getKey());
-                    if (fi.getSetter() != null) {
-                        Object v = value2Object(entry.getValue(), fi.getType());
-                        if (v != null) {
-                            try {
-                                fi.getSetter().invoke(pojo, v);
-                            } catch (Throwable e) {
-                                throw new JsonException("Failed to invoke setter for field '" + entry.getKey() +
-                                        "' in POJO " + objectType, e);
-                            }
-                        }
+                ((JsonObject) value).forEach((k, v) -> {
+                    PojoRegistry.FieldInfo fi = pi.getFields().get(k);
+                    if (fi != null) {
+                        Object vv = value2Object(v, fi.getType());
+                        fi.invokeSetter(pojo, vv);
                     }
-                }
+                });
                 return pojo;
             } else {
                 throw new JsonException("Cannot convert value " + value.getClass() + " to object " + objectType);
@@ -241,21 +217,10 @@ public class ObjectUtil {
                 Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
                     String k = entry.getKey().toString();
-                    if (fields.containsKey(k)) {
-                        PojoRegistry.FieldInfo fi = fields.get(k);
-                        if (fi.getSetter() != null) {
-                            Object vv = value2Object(entry.getValue(), fi.getType());
-                            if (vv != null) {
-                                try {
-                                    fi.getSetter().invoke(pjo, vv);
-                                } catch (Throwable e) {
-                                    throw new JsonException("Failed to invoke setter for field '" + k +
-                                            "' in JsonObject " + objectType, e);
-                                }
-                            }
-                        } else {
-                            throw new JsonException("No setter available for field '" + fi.getName() + "' of " + objectType);
-                        }
+                    PojoRegistry.FieldInfo fi = fields.get(k);
+                    if (fi != null) {
+                        Object vv = value2Object(entry.getValue(), fi.getType());
+                        fi.invokeSetter(pjo, vv);
                     } else {
                         pjo.put(k, value2Object(entry.getValue(), Object.class));
                     }
@@ -271,16 +236,9 @@ public class ObjectUtil {
                 }
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
                     PojoRegistry.FieldInfo fi = pi.getFields().get(entry.getKey().toString());
-                    if (fi != null && fi.getSetter() != null) {
-                        Object v = value2Object(entry.getValue(), fi.getType());
-                        if (v != null) {
-                            try {
-                                fi.getSetter().invoke(pojo, v);
-                            } catch (Throwable e) {
-                                throw new JsonException("Failed to invoke setter for field '" + entry.getKey() +
-                                        "' in POJO " + objectType, e);
-                            }
-                        }
+                    if (fi != null) {
+                        Object vv = value2Object(entry.getValue(), fi.getType());
+                        fi.invokeSetter(pojo, vv);
                     }
                 }
                 return pojo;
@@ -361,9 +319,9 @@ public class ObjectUtil {
     }
 
     public static Object value2Object(Object value, @NonNull ParameterizedType objectType) {
-        if (ObjectRegistry.hasConverter(objectType)) {
-            return ObjectRegistry.tryValue2Object(value, objectType);
-        }
+//        if (ConverterRegistry.hasConverter(objectType)) {
+//            return ConverterRegistry.tryNode2Object(value, objectType);
+//        }
 
         if (value == null) {
             return null;
@@ -428,9 +386,9 @@ public class ObjectUtil {
     }
 
     public static Object value2Object(Object value, @NonNull GenericArrayType objectType) {
-        if (ObjectRegistry.hasConverter(objectType)) {
-            return ObjectRegistry.tryValue2Object(value, objectType);
-        }
+//        if (ConverterRegistry.hasConverter(objectType)) {
+//            return ConverterRegistry.tryNode2Object(value, objectType);
+//        }
 
         if (value == null) {
             return null;

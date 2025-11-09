@@ -3,9 +3,8 @@ package org.sjf4j.facades.fastjson2;
 
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.ObjectRegistry;
+import org.sjf4j.ConverterRegistry;
 import org.sjf4j.PojoRegistry;
 
 import java.lang.reflect.Array;
@@ -19,7 +18,7 @@ public class Fastjson2Writer {
 
 
     public static void writeAny(JSONWriter writer, Object object) {
-        Object value = ObjectRegistry.tryObject2Value(object);
+        Object value = ConverterRegistry.tryObject2Node(object);
         if (value == null) {
             writer.writeNull();
         } else if (value instanceof CharSequence || value instanceof Character) {
@@ -82,14 +81,8 @@ public class Fastjson2Writer {
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
                 writer.writeName(entry.getKey());
                 writer.writeColon();
-                Object subValue = null;
-                try {
-                    subValue = entry.getValue().getGetter().invoke(value);
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
-                            value.getClass().getName(), e);
-                }
-                writeAny(writer, subValue);
+                Object vv = entry.getValue().invokeGetter(value);
+                writeAny(writer, vv);
             }
             writer.endObject();
         } else {

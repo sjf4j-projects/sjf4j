@@ -2,9 +2,8 @@ package org.sjf4j.facades.snake;
 
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.ObjectRegistry;
+import org.sjf4j.ConverterRegistry;
 import org.sjf4j.PojoRegistry;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
@@ -24,7 +23,7 @@ public class SnakeEmitter {
 
 
     public static void writeAny(@NonNull Emitter emitter, Object object) throws IOException {
-        Object value = ObjectRegistry.tryObject2Value(object);
+        Object value = ConverterRegistry.tryObject2Node(object);
         if (value == null) {
             emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                     "null", null, null, DumperOptions.ScalarStyle.PLAIN));
@@ -35,11 +34,15 @@ public class SnakeEmitter {
         } else if (value instanceof JsonObject) {
             emitter.emit(new MappingStartEvent(null, null, true, null, null,
                     DumperOptions.FlowStyle.BLOCK));
-            for (Map.Entry<String, Object> entry : ((JsonObject) value).entrySet()) {
-                emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
-                        entry.getKey(), null, null, DumperOptions.ScalarStyle.PLAIN));
-                writeAny(emitter, entry.getValue());
-            }
+            ((JsonObject) value).forEach((k, v) -> {
+                try {
+                    emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
+                            k, null, null, DumperOptions.ScalarStyle.PLAIN));
+                    writeAny(emitter, v);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             emitter.emit(new MappingEndEvent(null, null));
         } else if (value instanceof Map) {
             emitter.emit(new MappingStartEvent(null, null, true, null, null,
@@ -78,14 +81,8 @@ public class SnakeEmitter {
                     PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
                 emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                         entry.getKey(), null, null, DumperOptions.ScalarStyle.PLAIN));
-                Object subValue = null;
-                try {
-                    subValue = entry.getValue().getGetter().invoke(value);
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke getter for field '" + entry.getKey() + "' in POJO " +
-                            value.getClass().getName(), e);
-                }
-                writeAny(emitter, subValue);
+                Object vv = entry.getValue().invokeGetter(value);
+                writeAny(emitter, vv);
             }
             emitter.emit(new MappingEndEvent(null, null));
         } else {

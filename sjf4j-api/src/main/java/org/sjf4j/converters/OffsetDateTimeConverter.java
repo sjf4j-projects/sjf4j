@@ -5,27 +5,27 @@ import org.sjf4j.ObjectConverter;
 import java.lang.reflect.Type;
 import java.time.OffsetDateTime;
 
-public class OffsetDateTimeConverter implements ObjectConverter {
+public class OffsetDateTimeConverter implements ObjectConverter<OffsetDateTime, String> {
 
 
     @Override
-    public Type getObjectType() {
+    public Class<OffsetDateTime> getObjectType() {
         return OffsetDateTime.class;
     }
 
     @Override
-    public Type getValueType() {
+    public Class<String> getNodeType() {
         return String.class;
     }
 
     @Override
-    public Object object2Value(Object object) {
+    public String object2Node(OffsetDateTime object) {
         return object.toString();
     }
 
     @Override
-    public Object value2Object(Object value) {
-        return OffsetDateTime.parse((String) value);
+    public OffsetDateTime node2Object(String  value) {
+        return OffsetDateTime.parse(value);
     }
 
 }

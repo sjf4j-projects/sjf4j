@@ -4,7 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.NodeType;
+import org.sjf4j.ObjectConverter;
+import org.sjf4j.ConverterRegistry;
 import org.sjf4j.util.NumberUtil;
+import org.sjf4j.util.TypeUtil;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.Event;
 import org.yaml.snakeyaml.events.MappingEndEvent;
@@ -14,18 +18,21 @@ import org.yaml.snakeyaml.events.SequenceEndEvent;
 import org.yaml.snakeyaml.events.SequenceStartEvent;
 import org.yaml.snakeyaml.parser.Parser;
 
+import java.lang.reflect.Type;
+import java.util.Map;
+
 
 @Slf4j
 public class SnakeParser {
 
-    public static Object readAny(Parser parser) {
+    public static Object readAny(Parser parser, Type type) {
         Event event = parser.peekEvent();
         if (event instanceof MappingStartEvent) {
-            return readObject(parser);
+            return readObject(parser, type);
         } else if (event instanceof SequenceStartEvent) {
-            return readArray(parser);
+            return readArray(parser, type);
         } else if (event instanceof ScalarEvent) {
-            return readValue(parser);
+            return readValue(parser, type);
         } else if (event instanceof AliasEvent) {
             throw new JsonException("YAML anchors/aliases not supported.");
         } else {
@@ -34,35 +41,74 @@ public class SnakeParser {
         }
     }
 
-    public static JsonObject readObject(Parser parser) {
+    @SuppressWarnings("unchecked")
+    public static Object readObject(Parser parser, Type type) {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        ObjectConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
+        if (converter != null ) {
+            if (converter.getNodeType() == JsonObject.class) {
+                parser.getEvent(); // consume start
+                JsonObject jo = new JsonObject();
+                while (!(parser.peekEvent() instanceof MappingEndEvent)) {
+                    String key = ((ScalarEvent) parser.getEvent()).getValue();
+                    Object value = readAny(parser, null);
+                    jo.put(key, value);
+                }
+                parser.getEvent(); // consume end
+                return ((ObjectConverter<Object, Object>) converter).node2Object(jo);
+            } else {
+                throw new JsonException("");
+            }
+        } else if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
+            parser.getEvent(); // consume start
+            JsonObject jo = new JsonObject();
+            while (!(parser.peekEvent() instanceof MappingEndEvent)) {
+                String key = ((ScalarEvent) parser.getEvent()).getValue();
+                Object value = readAny(parser, null);
+                jo.put(key, value);
+            }
+            parser.getEvent(); // consume end
+            return jo;
+        } else if (rawClazz == Map.class) {
+//            parser.getEvent(); // consume start
+//            Class<?> subClazz = TypeUtil.getTypeArgument(type, 1);
+//            while (!(parser.peekEvent() instanceof MappingEndEvent)) {
+//                String key = ((ScalarEvent) parser.getEvent()).getValue();
+//                Object value = readAny(parser, null);
+//                jo.put(key, value);
+//            }
+//            parser.getEvent(); // consume end
+//            return jo;
+        }
+
         parser.getEvent(); // consume start
         JsonObject jo = new JsonObject();
         while (!(parser.peekEvent() instanceof MappingEndEvent)) {
             String key = ((ScalarEvent) parser.getEvent()).getValue();
-            Object value = readAny(parser);
+            Object value = readAny(parser, type);
             jo.put(key, value);
         }
         parser.getEvent(); // consume end
         return jo;
     }
 
-    public static JsonArray readArray(Parser parser) {
+    public static JsonArray readArray(Parser parser, Type type) {
         parser.getEvent(); // consume start
         JsonArray ja = new JsonArray();
         while (!(parser.peekEvent() instanceof SequenceEndEvent)) {
-            ja.add(readAny(parser));
+            ja.add(readAny(parser, type));
         }
         parser.getEvent(); // consume end
         return ja;
     }
 
-    public static Object readValue(Parser parser) {
+    public static Object readValue(Parser parser, Type type) {
         ScalarEvent event = (ScalarEvent) parser.getEvent();
         String v = event.getValue();
         String tag = event.getTag();
-        if (v == null) return null;
-        if ("tag:yaml.org,2002:null".equals(tag) ||
-                v.isEmpty() || v.equalsIgnoreCase("null") || v.equals("~")) {
+
+        if (v == null || v.isEmpty() || "tag:yaml.org,2002:null".equals(tag) ||
+                v.equalsIgnoreCase("null") || v.equals("~")) {
             return null;
         }
 

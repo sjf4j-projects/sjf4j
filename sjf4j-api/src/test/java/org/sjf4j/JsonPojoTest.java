@@ -8,8 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,7 +71,27 @@ public class JsonPojoTest {
         assertEquals(JsonArray.class, jo1.getObject("babies").getClass());
     }
 
+    @Getter @Setter
+    public static class Wrapper<T> {
+        public T value;
+    }
 
+    @Getter @Setter
+    public static class WrapperTwo<T1, T2> {
+        public T1 value1;
+        public T2 value2;
+    }
+
+
+    @Test
+    public void testGeneric1() {
+        Wrapper<Person> wrapper = new Wrapper<>();
+        Person person = new Person();
+        person.setName("haha");
+        wrapper.setValue(person);
+        JsonObject jo = JsonObject.fromPojo(wrapper);
+        log.info("jo={}", jo);
+    }
 
 
 }

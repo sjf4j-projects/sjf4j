@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
@@ -71,10 +73,9 @@ public class ObjectUtilTest {
 
     @Test
     public void testValue2Object2() {
-        Object o1 = ObjectUtil.value2Object(new JsonObject("percentage", null), Role.class);
+        Object o1 = ObjectUtil.value2Object(new JsonObject("percentage", 0), Role.class);
         log.info("o1 type={}, o1={}", o1.getClass(), o1);
         assertEquals(Role.class, o1.getClass());
-
     }
 
     @Test
@@ -262,10 +263,12 @@ public class ObjectUtilTest {
     public void testNullFields() {
         JsonObject jo = new JsonObject();
         jo.put("name", null);
-        jo.put("age", null);
         BasicTypes bt = (BasicTypes) ObjectUtil.value2Object(jo, BasicTypes.class);
         assertNull(bt.name);
         assertEquals(0, bt.age); // 默认 int=0
+
+        jo.put("age", null);
+        assertThrows(JsonException.class, () -> ObjectUtil.value2Object(jo, BasicTypes.class));
     }
 
 

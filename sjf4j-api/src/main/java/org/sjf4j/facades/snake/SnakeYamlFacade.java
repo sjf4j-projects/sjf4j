@@ -19,6 +19,7 @@ import org.yaml.snakeyaml.reader.StreamReader;
 
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Type;
 
 public class SnakeYamlFacade implements YamlFacade {
 
@@ -36,58 +37,29 @@ public class SnakeYamlFacade implements YamlFacade {
     }
 
     @Override
-    public JsonObject readObject(@NonNull Reader input) {
-        Object value;
+    public Object readNode(@NonNull Reader input, Type type) {
+        Object node;
         try {
             Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
             Event ev;
             if (!((ev = parser.getEvent()) instanceof StreamStartEvent)) throw new IllegalStateException("Malformed YAML");
             if (!((ev = parser.getEvent()) instanceof DocumentStartEvent)) throw new IllegalStateException("Malformed YAML");
-            value = SnakeParser.readAny(parser);
+            node = SnakeParser.readAny(parser, type);
             if (!((ev = parser.getEvent()) instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
             if (!((ev = parser.getEvent()) instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
         } catch (Exception e) {
-            throw new JsonException("Failed to deserialize YAML into JsonObject: " + e.getMessage(), e);
+            throw new JsonException("Failed to deserialize YAML into JSON-Node: " + e.getMessage(), e);
         }
-
-        if (value instanceof JsonObject) {
-            return (JsonObject) value;
-        } else {
-            throw new JsonException("Expected JsonObject but got '" +
-                    (value == null ? "[null]" : value.getClass().getName()) + "'");
-        }
+        return node;
     }
 
     @Override
-    public JsonArray readArray(@NonNull Reader input) {
-        Object value;
-        try {
-            Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
-            Event ev;
-            if (!((ev = parser.getEvent()) instanceof StreamStartEvent)) throw new IllegalStateException("Malformed YAML");
-            if (!((ev = parser.getEvent()) instanceof DocumentStartEvent)) throw new IllegalStateException("Malformed YAML");
-            value = SnakeParser.readAny(parser);
-            if (!((ev = parser.getEvent()) instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
-            if (!((ev = parser.getEvent()) instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
-        } catch (Exception e) {
-            throw new JsonException("Failed to deserialize YAML into JsonArray: " + e.getMessage(), e);
-        }
-
-        if (value instanceof JsonArray) {
-            return (JsonArray) value;
-        } else {
-            throw new JsonException("Expected JsonArray but got '" +
-                    (value == null ? "[null]" : value.getClass().getName()) + "'");
-        }
-    }
-
-    @Override
-    public void writeObject(@NonNull Writer output, JsonObject jo) {
+    public void writeNode(@NonNull Writer output, Object node) {
         try {
             Emitter emitter = new Emitter(output, dumperOptions);
             emitter.emit(new StreamStartEvent(null, null));
             emitter.emit(new DocumentStartEvent(null, null, false, null, null));
-            SnakeEmitter.writeAny(emitter, jo);
+            SnakeEmitter.writeAny(emitter, node);
             emitter.emit(new DocumentEndEvent(null, null, false));
             emitter.emit(new StreamEndEvent(null, null));
         } catch (Exception e) {
@@ -95,18 +67,5 @@ public class SnakeYamlFacade implements YamlFacade {
         }
     }
 
-    @Override
-    public void writeArray(@NonNull Writer output, JsonArray ja) {
-        try {
-            Emitter emitter = new Emitter(output, dumperOptions);
-            emitter.emit(new StreamStartEvent(null, null));
-            emitter.emit(new DocumentStartEvent(null, null, false, null, null));
-            SnakeEmitter.writeAny(emitter, ja);
-            emitter.emit(new DocumentEndEvent(null, null, false));
-            emitter.emit(new StreamEndEvent(null, null));
-        } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonArray to YAML: " + e.getMessage(), e);
-        }
-    }
 
 }

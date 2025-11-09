@@ -24,7 +24,7 @@ import java.util.function.Function;
 
 public class JsonObject extends JsonContainer {
 
-    protected Map<String, Object> valueMap;
+    protected Map<String, Object> nodeMap;
     protected Map<String, PojoRegistry.FieldInfo> fieldMap;
 
     public JsonObject() {
@@ -37,7 +37,7 @@ public class JsonObject extends JsonContainer {
 //        this.valueMap = target.valueMap;
 //    }
 
-    public JsonObject(@NonNull Map<String, ?> map) {
+    public JsonObject(@NonNull Map<?, ?> map) {
         this();
         putAll(map);
     }
@@ -125,10 +125,11 @@ public class JsonObject extends JsonContainer {
 
     @Override
     public int hashCode() {
-        int hash = valueMap == null ? 0 : valueMap.hashCode();
+        int hash = nodeMap == null ? 0 : nodeMap.hashCode();
         if (fieldMap != null) {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
-                hash += Objects.hashCode(entry.getKey()) ^ Objects.hashCode(invokeGetter(entry.getValue(), this));
+                hash += Objects.hashCode(entry.getKey()) ^
+                        Objects.hashCode(entry.getValue().invokeGetter(this));
             }
         }
         return hash;
@@ -139,10 +140,12 @@ public class JsonObject extends JsonContainer {
         if (target == this) return true;
         if (target == null) return false;
         if (target.getClass() != this.getClass()) return false;
-        if (!Objects.equals(valueMap, ((JsonObject) target).valueMap)) return false;
+        if (!Objects.equals(nodeMap, ((JsonObject) target).nodeMap)) return false;
         if (fieldMap != null) {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
-                if (!Objects.equals(invokeGetter(entry.getValue(),this), invokeGetter(entry.getValue(),target))) {
+                if (!Objects.equals(
+                        entry.getValue().invokeGetter(this),
+                        entry.getValue().invokeGetter(target))) {
                     return false;
                 }
             }
@@ -152,7 +155,7 @@ public class JsonObject extends JsonContainer {
 
     @Override
     public int size() {
-        return (fieldMap == null ? 0 : fieldMap.size()) + (valueMap == null ? 0 : valueMap.size());
+        return (fieldMap == null ? 0 : fieldMap.size()) + (nodeMap == null ? 0 : nodeMap.size());
 //        return valueMap.size();
     }
 
@@ -163,18 +166,18 @@ public class JsonObject extends JsonContainer {
 
     public Set<String> keySet() {
         if (fieldMap == null) {
-            return valueMap == null ? Collections.emptySet() : valueMap.keySet();
-        } else if (valueMap == null) {
+            return nodeMap == null ? Collections.emptySet() : nodeMap.keySet();
+        } else if (nodeMap == null) {
             return fieldMap.keySet();
         } else {
             Set<String> merged = fieldMap.keySet();
-            merged.addAll(valueMap.keySet());
+            merged.addAll(nodeMap.keySet());
             return merged;
         }
     }
 
     public boolean containsKey(@NonNull String key) {
-        return (fieldMap != null && fieldMap.containsKey(key)) || (valueMap != null && valueMap.containsKey(key));
+        return (fieldMap != null && fieldMap.containsKey(key)) || (nodeMap != null && nodeMap.containsKey(key));
 //        return valueMap.containsKey(key);
     }
 
@@ -185,11 +188,11 @@ public class JsonObject extends JsonContainer {
     public void forEach(BiConsumer<String, Object> action) {
         if (fieldMap != null) {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
-                action.accept(entry.getKey(), invokeGetter(entry.getValue(), this));
+                action.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
-        if (valueMap != null) {
-            for (Map.Entry<String, Object> entry : valueMap.entrySet()){
+        if (nodeMap != null) {
+            for (Map.Entry<String, Object> entry : nodeMap.entrySet()){
                 action.accept(entry.getKey(), entry.getValue());
             }
         }
@@ -197,14 +200,14 @@ public class JsonObject extends JsonContainer {
 
     private Map<String, Object> toMap() {
         if (fieldMap == null) {
-            return valueMap == null ? Collections.emptyMap() : Collections.unmodifiableMap(valueMap);
+            return nodeMap == null ? Collections.emptyMap() : Collections.unmodifiableMap(nodeMap);
         } else {
             Map<String, Object> merged = new LinkedHashMap<>();
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
-                merged.put(entry.getKey(), invokeGetter(entry.getValue(), this));
+                merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
-            if (valueMap != null) {
-                merged.putAll(valueMap);
+            if (nodeMap != null) {
+                merged.putAll(nodeMap);
             }
             return merged;
         }
@@ -298,44 +301,17 @@ public class JsonObject extends JsonContainer {
         return (T) ObjectUtil.value2Object(this, type);
     }
 
-    /// getter
-
-    private Object invokeGetter(@NonNull PojoRegistry.FieldInfo fi, Object receiver) {
-        MethodHandle getter = fi.getGetter();
-        if (getter != null) {
-            try {
-                return getter.invoke(receiver);
-            } catch (Throwable e) {
-                throw new JsonException("Failed to invoke getter for field '" + fi.getName() + "' of " +
-                        receiver.getClass(), e);
-            }
-        } else {
-            throw new JsonException("No getter available for field '" + fi.getName() + "' of " + this.getClass());
-        }
-    }
-
-    private void invokeSetter(@NonNull PojoRegistry.FieldInfo fi, Object receiver, Object object) {
-        MethodHandle setter = fi.getSetter();
-        if (setter == null) {
-            throw new JsonException("No setter available for field '" + fi.getName() + "' of " + receiver.getClass());
-        }
-        try {
-            setter.invoke(receiver, object);
-        } catch (Throwable e) {
-            throw new JsonException("Failed to invoke setter for field '" + fi.getName() + "' of " +
-                    receiver.getClass() + " with value " + object.getClass(), e);
-        }
-    }
+    /// Getter
 
     public Object getObject(@NonNull String key) {
         if (fieldMap != null) {
             PojoRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
-                return invokeGetter(fi, this);
+                return fi.invokeGetter(this);
             }
         }
-        if (valueMap != null) {
-            return valueMap.get(key);
+        if (nodeMap != null) {
+            return nodeMap.get(key);
         }
         return null;
     }
@@ -561,14 +537,14 @@ public class JsonObject extends JsonContainer {
         if (fieldMap != null) {
             PojoRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
-                invokeSetter(fi, this, object);
+                fi.invokeSetter(this, object);
                 return;
             }
         }
-        if (valueMap == null) {
-            valueMap = new LinkedHashMap<>();
+        if (nodeMap == null) {
+            nodeMap = new LinkedHashMap<>();
         }
-        valueMap.put(key, object);
+        nodeMap.put(key, object);
     }
 
     public void putNonNull(@NonNull String key, Object object) {
@@ -600,28 +576,32 @@ public class JsonObject extends JsonContainer {
     }
 
     public void putAll(@NonNull JsonObject jsonObject) {
-        for (String key : jsonObject.keySet()) {
-            Object value = jsonObject.getObject(key);
-            put(key, value);
+        jsonObject.forEach(this::put);
+    }
+
+    public void putAll(@NonNull Map<?, ?> map) {
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            put(entry.getKey().toString(), entry.getValue());
         }
     }
 
-    public void putAll(@NonNull Map<String, ?> map) {
-        for (String key : map.keySet()) {
-            Object value = map.get(key);
-            put(key, value);
+    public void putAll(@NonNull Object pojo) {
+        PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(pojo.getClass());
+        for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+            put(entry.getKey(), entry.getValue().invokeGetter(pojo));
         }
     }
+
 
     public void remove(@NonNull String key) {
-        if (valueMap != null) {
-            valueMap.remove(key);
+        if (nodeMap != null) {
+            nodeMap.remove(key);
         }
     }
 
     public void clear() {
-        if (valueMap != null) {
-            valueMap.clear();
+        if (nodeMap != null) {
+            nodeMap.clear();
         }
     }
 
