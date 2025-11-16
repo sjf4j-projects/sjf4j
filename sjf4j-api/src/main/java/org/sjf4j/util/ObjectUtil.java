@@ -50,7 +50,7 @@ public class ObjectUtil {
     /// Facade
 
     public static Object object2Value(Object object) {
-        Object value = ConverterRegistry.tryObject2Node(object);
+        Object value = ConverterRegistry.tryWrap2Pure(object);
         if (value == null) {
             return null;
         } else if (value instanceof CharSequence || value instanceof Character || 
@@ -119,7 +119,7 @@ public class ObjectUtil {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object value2Object(Object value, Class<?> objectType) {
         if (ConverterRegistry.hasConverter(objectType)) {
-            return ConverterRegistry.tryNode2Object(value, objectType);
+            return ConverterRegistry.tryPure2Wrap(value, objectType);
         }
 
         if (value == null) {
@@ -157,12 +157,7 @@ public class ObjectUtil {
                 return map;
             } else if (JsonObject.class.isAssignableFrom(objectType)) {
                 PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(objectType);
-                JsonObject pjo;
-                try {
-                    pjo = (JsonObject) pi.getConstructor().invoke();
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke constructor in JsonObject " + objectType, e);
-                }
+                JsonObject pjo = (JsonObject) pi.newInstance();
                 Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
                 ((JsonObject) value).forEach((k, v) -> {
                     PojoRegistry.FieldInfo fi = fields.get(k);
@@ -176,12 +171,7 @@ public class ObjectUtil {
                 return pjo;
             } else if (PojoRegistry.isPojo(objectType)) {
                 PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(objectType);
-                Object pojo;
-                try {
-                    pojo = pi.getConstructor().invoke();
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke constructor in POJO " + objectType, e);
-                }
+                Object pojo = pi.newInstance();
                 ((JsonObject) value).forEach((k, v) -> {
                     PojoRegistry.FieldInfo fi = pi.getFields().get(k);
                     if (fi != null) {

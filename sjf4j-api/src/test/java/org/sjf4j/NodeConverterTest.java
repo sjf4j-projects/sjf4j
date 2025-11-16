@@ -10,7 +10,7 @@ import java.time.ZonedDateTime;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Slf4j
-public class ObjectConverterTest {
+public class NodeConverterTest {
 
     @Test
     public void testOne1() {

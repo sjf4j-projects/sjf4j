@@ -20,8 +20,9 @@ public class Fastjson2FacadeTest {
 
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
         JsonObject jo1 = facade.readObject(new StringReader(json1));
+
         StringWriter sw = new StringWriter();
-        facade.writeObject(sw, jo1);
+        facade.writeNode(sw, jo1);
         String res1 = sw.toString();
         log.info("res1: {}", res1);
         assertEquals(json1, res1);

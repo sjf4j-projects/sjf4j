@@ -33,7 +33,7 @@ public class PojoRegistryTest {
         private String name;
         private int age;
         private JsonObject info;
-        private List<JsonPojoTest.Person> friends;
+        private List<JojoTest.Person> friends;
     }
 
     @Test
@@ -46,7 +46,7 @@ public class PojoRegistryTest {
         assertNotNull(pi.getFields().get("name").getSetter());
         assertEquals(int.class, pi.getFields().get("age").getType());
         assertEquals(JsonObject.class, pi.getFields().get("info").getType());
-        assertEquals(new TypeReference<List<JsonPojoTest.Person>>(){}.getType(),
+        assertEquals(new TypeReference<List<JojoTest.Person>>(){}.getType(),
                 pi.getFields().get("friends").getType());
     }
 

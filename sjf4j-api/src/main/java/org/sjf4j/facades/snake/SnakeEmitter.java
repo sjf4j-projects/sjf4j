@@ -23,7 +23,7 @@ public class SnakeEmitter {
 
 
     public static void writeAny(@NonNull Emitter emitter, Object object) throws IOException {
-        Object value = ConverterRegistry.tryObject2Node(object);
+        Object value = ConverterRegistry.tryWrap2Pure(object);
         if (value == null) {
             emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                     "null", null, null, DumperOptions.ScalarStyle.PLAIN));

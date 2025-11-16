@@ -78,7 +78,7 @@ public class NumberUtil {
         }
         double dValue = ((Number) value).doubleValue();
         if (!Double.isFinite(dValue)) {
-            throw new IllegalArgumentException("Numeric value '" + ((Number) value) + "' not in 64-bit `double` range");
+            throw new IllegalArgumentException("Numeric value '" + value + "' not in 64-bit `double` range");
         }
         return dValue;
     }
@@ -91,7 +91,7 @@ public class NumberUtil {
         }
         float fValue = ((Number) value).floatValue();
         if (!Float.isFinite(fValue)) {
-            throw new IllegalArgumentException("Numeric value '" + ((Number) value) + "' not in 32-bit `float` range");
+            throw new IllegalArgumentException("Numeric value '" + value + "' not in 32-bit `float` range");
         }
         return fValue;
     }
@@ -145,7 +145,7 @@ public class NumberUtil {
         } else if (clazz == BigDecimal.class) {
             return (T) NumberUtil.numberAsBigDecimal(value);
         } else {
-            throw new JsonException("Cannot convert value " + value.getClass() + " to object " + clazz);
+            throw new JsonException("Cannot convert numeric value '" + value + "' to type " + clazz);
         }
     }
 
@@ -175,6 +175,47 @@ public class NumberUtil {
                 }
             }
         }
+    }
+
+
+    /**
+     * Checks if a given string represents a numeric value.
+     * <p>
+     * This method supports:
+     * - Integers (e.g., "42", "-7", "+8")
+     * - Floating-point numbers (e.g., "3.14", "-0.5", ".5")
+     * - Scientific notation (e.g., "1e3", "-2.5E-4")
+     * - Special floating-point values: ".nan", ".inf", "-.inf"
+     * - Underscore separators in numbers (YAML style, e.g., "1_000_000")
+     * <p>
+     * Rules:
+     * - Leading '+' or '-' is allowed at the start or immediately after 'e'/'E'
+     * - Only one decimal point is allowed, and it must appear before any 'e'/'E'
+     * - Only one 'e'/'E' is allowed for scientific notation
+     *
+     */
+    public static boolean isNumeric(String text) {
+        if (text == null || text.isEmpty()) return false;
+        text = text.replace("_", "").trim();
+
+        boolean dotSeen = false, eSeen = false, digitSeen = false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '+' || c == '-') {
+                if (i > 0 && text.charAt(i - 1) != 'e' && text.charAt(i - 1) != 'E') return false;
+            } else if (c == '.') {
+                if (dotSeen || eSeen) return false;
+                dotSeen = true;
+            } else if (c == 'e' || c == 'E') {
+                if (eSeen || !digitSeen || i == text.length() - 1) return false;
+                eSeen = true;
+            } else if (Character.isDigit(c)) {
+                digitSeen = true;
+            } else {
+                return false;
+            }
+        }
+        return digitSeen;
     }
 
 }

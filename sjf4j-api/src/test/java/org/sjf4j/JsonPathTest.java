@@ -238,7 +238,7 @@ public class JsonPathTest {
         
         // 复杂路径查找
         assertEquals("reference", JsonPath.compile("$.store.book[0].category").findOne(jo));
-        assertEquals(12.99, JsonPath.compile("$.store.book[1].price").findOne(jo));
+        assertEquals(12.99, JsonPath.compile("$.store.book[1].price").getDouble(jo));
         assertEquals("red", JsonPath.compile("$.store.bicycle.color").findOne(jo));
         
         // 使用通配符查找所有

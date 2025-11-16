@@ -78,11 +78,11 @@ public class JsonPath {
             PathToken pt = tokens.get(i);
             if (pt instanceof PathToken.Wildcard) {
                 throw new JsonException("Cannot use wildcard '*' in findOne()");
-            } else if (pt instanceof PathToken.Field) {
+            } else if (pt instanceof PathToken.Name) {
                 if (value instanceof JsonObject) {
-                    value = ((JsonObject) value).getObject(((PathToken.Field) pt).name);
+                    value = ((JsonObject) value).getObject(((PathToken.Name) pt).name);
                 } else if (value instanceof Map) {
-                    value = ((Map<?, ?>) value).get(((PathToken.Field) pt).name);
+                    value = ((Map<?, ?>) value).get(((PathToken.Name) pt).name);
                 } else {
                     return null;
                 }
@@ -331,11 +331,11 @@ public class JsonPath {
         }
         Object lastContainer = _autoCreateContainers(container);
         PathToken lastToken = peek();
-        if (lastToken instanceof PathToken.Field) {
+        if (lastToken instanceof PathToken.Name) {
             if (lastContainer instanceof JsonObject) {
-                ((JsonObject) lastContainer).put(((PathToken.Field) lastToken).name, value);
+                ((JsonObject) lastContainer).put(((PathToken.Name) lastToken).name, value);
             } else if (lastContainer instanceof Map) {
-                ((Map<String, Object>) lastContainer).put(((PathToken.Field) lastToken).name, value);
+                ((Map<String, Object>) lastContainer).put(((PathToken.Name) lastToken).name, value);
             } else {
                 throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
                         container.getClass().getName() + "'");
@@ -384,11 +384,11 @@ public class JsonPath {
         if (hasNonNull(container)) {
             Object lastContainer = _autoCreateContainers(container);
             PathToken lastToken = peek();
-            if (lastToken instanceof PathToken.Field) {
+            if (lastToken instanceof PathToken.Name) {
                 if (lastContainer instanceof JsonObject) {
-                    ((JsonObject) lastContainer).remove(((PathToken.Field) lastToken).name);
+                    ((JsonObject) lastContainer).remove(((PathToken.Name) lastToken).name);
                 } else if (lastContainer instanceof Map) {
-                    ((Map<?, ?>) lastContainer).remove(((PathToken.Field) lastToken).name);
+                    ((Map<?, ?>) lastContainer).remove(((PathToken.Name) lastToken).name);
                 } else {
                     throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
                             container.getClass().getName() + "'");
@@ -415,11 +415,11 @@ public class JsonPath {
         for (int i = depth; i < tokens.size(); i++) {
             if (value ==  null) return;
             PathToken pt = tokens.get(i);
-            if (pt instanceof PathToken.Field) {
+            if (pt instanceof PathToken.Name) {
                 if (value instanceof JsonObject) {
-                    value = ((JsonObject) value).getObject(((PathToken.Field) pt).name);
+                    value = ((JsonObject) value).getObject(((PathToken.Name) pt).name);
                 } else if (value instanceof Map) {
-                    value = ((Map<?, ?>) value).get(((PathToken.Field) pt).name);
+                    value = ((Map<?, ?>) value).get(((PathToken.Name) pt).name);
                 } else {
                     return;
                 }
@@ -483,14 +483,14 @@ public class JsonPath {
     Object _autoCreateContainers(@NonNull Object container) {
         for (int i = 1; i < tokens.size() - 1; i++) { // traverse up to the second-last token
             PathToken pt = tokens.get(i);
-            if (pt instanceof PathToken.Field) {
-                String key = ((PathToken.Field) pt).name;
+            if (pt instanceof PathToken.Name) {
+                String key = ((PathToken.Name) pt).name;
                 if (container instanceof JsonObject) {
                     JsonObject jo = (JsonObject) container;
                     container = jo.getObject(key);
                     if (container == null) {
                         PathToken nextPt = tokens.get(i + 1);
-                        if (nextPt instanceof PathToken.Field) {
+                        if (nextPt instanceof PathToken.Name) {
                             container = jo.computeIfAbsentOrNull(key, k -> new JsonObject());
                         } else if (nextPt instanceof PathToken.Index) {
                             container = jo.computeIfAbsentOrNull(key, k -> new JsonArray());
@@ -514,7 +514,7 @@ public class JsonPath {
                     JsonArray ja = (JsonArray) container;
                     PathToken nextPt = tokens.get(i + 1);
                     if (idx == ja.size()) {
-                        if (nextPt instanceof PathToken.Field) {
+                        if (nextPt instanceof PathToken.Name) {
                             container = new JsonObject();
                             ja.add(container);
                         } else if (nextPt instanceof PathToken.Index) {
@@ -526,7 +526,7 @@ public class JsonPath {
                     } else if (ja.containsIndex(idx)) {
                         container = ja.getObject(idx);
                         if (container == null) {
-                            if (nextPt instanceof PathToken.Field) {
+                            if (nextPt instanceof PathToken.Name) {
                                 container = new JsonObject();
                                 ja.set(idx, container);
                             } else if (nextPt instanceof PathToken.Index) {

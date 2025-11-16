@@ -17,10 +17,6 @@ public class JacksonFacadeTest {
     @Test
     public void testSerDe1() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        SimpleModule module = new SimpleModule();
-        module.addDeserializer(Object.class, new JacksonDeserializer());
-        module.addSerializer(Object.class, new JacksonSerializer());
-        objectMapper.registerModule(module);
 
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Object obj1 = objectMapper.readValue(new StringReader(json1), Object.class);

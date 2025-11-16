@@ -10,7 +10,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -156,12 +155,10 @@ public class JsonObject extends JsonContainer {
     @Override
     public int size() {
         return (fieldMap == null ? 0 : fieldMap.size()) + (nodeMap == null ? 0 : nodeMap.size());
-//        return valueMap.size();
     }
 
     public boolean isEmpty() {
         return size() == 0;
-//        return valueMap.isEmpty();
     }
 
     public Set<String> keySet() {
@@ -178,14 +175,13 @@ public class JsonObject extends JsonContainer {
 
     public boolean containsKey(@NonNull String key) {
         return (fieldMap != null && fieldMap.containsKey(key)) || (nodeMap != null && nodeMap.containsKey(key));
-//        return valueMap.containsKey(key);
     }
 
     public boolean hasNonNull(@NonNull String key) {
         return getObject(key) != null;
     }
 
-    public void forEach(BiConsumer<String, Object> action) {
+    public void forEach(@NonNull BiConsumer<String, Object> action) {
         if (fieldMap != null) {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 action.accept(entry.getKey(), entry.getValue().invokeGetter(this));
@@ -221,73 +217,41 @@ public class JsonObject extends JsonContainer {
     /// JSON Facade
 
     public static JsonObject fromJson(@NonNull String input) {
-        return fromJson(new StringReader(input), FacadeFactory.getDefaultJsonFacade());
+        return fromJson(new StringReader(input));
     }
 
     public static JsonObject fromJson(@NonNull Reader input) {
-        return fromJson(input, FacadeFactory.getDefaultJsonFacade());
-    }
-
-    public static JsonObject fromJson(@NonNull String input, @NonNull JsonFacade jsonFacade) {
-        return fromJson(new StringReader(input), jsonFacade);
-    }
-
-    public static JsonObject fromJson(@NonNull Reader input, @NonNull JsonFacade jsonFacade) {
-        return jsonFacade.readObject(input);
+        return Sjf4j.readObjectFromJson(input, JsonObject.class);
     }
 
     public String toJson() {
-        return toJson(FacadeFactory.getDefaultJsonFacade());
-    }
-
-    public String toJson(@NonNull JsonFacade jsonFacade) {
         StringWriter output = new StringWriter();
-        toJson(output, jsonFacade);
+        toJson(output);
         return output.toString();
     }
 
     public void toJson(@NonNull Writer output) {
-        toJson(output, FacadeFactory.getDefaultJsonFacade());
-    }
-
-    public void toJson(@NonNull Writer output, @NonNull JsonFacade jsonFacade) {
-        jsonFacade.writeObject(output, this);
+        Sjf4j.writeNodeToJson(output, this);
     }
 
     ///  YAML Facade
 
     public static JsonObject fromYaml(@NonNull String input) {
-        return fromYaml(new StringReader(input), FacadeFactory.getDefaultYamlFacade());
+        return fromYaml(new StringReader(input));
     }
 
     public static JsonObject fromYaml(@NonNull Reader input) {
-        return fromYaml(input, FacadeFactory.getDefaultYamlFacade());
-    }
-
-    public static JsonObject fromYaml(@NonNull String input, @NonNull YamlFacade yamlFacade) {
-        return fromYaml(new StringReader(input), yamlFacade);
-    }
-
-    public static JsonObject fromYaml(@NonNull Reader input, @NonNull YamlFacade yamlFacade) {
-        return yamlFacade.readObject(input);
+        return Sjf4j.readObjectFromYaml(input);
     }
 
     public String toYaml() {
-        return toYaml(FacadeFactory.getDefaultYamlFacade());
-    }
-
-    public String toYaml(@NonNull YamlFacade yamlFacade) {
         StringWriter output = new StringWriter();
-        toYaml(output, yamlFacade);
+        toYaml(output);
         return output.toString();
     }
 
     public void toYaml(@NonNull Writer output) {
-        toYaml(output, FacadeFactory.getDefaultYamlFacade());
-    }
-
-    public void toYaml(@NonNull Writer output, @NonNull YamlFacade yamlFacade) {
-        yamlFacade.writeObject(output, this);
+        Sjf4j.writeNodeToYaml(output, this);
     }
 
     /// POJO
@@ -543,6 +507,7 @@ public class JsonObject extends JsonContainer {
         }
         if (nodeMap == null) {
             nodeMap = new LinkedHashMap<>();
+//            nodeMap = new HashMap<>();
         }
         nodeMap.put(key, object);
     }

@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 import java.math.BigInteger;
@@ -65,6 +66,7 @@ class JsonObjectTest {
         testEdgeCases();
     }
 
+    @Test
     public void testGetter1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20],\"sex\":false}},\"sex\":true}";
         JsonObject jo = JsonObject.fromJson(json1);
@@ -79,7 +81,10 @@ class JsonObjectTest {
         assertEquals(175.3f, jo.getFloat("height"));
         assertEquals(175L, jo.getLong("height"));
         assertEquals((short) 175, jo.getShort("height"));
-        assertEquals(Double.class, jo.getObject("height").getClass());
+
+//        assertEquals(Double.class, jo.getObject("height").getClass()); // BigDecimal in Fastjson2
+        assertInstanceOf(Number.class, jo.getObject("height"));
+
         assertThrows(JsonException.class, () -> jo.getString("height"));
         assertEquals("175.3", jo.getAsString("height"));
 

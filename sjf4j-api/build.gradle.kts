@@ -1,5 +1,6 @@
 plugins {
     java
+    id("me.champeau.jmh") version "0.7.2"
 }
 
 java {
@@ -34,9 +35,34 @@ dependencies {
     testImplementation("com.google.code.gson:gson:2.13.1")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("org.yaml:snakeyaml:2.5")
+
+    // JMH
+    jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
+    jmhImplementation("com.google.code.gson:gson:2.13.1")
+    jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
 }
 
 tasks.test {
     useJUnitPlatform()
-    jvmArgs("-Xshare:off")
+    jvmArgs(
+        "-Xshare:off"
+    )
 }
+
+
+// JMH
+jmh {
+    warmupIterations.set(3)
+    iterations.set(5)
+    fork.set(1)
+    timeOnIteration.set("500ms")
+    threads.set(1)
+//    jvmArgs.set(listOf(
+//        "-XX:+UnlockDiagnosticVMOptions",
+//        "-XX:+PrintInlining"
+//    ))
+}
+
+

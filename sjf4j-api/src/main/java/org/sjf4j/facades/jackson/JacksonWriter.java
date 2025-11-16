@@ -1,19 +1,18 @@
-package org.sjf4j.facades.fastjson2;
+package org.sjf4j.facades.jackson;
 
-import com.alibaba.fastjson2.JSONWriter;
+import com.fasterxml.jackson.core.JsonGenerator;
 import org.sjf4j.facades.FacadeWriter;
 
 import java.io.IOException;
-import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public class Fastjson2Writer implements FacadeWriter {
+public class JacksonWriter implements FacadeWriter {
 
-    private final JSONWriter writer;
+    private final JsonGenerator gen;
 
-    public Fastjson2Writer(JSONWriter writer) {
-        this.writer = writer;
+    public JacksonWriter(JsonGenerator gen) {
+        this.gen = gen;
     }
 
     @Override
@@ -28,74 +27,62 @@ public class Fastjson2Writer implements FacadeWriter {
 
     @Override
     public void startObject() throws IOException {
-        writer.startObject();
+        gen.writeStartObject();
     }
 
     @Override
     public void endObject() throws IOException {
-        writer.endObject();
+        gen.writeEndObject();
     }
 
     @Override
     public void startArray() throws IOException {
-        writer.startArray();
+        gen.writeStartArray();
     }
 
     @Override
     public void endArray() throws IOException {
-        writer.endArray();
+        gen.writeEndArray();
     }
 
     @Override
     public void writeName(String name) throws IOException {
-        writer.writeName(name);
-        writer.writeColon();
+        gen.writeFieldName(name);
     }
 
     @Override
     public void writeValue(String value) throws IOException {
-        writer.writeString(value);
+        gen.writeString(value);
     }
 
     @Override
     public void writeValue(Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer) {
-            writer.writeInt64(value.longValue());
+            gen.writeNumber(value.longValue());
         } else if (value instanceof Float || value instanceof Double) {
-            writer.writeDouble(value.doubleValue());
+            gen.writeNumber(value.doubleValue());
         } else if (value instanceof BigInteger) {
-            writer.writeBigInt(((BigInteger) value));
+            gen.writeNumber(((BigInteger) value));
         } else if (value instanceof BigDecimal) {
-            writer.writeDecimal(((BigDecimal) value));
+            gen.writeNumber(((BigDecimal) value));
         } else {
-            writer.writeInt64(value.longValue());
+            gen.writeNumber(value.longValue());
         }
     }
 
     @Override
     public void writeValue(Boolean value) throws IOException {
-        writer.writeBool(value);
+        gen.writeBoolean(value);
     }
 
     @Override
     public void writeNull() throws IOException {
-        writer.writeNull();
+        gen.writeNull();
     }
 
     @Override
     public void close() throws IOException {
-        writer.close();
-    }
-
-    // Hacking
-    public void flushTo(Writer out) throws IOException {
-        writer.flushTo(out);
-    }
-
-    // Very ugly!
-    @Override
-    public void writeComma() {
-        writer.writeComma();
+        gen.close();
     }
 
 }

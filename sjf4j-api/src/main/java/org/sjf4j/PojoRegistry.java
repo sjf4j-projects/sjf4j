@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.RecordUtil;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.TypeUtil;
@@ -36,24 +37,15 @@ public class PojoRegistry {
             return POJO_CACHE.get(type);
         }
 
-        Class<?> clazz = TypeUtil.getRawClass(type);
-        if (clazz.isArray()) {
-            log.warn("Skipping Array class: {}", clazz);
-            return null;
-        }
-        String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
-        if (pkg.startsWith("java.") || pkg.startsWith("javax.") || pkg.startsWith("jakarta.")) {
-            log.warn("Skipping Java system class: {}", clazz);
-            return null;
-        }
-
         if (RecordUtil.isRecordClass(type)) {
             //TODO
             throw new JsonException("Not support Record yet");
         }
 
         PojoInfo pi = analyzePojo(type);
-        POJO_CACHE.put(type, pi);
+        if (pi != null) {
+            POJO_CACHE.put(type, pi);
+        }
         return pi;
     }
 
@@ -73,15 +65,16 @@ public class PojoRegistry {
     }
 
     public static FieldInfo getFieldInfo(@NonNull Type type, String fieldName) {
-        PojoInfo pojoInfo = getPojoInfo(type);
-        if (pojoInfo != null) {
-            return pojoInfo.getFields().get(fieldName);
+        PojoInfo pi = register(type);
+        if (pi != null) {
+            return pi.getFields().get(fieldName);
         }
         return null;
     }
 
-    public static boolean isPojo(@NonNull Class<?> type) {
-        return register(type).isPojo();
+    public static boolean isPojo(@NonNull Type type) {
+        PojoInfo pi = register(type);
+        return pi != null && pi.isPojo();
     }
 
 
@@ -93,13 +86,12 @@ public class PojoRegistry {
         Class<?> clazz = TypeUtil.getRawClass(type);
         if (clazz.isArray()) {
             log.warn("Skipping Array class: {}", clazz);
-            return new PojoInfo(clazz, null, null);
+            return null;
         }
-
         String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
         if (pkg.startsWith("java.") || pkg.startsWith("javax.") || pkg.startsWith("jakarta.")) {
             log.warn("Skipping Java system class: {}", clazz);
-            return new PojoInfo(clazz, null, null);
+            return null;
         }
 
         // Constructor
@@ -127,7 +119,7 @@ public class PojoRegistry {
             log.warn("Missing no-args constructor of class {}", clazz.getName());
         }
         if (constructor == null) {
-            return new PojoInfo(clazz, null, null);
+            return null;
         }
 
         // Fields
@@ -172,6 +164,7 @@ public class PojoRegistry {
 
     @Getter @Setter
     public static class PojoInfo {
+        // Type may be better
         private Class<?> type;
         private MethodHandle constructor;
         private Map<String, FieldInfo> fields;
@@ -197,6 +190,17 @@ public class PojoRegistry {
             }
             if (!JsonObject.class.isAssignableFrom(type) && (fields == null || fields.isEmpty())) {
                 throw new JsonException("POJO " + type + " has no accessible fields and is not a JsonObject");
+            }
+        }
+
+        public Object newInstance() {
+            if (constructor == null) {
+                throw new JsonException("No-args constructor not found for POJO " + type);
+            }
+            try {
+                return constructor.invoke();
+            } catch (Throwable e) {
+                throw new JsonException("Failed to invoke constructor in POJO " + type, e);
             }
         }
 
@@ -231,14 +235,20 @@ public class PojoRegistry {
             if (setter == null) {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             }
+            if (value instanceof Number && type instanceof Class) {
+                Class<?> clazz = (Class<?>) type;
+                if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
+                        Number.class.isAssignableFrom(clazz)) {
+                    value = NumberUtil.numberAs((Number) value, clazz);
+                }
+            }
             try {
                 setter.invoke(receiver, value);
             } catch (Throwable e) {
-                throw new JsonException("Failed to invoke setter for field '" + name + "' of " + type +
-                        " with value " + (value == null ? "null" : value.getClass()), e);
+                throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +
+                        "' with value " + (value == null ? "null" : value.getClass()), e);
             }
         }
-
     }
 
 

@@ -1,60 +1,109 @@
 package org.sjf4j.facades.gson;
 
-
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
+import org.sjf4j.facades.FacadeReader;
 import org.sjf4j.util.NumberUtil;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 
-public class GsonReader {
+public class GsonReader implements FacadeReader {
 
-    public static Object readAny(JsonReader reader) throws IOException {
+    private final JsonReader reader;
+
+    public GsonReader(JsonReader reader) {
+        this.reader = reader;
+    }
+
+    @Override
+    public int peekTokenId() throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
-            case NULL:
-                reader.nextNull();
-                return null;
-            case STRING:
-                return reader.nextString();
-            case NUMBER:
-                return NumberUtil.stringToNumber(reader.nextString());
-            case BOOLEAN:
-                return reader.nextBoolean();
             case BEGIN_OBJECT:
-                return readObject(reader);
+                return ID_START_OBJECT;
+            case END_OBJECT:
+                return ID_END_OBJECT;
             case BEGIN_ARRAY:
-                return readArray(reader);
+                return ID_START_ARRAY;
+            case END_ARRAY:
+                return ID_END_ARRAY;
+            case STRING:
+                return ID_STRING;
+            case NUMBER:
+                return ID_NUMBER;
+            case BOOLEAN:
+                return ID_BOOLEAN;
+            case NULL:
+                return ID_NULL;
             default:
-                throw new IllegalStateException("Unexpected token: " + token);
+                return ID_UNKNOWN;
         }
     }
 
-    public static JsonObject readObject(JsonReader reader) throws IOException {
-        JsonObject jo = new JsonObject();
+    @Override
+    public void startDocument() {
+        // Nothing
+    }
+
+    @Override
+    public void endDocument() {
+        // Nothing
+    }
+
+    @Override
+    public void startObject() throws IOException {
         reader.beginObject();
-        while (reader.hasNext()) {
-            String name = reader.nextName();
-            Object value = readAny(reader);
-            jo.put(name, value);
-        }
+    }
+
+    @Override
+    public void endObject() throws IOException {
         reader.endObject();
-        return jo;
     }
 
-    public static JsonArray readArray(JsonReader reader) throws IOException {
-        JsonArray ja = new JsonArray();
+    @Override
+    public void startArray() throws IOException {
         reader.beginArray();
-        while (reader.hasNext()) {
-            Object value = readAny(reader);
-            ja.add(value);
-        }
-        reader.endArray();
-        return ja;
     }
 
+    @Override
+    public void endArray() throws IOException {
+        reader.endArray();
+    }
 
+    @Override
+    public String nextName() throws IOException {
+        return reader.nextName();
+    }
+
+    @Override
+    public String nextString() throws IOException {
+        return reader.nextString();
+    }
+
+    @Override
+    public Number nextNumber() throws IOException {
+//        return reader.nextDouble();
+        return NumberUtil.stringToNumber(reader.nextString());
+    }
+
+    @Override
+    public Boolean nextBoolean() throws IOException {
+        return reader.nextBoolean();
+    }
+
+    @Override
+    public void nextNull() throws IOException {
+        reader.nextNull();
+    }
+
+    @Override
+    public boolean hasNext() throws IOException {
+        int tid = peekTokenId();
+        return tid != ID_END_OBJECT && tid != ID_END_ARRAY;
+    }
+
+    @Override
+    public void close() throws IOException {
+        reader.close();
+    }
 }

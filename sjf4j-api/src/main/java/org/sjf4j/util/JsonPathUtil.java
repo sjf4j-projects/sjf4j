@@ -45,7 +45,7 @@ public class JsonPathUtil {
                 if (start == i)
                     throw new JsonException("Empty field name after '.' in path '" + expr + "' at pos " + i);
                 String name = expr.substring(start, i);
-                tokens.add(new PathToken.Field(name));
+                tokens.add(new PathToken.Name(name));
             }
             else if (c == '[') {
                 i++;
@@ -79,7 +79,7 @@ public class JsonPathUtil {
                     if (i >= expr.length() || expr.charAt(i) != ']')
                         throw new JsonException("Missing closing ']' after quoted field in path '" + expr + "' at pos " + i);
                     i++; // skip ]
-                    tokens.add(new PathToken.Field(sb.toString()));
+                    tokens.add(new PathToken.Name(sb.toString()));
                 }
                 else if (expr.charAt(i) == '*') {
                     // [*]

@@ -1,5 +1,6 @@
 package org.sjf4j.util;
 
+import lombok.NonNull;
 import org.sjf4j.PathToken;
 
 import java.lang.reflect.Array;
@@ -16,9 +17,12 @@ import java.util.Objects;
 
 public class TypeUtil {
 
+    public static String typeName(Object object) {
+        return (object == null) ? "[null]" : object.getClass().getName();
+    }
 
     public static boolean isArray(Type type) {
-        while (type instanceof TypeReference) {
+        if (type instanceof TypeReference) {
             type = ((TypeReference<?>) type).getType();
         }
         if (type == null) {
@@ -31,7 +35,7 @@ public class TypeUtil {
     }
 
     public static Class<?> getRawClass(Type type) {
-        while (type instanceof TypeReference) {
+        if (type instanceof TypeReference) {
             type = ((TypeReference<?>) type).getType();
         }
         if (type == null) {
@@ -62,20 +66,31 @@ public class TypeUtil {
 
     }
 
+    // Support: Map<String, Person>, Wrapper<Person>, Person[]
     public static Type getTypeArgument(Type type, int idx) {
-        while (type instanceof TypeReference) {
+        if (type instanceof TypeReference) {
             type = ((TypeReference<?>) type).getType();
         }
 
-        if (type == null || type instanceof Class) {
-            return null;
+        if (type == null) {
+            return Object.class;
+        } else if (type instanceof Class) {
+            Class<?> clazz = (Class<?>) type;
+            return clazz.isArray() ? clazz.getComponentType() : Object.class;
         } else if (type instanceof ParameterizedType) {
             Type[] typeArgs = ((ParameterizedType) type).getActualTypeArguments();
             if (idx >= 0 && idx < typeArgs.length) {
                 return typeArgs[idx];
             }
+        } else if (type instanceof GenericArrayType) {
+            GenericArrayType gat = (GenericArrayType) type;
+            Type componentType = gat.getGenericComponentType();
+            if (idx == 0) {
+                return componentType;
+            }
+            return Object.class;
         }
-        return null;
+        return Object.class;
     }
 
     public static Type getFieldType(Type type, Field field) {

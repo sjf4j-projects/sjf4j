@@ -1,19 +1,11 @@
 package org.sjf4j.facades;
 
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
 
-import java.io.Reader;
-import java.io.Writer;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import org.sjf4j.facades.jackson.JacksonReader;
+import org.sjf4j.facades.jackson.JacksonWriter;
 
-public interface JsonFacade {
-
-    JsonObject readObject(Reader input);
-
-    JsonArray readArray(Reader input);
-
-    void writeObject(Writer output, JsonObject jo);
-
-    void writeArray(Writer output, JsonArray ja);
-
+public interface JsonFacade<R extends FacadeReader, W extends FacadeWriter> extends StreamingFacade<R, W> {
+    // Nothing
 }

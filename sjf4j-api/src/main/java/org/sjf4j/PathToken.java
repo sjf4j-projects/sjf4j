@@ -8,9 +8,9 @@ public abstract class PathToken {
         @Override public String toString() { return "$"; }
     }
 
-    public static class Field extends PathToken {
+    public static class Name extends PathToken {
         public final String name;
-        public Field(@NonNull String name) { this.name = name; }
+        public Name(@NonNull String name) { this.name = name; }
 
         private String stringInPath;
         @Override public String toString() {

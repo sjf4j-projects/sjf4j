@@ -19,7 +19,7 @@ public class JsonPointerUtil {
             if (name.matches("\\d+")) {
                 tokens.add(new PathToken.Index(Integer.parseInt(name)));
             } else {
-                tokens.add(new PathToken.Field(name));
+                tokens.add(new PathToken.Name(name));
             }
         }
         return tokens;
@@ -34,8 +34,8 @@ public class JsonPointerUtil {
             } else if (token instanceof PathToken.Index) {
                 sb.append(((PathToken.Index) token).index);
                 sb.append("/");
-            } else if (token instanceof PathToken.Field) {
-                String name = ((PathToken.Field) token).name
+            } else if (token instanceof PathToken.Name) {
+                String name = ((PathToken.Name) token).name
                         .replace("~", "~0")
                         .replace("/", "~1");
                 sb.append(name);

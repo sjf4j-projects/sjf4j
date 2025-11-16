@@ -1,10 +1,20 @@
 package org.sjf4j.facades.snake;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.facades.FacadeReader;
+import org.sjf4j.facades.FacadeWriter;
 import org.sjf4j.facades.YamlFacade;
+import org.sjf4j.facades.gson.GsonReader;
+import org.sjf4j.facades.gson.GsonWriter;
+import org.sjf4j.facades.jackson.JacksonStreamingUtil;
+import org.sjf4j.util.StreamingUtil;
+import org.sjf4j.util.TypeReference;
+import org.sjf4j.util.TypeUtil;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
@@ -17,11 +27,12 @@ import org.yaml.snakeyaml.parser.Parser;
 import org.yaml.snakeyaml.parser.ParserImpl;
 import org.yaml.snakeyaml.reader.StreamReader;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 
-public class SnakeYamlFacade implements YamlFacade {
+public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
 
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
@@ -37,35 +48,71 @@ public class SnakeYamlFacade implements YamlFacade {
     }
 
     @Override
-    public Object readNode(@NonNull Reader input, Type type) {
-        Object node;
-        try {
-            Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
-            Event ev;
-            if (!((ev = parser.getEvent()) instanceof StreamStartEvent)) throw new IllegalStateException("Malformed YAML");
-            if (!((ev = parser.getEvent()) instanceof DocumentStartEvent)) throw new IllegalStateException("Malformed YAML");
-            node = SnakeParser.readAny(parser, type);
-            if (!((ev = parser.getEvent()) instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
-            if (!((ev = parser.getEvent()) instanceof StreamEndEvent)) throw new IllegalStateException("Malformed YAML");
-        } catch (Exception e) {
-            throw new JsonException("Failed to deserialize YAML into JSON-Node: " + e.getMessage(), e);
-        }
-        return node;
+    public SnakeReader createReader(Reader input) {
+        Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
+        return new SnakeReader(parser);
     }
 
     @Override
-    public void writeNode(@NonNull Writer output, Object node) {
+    public SnakeWriter createWriter(Writer output) throws IOException {
+        Emitter emitter = new Emitter(output, dumperOptions);
+        return new SnakeWriter(emitter);
+    }
+
+
+    /// API
+
+    public Object readNode(@NonNull Reader input, Type type) {
         try {
-            Emitter emitter = new Emitter(output, dumperOptions);
-            emitter.emit(new StreamStartEvent(null, null));
-            emitter.emit(new DocumentStartEvent(null, null, false, null, null));
-            SnakeEmitter.writeAny(emitter, node);
-            emitter.emit(new DocumentEndEvent(null, null, false));
-            emitter.emit(new StreamEndEvent(null, null));
-        } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonObject to YAML: " + e.getMessage(), e);
+            Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
+            SnakeStreamingUtil.startDocument(parser);
+            Object node = SnakeStreamingUtil.readNode(parser, type);
+            SnakeStreamingUtil.endDocument(parser);
+            return node;
+        } catch (IOException e) {
+            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
         }
     }
+
+    public void writeNode(Writer output, Object node) {
+        try {
+            Emitter emitter = new Emitter(output, dumperOptions);
+            SnakeStreamingUtil.startDocument(emitter);
+            SnakeStreamingUtil.writeNode(emitter, node);
+            SnakeStreamingUtil.endDocument(emitter);
+        } catch (IOException e) {
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
+        }
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public <T> T readObject(@NonNull Reader input, @NonNull Class<T> clazz) {
+        try {
+            return (T) readNode(input, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public  <T> T readObject(@NonNull Reader input, @NonNull TypeReference<T> type) {
+        try {
+            return (T) readNode(input, type);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
+        }
+    }
+
+    public JsonObject readObject(@NonNull Reader input) {
+        try {
+            return readObject(input, JsonObject.class);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of type 'JsonObject'", e);
+        }
+    }
+
+
 
 
 }

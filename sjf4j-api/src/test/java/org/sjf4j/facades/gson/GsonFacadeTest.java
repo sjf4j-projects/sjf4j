@@ -18,10 +18,10 @@ public class GsonFacadeTest {
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        JsonFacade facade = new GsonJsonFacade(new Gson());
+        GsonJsonFacade facade = new GsonJsonFacade(new Gson());
         JsonObject jo1 = facade.readObject(new StringReader(json1));
         StringWriter sw = new StringWriter();
-        facade.writeObject(sw, jo1);
+        facade.writeNode(sw, jo1);
         String res1 = sw.toString();
         log.info("res1: {}", res1);
         assertEquals(json1, res1);

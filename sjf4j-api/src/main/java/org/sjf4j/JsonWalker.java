@@ -32,12 +32,12 @@ public class JsonWalker {
             consumer.accept(path, null);
         } else if (container instanceof JsonObject) {
             ((JsonObject) container).forEach((k, v) -> {
-                JsonPath newPath = path.copy().push(new PathToken.Field(k));
+                JsonPath newPath = path.copy().push(new PathToken.Name(k));
                 walkValuesRecursively(v, newPath, consumer);
             });
         } else if (container instanceof Map) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
-                JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey().toString()));
+                JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey().toString()));
                 Object node = entry.getValue();
                 walkValuesRecursively(node, newPath, consumer);
             }
@@ -70,13 +70,13 @@ public class JsonWalker {
                                                           @NonNull BiConsumer<JsonPath, Object> consumer) {
         if (container instanceof JsonObject) {
             ((JsonObject) container).forEach((k, v) -> {
-                JsonPath newPath = path.copy().push(new PathToken.Field(k));
+                JsonPath newPath = path.copy().push(new PathToken.Name(k));
                 walkContainersBottomUpRecursively(v, newPath, consumer);
             });
             consumer.accept(path, container);
         } else if (container instanceof Map) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
-                JsonPath newPath = path.copy().push(new PathToken.Field(entry.getKey().toString()));
+                JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey().toString()));
                 Object node = entry.getValue();
                 walkContainersBottomUpRecursively(node, newPath, consumer);
             }

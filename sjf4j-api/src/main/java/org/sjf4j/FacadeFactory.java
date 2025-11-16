@@ -15,13 +15,13 @@ import org.sjf4j.facades.snake.SnakeYamlFacade;
 public class FacadeFactory {
 
     @Setter
-    private static volatile JsonFacade defaultJsonFacade;
+    private static volatile JsonFacade<?, ?> defaultJsonFacade;
     private static boolean fastjson2Present;
     private static boolean jacksonPresent;
     private static boolean gsonPresent;
 
     @Setter
-    private static volatile YamlFacade defaultYamlFacade;
+    private static volatile YamlFacade<?, ?> defaultYamlFacade;
     private static boolean snakePresent;
 
     static {
@@ -57,7 +57,8 @@ public class FacadeFactory {
 
     }
 
-    public static JsonFacade getDefaultJsonFacade() {
+
+    public static JsonFacade<?, ?> getDefaultJsonFacade() {
         if (defaultJsonFacade == null) {
             if (jacksonPresent) {
                 usingJacksonAsDefault();
@@ -69,7 +70,7 @@ public class FacadeFactory {
                 throw new JsonException("No supported JSON library found: Please add Jackson/Gson/Fastjson2... to the classpath");
             }
         }
-        return defaultJsonFacade;
+        return (JsonFacade<?, ?>) defaultJsonFacade;
     }
 
     public static void usingJacksonAsDefault() {
@@ -85,7 +86,7 @@ public class FacadeFactory {
     }
 
 
-    public static YamlFacade getDefaultYamlFacade() {
+    public static YamlFacade<?, ?> getDefaultYamlFacade() {
         if (defaultYamlFacade == null) {
             if (snakePresent) {
                 usingSnakeAsDefault();
@@ -99,6 +100,7 @@ public class FacadeFactory {
     public static void usingSnakeAsDefault() {
         defaultYamlFacade = new SnakeYamlFacade();
     }
+
 }
 
 

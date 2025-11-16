@@ -1,30 +1,29 @@
 package org.sjf4j.converters;
 
-import org.sjf4j.ObjectConverter;
+import org.sjf4j.NodeConverter;
 
-import java.lang.reflect.Type;
 import java.time.OffsetDateTime;
 
-public class OffsetDateTimeConverter implements ObjectConverter<OffsetDateTime, String> {
+public class OffsetDateTimeConverter implements NodeConverter<OffsetDateTime, String> {
 
 
     @Override
-    public Class<OffsetDateTime> getObjectType() {
+    public Class<OffsetDateTime> getWrapType() {
         return OffsetDateTime.class;
     }
 
     @Override
-    public Class<String> getNodeType() {
+    public Class<String> getPureType() {
         return String.class;
     }
 
     @Override
-    public String object2Node(OffsetDateTime object) {
+    public String wrap2Pure(OffsetDateTime object) {
         return object.toString();
     }
 
     @Override
-    public OffsetDateTime node2Object(String  value) {
+    public OffsetDateTime pure2Wrap(String  value) {
         return OffsetDateTime.parse(value);
     }
 

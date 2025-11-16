@@ -8,6 +8,6 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
-public @interface Jo {
-    Property[] value();
+public @interface Jojo {
+    Field[] value();
 }

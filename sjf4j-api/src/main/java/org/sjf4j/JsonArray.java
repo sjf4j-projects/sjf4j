@@ -145,73 +145,41 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// JSON Facade
 
     public static JsonArray fromJson(@NonNull String input) {
-        return fromJson(new StringReader(input), FacadeFactory.getDefaultJsonFacade());
+        return fromJson(new StringReader(input));
     }
 
     public static JsonArray fromJson(@NonNull Reader input) {
-        return fromJson(input, FacadeFactory.getDefaultJsonFacade());
-    }
-
-    public static JsonArray fromJson(@NonNull String input, @NonNull JsonFacade jsonFacade) {
-        return fromJson(new StringReader(input), jsonFacade);
-    }
-
-    public static JsonArray fromJson(@NonNull Reader input, @NonNull JsonFacade jsonFacade) {
-        return jsonFacade.readArray(input);
+        return Sjf4j.readObjectFromJson(input, JsonArray.class);
     }
 
     public String toJson() {
-        return toJson(FacadeFactory.getDefaultJsonFacade());
-    }
-
-    public String toJson(@NonNull JsonFacade jsonFacade) {
         StringWriter output = new StringWriter();
-        toJson(output, jsonFacade);
+        toJson(output);
         return output.toString();
     }
 
     public void toJson(@NonNull Writer output) {
-        toJson(output, FacadeFactory.getDefaultJsonFacade());
-    }
-
-    public void toJson(@NonNull Writer output, @NonNull JsonFacade jsonFacade) {
-        jsonFacade.writeArray(output, this);
+        Sjf4j.writeNodeToJson(output, this);
     }
 
     /// YAML Facade
 
     public static JsonArray fromYaml(@NonNull String input) {
-        return fromYaml(new StringReader(input), FacadeFactory.getDefaultYamlFacade());
+        return fromYaml(new StringReader(input));
     }
 
     public static JsonArray fromYaml(@NonNull Reader input) {
-        return fromYaml(input, FacadeFactory.getDefaultYamlFacade());
-    }
-
-    public static JsonArray fromYaml(@NonNull String input, @NonNull YamlFacade yamlFacade) {
-        return fromYaml(new StringReader(input), yamlFacade);
-    }
-
-    public static JsonArray fromYaml(@NonNull Reader input, @NonNull YamlFacade yamlFacade) {
-        return yamlFacade.readArray(input);
+        return Sjf4j.readObjectFromYaml(input, JsonArray.class);
     }
 
     public String toYaml() {
-        return toYaml(FacadeFactory.getDefaultYamlFacade());
-    }
-
-    public String toYaml(@NonNull YamlFacade yamlFacade) {
         StringWriter output = new StringWriter();
-        toYaml(output, yamlFacade);
+        toYaml(output);
         return output.toString();
     }
 
     public void toYaml(@NonNull Writer output) {
-        toYaml(output, FacadeFactory.getDefaultYamlFacade());
-    }
-
-    public void toYaml(@NonNull Writer output, @NonNull YamlFacade yamlFacade) {
-        yamlFacade.writeArray(output, this);
+        Sjf4j.writeNodeToYaml(output, this);
     }
 
     /// POJO

@@ -4,9 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeType;
-import org.sjf4j.ObjectConverter;
+import org.sjf4j.NodeConverter;
 import org.sjf4j.ConverterRegistry;
+import org.sjf4j.PojoRegistry;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 import org.yaml.snakeyaml.events.AliasEvent;
@@ -19,6 +19,7 @@ import org.yaml.snakeyaml.events.SequenceStartEvent;
 import org.yaml.snakeyaml.parser.Parser;
 
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -44,9 +45,9 @@ public class SnakeParser {
     @SuppressWarnings("unchecked")
     public static Object readObject(Parser parser, Type type) {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
-        ObjectConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
+        NodeConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
         if (converter != null ) {
-            if (converter.getNodeType() == JsonObject.class) {
+            if (converter.getPureType() == JsonObject.class) {
                 parser.getEvent(); // consume start
                 JsonObject jo = new JsonObject();
                 while (!(parser.peekEvent() instanceof MappingEndEvent)) {
@@ -55,11 +56,13 @@ public class SnakeParser {
                     jo.put(key, value);
                 }
                 parser.getEvent(); // consume end
-                return ((ObjectConverter<Object, Object>) converter).node2Object(jo);
+                return ((NodeConverter<Object, Object>) converter).pure2Wrap(jo);
             } else {
                 throw new JsonException("");
             }
-        } else if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
+        }
+
+        if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
             parser.getEvent(); // consume start
             JsonObject jo = new JsonObject();
             while (!(parser.peekEvent() instanceof MappingEndEvent)) {
@@ -69,27 +72,64 @@ public class SnakeParser {
             }
             parser.getEvent(); // consume end
             return jo;
-        } else if (rawClazz == Map.class) {
-//            parser.getEvent(); // consume start
-//            Class<?> subClazz = TypeUtil.getTypeArgument(type, 1);
-//            while (!(parser.peekEvent() instanceof MappingEndEvent)) {
-//                String key = ((ScalarEvent) parser.getEvent()).getValue();
-//                Object value = readAny(parser, null);
-//                jo.put(key, value);
-//            }
-//            parser.getEvent(); // consume end
-//            return jo;
         }
 
-        parser.getEvent(); // consume start
-        JsonObject jo = new JsonObject();
-        while (!(parser.peekEvent() instanceof MappingEndEvent)) {
-            String key = ((ScalarEvent) parser.getEvent()).getValue();
-            Object value = readAny(parser, type);
-            jo.put(key, value);
+        if (rawClazz == Map.class) {
+            Type keyType = TypeUtil.getTypeArgument(type, 0);
+            Type valueType = TypeUtil.getTypeArgument(type, 1);
+            if (keyType != null && keyType != String.class) {
+                throw new JsonException("Invalid Map key type: expected String but got " + keyType +
+                        " for type " + type);
+            }
+            parser.getEvent(); // consume start
+            Map<String, Object> map = new HashMap<>();
+            while (!(parser.peekEvent() instanceof MappingEndEvent)) {
+                String key = ((ScalarEvent) parser.getEvent()).getValue();
+                Object value = readAny(parser, valueType);
+                map.put(key, value);
+            }
+            parser.getEvent(); // consume end
+            return map;
         }
-        parser.getEvent(); // consume end
-        return jo;
+
+        if (JsonObject.class.isAssignableFrom(rawClazz)) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(type);
+            JsonObject pjo = (JsonObject) pi.newInstance();
+            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            parser.getEvent(); // consume start
+            while (!(parser.peekEvent() instanceof MappingEndEvent)) {
+                String key = ((ScalarEvent) parser.getEvent()).getValue();
+                PojoRegistry.FieldInfo fi = fields.get(key);
+                if (fi != null) {
+                    Object vv = readAny(parser, fi.getType());
+                    fi.invokeSetter(pjo, vv);
+                } else {
+                    Object vv = readAny(parser, Object.class);
+                    pjo.put(key, vv);
+                }
+            }
+            parser.getEvent(); // consume end
+            return pjo;
+        }
+
+        if (PojoRegistry.isPojo(type)) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(type);
+            Object pojo = pi.newInstance();
+            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            parser.getEvent(); // consume start
+            while (!(parser.peekEvent() instanceof MappingEndEvent)) {
+                String key = ((ScalarEvent) parser.getEvent()).getValue();
+                PojoRegistry.FieldInfo fi = fields.get(key);
+                if (fi != null) {
+                    Object vv = readAny(parser, fi.getType());
+                    fi.invokeSetter(pojo, vv);
+                }
+            }
+            parser.getEvent(); // consume end
+            return pojo;
+        }
+
+        throw new JsonException("Unexpected object " + type);
     }
 
     public static JsonArray readArray(Parser parser, Type type) {

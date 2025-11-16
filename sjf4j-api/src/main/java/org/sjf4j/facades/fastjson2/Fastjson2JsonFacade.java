@@ -3,15 +3,18 @@ package org.sjf4j.facades.fastjson2;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import lombok.NonNull;
-import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
-import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.JsonObject;
+import org.sjf4j.facades.JsonFacade;
+import org.sjf4j.util.TypeReference;
+import org.sjf4j.util.TypeUtil;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Type;
 
-public class Fastjson2JsonFacade implements JsonFacade {
+public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
 
     private final JSONReader.Feature[] readerFeatures;
     private final JSONWriter.Feature[] writerFeatures;
@@ -35,58 +38,63 @@ public class Fastjson2JsonFacade implements JsonFacade {
     }
 
     @Override
+    public Fastjson2Reader createReader(Reader input) {
+        JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
+        return new Fastjson2Reader(reader);
+    }
+
+    @Override
+    public Fastjson2Writer createWriter(Writer output) {
+        JSONWriter writer = JSONWriter.of(writerFeatures);
+        return new Fastjson2Writer(writer);
+    }
+
+
+    public Object readNode(@NonNull Reader input, Type type) {
+        try {
+            JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
+            return Fastjson2StreamingUtil.readNode(reader, type);
+        } catch (IOException e) {
+            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
+        }
+    }
+
+    public void writeNode(@NonNull Writer output, Object node) {
+        try {
+            JSONWriter writer = JSONWriter.of(writerFeatures);
+            Fastjson2StreamingUtil.startDocument(writer);
+            Fastjson2StreamingUtil.writeNode(writer, node);
+            Fastjson2StreamingUtil.endDocument(writer);
+            writer.flushTo(output);
+        } catch (IOException e) {
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "'", e);
+        }
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public <T> T readObject(@NonNull Reader input, @NonNull Class<T> clazz) {
+        try {
+            return (T) readNode(input, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public  <T> T readObject(@NonNull Reader input, @NonNull TypeReference<T> type) {
+        try {
+            return (T) readNode(input, type);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
+        }
+    }
+
     public JsonObject readObject(@NonNull Reader input) {
-        Object value;
         try {
-            JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
-            value = Fastjson2Reader.readAny(reader);
+            return readObject(input, JsonObject.class);
         } catch (Exception e) {
-            throw new JsonException("Failed to deserialize JSON into JsonObject: " + e.getMessage(), e);
-        }
-
-        if (value instanceof JsonObject) {
-            return (JsonObject) value;
-        } else {
-            throw new JsonException("Expected JsonObject but got '" +
-                    (value == null ? "[null]" : value.getClass().getName()) + "'");
-        }
-    }
-
-    @Override
-    public JsonArray readArray(@NonNull Reader input) {
-        Object value;
-        try {
-            JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
-            value = Fastjson2Reader.readAny(reader);
-        } catch (Exception e) {
-            throw new JsonException("Failed to deserialize JSON into JsonArray: " + e.getMessage(), e);
-        }
-
-        if (value instanceof JsonArray) {
-            return (JsonArray) value;
-        } else {
-            throw new JsonException("Expected JsonArray but got '" +
-                    (value == null ? "[null]" : value.getClass().getName()) + "'");
-        }
-    }
-
-    @Override
-    public void writeObject(@NonNull Writer output, JsonObject jo) {
-        try (JSONWriter writer = JSONWriter.of(writerFeatures)) {
-            Fastjson2Writer.writeAny(writer, jo);
-            output.write(writer.toString());
-        } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonObject to JSON: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public void writeArray(@NonNull Writer output, JsonArray ja) {
-        try (JSONWriter writer = JSONWriter.of(writerFeatures)) {
-            Fastjson2Writer.writeAny(writer, ja);
-            output.write(writer.toString());
-        } catch (Exception e) {
-            throw new JsonException("Failed to serialize JsonArray to JSON: " + e.getMessage(), e);
+            throw new JsonException("Failed to read streaming into node of type 'JsonObject'", e);
         }
     }
 

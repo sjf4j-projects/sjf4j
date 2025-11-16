@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Target({})
 @Retention(RetentionPolicy.SOURCE)
-public @interface Property {
+public @interface Field {
     String name();
     Class<?> type();
     boolean getter() default true;
