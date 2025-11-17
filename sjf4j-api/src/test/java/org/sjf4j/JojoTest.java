@@ -203,7 +203,7 @@ public class JojoTest {
         p.setInfo(info);
 
         String json = p.toJson();
-        Person parsed = Sjf4j.readObjectFromJson(new StringReader(json), Person.class);
+        Person parsed = Sjf4j.fromJson(new StringReader(json), Person.class);
 
         assertEquals(p.getName(), parsed.getName());
         assertEquals(p.getInfo().getString("lang"), parsed.getInfo().getString("lang"));

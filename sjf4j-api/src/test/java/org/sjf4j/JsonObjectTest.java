@@ -22,15 +22,15 @@ class JsonObjectTest {
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    FacadeFactory.usingJacksonAsDefault();
+                    JsonConfig.useJacksonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    FacadeFactory.usingGsonAsDefault();
+                    JsonConfig.useGsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    FacadeFactory.usingFastjson2AsDefault();
+                    JsonConfig.useFastjson2AsGlobal();
                     testAll();
                 })
         );

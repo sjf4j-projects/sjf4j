@@ -131,7 +131,7 @@ public class JsonBenchmark {
     @Benchmark
     public void jackson_sjf4j_jojo1(Blackhole bh) throws IOException {
         for (int i = 0; i < 1000; i++) {
-            Object v = Sjf4j.readObjectFromJson(new StringReader(JSON_DATA));
+            Object v = Sjf4j.fromJson(new StringReader(JSON_DATA));
             bh.consume(v);
         }
     }

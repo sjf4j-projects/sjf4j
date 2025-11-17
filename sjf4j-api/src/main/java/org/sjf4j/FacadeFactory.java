@@ -3,7 +3,6 @@ package org.sjf4j;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import lombok.Setter;
 import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
@@ -14,14 +13,9 @@ import org.sjf4j.facades.snake.SnakeYamlFacade;
 
 public class FacadeFactory {
 
-    @Setter
-    private static volatile JsonFacade<?, ?> defaultJsonFacade;
     private static boolean fastjson2Present;
     private static boolean jacksonPresent;
     private static boolean gsonPresent;
-
-    @Setter
-    private static volatile YamlFacade<?, ?> defaultYamlFacade;
     private static boolean snakePresent;
 
     static {
@@ -54,51 +48,44 @@ public class FacadeFactory {
         } catch (Throwable e) {
             snakePresent = false;
         }
-
     }
-
 
     public static JsonFacade<?, ?> getDefaultJsonFacade() {
-        if (defaultJsonFacade == null) {
-            if (jacksonPresent) {
-                usingJacksonAsDefault();
-            } else if (gsonPresent) {
-                usingGsonAsDefault();
-            } else if (fastjson2Present) {
-                usingFastjson2AsDefault();
-            } else {
-                throw new JsonException("No supported JSON library found: Please add Jackson/Gson/Fastjson2... to the classpath");
-            }
+        if (jacksonPresent) {
+            return createJacksonFacade();
+        } else if (gsonPresent) {
+            return createGsonFacade();
+        } else if (fastjson2Present) {
+            return createFastjson2Facade();
+        } else {
+            throw new JsonException("No supported JSON library found: Please add Jackson/Gson/Fastjson2... to the classpath");
         }
-        return (JsonFacade<?, ?>) defaultJsonFacade;
     }
 
-    public static void usingJacksonAsDefault() {
-        defaultJsonFacade = new JacksonJsonFacade(new ObjectMapper());
+    public static JsonFacade<?, ?> createJacksonFacade() {
+        return new JacksonJsonFacade(new ObjectMapper());
     }
 
-    public static void usingGsonAsDefault() {
-        defaultJsonFacade = new GsonJsonFacade(new Gson());
+    public static JsonFacade<?, ?> createGsonFacade() {
+        return new GsonJsonFacade(new Gson());
     }
 
-    public static void usingFastjson2AsDefault() {
-        defaultJsonFacade = new Fastjson2JsonFacade();
+    public static JsonFacade<?, ?> createFastjson2Facade() {
+        return new Fastjson2JsonFacade();
     }
+
 
 
     public static YamlFacade<?, ?> getDefaultYamlFacade() {
-        if (defaultYamlFacade == null) {
-            if (snakePresent) {
-                usingSnakeAsDefault();
-            } else {
-                throw new JsonException("No supported YAML library found: Please add SnakeYaml/... to the classpath");
-            }
+        if (snakePresent) {
+            return createSnakeFacade();
+        } else {
+            throw new JsonException("No supported YAML library found: Please add SnakeYaml/... to the classpath");
         }
-        return defaultYamlFacade;
     }
 
-    public static void usingSnakeAsDefault() {
-        defaultYamlFacade = new SnakeYamlFacade();
+    public static YamlFacade<?, ?> createSnakeFacade() {
+        return new SnakeYamlFacade();
     }
 
 }

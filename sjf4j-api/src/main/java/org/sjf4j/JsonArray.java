@@ -1,8 +1,6 @@
 package org.sjf4j;
 
 import lombok.NonNull;
-import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.util.ObjectUtil;
 import org.sjf4j.util.ValueUtil;
 
@@ -14,7 +12,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -28,11 +25,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     protected List<Object> valueList;
 
     public JsonArray() {
-        valueList = new ArrayList<Object>();
-    }
-
-    public JsonArray(@NonNull JsonArray target) {
-        this.valueList = target.valueList;
+        super();
     }
 
     public JsonArray(Object... objects) {
@@ -82,37 +75,41 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @Override
     public int hashCode() {
-        return valueList.hashCode();
+        return valueList == null ? 0 : valueList.hashCode();
     }
 
     @Override
     public boolean equals(Object target) {
+        if (target == this) return true;
+        if (target == null) return false;
         if (target instanceof JsonArray) {
-            return valueList.equals(((JsonArray) target).valueList);
+            return Objects.equals(valueList, ((JsonArray) target).valueList);
         }
         return false;
     }
 
     @Override
     public int size() {
-        return valueList.size();
+        return valueList == null ? 0 : valueList.size();
     }
 
     public boolean isEmpty() {
-        return valueList.isEmpty();
+        return valueList == null || valueList.isEmpty();
     }
 
     private List<Object> toList() {
-        return Collections.unmodifiableList(valueList);
+        return valueList == null ? Collections.emptyList() : Collections.unmodifiableList(valueList);
     }
 
     public void forEach(Consumer<Object> action) {
-        for (int i = 0; i < valueList.size(); i++) {
-            action.accept(valueList.get(i));
+        if (valueList == null) return;
+        for (Object object : valueList) {
+            action.accept(object);
         }
     }
 
     public void forEach(BiConsumer<Integer, Object> action) {
+        if (valueList == null) return;
         for (int i = 0; i < valueList.size(); i++) {
             action.accept(i, valueList.get(i));
         }
@@ -125,15 +122,16 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     private int posIndex(int idx) {
-        return idx < 0 ? valueList.size() + idx : idx;
+        return idx < 0 ? size() + idx : idx;
     }
 
     public boolean containsIndex(int idx) {
         idx = posIndex(idx);
-        return idx >= 0 && idx < valueList.size();
+        return idx >= 0 && idx < size();
     }
 
     public boolean contains(Object value) {
+        if (valueList == null) return false;
         for (Object o : valueList) {
             if (Objects.equals(o, value)) {
                 return true;
@@ -149,17 +147,11 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public static JsonArray fromJson(@NonNull Reader input) {
-        return Sjf4j.readObjectFromJson(input, JsonArray.class);
+        return Sjf4j.fromJson(input, JsonArray.class);
     }
 
     public String toJson() {
-        StringWriter output = new StringWriter();
-        toJson(output);
-        return output.toString();
-    }
-
-    public void toJson(@NonNull Writer output) {
-        Sjf4j.writeNodeToJson(output, this);
+        return Sjf4j.toJson(this);
     }
 
     /// YAML Facade
@@ -169,7 +161,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public static JsonArray fromYaml(@NonNull Reader input) {
-        return Sjf4j.readObjectFromYaml(input, JsonArray.class);
+        return Sjf4j.fromYaml(input, JsonArray.class);
     }
 
     public String toYaml() {
@@ -198,7 +190,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     public Object getObject(int idx) {
         int pidx = posIndex(idx);
-        if (pidx < 0 || pidx >= valueList.size()) {
+        if (pidx < 0 || pidx >= size()) {
 //            throw new JsonException("Index " + idx + " out of bounds " + size);
             return null;
         } else {
@@ -411,6 +403,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public void add(Object object) {
         object = ObjectUtil.wrapObject(object);
         if (ObjectUtil.isValidOrConvertible(object)) {
+            if (valueList == null) valueList = JsonConfig.global().listSupplier.create();
             valueList.add(object);
         } else {
             throw new JsonException("Not a valid JSON value or a JSON-convertible object");
@@ -419,12 +412,13 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     public void add(int idx, Object object) {
         int pidx = posIndex(idx);
-        if (pidx < 0 || pidx > valueList.size()) {
-            throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + valueList.size());
+        if (pidx < 0 || pidx > size()) {
+            throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
         }
 
         object = ObjectUtil.wrapObject(object);
         if (ObjectUtil.isValidOrConvertible(object)) {
+            if (valueList == null) valueList = JsonConfig.global().listSupplier.create();
             valueList.add(pidx, object);
         } else {
             throw new JsonException("Not a valid JSON value or a JSON-convertible object at index " + idx);
@@ -433,12 +427,13 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     public void set(int idx, Object object) {
         int pidx = posIndex(idx);
-        if (pidx < 0 || pidx >= valueList.size()) {
-            throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + valueList.size());
+        if (pidx < 0 || pidx >= size()) {
+            throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
         }
 
         object = ObjectUtil.wrapObject(object);
         if (ObjectUtil.isValidOrConvertible(object)) {
+            if (valueList == null) valueList = JsonConfig.global().listSupplier.create();
             valueList.set(pidx, object);
         } else {
             throw new JsonException("Not a valid JSON value or a JSON-convertible object at index " + idx);
@@ -497,10 +492,12 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public void remove(int idx) {
+        if (valueList == null) return;
         valueList.remove(posIndex(idx));
     }
 
     public void clear() {
+        if (valueList == null) return;
         valueList.clear();
     }
 

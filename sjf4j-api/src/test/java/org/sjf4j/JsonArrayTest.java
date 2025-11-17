@@ -21,15 +21,15 @@ class JsonArrayTest {
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    FacadeFactory.usingJacksonAsDefault();
+                    JsonConfig.useJacksonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    FacadeFactory.usingGsonAsDefault();
+                    JsonConfig.useGsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    FacadeFactory.usingFastjson2AsDefault();
+                    JsonConfig.useFastjson2AsGlobal();
                     testAll();
                 })
         );
@@ -155,7 +155,6 @@ class JsonArrayTest {
 
     }
 
-    @Test
     public void testArray2() {
         int[] ii = {1,2,3};
         JsonArray ja1 = new JsonArray(ii);
@@ -200,6 +199,7 @@ class JsonArrayTest {
         assertEquals("[2,3,[{\"a\":{\"b\":\"yes\"}}]]", ja1.toJson());
     }
 
+    @Test
     public void testYaml1() {
         String json1 = "[\"number\",5,null,[\"gaga\",\"haha\"],45,{\"aa\":\"bb\"}]";
         JsonArray ja1 = JsonArray.fromJson(json1);
@@ -212,7 +212,6 @@ class JsonArrayTest {
 
     // ========== 补充测试用例 ==========
 
-    @Test
     public void testHashCodeEquals() {
         JsonArray ja1 = JsonArray.fromJson("[1,2,\"test\"]");
         JsonArray ja2 = JsonArray.fromJson("[1,2,\"test\"]");
@@ -225,7 +224,6 @@ class JsonArrayTest {
         assertEquals(ja1, ja1); // 自反性
     }
 
-    @Test
     public void testNegativeIndex() {
         JsonArray ja = new JsonArray("a", "b", "c", "d");
         
@@ -249,7 +247,6 @@ class JsonArrayTest {
         assertEquals(1.0, ja2.getDouble(-4));
     }
 
-    @Test
     public void testSetAndAdd() {
         JsonArray ja = new JsonArray("a", "b", "c");
         
@@ -280,7 +277,6 @@ class JsonArrayTest {
         assertEquals("end", ja.getString(5));
     }
 
-    @Test
     public void testContainsIndex() {
         JsonArray ja = new JsonArray("a", "b", "c");
         
@@ -296,7 +292,6 @@ class JsonArrayTest {
         assertFalse(ja.containsIndex(-4));
     }
 
-    @Test
     public void testForEach() {
         JsonArray ja = new JsonArray("a", "b", "c");
         List<Object> collected = new java.util.ArrayList<>();
@@ -318,7 +313,6 @@ class JsonArrayTest {
         assertEquals("2:c", indices.get(2));
     }
 
-    @Test
     public void testEmptyArray() {
         JsonArray empty = new JsonArray();
         
@@ -334,7 +328,6 @@ class JsonArrayTest {
         assertTrue(empty.isEmpty());
     }
 
-    @Test
     public void testMerge() {
         JsonArray ja1 = JsonArray.fromJson("[1,2,{\"a\":\"b\"}]");
         JsonArray ja2 = JsonArray.fromJson("[3,4,{\"a\":\"c\",\"d\":\"e\"}]");
@@ -355,7 +348,6 @@ class JsonArrayTest {
         assertEquals(2, ja3.getJsonObject(0).getInteger("y"));
     }
 
-    @Test
     public void testToPojo() {
         JsonArray ja = new JsonArray(1, 2, "test", true);
         List<Object> list = ja.toPojo(List.class);
@@ -368,7 +360,6 @@ class JsonArrayTest {
 
     }
 
-    @Test
     public void testPrimitiveArrays() {
         // 测试boolean数组
         JsonArray ja1 = new JsonArray(true, false, true);
@@ -397,7 +388,6 @@ class JsonArrayTest {
         assertEquals(1.1f, ja5.getFloat(0), 0.001f);
     }
 
-    @Test
     public void testEdgeCases() {
         // 测试null值
         JsonArray ja = new JsonArray();

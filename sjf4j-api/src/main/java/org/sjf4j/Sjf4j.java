@@ -9,10 +9,11 @@ import org.sjf4j.facades.gson.GsonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonJsonFacade;
 import org.sjf4j.facades.snake.SnakeYamlFacade;
 import org.sjf4j.util.TypeReference;
-import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Type;
 
@@ -21,69 +22,94 @@ public class Sjf4j {
     /// JSON
 
     public static Object readNodeFromJson(@NonNull Reader input, Type type) throws IOException {
-        JsonFacade<?, ?> facade = FacadeFactory.getDefaultJsonFacade();
-        return facade.readNode(input, type);
-//        if (facade instanceof JacksonJsonFacade) {
-//            JacksonJsonFacade jacksonFacade = (JacksonJsonFacade) facade;
-//            return jacksonFacade.readNode(input, type);
-//        }
-//
-//        if (facade instanceof GsonJsonFacade) {
-//            GsonJsonFacade gsonFacade = (GsonJsonFacade) facade;
-//            return gsonFacade.readNode(input, type);
-//        }
-//
-//        if (facade instanceof Fastjson2JsonFacade) {
-//            Fastjson2JsonFacade fastFacade = (Fastjson2JsonFacade) facade;
-//            return fastFacade.readNode(input, type);
-//        }
-//        throw new JsonException("No JsonFacade found '" + facade.getClass() + "'");
+        JsonFacade<?, ?> facade = JsonConfig.global().jsonFacade;
+        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_DESIGNED) {
+            return facade.readNode(input, type);
+        } else {
+            if (facade instanceof JacksonJsonFacade) {
+                JacksonJsonFacade jacksonFacade = (JacksonJsonFacade) facade;
+                return jacksonFacade.readNode(input, type);
+            }
+            if (facade instanceof GsonJsonFacade) {
+                GsonJsonFacade gsonFacade = (GsonJsonFacade) facade;
+                return gsonFacade.readNode(input, type);
+            }
+            if (facade instanceof Fastjson2JsonFacade) {
+                Fastjson2JsonFacade fastFacade = (Fastjson2JsonFacade) facade;
+                return fastFacade.readNode(input, type);
+            }
+            throw new JsonException("No JsonFacade found '" + facade.getClass() + "'");
+        }
+    }
+
+    public static void writeNodeToJson(@NonNull Writer output, Object node) throws IOException {
+        JsonFacade<?, ?> facade = JsonConfig.global().jsonFacade;
+        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_DESIGNED) {
+            facade.writeNode(output, node);
+        } else {
+            if (facade instanceof JacksonJsonFacade) {
+                JacksonJsonFacade jacksonFacade = (JacksonJsonFacade) facade;
+                jacksonFacade.writeNode(output, node);
+                return;
+            }
+            if (facade instanceof GsonJsonFacade) {
+                GsonJsonFacade gsonFacade = (GsonJsonFacade) facade;
+                gsonFacade.writeNode(output, node);
+                return;
+            }
+            if (facade instanceof Fastjson2JsonFacade) {
+                Fastjson2JsonFacade fastFacade = (Fastjson2JsonFacade) facade;
+                fastFacade.writeNode(output, node);
+                return;
+            }
+            throw new JsonException("No JsonFacade found '" + facade.getClass() + "'");
+        }
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T readObjectFromJson(@NonNull Reader input, @NonNull Class<T> clazz) {
+    public static <T> T fromJson(@NonNull Reader input, @NonNull Class<T> clazz) {
         try {
             return (T) readNodeFromJson(input, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
+            throw new JsonException("Failed to read JSON streaming into node of type '" + clazz + "'", e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    public static  <T> T readObjectFromJson(@NonNull Reader input, @NonNull TypeReference<T> type) {
+    public static <T> T fromJson(@NonNull Reader input, @NonNull TypeReference<T> type) {
         try {
             return (T) readNodeFromJson(input, type);
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
+            throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
     }
 
-    public static JsonObject readObjectFromJson(@NonNull Reader input) {
-        return readObjectFromJson(input, JsonObject.class);
+    public static JsonObject fromJson(@NonNull Reader input) {
+        return fromJson(input, JsonObject.class);
     }
 
-    public static void writeNodeToJson(@NonNull Writer output, Object node) {
-        JsonFacade<?, ?> facade = FacadeFactory.getDefaultJsonFacade();
-        if (facade instanceof JacksonJsonFacade) {
-            JacksonJsonFacade jacksonFacade = (JacksonJsonFacade) facade;
-            jacksonFacade.writeNode(output, node);
-            return;
-        }
-
-        if (facade instanceof GsonJsonFacade) {
-            GsonJsonFacade gsonFacade = (GsonJsonFacade) facade;
-            gsonFacade.writeNode(output, node);
-            return;
-        }
-
-        if (facade instanceof Fastjson2JsonFacade) {
-            Fastjson2JsonFacade fastFacade = (Fastjson2JsonFacade) facade;
-            fastFacade.writeNode(output, node);
-            return;
-        }
-
-        throw new JsonException("No JsonFacade found");
+    public static <T> T fromJson(@NonNull String input, @NonNull Class<T> clazz) {
+        return (T) fromJson(new StringReader(input), clazz);
     }
+
+    public static <T> T fromJson(@NonNull String input, @NonNull TypeReference<T> type) {
+        return (T) fromJson(new StringReader(input), type);
+    }
+
+    public static JsonObject fromJson(@NonNull String input) {
+        return fromJson(new StringReader(input), JsonObject.class);
+    }
+
+    public static String toJson(@NonNull Object node) {
+        try {
+            StringWriter sw = new StringWriter();
+            writeNodeToJson(sw, node);
+            return sw.toString();
+        } catch (Exception e) {
+            throw new JsonException("Failed to write node of type '" + node.getClass() + "' into JSON String", e);
+        }
+    }
+
 
     /// YAML
 
@@ -96,28 +122,6 @@ public class Sjf4j {
         throw new JsonException("No YamlFacade found");
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T readObjectFromYaml(@NonNull Reader input, @NonNull Class<T> clazz) {
-        try {
-            return (T) readNodeFromYaml(input, clazz);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static  <T> T readObjectFromYaml(@NonNull Reader input, @NonNull TypeReference<T> type) {
-        try {
-            return (T) readNodeFromYaml(input, type);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    public static JsonObject readObjectFromYaml(@NonNull Reader input) {
-        return readObjectFromYaml(input, JsonObject.class);
-    }
-
     public static void writeNodeToYaml(@NonNull Writer output, Object node) {
         YamlFacade<?, ?> facade = FacadeFactory.getDefaultYamlFacade();
         if (facade instanceof SnakeYamlFacade) {
@@ -128,7 +132,50 @@ public class Sjf4j {
         throw new JsonException("No YamlFacade found");
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T fromYaml(@NonNull Reader input, @NonNull Class<T> clazz) {
+        try {
+            return (T) readNodeFromYaml(input, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read YAML streaming into node of type '" + clazz + "'", e);
+        }
+    }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T fromYaml(@NonNull Reader input, @NonNull TypeReference<T> type) {
+        try {
+            return (T) readNodeFromYaml(input, type);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read YAML streaming into node of type '" + type + "'", e);
+        }
+    }
+
+    public static JsonObject fromYaml(@NonNull Reader input) {
+        return fromYaml(input, JsonObject.class);
+    }
+
+    public static <T> T fromYaml(@NonNull String input, @NonNull Class<T> clazz) {
+        return fromYaml(new StringReader(input), clazz);
+    }
+
+    public static <T> T fromYaml(@NonNull String input, @NonNull TypeReference<T> type) {
+        return fromYaml(new StringReader(input), type);
+    }
+
+    public static JsonObject fromYaml(@NonNull String input) {
+        return fromYaml(new StringReader(input));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static String toYaml(@NonNull Object node) {
+        try {
+            StringWriter sw = new StringWriter();
+            writeNodeToYaml(sw, node);
+            return sw.toString();
+        } catch (Exception e) {
+            throw new JsonException("Failed to write node of type '" + node.getClass() + "' into JSON String", e);
+        }
+    }
 
 
 }

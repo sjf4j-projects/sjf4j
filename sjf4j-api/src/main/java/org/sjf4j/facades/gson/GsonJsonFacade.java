@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import lombok.Getter;
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
@@ -26,6 +27,7 @@ import java.lang.reflect.Type;
 
 public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
 
+    @Getter
     private final Gson gson;
 
     public GsonJsonFacade(@NonNull Gson gson) {

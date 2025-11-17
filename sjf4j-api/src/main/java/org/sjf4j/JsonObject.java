@@ -1,8 +1,6 @@
 package org.sjf4j;
 
 import lombok.NonNull;
-import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.util.ObjectUtil;
 import org.sjf4j.util.ValueUtil;
 
@@ -31,10 +29,6 @@ public class JsonObject extends JsonContainer {
             fieldMap = PojoRegistry.registerOrElseThrow(this.getClass()).getFields();
         }
     }
-
-//    public JsonObject(@NonNull JsonObject target) {
-//        this.valueMap = target.valueMap;
-//    }
 
     public JsonObject(@NonNull Map<?, ?> map) {
         this();
@@ -221,17 +215,11 @@ public class JsonObject extends JsonContainer {
     }
 
     public static JsonObject fromJson(@NonNull Reader input) {
-        return Sjf4j.readObjectFromJson(input, JsonObject.class);
+        return Sjf4j.fromJson(input, JsonObject.class);
     }
 
     public String toJson() {
-        StringWriter output = new StringWriter();
-        toJson(output);
-        return output.toString();
-    }
-
-    public void toJson(@NonNull Writer output) {
-        Sjf4j.writeNodeToJson(output, this);
+        return Sjf4j.toJson(this);
     }
 
     ///  YAML Facade
@@ -241,7 +229,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public static JsonObject fromYaml(@NonNull Reader input) {
-        return Sjf4j.readObjectFromYaml(input);
+        return Sjf4j.fromYaml(input);
     }
 
     public String toYaml() {
@@ -506,8 +494,7 @@ public class JsonObject extends JsonContainer {
             }
         }
         if (nodeMap == null) {
-            nodeMap = new LinkedHashMap<>();
-//            nodeMap = new HashMap<>();
+            nodeMap = JsonConfig.global().mapSupplier.create();
         }
         nodeMap.put(key, object);
     }

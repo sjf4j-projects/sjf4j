@@ -120,21 +120,21 @@ public class CompareReadTest {
         long start, end;
 
         for (long i = 0; i < 100_000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
         }
         for (long i = 0; i < 100_000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Person.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Person.class);
         }
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
         }
         end = System.nanoTime();
         log.info("Jackson-Sjf4j-jojo1: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Person.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Person.class);
         }
         end = System.nanoTime();
         log.info("Jackson-Sjf4j-pojo1: {}", (end - start) / 1000_000);
@@ -281,18 +281,18 @@ public class CompareReadTest {
         log.info("Fastjson2-Uni-jojo1: {}", (end - start) / 1000_000);
 
         for (long i = 0; i < 1000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
         }
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
         }
         end = System.nanoTime();
         log.info("Jackson-Sjf4j-jojo1: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Person.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Person.class);
         }
         end = System.nanoTime();
         log.info("Jackson-Sjf4j-pojo1: {}", (end - start) / 1000_000);
@@ -390,18 +390,18 @@ public class CompareReadTest {
 
 
         for (long i = 0; i < 1000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
         }
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
         }
         end = System.nanoTime();
         log.info("Jackson-Sjf4j-jojo1: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
-            Sjf4j.readObjectFromJson(new StringReader(JSON_DATA), Person.class);
+            Sjf4j.fromJson(new StringReader(JSON_DATA), Person.class);
         }
         end = System.nanoTime();
         log.info("Jackson-Sjf4j-pojo1: {}", (end - start) / 1000_000);

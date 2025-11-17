@@ -123,7 +123,7 @@ public class PojoRegistry {
         }
 
         // Fields
-        Map<String, FieldInfo> fields = new LinkedHashMap<>();
+        Map<String, FieldInfo> fields = JsonConfig.global().mapSupplier.create();
         for (Class<?> c = clazz; c != null && c != Object.class && c != JsonObject.class; c = c.getSuperclass()) {
             for (Field field : c.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers())) { continue; }
