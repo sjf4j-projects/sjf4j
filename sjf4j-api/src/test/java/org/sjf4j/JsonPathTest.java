@@ -28,7 +28,7 @@ public class JsonPathTest {
         String s2 = "$.a[*].b['c'].d";
         JsonPath path2 = JsonPath.compile(s2);
         log.info("path2: {}", path2);
-        assertEquals("$.a[*].b.c.d", path2.toString());
+        assertEquals("$.a[*].b.c.d", path2.toExpr());
 
         String s3 = "$['x.y'].a['[['][-1].*[*]";
         JsonPath path3 = JsonPath.compile(s3);
@@ -46,12 +46,12 @@ public class JsonPathTest {
         String s1 = "/a/b/0/c";
         JsonPath path1 = JsonPath.compile(s1);
         log.info("path1: {}", path1);
-        assertEquals("$.a.b[0].c", path1.toString());
+        assertEquals("$.a.b[0].c", path1.toExpr());
 
         String s2 = "/a~0/0/b~1'/c~/d e";
         JsonPath path2 = JsonPath.compile(s2);
         log.info("path2: {}", path2);
-        assertEquals("$['a~'][0]['b/\\'']['c~']['d e']", path2.toString());
+        assertEquals("$['a~'][0]['b/\\'']['c~']['d e']", path2.toExpr());
     }
 
     @Test

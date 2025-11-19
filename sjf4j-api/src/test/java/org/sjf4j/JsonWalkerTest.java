@@ -30,8 +30,8 @@ public class JsonWalkerTest {
         
         log.info("Paths: {}", paths);
         log.info("Values: {}", values);
-        
-        assertTrue(paths.size() > 0);
+
+        assertFalse(paths.isEmpty());
         assertFalse(paths.contains("$"));
         assertTrue(paths.contains("$.a"));
         assertFalse(paths.contains("$.b"));
