@@ -83,5 +83,11 @@ public class TypeUtilTest {
         System.out.println("WrapperTwo.value2 → " + TypeUtil.getFieldType(t3, wf2)); // List<? extends Number>
     }
 
+    @Test
+    public void testTypeArgument1() {
+        Type type = new TypeReference<List<Float>>() {}.getType();
+        Type argtype = TypeUtil.resolveTypeArgument(type, List.class, 0);
+        log.info("argtype={}", argtype);
+    }
 
 }

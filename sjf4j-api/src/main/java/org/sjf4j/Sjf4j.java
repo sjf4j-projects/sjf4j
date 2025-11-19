@@ -16,14 +16,15 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Type;
+import java.util.Properties;
 
 public class Sjf4j {
 
     /// JSON
 
-    public static Object readNodeFromJson(@NonNull Reader input, Type type) throws IOException {
+    public static Object readNodeFromJson(@NonNull Reader input, Type type) {
         JsonFacade<?, ?> facade = JsonConfig.global().jsonFacade;
-        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_DESIGNED) {
+        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_GENERAL) {
             return facade.readNode(input, type);
         } else {
             if (facade instanceof JacksonJsonFacade) {
@@ -42,9 +43,9 @@ public class Sjf4j {
         }
     }
 
-    public static void writeNodeToJson(@NonNull Writer output, Object node) throws IOException {
+    public static void writeNodeToJson(@NonNull Writer output, Object node) {
         JsonFacade<?, ?> facade = JsonConfig.global().jsonFacade;
-        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_DESIGNED) {
+        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_GENERAL) {
             facade.writeNode(output, node);
         } else {
             if (facade instanceof JacksonJsonFacade) {
@@ -68,17 +69,13 @@ public class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(@NonNull Reader input, @NonNull Class<T> clazz) {
-        try {
-            return (T) readNodeFromJson(input, clazz);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read JSON streaming into node of type '" + clazz + "'", e);
-        }
+        return (T) readNodeFromJson(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(@NonNull Reader input, @NonNull TypeReference<T> type) {
         try {
-            return (T) readNodeFromJson(input, type);
+            return (T) readNodeFromJson(input, type.getType());
         } catch (Exception e) {
             throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
@@ -114,7 +111,7 @@ public class Sjf4j {
     /// YAML
 
     public static Object readNodeFromYaml(@NonNull Reader input, Type type) {
-        YamlFacade<?, ?> facade = FacadeFactory.getDefaultYamlFacade();
+        YamlFacade<?, ?> facade = JsonConfig.global().yamlFacade;
         if (facade instanceof SnakeYamlFacade) {
             SnakeYamlFacade snakeFacade = (SnakeYamlFacade) facade;
             return snakeFacade.readNode(input, type);
@@ -123,7 +120,7 @@ public class Sjf4j {
     }
 
     public static void writeNodeToYaml(@NonNull Writer output, Object node) {
-        YamlFacade<?, ?> facade = FacadeFactory.getDefaultYamlFacade();
+        YamlFacade<?, ?> facade = JsonConfig.global().yamlFacade;
         if (facade instanceof SnakeYamlFacade) {
             SnakeYamlFacade snakeFacade = (SnakeYamlFacade) facade;
             snakeFacade.writeNode(output, node);
@@ -144,7 +141,7 @@ public class Sjf4j {
     @SuppressWarnings("unchecked")
     public static <T> T fromYaml(@NonNull Reader input, @NonNull TypeReference<T> type) {
         try {
-            return (T) readNodeFromYaml(input, type);
+            return (T) readNodeFromYaml(input, type.getType());
         } catch (Exception e) {
             throw new JsonException("Failed to read YAML streaming into node of type '" + type + "'", e);
         }
@@ -177,5 +174,32 @@ public class Sjf4j {
         }
     }
 
+
+    /// Properties
+
+    public static JsonObject fromProperties(@NonNull Properties props) {
+        return JsonConfig.global().propertiesFacade.readNode(props);
+    }
+
+
+    public static void toProperties(@NonNull Properties props, JsonObject node) {
+        JsonConfig.global().propertiesFacade.writeNode(props, node);
+    }
+
+    /// POJO
+
+    public static Object readNodeFromPojo(@NonNull Object pojo, Type type) {
+        return JsonConfig.global().objectFacade.readNode(pojo, type);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T fromPojo(@NonNull Object pojo, Class<T> clazz) {
+        return (T) JsonConfig.global().objectFacade.readNode(pojo, clazz);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T fromPojo(@NonNull Object pojo, TypeReference<T> type) {
+        return (T) JsonConfig.global().objectFacade.readNode(pojo, type.getType());
+    }
 
 }

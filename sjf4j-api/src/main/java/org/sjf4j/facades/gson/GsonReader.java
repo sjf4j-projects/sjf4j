@@ -2,6 +2,7 @@ package org.sjf4j.facades.gson;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import lombok.NonNull;
 import org.sjf4j.facades.FacadeReader;
 import org.sjf4j.util.NumberUtil;
 
@@ -11,7 +12,7 @@ public class GsonReader implements FacadeReader {
 
     private final JsonReader reader;
 
-    public GsonReader(JsonReader reader) {
+    public GsonReader(@NonNull JsonReader reader) {
         this.reader = reader;
     }
 

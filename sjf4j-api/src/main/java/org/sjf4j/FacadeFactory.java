@@ -4,10 +4,14 @@ package org.sjf4j;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import org.sjf4j.facades.JsonFacade;
+import org.sjf4j.facades.ObjectFacade;
+import org.sjf4j.facades.PropertiesFacade;
 import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facades.gson.GsonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonJsonFacade;
+import org.sjf4j.facades.simple.SimpleObjectFacade;
+import org.sjf4j.facades.simple.SimplePropertiesFacade;
 import org.sjf4j.facades.snake.SnakeYamlFacade;
 
 
@@ -87,6 +91,16 @@ public class FacadeFactory {
     public static YamlFacade<?, ?> createSnakeFacade() {
         return new SnakeYamlFacade();
     }
+
+
+    public static PropertiesFacade getDefaultPropertiesFacade() {
+        return new SimplePropertiesFacade();
+    }
+
+    public static ObjectFacade getDefaultObjectFacade() {
+        return new SimpleObjectFacade();
+    }
+
 
 }
 

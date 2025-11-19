@@ -61,6 +61,13 @@ public class JsonWalker {
                 Object node = Array.get(container, i);
                 walkValuesRecursively(node, newPath, consumer);
             }
+        } else if (PojoRegistry.isPojo(container.getClass())) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey()));
+                Object node = entry.getValue().invokeGetter(container);
+                walkValuesRecursively(node, newPath, consumer);
+            }
         } else {
             consumer.accept(path, container);
         }
@@ -68,7 +75,9 @@ public class JsonWalker {
 
     private static void walkContainersBottomUpRecursively(Object container, @NonNull JsonPath path,
                                                           @NonNull BiConsumer<JsonPath, Object> consumer) {
-        if (container instanceof JsonObject) {
+        if (container == null) {
+            return;
+        } else if (container instanceof JsonObject) {
             ((JsonObject) container).forEach((k, v) -> {
                 JsonPath newPath = path.copy().push(new PathToken.Name(k));
                 walkContainersBottomUpRecursively(v, newPath, consumer);
@@ -97,10 +106,18 @@ public class JsonWalker {
                 walkContainersBottomUpRecursively(node, newPath, consumer);
             }
             consumer.accept(path, container);
-        } else if (container != null && container.getClass().isArray()) {
+        } else if (container.getClass().isArray()) {
             for (int i = 0; i < Array.getLength(container); i++) {
                 JsonPath newPath = path.copy().push(new PathToken.Index(i));
                 Object node = Array.get(container, i);
+                walkContainersBottomUpRecursively(node, newPath, consumer);
+            }
+            consumer.accept(path, container);
+        } else if (PojoRegistry.isPojo(container.getClass())) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey()));
+                Object node = entry.getValue().invokeGetter(container);
                 walkContainersBottomUpRecursively(node, newPath, consumer);
             }
             consumer.accept(path, container);

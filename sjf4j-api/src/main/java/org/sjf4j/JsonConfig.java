@@ -1,9 +1,9 @@
 package org.sjf4j;
 
-import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import org.sjf4j.facades.JsonFacade;
+import org.sjf4j.facades.ObjectFacade;
+import org.sjf4j.facades.PropertiesFacade;
 import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
@@ -11,8 +11,9 @@ import org.sjf4j.supplier.MapSupplier;
 public final class JsonConfig {
 
     public final JsonFacade<?, ?> jsonFacade;
-
     public final YamlFacade<?, ?> yamlFacade;
+    public final PropertiesFacade propertiesFacade;
+    public final ObjectFacade objectFacade;
 
     public final FacadeMode facadeMode;
 
@@ -23,6 +24,8 @@ public final class JsonConfig {
     private JsonConfig(Builder builder) {
         this.jsonFacade = builder.jsonFacade;
         this.yamlFacade = builder.yamlFacade;
+        this.propertiesFacade = builder.propertiesFacade;
+        this.objectFacade = builder.objectFacade;
         this.mapSupplier = builder.mapSupplier;
         this.listSupplier = builder.listSupplier;
         this.facadeMode = builder.facadeMode;
@@ -53,8 +56,9 @@ public final class JsonConfig {
     /// FacadeMode
 
     public static enum FacadeMode {
-        STREAMING_DESIGNED,
-        STREAMING_ALL_IN_ONE
+        STREAMING_GENERAL,
+        STREAMING_SPECIFIC,
+        FAST_UNSAFE
     }
 
     /// Builder
@@ -62,22 +66,26 @@ public final class JsonConfig {
     public static final class Builder {
 
         private JsonFacade<?, ?> jsonFacade = FacadeFactory.getDefaultJsonFacade();
-
         private YamlFacade<?, ?> yamlFacade = FacadeFactory.getDefaultYamlFacade();
-
-        private FacadeMode facadeMode = FacadeMode.STREAMING_DESIGNED;
+        private PropertiesFacade propertiesFacade = FacadeFactory.getDefaultPropertiesFacade();
+        private ObjectFacade objectFacade = FacadeFactory.getDefaultObjectFacade();
 
         private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
-
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
+
+        private FacadeMode facadeMode = FacadeMode.STREAMING_GENERAL;
+
 
         public Builder() {}
 
         public Builder(@NonNull JsonConfig config) {
             this.jsonFacade = config.jsonFacade;
             this.yamlFacade = config.yamlFacade;
+            this.propertiesFacade = config.propertiesFacade;
+            this.objectFacade = config.objectFacade;
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
+            this.facadeMode = config.facadeMode;
         }
 
         public JsonConfig build() {
@@ -92,8 +100,12 @@ public final class JsonConfig {
             this.yamlFacade = yamlFacade;
             return this;
         }
-        public Builder facadeMode(@NonNull FacadeMode facadeMode) {
-            this.facadeMode = facadeMode;
+        public Builder propertiesFacade(@NonNull PropertiesFacade propertiesFacade) {
+            this.propertiesFacade = propertiesFacade;
+            return this;
+        }
+        public Builder objectFacade(@NonNull ObjectFacade objectFacade) {
+            this.objectFacade = objectFacade;
             return this;
         }
         public Builder mapSupplier(@NonNull MapSupplier mapSupplier) {
@@ -102,6 +114,10 @@ public final class JsonConfig {
         }
         public Builder listSupplier(@NonNull ListSupplier listSupplier) {
             this.listSupplier = listSupplier;
+            return this;
+        }
+        public Builder facadeMode(@NonNull FacadeMode facadeMode) {
+            this.facadeMode = facadeMode;
             return this;
         }
 

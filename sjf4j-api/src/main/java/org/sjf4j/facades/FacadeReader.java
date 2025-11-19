@@ -6,6 +6,19 @@ import java.io.IOException;
 
 public interface FacadeReader extends Closeable {
 
+    enum Token {
+        UNKNOWN,
+        START_OBJECT,
+        END_OBJECT,
+        START_ARRAY,
+        END_ARRAY,
+        NAME,
+        STRING,
+        NUMBER,
+        BOOLEAN,
+        NULL
+    }
+
     int ID_UNKNOWN = -1;
     int ID_START_OBJECT = 1;
     int ID_END_OBJECT = 2;

@@ -6,7 +6,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 @Getter
-public abstract class TypeReference<T> implements Type {
+public abstract class TypeReference<T> {
     private final Type type;
 
     protected TypeReference() {

@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.facades.simple;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.facades.ObjectFacade;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
-public class ObjectUtilTest {
+public class ObjectFacadeTest {
 
     @Data
     @NoArgsConstructor
@@ -42,6 +43,7 @@ public class ObjectUtilTest {
         private Map<String, Role> roles;
     }
 
+    private ObjectFacade objectFacade = new SimpleObjectFacade();
 
     @Test
     public void testObject2Value1() {
@@ -58,7 +60,7 @@ public class ObjectUtilTest {
         lily.setRoles(Collections.singletonMap("kk", new Role("Mom", 90.0f)));
 
         // object2Value
-        Object value = ObjectUtil.object2Value(lily);
+        Object value = objectFacade.readNode(lily, null);
         log.info("value type={}, value={}", value.getClass(), value);
         assertEquals(JsonObject.class, value.getClass());
         assertEquals(25, ((JsonObject) value).getInteger("age"));
@@ -67,20 +69,20 @@ public class ObjectUtilTest {
         assertEquals(90f, ((JsonObject) value).getFloatByPath("$.roles.kk.percentage"));
 
         // value2Object
-        Object object = ObjectUtil.value2Object(value, User.class);
+        Object object = objectFacade.readNode(value, User.class);
         log.info("object type={}, object={}", object.getClass(), object);
     }
 
     @Test
     public void testValue2Object2() {
-        Object o1 = ObjectUtil.value2Object(new JsonObject("percentage", 0), Role.class);
+        Object o1 = objectFacade.readNode(new JsonObject("percentage", 0), Role.class);
         log.info("o1 type={}, o1={}", o1.getClass(), o1);
         assertEquals(Role.class, o1.getClass());
     }
 
     @Test
     public void testValue2Object3() {
-        Object o1 = ObjectUtil.value2Object(5.55, long.class);
+        Object o1 = objectFacade.readNode(5.55, long.class);
         log.info("o1 type={}, o1={}", o1.getClass(), o1);
     }
 
@@ -103,13 +105,13 @@ public class ObjectUtilTest {
         jo.put("vip", true);
         jo.put("score", 99.5);
 
-        BasicTypes pojo = (BasicTypes) ObjectUtil.value2Object(jo, BasicTypes.class);
+        BasicTypes pojo = (BasicTypes) objectFacade.readNode(jo, BasicTypes.class);
         assertEquals("Alice", pojo.name);
         assertEquals(18, pojo.age);
         assertTrue(pojo.vip);
         assertEquals(99.5, pojo.score);
 
-        JsonObject back = (JsonObject) ObjectUtil.object2Value(pojo);
+        JsonObject back = (JsonObject) objectFacade.readNode(pojo, JsonObject.class);
         assertEquals("Alice", back.get("name"));
     }
 
@@ -133,12 +135,12 @@ public class ObjectUtilTest {
         jo.put("name", "Bob");
         jo.put("address", addr);
 
-        Person p = (Person) ObjectUtil.value2Object(jo, Person.class);
+        Person p = (Person) objectFacade.readNode(jo, Person.class);
         assertEquals("Bob", p.name);
         assertEquals("New York", p.address.city);
         assertEquals("5th Ave", p.address.street);
 
-        JsonObject back = (JsonObject) ObjectUtil.object2Value(p);
+        JsonObject back = (JsonObject) objectFacade.readNode(p, null);
         assertEquals("Bob", back.getString("name"));
     }
 
@@ -156,12 +158,12 @@ public class ObjectUtilTest {
         jo.put("members", Arrays.asList("Tom", "Jerry"));
         jo.put("scores", new int[]{10, 20, 30});
 
-        Team t = (Team) ObjectUtil.value2Object(jo, Team.class);
+        Team t = (Team) objectFacade.readNode(jo, Team.class);
         assertEquals("Rangers", t.teamName);
         assertEquals(Arrays.asList("Tom", "Jerry"), t.members);
         assertArrayEquals(new int[]{10, 20, 30}, t.scores);
 
-        JsonObject back = (JsonObject) ObjectUtil.object2Value(t);
+        JsonObject back = (JsonObject) objectFacade.readNode(t, Object.class);
         assertEquals("Rangers", back.get("teamName"));
     }
 
@@ -183,12 +185,12 @@ public class ObjectUtilTest {
         list.add(new JsonObject("name", "Ben", "age", 12));
         jo.put("students", list);
 
-        ClassRoom c = (ClassRoom) ObjectUtil.value2Object(jo, ClassRoom.class);
+        ClassRoom c = (ClassRoom) objectFacade.readNode(jo, ClassRoom.class);
         log.info("c={}", c);
         assertEquals(2, c.students.size());
         assertEquals("Ann", c.students.get(0).name);
 
-        JsonObject back = (JsonObject) ObjectUtil.object2Value(c);
+        JsonObject back = (JsonObject) objectFacade.readNode(c, JsonObject.class);
         log.info("back={}", back);
         Assertions.assertNotNull(back);
         Object students = back.get("students");
@@ -217,12 +219,12 @@ public class ObjectUtilTest {
         jo.put("nested", nested);
 
         log.info("jo={}", jo);
-        DictHolder holder = (DictHolder) ObjectUtil.value2Object(jo, DictHolder.class);
+        DictHolder holder = (DictHolder) objectFacade.readNode(jo, DictHolder.class);
         log.info("holder={} map={}", holder, holder.map);
         assertEquals(1, holder.map.get("a"));
 //        assertEquals("Alice", holder.nested.get("s1").name);
 
-        JsonObject back = (JsonObject) ObjectUtil.object2Value(holder);
+        JsonObject back = (JsonObject) objectFacade.readNode(holder, Object.class);
         assertEquals(2, ((JsonObject) back.get("map")).size());
     }
 
@@ -238,11 +240,11 @@ public class ObjectUtilTest {
         JsonObject jo = new JsonObject();
         jo.put("status", "OK");
 
-        Msg msg = (Msg) ObjectUtil.value2Object(jo, Msg.class);
+        Msg msg = (Msg) objectFacade.readNode(jo, Msg.class);
         assertEquals(Status.OK, msg.status);
 
-        JsonObject back = (JsonObject) ObjectUtil.object2Value(msg);
-        assertEquals("OK", back.get("status"));
+        JsonObject back = (JsonObject) objectFacade.readNode(msg, null);
+        assertEquals("OK", back.getString("status"));
     }
 
     // ========== Boolean Getter ==========
@@ -254,7 +256,7 @@ public class ObjectUtilTest {
     public void testBooleanField() {
         JsonObject jo = new JsonObject();
         jo.put("active", true);
-        Flag f = (Flag) ObjectUtil.value2Object(jo, Flag.class);
+        Flag f = (Flag) objectFacade.readNode(jo, Flag.class);
         assertTrue(f.active);
     }
 
@@ -263,12 +265,12 @@ public class ObjectUtilTest {
     public void testNullFields() {
         JsonObject jo = new JsonObject();
         jo.put("name", null);
-        BasicTypes bt = (BasicTypes) ObjectUtil.value2Object(jo, BasicTypes.class);
+        BasicTypes bt = (BasicTypes) objectFacade.readNode(jo, BasicTypes.class);
         assertNull(bt.name);
         assertEquals(0, bt.age); // 默认 int=0
 
         jo.put("age", null);
-        assertThrows(JsonException.class, () -> ObjectUtil.value2Object(jo, BasicTypes.class));
+        assertThrows(JsonException.class, () -> objectFacade.readNode(jo, BasicTypes.class));
     }
 
 

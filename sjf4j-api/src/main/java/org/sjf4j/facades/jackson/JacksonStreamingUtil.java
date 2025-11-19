@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonTokenId;
 import lombok.NonNull;
 import org.sjf4j.ConverterRegistry;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.NodeConverter;
@@ -21,7 +22,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -103,8 +103,8 @@ public class JacksonStreamingUtil {
         }
 
         if (rawClazz == Map.class) {
-            Type valueType = TypeUtil.getTypeArgument(type, 1);
-            Map<String, Object> map = new LinkedHashMap<>();
+            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
             startObject(parser);
             while (hasNext(parser)) {
                 String key = nextName(parser);
@@ -116,7 +116,7 @@ public class JacksonStreamingUtil {
         }
 
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(type);
+            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
             Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
             startObject(parser);
@@ -135,8 +135,8 @@ public class JacksonStreamingUtil {
             return jojo;
         }
 
-        if (PojoRegistry.isPojo(type)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(type);
+        if (PojoRegistry.isPojo(rawClazz)) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
             Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
             startObject(parser);
@@ -189,7 +189,7 @@ public class JacksonStreamingUtil {
         }
 
         if (rawClazz == List.class) {
-            Type valueType = TypeUtil.getTypeArgument(type, 0);
+            Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             startArray(parser);
             while (hasNext(parser)) {

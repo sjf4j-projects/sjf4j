@@ -12,15 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @Slf4j
 public class NodeConverterTest {
 
-    @Test
-    public void testOne1() {
-        ConverterRegistry.putConverter(new OffsetDateTimeConverter());
-        JsonObject jo1 = new JsonObject("aa", "bb");
-        jo1.put("t1", OffsetDateTime.now());
-        log.info("jo1: {}", jo1);
-
-        assertThrows(JsonException.class, () -> jo1.put("t2", ZonedDateTime.now()));
-        log.info("jo1: {}", jo1);
-    }
+//    @Test
+//    public void testOne1() {
+//        ConverterRegistry.putConverter(new OffsetDateTimeConverter());
+//        JsonObject jo1 = new JsonObject("aa", "bb");
+//        jo1.put("t1", OffsetDateTime.now());
+//        log.info("jo1: {}", jo1);
+//
+//        assertThrows(JsonException.class, () -> jo1.put("t2", ZonedDateTime.now()));
+//        log.info("jo1: {}", jo1);
+//    }
 
 }

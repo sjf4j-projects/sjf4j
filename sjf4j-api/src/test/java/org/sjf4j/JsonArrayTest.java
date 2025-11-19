@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.util.TypeReference;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -54,7 +55,8 @@ class JsonArrayTest {
         testForEach();
         testEmptyArray();
         testMerge();
-        testToPojo();
+        testToPojo1();
+        testToPojo2();
         testPrimitiveArrays();
         testEdgeCases();
     }
@@ -141,18 +143,19 @@ class JsonArrayTest {
         });
     }
 
+    @Test
     public void testArray1() {
         JsonArray a1 = JsonArray.fromJson("[2,3,4]");
 //        List<Object> list = a1.toList();
-        List<Integer> list1 = a1.toPojo(new TypeReference<List<Integer>>(){}.getType());
+        List<Integer> list1 = a1.toPojo(new TypeReference<List<Integer>>(){});
         log.info("list1.type={}, list1={}", list1.getClass(), list1);
         assertEquals(3, list1.size());
         assertEquals(3, list1.get(1));
 
-        List<Float> list2 = a1.toPojo(new TypeReference<List<Float>>(){}.getType());
+        List<Float> list2 = a1.toPojo(new TypeReference<List<Float>>(){});
         log.info("list2.type={}, list2={}", list2.getClass(), list2);
+        assertEquals(Float.class, list2.get(1).getClass());
         assertEquals(3.0f, list2.get(1));
-
     }
 
     public void testArray2() {
@@ -348,7 +351,7 @@ class JsonArrayTest {
         assertEquals(2, ja3.getJsonObject(0).getInteger("y"));
     }
 
-    public void testToPojo() {
+    public void testToPojo1() {
         JsonArray ja = new JsonArray(1, 2, "test", true);
         List<Object> list = ja.toPojo(List.class);
         
@@ -357,7 +360,11 @@ class JsonArrayTest {
         assertEquals(2, list.get(1));
         assertEquals("test", list.get(2));
         assertEquals(true, list.get(3));
+    }
 
+    public void testToPojo2() {
+        JsonArray ja = new JsonArray(1, 2, "test", true);
+        assertThrows(JsonException.class, () -> ja.toPojo(Date.class));
     }
 
     public void testPrimitiveArrays() {

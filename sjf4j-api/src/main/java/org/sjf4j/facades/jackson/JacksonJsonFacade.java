@@ -86,7 +86,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @SuppressWarnings("unchecked")
     public  <T> T readObject(@NonNull Reader input, @NonNull TypeReference<T> type) {
         try {
-            return (T) readNode(input, type);
+            return (T) readNode(input, type.getType());
         } catch (Exception e) {
             throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
         }

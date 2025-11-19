@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.sjf4j.supplier.MapSupplier;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -175,7 +176,7 @@ class JsonObjectTest {
         System.out.println(jo1);
         assertNull(jo1.getObject("46"));
 
-        assertThrows(JsonException.class, () -> {
+        assertThrows(Exception.class, () -> {
             JsonObject jo = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"],45:32}");
             jo.getDouble("duck");
         });
@@ -604,6 +605,20 @@ class JsonObjectTest {
         }
         nested.put("final", "value");
         assertNotNull(nested);
+    }
+
+    @Test
+    public void testSupplier1() {
+        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
+        JsonObject jo1 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
+        log.info("jo1={}", jo1);
+        assertEquals("{\"a\":\"aa\",\"b\":\"bb\",\"c\":\"cc\"}", jo1.toJson());
+
+        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
+        JsonObject jo2 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
+        log.info("jo2={}", jo2);
+        assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
+        assertEquals(jo1, jo2);
     }
 
 

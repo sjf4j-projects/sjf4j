@@ -1,10 +1,12 @@
 package org.sjf4j;
 
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -168,6 +170,43 @@ public class JsonWalkerTest {
         
         log.info("Total values walked: {}", count.get());
         assertEquals(7, count.get());
+    }
+
+
+    // --------- 模拟的 POJO ------------
+    @ToString
+    public static class Person {
+        public String name;
+        public int age;
+        public Info info;
+        public List<Baby> babies;
+    }
+
+    @ToString
+    public static class Info {
+        public String email;
+        public String city;
+    }
+
+    @ToString
+    public static class Baby {
+        public String name;
+        public int age;
+    }
+
+    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
+
+    @Test
+    public void testWalkPojo1() {
+        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        log.info("person={}", person);
+
+        List<String> values = new ArrayList<>();
+        JsonWalker.walkValues(person, (path, node) -> {
+            log.info("walk path={}, node={}", path, node);
+            values.add(path.toString());
+        });
+        assertTrue(values.contains("$.babies[1].name"));
     }
 
 }

@@ -15,6 +15,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Do not return null.
+ */
 public class TypeUtil {
 
     public static String typeName(Object object) {
@@ -22,9 +25,6 @@ public class TypeUtil {
     }
 
     public static boolean isArray(Type type) {
-        if (type instanceof TypeReference) {
-            type = ((TypeReference<?>) type).getType();
-        }
         if (type == null) {
             return false;
         }
@@ -35,9 +35,6 @@ public class TypeUtil {
     }
 
     public static Class<?> getRawClass(Type type) {
-        if (type instanceof TypeReference) {
-            type = ((TypeReference<?>) type).getType();
-        }
         if (type == null) {
             return Object.class;
         }
@@ -66,38 +63,129 @@ public class TypeUtil {
 
     }
 
+
     // Support: Map<String, Person>, Wrapper<Person>, Person[]
-    public static Type getTypeArgument(Type type, int idx) {
-        if (type instanceof TypeReference) {
-            type = ((TypeReference<?>) type).getType();
+    public static Type resolveTypeArgument(Type type, Class<?> target, int index) {
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pt = ((ParameterizedType) type);
+            if (pt.getRawType() == target) {
+                Type[] args = pt.getActualTypeArguments();
+                if (index < args.length) {
+                    return args[index];
+                }
+                return Object.class;
+            }
+        }
+        Map<TypeVariable<?>, Type> typeVarMap = new HashMap<>();
+        return resolve(type, target, index, typeVarMap);
+    }
+
+    private static Type resolve(Type type, Class<?> target, int index, Map<TypeVariable<?>, Type> typeVarMap) {
+        if (type instanceof Class<?>) {
+            Class<?> clazz = (Class<?>) type;
+
+            // 1. 检查当前类是否就是 target
+            if (clazz == target) {
+                TypeVariable<? extends Class<?>>[] vars = clazz.getTypeParameters();
+                if (index < vars.length) {
+                    return substitute(vars[index], typeVarMap);
+                }
+                return Object.class;
+            }
+
+            // 2. 遍历接口
+            for (Type itf : clazz.getGenericInterfaces()) {
+                Type result = resolve(itf, target, index, typeVarMap);
+                if (result != null) return result;
+            }
+
+            // 3. 遍历父类
+            Type superType = clazz.getGenericSuperclass();
+            if (superType != null) {
+                return resolve(superType, target, index, typeVarMap);
+            }
+
+            return Object.class;
         }
 
-        if (type == null) {
-            return Object.class;
-        } else if (type instanceof Class) {
-            Class<?> clazz = (Class<?>) type;
-            return clazz.isArray() ? clazz.getComponentType() : Object.class;
-        } else if (type instanceof ParameterizedType) {
-            Type[] typeArgs = ((ParameterizedType) type).getActualTypeArguments();
-            if (idx >= 0 && idx < typeArgs.length) {
-                return typeArgs[idx];
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pt = (ParameterizedType) type;
+            Class<?> raw = (Class<?>) pt.getRawType();
+
+            // 建立当前类泛型参数的替换关系
+            TypeVariable<?>[] vars = raw.getTypeParameters();
+            Type[] args = pt.getActualTypeArguments();
+            for (int i = 0; i < vars.length; i++) {
+                typeVarMap.put(vars[i], args[i]);
             }
-        } else if (type instanceof GenericArrayType) {
-            GenericArrayType gat = (GenericArrayType) type;
-            Type componentType = gat.getGenericComponentType();
-            if (idx == 0) {
-                return componentType;
+
+            // 1. 如果匹配到目标类
+            if (raw == target) {
+                if (index < args.length) {
+                    return substitute(args[index], typeVarMap);
+                }
+                return Object.class;
             }
+
+            // 2. 搜索接口
+            for (Type itf : raw.getGenericInterfaces()) {
+                Type result = resolve(itf, target, index, typeVarMap);
+                if (result != null) return result;
+            }
+
+            // 3. 搜索父类
+            Type superType = raw.getGenericSuperclass();
+            if (superType != null) {
+                return resolve(superType, target, index, typeVarMap);
+            }
+
             return Object.class;
         }
+
         return Object.class;
     }
 
-    public static Type getFieldType(Type type, Field field) {
-        if (type instanceof TypeReference<?>) {
-            type = ((TypeReference<?>) type).getType();
+    private static Type substitute(Type type, Map<TypeVariable<?>, Type> map) {
+        if (type instanceof TypeVariable<?>) {
+            return map.getOrDefault(type, Object.class);
         }
-        if (type == null || field == null) return null;
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pt = (ParameterizedType) type;
+            Type[] args = pt.getActualTypeArguments();
+            Type[] replaced = new Type[args.length];
+
+            for (int i = 0; i < args.length; i++) {
+                replaced[i] = substitute(args[i], map);
+            }
+
+            return newResolvedParameterizedType(
+                    (Class<?>) pt.getRawType(),
+                    replaced,
+                    pt.getOwnerType()
+            );
+        }
+        if (type instanceof GenericArrayType) {
+            GenericArrayType gat = (GenericArrayType) type;
+            Type ct = substitute(gat.getGenericComponentType(), map);
+            return new GenericArrayTypeImpl(ct);
+        }
+        return type;
+    }
+
+    // 用于构造新的 ParameterizedType
+    private static ParameterizedType newResolvedParameterizedType(Class<?> raw, Type[] args, Type owner) {
+        return new ParameterizedType() {
+            @Override public Type[] getActualTypeArguments() { return args; }
+            @Override public Type getRawType() { return raw; }
+            @Override public Type getOwnerType() { return owner; }
+        };
+    }
+
+
+
+
+    public static Type getFieldType(Type type, Field field) {
+        if (type == null || field == null) return Object.class;
 
         if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
@@ -116,8 +204,6 @@ public class TypeUtil {
 
         return field.getGenericType();
     }
-
-    /// Private
 
     private static Type resolveType(Type type, Map<TypeVariable<?>, Type> typeMap) {
         if (type instanceof TypeVariable<?>) {
@@ -281,6 +367,5 @@ public class TypeUtil {
             }
         }
     }
-
 
 }

@@ -11,14 +11,14 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-public class ValueUtil {
+public class NodeUtil {
 
     /// Output
 
     public static String valueToString(Object value) {
         if (value == null) {
             return null;
-        } else if (value instanceof CharSequence || value instanceof Character) {
+        } else if (value instanceof CharSequence || value instanceof Character || value.getClass().isEnum()) {
             return value.toString();
         }
         throw new JsonException("Expected value type CharSequence or Character, but got " + value.getClass().getName());
@@ -142,7 +142,6 @@ public class ValueUtil {
             return new JsonObject((Map<String, Object>) value);
         } else if (PojoRegistry.isPojo(value.getClass())) {
             //fixme
-
 
         }
         throw new JsonException("Expected value type JsonObject/Map/POJO, but got " + value.getClass().getName());

@@ -20,7 +20,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     R createReader(Reader input) throws IOException;
     W createWriter(Writer output) throws IOException;
 
-    default Object readNode(@NonNull Reader input, Type type) throws IOException {
+    default Object readNode(@NonNull Reader input, Type type) {
         try {
             FacadeReader reader = createReader(input);
             reader.startDocument();
@@ -32,6 +32,6 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         }
     }
 
-    void writeNode(Writer output, Object node) throws IOException;
+    void writeNode(Writer output, Object node);
 
 }

@@ -4,9 +4,11 @@ import lombok.Getter;
 import lombok.NonNull;
 import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
-import org.sjf4j.util.ValueUtil;
+import org.sjf4j.util.NodeUtil;
+import org.sjf4j.util.TypeUtil;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -52,7 +54,7 @@ public class JsonPath {
 
     @Override
     public String toString() {
-        return toExpr();
+        return raw;
     }
 
     public JsonPath push(@NonNull PathToken token) {
@@ -71,36 +73,43 @@ public class JsonPath {
     /// Find
 
     // Cannot have wildcard
-    public Object findOne(@NonNull JsonContainer container) {
-        Object value = container;
+    public Object findOne(@NonNull Object container) {
+        Object node = container;
         for (int i = 1; i < tokens.size(); i++) {
-            if (value == null) return null;
+            if (node == null) return null;
             PathToken pt = tokens.get(i);
             if (pt instanceof PathToken.Wildcard) {
                 throw new JsonException("Cannot use wildcard '*' in findOne()");
             } else if (pt instanceof PathToken.Name) {
-                if (value instanceof JsonObject) {
-                    value = ((JsonObject) value).getObject(((PathToken.Name) pt).name);
-                } else if (value instanceof Map) {
-                    value = ((Map<?, ?>) value).get(((PathToken.Name) pt).name);
+                if (node instanceof JsonObject) {
+                    node = ((JsonObject) node).getObject(((PathToken.Name) pt).name);
+                } else if (node instanceof Map) {
+                    node = ((Map<?, ?>) node).get(((PathToken.Name) pt).name);
+                } else if (PojoRegistry.isPojo(node.getClass())) {
+                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(),((PathToken.Name) pt).name);
+                    if (fi != null) {
+                        node = fi.invokeGetter(node);
+                    } else {
+                        return null;
+                    }
                 } else {
                     return null;
                 }
             } else if (pt instanceof PathToken.Index) {
-                if (value instanceof JsonArray) {
-                    value = ((JsonArray) value).getObject(((PathToken.Index) pt).index);
-                } else if (value instanceof List) {
-                    List<?> list = (List<?>) value;
+                if (node instanceof JsonArray) {
+                    node = ((JsonArray) node).getObject(((PathToken.Index) pt).index);
+                } else if (node instanceof List) {
+                    List<?> list = (List<?>) node;
                     int idx = ((PathToken.Index) pt).index;
                     if (idx >= 0 && idx < list.size()) {
-                        value = list.get(idx);
+                        node = list.get(idx);
                     } else {
                         return null;
                     }
-                } else if (value.getClass().isArray()) {
+                } else if (node.getClass().isArray()) {
                     int idx = ((PathToken.Index) pt).index;
-                    if (idx >= 0 && idx < Array.getLength(value)) {
-                        value = Array.get(value, idx);
+                    if (idx >= 0 && idx < Array.getLength(node)) {
+                        node = Array.get(node, idx);
                     } else {
                         return null;
                     }
@@ -111,10 +120,10 @@ public class JsonPath {
                 return null;
             }
         }
-        return value;
+        return node;
     }
 
-    public JsonArray findAll(@NonNull JsonContainer container) {
+    public JsonArray findAll(@NonNull Object container) {
         JsonArray result = new JsonArray();
         _findAllRecursively(container, 1, result);
         return result;
@@ -123,12 +132,12 @@ public class JsonPath {
     
     /// Get
 
-    public boolean hasNonNull(@NonNull JsonContainer container) {
+    public boolean hasNonNull(@NonNull Object container) {
         return findOne(container) != null;
     }
 
     // Object
-    public Object getObject(@NonNull JsonContainer container) {
+    public Object getObject(@NonNull Object container) {
         try {
             return findOne(container);
         } catch (Exception e) {
@@ -136,187 +145,187 @@ public class JsonPath {
         }
     }
 
-    public Object getObject(@NonNull JsonContainer container, Object defaultValue) {
+    public Object getObject(@NonNull Object container, Object defaultValue) {
         Object value = getObject(container);
         return null == value ? defaultValue : value;
     }
 
     // String
-    public String getString(@NonNull JsonContainer container) {
+    public String getString(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueToString(value);
+            return NodeUtil.valueToString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public String getString(@NonNull JsonContainer container, String defaultValue) {
+    public String getString(@NonNull Object container, String defaultValue) {
         String value = getString(container);
         return value == null ? defaultValue : value;
     }
 
     // Long
-    public Long getLong(@NonNull JsonContainer container) {
+    public Long getLong(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsLong(value);
+            return NodeUtil.valueAsLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Long by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public long getLong(@NonNull JsonContainer container, long defaultValue) {
+    public long getLong(@NonNull Object container, long defaultValue) {
         Long value = getLong(container);
         return value == null ? defaultValue : value;
     }
 
     // Integer
-    public Integer getInteger(@NonNull JsonContainer container) {
+    public Integer getInteger(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsInteger(value);
+            return NodeUtil.valueAsInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Integer by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public int getInteger(@NonNull JsonContainer container, int defaultValue) {
+    public int getInteger(@NonNull Object container, int defaultValue) {
         Integer value = getInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // Short
-    public Short getShort(@NonNull JsonContainer container) {
+    public Short getShort(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsShort(value);
+            return NodeUtil.valueAsShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Short by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public short getShort(@NonNull JsonContainer container, short defaultValue) {
+    public short getShort(@NonNull Object container, short defaultValue) {
         Short value = getShort(container);
         return value == null ? defaultValue : value;
     }
 
     // Byte
-    public Byte getByte(@NonNull JsonContainer container) {
+    public Byte getByte(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsByte(value);
+            return NodeUtil.valueAsByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Byte by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public byte getByte(@NonNull JsonContainer container, byte defaultValue) {
+    public byte getByte(@NonNull Object container, byte defaultValue) {
         Byte value = getByte(container);
         return value == null ? defaultValue : value;
     }
 
     // Double
-    public Double getDouble(@NonNull JsonContainer container) {
+    public Double getDouble(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsDouble(value);
+            return NodeUtil.valueAsDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Double by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public double getDouble(@NonNull JsonContainer container, double defaultValue) {
+    public double getDouble(@NonNull Object container, double defaultValue) {
         Double value = getDouble(container);
         return value == null ? defaultValue : value;
     }
 
     // Float
-    public Float getFloat(@NonNull JsonContainer container) {
+    public Float getFloat(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsFloat(value);
+            return NodeUtil.valueAsFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Float by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public float getFloat(@NonNull JsonContainer container, float defaultValue) {
+    public float getFloat(@NonNull Object container, float defaultValue) {
         Float value = getFloat(container);
         return value == null ? defaultValue : value;
     }
 
     // BigInteger
-    public BigInteger getBigInteger(@NonNull JsonContainer container) {
+    public BigInteger getBigInteger(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsBigInteger(value);
+            return NodeUtil.valueAsBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigInteger by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public BigInteger getBigInteger(@NonNull JsonContainer container, BigInteger defaultValue) {
+    public BigInteger getBigInteger(@NonNull Object container, BigInteger defaultValue) {
         BigInteger value = getBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // BigDecimal
-    public BigDecimal getBigDecimal(@NonNull JsonContainer container) {
+    public BigDecimal getBigDecimal(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueAsBigDecimal(value);
+            return NodeUtil.valueAsBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigDecimal by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public BigDecimal getBigDecimal(@NonNull JsonContainer container, BigDecimal defaultValue) {
+    public BigDecimal getBigDecimal(@NonNull Object container, BigDecimal defaultValue) {
         BigDecimal value = getBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
     // Boolean
-    public Boolean getBoolean(@NonNull JsonContainer container) {
+    public Boolean getBoolean(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueToBoolean(value);
+            return NodeUtil.valueToBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Boolean by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public boolean getBoolean(@NonNull JsonContainer container, boolean defaultValue) {
+    public boolean getBoolean(@NonNull Object container, boolean defaultValue) {
         Boolean value = getBoolean(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonObject
-    public JsonObject getJsonObject(@NonNull JsonContainer container) {
+    public JsonObject getJsonObject(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueToJsonObject(value);
+            return NodeUtil.valueToJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public JsonObject getJsonObject(@NonNull JsonContainer container, JsonObject defaultValue) {
+    public JsonObject getJsonObject(@NonNull Object container, JsonObject defaultValue) {
         JsonObject value = getJsonObject(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonArray
-    public JsonArray getJsonArray(@NonNull JsonContainer container) {
+    public JsonArray getJsonArray(@NonNull Object container) {
         try {
             Object value = findOne(container);
-            return ValueUtil.valueToJsonArray(value);
+            return NodeUtil.valueToJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray by path '" + getRaw() + "': " + e.getMessage(), e);
         }
     }
 
-    public JsonArray getJsonArray(@NonNull JsonContainer container, JsonArray defaultValue) {
+    public JsonArray getJsonArray(@NonNull Object container, JsonArray defaultValue) {
         JsonArray value = getJsonArray(container);
         return value == null ? defaultValue : value;
     }
@@ -324,11 +333,11 @@ public class JsonPath {
     /// Put
 
     @SuppressWarnings("unchecked")
-    public void put(@NonNull JsonContainer container, Object value) {
-        if (!(container instanceof JsonObject) && !(container instanceof JsonArray)) {
-            throw new JsonException("Invalid container type: expected JsonObject or JsonArray, but was " +
-                    container.getClass().getName());
-        }
+    public void put(@NonNull Object container, Object value) {
+//        if (!(container instanceof JsonObject) && !(container instanceof JsonArray)) {
+//            throw new JsonException("Invalid container type: expected JsonObject or JsonArray, but was '" +
+//                    container.getClass() + "'");
+//        }
         Object lastContainer = _autoCreateContainers(container);
         PathToken lastToken = peek();
         if (lastToken instanceof PathToken.Name) {
@@ -336,9 +345,18 @@ public class JsonPath {
                 ((JsonObject) lastContainer).put(((PathToken.Name) lastToken).name, value);
             } else if (lastContainer instanceof Map) {
                 ((Map<String, Object>) lastContainer).put(((PathToken.Name) lastToken).name, value);
+            } else if (PojoRegistry.isPojo(lastContainer.getClass())) {
+                String name = ((PathToken.Name) lastToken).name;
+                PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(lastContainer.getClass(), name);
+                if (fi != null) {
+                    fi.invokeSetter(lastContainer, value);
+                } else {
+                    throw new JsonException("Not found field '" + name + "' of POJO container type '" +
+                            lastContainer.getClass() + "'");
+                }
             } else {
                 throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                        container.getClass().getName() + "'");
+                        lastContainer.getClass() + "'");
             }
         } else if (lastToken instanceof PathToken.Index) {
             if (lastContainer instanceof JsonArray) {
@@ -365,22 +383,22 @@ public class JsonPath {
                 }
             } else {
                 throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                        container.getClass().getName() + "'");
+                        lastContainer.getClass() + "'");
             }
         } else {
             throw new JsonException("Unexpected path token " + lastToken);
         }
     }
 
-    public void putNonNull(@NonNull JsonContainer container, Object value) {
+    public void putNonNull(@NonNull Object container, Object value) {
         if (null != value) { put(container, value); }
     }
 
-    public void putIfAbsentOrNull(@NonNull JsonContainer container, Object value) {
+    public void putIfAbsentOrNull(@NonNull Object container, Object value) {
         if (!hasNonNull(container)) { put(container, value); }
     }
 
-    public void remove(@NonNull JsonContainer container) {
+    public void remove(@NonNull Object container) {
         if (hasNonNull(container)) {
             Object lastContainer = _autoCreateContainers(container);
             PathToken lastToken = peek();
@@ -389,9 +407,18 @@ public class JsonPath {
                     ((JsonObject) lastContainer).remove(((PathToken.Name) lastToken).name);
                 } else if (lastContainer instanceof Map) {
                     ((Map<?, ?>) lastContainer).remove(((PathToken.Name) lastToken).name);
+                } else if (PojoRegistry.isPojo(lastContainer.getClass())) {
+                    String name = ((PathToken.Name) lastToken).name;
+                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(lastContainer.getClass(), name);
+                    if (fi != null) {
+                        fi.invokeSetter(lastContainer, null);
+                    } else {
+                        throw new JsonException("Not found field '" + name + "' of POJO container type '" +
+                                lastContainer.getClass() + "'");
+                    }
                 } else {
                     throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                            container.getClass().getName() + "'");
+                            lastContainer.getClass() + "'");
                 }
             } else if (lastToken instanceof PathToken.Index) {
                 if (lastContainer instanceof JsonArray) {
@@ -402,7 +429,7 @@ public class JsonPath {
                     throw new JsonException("Cannot remove item for Array");
                 } else {
                     throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                            container.getClass().getName() + "'");
+                            lastContainer.getClass() + "'");
                 }
             }
         }
@@ -411,33 +438,41 @@ public class JsonPath {
 
     /// private
 
-    private void _findAllRecursively(Object value, int depth, JsonArray result) {
+    private void _findAllRecursively(Object container, int depth, JsonArray result) {
+        Object node = container;
         for (int i = depth; i < tokens.size(); i++) {
-            if (value ==  null) return;
+            if (node ==  null) return;
             PathToken pt = tokens.get(i);
             if (pt instanceof PathToken.Name) {
-                if (value instanceof JsonObject) {
-                    value = ((JsonObject) value).getObject(((PathToken.Name) pt).name);
-                } else if (value instanceof Map) {
-                    value = ((Map<?, ?>) value).get(((PathToken.Name) pt).name);
+                if (node instanceof JsonObject) {
+                    node = ((JsonObject) node).getObject(((PathToken.Name) pt).name);
+                } else if (node instanceof Map) {
+                    node = ((Map<?, ?>) node).get(((PathToken.Name) pt).name);
+                } else if (PojoRegistry.isPojo(node.getClass())) {
+                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(),((PathToken.Name) pt).name);
+                    if (fi != null) {
+                        node = fi.invokeGetter(node);
+                    } else {
+                        return;
+                    }
                 } else {
                     return;
                 }
             } else if (pt instanceof PathToken.Index) {
-                if (value instanceof JsonArray) {
-                    value = ((JsonArray) value).getObject(((PathToken.Index) pt).index);
-                } else if (value instanceof List) {
-                    List<?> list = (List<?>) value;
+                if (node instanceof JsonArray) {
+                    node = ((JsonArray) node).getObject(((PathToken.Index) pt).index);
+                } else if (node instanceof List) {
+                    List<?> list = (List<?>) node;
                     int idx = ((PathToken.Index) pt).index;
                     if (idx >= 0 && idx < list.size()) {
-                        value = list.get(idx);
+                        node = list.get(idx);
                     } else {
                         return;
                     }
-                } else if (value.getClass().isArray()) {
+                } else if (node.getClass().isArray()) {
                     int idx = ((PathToken.Index) pt).index;
-                    if (idx >= 0 && idx < Array.getLength(value)) {
-                        value = Array.get(value, idx);
+                    if (idx >= 0 && idx < Array.getLength(node)) {
+                        node = Array.get(node, idx);
                     } else {
                         return;
                     }
@@ -445,26 +480,26 @@ public class JsonPath {
                     return;
                 }
             } else if (pt instanceof PathToken.Wildcard) {
-                if (value instanceof JsonObject) {
+                if (node instanceof JsonObject) {
                     final int finalI = i;
-                    ((JsonObject) value).forEach((k, v) -> {
+                    ((JsonObject) node).forEach((k, v) -> {
                         _findAllRecursively(v, finalI + 1, result);
                     });
-                } else if (value instanceof JsonArray) {
-                    for (Object val : ((JsonArray) value)) {
+                } else if (node instanceof JsonArray) {
+                    for (Object val : ((JsonArray) node)) {
                         _findAllRecursively(val, i + 1, result);
                     }
-                } else if (value instanceof Map) {
-                    for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                } else if (node instanceof Map) {
+                    for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
                         _findAllRecursively(entry.getValue(), i + 1, result);
                     }
-                } else if (value instanceof List) {
-                    for (Object val : ((List<?>) value)) {
+                } else if (node instanceof List) {
+                    for (Object val : ((List<?>) node)) {
                         _findAllRecursively(val, i + 1, result);
                     }
-                } else if (value.getClass().isArray()) {
-                    for (int k = 0; k < Array.getLength(value); k++) {
-                        _findAllRecursively(Array.get(value, k), i + 1, result);
+                } else if (node.getClass().isArray()) {
+                    for (int k = 0; k < Array.getLength(node); k++) {
+                        _findAllRecursively(Array.get(node, k), i + 1, result);
                     }
                 } else {
                     return;
@@ -473,100 +508,129 @@ public class JsonPath {
                 return;
             }
         }
-        result.add(value);
+        result.add(node);
     }
 
 
     // 1. Automatically create or extends JsonObject nodes when they do not exist.
     // 2. Automatically create or extends JsonArray nodes when they do not exist and the index is 0.
     // TODO: Consider traversing the path first to verify if it can be filled with containers.
+    @SuppressWarnings("unchecked")
     Object _autoCreateContainers(@NonNull Object container) {
+        Object node = container;
+        Type type = Object.class;
         for (int i = 1; i < tokens.size() - 1; i++) { // traverse up to the second-last token
             PathToken pt = tokens.get(i);
             if (pt instanceof PathToken.Name) {
                 String key = ((PathToken.Name) pt).name;
-                if (container instanceof JsonObject) {
-                    JsonObject jo = (JsonObject) container;
-                    container = jo.getObject(key);
-                    if (container == null) {
-                        PathToken nextPt = tokens.get(i + 1);
-                        if (nextPt instanceof PathToken.Name) {
-                            container = jo.computeIfAbsentOrNull(key, k -> new JsonObject());
-                        } else if (nextPt instanceof PathToken.Index) {
-                            container = jo.computeIfAbsentOrNull(key, k -> new JsonArray());
-                        } else {
-                            throw new JsonException("Unexpected path token " + pt);
+                if (PojoRegistry.isPojo(node.getClass())) { // POJO first
+                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(), key);
+                    if (fi != null) {
+                        Object pojo = node;
+                        node = fi.invokeGetter(node);
+                        type = fi.getType();
+                        if (node == null) {
+                            PathToken nextPt = tokens.get(i + 1);
+                            Class<?> rawClazz = TypeUtil.getRawClass(type);
+                            node = createContainer(nextPt, rawClazz);
+                            fi.invokeSetter(pojo, node);
                         }
+                        continue;
+                    } else if (node instanceof JsonObject) {
+                        JsonObject jo = (JsonObject) node;
+                        node = jo.getObject(key);
+                        type = Object.class;
+                        if (node == null) {
+                            PathToken nextPt = tokens.get(i + 1);
+                            node = createContainer(nextPt, Object.class);
+                            jo.put(key, node);
+                        }
+                    } else {
+                        throw new JsonException("Not found field '" + key + "' in POJO container '" +
+                                node.getClass() + "'");
                     }
-                } else if (container instanceof Map) {
-                    container = ((Map<?, ?>) container).get(key);
-                    if (container == null) {
-                        throw new JsonException("Cannot automatically create container for field " + pt +
-                                " of Map. Automatic creation is only supported for JsonObject/JsonArray.");
+                }
+                if (node instanceof JsonObject) {
+                    JsonObject jo = (JsonObject) node;
+                    node = jo.getObject(key);
+                    type = Object.class;
+                    if (node == null) {
+                        PathToken nextPt = tokens.get(i + 1);
+                        node = createContainer(nextPt, Object.class);
+                        jo.put(key, node);
+                    }
+                } else if (node == Map.class) {
+                    Map<String, Object> map = (Map<String, Object>) node;
+                    node = map.get(key);
+                    type = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+                    if (node == null) {
+                        PathToken nextPt = tokens.get(i + 1);
+                        Class<?> rawClazz = TypeUtil.getRawClass(type);
+                        node = createContainer(nextPt, rawClazz);
+                        map.put(key, node);
                     }
                 } else {
-                    throw new JsonException("Mismatched path token " + pt + " with container type '" +
-                            container.getClass().getName() + "'");
+                    throw new JsonException("Unexpected container type '" + node.getClass() + "' with name token '" +
+                            pt + "'. The type must be one of JsonObject/Map/POJO.");
                 }
             } else if (pt instanceof PathToken.Index) {
                 int idx = ((PathToken.Index) pt).index;
-                if (container instanceof JsonArray) {
-                    JsonArray ja = (JsonArray) container;
-                    PathToken nextPt = tokens.get(i + 1);
+                if (node instanceof JsonArray) {
+                    JsonArray ja = (JsonArray) node;
+                    type = Object.class;
                     if (idx == ja.size()) {
-                        if (nextPt instanceof PathToken.Name) {
-                            container = new JsonObject();
-                            ja.add(container);
-                        } else if (nextPt instanceof PathToken.Index) {
-                            container = new JsonArray();
-                            ja.add(container);
-                        } else {
-                            throw new JsonException("Unexpected path token " + pt);
-                        }
+                        PathToken nextPt = tokens.get(i + 1);
+                        node = createContainer(nextPt, Object.class);
+                        ja.add(node);
                     } else if (ja.containsIndex(idx)) {
-                        container = ja.getObject(idx);
-                        if (container == null) {
-                            if (nextPt instanceof PathToken.Name) {
-                                container = new JsonObject();
-                                ja.set(idx, container);
-                            } else if (nextPt instanceof PathToken.Index) {
-                                container = new JsonArray();
-                                ja.set(idx, container);
-                            } else {
-                                throw new JsonException("Unexpected path token " + pt);
-                            }
+                        node = ja.getObject(idx);
+                        if (node == null) {
+                            PathToken nextPt = tokens.get(i + 1);
+                            node = createContainer(nextPt, Object.class);
+                            ja.set(idx, node);
                         }
                     } else {
-                        throw new JsonException("Cannot create container at index " + idx + " in JsonArray of size " +
-                                ja.size() + " (Only when index = size allowed for addition)");
+                        throw new JsonException("Invalid JsonArray index " + idx + " for size " + ja.size() +
+                                " (idx < size: modify; idx == size: append).");
                     }
-                } else if (container instanceof List) {
-                    List<?> list = (List<?>) container;
-                    if (idx >= 0 && idx < list.size()) {
-                        container = list.get(idx);
-                        if (container == null) {
-                            throw new JsonException("Cannot automatically create container for index " + pt +
-                                    " of List. Automatic creation is only supported for JsonObject/JsonArray.");
+                } else if (node instanceof List) {
+                    List<Object> list = (List<Object>) node;
+                    type = TypeUtil.resolveTypeArgument(type, List.class, 0);
+                    Class<?> rawClazz = TypeUtil.getRawClass(type);
+                    if (idx == list.size()) {
+                        PathToken nextPt = tokens.get(i + 1);
+                        node = createContainer(nextPt, rawClazz);
+                        list.add(node);
+                    } else if (idx >= 0 && idx < list.size()) {
+                        node = list.get(idx);
+                        if (node == null) {
+                            PathToken nextPt = tokens.get(i + 1);
+                            node = createContainer(nextPt, rawClazz);
+                            list.set(idx, node);
                         }
                     } else {
-                        throw new JsonException("Index " + pt + " out of size " + list.size() +
-                                " of List. Automatic creation is only supported for JsonObject/JsonArray.");
+                        throw new JsonException("Invalid List index " + idx + " for size " + list.size() +
+                            " (idx < size: modify; idx == size: append).");
                     }
-                } else if (container.getClass().isArray()) {
-                    int size = Array.getLength(container);
+                } else if (node.getClass().isArray()) {
+                    Object arr = node;
+                    int size = Array.getLength(arr);
+                    Class<?> rawClazz = arr.getClass().getComponentType();
+                    type = rawClazz;
                     if (idx >= 0 && idx < size) {
-                        container = Array.get(container, idx);
-                        if (container == null) {
-                            throw new JsonException("Cannot automatically create container for index " + pt +
-                                    " of Array. Automatic creation is only supported for JsonObject/JsonArray.");
+                        node = Array.get(arr, idx);
+                        if (node == null) {
+                            PathToken nextPt = tokens.get(i + 1);
+                            node = createContainer(nextPt, rawClazz);
+                            Array.set(arr, idx, node);
                         }
                     } else {
-                        throw new JsonException("Index " + pt + " out of size " + size +
-                                " of Array. Automatic creation is only supported for JsonObject/JsonArray.");
+                        throw new JsonException("Invalid Array index " + idx + " for size " + size +
+                                " (idx < size: modify; idx == size: no append).");
                     }
                 } else {
-                    throw new JsonException("Mismatched path token " + pt + " with container type '" +
-                            container.getClass().getName() + "'");
+                    throw new JsonException("Unexpected container type '" + node.getClass() + "' with list token " +
+                            pt + ". The type must be one of JsonArray/List/Array.");
                 }
             } else if (pt instanceof PathToken.Wildcard) {
                 throw new JsonException("Cannot use wildcard '*' in _autoCreateContainers()");
@@ -574,7 +638,39 @@ public class JsonPath {
                 throw new JsonException("Unexpected path token " + pt);
             }
         }
-        return container; // last container
+        return node; // last container
+    }
+
+
+    private Object createContainer(PathToken pt, Class<?> clazz) {
+        if (pt instanceof PathToken.Name) {
+            if (clazz.isAssignableFrom(JsonObject.class)) {
+                return new JsonObject();
+            } else if (clazz.isAssignableFrom(Map.class)) {
+                return JsonConfig.global().mapSupplier.create();
+            } else if (PojoRegistry.isPojo(clazz)) {
+                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(clazz);
+                return pi.newInstance();
+            } else {
+                throw new JsonException("Cannot create container with type '" + clazz + "' at name token " +
+                        pt + ". The type must be one of JsonObject/Map/POJO.");
+            }
+        } else if (pt instanceof PathToken.Index) {
+            if (clazz.isAssignableFrom(JsonArray.class)) {
+                return new JsonArray();
+            } else if (clazz.isAssignableFrom(List.class)) {
+                return JsonConfig.global().listSupplier.create();
+            } else if (clazz.isArray()) {
+                int idx = ((PathToken.Index) pt).index;
+                return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
+            } else {
+                throw new JsonException("Cannot create container with type '" + clazz +
+                        "' at index token " + pt + ". The type must be one of JsonArray/List/Array.");
+            }
+        } else {
+            throw new JsonException("Unexpected path token " + pt);
+        }
+
     }
 
 

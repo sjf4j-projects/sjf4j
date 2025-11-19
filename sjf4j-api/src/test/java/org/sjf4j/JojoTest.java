@@ -247,5 +247,17 @@ public class JojoTest {
         assertEquals(10, p.getBabies().get(0).getMonth());
     }
 
+    @Test
+    public void testFromJson2Pojo1() {
+        Person p = new Person();
+        p.setName("John");
+        p.put("nickname", "Johnny");
+        p.setAge(42);
+
+        JsonObject info = new JsonObject();
+        info.put("married", true);
+        p.setInfo(info);
+
+    }
 
 }

@@ -16,81 +16,95 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 
 @Slf4j
-public class PojoRegistry {
+public final class PojoRegistry {
 
     // Use `Type` to support TypeReference<Wrapper<Person, Baby>>
-    private static final Map<Type, PojoInfo> POJO_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, PojoInfo> POJO_CACHE = new ConcurrentHashMap<>();
 
 
-    public static PojoInfo register(@NonNull Type type) {
-        while (type instanceof TypeReference) {
-            type = ((TypeReference<?>) type).getType();
-        }
-        if (POJO_CACHE.containsKey(type)) {
-            return POJO_CACHE.get(type);
+    public static PojoInfo register(@NonNull Class<?> clazz) {
+        if (POJO_CACHE.containsKey(clazz)) {
+            return POJO_CACHE.get(clazz);
         }
 
-        if (RecordUtil.isRecordClass(type)) {
+        if (RecordUtil.isRecordClass(clazz)) {
             //TODO
             throw new JsonException("Not support Record yet");
         }
 
-        PojoInfo pi = analyzePojo(type);
+        PojoInfo pi = analyzePojo(clazz);
         if (pi != null) {
-            POJO_CACHE.put(type, pi);
+            POJO_CACHE.put(clazz, pi);
         }
         return pi;
     }
 
-    public static PojoInfo registerOrElseThrow(@NonNull Type type) {
-        PojoInfo pi = register(type);
+    public static PojoInfo registerOrElseThrow(@NonNull Class<?> clazz) {
+        PojoInfo pi = register(clazz);
         if (pi == null) throw new JsonException("Not a valid POJO");
         pi.isPojoOrElseThrow();
         return pi;
     }
 
-    public static void remove(@NonNull Type type) {
-        POJO_CACHE.remove(type);
+    public static void remove(@NonNull Class<?> clazz) {
+        POJO_CACHE.remove(clazz);
     }
 
-    public static PojoInfo getPojoInfo(@NonNull Type type) {
-        return POJO_CACHE.get(type);
+    public static PojoInfo getPojoInfo(@NonNull Class<?> clazz) {
+        return POJO_CACHE.get(clazz);
     }
 
-    public static FieldInfo getFieldInfo(@NonNull Type type, String fieldName) {
-        PojoInfo pi = register(type);
+    public static FieldInfo getFieldInfo(@NonNull Class<?> clazz, String fieldName) {
+        PojoInfo pi = register(clazz);
         if (pi != null) {
             return pi.getFields().get(fieldName);
         }
         return null;
     }
 
-    public static boolean isPojo(@NonNull Type type) {
-        PojoInfo pi = register(type);
+    public static boolean isPojo(@NonNull Class<?> clazz) {
+        PojoInfo pi = register(clazz);
         return pi != null && pi.isPojo();
     }
 
 
+
     /// Private
+
+    private static boolean isPojoCandidate(@NonNull Class<?> clazz) {
+        if (clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
+                Number.class.isAssignableFrom(clazz) || clazz == Boolean.class ||
+                clazz == Map.class || clazz == List.class) {
+            return false;
+        }
+        if (clazz == JsonObject.class || clazz == JsonArray.class) {
+//            log.debug("Skipping JsonObject/JsonArray class: {}", clazz);
+            return false;
+        }
+        if (clazz.isArray() || clazz.isEnum() || clazz.isInterface()) {
+//            log.debug("Skipping Array/Enum/Interface class: {}", clazz);
+            return false;
+        }
+        String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
+        if (pkg.startsWith("java.") || pkg.startsWith("javax.") || pkg.startsWith("jakarta.") ||
+                pkg.startsWith("jdk.")) {
+//            log.debug("Skipping Java system class: {}", clazz);
+            return false;
+        }
+        return true;
+    }
 
     private static final MethodHandles.Lookup ROOT_LOOKUP = MethodHandles.lookup();
 
-    private static PojoInfo analyzePojo(@NonNull Type type) {
-        Class<?> clazz = TypeUtil.getRawClass(type);
-        if (clazz.isArray()) {
-            log.warn("Skipping Array class: {}", clazz);
-            return null;
-        }
-        String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
-        if (pkg.startsWith("java.") || pkg.startsWith("javax.") || pkg.startsWith("jakarta.")) {
-            log.warn("Skipping Java system class: {}", clazz);
+    private static PojoInfo analyzePojo(@NonNull Class<?> clazz) {
+        if (!isPojoCandidate(clazz)) {
+//            log.warn("Not a POJO candidate class: {}", clazz);
             return null;
         }
 
@@ -124,7 +138,7 @@ public class PojoRegistry {
 
         // Fields
         Map<String, FieldInfo> fields = JsonConfig.global().mapSupplier.create();
-        for (Class<?> c = clazz; c != null && c != Object.class && c != JsonObject.class; c = c.getSuperclass()) {
+        for (Class<?> c = clazz; isPojoCandidate(c); c = c.getSuperclass()) {
             for (Field field : c.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers())) { continue; }
                 MethodHandle getter = null;
@@ -150,7 +164,7 @@ public class PojoRegistry {
                     log.warn("No accessible getter or setter found for field '{}' in class {}",
                             field.getName(), clazz.getName());
                 } else {
-                    Type fieldType = TypeUtil.getFieldType(type, field);
+                    Type fieldType = TypeUtil.getFieldType(clazz, field);
                     fields.put(field.getName(), new FieldInfo(field.getName(), fieldType, getter, setter));
                 }
             }

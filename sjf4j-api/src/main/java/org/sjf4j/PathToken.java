@@ -2,6 +2,8 @@ package org.sjf4j;
 
 import lombok.NonNull;
 
+import java.util.List;
+
 public abstract class PathToken {
 
     public static class Root extends PathToken {
@@ -11,17 +13,18 @@ public abstract class PathToken {
     public static class Name extends PathToken {
         public final String name;
         public Name(@NonNull String name) { this.name = name; }
-
-        private String stringInPath;
+        public boolean needQuoted() {
+            return shouldArrayStyle(name);
+        }
+        public String toQuoted() {
+            return quoteName(name);
+        }
         @Override public String toString() {
-            if (stringInPath == null) {
-                if (shouldArrayStyle(name)) {
-                    stringInPath = quoteName(name);
-                } else {
-                    stringInPath = "." + name;
-                }
+            if (shouldArrayStyle(name)) {
+                return "[" + quoteName(name) + "]";
+            } else {
+                return "." + name;
             }
-            return stringInPath;
         }
     }
 
@@ -46,6 +49,73 @@ public abstract class PathToken {
                 return ".*";
             }
         }
+    }
+
+    public static class Recursive extends PathToken {
+        @Override public String toString() {
+            return "..";
+        }
+    }
+
+    public static class Slice extends PathToken {
+        public final Integer start; // null allowed
+        public final Integer end;   // null allowed
+        public final Integer step;  // null allowed
+        public Slice(Integer s, Integer e, Integer st) {
+            start = s; end = e; step = st;
+        }
+        public String toExpr() {
+            if (start == null) {
+                if (end == null) {
+                    return "::" + step;
+                } else if (step == null){
+                    return ":" + end;
+                } else {
+                    return ":" + end + ":" + step;
+                }
+            } else if (end == null) {
+                if (step == null) {
+                    return start + ":";
+                } else {
+                    return start + "::" + step;
+                }
+            } else if (step == null) {
+                return start + ":" + end;
+            } else {
+                return start + ":" + end + ":" + step;
+            }
+        }
+        @Override public String toString() {
+            return "[" + toExpr() + "]";
+        }
+    }
+
+    public static class Union extends PathToken {
+        public final List<PathToken> union;
+        public Union(List<PathToken> union) { this.union = union; }
+        @Override public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            for (int i = 0; i < union.size(); i++) {
+                if (i > 0) sb.append(",");
+                PathToken pt = union.get(i);
+                if (pt instanceof Name) {
+                    sb.append(quoteName(((Name) pt).name));
+                } else if (pt instanceof Index) {
+                    sb.append(((Index) pt).index);
+                } else if (pt instanceof Slice) {
+                    sb.append(((Slice) pt).toExpr());
+                }
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+    }
+
+    public static class Function extends PathToken {
+        public final String name;
+        public Function(String name) { this.name = name; }
+        @Override public String toString() { return "." + name + "()"; }
     }
 
 
@@ -74,18 +144,18 @@ public abstract class PathToken {
             }
         }
         if (!needsEscape) {
-            return "['" + name + "']";
+            return "'" + name + "'";
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("['");
+        sb.append("'");
         for (int i = 0; i < name.length(); i++) {
             char c = name.charAt(i);
             if (c == '\\') sb.append("\\\\");
             else if (c == '\'') sb.append("\\'");
             else sb.append(c);
         }
-        sb.append("']");
+        sb.append("'");
         return sb.toString();
     }
 

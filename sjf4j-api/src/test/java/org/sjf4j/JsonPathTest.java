@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +53,15 @@ public class JsonPathTest {
         log.info("path2: {}", path2);
         assertEquals("$['a~'][0]['b/\\'']['c~']['d e']", path2.toString());
     }
+
+    @Test
+    public void testCompile3() {
+        String s1 = "$..a['b'].c";
+        JsonPath p1 = JsonPath.compile(s1);
+        log.info("s1={}, p1={}", s1, p1);
+
+    }
+
 
     @Test
     public void testFindOne1() {
@@ -278,4 +288,76 @@ public class JsonPathTest {
     }
 
 
+    // --------- 模拟的 POJO ------------
+    @ToString
+    public static class Person {
+        public String name;
+        public int age;
+        public JsonWalkerTest.Info info;
+        public List<JsonWalkerTest.Baby> babies;
+    }
+
+    @ToString
+    public static class Info {
+        public String email;
+        public String city;
+    }
+
+    @ToString
+    public static class Baby {
+        public String name;
+        public int age;
+    }
+
+    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
+
+    @Test
+    public void testPojo1() {
+        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        log.info("person={}", person);
+
+        String name = JsonPath.compile("$.babies[1].name").getString(person);
+        log.info("name={}", name);
+
+    }
+
+    @Test
+    public void testSet1() {
+        JsonObject jo1 = Sjf4j.fromJson(JSON_DATA, JsonObject.class);
+        log.info("jo1={}", jo1);
+
+        JsonPath.compile("$.babies[0].age").put(jo1, 33);
+        log.info("jo1={}", jo1);
+        assertEquals(33, jo1.getJsonArray("babies").getJsonObject(0).getInteger("age"));
+
+        JsonPath.compile("$.babies[1].name").put(jo1, "Grace");
+        log.info("jo1={}", jo1);
+        assertEquals("Grace", jo1.getJsonArray("babies").getJsonObject(1).getString("name"));
+
+        JsonPath.compile("$.babies[3].name").put(jo1, "Zack");
+        log.info("jo1={}", jo1);
+        assertEquals("Zack", jo1.getJsonArray("babies").getJsonObject(3).getString("name"));
+
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").put(jo1, "Error"));
+    }
+
+    @Test
+    public void testSet2() {
+        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        log.info("p1={}", p1);
+
+        JsonPath.compile("$.babies[0].age").put(p1, 33);
+        log.info("p1={}", p1);
+        assertEquals(33, p1.babies.get(0).age);
+
+        JsonPath.compile("$.babies[1].name").put(p1, "Grace");
+        log.info("p1={}", p1);
+        assertEquals("Grace", p1.babies.get(1).name);
+
+        JsonPath.compile("$.babies[3].name").put(p1, "Zack");
+        log.info("p1={}", p1);
+        assertEquals("Zack", p1.babies.get(3).name);
+
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").put(p1, "Error"));
+    }
 }

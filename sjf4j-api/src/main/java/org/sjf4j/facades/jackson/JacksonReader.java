@@ -2,6 +2,7 @@ package org.sjf4j.facades.jackson;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonTokenId;
+import lombok.NonNull;
 import org.sjf4j.facades.FacadeReader;
 
 import java.io.IOException;
@@ -10,7 +11,7 @@ public class JacksonReader implements FacadeReader {
 
     private final JsonParser parser;
 
-    public JacksonReader(JsonParser parser) throws IOException {
+    public JacksonReader(@NonNull JsonParser parser) throws IOException {
         this.parser = parser;
     }
 

@@ -1,6 +1,7 @@
 package org.sjf4j.facades.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
+import lombok.NonNull;
 import org.sjf4j.JsonException;
 import org.sjf4j.facades.FacadeReader;
 
@@ -11,7 +12,7 @@ public class Fastjson2Reader implements FacadeReader {
 
     private final JSONReader reader;
 
-    public Fastjson2Reader(JSONReader reader) {
+    public Fastjson2Reader(@NonNull JSONReader reader) {
         this.reader = reader;
     }
 

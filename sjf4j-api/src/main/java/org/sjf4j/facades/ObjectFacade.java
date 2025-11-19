@@ -1,9 +1,9 @@
 package org.sjf4j.facades;
 
+import java.lang.reflect.Type;
+
 public interface ObjectFacade {
 
-    Object object2Node(Object object);
-
-    Object node2Object(Object node);
+    Object readNode(Object input, Type type);
 
 }

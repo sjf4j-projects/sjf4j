@@ -75,8 +75,8 @@ public class SnakeParser {
         }
 
         if (rawClazz == Map.class) {
-            Type keyType = TypeUtil.getTypeArgument(type, 0);
-            Type valueType = TypeUtil.getTypeArgument(type, 1);
+            Type keyType = TypeUtil.resolveTypeArgument(type, Map.class, 0);
+            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             if (keyType != null && keyType != String.class) {
                 throw new JsonException("Invalid Map key type: expected String but got " + keyType +
                         " for type " + type);
@@ -93,7 +93,7 @@ public class SnakeParser {
         }
 
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(type);
+            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
             JsonObject pjo = (JsonObject) pi.newInstance();
             Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
             parser.getEvent(); // consume start
@@ -112,8 +112,8 @@ public class SnakeParser {
             return pjo;
         }
 
-        if (PojoRegistry.isPojo(type)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(type);
+        if (PojoRegistry.isPojo(rawClazz)) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
             Object pojo = pi.newInstance();
             Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
             parser.getEvent(); // consume start
