@@ -1,7 +1,6 @@
 package org.sjf4j;
 
 import lombok.NonNull;
-import org.sjf4j.util.ObjectUtil;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
 
@@ -12,7 +11,6 @@ import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -290,7 +288,7 @@ public class JsonObject extends JsonContainer {
     public String getString(@NonNull String key) {
         try {
             Object value = getObject(key);
-            return NodeUtil.valueToString(value);
+            return NodeUtil.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String of key '" + key + "': " + e.getMessage(), e);
         }
@@ -303,7 +301,7 @@ public class JsonObject extends JsonContainer {
 
     public String getAsString(@NonNull String key) {
         Object value = getObject(key);
-        return NodeUtil.valueAsString(value);
+        return NodeUtil.asString(value);
     }
 
     public String getAsString(@NonNull String key, String defaultValue) {
@@ -314,7 +312,7 @@ public class JsonObject extends JsonContainer {
     public Number getNumber(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueToNumber(value);
+            return NodeUtil.toNumber(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Number of key '" + key + "': " + e.getMessage(), e);
         }
@@ -323,7 +321,7 @@ public class JsonObject extends JsonContainer {
     public Long getLong(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsLong(value);
+            return NodeUtil.asLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Long of key '" + key + "': " + e.getMessage(), e);
         }
@@ -337,7 +335,7 @@ public class JsonObject extends JsonContainer {
     public Integer getInteger(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsInteger(value);
+            return NodeUtil.asInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Integer of key '" + key + "': " + e.getMessage(), e);
         }
@@ -351,7 +349,7 @@ public class JsonObject extends JsonContainer {
     public Short getShort(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsShort(value);
+            return NodeUtil.asShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Short of key '" + key + "': " + e.getMessage(), e);
         }
@@ -365,7 +363,7 @@ public class JsonObject extends JsonContainer {
     public Byte getByte(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsByte(value);
+            return NodeUtil.asByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Byte of key '" + key + "': " + e.getMessage(), e);
         }
@@ -379,7 +377,7 @@ public class JsonObject extends JsonContainer {
     public Double getDouble(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsDouble(value);
+            return NodeUtil.asDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Double of key '" + key + "': " + e.getMessage(), e);
         }
@@ -393,7 +391,7 @@ public class JsonObject extends JsonContainer {
     public Float getFloat(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsFloat(value);
+            return NodeUtil.asFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Float of key '" + key + "': " + e.getMessage(), e);
         }
@@ -407,7 +405,7 @@ public class JsonObject extends JsonContainer {
     public BigInteger getBigInteger(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsBigInteger(value);
+            return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigInteger of key '" + key + "': " + e.getMessage(), e);
         }
@@ -421,7 +419,7 @@ public class JsonObject extends JsonContainer {
     public BigDecimal getBigDecimal(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueAsBigDecimal(value);
+            return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigDecimal of key '" + key + "': " + e.getMessage(), e);
         }
@@ -435,7 +433,7 @@ public class JsonObject extends JsonContainer {
     public Boolean getBoolean(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueToBoolean(value);
+            return NodeUtil.toBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Boolean of key '" + key + "': " + e.getMessage(), e);
         }
@@ -449,7 +447,7 @@ public class JsonObject extends JsonContainer {
     public JsonObject getJsonObject(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueToJsonObject(value);
+            return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject of key '" + key + "': " + e.getMessage(), e);
         }
@@ -463,7 +461,7 @@ public class JsonObject extends JsonContainer {
     public JsonArray getJsonArray(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueToJsonArray(value);
+            return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray of key '" + key + "': " + e.getMessage(), e);
         }
@@ -477,7 +475,7 @@ public class JsonObject extends JsonContainer {
     public <T> T get(@NonNull String key, @NonNull Class<T> clazz) {
         Object value = getObject(key);
         try {
-            return NodeUtil.valueTo(value, clazz);
+            return NodeUtil.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to get " + clazz.getName() + " of key '" + key + "': " + e.getMessage(), e);
         }

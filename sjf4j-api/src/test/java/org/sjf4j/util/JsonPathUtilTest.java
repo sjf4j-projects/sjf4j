@@ -61,6 +61,9 @@ public class JsonPathUtilTest {
                 PathToken.Name.class, PathToken.Recursive.class, PathToken.Name.class);
         testExpr("$..user..name", 3, "..");
         testCompile("$..[0]", 3, PathToken.Root.class, PathToken.Recursive.class, PathToken.Index.class);
+
+        testCompileFailure("$....name", "name");
+        testCompileFailure("$...name", "name");
     }
 
     @Test
@@ -167,6 +170,16 @@ public class JsonPathUtilTest {
         testRoundTrip("$.*");
         testRoundTrip("$[*]");
         testRoundTrip("$['a,b','c:d']");
+        testRoundTrip("$.length()");
+        testRoundTrip("$..values.sum()");
+        testRoundTrip("$[*].length()");
+    }
+
+    @Test
+    public void testFunction() {
+        // Object wildcard
+        testCompile("$..max()", 3, PathToken.Root.class, PathToken.Recursive.class, PathToken.Function.class);
+        testCompile("$[*].length()", 3, PathToken.Root.class, PathToken.Wildcard.class, PathToken.Function.class);
     }
 
 

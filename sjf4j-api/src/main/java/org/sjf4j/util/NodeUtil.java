@@ -15,149 +15,149 @@ public class NodeUtil {
 
     /// Output
 
-    public static String valueToString(Object value) {
-        if (value == null) {
+    public static String toString(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof CharSequence || value instanceof Character || value.getClass().isEnum()) {
-            return value.toString();
+        } else if (node instanceof CharSequence || node instanceof Character || node.getClass().isEnum()) {
+            return node.toString();
         }
-        throw new JsonException("Expected value type CharSequence or Character, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type CharSequence or Character, but got " + node.getClass());
     }
 
-    public static String valueAsString(Object value) {
-        if (value == null) {
+    public static String asString(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof String || value instanceof Character) {
-            return value.toString();
+        } else if (node instanceof String || node instanceof Character) {
+            return node.toString();
         }
-        return value.toString();
+        return node.toString();
     }
 
-    public static Number valueToNumber(Object value) {
-        if (value == null) {
+    public static Number toNumber(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return (Number) value;
+        } else if (node instanceof Number) {
+            return (Number) node;
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass());
     }
 
-    public static Long valueAsLong(Object value) {
-        if (value == null) {
+    public static Long asLong(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsLong((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsLong((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static Integer valueAsInteger(Object value) {
-        if (value == null) {
+    public static Integer asInteger(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsInteger((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsInteger((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static Short valueAsShort(Object value) {
-        if (value == null) {
+    public static Short asShort(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsShort((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsShort((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static Byte valueAsByte(Object value) {
-        if (value == null) {
+    public static Byte asByte(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsByte((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsByte((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static Double valueAsDouble(Object value) {
-        if (value == null) {
+    public static Double asDouble(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsDouble((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsDouble((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static Float valueAsFloat(Object value) {
-        if (value == null) {
+    public static Float asFloat(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsFloat((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsFloat((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static BigInteger valueAsBigInteger(Object value) {
-        if (value == null) {
+    public static BigInteger asBigInteger(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsBigInteger((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsBigInteger((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static BigDecimal valueAsBigDecimal(Object value) {
-        if (value == null) {
+    public static BigDecimal asBigDecimal(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Number) {
-            return NumberUtil.numberAsBigDecimal((Number) value);
+        } else if (node instanceof Number) {
+            return NumberUtil.numberAsBigDecimal((Number) node);
         }
-        throw new JsonException("Expected value type Number, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
-    public static Boolean valueToBoolean(Object value) {
-        if (value == null) {
+    public static Boolean toBoolean(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof Boolean) {
-            return (Boolean) value;
+        } else if (node instanceof Boolean) {
+            return (Boolean) node;
         }
-        throw new JsonException("Expected value type Boolean, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type Boolean, but got " + node.getClass().getName());
     }
 
-    public static JsonObject valueToJsonObject(Object value) {
-        if (value == null) {
+    public static JsonObject toJsonObject(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof JsonObject) {
-            return (JsonObject) value;
+        } else if (node instanceof JsonObject) {
+            return (JsonObject) node;
         }
-        throw new JsonException("Expected value type JsonObject, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type JsonObject, but got " + node.getClass().getName());
     }
 
     @SuppressWarnings("unchecked")
-    public static JsonObject valueAsJsonObject(Object value) {
-        if (value == null) {
+    public static JsonObject asJsonObject(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof JsonObject) {
-            return (JsonObject) value;
-        } else if (value instanceof Map) {
-            return new JsonObject((Map<String, Object>) value);
-        } else if (PojoRegistry.isPojo(value.getClass())) {
+        } else if (node instanceof JsonObject) {
+            return (JsonObject) node;
+        } else if (node instanceof Map) {
+            return new JsonObject((Map<String, Object>) node);
+        } else if (PojoRegistry.isPojo(node.getClass())) {
             //fixme
 
         }
-        throw new JsonException("Expected value type JsonObject/Map/POJO, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type JsonObject/Map/POJO, but got " + node.getClass().getName());
     }
 
-    public static JsonArray valueToJsonArray(Object value) {
-        if (value == null) {
+    public static JsonArray toJsonArray(Object node) {
+        if (node == null) {
             return null;
-        } else if (value instanceof JsonArray) {
-            return (JsonArray) value;
+        } else if (node instanceof JsonArray) {
+            return (JsonArray) node;
         }
-        throw new JsonException("Expected value type JsonArray, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type JsonArray, but got " + node.getClass().getName());
     }
 
     @SuppressWarnings("unchecked")
-    public static JsonArray valueAsJsonArray(Object value) {
+    public static JsonArray asJsonArray(Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof JsonArray) {
@@ -167,32 +167,32 @@ public class NodeUtil {
         } else if (value.getClass().isArray()) {
             return new JsonArray(value);
         }
-        throw new JsonException("Expected value type JsonArray/List/Array, but got " + value.getClass().getName());
+        throw new JsonException("Expected node type JsonArray/List/Array, but got " + value.getClass().getName());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static <T> T valueTo(Object value, @NonNull Class<T> clazz) {
-        if (value == null) {
+    public static <T> T to(Object node, @NonNull Class<T> clazz) {
+        if (node == null) {
             return null;
-        } else if (clazz.isAssignableFrom(value.getClass())) {
-            return (T) value;
+        } else if (clazz.isAssignableFrom(node.getClass())) {
+            return (T) node;
         } else if (Number.class.isAssignableFrom(clazz)) {
-            if (value instanceof Number) {
-                return NumberUtil.numberAs((Number) value, clazz);
+            if (node instanceof Number) {
+                return NumberUtil.numberAs((Number) node, clazz);
             }
         } else if (clazz.isPrimitive()) {
-            if (clazz == boolean.class && value instanceof Boolean) {
-                return (T) value;
-            } else if (clazz == char.class && value instanceof Character) {
-                return (T) value;
-            } else if (value instanceof Number) {
-                return NumberUtil.numberAs((Number) value, clazz);
+            if (clazz == boolean.class && node instanceof Boolean) {
+                return (T) node;
+            } else if (clazz == char.class && node instanceof Character) {
+                return (T) node;
+            } else if (node instanceof Number) {
+                return NumberUtil.numberAs((Number) node, clazz);
             }
         } else if (clazz.isEnum()) {
-            return (T) Enum.valueOf((Class<? extends Enum>) clazz, value.toString());
+            return (T) Enum.valueOf((Class<? extends Enum>) clazz, node.toString());
         }
         throw new JsonException("Type mismatch, expected " + clazz.getName() + ", but got " +
-                value.getClass().getName());
+                node.getClass().getName());
     }
 
 

@@ -223,7 +223,7 @@ class JsonArrayTest {
         assertEquals(ja1.hashCode(), ja2.hashCode());
         assertEquals(ja1, ja2);
         assertNotEquals(ja1, ja3);
-        assertNotEquals(ja1, null);
+        assertNotEquals(null, ja1);
         assertEquals(ja1, ja1); // 自反性
     }
 
@@ -353,7 +353,7 @@ class JsonArrayTest {
 
     public void testToPojo1() {
         JsonArray ja = new JsonArray(1, 2, "test", true);
-        List<Object> list = ja.toPojo(List.class);
+        List<Object> list = ja.toPojo(new TypeReference<List<Object>>(){});
         
         assertEquals(4, list.size());
         assertEquals(1, list.get(0));

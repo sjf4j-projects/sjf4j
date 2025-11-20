@@ -19,160 +19,160 @@ import static org.junit.jupiter.api.Assertions.*;
 public class NodeUtilTest {
 
     @Test
-    public void testValueToString() {
-        assertEquals("test", NodeUtil.valueToString("test"));
-        assertEquals("a", NodeUtil.valueToString('a'));
-        assertNull(NodeUtil.valueToString(null));
+    public void testToString() {
+        assertEquals("test", NodeUtil.toString("test"));
+        assertEquals("a", NodeUtil.toString('a'));
+        assertNull(NodeUtil.toString(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueToString(123);
+            NodeUtil.toString(123);
         });
     }
 
     @Test
-    public void testValueAsString() {
-        assertEquals("test", NodeUtil.valueAsString("test"));
-        assertEquals("a", NodeUtil.valueAsString('a'));
-        assertEquals("123", NodeUtil.valueAsString(123));
-        assertEquals("true", NodeUtil.valueAsString(true));
-        assertNull(NodeUtil.valueAsString(null));
+    public void testAsString() {
+        assertEquals("test", NodeUtil.asString("test"));
+        assertEquals("a", NodeUtil.asString('a'));
+        assertEquals("123", NodeUtil.asString(123));
+        assertEquals("true", NodeUtil.asString(true));
+        assertNull(NodeUtil.asString(null));
     }
 
     @Test
-    public void testValueToNumber() {
-        assertEquals(123, NodeUtil.valueToNumber(123));
-        assertEquals(123L, NodeUtil.valueToNumber(123L));
-        assertEquals(123.45, NodeUtil.valueToNumber(123.45));
-        assertNull(NodeUtil.valueToNumber(null));
+    public void testToNumber() {
+        assertEquals(123, NodeUtil.toNumber(123));
+        assertEquals(123L, NodeUtil.toNumber(123L));
+        assertEquals(123.45, NodeUtil.toNumber(123.45));
+        assertNull(NodeUtil.toNumber(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueToNumber("123");
+            NodeUtil.toNumber("123");
         });
     }
 
     @Test
     public void testValueAsLong() {
-        assertEquals(123L, NodeUtil.valueAsLong(123));
-        assertEquals(123L, NodeUtil.valueAsLong(123L));
-        assertEquals(123L, NodeUtil.valueAsLong(123.45));
-        assertNull(NodeUtil.valueAsLong(null));
+        assertEquals(123L, NodeUtil.asLong(123));
+        assertEquals(123L, NodeUtil.asLong(123L));
+        assertEquals(123L, NodeUtil.asLong(123.45));
+        assertNull(NodeUtil.asLong(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsLong("123");
+            NodeUtil.asLong("123");
         });
     }
 
     @Test
-    public void testValueAsInteger() {
-        assertEquals(123, NodeUtil.valueAsInteger(123));
-        assertEquals(123, NodeUtil.valueAsInteger(123L));
-        assertEquals(123, NodeUtil.valueAsInteger(123.45));
-        assertNull(NodeUtil.valueAsInteger(null));
+    public void testAsInteger() {
+        assertEquals(123, NodeUtil.asInteger(123));
+        assertEquals(123, NodeUtil.asInteger(123L));
+        assertEquals(123, NodeUtil.asInteger(123.45));
+        assertNull(NodeUtil.asInteger(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsInteger("123");
+            NodeUtil.asInteger("123");
         });
     }
 
     @Test
-    public void testValueAsDouble() {
-        assertEquals(123.45, NodeUtil.valueAsDouble(123.45));
-        assertEquals(123.0, NodeUtil.valueAsDouble(123));
-        assertNull(NodeUtil.valueAsDouble(null));
+    public void testAsDouble() {
+        assertEquals(123.45, NodeUtil.asDouble(123.45));
+        assertEquals(123.0, NodeUtil.asDouble(123));
+        assertNull(NodeUtil.asDouble(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsDouble("123.45");
+            NodeUtil.asDouble("123.45");
         });
     }
 
     @Test
-    public void testValueAsBigInteger() {
-        assertEquals(BigInteger.valueOf(123), NodeUtil.valueAsBigInteger(123));
-        assertEquals(BigInteger.valueOf(123L), NodeUtil.valueAsBigInteger(123L));
-        assertNull(NodeUtil.valueAsBigInteger(null));
+    public void testAsBigInteger() {
+        assertEquals(BigInteger.valueOf(123), NodeUtil.asBigInteger(123));
+        assertEquals(BigInteger.valueOf(123L), NodeUtil.asBigInteger(123L));
+        assertNull(NodeUtil.asBigInteger(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsBigInteger("123");
+            NodeUtil.asBigInteger("123");
         });
     }
 
     @Test
-    public void testValueAsBigDecimal() {
-        assertEquals(new BigDecimal("123.45"), NodeUtil.valueAsBigDecimal(new BigDecimal("123.45")));
-        assertEquals(new BigDecimal("123"), NodeUtil.valueAsBigDecimal(123));
-        assertNull(NodeUtil.valueAsBigDecimal(null));
+    public void testAsBigDecimal() {
+        assertEquals(new BigDecimal("123.45"), NodeUtil.asBigDecimal(new BigDecimal("123.45")));
+        assertEquals(new BigDecimal("123"), NodeUtil.asBigDecimal(123));
+        assertNull(NodeUtil.asBigDecimal(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsBigDecimal("123.45");
+            NodeUtil.asBigDecimal("123.45");
         });
     }
 
     @Test
-    public void testValueToBoolean() {
-        assertTrue(NodeUtil.valueToBoolean(true));
-        assertFalse(NodeUtil.valueToBoolean(false));
-        assertNull(NodeUtil.valueToBoolean(null));
+    public void testToBoolean() {
+        assertTrue(NodeUtil.toBoolean(true));
+        assertFalse(NodeUtil.toBoolean(false));
+        assertNull(NodeUtil.toBoolean(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueToBoolean("true");
+            NodeUtil.toBoolean("true");
         });
     }
 
     @Test
-    public void testValueToJsonObject() {
+    public void testToJsonObject() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, NodeUtil.valueToJsonObject(jo));
-        assertNull(NodeUtil.valueToJsonObject(null));
+        assertEquals(jo, NodeUtil.toJsonObject(jo));
+        assertNull(NodeUtil.toJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueToJsonObject("not an object");
+            NodeUtil.toJsonObject("not an object");
         });
     }
 
     @Test
-    public void testValueAsJsonObject() {
+    public void testAsJsonObject() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, NodeUtil.valueAsJsonObject(jo));
+        assertEquals(jo, NodeUtil.asJsonObject(jo));
         
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
-        JsonObject fromMap = NodeUtil.valueAsJsonObject(map);
+        JsonObject fromMap = NodeUtil.asJsonObject(map);
         assertEquals("value", fromMap.getString("key"));
         
-        assertNull(NodeUtil.valueAsJsonObject(null));
+        assertNull(NodeUtil.asJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsJsonObject("not an object");
+            NodeUtil.asJsonObject("not an object");
         });
     }
 
     @Test
-    public void testValueToJsonArray() {
+    public void testToJsonArray() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, NodeUtil.valueToJsonArray(ja));
-        assertNull(NodeUtil.valueToJsonArray(null));
+        assertEquals(ja, NodeUtil.toJsonArray(ja));
+        assertNull(NodeUtil.toJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueToJsonArray("not an array");
+            NodeUtil.toJsonArray("not an array");
         });
     }
 
     @Test
-    public void testValueAsJsonArray() {
+    public void testAsJsonArray() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, NodeUtil.valueAsJsonArray(ja));
+        assertEquals(ja, NodeUtil.asJsonArray(ja));
         
         List<Object> list = new ArrayList<>();
         list.add(1);
         list.add(2);
-        JsonArray fromList = NodeUtil.valueAsJsonArray(list);
+        JsonArray fromList = NodeUtil.asJsonArray(list);
         assertEquals(2, fromList.size());
         assertEquals(1, fromList.getInteger(0));
         
-        assertNull(NodeUtil.valueAsJsonArray(null));
+        assertNull(NodeUtil.asJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueAsJsonArray("not an array");
+            NodeUtil.asJsonArray("not an array");
         });
     }
 
@@ -180,25 +180,25 @@ public class NodeUtilTest {
     enum TestEnum { A, B }
 
     @Test
-    public void testValueTo() {
+    public void testTo() {
         // 测试基本类型
-        assertEquals(123, NodeUtil.valueTo(123, Integer.class));
-        assertEquals(123L, NodeUtil.valueTo(123L, Long.class));
-        assertEquals("test", NodeUtil.valueTo("test", String.class));
+        assertEquals(123, NodeUtil.to(123, Integer.class));
+        assertEquals(123L, NodeUtil.to(123L, Long.class));
+        assertEquals("test", NodeUtil.to("test", String.class));
         
         // 测试类型转换
-        assertEquals(123, NodeUtil.valueTo(123.45, Integer.class));
-        assertEquals(123L, NodeUtil.valueTo(123.45, Long.class));
+        assertEquals(123, NodeUtil.to(123.45, Integer.class));
+        assertEquals(123L, NodeUtil.to(123.45, Long.class));
         
         // 测试null
-        assertNull(NodeUtil.valueTo(null, String.class));
+        assertNull(NodeUtil.to(null, String.class));
         
         // 测试enum
-        assertEquals(TestEnum.A, NodeUtil.valueTo("A", TestEnum.class));
+        assertEquals(TestEnum.A, NodeUtil.to("A", TestEnum.class));
         
         // 测试不匹配的类型
         assertThrows(JsonException.class, () -> {
-            NodeUtil.valueTo("not a number", Integer.class);
+            NodeUtil.to("not a number", Integer.class);
         });
     }
 

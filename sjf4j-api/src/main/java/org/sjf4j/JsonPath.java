@@ -1,6 +1,5 @@
 package org.sjf4j;
 
-import lombok.Getter;
 import lombok.NonNull;
 import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
@@ -51,6 +50,10 @@ public class JsonPath {
         return JsonPathUtil.genExpr(tokens);
     }
 
+    public String toPointerExpr() {
+        return JsonPointerUtil.genExpr(tokens);
+    }
+
     @Override
     public String toString() {
         return raw == null ? toExpr() : raw;
@@ -69,274 +72,209 @@ public class JsonPath {
         return new JsonPath(this);
     }
 
-    /// Find
 
-    // Cannot have wildcard
-    public Object findOne(@NonNull Object container) {
-        Object node = container;
-        for (int i = 1; i < tokens.size(); i++) {
-            if (node == null) return null;
-            PathToken pt = tokens.get(i);
-            if (pt instanceof PathToken.Wildcard) {
-                throw new JsonException("Cannot use wildcard '*' in findOne()");
-            } else if (pt instanceof PathToken.Name) {
-                if (node instanceof JsonObject) {
-                    node = ((JsonObject) node).getObject(((PathToken.Name) pt).name);
-                } else if (node instanceof Map) {
-                    node = ((Map<?, ?>) node).get(((PathToken.Name) pt).name);
-                } else if (PojoRegistry.isPojo(node.getClass())) {
-                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(),((PathToken.Name) pt).name);
-                    if (fi != null) {
-                        node = fi.invokeGetter(node);
-                    } else {
-                        return null;
-                    }
-                } else {
-                    return null;
-                }
-            } else if (pt instanceof PathToken.Index) {
-                if (node instanceof JsonArray) {
-                    node = ((JsonArray) node).getObject(((PathToken.Index) pt).index);
-                } else if (node instanceof List) {
-                    List<?> list = (List<?>) node;
-                    int idx = ((PathToken.Index) pt).index;
-                    if (idx >= 0 && idx < list.size()) {
-                        node = list.get(idx);
-                    } else {
-                        return null;
-                    }
-                } else if (node.getClass().isArray()) {
-                    int idx = ((PathToken.Index) pt).index;
-                    if (idx >= 0 && idx < Array.getLength(node)) {
-                        node = Array.get(node, idx);
-                    } else {
-                        return null;
-                    }
-                } else {
-                    return null;
-                }
-            } else {
-                return null;
-            }
-        }
-        return node;
-    }
-
-    public JsonArray findAll(@NonNull Object container) {
-        JsonArray result = new JsonArray();
-        _findAllRecursively(container, 1, result);
-        return result;
-    }
-
-    
-    /// Get
-
-    public boolean hasNonNull(@NonNull Object container) {
-        return findOne(container) != null;
-    }
+    /// Read
 
     // Object
-    public Object getObject(@NonNull Object container) {
-        try {
-            return findOne(container);
-        } catch (Exception e) {
-            throw new JsonException("Failed to get Object by path '" + raw + "': " + e.getMessage(), e);
-        }
+    public Object readObject(@NonNull Object container) {
+        return _findOne(container);
     }
 
-    public Object getObject(@NonNull Object container, Object defaultValue) {
-        Object value = getObject(container);
+    public Object readObject(@NonNull Object container, Object defaultValue) {
+        Object value = readObject(container);
         return null == value ? defaultValue : value;
     }
 
     // String
-    public String getString(@NonNull Object container) {
+    public String readString(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueToString(value);
+            Object value = readObject(container);
+            return NodeUtil.toString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read String by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public String getString(@NonNull Object container, String defaultValue) {
-        String value = getString(container);
+    public String readString(@NonNull Object container, String defaultValue) {
+        String value = readString(container);
         return value == null ? defaultValue : value;
     }
 
     // Long
-    public Long getLong(@NonNull Object container) {
+    public Long readLong(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsLong(value);
+            Object value = readObject(container);
+            return NodeUtil.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Long by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public long getLong(@NonNull Object container, long defaultValue) {
-        Long value = getLong(container);
+    public long readLong(@NonNull Object container, long defaultValue) {
+        Long value = readLong(container);
         return value == null ? defaultValue : value;
     }
 
     // Integer
-    public Integer getInteger(@NonNull Object container) {
+    public Integer readInteger(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsInteger(value);
+            Object value = readObject(container);
+            return NodeUtil.asInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Integer by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public int getInteger(@NonNull Object container, int defaultValue) {
-        Integer value = getInteger(container);
+    public int readInteger(@NonNull Object container, int defaultValue) {
+        Integer value = readInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // Short
-    public Short getShort(@NonNull Object container) {
+    public Short readShort(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsShort(value);
+            Object value = readObject(container);
+            return NodeUtil.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Short by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public short getShort(@NonNull Object container, short defaultValue) {
-        Short value = getShort(container);
+    public short readShort(@NonNull Object container, short defaultValue) {
+        Short value = readShort(container);
         return value == null ? defaultValue : value;
     }
 
     // Byte
-    public Byte getByte(@NonNull Object container) {
+    public Byte readByte(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsByte(value);
+            Object value = readObject(container);
+            return NodeUtil.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Byte by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public byte getByte(@NonNull Object container, byte defaultValue) {
-        Byte value = getByte(container);
+    public byte readByte(@NonNull Object container, byte defaultValue) {
+        Byte value = readByte(container);
         return value == null ? defaultValue : value;
     }
 
     // Double
-    public Double getDouble(@NonNull Object container) {
+    public Double readDouble(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsDouble(value);
+            Object value = readObject(container);
+            return NodeUtil.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Double by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public double getDouble(@NonNull Object container, double defaultValue) {
-        Double value = getDouble(container);
+    public double readDouble(@NonNull Object container, double defaultValue) {
+        Double value = readDouble(container);
         return value == null ? defaultValue : value;
     }
 
     // Float
-    public Float getFloat(@NonNull Object container) {
+    public Float readFloat(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsFloat(value);
+            Object value = readObject(container);
+            return NodeUtil.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Float by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public float getFloat(@NonNull Object container, float defaultValue) {
-        Float value = getFloat(container);
+    public float readFloat(@NonNull Object container, float defaultValue) {
+        Float value = readFloat(container);
         return value == null ? defaultValue : value;
     }
 
     // BigInteger
-    public BigInteger getBigInteger(@NonNull Object container) {
+    public BigInteger readBigInteger(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsBigInteger(value);
+            Object value = readObject(container);
+            return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read BigInteger by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public BigInteger getBigInteger(@NonNull Object container, BigInteger defaultValue) {
-        BigInteger value = getBigInteger(container);
+    public BigInteger readBigInteger(@NonNull Object container, BigInteger defaultValue) {
+        BigInteger value = readBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // BigDecimal
-    public BigDecimal getBigDecimal(@NonNull Object container) {
+    public BigDecimal readBigDecimal(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueAsBigDecimal(value);
+            Object value = readObject(container);
+            return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read BigDecimal by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public BigDecimal getBigDecimal(@NonNull Object container, BigDecimal defaultValue) {
-        BigDecimal value = getBigDecimal(container);
+    public BigDecimal readBigDecimal(@NonNull Object container, BigDecimal defaultValue) {
+        BigDecimal value = readBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
     // Boolean
-    public Boolean getBoolean(@NonNull Object container) {
+    public Boolean readBoolean(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueToBoolean(value);
+            Object value = readObject(container);
+            return NodeUtil.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read Boolean by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public boolean getBoolean(@NonNull Object container, boolean defaultValue) {
-        Boolean value = getBoolean(container);
+    public boolean readBoolean(@NonNull Object container, boolean defaultValue) {
+        Boolean value = readBoolean(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonObject
-    public JsonObject getJsonObject(@NonNull Object container) {
+    public JsonObject readJsonObject(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueToJsonObject(value);
+            Object value = readObject(container);
+            return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read JsonObject by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public JsonObject getJsonObject(@NonNull Object container, JsonObject defaultValue) {
-        JsonObject value = getJsonObject(container);
+    public JsonObject readJsonObject(@NonNull Object container, JsonObject defaultValue) {
+        JsonObject value = readJsonObject(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonArray
-    public JsonArray getJsonArray(@NonNull Object container) {
+    public JsonArray readJsonArray(@NonNull Object container) {
         try {
-            Object value = findOne(container);
-            return NodeUtil.valueToJsonArray(value);
+            Object value = readObject(container);
+            return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to read JsonArray by path '" + raw + "': " + e.getMessage(), e);
         }
     }
 
-    public JsonArray getJsonArray(@NonNull Object container, JsonArray defaultValue) {
-        JsonArray value = getJsonArray(container);
+    public JsonArray readJsonArray(@NonNull Object container, JsonArray defaultValue) {
+        JsonArray value = readJsonArray(container);
         return value == null ? defaultValue : value;
+    }
+
+    public List<Object> readAll(@NonNull Object container) {
+        List<Object> result = new ArrayList<>();
+        _findAll(container, 1, result);
+        return result;
     }
 
     /// Put
 
     @SuppressWarnings("unchecked")
     public void put(@NonNull Object container, Object value) {
-//        if (!(container instanceof JsonObject) && !(container instanceof JsonArray)) {
-//            throw new JsonException("Invalid container type: expected JsonObject or JsonArray, but was '" +
-//                    container.getClass() + "'");
-//        }
         Object lastContainer = _autoCreateContainers(container);
         PathToken lastToken = peek();
         if (lastToken instanceof PathToken.Name) {
@@ -366,27 +304,42 @@ public class JsonPath {
                 } else if (ja.containsIndex(idx)) {
                     ja.set(idx, value);
                 } else {
-                    throw new JsonException("Cannot set index " + idx + " in JsonArray of size " +
-                            ja.size() + " (only when index = size allowed for addition)");
+                    throw new JsonException("Cannot set/add index " + idx + " in JsonArray of size " +
+                            ja.size() + " (index < size: modify; index == size: append)");
                 }
             } else if (lastContainer instanceof List) {
                 List<Object> list = (List<Object>) lastContainer;
                 int idx = ((PathToken.Index) lastToken).index;
+                idx = idx < 0 ? list.size() + idx : idx;
                 if (idx == list.size()) {
                     list.add(value);
                 } else if (idx >= 0 && idx < list.size()) {
                     list.set(idx, value);
                 } else {
-                    throw new JsonException("Cannot set index " + idx + " in List of size " +
-                            list.size() + " (only when index = size allowed for addition)");
+                    throw new JsonException("Cannot set/add index " + idx + " in List of size " +
+                            list.size() + " (index < size: modify; index == size: append)");
+                }
+            } else if (lastContainer.getClass().isArray()) {
+                int idx = ((PathToken.Index) lastToken).index;
+                int len = Array.getLength(lastContainer);
+                idx = idx < 0 ? len + idx : idx;
+                if (idx >= 0 && idx < len) {
+                    Array.set(lastContainer, idx, value);
+                } else {
+                    throw new JsonException("Cannot set index " + idx + " in Array of size " +
+                            len + " (index < size: modify)");
                 }
             } else {
                 throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
                         lastContainer.getClass() + "'");
             }
         } else {
-            throw new JsonException("Unexpected path token " + lastToken);
+            throw new JsonException("Unexpected path token '" + lastToken + "'");
         }
+    }
+
+    public boolean hasNonNull(@NonNull Object container) {
+        return readObject(container) != null;
     }
 
     public void putNonNull(@NonNull Object container, Object value) {
@@ -437,10 +390,10 @@ public class JsonPath {
 
     /// private
 
-    private void _findAllRecursively(Object container, int depth, JsonArray result) {
+    public Object _findOne(@NonNull Object container) {
         Object node = container;
-        for (int i = depth; i < tokens.size(); i++) {
-            if (node ==  null) return;
+        for (int i = 1; i < tokens.size(); i++) {
+            if (node == null) return null;
             PathToken pt = tokens.get(i);
             if (pt instanceof PathToken.Name) {
                 if (node instanceof JsonObject) {
@@ -452,10 +405,10 @@ public class JsonPath {
                     if (fi != null) {
                         node = fi.invokeGetter(node);
                     } else {
-                        return;
+                        return null;
                     }
                 } else {
-                    return;
+                    return null;
                 }
             } else if (pt instanceof PathToken.Index) {
                 if (node instanceof JsonArray) {
@@ -463,59 +416,229 @@ public class JsonPath {
                 } else if (node instanceof List) {
                     List<?> list = (List<?>) node;
                     int idx = ((PathToken.Index) pt).index;
+                    idx = idx < 0 ? list.size() + idx : idx;
                     if (idx >= 0 && idx < list.size()) {
                         node = list.get(idx);
                     } else {
-                        return;
+                        return null;
                     }
                 } else if (node.getClass().isArray()) {
                     int idx = ((PathToken.Index) pt).index;
-                    if (idx >= 0 && idx < Array.getLength(node)) {
+                    int len = Array.getLength(node);
+                    idx = idx < 0 ? len + idx : idx;
+                    if (idx >= 0 && idx < len) {
                         node = Array.get(node, idx);
                     } else {
-                        return;
+                        return null;
                     }
                 } else {
-                    return;
+                    return null;
+                }
+            } else if (pt instanceof PathToken.Recursive) {
+                if (i + 1 >= tokens.size()) throw new JsonException("Recursive cannot appear at the end.");
+                List<Object> result = new ArrayList<>();
+                _findMatch(node, i + 1, result);
+                if (result.isEmpty()) {
+                    return null;
+                } else if (result.size() == 1) {
+                    return result.get(0);
+                } else {
+                    throw new JsonException("Path matched " + result.size() +
+                            " results, but read() returns only one value. Use readAll() to retrieve all matches.");
+                }
+            } else {
+                throw new JsonException("Unsupported path token '" + pt + "' in read()");
+            }
+        }
+        return node;
+    }
+
+
+    private void _findAll(Object container, int tokenIdx, List<Object> result) {
+        Object node = container;
+
+        for (int i = tokenIdx; i < tokens.size(); i++) {
+            if (node ==  null) return;
+            PathToken pt = tokens.get(i);
+            if (pt instanceof PathToken.Name) {
+                if (node instanceof JsonObject) {
+                    node = ((JsonObject) node).getObject(((PathToken.Name) pt).name);
+                    continue;
+                } else if (node instanceof Map) {
+                    node = ((Map<?, ?>) node).get(((PathToken.Name) pt).name);
+                    continue;
+                } else if (PojoRegistry.isPojo(node.getClass())) {
+                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(),((PathToken.Name) pt).name);
+                    if (fi != null) {
+                        node = fi.invokeGetter(node);
+                        continue;
+                    }
+                }
+            } else if (pt instanceof PathToken.Index) {
+                if (node instanceof JsonArray) {
+                    node = ((JsonArray) node).getObject(((PathToken.Index) pt).index);
+                    continue;
+                } else if (node instanceof List) {
+                    List<?> list = (List<?>) node;
+                    int idx = ((PathToken.Index) pt).index;
+                    idx = idx < 0 ? list.size() + idx : idx;
+                    if (idx >= 0 && idx < list.size()) {
+                        node = list.get(idx);
+                        continue;
+                    }
+                } else if (node.getClass().isArray()) {
+                    int idx = ((PathToken.Index) pt).index;
+                    int len = Array.getLength(node);
+                    idx = idx < 0 ? len + idx : idx;
+                    if (idx >= 0 && idx < len) {
+                        node = Array.get(node, idx);
+                        continue;
+                    }
                 }
             } else if (pt instanceof PathToken.Wildcard) {
                 if (node instanceof JsonObject) {
                     final int finalI = i;
                     ((JsonObject) node).forEach((k, v) -> {
-                        _findAllRecursively(v, finalI + 1, result);
+                        _findAll(v, finalI + 1, result);
                     });
                 } else if (node instanceof JsonArray) {
                     for (Object val : ((JsonArray) node)) {
-                        _findAllRecursively(val, i + 1, result);
+                        _findAll(val, i + 1, result);
                     }
                 } else if (node instanceof Map) {
                     for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                        _findAllRecursively(entry.getValue(), i + 1, result);
+                        _findAll(entry.getValue(), i + 1, result);
                     }
                 } else if (node instanceof List) {
                     for (Object val : ((List<?>) node)) {
-                        _findAllRecursively(val, i + 1, result);
+                        _findAll(val, i + 1, result);
                     }
                 } else if (node.getClass().isArray()) {
-                    for (int k = 0; k < Array.getLength(node); k++) {
-                        _findAllRecursively(Array.get(node, k), i + 1, result);
+                    for (int j = 0; j < Array.getLength(node); j++) {
+                        _findAll(Array.get(node, j), i + 1, result);
                     }
-                } else {
-                    return;
+                } else if (PojoRegistry.isPojo(node.getClass())) {
+                    PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
+                    for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                        _findAll(fi.getValue().invokeGetter(node), i + 1, result);
+                    }
+                }
+            } else if (pt instanceof PathToken.Recursive) {
+                if (i + 1 >= tokens.size()) throw new JsonException("Recursive cannot appear at the end.");
+                _findMatch(node, i + 1, result);
+            } else if (pt instanceof PathToken.Slice) {
+                PathToken.Slice slicePt = (PathToken.Slice) pt;
+                if (node instanceof JsonArray) {
+                    final int finalI = i;
+                    ((JsonArray) node).forEach((j, v) -> {
+                        if (slicePt.match(j)) _findAll(v, finalI + 1, result);
+                    });
+                } else if (node instanceof List) {
+                    List<?> list = (List<?>) node;
+                    for (int j = 0; j < list.size(); j++) {
+                        if (slicePt.match(j)) _findAll(list.get(j), i + 1, result);
+                    }
+                } else if (node.getClass().isArray()) {
+                    for (int j = 0; j < Array.getLength(node); j++) {
+                        if (slicePt.match(j)) _findAll(Array.get(node, j), i + 1, result);
+                    }
+                }
+            } else if (pt instanceof PathToken.Union) {
+                PathToken.Union unionPt = (PathToken.Union) pt;
+                if (node instanceof JsonObject) {
+                    final int finalI = i;
+                    ((JsonObject) node).forEach((k, v) -> {
+                        if (unionPt.match(k)) _findAll(v, finalI + 1, result);
+                    });
+                } else if (node instanceof Map) {
+                    final int finalI = i;
+                    ((Map<?, ?>) node).forEach((k, v) -> {
+                        if (unionPt.match(k)) _findAll(v, finalI + 1, result);
+                    });
+                } else if (node instanceof JsonArray) {
+                    final int finalI = i;
+                    ((JsonArray) node).forEach((j, v) -> {
+                        if (unionPt.match(j)) _findAll(v, finalI + 1, result);
+                    });
+                } else if (node instanceof List) {
+                    List<?> list = (List<?>) node;
+                    for (int j = 0; j < list.size(); j++) {
+                        if (unionPt.match(j)) _findAll(list.get(j), i + 1, result);
+                    }
+                } else if (node.getClass().isArray()) {
+                    for (int j = 0; j < Array.getLength(node); j++) {
+                        if (unionPt.match(j)) _findAll(Array.get(node, j), i + 1, result);
+                    }
+                } else if (PojoRegistry.isPojo(node.getClass())) {
+                    PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
+                    for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                        if (unionPt.match(fi.getKey())) _findAll(fi.getValue().invokeGetter(node), i + 1, result);
+                    }
                 }
             } else {
-                return;
+                throw new JsonException("Unexpected path token '" + pt + "'");
             }
+            return;
         }
+
         result.add(node);
     }
 
+    private void _findMatch(Object container, int tokenIdx, List<Object> result) {
+        if (container == null) return;
+        PathToken pt = tokens.get(tokenIdx);
+        if (container instanceof JsonObject) {
+            ((JsonObject) container).forEach((k, v) -> {
+                if (pt.match(k)) {
+                    _findAll(v, tokenIdx + 1, result);
+                }
+                _findMatch(v, tokenIdx, result);
+            });
+        } else if (container instanceof JsonArray) {
+            ((JsonArray) container).forEach((i, v) -> {
+                if (pt.match(i)) {
+                    _findAll(v, tokenIdx + 1, result);
+                }
+                _findMatch(v, tokenIdx, result);
+            });
+        } else if (container instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
+                if (pt.match(entry.getKey())) {
+                    _findAll(entry.getValue(), tokenIdx + 1, result);
+                }
+                _findMatch(entry.getValue(), tokenIdx, result);
+            }
+        } else if (container instanceof List) {
+            List<?> list = (List<?>) container;
+            for (int i = 0; i < list.size(); i++) {
+                if (pt.match(i)) {
+                    _findAll(list.get(i), tokenIdx + 1, result);
+                }
+                _findMatch(list.get(i), tokenIdx, result);
+            }
+        } else if (container.getClass().isArray()) {
+            for (int j = 0; j < Array.getLength(container); j++) {
+                if (pt.match(j)) {
+                    _findAll(Array.get(container, j), tokenIdx + 1, result);
+                }
+                _findMatch(Array.get(container, j), tokenIdx, result);
+            }
+        } else if (PojoRegistry.isPojo(container.getClass())) {
+            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                if (pt.match(fi.getKey())) {
+                    _findAll(fi.getValue().invokeGetter(container), tokenIdx + 1, result);
+                }
+                _findMatch(fi.getValue().invokeGetter(container), tokenIdx, result);
+            }
+        }
+    }
 
     // 1. Automatically create or extends JsonObject nodes when they do not exist.
     // 2. Automatically create or extends JsonArray nodes when they do not exist and the index is 0.
     // TODO: Consider traversing the path first to verify if it can be filled with containers.
     @SuppressWarnings("unchecked")
-    Object _autoCreateContainers(@NonNull Object container) {
+    private Object _autoCreateContainers(@NonNull Object container) {
         Object node = container;
         Type type = Object.class;
         for (int i = 1; i < tokens.size() - 1; i++) { // traverse up to the second-last token
@@ -596,6 +719,7 @@ public class JsonPath {
                     List<Object> list = (List<Object>) node;
                     type = TypeUtil.resolveTypeArgument(type, List.class, 0);
                     Class<?> rawClazz = TypeUtil.getRawClass(type);
+                    idx = idx < 0 ? list.size() + idx : idx;
                     if (idx == list.size()) {
                         PathToken nextPt = tokens.get(i + 1);
                         node = createContainer(nextPt, rawClazz);
@@ -609,14 +733,15 @@ public class JsonPath {
                         }
                     } else {
                         throw new JsonException("Invalid List index " + idx + " for size " + list.size() +
-                            " (idx < size: modify; idx == size: append).");
+                            " (index < size: modify; index == size: append).");
                     }
                 } else if (node.getClass().isArray()) {
                     Object arr = node;
-                    int size = Array.getLength(arr);
+                    int len = Array.getLength(arr);
+                    idx = idx < 0 ? len + idx : idx;
                     Class<?> rawClazz = arr.getClass().getComponentType();
                     type = rawClazz;
-                    if (idx >= 0 && idx < size) {
+                    if (idx >= 0 && idx < len) {
                         node = Array.get(arr, idx);
                         if (node == null) {
                             PathToken nextPt = tokens.get(i + 1);
@@ -624,8 +749,8 @@ public class JsonPath {
                             Array.set(arr, idx, node);
                         }
                     } else {
-                        throw new JsonException("Invalid Array index " + idx + " for size " + size +
-                                " (idx < size: modify; idx == size: no append).");
+                        throw new JsonException("Invalid Array index " + idx + " for size " + len +
+                                " (index < size: modify;).");
                     }
                 } else {
                     throw new JsonException("Unexpected container type '" + node.getClass() + "' with list token " +
@@ -634,7 +759,7 @@ public class JsonPath {
             } else if (pt instanceof PathToken.Wildcard) {
                 throw new JsonException("Cannot use wildcard '*' in _autoCreateContainers()");
             } else {
-                throw new JsonException("Unexpected path token " + pt);
+                throw new JsonException("Unexpected path token '" + pt + "'");
             }
         }
         return node; // last container
@@ -667,7 +792,7 @@ public class JsonPath {
                         "' at index token " + pt + ". The type must be one of JsonArray/List/Array.");
             }
         } else {
-            throw new JsonException("Unexpected path token " + pt);
+            throw new JsonException("Unexpected path token '" + pt + "'");
         }
 
     }

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class JsonPathTest {
 
 
     @Test
-    public void testFindOne1() {
+    public void testReadObject1() {
         String json1 = "{\n" +
                 "  \"book\": [\n" +
                 "    { \"title\": \"A\", \"price\": 10, \"tags\": [\"classic\"] },\n" +
@@ -78,25 +79,25 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        assertEquals("B", JsonPath.compile("$.book[1]['title']").findOne(jo1));
-        assertEquals("B", JsonPath.compile("/book/1/title").findOne(jo1));
-        assertEquals(10, JsonPath.compile("$.book[0].price").findOne(jo1));
-        assertEquals("classic", JsonPath.compile("$.book[0].tags[0]").findOne(jo1));
-        assertEquals(new JsonArray(), JsonPath.compile("$.emptyArray").findOne(jo1));
-        assertEquals(new JsonObject(), JsonPath.compile("$['emptyObject']").findOne(jo1));
-        assertNull(JsonPath.compile("$.nullValue").findOne(jo1));
-        assertEquals("v1", JsonPath.compile("$['weird.keys']['key with spaces']").findOne(jo1));
-        assertEquals("v1", JsonPath.compile("/weird.keys/key with spaces").findOne(jo1));
+        assertEquals("B", JsonPath.compile("$.book[1]['title']").readObject(jo1));
+        assertEquals("B", JsonPath.compile("/book/1/title").readObject(jo1));
+        assertEquals(10, JsonPath.compile("$.book[0].price").readObject(jo1));
+        assertEquals("classic", JsonPath.compile("$.book[0].tags[0]").readObject(jo1));
+        assertEquals(new JsonArray(), JsonPath.compile("$.emptyArray").readObject(jo1));
+        assertEquals(new JsonObject(), JsonPath.compile("$['emptyObject']").readObject(jo1));
+        assertNull(JsonPath.compile("$.nullValue").readObject(jo1));
+        assertEquals("v1", JsonPath.compile("$['weird.keys']['key with spaces']").readObject(jo1));
+        assertEquals("v1", JsonPath.compile("/weird.keys/key with spaces").readObject(jo1));
 
-        log.info("$: {}", JsonPath.compile("$").findOne(jo1));
-        assertEquals(JsonObject.class, JsonPath.compile("$").findOne(jo1).getClass());
+        log.info("$: {}", JsonPath.compile("$").readObject(jo1));
+        assertEquals(JsonObject.class, JsonPath.compile("$").readObject(jo1).getClass());
 
-        assertThrows(JsonException.class, () -> JsonPath.compile("$.book[*].price").findOne(jo1));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.book[*].price").readObject(jo1));
 
     }
 
     @Test
-    public void testFindAll1() {
+    public void testReadAll1() {
         String json1 = "{\n" +
                 "  \"book\": [\n" +
                 "    { \"title\": \"A\", \"price\": 10, \"tags\": [\"classic\"] },\n" +
@@ -110,17 +111,16 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        JsonArray result1 = JsonPath.compile("$.book[*].title").findAll(jo1);
+        List<Object> result1 = JsonPath.compile("$.book[*].title").readAll(jo1);
         log.info("result1: {}", result1);
         assertEquals(3, result1.size());
-        assertEquals("B", result1.getString(1));
+        assertEquals("B", result1.get(1));
 
-        JsonArray result2 = JsonPath.compile("$.book[*].tags").findAll(jo1);
+        List<Object> result2 = JsonPath.compile("$.book[*].tags").readAll(jo1);
         log.info("result2: {}", result2);
         assertEquals(3, result2.size());
-        assertEquals("classic", result2.getJsonArray(0).getString(0));
-        assertEquals(new JsonArray(), result2.getJsonArray(1));
-        assertNull(result2.getJsonArray(2));
+        assertEquals("classic", ((JsonArray) result2.get(0)).getString(0));
+        assertNull(result2.get(2));
 
     }
 
@@ -139,15 +139,17 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        Object container1 = JsonPath.compile("$.book[0].box[0].gg")._autoCreateContainers(jo1);
+        JsonPath.compile("$.book[0].box[0].gg").put(jo1, "mm");
+        JsonObject container1 = JsonPath.compile("$.book[0].box[0]").readJsonObject(jo1);
         log.info("container1={} jo1={}", container1, jo1);
         assertEquals(JsonObject.class, container1.getClass());
         assertEquals(1, jo1.getJsonArrayByPath("$.book[0].box").size());
 
-        Object container2 = JsonPath.compile("$.book[2].tags['gg mm'][0]")._autoCreateContainers(jo1);
+        JsonPath.compile("$.book[2].tags['gg mm'][0]").put(jo1, "mm");
+        JsonArray container2 = JsonPath.compile("$.book[2].tags['gg mm']").readJsonArray(jo1);
         log.info("container2={} jo1={}", container2, jo1);
         assertEquals(JsonArray.class, container2.getClass());
-        assertEquals(0, jo1.getJsonArrayByPath("$.book[2].tags['gg mm']").size());
+        assertEquals(1, jo1.getJsonArrayByPath("$.book[2].tags['gg mm']").size());
     }
 
     @Test
@@ -160,9 +162,9 @@ public class JsonPathTest {
         jo1.put("map", map);
 
         log.info("jo1={}", jo1);
-        assertEquals(2, new JsonPath("$.names[1]").getLong(jo1));
-        assertEquals("ll", new JsonPath("$.map.lis[0].kk").getString(jo1));
-        assertEquals(ArrayList.class, new JsonPath("$.map.lis").getObject(jo1).getClass());
+        assertEquals(2, new JsonPath("$.names[1]").readLong(jo1));
+        assertEquals("ll", new JsonPath("$.map.lis[0].kk").readString(jo1));
+        assertEquals(ArrayList.class, new JsonPath("$.map.lis").readObject(jo1).getClass());
     }
 
     public void testPutAndRemove() {
@@ -210,12 +212,12 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson("{\"a\":1}");
         
         // 测试不存在的路径
-        assertNull(JsonPath.compile("$.nonexist").getObject(jo));
-        assertEquals("default", JsonPath.compile("$.nonexist").getString(jo, "default"));
+        assertNull(JsonPath.compile("$.nonexist").readObject(jo));
+        assertEquals("default", JsonPath.compile("$.nonexist").readString(jo, "default"));
         
         // 测试通配符在findOne中
         assertThrows(JsonException.class, () -> {
-            JsonPath.compile("$.a[*]").findOne(jo);
+            JsonPath.compile("$.a[*]").readObject(jo);
         });
         
         // 测试无效的路径表达式
@@ -230,7 +232,7 @@ public class JsonPathTest {
         
         // 测试数组越界
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
-        assertNull(JsonPath.compile("$[10]").getObject(ja));
+        assertNull(JsonPath.compile("$[10]").readObject(ja));
     }
 
     @Test
@@ -247,44 +249,44 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(json);
         
         // 复杂路径查找
-        assertEquals("reference", JsonPath.compile("$.store.book[0].category").findOne(jo));
-        assertEquals(12.99, JsonPath.compile("$.store.book[1].price").getDouble(jo));
-        assertEquals("red", JsonPath.compile("$.store.bicycle.color").findOne(jo));
+        assertEquals("reference", JsonPath.compile("$.store.book[0].category").readObject(jo));
+        assertEquals(12.99, JsonPath.compile("$.store.book[1].price").readDouble(jo));
+        assertEquals("red", JsonPath.compile("$.store.bicycle.color").readObject(jo));
         
         // 使用通配符查找所有
-        JsonArray authors = JsonPath.compile("$.store.book[*].author").findAll(jo);
+        List<Object> authors = JsonPath.compile("$.store.book[*].author").readAll(jo);
         assertEquals(2, authors.size());
-        assertEquals("Nigel Rees", authors.getString(0));
-        assertEquals("Evelyn Waugh", authors.getString(1));
+        assertEquals("Nigel Rees", authors.get(0));
+        assertEquals("Evelyn Waugh", authors.get(1));
         
         // 使用通配符查找所有价格
-        JsonArray prices = JsonPath.compile("$.store.book[*].price").findAll(jo);
+        List<Object> prices = JsonPath.compile("$.store.book[*].price").readAll(jo);
         assertEquals(2, prices.size());
-        assertEquals(8.95, prices.getDouble(0));
-        assertEquals(12.99, prices.getDouble(1));
+        assertEquals(8.95, prices.get(0));
+        assertEquals(12.99, prices.get(1));
     }
 
     @Test
     public void testEdgeCases() {
         // 测试根路径
         JsonObject jo = JsonObject.fromJson("{\"a\":1}");
-        Object root = JsonPath.compile("$").findOne(jo);
+        Object root = JsonPath.compile("$").readObject(jo);
         assertEquals(jo, root);
         
         // 测试空对象
         JsonObject empty = new JsonObject();
         assertFalse(JsonPath.compile("$.a").hasNonNull(empty));
-        assertNull(JsonPath.compile("$.a").findOne(empty));
+        assertNull(JsonPath.compile("$.a").readObject(empty));
         
         // 测试空数组
         JsonArray emptyArray = new JsonArray();
         assertFalse(JsonPath.compile("$[0]").hasNonNull(emptyArray));
-        assertNull(JsonPath.compile("$[0]").findOne(emptyArray));
+        assertNull(JsonPath.compile("$[0]").readObject(emptyArray));
         
         // 测试null值
         JsonObject withNull = JsonObject.fromJson("{\"a\":null}");
         assertFalse(JsonPath.compile("$.a").hasNonNull(withNull));
-        assertNull(JsonPath.compile("$.a").findOne(withNull));
+        assertNull(JsonPath.compile("$.a").readObject(withNull));
     }
 
 
@@ -293,8 +295,8 @@ public class JsonPathTest {
     public static class Person {
         public String name;
         public int age;
-        public JsonWalkerTest.Info info;
-        public List<JsonWalkerTest.Baby> babies;
+        public Info info;
+        public List<Baby> babies;
     }
 
     @ToString
@@ -316,7 +318,7 @@ public class JsonPathTest {
         Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
 
-        String name = JsonPath.compile("$.babies[1].name").getString(person);
+        String name = JsonPath.compile("$.babies[1].name").readString(person);
         log.info("name={}", name);
 
     }
@@ -360,4 +362,316 @@ public class JsonPathTest {
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").put(p1, "Error"));
     }
+
+    @Test
+    public void testSliceOperations() {
+        String json = "{\n" +
+                "  \"numbers\": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],\n" +
+                "  \"books\": [\n" +
+                "    {\"title\": \"A\", \"price\": 10},\n" +
+                "    {\"title\": \"B\", \"price\": 20},\n" +
+                "    {\"title\": \"C\", \"price\": 30},\n" +
+                "    {\"title\": \"D\", \"price\": 40},\n" +
+                "    {\"title\": \"E\", \"price\": 50}\n" +
+                "  ]\n" +
+                "}";
+        JsonObject jo = JsonObject.fromJson(json);
+
+        // 基础切片测试 - readObject
+        assertEquals(2, JsonPath.compile("$.numbers[2]").readObject(jo));
+        assertEquals(7, JsonPath.compile("$.numbers[-3]").readObject(jo)); // 倒数第三个
+
+        // 切片测试 - readAll
+        List<Object> slice1 = JsonPath.compile("$.numbers[1:5]").readAll(jo);
+        assertEquals(4, slice1.size());
+        assertEquals(Arrays.asList(1, 2, 3, 4), slice1);
+
+        List<Object> slice2 = JsonPath.compile("$.numbers[::2]").readAll(jo); // 步长为2
+        assertEquals(5, slice2.size());
+        assertEquals(Arrays.asList(0, 2, 4, 6, 8), slice2);
+
+        List<Object> slice3 = JsonPath.compile("$.numbers[5:]").readAll(jo); // 从5开始到结束
+        assertEquals(5, slice3.size());
+        assertEquals(Arrays.asList(5, 6, 7, 8, 9), slice3);
+
+        List<Object> slice4 = JsonPath.compile("$.numbers[:3]").readAll(jo); // 前3个
+        assertEquals(3, slice4.size());
+        assertEquals(Arrays.asList(0, 1, 2), slice4);
+
+        // 对象数组的切片
+        List<Object> bookSlice = JsonPath.compile("$.books[1:4]").readAll(jo);
+        assertEquals(3, bookSlice.size());
+        assertEquals("B", ((JsonObject) bookSlice.get(0)).getString("title"));
+        assertEquals("C", ((JsonObject) bookSlice.get(1)).getString("title"));
+        assertEquals("D", ((JsonObject) bookSlice.get(2)).getString("title"));
+
+        // 切片中的属性访问
+        List<Object> prices = JsonPath.compile("$.books[1:4].price").readAll(jo);
+        assertEquals(3, prices.size());
+        assertEquals(Arrays.asList(20, 30, 40), prices);
+    }
+
+    @Test
+    public void testUnionOperations() {
+        String json = "{\n" +
+                "  \"numbers\": [0, 1, 2, 3, 4, 5],\n" +
+                "  \"users\": [\n" +
+                "    {\"name\": \"Alice\", \"age\": 25, \"role\": \"admin\"},\n" +
+                "    {\"name\": \"Bob\", \"age\": 30, \"role\": \"user\"},\n" +
+                "    {\"name\": \"Charlie\", \"age\": 35, \"role\": \"user\"},\n" +
+                "    {\"name\": \"Diana\", \"age\": 28, \"role\": \"moderator\"}\n" +
+                "  ],\n" +
+                "  \"metadata\": {\n" +
+                "    \"version\": \"1.0\",\n" +
+                "    \"author\": \"test\",\n" +
+                "    \"tags\": [\"json\", \"test\"]\n" +
+                "  }\n" +
+                "}";
+        JsonObject jo = JsonObject.fromJson(json);
+
+        // 多索引联合 - readObject (返回第一个)
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.numbers[1,3,5]").readObject(jo));
+
+        // 多索引联合 - readAll
+        List<Object> multiIndex = JsonPath.compile("$.numbers[1,3,5]").readAll(jo);
+        assertEquals(3, multiIndex.size());
+        assertEquals(Arrays.asList(1, 3, 5), multiIndex);
+
+        // 多名称联合
+        List<Object> multiName = JsonPath.compile("$.metadata['version','author']").readAll(jo);
+        assertEquals(2, multiName.size());
+        assertTrue(multiName.contains("1.0"));
+        assertTrue(multiName.contains("test"));
+
+        // 混合联合 (索引和名称)
+        List<Object> usersUnion = JsonPath.compile("$.users[0,2]['name','age']").readAll(jo);
+        assertEquals(4, usersUnion.size()); // [Alice, 25, Charlie, 35]
+        assertTrue(usersUnion.contains("Alice"));
+        assertTrue(usersUnion.contains("Charlie"));
+        assertTrue(usersUnion.contains(25));
+        assertTrue(usersUnion.contains(35));
+
+        // 带切片的联合
+        List<Object> mixedUnion = JsonPath.compile("$.numbers[0,2,3:6]").readAll(jo);
+        assertEquals(5, mixedUnion.size()); // [0, 2, 3, 4, 5]
+    }
+
+    @Test
+    public void testRecursiveOperations() {
+        String json = "{\n" +
+                "  \"name\": \"root\",\n" +
+                "  \"children\": [\n" +
+                "    {\n" +
+                "      \"name\": \"child1\",\n" +
+                "      \"children\": [\n" +
+                "        {\"name\": \"grandchild1\", \"value\": 100},\n" +
+                "        {\"name\": \"grandchild2\", \"value\": 200}\n" +
+                "      ]\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"name\": \"child2\",\n" +
+                "      \"value\": 50,\n" +
+                "      \"children\": [\n" +
+                "        {\"name\": \"grandchild3\", \"value\": 300, \"only\": 1}\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  ],\n" +
+                "  \"tags\": [\"a\", \"b\"],\n" +
+                "  \"nested\": {\n" +
+                "    \"deep\": {\n" +
+                "      \"name\": \"deepName\",\n" +
+                "      \"values\": [10, 20, 30]\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+        JsonObject jo = JsonObject.fromJson(json);
+
+        // 递归查找所有name - readAll
+        List<Object> allNames = JsonPath.compile("$..name").readAll(jo);
+        assertEquals(7, allNames.size());
+        assertTrue(allNames.contains("root"));
+        assertTrue(allNames.contains("child1"));
+        assertTrue(allNames.contains("child2"));
+        assertTrue(allNames.contains("grandchild1"));
+        assertTrue(allNames.contains("grandchild2"));
+        assertTrue(allNames.contains("grandchild3"));
+        assertTrue(allNames.contains("deepName"));
+
+        // 递归查找第一个name - readObject
+        assertThrows(JsonException.class, () -> JsonPath.compile("$..name").readObject(jo));
+        assertEquals(1, JsonPath.compile("$..only").readObject(jo));
+        assertEquals(30, JsonPath.compile("$..nested..values[2]").readObject(jo));
+
+        // 递归查找特定路径
+        List<Object> allValues = JsonPath.compile("$..value").readAll(jo);
+        assertEquals(4, allValues.size());
+        assertTrue(allValues.contains(100));
+        assertTrue(allValues.contains(200));
+        assertTrue(allValues.contains(50));
+        assertTrue(allValues.contains(300));
+
+        // 递归数组访问
+        List<Object> recursiveArray = JsonPath.compile("$..values[1]").readAll(jo);
+        assertEquals(1, recursiveArray.size());
+        assertEquals(20, recursiveArray.get(0));
+
+        // 组合递归和其他操作
+        List<Object> recursiveChildren = JsonPath.compile("$..children[0].name").readAll(jo);
+        log.info("recursiveChildren={}", recursiveChildren);
+        assertEquals(3, recursiveChildren.size());
+        assertTrue(recursiveChildren.contains("child1"));
+        assertTrue(recursiveChildren.contains("grandchild1"));
+        assertTrue(recursiveChildren.contains("grandchild3"));
+    }
+
+    @Test
+    public void testComplexCombinations() {
+        String json = "{\n" +
+                "  \"departments\": [\n" +
+                "    {\n" +
+                "      \"name\": \"Engineering\",\n" +
+                "      \"employees\": [\n" +
+                "        {\"name\": \"Alice\", \"skills\": [\"Java\", \"Python\"], \"projects\": [\"A\", \"B\"]},\n" +
+                "        {\"name\": \"Bob\", \"skills\": [\"JavaScript\", \"React\"], \"projects\": [\"C\"]}\n" +
+                "      ]\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"name\": \"Marketing\",\n" +
+                "      \"employees\": [\n" +
+                "        {\"name\": \"Charlie\", \"skills\": [\"SEO\", \"Content\"], \"projects\": [\"D\", \"E\", \"F\"]}\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}";
+        JsonObject jo = JsonObject.fromJson(json);
+
+        // 递归 + 切片 + 属性访问
+        List<Object> firstSkills = JsonPath.compile("$..employees[0].skills[0]").readAll(jo);
+        assertEquals(2, firstSkills.size());
+        assertTrue(firstSkills.contains("Java"));
+        assertTrue(firstSkills.contains("SEO"));
+
+        // 联合 + 递归
+        List<Object> selectedNames = JsonPath.compile("$..employees[0,1]['name','skills']").readAll(jo);
+        // 应该包含: Alice, ["Java","Python"], Bob, ["JavaScript","React"], Charlie, ["SEO","Content"]
+        assertTrue(selectedNames.size() >= 6);
+
+        // 切片 + 递归
+        List<Object> slicedProjects = JsonPath.compile("$..projects[0:2]").readAll(jo);
+        // 应该包含: ["A","B"], ["C"], ["D","E"]
+        assertTrue(slicedProjects.size() >= 3);
+
+        // 复杂路径: 所有部门的第一个员工的第二个技能
+        List<Object> complexPath = JsonPath.compile("$.departments[*].employees[0].skills[1]").readAll(jo);
+        assertEquals(2, complexPath.size());
+        assertTrue(complexPath.contains("Python"));
+        assertTrue(complexPath.contains("Content"));
+    }
+
+    @Test
+    public void testEdgeCasesWithNewFeatures() {
+        String json = "{\n" +
+                "  \"emptyArray\": [],\n" +
+                "  \"emptyObject\": {},\n" +
+                "  \"nullValue\": null,\n" +
+                "  \"singleElement\": [42],\n" +
+                "  \"nestedEmpty\": {\n" +
+                "    \"empty\": [],\n" +
+                "    \"deep\": {\n" +
+                "      \"nothing\": null\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+        JsonObject jo = JsonObject.fromJson(json);
+
+        // 空数组的切片
+        List<Object> emptySlice = JsonPath.compile("$.emptyArray[0:5]").readAll(jo);
+        assertTrue(emptySlice.isEmpty());
+
+        // 空数组的联合
+        List<Object> emptyUnion = JsonPath.compile("$.emptyArray[0,1,2]").readAll(jo);
+        assertTrue(emptyUnion.isEmpty());
+
+        // 递归查找空值
+        List<Object> recursiveNulls = JsonPath.compile("$..nullValue").readAll(jo);
+        assertEquals(1, recursiveNulls.size());
+        assertNull(recursiveNulls.get(0));
+
+        // 递归查找空数组
+        List<Object> recursiveEmptyArrays = JsonPath.compile("$..empty").readAll(jo);
+        assertEquals(1, recursiveEmptyArrays.size());
+        assertTrue(((JsonArray) recursiveEmptyArrays.get(0)).isEmpty());
+
+        // 单元素数组的切片
+        List<Object> singleSlice = JsonPath.compile("$.singleElement[0:1]").readAll(jo);
+        assertEquals(1, singleSlice.size());
+        assertEquals(42, singleSlice.get(0));
+    }
+
+    @Test
+    public void testPojoWithNewFeatures() {
+        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+
+        // 递归查找POJO中的属性
+        List<Object> allAges = JsonPath.compile("$..age").readAll(person);
+        log.info("allAges={}", allAges);
+        assertEquals(4, allAges.size()); // Alice(30) + 3 babies
+        assertTrue(allAges.contains(30));
+        assertTrue(allAges.contains(1));
+        assertTrue(allAges.contains(2));
+        assertTrue(allAges.contains(3));
+
+        // 切片POJO数组
+        List<Object> babySlice = JsonPath.compile("$.babies[0:2]").readAll(person);
+        log.info("babySlice={}", babySlice);
+        assertEquals(2, babySlice.size());
+        assertEquals("Baby-0", ((Baby) babySlice.get(0)).name);
+        assertEquals("Baby-1", ((Baby) babySlice.get(1)).name);
+
+        // 联合POJO属性
+        List<Object> selectedBabies = JsonPath.compile("$.babies[0,2]['name','age']").readAll(person);
+        log.info("selectedBabies={}", selectedBabies);
+        assertEquals(4, selectedBabies.size());
+        assertTrue(selectedBabies.contains("Baby-0"));
+        assertTrue(selectedBabies.contains("Baby-2"));
+        assertTrue(selectedBabies.contains(1));
+        assertTrue(selectedBabies.contains(3));
+
+        // 递归 + POJO
+        List<Object> recursiveNames = JsonPath.compile("$..name").readAll(person);
+        assertEquals(4, recursiveNames.size()); // Alice + 3 babies
+        assertTrue(recursiveNames.contains("Alice"));
+        assertTrue(recursiveNames.contains("Baby-0"));
+        assertTrue(recursiveNames.contains("Baby-1"));
+        assertTrue(recursiveNames.contains("Baby-2"));
+    }
+
+    @Test
+    public void testPerformanceAndLargeData() {
+        // 构建一个较大的测试数据
+        JsonObject largeData = new JsonObject();
+        JsonArray largeArray = new JsonArray();
+        for (int i = 0; i < 100; i++) {
+            JsonObject item = new JsonObject();
+            item.put("id", i);
+            item.put("value", i * 10);
+            item.put("nested", new JsonObject("deepValue", i * 100));
+            largeArray.add(item);
+        }
+        largeData.put("items", largeArray);
+        largeData.put("metadata", new JsonObject("count", 100));
+
+        // 测试切片性能
+        List<Object> slice = JsonPath.compile("$.items[10:20]").readAll(largeData);
+        assertEquals(10, slice.size());
+
+        // 测试联合性能
+        List<Object> union = JsonPath.compile("$.items[5,15,25,35]['id','value']").readAll(largeData);
+        assertEquals(8, union.size());
+
+        // 测试递归性能
+        List<Object> recursive = JsonPath.compile("$..deepValue").readAll(largeData);
+        assertEquals(100, recursive.size());
+    }
+    
 }

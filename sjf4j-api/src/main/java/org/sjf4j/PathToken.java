@@ -6,19 +6,21 @@ import java.util.List;
 
 public abstract class PathToken {
 
+    public abstract boolean match(Object key);
+
+    /// Root, Name, Index, Wildcard, Slice, Union, Recursive, Function
+
     public static class Root extends PathToken {
+        @Override public boolean match(Object key) { return false; }
         @Override public String toString() { return "$"; }
     }
 
     public static class Name extends PathToken {
         public final String name;
         public Name(@NonNull String name) { this.name = name; }
-        public boolean needQuoted() {
-            return shouldArrayStyle(name);
-        }
-        public String toQuoted() {
-            return quoteName(name);
-        }
+        public boolean needQuoted() { return shouldArrayStyle(name); }
+        public String toQuoted() { return quoteName(name); }
+        @Override public boolean match(Object key) { return name.equals(key); }
         @Override public String toString() {
             if (shouldArrayStyle(name)) {
                 return "[" + quoteName(name) + "]";
@@ -31,7 +33,7 @@ public abstract class PathToken {
     public static class Index extends PathToken {
         public final int index;
         public Index(int index) { this.index = index; }
-
+        @Override public boolean match(Object key) { return key instanceof Integer && index == (int) key; }
         @Override public String toString() {
             return "[" + index + "]";
         }
@@ -41,7 +43,7 @@ public abstract class PathToken {
         public boolean arrayStyle = false;
         public Wildcard() {}
         public Wildcard(boolean arrayStyle) { this.arrayStyle = arrayStyle; }
-
+        @Override public boolean match(Object key) { return true; }
         @Override public String toString() {
             if (arrayStyle) {
                 return "[*]";
@@ -51,18 +53,23 @@ public abstract class PathToken {
         }
     }
 
-    public static class Recursive extends PathToken {
-        @Override public String toString() {
-            return "..";
-        }
-    }
-
     public static class Slice extends PathToken {
         public final Integer start; // null allowed
         public final Integer end;   // null allowed
         public final Integer step;  // null allowed
         public Slice(Integer s, Integer e, Integer st) {
             start = s; end = e; step = st;
+        }
+        @Override public boolean match(Object key) { // Must be positive
+            if (!(key instanceof Integer)) return false;
+            int idx = (int) key;
+            if (start != null && idx < start) return false;
+            if (end != null && idx >= end) return false;
+            if (step != null) {
+                int mod = start == null ? 0 : start;
+                return (idx - mod) % step == 0;
+            }
+            return true;
         }
         public String toExpr() {
             if (start == null) {
@@ -93,6 +100,12 @@ public abstract class PathToken {
     public static class Union extends PathToken {
         public final List<PathToken> union;
         public Union(List<PathToken> union) { this.union = union; }
+        @Override public boolean match(Object key) {
+            for (PathToken pt : union) {
+                if (pt.match(key)) return true;
+            }
+            return false;
+        }
         @Override public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("[");
@@ -112,9 +125,17 @@ public abstract class PathToken {
         }
     }
 
+    public static class Recursive extends PathToken {
+        @Override public boolean match(Object key) { return true; }
+        @Override public String toString() {
+            return "..";
+        }
+    }
+
     public static class Function extends PathToken {
         public final String name;
         public Function(String name) { this.name = name; }
+        @Override public boolean match(Object key) { return false; }
         @Override public String toString() { return "." + name + "()"; }
     }
 

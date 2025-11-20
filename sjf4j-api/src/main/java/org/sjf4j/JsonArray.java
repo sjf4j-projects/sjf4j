@@ -1,7 +1,6 @@
 package org.sjf4j;
 
 import lombok.NonNull;
-import org.sjf4j.util.ObjectUtil;
 import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.TypeReference;
 
@@ -10,7 +9,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Array;
-import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
@@ -23,7 +21,7 @@ import java.util.function.Consumer;
 
 public class JsonArray extends JsonContainer implements Iterable<Object> {
 
-    protected List<Object> valueList;
+    protected List<Object> nodeList;
 
     public JsonArray() {
         super();
@@ -76,7 +74,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @Override
     public int hashCode() {
-        return valueList == null ? 0 : valueList.hashCode();
+        return nodeList == null ? 0 : nodeList.hashCode();
     }
 
     @Override
@@ -84,35 +82,35 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         if (target == this) return true;
         if (target == null) return false;
         if (target instanceof JsonArray) {
-            return Objects.equals(valueList, ((JsonArray) target).valueList);
+            return Objects.equals(nodeList, ((JsonArray) target).nodeList);
         }
         return false;
     }
 
     @Override
     public int size() {
-        return valueList == null ? 0 : valueList.size();
+        return nodeList == null ? 0 : nodeList.size();
     }
 
     public boolean isEmpty() {
-        return valueList == null || valueList.isEmpty();
+        return nodeList == null || nodeList.isEmpty();
     }
 
     private List<Object> toList() {
-        return valueList == null ? Collections.emptyList() : Collections.unmodifiableList(valueList);
+        return nodeList == null ? Collections.emptyList() : Collections.unmodifiableList(nodeList);
     }
 
     public void forEach(Consumer<Object> action) {
-        if (valueList == null) return;
-        for (Object object : valueList) {
+        if (nodeList == null) return;
+        for (Object object : nodeList) {
             action.accept(object);
         }
     }
 
     public void forEach(BiConsumer<Integer, Object> action) {
-        if (valueList == null) return;
-        for (int i = 0; i < valueList.size(); i++) {
-            action.accept(i, valueList.get(i));
+        if (nodeList == null) return;
+        for (int i = 0; i < nodeList.size(); i++) {
+            action.accept(i, nodeList.get(i));
         }
     }
 
@@ -132,8 +130,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public boolean contains(Object value) {
-        if (valueList == null) return false;
-        for (Object o : valueList) {
+        if (nodeList == null) return false;
+        for (Object o : nodeList) {
             if (Objects.equals(o, value)) {
                 return true;
             }
@@ -200,7 +198,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 //            throw new JsonException("Index " + idx + " out of bounds " + size);
             return null;
         } else {
-            return valueList.get(pidx);
+            return nodeList.get(pidx);
         }
     }
 
@@ -212,7 +210,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public String getString(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueToString(value);
+            return NodeUtil.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String at index " + idx + " : " + e.getMessage(), e);
         }
@@ -226,7 +224,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public String getAsString(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsString(value);
+            return NodeUtil.asString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get as String at index " + idx + " : " + e.getMessage(), e);
         }
@@ -235,7 +233,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Long getLong(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsLong(value);
+            return NodeUtil.asLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Long at index " + idx + " : " + e.getMessage(), e);
         }
@@ -249,7 +247,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Integer getInteger(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsInteger(value);
+            return NodeUtil.asInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Integer at index " + idx + " : " + e.getMessage(), e);
         }
@@ -263,7 +261,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Short getShort(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsShort(value);
+            return NodeUtil.asShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Short at index " + idx + " : " + e.getMessage(), e);
         }
@@ -277,7 +275,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Byte getByte(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsByte(value);
+            return NodeUtil.asByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Byte at index " + idx + " : " + e.getMessage(), e);
         }
@@ -291,7 +289,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Double getDouble(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsDouble(value);
+            return NodeUtil.asDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Double at index " + idx + " : " + e.getMessage(), e);
         }
@@ -305,7 +303,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Float getFloat(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsFloat(value);
+            return NodeUtil.asFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Float at index " + idx + " : " + e.getMessage(), e);
         }
@@ -319,7 +317,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public BigInteger getBigInteger(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsBigInteger(value);
+            return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigInteger at index " + idx + " : " + e.getMessage(), e);
         }
@@ -333,7 +331,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public BigDecimal getBigDecimal(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueAsBigDecimal(value);
+            return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigDecimal at index " + idx + " : " + e.getMessage(), e);
         }
@@ -347,7 +345,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Boolean getBoolean(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueToBoolean(value);
+            return NodeUtil.toBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Boolean at index " + idx + " : " + e.getMessage(), e);
         }
@@ -361,7 +359,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public JsonObject getJsonObject(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueToJsonObject(value);
+            return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject at index " + idx + " : " + e.getMessage(), e);
         }
@@ -375,7 +373,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public JsonArray getJsonArray(int idx) {
         try {
             Object value = getObject(idx);
-            return NodeUtil.valueToJsonArray(value);
+            return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray at index " + idx + " : " + e.getMessage(), e);
         }
@@ -389,7 +387,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public <T> T get(int idx, @NonNull Class<T> clazz) {
         Object value = getObject(idx);
         try {
-            return NodeUtil.valueTo(value, clazz);
+            return NodeUtil.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to get " + clazz.getName() + " at index " + idx + ": " + e.getMessage(), e);
         }
@@ -411,8 +409,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 //        if (!ObjectUtil.isValidOrConvertible(object)) {
 //            throw new JsonException("Not a valid JSON value or a JSON-convertible object");
 //        }
-        if (valueList == null) valueList = JsonConfig.global().listSupplier.create();
-        valueList.add(object);
+        if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
+        nodeList.add(object);
     }
 
     public void add(int idx, Object object) {
@@ -425,8 +423,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 //        if (!ObjectUtil.isValidOrConvertible(object)) {
 //            throw new JsonException("Not a valid JSON value or a JSON-convertible object at index " + idx);
 //        }
-        if (valueList == null) valueList = JsonConfig.global().listSupplier.create();
-        valueList.add(pidx, object);
+        if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
+        nodeList.add(pidx, object);
     }
 
     public void set(int idx, Object object) {
@@ -439,8 +437,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 //        if (!ObjectUtil.isValidOrConvertible(object)) {
 //            throw new JsonException("Not a valid JSON value or a JSON-convertible object at index " + idx);
 //        }
-        if (valueList == null) valueList = JsonConfig.global().listSupplier.create();
-        valueList.set(pidx, object);
+        if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
+        nodeList.set(pidx, object);
     }
 
     public void addAll(Object... values) {
@@ -495,13 +493,13 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public void remove(int idx) {
-        if (valueList == null) return;
-        valueList.remove(posIndex(idx));
+        if (nodeList == null) return;
+        nodeList.remove(posIndex(idx));
     }
 
     public void clear() {
-        if (valueList == null) return;
-        valueList.clear();
+        if (nodeList == null) return;
+        nodeList.clear();
     }
 
     /// Copy, merge

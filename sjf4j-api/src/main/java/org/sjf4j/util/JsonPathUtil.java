@@ -46,20 +46,32 @@ public class JsonPathUtil {
                 if (i >= expr.length())
                     throw new JsonException("Unexpected EOF after '.' in path '" + expr + "' at pos " + i);
 
-                // handle wildcard
+                // Wildcard
                 if (expr.charAt(i) == '*') {
                     tokens.add(new PathToken.Wildcard());
                     i++;
                     continue;
                 }
 
-                // read normal field name
                 int start = i;
-                while (i < expr.length() && isNameChar(expr.charAt(i))) i++;
+                while (i < expr.length() && isNextTokenChar(expr.charAt(i))) i++;
                 if (start == i)
                     throw new JsonException("Empty field name after '.' in path '" + expr + "' at pos " + i);
-                String name = expr.substring(start, i);
-                tokens.add(new PathToken.Name(name));
+
+                if (i > start + 2 && expr.charAt(i - 2) == '(' && expr.charAt(i - 1) == ')') {
+                    // Function
+                    if (i == expr.length()) {
+                        String name = expr.substring(start, i - 2);
+                        tokens.add(new PathToken.Function(name));
+                    } else {
+                        throw new JsonException("Function call must be at the end of path '" + expr + "'");
+                    }
+                } else {
+                    // Name
+                    String name = expr.substring(start, i);
+                    tokens.add(new PathToken.Name(name));
+                }
+
             }
             else if (c == '[') {
                 i++;
@@ -107,7 +119,7 @@ public class JsonPathUtil {
                     List<PathToken> unionTokens = parseUnionTokens(bracketContent);
                     tokens.add(new PathToken.Union(unionTokens));
                 } else {
-                    // Single element: could be [*], [0], [-1], ['name'], [name], or [start:end:step]
+                    // Single element: could be [*], [0], [-1], ['name'], or [start:end:step]
                     String content = bracketContent.trim();
 
                     if (content.isEmpty()) {
@@ -132,6 +144,9 @@ public class JsonPathUtil {
                             throw new JsonException("Slice step cannot be 0 in path '" + expr + "'");
                         }
                         tokens.add(new PathToken.Slice(startIdx, endIdx, step));
+                    } else if (content.startsWith("?")) {
+                        throw new JsonException("Filter expression like '" + content + "' in path '" + expr +
+                                "' are not supported yet. You may use `JsonWalker` instead.");
                     } else {
                         try {
                             // Try to parse as numeric index
@@ -176,7 +191,7 @@ public class JsonPathUtil {
 
     /// private
 
-    private static boolean isNameChar(char c) {
+    private static boolean isNextTokenChar(char c) {
 //        return Character.isLetterOrDigit(c) || c == '_' || c == '-';
         return c != '.' && c != '[';
     }
