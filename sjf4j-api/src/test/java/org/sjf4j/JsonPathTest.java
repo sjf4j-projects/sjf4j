@@ -48,6 +48,7 @@ public class JsonPathTest {
         JsonPath path1 = JsonPath.compile(s1);
         log.info("path1: {}", path1);
         assertEquals("$.a.b[0].c", path1.toExpr());
+        assertEquals("/a/b/0/c", path1.toPointerExpr());
 
         String s2 = "/a~0/0/b~1'/c~/d e";
         JsonPath path2 = JsonPath.compile(s2);
@@ -457,7 +458,7 @@ public class JsonPathTest {
     }
 
     @Test
-    public void testRecursiveOperations() {
+    public void testDescendantOperations() {
         String json = "{\n" +
                 "  \"name\": \"root\",\n" +
                 "  \"children\": [\n" +
@@ -511,17 +512,21 @@ public class JsonPathTest {
         assertTrue(allValues.contains(300));
 
         // 递归数组访问
-        List<Object> recursiveArray = JsonPath.compile("$..values[1]").readAll(jo);
-        assertEquals(1, recursiveArray.size());
-        assertEquals(20, recursiveArray.get(0));
+        List<Object> descendantArray = JsonPath.compile("$..values[1]").readAll(jo);
+        assertEquals(1, descendantArray.size());
+        assertEquals(20, descendantArray.get(0));
 
         // 组合递归和其他操作
-        List<Object> recursiveChildren = JsonPath.compile("$..children[0].name").readAll(jo);
-        log.info("recursiveChildren={}", recursiveChildren);
-        assertEquals(3, recursiveChildren.size());
-        assertTrue(recursiveChildren.contains("child1"));
-        assertTrue(recursiveChildren.contains("grandchild1"));
-        assertTrue(recursiveChildren.contains("grandchild3"));
+        List<Object> descendantChildren = JsonPath.compile("$..children[0].name").readAll(jo);
+        log.info("descendantChildren={}", descendantChildren);
+        assertEquals(3, descendantChildren.size());
+        assertTrue(descendantChildren.contains("child1"));
+        assertTrue(descendantChildren.contains("grandchild1"));
+        assertTrue(descendantChildren.contains("grandchild3"));
+
+        List<Object> deeps = JsonPath.compile("$..deep..*").readAll(jo);
+        log.info("deeps={}", deeps);
+        assertEquals(5, deeps.size());
     }
 
     @Test
@@ -593,14 +598,14 @@ public class JsonPathTest {
         assertTrue(emptyUnion.isEmpty());
 
         // 递归查找空值
-        List<Object> recursiveNulls = JsonPath.compile("$..nullValue").readAll(jo);
-        assertEquals(1, recursiveNulls.size());
-        assertNull(recursiveNulls.get(0));
+        List<Object> descendantNulls = JsonPath.compile("$..nullValue").readAll(jo);
+        assertEquals(1, descendantNulls.size());
+        assertNull(descendantNulls.get(0));
 
         // 递归查找空数组
-        List<Object> recursiveEmptyArrays = JsonPath.compile("$..empty").readAll(jo);
-        assertEquals(1, recursiveEmptyArrays.size());
-        assertTrue(((JsonArray) recursiveEmptyArrays.get(0)).isEmpty());
+        List<Object> descendantEmptyArrays = JsonPath.compile("$..empty").readAll(jo);
+        assertEquals(1, descendantEmptyArrays.size());
+        assertTrue(((JsonArray) descendantEmptyArrays.get(0)).isEmpty());
 
         // 单元素数组的切片
         List<Object> singleSlice = JsonPath.compile("$.singleElement[0:1]").readAll(jo);
@@ -638,12 +643,12 @@ public class JsonPathTest {
         assertTrue(selectedBabies.contains(3));
 
         // 递归 + POJO
-        List<Object> recursiveNames = JsonPath.compile("$..name").readAll(person);
-        assertEquals(4, recursiveNames.size()); // Alice + 3 babies
-        assertTrue(recursiveNames.contains("Alice"));
-        assertTrue(recursiveNames.contains("Baby-0"));
-        assertTrue(recursiveNames.contains("Baby-1"));
-        assertTrue(recursiveNames.contains("Baby-2"));
+        List<Object> descendantNames = JsonPath.compile("$..name").readAll(person);
+        assertEquals(4, descendantNames.size()); // Alice + 3 babies
+        assertTrue(descendantNames.contains("Alice"));
+        assertTrue(descendantNames.contains("Baby-0"));
+        assertTrue(descendantNames.contains("Baby-1"));
+        assertTrue(descendantNames.contains("Baby-2"));
     }
 
     @Test
@@ -670,8 +675,8 @@ public class JsonPathTest {
         assertEquals(8, union.size());
 
         // 测试递归性能
-        List<Object> recursive = JsonPath.compile("$..deepValue").readAll(largeData);
-        assertEquals(100, recursive.size());
+        List<Object> descendant = JsonPath.compile("$..deepValue").readAll(largeData);
+        assertEquals(100, descendant.size());
     }
-    
+
 }

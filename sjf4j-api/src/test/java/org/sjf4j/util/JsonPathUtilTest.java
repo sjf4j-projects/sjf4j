@@ -55,12 +55,12 @@ public class JsonPathUtilTest {
     }
 
     @Test
-    public void testRecursiveDescent() {
-        testCompile("$..name", 3, PathToken.Root.class, PathToken.Recursive.class, PathToken.Name.class);
-        testCompile("$..user..name", 5, PathToken.Root.class, PathToken.Recursive.class,
-                PathToken.Name.class, PathToken.Recursive.class, PathToken.Name.class);
+    public void testDescendantDescent() {
+        testCompile("$..name", 3, PathToken.Root.class, PathToken.Descendant.class, PathToken.Name.class);
+        testCompile("$..user..name", 5, PathToken.Root.class, PathToken.Descendant.class,
+                PathToken.Name.class, PathToken.Descendant.class, PathToken.Name.class);
         testExpr("$..user..name", 3, "..");
-        testCompile("$..[0]", 3, PathToken.Root.class, PathToken.Recursive.class, PathToken.Index.class);
+        testCompile("$..[0]", 3, PathToken.Root.class, PathToken.Descendant.class, PathToken.Index.class);
 
         testCompileFailure("$....name", "name");
         testCompileFailure("$...name", "name");
@@ -78,7 +78,7 @@ public class JsonPathUtilTest {
         testExpr("$.array[1:10:2]", 2, "[1:10:2]");
         testExpr("$.array[-5:-1]", 2, "[-5:-1]");
 
-        // With recursive
+        // With descendant
         testExpr("$..array[1:5]", 3, "[1:5]");
     }
 
@@ -136,8 +136,8 @@ public class JsonPathUtilTest {
 
         // Complex with recursive and union
         testCompile("$..users[0,1]['name','age']..value", 7,
-                PathToken.Root.class, PathToken.Recursive.class, PathToken.Name.class, PathToken.Union.class,
-                PathToken.Union.class, PathToken.Recursive.class, PathToken.Name.class);
+                PathToken.Root.class, PathToken.Descendant.class, PathToken.Name.class, PathToken.Union.class,
+                PathToken.Union.class, PathToken.Descendant.class, PathToken.Name.class);
     }
 
     @Test
@@ -178,7 +178,7 @@ public class JsonPathUtilTest {
     @Test
     public void testFunction() {
         // Object wildcard
-        testCompile("$..max()", 3, PathToken.Root.class, PathToken.Recursive.class, PathToken.Function.class);
+        testCompile("$..max()", 3, PathToken.Root.class, PathToken.Descendant.class, PathToken.Function.class);
         testCompile("$[*].length()", 3, PathToken.Root.class, PathToken.Wildcard.class, PathToken.Function.class);
     }
 

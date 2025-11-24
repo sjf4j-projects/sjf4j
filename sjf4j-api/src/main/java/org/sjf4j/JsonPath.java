@@ -5,9 +5,9 @@ import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
 import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.TypeUtil;
+import org.sjf4j.util.TypedNode;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -52,6 +52,10 @@ public class JsonPath {
 
     public String toPointerExpr() {
         return JsonPointerUtil.genExpr(tokens);
+    }
+
+    public int getDepth() {
+        return tokens.size();
     }
 
     @Override
@@ -273,66 +277,15 @@ public class JsonPath {
 
     /// Put
 
-    @SuppressWarnings("unchecked")
     public void put(@NonNull Object container, Object value) {
-        Object lastContainer = _autoCreateContainers(container);
+        Object lastContainer = _ensureContainersInPath(container);
         PathToken lastToken = peek();
         if (lastToken instanceof PathToken.Name) {
-            if (lastContainer instanceof JsonObject) {
-                ((JsonObject) lastContainer).put(((PathToken.Name) lastToken).name, value);
-            } else if (lastContainer instanceof Map) {
-                ((Map<String, Object>) lastContainer).put(((PathToken.Name) lastToken).name, value);
-            } else if (PojoRegistry.isPojo(lastContainer.getClass())) {
-                String name = ((PathToken.Name) lastToken).name;
-                PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(lastContainer.getClass(), name);
-                if (fi != null) {
-                    fi.invokeSetter(lastContainer, value);
-                } else {
-                    throw new JsonException("Not found field '" + name + "' of POJO container type '" +
-                            lastContainer.getClass() + "'");
-                }
-            } else {
-                throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                        lastContainer.getClass() + "'");
-            }
+            String name = ((PathToken.Name) lastToken).name;
+            JsonWalker.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathToken.Index) {
-            if (lastContainer instanceof JsonArray) {
-                JsonArray ja = (JsonArray) lastContainer;
-                int idx = ((PathToken.Index) lastToken).index;
-                if (idx == ja.size()) {
-                    ja.add(value);
-                } else if (ja.containsIndex(idx)) {
-                    ja.set(idx, value);
-                } else {
-                    throw new JsonException("Cannot set/add index " + idx + " in JsonArray of size " +
-                            ja.size() + " (index < size: modify; index == size: append)");
-                }
-            } else if (lastContainer instanceof List) {
-                List<Object> list = (List<Object>) lastContainer;
-                int idx = ((PathToken.Index) lastToken).index;
-                idx = idx < 0 ? list.size() + idx : idx;
-                if (idx == list.size()) {
-                    list.add(value);
-                } else if (idx >= 0 && idx < list.size()) {
-                    list.set(idx, value);
-                } else {
-                    throw new JsonException("Cannot set/add index " + idx + " in List of size " +
-                            list.size() + " (index < size: modify; index == size: append)");
-                }
-            } else if (lastContainer.getClass().isArray()) {
-                int idx = ((PathToken.Index) lastToken).index;
-                int len = Array.getLength(lastContainer);
-                idx = idx < 0 ? len + idx : idx;
-                if (idx >= 0 && idx < len) {
-                    Array.set(lastContainer, idx, value);
-                } else {
-                    throw new JsonException("Cannot set index " + idx + " in Array of size " +
-                            len + " (index < size: modify)");
-                }
-            } else {
-                throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                        lastContainer.getClass() + "'");
-            }
+            int idx = ((PathToken.Index) lastToken).index;
+            JsonWalker.setInArray(lastContainer, idx, value);
         } else {
             throw new JsonException("Unexpected path token '" + lastToken + "'");
         }
@@ -352,7 +305,7 @@ public class JsonPath {
 
     public void remove(@NonNull Object container) {
         if (hasNonNull(container)) {
-            Object lastContainer = _autoCreateContainers(container);
+            Object lastContainer = _ensureContainersInPath(container);
             PathToken lastToken = peek();
             if (lastToken instanceof PathToken.Name) {
                 if (lastContainer instanceof JsonObject) {
@@ -395,47 +348,21 @@ public class JsonPath {
         for (int i = 1; i < tokens.size(); i++) {
             if (node == null) return null;
             PathToken pt = tokens.get(i);
+            NodeType nt = NodeType.of(node);
             if (pt instanceof PathToken.Name) {
-                if (node instanceof JsonObject) {
-                    node = ((JsonObject) node).getObject(((PathToken.Name) pt).name);
-                } else if (node instanceof Map) {
-                    node = ((Map<?, ?>) node).get(((PathToken.Name) pt).name);
-                } else if (PojoRegistry.isPojo(node.getClass())) {
-                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(),((PathToken.Name) pt).name);
-                    if (fi != null) {
-                        node = fi.invokeGetter(node);
-                    } else {
-                        return null;
-                    }
+                if (nt.isObject()) {
+                    node = JsonWalker.getInObject(node, ((PathToken.Name) pt).name);
                 } else {
                     return null;
                 }
             } else if (pt instanceof PathToken.Index) {
-                if (node instanceof JsonArray) {
-                    node = ((JsonArray) node).getObject(((PathToken.Index) pt).index);
-                } else if (node instanceof List) {
-                    List<?> list = (List<?>) node;
-                    int idx = ((PathToken.Index) pt).index;
-                    idx = idx < 0 ? list.size() + idx : idx;
-                    if (idx >= 0 && idx < list.size()) {
-                        node = list.get(idx);
-                    } else {
-                        return null;
-                    }
-                } else if (node.getClass().isArray()) {
-                    int idx = ((PathToken.Index) pt).index;
-                    int len = Array.getLength(node);
-                    idx = idx < 0 ? len + idx : idx;
-                    if (idx >= 0 && idx < len) {
-                        node = Array.get(node, idx);
-                    } else {
-                        return null;
-                    }
+                if (nt.isArray()) {
+                    node = JsonWalker.getInArray(node, ((PathToken.Index) pt).index);
                 } else {
                     return null;
                 }
-            } else if (pt instanceof PathToken.Recursive) {
-                if (i + 1 >= tokens.size()) throw new JsonException("Recursive cannot appear at the end.");
+            } else if (pt instanceof PathToken.Descendant) {
+                if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
                 List<Object> result = new ArrayList<>();
                 _findMatch(node, i + 1, result);
                 if (result.isEmpty()) {
@@ -454,126 +381,50 @@ public class JsonPath {
     }
 
 
+    // In the future, the `result` could be replaced with a callback to allow more flexible handling of matches.
     private void _findAll(Object container, int tokenIdx, List<Object> result) {
         Object node = container;
-
         for (int i = tokenIdx; i < tokens.size(); i++) {
             if (node ==  null) return;
             PathToken pt = tokens.get(i);
+            NodeType nt = NodeType.of(node);
+            final int nextI = i + 1;
             if (pt instanceof PathToken.Name) {
-                if (node instanceof JsonObject) {
-                    node = ((JsonObject) node).getObject(((PathToken.Name) pt).name);
+                if (nt.isObject()) {
+                    node = JsonWalker.getInObject(node, ((PathToken.Name) pt).name);
                     continue;
-                } else if (node instanceof Map) {
-                    node = ((Map<?, ?>) node).get(((PathToken.Name) pt).name);
-                    continue;
-                } else if (PojoRegistry.isPojo(node.getClass())) {
-                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(),((PathToken.Name) pt).name);
-                    if (fi != null) {
-                        node = fi.invokeGetter(node);
-                        continue;
-                    }
                 }
             } else if (pt instanceof PathToken.Index) {
-                if (node instanceof JsonArray) {
-                    node = ((JsonArray) node).getObject(((PathToken.Index) pt).index);
+                if (nt.isArray()) {
+                    node = JsonWalker.getInArray(node, ((PathToken.Index) pt).index);
                     continue;
-                } else if (node instanceof List) {
-                    List<?> list = (List<?>) node;
-                    int idx = ((PathToken.Index) pt).index;
-                    idx = idx < 0 ? list.size() + idx : idx;
-                    if (idx >= 0 && idx < list.size()) {
-                        node = list.get(idx);
-                        continue;
-                    }
-                } else if (node.getClass().isArray()) {
-                    int idx = ((PathToken.Index) pt).index;
-                    int len = Array.getLength(node);
-                    idx = idx < 0 ? len + idx : idx;
-                    if (idx >= 0 && idx < len) {
-                        node = Array.get(node, idx);
-                        continue;
-                    }
                 }
             } else if (pt instanceof PathToken.Wildcard) {
-                if (node instanceof JsonObject) {
-                    final int finalI = i;
-                    ((JsonObject) node).forEach((k, v) -> {
-                        _findAll(v, finalI + 1, result);
-                    });
-                } else if (node instanceof JsonArray) {
-                    for (Object val : ((JsonArray) node)) {
-                        _findAll(val, i + 1, result);
-                    }
-                } else if (node instanceof Map) {
-                    for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                        _findAll(entry.getValue(), i + 1, result);
-                    }
-                } else if (node instanceof List) {
-                    for (Object val : ((List<?>) node)) {
-                        _findAll(val, i + 1, result);
-                    }
-                } else if (node.getClass().isArray()) {
-                    for (int j = 0; j < Array.getLength(node); j++) {
-                        _findAll(Array.get(node, j), i + 1, result);
-                    }
-                } else if (PojoRegistry.isPojo(node.getClass())) {
-                    PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
-                    for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
-                        _findAll(fi.getValue().invokeGetter(node), i + 1, result);
-                    }
+                if (nt.isObject()) {
+                    JsonWalker.visitObject(node, (k, v) -> _findAll(v, nextI, result));
+                } else if (nt.isArray()) {
+                    JsonWalker.visitArray(node, (j, v) -> _findAll(v, nextI, result));
                 }
-            } else if (pt instanceof PathToken.Recursive) {
-                if (i + 1 >= tokens.size()) throw new JsonException("Recursive cannot appear at the end.");
+            } else if (pt instanceof PathToken.Descendant) {
+                if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
                 _findMatch(node, i + 1, result);
             } else if (pt instanceof PathToken.Slice) {
                 PathToken.Slice slicePt = (PathToken.Slice) pt;
-                if (node instanceof JsonArray) {
-                    final int finalI = i;
-                    ((JsonArray) node).forEach((j, v) -> {
-                        if (slicePt.match(j)) _findAll(v, finalI + 1, result);
+                if (nt.isArray()) {
+                    JsonWalker.visitArray(node, (j, v) -> {
+                        if (slicePt.match(j)) _findAll(v, nextI, result);
                     });
-                } else if (node instanceof List) {
-                    List<?> list = (List<?>) node;
-                    for (int j = 0; j < list.size(); j++) {
-                        if (slicePt.match(j)) _findAll(list.get(j), i + 1, result);
-                    }
-                } else if (node.getClass().isArray()) {
-                    for (int j = 0; j < Array.getLength(node); j++) {
-                        if (slicePt.match(j)) _findAll(Array.get(node, j), i + 1, result);
-                    }
                 }
             } else if (pt instanceof PathToken.Union) {
                 PathToken.Union unionPt = (PathToken.Union) pt;
-                if (node instanceof JsonObject) {
-                    final int finalI = i;
-                    ((JsonObject) node).forEach((k, v) -> {
-                        if (unionPt.match(k)) _findAll(v, finalI + 1, result);
+                if (nt.isObject()) {
+                    JsonWalker.visitObject(node, (k, v) -> {
+                        if (unionPt.match(k)) _findAll(v, nextI, result);
                     });
-                } else if (node instanceof Map) {
-                    final int finalI = i;
-                    ((Map<?, ?>) node).forEach((k, v) -> {
-                        if (unionPt.match(k)) _findAll(v, finalI + 1, result);
+                } else if (nt.isArray()) {
+                    JsonWalker.visitArray(node, (j, v) -> {
+                        if (unionPt.match(j)) _findAll(v, nextI, result);
                     });
-                } else if (node instanceof JsonArray) {
-                    final int finalI = i;
-                    ((JsonArray) node).forEach((j, v) -> {
-                        if (unionPt.match(j)) _findAll(v, finalI + 1, result);
-                    });
-                } else if (node instanceof List) {
-                    List<?> list = (List<?>) node;
-                    for (int j = 0; j < list.size(); j++) {
-                        if (unionPt.match(j)) _findAll(list.get(j), i + 1, result);
-                    }
-                } else if (node.getClass().isArray()) {
-                    for (int j = 0; j < Array.getLength(node); j++) {
-                        if (unionPt.match(j)) _findAll(Array.get(node, j), i + 1, result);
-                    }
-                } else if (PojoRegistry.isPojo(node.getClass())) {
-                    PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
-                    for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
-                        if (unionPt.match(fi.getKey())) _findAll(fi.getValue().invokeGetter(node), i + 1, result);
-                    }
                 }
             } else {
                 throw new JsonException("Unexpected path token '" + pt + "'");
@@ -587,186 +438,87 @@ public class JsonPath {
     private void _findMatch(Object container, int tokenIdx, List<Object> result) {
         if (container == null) return;
         PathToken pt = tokens.get(tokenIdx);
-        if (container instanceof JsonObject) {
-            ((JsonObject) container).forEach((k, v) -> {
+        NodeType nt = NodeType.of(container);
+        if (nt.isObject()) {
+            JsonWalker.visitObject(container, (k, v) -> {
                 if (pt.match(k)) {
                     _findAll(v, tokenIdx + 1, result);
                 }
                 _findMatch(v, tokenIdx, result);
             });
-        } else if (container instanceof JsonArray) {
-            ((JsonArray) container).forEach((i, v) -> {
-                if (pt.match(i)) {
+        } else if (nt.isArray()) {
+            JsonWalker.visitArray(container, (j, v) -> {
+                if (pt.match(j)) {
                     _findAll(v, tokenIdx + 1, result);
                 }
                 _findMatch(v, tokenIdx, result);
             });
-        } else if (container instanceof Map) {
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
-                if (pt.match(entry.getKey())) {
-                    _findAll(entry.getValue(), tokenIdx + 1, result);
-                }
-                _findMatch(entry.getValue(), tokenIdx, result);
-            }
-        } else if (container instanceof List) {
-            List<?> list = (List<?>) container;
-            for (int i = 0; i < list.size(); i++) {
-                if (pt.match(i)) {
-                    _findAll(list.get(i), tokenIdx + 1, result);
-                }
-                _findMatch(list.get(i), tokenIdx, result);
-            }
-        } else if (container.getClass().isArray()) {
-            for (int j = 0; j < Array.getLength(container); j++) {
-                if (pt.match(j)) {
-                    _findAll(Array.get(container, j), tokenIdx + 1, result);
-                }
-                _findMatch(Array.get(container, j), tokenIdx, result);
-            }
-        } else if (PojoRegistry.isPojo(container.getClass())) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
-            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
-                if (pt.match(fi.getKey())) {
-                    _findAll(fi.getValue().invokeGetter(container), tokenIdx + 1, result);
-                }
-                _findMatch(fi.getValue().invokeGetter(container), tokenIdx, result);
-            }
         }
     }
 
     // 1. Automatically create or extends JsonObject nodes when they do not exist.
     // 2. Automatically create or extends JsonArray nodes when they do not exist and the index is 0.
-    // TODO: Consider traversing the path first to verify if it can be filled with containers.
-    @SuppressWarnings("unchecked")
-    private Object _autoCreateContainers(@NonNull Object container) {
-        Object node = container;
-        Type type = Object.class;
+    // FIXME: Need to support POJO with generic parameter type
+    private Object _ensureContainersInPath(@NonNull Object container) {
+        if (!_isSingle()) {
+            throw new JsonException("JsonPath '" + this +
+                    "' must represent a single node (only Name/Index tokens are allowed to automatically " +
+                    "create containers in path.)");
+        }
+
+        TypedNode tnode = TypedNode.infer(container);
         for (int i = 1; i < tokens.size() - 1; i++) { // traverse up to the second-last token
             PathToken pt = tokens.get(i);
+            NodeType nt = NodeType.of(tnode.getNode());
             if (pt instanceof PathToken.Name) {
                 String key = ((PathToken.Name) pt).name;
-                if (PojoRegistry.isPojo(node.getClass())) { // POJO first
-                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(), key);
-                    if (fi != null) {
-                        Object pojo = node;
-                        node = fi.invokeGetter(node);
-                        type = fi.getType();
-                        if (node == null) {
-                            PathToken nextPt = tokens.get(i + 1);
-                            Class<?> rawClazz = TypeUtil.getRawClass(type);
-                            node = createContainer(nextPt, rawClazz);
-                            fi.invokeSetter(pojo, node);
-                        }
-                        continue;
-                    } else if (node instanceof JsonObject) {
-                        JsonObject jo = (JsonObject) node;
-                        node = jo.getObject(key);
-                        type = Object.class;
-                        if (node == null) {
-                            PathToken nextPt = tokens.get(i + 1);
-                            node = createContainer(nextPt, Object.class);
-                            jo.put(key, node);
-                        }
+                if (nt.isObject()) {
+                    TypedNode tnn = JsonWalker.getInObjectTyped(tnode, key);
+                    if (tnn == null) {
+                        throw new JsonException("Cannot access or put field '" + key + "' on an object container '" +
+                                tnode.getType() + "'");
+                    } else if (tnn.isNull()) {
+                        PathToken nextPt = tokens.get(i + 1);
+                        Class<?> rawClazz = TypeUtil.getRawClass(tnn.getType());
+                        Object nn = _createContainer(nextPt, rawClazz);
+                        JsonWalker.putInObject(tnode.getNode(), key, nn);
+                        tnode = TypedNode.of(nn, tnn.getType());
                     } else {
-                        throw new JsonException("Not found field '" + key + "' in POJO container '" +
-                                node.getClass() + "'");
-                    }
-                }
-                if (node instanceof JsonObject) {
-                    JsonObject jo = (JsonObject) node;
-                    node = jo.getObject(key);
-                    type = Object.class;
-                    if (node == null) {
-                        PathToken nextPt = tokens.get(i + 1);
-                        node = createContainer(nextPt, Object.class);
-                        jo.put(key, node);
-                    }
-                } else if (node == Map.class) {
-                    Map<String, Object> map = (Map<String, Object>) node;
-                    node = map.get(key);
-                    type = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-                    if (node == null) {
-                        PathToken nextPt = tokens.get(i + 1);
-                        Class<?> rawClazz = TypeUtil.getRawClass(type);
-                        node = createContainer(nextPt, rawClazz);
-                        map.put(key, node);
+                        tnode = tnn;
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + node.getClass() + "' with name token '" +
+                    throw new JsonException("Unexpected container type '" + tnode.getType() + "' with name token '" +
                             pt + "'. The type must be one of JsonObject/Map/POJO.");
                 }
             } else if (pt instanceof PathToken.Index) {
                 int idx = ((PathToken.Index) pt).index;
-                if (node instanceof JsonArray) {
-                    JsonArray ja = (JsonArray) node;
-                    type = Object.class;
-                    if (idx == ja.size()) {
+                if (nt.isArray()) {
+                    TypedNode tnn = JsonWalker.getInArrayTyped(tnode, idx);
+                    if (tnn == null) {
+                        throw new JsonException("Cannot get or set index " + idx + " on an array container '" +
+                                tnode.getType() + "'");
+                    } else if (tnn.isNull()) {
                         PathToken nextPt = tokens.get(i + 1);
-                        node = createContainer(nextPt, Object.class);
-                        ja.add(node);
-                    } else if (ja.containsIndex(idx)) {
-                        node = ja.getObject(idx);
-                        if (node == null) {
-                            PathToken nextPt = tokens.get(i + 1);
-                            node = createContainer(nextPt, Object.class);
-                            ja.set(idx, node);
-                        }
+                        Class<?> rawClazz = TypeUtil.getRawClass(tnn.getType());
+                        Object nn = _createContainer(nextPt, rawClazz);
+                        JsonWalker.setInArray(tnode.getNode(), idx, nn);
+                        tnode = TypedNode.of(nn, tnn.getType());
                     } else {
-                        throw new JsonException("Invalid JsonArray index " + idx + " for size " + ja.size() +
-                                " (idx < size: modify; idx == size: append).");
-                    }
-                } else if (node instanceof List) {
-                    List<Object> list = (List<Object>) node;
-                    type = TypeUtil.resolveTypeArgument(type, List.class, 0);
-                    Class<?> rawClazz = TypeUtil.getRawClass(type);
-                    idx = idx < 0 ? list.size() + idx : idx;
-                    if (idx == list.size()) {
-                        PathToken nextPt = tokens.get(i + 1);
-                        node = createContainer(nextPt, rawClazz);
-                        list.add(node);
-                    } else if (idx >= 0 && idx < list.size()) {
-                        node = list.get(idx);
-                        if (node == null) {
-                            PathToken nextPt = tokens.get(i + 1);
-                            node = createContainer(nextPt, rawClazz);
-                            list.set(idx, node);
-                        }
-                    } else {
-                        throw new JsonException("Invalid List index " + idx + " for size " + list.size() +
-                            " (index < size: modify; index == size: append).");
-                    }
-                } else if (node.getClass().isArray()) {
-                    Object arr = node;
-                    int len = Array.getLength(arr);
-                    idx = idx < 0 ? len + idx : idx;
-                    Class<?> rawClazz = arr.getClass().getComponentType();
-                    type = rawClazz;
-                    if (idx >= 0 && idx < len) {
-                        node = Array.get(arr, idx);
-                        if (node == null) {
-                            PathToken nextPt = tokens.get(i + 1);
-                            node = createContainer(nextPt, rawClazz);
-                            Array.set(arr, idx, node);
-                        }
-                    } else {
-                        throw new JsonException("Invalid Array index " + idx + " for size " + len +
-                                " (index < size: modify;).");
+                        tnode = tnn;
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + node.getClass() + "' with list token " +
+                    throw new JsonException("Unexpected container type '" + tnode.getType() + "' with list token " +
                             pt + ". The type must be one of JsonArray/List/Array.");
                 }
-            } else if (pt instanceof PathToken.Wildcard) {
-                throw new JsonException("Cannot use wildcard '*' in _autoCreateContainers()");
             } else {
                 throw new JsonException("Unexpected path token '" + pt + "'");
             }
         }
-        return node; // last container
+        return tnode.getNode(); // last container
     }
 
 
-    private Object createContainer(PathToken pt, Class<?> clazz) {
+    private Object _createContainer(PathToken pt, Class<?> clazz) {
         if (pt instanceof PathToken.Name) {
             if (clazz.isAssignableFrom(JsonObject.class)) {
                 return new JsonObject();
@@ -776,8 +528,8 @@ public class JsonPath {
                 PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(clazz);
                 return pi.newInstance();
             } else {
-                throw new JsonException("Cannot create container with type '" + clazz + "' at name token " +
-                        pt + ". The type must be one of JsonObject/Map/POJO.");
+                throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +
+                        pt + "'. The type must be one of JsonObject/Map/POJO.");
             }
         } else if (pt instanceof PathToken.Index) {
             if (clazz.isAssignableFrom(JsonArray.class)) {
@@ -789,13 +541,20 @@ public class JsonPath {
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
             } else {
                 throw new JsonException("Cannot create container with type '" + clazz +
-                        "' at index token " + pt + ". The type must be one of JsonArray/List/Array.");
+                        "' at index token '" + pt + "'. The type must be one of JsonArray/List/Array.");
             }
         } else {
             throw new JsonException("Unexpected path token '" + pt + "'");
         }
-
     }
 
+    private boolean _isSingle() {
+        for (PathToken pt : tokens) {
+            if (!(pt instanceof PathToken.Root || pt instanceof PathToken.Name || pt instanceof PathToken.Index)) {
+                return false;
+            }
+        }
+        return true;
+    }
 
 }

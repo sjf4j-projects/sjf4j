@@ -28,9 +28,9 @@ public class JsonPathUtil {
         while (i < expr.length()) {
             char c = expr.charAt(i);
 
-            // Recursive ..
+            // Descendant ..
             if (c == '.' && i + 1 < expr.length() && expr.charAt(i + 1) == '.') {
-                tokens.add(new PathToken.Recursive());
+                tokens.add(new PathToken.Descendant());
                 if (i + 2 == expr.length()) {
                     break;
                 } else if (expr.charAt(i + 2) == '[') {
@@ -172,7 +172,7 @@ public class JsonPathUtil {
         StringBuilder sb = new StringBuilder();
         PathToken lastPt = null;
         for (PathToken pt : tokens) {
-            if (lastPt instanceof PathToken.Recursive && pt instanceof PathToken.Name) {
+            if (lastPt instanceof PathToken.Descendant && pt instanceof PathToken.Name) {
                 PathToken.Name name = (PathToken.Name) pt;
                 if (name.needQuoted()) {
                     sb.append("[").append(name.toQuoted()).append("]");

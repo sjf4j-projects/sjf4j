@@ -51,90 +51,90 @@ public class JsonBenchmark {
     private static final GsonJsonFacade GSON_FACADE = new GsonJsonFacade(GSON);
     private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
 
-    @Benchmark
-    public void jackson_pojo(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            Person v = JACKSON.readValue(new StringReader(JSON_DATA), Person.class);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_node(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            JsonNode v = JACKSON.readTree(new StringReader(JSON_DATA));
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_walk2Map(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            JsonParser p = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-            Object v = JacksonWalker.walk2Map(p);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_walk2Jo(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            JsonParser p = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-            Object v = JacksonWalker.walk2Jo(p);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_only_jojo1(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            JsonParser parser = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-            Object v = JacksonStreamingUtil.readNode(parser, Object.class);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_only_pojo1(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            JsonParser parser = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-            Object v = JacksonStreamingUtil.readNode(parser, Person.class);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_uni_jojo1(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            Object v = JACKSON_FACADE.readNode(new StringReader(JSON_DATA), Object.class);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_uni_pojo1(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            Object v = JACKSON_FACADE.readNode(new StringReader(JSON_DATA), Person.class);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_uni_jojo2(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            JsonParser parser = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-            Object v = StreamingUtil.readNode(new JacksonReader(parser), Object.class);
-            bh.consume(v);
-        }
-    }
-
-    @Benchmark
-    public void jackson_sjf4j_jojo1(Blackhole bh) throws IOException {
-        for (int i = 0; i < 1000; i++) {
-            Object v = Sjf4j.fromJson(new StringReader(JSON_DATA));
-            bh.consume(v);
-        }
-    }
+//    @Benchmark
+//    public void jackson_pojo(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            Person v = JACKSON.readValue(new StringReader(JSON_DATA), Person.class);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_node(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            JsonNode v = JACKSON.readTree(new StringReader(JSON_DATA));
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_walk2Map(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            JsonParser p = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
+//            Object v = JacksonWalker.walk2Map(p);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_walk2Jo(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            JsonParser p = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
+//            Object v = JacksonWalker.walk2Jo(p);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_only_jojo1(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            JsonParser parser = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
+//            Object v = JacksonStreamingUtil.readNode(parser, Object.class);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_only_pojo1(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            JsonParser parser = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
+//            Object v = JacksonStreamingUtil.readNode(parser, Person.class);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_uni_jojo1(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            Object v = JACKSON_FACADE.readNode(new StringReader(JSON_DATA), Object.class);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_uni_pojo1(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            Object v = JACKSON_FACADE.readNode(new StringReader(JSON_DATA), Person.class);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_uni_jojo2(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            JsonParser parser = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
+//            Object v = StreamingUtil.readNode(new JacksonReader(parser), Object.class);
+//            bh.consume(v);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void jackson_sjf4j_jojo1(Blackhole bh) throws IOException {
+//        for (int i = 0; i < 1000; i++) {
+//            Object v = Sjf4j.fromJson(new StringReader(JSON_DATA));
+//            bh.consume(v);
+//        }
+//    }
 
 
 

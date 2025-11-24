@@ -21,10 +21,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+// TODO:
+// 1. 高性能改造
+// 2. 区分 @ 和 #
 @Slf4j
 public final class PojoRegistry {
 
-    // Use `Type` to support TypeReference<Wrapper<Person, Baby>>
     private static final Map<Class<?>, PojoInfo> POJO_CACHE = new ConcurrentHashMap<>();
 
 
@@ -79,32 +81,30 @@ public final class PojoRegistry {
 
     private static boolean isPojoCandidate(@NonNull Class<?> clazz) {
         if (clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
-                Number.class.isAssignableFrom(clazz) || clazz == Boolean.class ||
-                clazz == Map.class || clazz == List.class) {
+                Number.class.isAssignableFrom(clazz) || clazz == Boolean.class) {
             return false;
         }
         if (clazz == JsonObject.class || clazz == JsonArray.class) {
 //            log.debug("Skipping JsonObject/JsonArray class: {}", clazz);
             return false;
         }
-        if (clazz.isArray() || clazz.isEnum() || clazz.isInterface()) {
-//            log.debug("Skipping Array/Enum/Interface class: {}", clazz);
+        if (Map.class.isAssignableFrom(clazz) || List.class.isAssignableFrom(clazz) ||
+                clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
+
         String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
-        if (pkg.startsWith("java.") || pkg.startsWith("javax.") || pkg.startsWith("jakarta.") ||
-                pkg.startsWith("jdk.")) {
-//            log.debug("Skipping Java system class: {}", clazz);
-            return false;
-        }
-        return true;
+        //            log.debug("Skipping Java system class: {}", clazz);
+        return !pkg.startsWith("java.") && !pkg.startsWith("javax.") && !pkg.startsWith("jakarta.") &&
+                !pkg.startsWith("jdk.");
     }
 
     private static final MethodHandles.Lookup ROOT_LOOKUP = MethodHandles.lookup();
 
+
+    // FIXME: Generic!!!
     private static PojoInfo analyzePojo(@NonNull Class<?> clazz) {
         if (!isPojoCandidate(clazz)) {
-//            log.warn("Not a POJO candidate class: {}", clazz);
             return null;
         }
 
@@ -138,8 +138,10 @@ public final class PojoRegistry {
 
         // Fields
         Map<String, FieldInfo> fields = JsonConfig.global().mapSupplier.create();
-        for (Class<?> c = clazz; isPojoCandidate(c); c = c.getSuperclass()) {
-            for (Field field : c.getDeclaredFields()) {
+        Class<?> superClazz = clazz;
+        Type superType = superClazz;
+        while (isPojoCandidate(superClazz)) {
+            for (Field field : superClazz.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers())) { continue; }
                 MethodHandle getter = null;
                 MethodHandle setter = null;
@@ -153,21 +155,23 @@ public final class PojoRegistry {
                         // JDK9+
                         Method m = MethodHandles.class.getMethod("privateLookupIn",
                                 Class.class, MethodHandles.Lookup.class);
-                        MethodHandles.Lookup lookup = (MethodHandles.Lookup) m.invoke(null, clazz, ROOT_LOOKUP);
+                        MethodHandles.Lookup lookup = (MethodHandles.Lookup) m.invoke(null, superClazz, ROOT_LOOKUP);
                         getter = lookup.unreflectGetter(field);
                         setter = lookup.unreflectSetter(field);
                     } catch (Exception e2) {
-                        log.warn("Cannot access field '{}' of {}", field.getName(), clazz.getName(), e2);
+                        log.warn("Cannot access field '{}' of {}", field.getName(), superClazz.getName(), e2);
                     }
                 }
                 if (getter == null && setter == null) {
                     log.warn("No accessible getter or setter found for field '{}' in class {}",
-                            field.getName(), clazz.getName());
+                            field.getName(), superClazz.getName());
                 } else {
-                    Type fieldType = TypeUtil.getFieldType(clazz, field);
+                    Type fieldType = TypeUtil.getFieldType(superType, field);
                     fields.put(field.getName(), new FieldInfo(field.getName(), fieldType, getter, setter));
                 }
             }
+            superType = superClazz.getGenericSuperclass();
+            superClazz = superClazz.getSuperclass();
         }
 
         return new PojoInfo(clazz, constructor, fields);

@@ -1,5 +1,7 @@
 package org.sjf4j;
 
+import org.sjf4j.util.TypeUtil;
+
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -12,38 +14,43 @@ public enum NodeType {
     VALUE_STRING,
     VALUE_NUMBER,
     VALUE_BOOLEAN,
-    OBJECT_JO,
+    OBJECT_JOJO,
     OBJECT_MAP,
     OBJECT_POJO,
-    ARRAY_JA,
+    ARRAY_JOJA,
     ARRAY_LIST,
     ARRAY_ARRAY,
     UNKNOWN;
 
-    public static NodeType of(Type type) {
-        Class<?> clazz;
-        if (type == null) {
-            return ANY;
-        } else if (type instanceof Class<?>) {
-            clazz = (Class<?>) type;
-        } else if (type instanceof ParameterizedType) {
-            Type rawType = ((ParameterizedType) type).getRawType();
-            if (rawType == Map.class) {
-                return OBJECT_MAP;
-            } else if (rawType == List.class) {
-                return ARRAY_LIST;
-            } else {
-                return UNKNOWN;
-            }
-        } else if (type instanceof GenericArrayType) {
+    public static NodeType of(Object node) {
+        if (node == null) {
+            return VALUE_VOID;
+        } else if (node instanceof JsonObject) {
+            return OBJECT_JOJO;
+        } else if (node instanceof JsonArray) {
+            return ARRAY_JOJA;
+        } else if (node instanceof CharSequence || node instanceof Character) {
+            return VALUE_STRING;
+        } else if (node instanceof Number) {
+            return VALUE_NUMBER;
+        } else if (node instanceof Boolean) {
+            return VALUE_BOOLEAN;
+        } else if (node instanceof Map) {
+            return OBJECT_MAP;
+        } else if (node instanceof List) {
+            return ARRAY_LIST;
+        } else if (node.getClass().isArray()) {
             return ARRAY_ARRAY;
-        } else {
-            return UNKNOWN;
+        } else if (PojoRegistry.isPojo(node.getClass())) {
+            return OBJECT_POJO;
         }
+        return UNKNOWN;
+    }
 
-        if (clazz == Object.class) {
-            return ANY;
-        } else if (clazz.isPrimitive()) {
+    public static NodeType of(Type type) {
+        Class<?> clazz = TypeUtil.getRawClass(type);
+
+        if (clazz.isPrimitive()) {
             if (clazz == char.class) {
                 return VALUE_STRING;
             } else if (clazz == boolean.class) {
@@ -60,11 +67,11 @@ public enum NodeType {
         } else if (clazz == Boolean.class) {
             return VALUE_BOOLEAN;
         } else if (JsonObject.class.isAssignableFrom(clazz)) {
-            return OBJECT_JO;
+            return OBJECT_JOJO;
+        } else if (JsonArray.class.isAssignableFrom(clazz)) {
+            return ARRAY_JOJA;
         } else if (clazz == Map.class) {
             return OBJECT_MAP;
-        } else if (JsonArray.class.isAssignableFrom(clazz)) {
-            return ARRAY_JA;
         } else if (clazz == List.class) {
             return ARRAY_LIST;
         } else if (clazz.isArray()) {
@@ -84,40 +91,40 @@ public enum NodeType {
     public boolean isNumber() {
         return this == VALUE_NUMBER;
     }
-    public boolean isNumberOrAny() {
-        return isNumber() || isAny();
-    }
+//    public boolean isNumberOrAny() {
+//        return isNumber() || isAny();
+//    }
 
     public boolean isValue() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_VOID;
     }
-    public boolean isValueOrAny() {
-        return isValue() || isAny();
-    }
+//    public boolean isValueOrAny() {
+//        return isValue() || isAny();
+//    }
 
     public boolean isObject() {
-        return this == OBJECT_JO || this == OBJECT_MAP || this == OBJECT_POJO;
+        return this == OBJECT_JOJO || this == OBJECT_MAP || this == OBJECT_POJO;
     }
-    public boolean isObjectOrAny() {
-        return isObject() || isAny();
-    }
+//    public boolean isObjectOrAny() {
+//        return isObject() || isAny();
+//    }
 
     public boolean isArray() {
-        return this == ARRAY_JA || this == ARRAY_LIST || this == ARRAY_ARRAY;
+        return this == ARRAY_JOJA || this == ARRAY_LIST || this == ARRAY_ARRAY;
     }
-    public boolean isArrayOrAny() {
-        return isArray() || isAny();
-    }
+//    public boolean isArrayOrAny() {
+//        return isArray() || isAny();
+//    }
 
     public boolean isContainer() {
         return isObject() || isArray();
     }
-    public boolean isContainerOrAny() {
-        return isContainer() || isAny();
-    }
+//    public boolean isContainerOrAny() {
+//        return isContainer() || isAny();
+//    }
 
     public boolean isPured() {
-        return isValue() || this == OBJECT_JO || this == ARRAY_JA;
+        return isValue() || this == OBJECT_JOJO || this == ARRAY_JOJA;
     }
 
     public boolean isUnknown() {

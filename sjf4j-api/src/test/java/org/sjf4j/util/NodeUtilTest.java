@@ -1,10 +1,16 @@
 package org.sjf4j.util;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
+import org.sjf4j.facades.fastjson2.Fastjson2ModuleTest;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -200,6 +206,34 @@ public class NodeUtilTest {
         assertThrows(JsonException.class, () -> {
             NodeUtil.to("not a number", Integer.class);
         });
+    }
+
+
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class Baby extends JsonObject {
+        private String name;
+        private int month;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class Person extends JsonObject {
+        private String name;
+        private int age;
+        private JsonObject info;
+        private List<Baby> babies;
+    }
+
+    @Test
+    public void testInspect() {
+        String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
+        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        log.info("person={}", person.toString());
+        log.info("person={}", person.inspect());
     }
 
 }

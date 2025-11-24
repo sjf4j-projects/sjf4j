@@ -8,7 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @FunctionalInterface
 public interface ListSupplier {
 
-    List<Object> create();
+    <T> List<T> create();
 
 
     /// Build-in List Suppliers

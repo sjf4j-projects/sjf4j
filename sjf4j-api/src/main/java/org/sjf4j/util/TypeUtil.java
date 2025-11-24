@@ -182,8 +182,6 @@ public class TypeUtil {
     }
 
 
-
-
     public static Type getFieldType(Type type, Field field) {
         if (type == null || field == null) return Object.class;
 

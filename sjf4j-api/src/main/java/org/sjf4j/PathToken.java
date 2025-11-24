@@ -8,7 +8,7 @@ public abstract class PathToken {
 
     public abstract boolean match(Object key);
 
-    /// Root, Name, Index, Wildcard, Slice, Union, Recursive, Function
+    /// Root, Name, Index, Wildcard, Slice, Union, Descendant, Function
 
     public static class Root extends PathToken {
         @Override public boolean match(Object key) { return false; }
@@ -125,7 +125,7 @@ public abstract class PathToken {
         }
     }
 
-    public static class Recursive extends PathToken {
+    public static class Descendant extends PathToken {
         @Override public boolean match(Object key) { return true; }
         @Override public String toString() {
             return "..";

@@ -163,7 +163,6 @@ public class Sjf4j {
         return fromYaml(new StringReader(input));
     }
 
-    @SuppressWarnings("unchecked")
     public static String toYaml(@NonNull Object node) {
         try {
             StringWriter sw = new StringWriter();
@@ -201,5 +200,6 @@ public class Sjf4j {
     public static <T> T fromPojo(@NonNull Object pojo, TypeReference<T> type) {
         return (T) JsonConfig.global().objectFacade.readNode(pojo, type.getType());
     }
+
 
 }

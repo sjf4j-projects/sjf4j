@@ -10,7 +10,9 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.AbstractMap;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -110,6 +112,10 @@ public class JsonObject extends JsonContainer {
 
     /// Map
 
+    public String inspect() {
+        return NodeUtil.inspect(this);
+    }
+
     @Override
     public String toString() {
         return toJson();
@@ -202,8 +208,23 @@ public class JsonObject extends JsonContainer {
         }
     }
 
+//    public Set<Map.Entry<String, Object>> entrySet() {
+//        return toMap().entrySet();
+//    }
+
     public Set<Map.Entry<String, Object>> entrySet() {
-        return toMap().entrySet();
+        Set<Map.Entry<String, Object>> set = new LinkedHashSet<>();
+        if (fieldMap != null) {
+            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue().invokeGetter(this);
+                set.add(new AbstractMap.SimpleEntry<>(key, value));
+            }
+        }
+        if (nodeMap != null) {
+            set.addAll(nodeMap.entrySet());
+        }
+        return set;
     }
 
     // Remove for nodeMap, Set-null for fieldMap
@@ -458,6 +479,15 @@ public class JsonObject extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
+    public JsonObject getAsJsonObject(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asJsonObject(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get as JsonObject of key '" + key + "': " + e.getMessage(), e);
+        }
+    }
+
     public JsonArray getJsonArray(@NonNull String key) {
         Object value = getObject(key);
         try {
@@ -470,6 +500,15 @@ public class JsonObject extends JsonContainer {
     public JsonArray getJsonArray(@NonNull String key, JsonArray defaultValue) {
         JsonArray value = getJsonArray(key);
         return value == null ? defaultValue : value;
+    }
+
+    public JsonArray getAsJsonArray(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asJsonArray(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get as JsonObject of key '" + key + "': " + e.getMessage(), e);
+        }
     }
 
     public <T> T get(@NonNull String key, @NonNull Class<T> clazz) {
@@ -557,14 +596,15 @@ public class JsonObject extends JsonContainer {
     }
 
 
-    public void remove(@NonNull String key) {
+    public Object remove(@NonNull String key) {
         if (fieldMap != null && fieldMap.containsKey(key)) {
             throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }
         if (nodeMap != null) {
-            nodeMap.remove(key);
+            return nodeMap.remove(key);
         }
+        return null;
     }
 
     public void clear() {
