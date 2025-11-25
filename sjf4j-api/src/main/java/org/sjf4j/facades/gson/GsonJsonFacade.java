@@ -59,7 +59,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         }
     }
 
-    public void writeNode(Writer output, Object node) {
+    public void writeNode(@NonNull Writer output, Object node) {
         try {
             JsonWriter writer = gson.newJsonWriter(output);
             GsonStreamingUtil.startDocument(writer);

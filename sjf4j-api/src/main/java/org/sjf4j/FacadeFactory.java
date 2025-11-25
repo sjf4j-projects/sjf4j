@@ -79,7 +79,6 @@ public class FacadeFactory {
     }
 
 
-
     public static YamlFacade<?, ?> getDefaultYamlFacade() {
         if (snakePresent) {
             return createSnakeFacade();

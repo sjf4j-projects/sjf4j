@@ -22,8 +22,8 @@ import java.util.function.Predicate;
 
 public class JsonObject extends JsonContainer {
 
-    protected Map<String, Object> nodeMap;
-    protected Map<String, PojoRegistry.FieldInfo> fieldMap;
+    protected transient Map<String, Object> nodeMap;
+    protected transient Map<String, PojoRegistry.FieldInfo> fieldMap;
 
     public JsonObject() {
         if (this.getClass() != JsonObject.class) {

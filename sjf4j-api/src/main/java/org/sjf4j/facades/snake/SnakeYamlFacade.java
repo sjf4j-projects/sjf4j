@@ -74,7 +74,7 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
         }
     }
 
-    public void writeNode(Writer output, Object node) {
+    public void writeNode(@NonNull Writer output, Object node) {
         try {
             Emitter emitter = new Emitter(output, dumperOptions);
             SnakeStreamingUtil.startDocument(emitter);

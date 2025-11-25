@@ -1,6 +1,10 @@
 package org.sjf4j;
 
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONFactory;
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.reader.ObjectReader;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +19,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facades.fastjson2.Fastjson2Walker;
 import org.sjf4j.facades.gson.GsonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonReader;
@@ -170,21 +175,45 @@ public class JsonBenchmark {
 //    }
 
 
-//    @Benchmark
-//    public Object fastjson2_pojo() {
-//        return JSON.parseObject(JSON_DATA, Person.class);
-//    }
-//
-//    @Benchmark
-//    public void fastjson2_walk() throws IOException {
-//        Fastjson2Walker.walk2Jo(JSONReader.of(JSON_DATA));
-//    }
-//
-//    @Benchmark
-//    public Object fastjson2_facade_jojo() {
-//        return FASTJSON2_FACADE.readObject(new StringReader(JSON_DATA));
-//    }
-//
+    @Benchmark
+    public Object fastjson2_pojo() {
+        return JSON.parseObject(new StringReader(JSON_DATA), Person.class);
+    }
+
+    @Benchmark
+    public void fastjson2_walk() throws IOException {
+        Fastjson2Walker.walk2Jo(JSONReader.of(JSON_DATA));
+    }
+
+    @Benchmark
+    public Object fastjson2_facade_general() {
+        return FASTJSON2_FACADE.readObject(new StringReader(JSON_DATA), Person.class);
+    }
+
+    @Benchmark
+    public Object fastjson2_facade_specific() throws IOException {
+        return FASTJSON2_FACADE.readNodeWithSpecific(new StringReader(JSON_DATA), Person.class);
+    }
+
+    @Benchmark
+    public Object fastjson2_facade_extra() throws IOException {
+        return FASTJSON2_FACADE.readNodeWithExtra(new StringReader(JSON_DATA), Person.class);
+    }
+
+    @Benchmark
+    public Object fastjson2_facade_extra2() throws IOException {
+        JSONReader.Context ctx = JSONFactory.createReadContext();
+//        ctx.setExtraProcessor((object, key, value) -> {
+//            if (object instanceof JsonObject) {
+//                ((JsonObject) object).put(key, value);
+//            }
+//        });
+        ObjectReader<?> objectReader = ctx.getObjectReader(Person.class);
+        JSONReader reader = JSONReader.of(new StringReader(JSON_DATA), ctx);
+        return objectReader.readObject(reader, Person.class, null, 0);
+    }
+
+
 //    @Benchmark
 //    public Object fastjson2_facade_jojo1() throws IOException {
 //        JSONReader reader = JSONReader.of(new StringReader(JSON_DATA));

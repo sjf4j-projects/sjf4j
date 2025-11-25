@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 
 public class JsonArray extends JsonContainer implements Iterable<Object> {
 
-    protected List<Object> nodeList;
+    protected transient List<Object> nodeList;
 
     public JsonArray() {
         super();
@@ -73,7 +73,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @Override
     public String toString() {
-        return toJson();
+        return inspect();
     }
 
     @Override

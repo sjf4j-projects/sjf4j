@@ -1,5 +1,6 @@
 package org.sjf4j.facades.fastjson2;
 
+import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.modules.ObjectReaderModule;
@@ -12,6 +13,7 @@ import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.alibaba.fastjson2.schema.JSONSchema;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.util.TypeUtil;
 
@@ -37,7 +39,6 @@ public class Fastjson2Module {
 
             ObjectReader<?> objectReader = ObjectReaderCreator.INSTANCE.createObjectReader(type);
             return new MyObjectReader<>(objectReader);
-
 
 //            Supplier<?> creator = ObjectReaderCreator.INSTANCE.createSupplier(clazz);
 //            Supplier<?> creator = JSONFactory.getContextReaderCreator().createSupplier(clazz);
@@ -65,6 +66,35 @@ public class Fastjson2Module {
 //            }
 //        }
 //    }
+
+
+    public static class JsonArrayReader implements ObjectReader<JsonArray> {
+
+        @Override
+        public JsonArray readObject(JSONReader reader,
+                                    Type fieldType,
+                                    Object fieldName,
+                                    long features) {
+            // 必须是 [
+            if (!reader.nextIfArrayStart()) {
+                throw new JSONException(reader.info("expect '['"));
+            }
+
+            JsonArray array = new JsonArray();
+
+            while (!reader.nextIfArrayEnd()) {
+                Object value = reader.readAny();
+                array.add(value);
+            }
+
+            return array;
+        }
+
+        @Override
+        public Class<JsonArray> getObjectClass() {
+            return JsonArray.class;
+        }
+    }
 
 
     public static class MyObjectReader<T> implements ObjectReader<T> {

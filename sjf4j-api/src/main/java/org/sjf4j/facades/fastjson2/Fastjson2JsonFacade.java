@@ -1,12 +1,16 @@
 package org.sjf4j.facades.fastjson2;
 
+import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import lombok.NonNull;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.facades.jackson.JacksonStreamingUtil;
 import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
@@ -35,6 +39,12 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                                @NonNull JSONWriter.Feature[] writerFeatures) {
         this.readerFeatures = readerFeatures;
         this.writerFeatures = writerFeatures;
+
+        // With Extra
+        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.MODULE_EXTRA) {
+            ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
+            provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
+        }
     }
 
     @Override
@@ -50,14 +60,41 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     }
 
 
+    /// Read
+
     public Object readNode(@NonNull Reader input, Type type) {
         try {
-            JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
-            return Fastjson2StreamingUtil.readNode(reader, type);
+            switch (JsonConfig.global().facadeMode) {
+                case STREAMING_GENERAL:
+                    return JsonFacade.super.readNode(input, type);
+                case STREAMING_SPECIFIC:
+                    return readNodeWithSpecific(input, type);
+                case MODULE_EXTRA:
+                default:
+                    return readNodeWithExtra(input, type);
+            }
         } catch (IOException e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
+            throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
     }
+
+    public Object readNodeWithSpecific(@NonNull Reader input, Type type) throws IOException {
+        JSONReader reader = JSONReader.of(input, new JSONReader.Context(readerFeatures));
+        return Fastjson2StreamingUtil.readNode(reader, type);
+    }
+
+    public Object readNodeWithExtra(@NonNull Reader input, Type type) {
+        JSONReader.Context ctx = JSONFactory.createReadContext(readerFeatures);
+        ctx.setExtraProcessor((object, key, value) -> {
+            if (object instanceof JsonObject) {
+                ((JsonObject) object).put(key, value);
+            }
+        });
+        return JSONReader.of(input, ctx).read(type);
+    }
+
+
+    /// Write
 
     public void writeNode(@NonNull Writer output, Object node) {
         try {
@@ -71,31 +108,5 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
     }
 
-
-    @SuppressWarnings("unchecked")
-    public <T> T readObject(@NonNull Reader input, @NonNull Class<T> clazz) {
-        try {
-            return (T) readNode(input, clazz);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public  <T> T readObject(@NonNull Reader input, @NonNull TypeReference<T> type) {
-        try {
-            return (T) readNode(input, type.getType());
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    public JsonObject readObject(@NonNull Reader input) {
-        try {
-            return readObject(input, JsonObject.class);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type 'JsonObject'", e);
-        }
-    }
 
 }

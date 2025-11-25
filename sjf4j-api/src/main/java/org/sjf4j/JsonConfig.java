@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import lombok.Getter;
 import lombok.NonNull;
 import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.facades.ObjectFacade;
@@ -8,12 +9,13 @@ import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
 
+@Getter
 public final class JsonConfig {
 
-    public final JsonFacade<?, ?> jsonFacade;
-    public final YamlFacade<?, ?> yamlFacade;
-    public final PropertiesFacade propertiesFacade;
-    public final ObjectFacade objectFacade;
+    public JsonFacade<?, ?> jsonFacade;
+    public YamlFacade<?, ?> yamlFacade;
+    public PropertiesFacade propertiesFacade;
+    public ObjectFacade objectFacade;
 
     public final FacadeMode facadeMode;
 
@@ -53,22 +55,51 @@ public final class JsonConfig {
                 .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
     }
 
+    public JsonFacade<?, ?> getJsonFacade() {
+        if (jsonFacade == null) {
+            jsonFacade = FacadeFactory.getDefaultJsonFacade();
+        }
+        return jsonFacade;
+    }
+
+    public YamlFacade<?, ?> getYamlFacade() {
+        if (yamlFacade == null) {
+            yamlFacade = FacadeFactory.getDefaultYamlFacade();
+        }
+        return yamlFacade;
+    }
+
+    public PropertiesFacade getPropertiesFacade() {
+        if (propertiesFacade == null) {
+            propertiesFacade = FacadeFactory.getDefaultPropertiesFacade();
+        }
+        return propertiesFacade;
+    }
+
+    public ObjectFacade getObjectFacade() {
+        if (objectFacade == null) {
+            objectFacade = FacadeFactory.getDefaultObjectFacade();
+        }
+        return objectFacade;
+    }
+
     /// FacadeMode
 
     public static enum FacadeMode {
         STREAMING_GENERAL,
         STREAMING_SPECIFIC,
-        FAST_UNSAFE
+        FAST_UNSAFE,
+        MODULE_EXTRA
     }
 
     /// Builder
 
     public static final class Builder {
 
-        private JsonFacade<?, ?> jsonFacade = FacadeFactory.getDefaultJsonFacade();
-        private YamlFacade<?, ?> yamlFacade = FacadeFactory.getDefaultYamlFacade();
-        private PropertiesFacade propertiesFacade = FacadeFactory.getDefaultPropertiesFacade();
-        private ObjectFacade objectFacade = FacadeFactory.getDefaultObjectFacade();
+        private JsonFacade<?, ?> jsonFacade;
+        private YamlFacade<?, ?> yamlFacade;
+        private PropertiesFacade propertiesFacade;
+        private ObjectFacade objectFacade;
 
         private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
@@ -79,10 +110,10 @@ public final class JsonConfig {
         public Builder() {}
 
         public Builder(@NonNull JsonConfig config) {
-            this.jsonFacade = config.jsonFacade;
-            this.yamlFacade = config.yamlFacade;
-            this.propertiesFacade = config.propertiesFacade;
-            this.objectFacade = config.objectFacade;
+//            this.jsonFacade = config.jsonFacade;
+//            this.yamlFacade = config.yamlFacade;
+//            this.propertiesFacade = config.propertiesFacade;
+//            this.objectFacade = config.objectFacade;
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
             this.facadeMode = config.facadeMode;

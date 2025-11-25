@@ -239,7 +239,7 @@ public class NodeUtil {
                 int idx = 0;
                 for (Map.Entry<String, Object> entry : map.entrySet()) {
                     if (idx++ > 0) sb.append(", ");
-                    sb.append(entry).append("=");
+                    sb.append(entry.getKey()).append("=");
                     _inspect(entry.getValue(), sb);
                 }
                 sb.append("}");
