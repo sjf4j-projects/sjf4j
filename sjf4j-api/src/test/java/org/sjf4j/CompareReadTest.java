@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -303,7 +304,7 @@ public class CompareReadTest {
     @Test
     public void profilingGson0() throws IOException {
         Gson gson = new Gson();
-        GsonJsonFacade gsonFacade = new GsonJsonFacade(new Gson());
+        GsonJsonFacade gsonFacade = new GsonJsonFacade(new GsonBuilder());
         long start, end;
 
 //        start = System.nanoTime();

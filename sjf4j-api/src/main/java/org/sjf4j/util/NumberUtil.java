@@ -27,6 +27,14 @@ public class NumberUtil {
     }
 
 
+    public static boolean isIntegralType(Number value) {
+        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long;
+    }
+
+    private static boolean isFloatingType(Number value) {
+        return value instanceof Float || value instanceof Double;
+    }
+
     public static Long asLong(Number value) {
         if (value == null) {
             return null;
@@ -108,7 +116,7 @@ public class NumberUtil {
             BigDecimal decimal = BigDecimal.valueOf(((Number) value).doubleValue());
             return decimal.toBigInteger();
         }
-        return BigInteger.valueOf(((Number) value).longValue());
+        return BigInteger.valueOf(value.longValue());
     }
 
     public static BigDecimal asBigDecimal(Number value) {
@@ -218,18 +226,19 @@ public class NumberUtil {
         return digitSeen;
     }
 
-
-    public static boolean isIntegralType(Number value) {
-        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long;
-    }
-
     public static boolean equals(Number source, Number target) {
         if (source == target) return true;
         if (source == null || target == null) return false;
+        if (source instanceof BigDecimal || target instanceof BigDecimal
+                || source instanceof BigInteger || target instanceof BigInteger) {
+            return asBigDecimal(source).compareTo(asBigDecimal(target)) == 0;
+        }
         if (isIntegralType(source) && isIntegralType(target)) {
             return source.longValue() == target.longValue();
         }
         return source.doubleValue() == target.doubleValue();
     }
+
+
 
 }

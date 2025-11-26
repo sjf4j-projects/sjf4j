@@ -76,6 +76,7 @@ class JsonObjectTest {
         assertEquals(123, jo.getInteger("id"));
         assertEquals(123, jo.getBigInteger("id").intValue());
         assertEquals(Integer.class, jo.getObject("id").getClass());
+
         assertEquals("han", jo.getString("name"));
         assertEquals(123, jo.getObject("id"));
         assertEquals(123.0d, jo.getDouble("id"));

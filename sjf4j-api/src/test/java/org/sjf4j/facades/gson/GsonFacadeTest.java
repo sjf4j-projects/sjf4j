@@ -1,6 +1,7 @@
 package org.sjf4j.facades.gson;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.facades.JsonFacade;
@@ -18,7 +19,7 @@ public class GsonFacadeTest {
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        GsonJsonFacade facade = new GsonJsonFacade(new Gson());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
         JsonObject jo1 = facade.readObject(new StringReader(json1));
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);

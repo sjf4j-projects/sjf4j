@@ -3,6 +3,7 @@ package org.sjf4j;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.sjf4j.facades.JsonFacade;
 import org.sjf4j.facades.ObjectFacade;
 import org.sjf4j.facades.PropertiesFacade;
@@ -71,7 +72,7 @@ public class FacadeFactory {
     }
 
     public static JsonFacade<?, ?> createGsonFacade() {
-        return new GsonJsonFacade(new Gson());
+        return new GsonJsonFacade(new GsonBuilder());
     }
 
     public static JsonFacade<?, ?> createFastjson2Facade() {
