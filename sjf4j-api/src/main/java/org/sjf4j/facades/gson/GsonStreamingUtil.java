@@ -279,7 +279,7 @@ public class GsonStreamingUtil {
     }
 
     public static Number nextNumber(JsonReader reader) throws IOException {
-        return NumberUtil.stringToNumber(reader.nextString());
+        return NumberUtil.toNumber(reader.nextString());
     }
 
     public static Boolean nextBoolean(JsonReader reader) throws IOException {

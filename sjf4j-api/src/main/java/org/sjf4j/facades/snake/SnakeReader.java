@@ -110,7 +110,7 @@ public class SnakeReader implements FacadeReader {
     @Override
     public Number nextNumber() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
-        return NumberUtil.stringToNumber(se.getValue());
+        return NumberUtil.toNumber(se.getValue());
     }
 
     @Override

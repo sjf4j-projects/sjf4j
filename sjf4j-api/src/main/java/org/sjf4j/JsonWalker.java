@@ -2,14 +2,19 @@ package org.sjf4j;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TriConsumer;
 import org.sjf4j.util.TypeUtil;
 import org.sjf4j.util.TypedNode;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
+import java.util.AbstractMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 @Slf4j
@@ -90,6 +95,26 @@ public class JsonWalker {
             }
         } else {
             throw new JsonException("Invalid array container: " + container.getClass());
+        }
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public static Set<Map.Entry<String, Object>> entrySetInObject(@NonNull Object container) {
+        if (container instanceof JsonObject) {
+            return ((JsonObject) container).entrySet();
+        } else if (container instanceof Map) {
+            return ((Map<String, Object>) container).entrySet();
+        } else if (PojoRegistry.isPojo(container.getClass())) {
+            Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>();
+            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                Object node = fi.getValue().invokeGetter(container);
+                entrySet.add(new AbstractMap.SimpleEntry<>(fi.getKey(), node));
+            }
+            return entrySet;
+        } else {
+            throw new JsonException("Invalid object container: " + container.getClass());
         }
     }
 
@@ -326,6 +351,113 @@ public class JsonWalker {
         }
     }
 
+    public static boolean equals(Object source, Object target) {
+        if (target == source) return true;
+        if (source == null || target == null) return false;
+        NodeType ntSource = NodeType.of(source);
+        NodeType ntTarget = NodeType.of(target);
+        if (ntSource.isNumber() && ntTarget.isNumber()) {
+            return NumberUtil.equals((Number) source, (Number) target);
+        } else if (ntSource.isValue() && ntTarget.isValue()) {
+            return source.equals(target);
+        } else if (ntSource == NodeType.OBJECT_POJO) {
+            return source.equals(target);
+        } else if (ntTarget == NodeType.OBJECT_POJO) {
+            return target.equals(source);
+        } else if (ntSource.isObject() && ntTarget.isObject()) {
+            if ((ntSource == NodeType.OBJECT_JOJO || ntTarget == NodeType.OBJECT_JOJO) &&
+                    source.getClass() != target.getClass()) {
+                return false;
+            }
+            if (sizeInObject(source) != sizeInObject(target)) return false;
+            for (Map.Entry<String, Object> entry : entrySetInObject(source)) {
+                Object subSrouce = entry.getValue();
+                Object subTarget = getInObject(target, entry.getKey());
+                if (!equals(subSrouce, subTarget)) return false;
+            }
+            return true;
+        } else if (ntSource.isArray() && ntTarget.isArray()) {
+            if (sizeInArray(source) != sizeInArray(target)) return false;
+            int size = sizeInArray(source);
+            for (int i = 0; i < size; i++) {
+                if (!equals(getInArray(source, i), getInArray(target, i))) return false;
+            }
+            return true;
+        } else if (ntSource.isUnknown() && ntTarget.isUnknown()) {
+            return source.equals(target);
+        }
+        return false;
+    }
+
+    public static Object deepCopy(Object container) {
+        // TODO:
+        return container;
+    }
+
+    public static void merge(Object source, Object target, boolean preferTarget, boolean needCopy) {
+        if (source == null || target == null) return;
+        NodeType ntSource = NodeType.of(source);
+        NodeType ntTarget = NodeType.of(target);
+        if (ntSource.isObject() && ntTarget.isObject()) {
+            visitObject(target, (key, subTarget) -> {
+                Object subSource = getInObject(source, key);
+                NodeType ntSubSource = NodeType.of(subSource);
+                NodeType ntSubTarget = NodeType.of(subTarget);
+                if (ntSubTarget.isObject()) {
+                    if (ntSubSource.isObject()) {
+                        merge(subSource, subTarget, preferTarget, needCopy);
+                    } else if (preferTarget || subSource == null) {
+                        if (needCopy) {
+                            putInObject(source, key, deepCopy(subTarget));
+                        } else {
+                            putInObject(source, key, subTarget);
+                        }
+                    }
+                } else if (ntSubTarget.isArray()) {
+                    if (ntSubSource.isArray()) {
+                        merge(subSource, subTarget, preferTarget, needCopy);
+                    } else if (preferTarget || subSource == null) {
+                        if (needCopy) {
+                            putInObject(source, key, deepCopy(subTarget));
+                        } else {
+                            putInObject(source, key, subTarget);
+                        }
+                    }
+                } else if (preferTarget || subSource == null) {
+                    putInObject(source, key, subTarget);
+                }
+            });
+        } else if (ntSource.isArray() && ntTarget.isArray()) {
+            visitArray(target, (i, subTarget) -> {
+                Object subSource = getInArray(source, i);
+                NodeType ntSubSource = NodeType.of(subSource);
+                NodeType ntSubTarget = NodeType.of(subTarget);
+                if (ntSubTarget.isObject()) {
+                    if (ntSubSource.isObject()) {
+                        merge(subSource, subTarget, preferTarget, needCopy);
+                    } else if (preferTarget || subSource == null) {
+                        if (needCopy) {
+                            setInArray(source, i, deepCopy(subTarget));
+                        } else {
+                            setInArray(source, i, subTarget);
+                        }
+                    }
+                } else if (ntSubTarget.isArray()) {
+                    if (ntSubSource.isArray()) {
+                        merge(subSource, subTarget, preferTarget, needCopy);
+                    } else if (preferTarget || subSource == null) {
+                        if (needCopy) {
+                            setInArray(source, i, deepCopy(subTarget));
+                        } else {
+                            setInArray(source, i, subTarget);
+                        }
+                    }
+                } else if (preferTarget || subSource == null) {
+                    setInArray(source, i, subTarget);
+                }
+            });
+        }
+    }
 
     /// Private
 

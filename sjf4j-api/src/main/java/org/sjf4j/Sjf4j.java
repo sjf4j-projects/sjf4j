@@ -23,7 +23,7 @@ public class Sjf4j {
     /// JSON
 
     public static Object readNodeFromJson(@NonNull Reader input, Type type) {
-        JsonFacade<?, ?> facade = JsonConfig.global().jsonFacade;
+        JsonFacade<?, ?> facade = JsonConfig.global().getJsonFacade();
         if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_GENERAL) {
             return facade.readNode(input, type);
         } else {
@@ -44,7 +44,7 @@ public class Sjf4j {
     }
 
     public static void writeNodeToJson(@NonNull Writer output, Object node) {
-        JsonFacade<?, ?> facade = JsonConfig.global().jsonFacade;
+        JsonFacade<?, ?> facade = JsonConfig.global().getJsonFacade();
         if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_GENERAL) {
             facade.writeNode(output, node);
         } else {
@@ -111,7 +111,7 @@ public class Sjf4j {
     /// YAML
 
     public static Object readNodeFromYaml(@NonNull Reader input, Type type) {
-        YamlFacade<?, ?> facade = JsonConfig.global().yamlFacade;
+        YamlFacade<?, ?> facade = JsonConfig.global().getYamlFacade();
         if (facade instanceof SnakeYamlFacade) {
             SnakeYamlFacade snakeFacade = (SnakeYamlFacade) facade;
             return snakeFacade.readNode(input, type);
@@ -120,7 +120,7 @@ public class Sjf4j {
     }
 
     public static void writeNodeToYaml(@NonNull Writer output, Object node) {
-        YamlFacade<?, ?> facade = JsonConfig.global().yamlFacade;
+        YamlFacade<?, ?> facade = JsonConfig.global().getYamlFacade();
         if (facade instanceof SnakeYamlFacade) {
             SnakeYamlFacade snakeFacade = (SnakeYamlFacade) facade;
             snakeFacade.writeNode(output, node);
@@ -177,28 +177,28 @@ public class Sjf4j {
     /// Properties
 
     public static JsonObject fromProperties(@NonNull Properties props) {
-        return JsonConfig.global().propertiesFacade.readNode(props);
+        return JsonConfig.global().getPropertiesFacade().readNode(props);
     }
 
 
     public static void toProperties(@NonNull Properties props, JsonObject node) {
-        JsonConfig.global().propertiesFacade.writeNode(props, node);
+        JsonConfig.global().getPropertiesFacade().writeNode(props, node);
     }
 
     /// POJO
 
     public static Object readNodeFromPojo(@NonNull Object pojo, Type type) {
-        return JsonConfig.global().objectFacade.readNode(pojo, type);
+        return JsonConfig.global().getObjectFacade().readNode(pojo, type);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T fromPojo(@NonNull Object pojo, Class<T> clazz) {
-        return (T) JsonConfig.global().objectFacade.readNode(pojo, clazz);
+        return (T) JsonConfig.global().getObjectFacade().readNode(pojo, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T fromPojo(@NonNull Object pojo, TypeReference<T> type) {
-        return (T) JsonConfig.global().objectFacade.readNode(pojo, type.getType());
+        return (T) JsonConfig.global().getObjectFacade().readNode(pojo, type.getType());
     }
 
 

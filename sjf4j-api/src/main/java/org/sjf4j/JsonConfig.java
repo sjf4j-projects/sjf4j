@@ -12,10 +12,10 @@ import org.sjf4j.supplier.MapSupplier;
 @Getter
 public final class JsonConfig {
 
-    public JsonFacade<?, ?> jsonFacade;
-    public YamlFacade<?, ?> yamlFacade;
-    public PropertiesFacade propertiesFacade;
-    public ObjectFacade objectFacade;
+    private JsonFacade<?, ?> jsonFacade;
+    private YamlFacade<?, ?> yamlFacade;
+    private PropertiesFacade propertiesFacade;
+    private ObjectFacade objectFacade;
 
     public final FacadeMode facadeMode;
 
@@ -104,7 +104,7 @@ public final class JsonConfig {
         private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
 
-        private FacadeMode facadeMode = FacadeMode.STREAMING_GENERAL;
+        private FacadeMode facadeMode = FacadeMode.MODULE_EXTRA;
 
 
         public Builder() {}

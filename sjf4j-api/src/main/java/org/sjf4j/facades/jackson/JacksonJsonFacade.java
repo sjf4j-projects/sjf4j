@@ -63,7 +63,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 default:
                     return readNodeWithExtra(input, type);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
     }

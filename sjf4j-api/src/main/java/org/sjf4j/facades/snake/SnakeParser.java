@@ -165,7 +165,7 @@ public class SnakeParser {
         }
 
         if (isNumeric(v)) {
-            return NumberUtil.stringToNumber(v);
+            return NumberUtil.toNumber(v);
         } else {
             return v;
         }

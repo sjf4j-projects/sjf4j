@@ -6,7 +6,6 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.RecordUtil;
-import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.TypeUtil;
 
 import java.lang.invoke.MethodHandle;
@@ -257,7 +256,7 @@ public final class PojoRegistry {
                 Class<?> clazz = (Class<?>) type;
                 if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
                         Number.class.isAssignableFrom(clazz)) {
-                    value = NumberUtil.numberAs((Number) value, clazz);
+                    value = NumberUtil.as((Number) value, clazz);
                 }
             }
             try {

@@ -2,8 +2,6 @@ package org.sjf4j;
 
 import org.sjf4j.util.TypeUtil;
 
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +12,11 @@ public enum NodeType {
     VALUE_STRING,
     VALUE_NUMBER,
     VALUE_BOOLEAN,
+    OBJECT_JSON_OBJECT,
     OBJECT_JOJO,
     OBJECT_MAP,
     OBJECT_POJO,
-    ARRAY_JOJA,
+    ARRAY_JSON_ARRAY,
     ARRAY_LIST,
     ARRAY_ARRAY,
     UNKNOWN;
@@ -25,10 +24,12 @@ public enum NodeType {
     public static NodeType of(Object node) {
         if (node == null) {
             return VALUE_VOID;
+        } else if (node.getClass() == JsonObject.class) {
+            return OBJECT_JSON_OBJECT;
         } else if (node instanceof JsonObject) {
             return OBJECT_JOJO;
         } else if (node instanceof JsonArray) {
-            return ARRAY_JOJA;
+            return ARRAY_JSON_ARRAY;
         } else if (node instanceof CharSequence || node instanceof Character) {
             return VALUE_STRING;
         } else if (node instanceof Number) {
@@ -69,7 +70,7 @@ public enum NodeType {
         } else if (JsonObject.class.isAssignableFrom(clazz)) {
             return OBJECT_JOJO;
         } else if (JsonArray.class.isAssignableFrom(clazz)) {
-            return ARRAY_JOJA;
+            return ARRAY_JSON_ARRAY;
         } else if (clazz == Map.class) {
             return OBJECT_MAP;
         } else if (clazz == List.class) {
@@ -103,14 +104,14 @@ public enum NodeType {
 //    }
 
     public boolean isObject() {
-        return this == OBJECT_JOJO || this == OBJECT_MAP || this == OBJECT_POJO;
+        return this == OBJECT_JSON_OBJECT || this == OBJECT_JOJO || this == OBJECT_MAP || this == OBJECT_POJO;
     }
 //    public boolean isObjectOrAny() {
 //        return isObject() || isAny();
 //    }
 
     public boolean isArray() {
-        return this == ARRAY_JOJA || this == ARRAY_LIST || this == ARRAY_ARRAY;
+        return this == ARRAY_JSON_ARRAY || this == ARRAY_LIST || this == ARRAY_ARRAY;
     }
 //    public boolean isArrayOrAny() {
 //        return isArray() || isAny();
@@ -124,7 +125,7 @@ public enum NodeType {
 //    }
 
     public boolean isPured() {
-        return isValue() || this == OBJECT_JOJO || this == ARRAY_JOJA;
+        return isValue() || this == OBJECT_JOJO || this == ARRAY_JSON_ARRAY;
     }
 
     public boolean isUnknown() {

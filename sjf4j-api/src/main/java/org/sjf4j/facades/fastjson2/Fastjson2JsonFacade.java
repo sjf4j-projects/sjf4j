@@ -73,7 +73,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 default:
                     return readNodeWithExtra(input, type);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
     }

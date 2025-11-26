@@ -312,7 +312,7 @@ public class SnakeStreamingUtil {
 
     public static Number nextNumber(Parser parser) throws IOException {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
-        return NumberUtil.stringToNumber(se.getValue());
+        return NumberUtil.toNumber(se.getValue());
     }
 
     public static Boolean nextBoolean(Parser parser) throws IOException {

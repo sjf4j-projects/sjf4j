@@ -2,7 +2,6 @@ package org.sjf4j.facades.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
-import com.fasterxml.jackson.core.JsonGenerator;
 import lombok.NonNull;
 import org.sjf4j.ConverterRegistry;
 import org.sjf4j.JsonArray;
@@ -12,7 +11,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.NodeConverter;
 import org.sjf4j.PojoRegistry;
 import org.sjf4j.facades.FacadeReader;
-import org.sjf4j.facades.jackson.JacksonWriter;
 import org.sjf4j.util.StreamingUtil;
 import org.sjf4j.util.TypeUtil;
 

@@ -71,22 +71,16 @@ public class Fastjson2Module {
     public static class JsonArrayReader implements ObjectReader<JsonArray> {
 
         @Override
-        public JsonArray readObject(JSONReader reader,
-                                    Type fieldType,
-                                    Object fieldName,
-                                    long features) {
-            // 必须是 [
+        public JsonArray readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (!reader.nextIfArrayStart()) {
                 throw new JSONException(reader.info("expect '['"));
             }
 
             JsonArray array = new JsonArray();
-
             while (!reader.nextIfArrayEnd()) {
                 Object value = reader.readAny();
                 array.add(value);
             }
-
             return array;
         }
 

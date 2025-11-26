@@ -3,6 +3,7 @@ package org.sjf4j;
 import lombok.NonNull;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
+import org.sjf4j.util.TypeUtil;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -31,10 +32,40 @@ public class JsonObject extends JsonContainer {
         }
     }
 
-    public JsonObject(@NonNull Map<?, ?> map) {
+    @SuppressWarnings("unchecked")
+    public JsonObject(@NonNull Object node) {
         this();
-        putAll(map);
+        if (node instanceof JsonObject) {
+            JsonObject jo = (JsonObject) node;
+            if (jo.fieldMap != null) {
+                if (this.nodeMap == null) this.nodeMap = JsonConfig.global().mapSupplier.create();
+                for (Map.Entry<String, PojoRegistry.FieldInfo> fi : fieldMap.entrySet()) {
+                    Object v = fi.getValue().invokeGetter(node);
+                    this.nodeMap.put(fi.getKey(), v);
+                }
+            }
+            if (jo.nodeMap != null) {
+                if (this.nodeMap == null) {
+                    this.nodeMap = jo.nodeMap;
+                } else {
+                    this.nodeMap.putAll(jo.nodeMap);
+                }
+            }
+        } else if (node instanceof Map) {
+            this.nodeMap = (Map<String, Object>) node;
+        } else if (PojoRegistry.isPojo(node.getClass())) {
+            this.nodeMap = JsonConfig.global().mapSupplier.create();
+            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
+            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                Object v = fi.getValue().invokeGetter(node);
+                this.nodeMap.put(fi.getKey(), v);
+            }
+        } else {
+            throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
+                        "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");
+        }
     }
+
 
     public JsonObject(@NonNull String key1, Object value1) {
         this();
@@ -135,20 +166,7 @@ public class JsonObject extends JsonContainer {
 
     @Override
     public boolean equals(Object target) {
-        if (target == this) return true;
-        if (target == null) return false;
-        if (target.getClass() != this.getClass()) return false;
-        if (!Objects.equals(nodeMap, ((JsonObject) target).nodeMap)) return false;
-        if (fieldMap != null) {
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
-                if (!Objects.equals(
-                        entry.getValue().invokeGetter(this),
-                        entry.getValue().invokeGetter(target))) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return JsonWalker.equals(this, target);
     }
 
     @Override
@@ -195,7 +213,7 @@ public class JsonObject extends JsonContainer {
 
     private Map<String, Object> toMap() {
         if (fieldMap == null) {
-            return nodeMap == null ? Collections.emptyMap() : Collections.unmodifiableMap(nodeMap);
+            return nodeMap == null ? Collections.emptyMap() : nodeMap;
         } else {
             Map<String, Object> merged = JsonConfig.global().mapSupplier.create();
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
@@ -273,17 +291,17 @@ public class JsonObject extends JsonContainer {
 
     public static JsonObject fromPojo(@NonNull Object pojo) {
 //        return (JsonObject) ObjectUtil.object2Value(pojo);
-        return (JsonObject) JsonConfig.global().objectFacade.readNode(pojo, JsonObject.class);
+        return (JsonObject) JsonConfig.global().getObjectFacade().readNode(pojo, JsonObject.class);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T toPojo(@NonNull Class<T> clazz) {
-        return (T) JsonConfig.global().objectFacade.readNode(this, clazz);
+        return (T) JsonConfig.global().getObjectFacade().readNode(this, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T toPojo(@NonNull TypeReference<T> type) {
-        return (T) JsonConfig.global().objectFacade.readNode(this, type.getType());
+        return (T) JsonConfig.global().getObjectFacade().readNode(this, type.getType());
     }
 
     /// Getter
@@ -314,19 +332,17 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get String of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public String getString(@NonNull String key, String defaultValue) {
         String value = getString(key);
         return value == null ? defaultValue : value;
     }
 
-    public String getAsString(@NonNull String key) {
+    public String asString(@NonNull String key) {
         Object value = getObject(key);
         return NodeUtil.asString(value);
     }
-
-    public String getAsString(@NonNull String key, String defaultValue) {
-        String value = getAsString(key);
+    public String asString(@NonNull String key, String defaultValue) {
+        String value = asString(key);
         return value == null ? defaultValue : value;
     }
 
@@ -338,116 +354,229 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Number of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    public Number getNumber(@NonNull String key, Number defaultValue) {
+        Number value = getNumber(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Number asNumber(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asNumber(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Number: " + e.getMessage(), e);
+        }
+    }
+    public Number asNumber(@NonNull String key, Number defaultValue) {
+        Number value = asNumber(key);
+        return value == null ? defaultValue : value;
+    }
 
     public Long getLong(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asLong(value);
+            return NodeUtil.toLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Long of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public long getLong(@NonNull String key, long defaultValue) {
         Long value = getLong(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Long asLong(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asLong(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Long: " + e.getMessage(), e);
+        }
+    }
+    public long asLong(@NonNull String key, long defaultValue) {
+        Long value = asLong(key);
         return value == null ? defaultValue : value;
     }
 
     public Integer getInteger(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asInteger(value);
+            return NodeUtil.toInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Integer of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public int getInteger(@NonNull String key, int defaultValue) {
         Integer value = getInteger(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Integer asInteger(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asInteger(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Integer: " + e.getMessage(), e);
+        }
+    }
+    public int asInteger(@NonNull String key, int defaultValue) {
+        Integer value = asInteger(key);
         return value == null ? defaultValue : value;
     }
 
     public Short getShort(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asShort(value);
+            return NodeUtil.toShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Short of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public short getShort(@NonNull String key, short defaultValue) {
         Short value = getShort(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Short asShort(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asShort(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Short: " + e.getMessage(), e);
+        }
+    }
+    public short asShort(@NonNull String key, short defaultValue) {
+        Short value = asShort(key);
         return value == null ? defaultValue : value;
     }
 
     public Byte getByte(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asByte(value);
+            return NodeUtil.toByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Byte of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public byte getByte(@NonNull String key, byte defaultValue) {
         Byte value = getByte(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Byte asByte(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asByte(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Byte: " + e.getMessage(), e);
+        }
+    }
+    public byte asByte(@NonNull String key, byte defaultValue) {
+        Byte value = asByte(key);
         return value == null ? defaultValue : value;
     }
 
     public Double getDouble(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asDouble(value);
+            return NodeUtil.toDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Double of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public double getDouble(@NonNull String key, double defaultValue) {
         Double value = getDouble(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Double asDouble(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asDouble(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Double: " + e.getMessage(), e);
+        }
+    }
+    public double asDouble(@NonNull String key, double defaultValue) {
+        Double value = asDouble(key);
         return value == null ? defaultValue : value;
     }
 
     public Float getFloat(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asFloat(value);
+            return NodeUtil.toFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Float of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public float getFloat(@NonNull String key, float defaultValue) {
         Float value = getFloat(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Float asFloat(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asFloat(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Float: " + e.getMessage(), e);
+        }
+    }
+    public float asFloat(@NonNull String key, float defaultValue) {
+        Float value = asFloat(key);
         return value == null ? defaultValue : value;
     }
 
     public BigInteger getBigInteger(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asBigInteger(value);
+            return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigInteger of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public BigInteger getBigInteger(@NonNull String key, BigInteger defaultValue) {
         BigInteger value = getBigInteger(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public BigInteger asBigInteger(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asBigInteger(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to BigInteger: " + e.getMessage(), e);
+        }
+    }
+    public BigInteger asBigInteger(@NonNull String key, BigInteger defaultValue) {
+        BigInteger value = asBigInteger(key);
         return value == null ? defaultValue : value;
     }
 
     public BigDecimal getBigDecimal(@NonNull String key) {
         Object value = getObject(key);
         try {
-            return NodeUtil.asBigDecimal(value);
+            return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigDecimal of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public BigDecimal getBigDecimal(@NonNull String key, BigDecimal defaultValue) {
         BigDecimal value = getBigDecimal(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public BigDecimal asBigDecimal(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asBigDecimal(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to BigDecimal: " + e.getMessage(), e);
+        }
+    }
+    public BigDecimal asBigDecimal(@NonNull String key, BigDecimal defaultValue) {
+        BigDecimal value = asBigDecimal(key);
         return value == null ? defaultValue : value;
     }
 
@@ -459,9 +588,21 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Boolean of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public boolean getBoolean(@NonNull String key, boolean defaultValue) {
         Boolean value = getBoolean(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public Boolean asBoolean(@NonNull String key) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.asBoolean(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Boolean: " + e.getMessage(), e);
+        }
+    }
+    public boolean asBoolean(@NonNull String key, boolean defaultValue) {
+        Boolean value = asBoolean(key);
         return value == null ? defaultValue : value;
     }
 
@@ -473,19 +614,22 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get JsonObject of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public JsonObject getJsonObject(@NonNull String key, JsonObject defaultValue) {
         JsonObject value = getJsonObject(key);
         return value == null ? defaultValue : value;
     }
 
-    public JsonObject getAsJsonObject(@NonNull String key) {
+    public JsonObject asJsonObject(@NonNull String key) {
         Object value = getObject(key);
         try {
             return NodeUtil.asJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get as JsonObject of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to JsonObject: " + e.getMessage(), e);
         }
+    }
+    public JsonObject asJsonObject(@NonNull String key, JsonObject defaultValue) {
+        JsonObject value = asJsonObject(key);
+        return value == null ? defaultValue : value;
     }
 
     public JsonArray getJsonArray(@NonNull String key) {
@@ -496,19 +640,22 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get JsonArray of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     public JsonArray getJsonArray(@NonNull String key, JsonArray defaultValue) {
         JsonArray value = getJsonArray(key);
         return value == null ? defaultValue : value;
     }
 
-    public JsonArray getAsJsonArray(@NonNull String key) {
+    public JsonArray asJsonArray(@NonNull String key) {
         Object value = getObject(key);
         try {
             return NodeUtil.asJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get as JsonObject of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to JsonArray: " + e.getMessage(), e);
         }
+    }
+    public JsonArray asJsonArray(@NonNull String key, JsonArray defaultValue) {
+        JsonArray value = asJsonArray(key);
+        return value == null ? defaultValue : value;
     }
 
     public <T> T get(@NonNull String key, @NonNull Class<T> clazz) {
@@ -519,13 +666,27 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get " + clazz.getName() + " of key '" + key + "': " + e.getMessage(), e);
         }
     }
-
     @SuppressWarnings("unchecked")
     public <T> T get(@NonNull String key, T... reified) {
         if (reified.length > 0) throw new JsonException("`reified` should be empty.");
-
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(key, clazz);
+    }
+
+    public <T> T as(@NonNull String key, @NonNull Class<T> clazz) {
+        Object value = getObject(key);
+        try {
+            return NodeUtil.as(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName() +
+                    ": " + e.getMessage(), e);
+        }
+    }
+    @SuppressWarnings("unchecked")
+    public <T> T as(@NonNull String key, T... reified) {
+        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+        return as(key, clazz);
     }
 
 
@@ -629,7 +790,7 @@ public class JsonObject extends JsonContainer {
 //            }
 //        }
 //        return copy;
-        return (JsonObject) JsonConfig.global().objectFacade.readNode(this, JsonObject.class);
+        return (JsonObject) JsonConfig.global().getObjectFacade().readNode(this, JsonObject.class);
     }
 
     /**
@@ -639,43 +800,40 @@ public class JsonObject extends JsonContainer {
      * When a key exists in both objects, the conflict resolution depends on the
      * {@code preferTarget} parameter.</p>
      *
-     * @param target        the JsonObject to merge into this one
-     * @param targetWin     if {@code true}, values from the target will overwrite
-     *                      existing values in this object; if {@code false}, existing
-     *                      values in this object will be preserved
      *
      */
-    public void merge(JsonObject target, boolean targetWin, boolean needCopy) {
-        //TODO
-        if (target == null) return;
-        for (String key : target.keySet()) {
-            Object tarValue = target.getObject(key);
-            if (tarValue instanceof JsonObject) {
-                Object srcValue = getObject(key);
-                if (srcValue instanceof JsonObject) {
-                    ((JsonObject) srcValue).merge((JsonObject) tarValue, targetWin, needCopy);
-                } else if (targetWin || srcValue == null) {
-                    if (needCopy) {
-                        put(key, ((JsonObject) tarValue).deepCopy());
-                    } else {
-                        put(key, tarValue);
-                    }
-                }
-            } else if (tarValue instanceof JsonArray) {
-                Object srcValue = getObject(key);
-                if (srcValue instanceof JsonArray) {
-                    ((JsonArray) srcValue).merge((JsonArray) tarValue, targetWin, needCopy);
-                } else if (targetWin || srcValue == null) {
-                    if (needCopy) {
-                        put(key, ((JsonArray) tarValue).deepCopy());
-                    } else {
-                        put(key, tarValue);
-                    }
-                }
-            } else if (targetWin || !containsKey(key)) {
-                put(key, tarValue);
-            }
-        }
+    public void merge(JsonObject target, boolean preferTarget, boolean needCopy) {
+        JsonWalker.merge(this, target, preferTarget, needCopy);
+//        //TODO
+//        if (target == null) return;
+//        for (String key : target.keySet()) {
+//            Object tarValue = target.getObject(key);
+//            if (tarValue instanceof JsonObject) {
+//                Object srcValue = getObject(key);
+//                if (srcValue instanceof JsonObject) {
+//                    ((JsonObject) srcValue).merge((JsonObject) tarValue, targetWin, needCopy);
+//                } else if (targetWin || srcValue == null) {
+//                    if (needCopy) {
+//                        put(key, ((JsonObject) tarValue).deepCopy());
+//                    } else {
+//                        put(key, tarValue);
+//                    }
+//                }
+//            } else if (tarValue instanceof JsonArray) {
+//                Object srcValue = getObject(key);
+//                if (srcValue instanceof JsonArray) {
+//                    ((JsonArray) srcValue).merge((JsonArray) tarValue, targetWin, needCopy);
+//                } else if (targetWin || srcValue == null) {
+//                    if (needCopy) {
+//                        put(key, ((JsonArray) tarValue).deepCopy());
+//                    } else {
+//                        put(key, tarValue);
+//                    }
+//                }
+//            } else if (targetWin || !containsKey(key)) {
+//                put(key, tarValue);
+//            }
+//        }
     }
 
     /**

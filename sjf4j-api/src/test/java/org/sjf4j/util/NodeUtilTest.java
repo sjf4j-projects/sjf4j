@@ -47,7 +47,7 @@ public class NodeUtilTest {
     @Test
     public void testToNumber() {
         assertEquals(123, NodeUtil.toNumber(123));
-        assertEquals(123L, NodeUtil.toNumber(123L));
+        assertEquals(123L, NodeUtil.asNumber(123L));
         assertEquals(123.45, NodeUtil.toNumber(123.45));
         assertNull(NodeUtil.toNumber(null));
         
@@ -58,47 +58,47 @@ public class NodeUtilTest {
 
     @Test
     public void testValueAsLong() {
-        assertEquals(123L, NodeUtil.asLong(123));
-        assertEquals(123L, NodeUtil.asLong(123L));
+        assertEquals(123L, NodeUtil.toLong(123));
+        assertEquals(123L, NodeUtil.asLong("123"));
         assertEquals(123L, NodeUtil.asLong(123.45));
         assertNull(NodeUtil.asLong(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asLong("123");
+            NodeUtil.toLong("123");
         });
     }
 
     @Test
     public void testAsInteger() {
-        assertEquals(123, NodeUtil.asInteger(123));
-        assertEquals(123, NodeUtil.asInteger(123L));
+        assertEquals(123, NodeUtil.toInteger(123));
+        assertEquals(123, NodeUtil.asInteger("123"));
         assertEquals(123, NodeUtil.asInteger(123.45));
         assertNull(NodeUtil.asInteger(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asInteger("123");
+            NodeUtil.toInteger("123");
         });
     }
 
     @Test
     public void testAsDouble() {
-        assertEquals(123.45, NodeUtil.asDouble(123.45));
+        assertEquals(123.45, NodeUtil.toDouble(123.45));
         assertEquals(123.0, NodeUtil.asDouble(123));
         assertNull(NodeUtil.asDouble(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asDouble("123.45");
+            NodeUtil.toDouble("123.45");
         });
     }
 
     @Test
     public void testAsBigInteger() {
         assertEquals(BigInteger.valueOf(123), NodeUtil.asBigInteger(123));
-        assertEquals(BigInteger.valueOf(123L), NodeUtil.asBigInteger(123L));
+        assertEquals(BigInteger.valueOf(123L), NodeUtil.toBigInteger(123L));
         assertNull(NodeUtil.asBigInteger(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asBigInteger("123");
+            NodeUtil.toBigInteger("123");
         });
     }
 
@@ -109,6 +109,9 @@ public class NodeUtilTest {
         assertNull(NodeUtil.asBigDecimal(null));
         
         assertThrows(JsonException.class, () -> {
+            NodeUtil.toBigDecimal("123.45");
+        });
+        assertDoesNotThrow(() -> {
             NodeUtil.asBigDecimal("123.45");
         });
     }
@@ -116,6 +119,7 @@ public class NodeUtilTest {
     @Test
     public void testToBoolean() {
         assertTrue(NodeUtil.toBoolean(true));
+        assertTrue(NodeUtil.asBoolean("true"));
         assertFalse(NodeUtil.toBoolean(false));
         assertNull(NodeUtil.toBoolean(null));
         

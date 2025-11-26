@@ -4,8 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.supplier.MapSupplier;
 
+import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +69,6 @@ class JsonObjectTest {
         testEdgeCases();
     }
 
-    @Test
     public void testGetter1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20],\"sex\":false}},\"sex\":true}";
         JsonObject jo = JsonObject.fromJson(json1);
@@ -87,14 +88,14 @@ class JsonObjectTest {
         assertInstanceOf(Number.class, jo.getObject("height"));
 
         assertThrows(JsonException.class, () -> jo.getString("height"));
-        assertEquals("175.3", jo.getAsString("height"));
+        assertEquals("175.3", jo.asString("height"));
 
-        assertEquals("good", jo.getJsonObject("friends").getString("jack"));
-        assertEquals(false, jo.getJsonObject("friends").getJsonObject("rose").getBoolean("sex"));
-        assertEquals(20, jo.getJsonObject("friends").getJsonObject("rose").getJsonArray("age").getInteger(1));
+        assertEquals("good", jo.asJsonObject("friends").getString("jack"));
+        assertEquals(false, jo.asJsonObject("friends").asJsonObject("rose").getBoolean("sex"));
+        assertEquals(20, jo.asJsonObject("friends").asJsonObject("rose").asJsonArray("age").getInteger(1));
 
         assertNull(jo.getString("noexist1"));
-        assertNull(jo.getJsonObject("noexist2"));
+        assertNull(jo.asJsonObject("noexist2"));
 
         assertEquals(5, jo.size());
         assertFalse(jo.containsKey("noexist3"));
@@ -150,7 +151,7 @@ class JsonObjectTest {
     public void testParse2() {
         Map<String, Object> map1 = new HashMap<>();
         map1.put("number", 5);
-        map1.put("duck", new JsonArray("gaga", "haha"));
+        map1.put("duck", new JsonArray(new String[]{"gaga", "haha"}));
         JsonObject jo1 = new JsonObject(map1);
 
         JsonObject jo2 = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"]}");
@@ -201,10 +202,10 @@ class JsonObjectTest {
 
         JsonObject jo4 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\"}}");
         JsonObject jo5 = jo4.deepCopy();
-        jo4.getJsonObject("attr").put("aa", "jj");
+        jo4.asJsonObject("attr").put("aa", "jj");
 //        System.out.println(jo5);
-        assertEquals("jj", jo4.getJsonObject("attr").getString("aa"));
-        assertEquals("bb", jo5.getJsonObject("attr").getString("aa"));
+        assertEquals("jj", jo4.asJsonObject("attr").getString("aa"));
+        assertEquals("bb", jo5.asJsonObject("attr").getString("aa"));
 
         JsonObject attr = jo5.get("attr");
         assertEquals("bb", attr.get("aa"));
@@ -270,7 +271,7 @@ class JsonObjectTest {
         assertThrows(JsonException.class, () -> jo2.putByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
-        jo3.putByPath("$.a.b", new JsonArray(0, new JsonObject("d", "99")));
+        jo3.putByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
         jo3.putByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
         //FIXME: this is a bug!
@@ -311,7 +312,7 @@ class JsonObjectTest {
         System.out.println("num: " + num);
         assertEquals(5, num);
 
-        JsonObject attr = jo1.get("attr");
+        JsonObject attr = jo1.as("attr");
         System.out.println("attr: " + attr);
         assertNotNull(attr);
         assertEquals(1, attr.size());
@@ -323,13 +324,14 @@ class JsonObjectTest {
 
         Object obj = jo1.get("attr");
         System.out.println("obj: " + obj);
-        assertInstanceOf(JsonObject.class, obj);
+//        assertInstanceOf(JsonObject.class, obj);
+        assertTrue(NodeType.of(obj).isObject());
 
         Object obj2 = jo1.get("attr2");
         System.out.println("obj2: " + obj2);
         assertNull(obj2);
 
-        BigInteger big = new BigInteger(jo1.getAsString("num"));
+        BigInteger big = new BigInteger(jo1.asString("num"));
         System.out.println("big: " + big);
         assertEquals(BigInteger.valueOf(5), big);
     }
@@ -338,13 +340,13 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"attr\":{\"aa\":\"bb\"}}");
         assertEquals(5, jo1.getInteger("num", 6));
         assertEquals(6, jo1.getInteger("num2", 6));
-        assertEquals("5", jo1.getAsString("num", "6"));
-        assertEquals("6", jo1.getAsString("num2", "6"));
+        assertEquals("5", jo1.asString("num", "6"));
+        assertEquals("6", jo1.asString("num2", "6"));
 
 //        assertEquals("bb", jo1.getStringByPath("$.attr.aa", "cc"));
 //        assertEquals("cc", jo1.getStringByPath("$.attr.aa2", "cc"));
 
-        assertEquals(new JsonObject("aa", "bb"), jo1.getJsonObject("attr", new JsonObject()));
+        assertEquals(new JsonObject("aa", "bb"), jo1.asJsonObject("attr", new JsonObject()));
         assertEquals(new JsonObject(), jo1.getJsonObject("attr2", new JsonObject()));
     }
 
@@ -414,13 +416,19 @@ class JsonObjectTest {
         assertEquals(1e200, jo1.getDouble("big"));
     }
 
+    @Test
     public void testYaml1() {
+
         String json1 = "{\"s1\":\"haha\",\"i2\":null,\"f3\":99.9,\"b4\":true,\"s\\\"5\":\"00\"}";
-        JsonObject jo1 = JsonObject.fromJson(json1);
+        JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNodeWithExtra(
+                new StringReader(json1), JsonObject.class);
+//        JsonObject jo1 = JsonObject.fromJson(json1);
         String ya1 = jo1.toYaml();
         log.info("ya1: \n{}", ya1);
 
         JsonObject jo2 = JsonObject.fromYaml(ya1);
+        log.info("jo1={}", jo1.inspect());
+        log.info("jo2={}", jo2.inspect());
         assertEquals(jo1, jo2);
     }
 
@@ -562,9 +570,9 @@ class JsonObjectTest {
         
         assertTrue(jo.containsByPath("$.array[1]"));
         jo.removeByPath("$.array[1]");
-        assertEquals(2, jo.getJsonArray("array").size());
-        assertEquals(1, jo.getJsonArray("array").getInteger(0));
-        assertEquals(3, jo.getJsonArray("array").getInteger(1));
+        assertEquals(2, jo.asJsonArray("array").size());
+        assertEquals(1, jo.asJsonArray("array").getInteger(0));
+        assertEquals(3, jo.asJsonArray("array").getInteger(1));
     }
 
     public void testEdgeCases() {

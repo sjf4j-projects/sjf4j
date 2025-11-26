@@ -84,7 +84,7 @@ public class GsonReader implements FacadeReader {
     @Override
     public Number nextNumber() throws IOException {
 //        return reader.nextDouble();
-        return NumberUtil.stringToNumber(reader.nextString());
+        return NumberUtil.toNumber(reader.nextString());
     }
 
     @Override

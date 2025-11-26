@@ -27,7 +27,7 @@ public class NumberUtil {
     }
 
 
-    public static Long numberAsLong(Number value) {
+    public static Long asLong(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof Long) {
@@ -40,8 +40,8 @@ public class NumberUtil {
         return ((Number) value).longValue();
     }
 
-    public static Integer numberAsInteger(Number value) {
-        Long longValue = numberAsLong(value);
+    public static Integer asInteger(Number value) {
+        Long longValue = asLong(value);
         if (longValue == null) {
             return null;
         } else if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
@@ -50,8 +50,8 @@ public class NumberUtil {
         return longValue.intValue();
     }
 
-    public static Short numberAsShort(Number value) {
-        Long longValue = numberAsLong(value);
+    public static Short asShort(Number value) {
+        Long longValue = asLong(value);
         if (longValue == null) {
             return null;
         } else if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
@@ -60,8 +60,8 @@ public class NumberUtil {
         return longValue.shortValue();
     }
 
-    public static Byte numberAsByte(Number value) {
-        Long longValue = numberAsLong(value);
+    public static Byte asByte(Number value) {
+        Long longValue = asLong(value);
         if (longValue == null) {
             return null;
         } else if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
@@ -70,7 +70,7 @@ public class NumberUtil {
         return longValue.byteValue();
     }
 
-    public static Double numberAsDouble(Number value) {
+    public static Double asDouble(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof Double) {
@@ -83,7 +83,7 @@ public class NumberUtil {
         return dValue;
     }
 
-    public static Float numberAsFloat(Number value) {
+    public static Float asFloat(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof Float) {
@@ -96,7 +96,7 @@ public class NumberUtil {
         return fValue;
     }
 
-    public static BigInteger numberAsBigInteger(Number value) {
+    public static BigInteger asBigInteger(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof BigInteger) {
@@ -111,7 +111,7 @@ public class NumberUtil {
         return BigInteger.valueOf(((Number) value).longValue());
     }
 
-    public static BigDecimal numberAsBigDecimal(Number value) {
+    public static BigDecimal asBigDecimal(Number value) {
         if (value == null) {
             return null;
         } else if (value instanceof BigDecimal) {
@@ -125,37 +125,37 @@ public class NumberUtil {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T numberAs(Number value, Class<T> clazz) {
+    public static <T> T as(Number value, Class<T> clazz) {
         if (clazz == null || clazz.isAssignableFrom(value.getClass())) {
             return (T) value;
         } else if (clazz == long.class || clazz == Long.class) {
-            return (T) NumberUtil.numberAsLong(value);
+            return (T) NumberUtil.asLong(value);
         } else if (clazz == int.class || clazz == Integer.class) {
-            return (T) NumberUtil.numberAsInteger( value);
+            return (T) NumberUtil.asInteger( value);
         } else if (clazz == short.class || clazz == Short.class) {
-            return (T) NumberUtil.numberAsShort(value);
+            return (T) NumberUtil.asShort(value);
         } else if (clazz == byte.class || clazz == Byte.class) {
-            return (T) NumberUtil.numberAsByte(value);
+            return (T) NumberUtil.asByte(value);
         } else if (clazz == double.class || clazz == Double.class) {
-            return (T) NumberUtil.numberAsDouble(value);
+            return (T) NumberUtil.asDouble(value);
         } else if (clazz == float.class || clazz == Float.class) {
-            return (T) NumberUtil.numberAsFloat(value);
+            return (T) NumberUtil.asFloat(value);
         } else if (clazz == BigInteger.class) {
-            return (T) NumberUtil.numberAsBigInteger(value);
+            return (T) NumberUtil.asBigInteger(value);
         } else if (clazz == BigDecimal.class) {
-            return (T) NumberUtil.numberAsBigDecimal(value);
+            return (T) NumberUtil.asBigDecimal(value);
         } else {
             throw new JsonException("Cannot convert numeric value '" + value + "' to type " + clazz);
         }
     }
 
 
-    public static Number stringToNumber(String num) {
+    public static Number toNumber(String num) {
         if (num == null || num.isEmpty()) {
-            throw new IllegalArgumentException("Number is empty");
+            throw new IllegalArgumentException("Input number string is null or empty");
         }
-        if (num.length() > MAX_NUMBER_DIGITS) {
-            throw new IllegalArgumentException("Number too large: " + num.length() + " digits");
+        if (num.length() > MAX_NUMBER_DIGITS) {throw new IllegalArgumentException("Number too large ("
+                + num.length() + " digits): '" + num.substring(0, 20) + "'");
         }
         if (num.contains(".") || num.contains("e") || num.contains("E")) {
             try {
@@ -216,6 +216,20 @@ public class NumberUtil {
             }
         }
         return digitSeen;
+    }
+
+
+    public static boolean isIntegralType(Number value) {
+        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long;
+    }
+
+    public static boolean equals(Number source, Number target) {
+        if (source == target) return true;
+        if (source == null || target == null) return false;
+        if (isIntegralType(source) && isIntegralType(target)) {
+            return source.longValue() == target.longValue();
+        }
+        return source.doubleValue() == target.doubleValue();
     }
 
 }

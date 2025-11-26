@@ -41,7 +41,7 @@ public class JacksonModule {
 
         @Override
         public void fixAccess(DeserializationConfig config) {
-            // Do not need to fix
+            // Do nothing
         }
 
     }

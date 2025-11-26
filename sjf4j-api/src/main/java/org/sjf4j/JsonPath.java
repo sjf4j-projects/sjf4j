@@ -13,6 +13,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class JsonPath {
 
@@ -42,7 +43,6 @@ public class JsonPath {
     }
     
     public static JsonPath compile(@NonNull String expr) {
-        // Consider add cache here
         return new JsonPath(expr);
     }
 
@@ -77,201 +77,390 @@ public class JsonPath {
     }
 
 
-    /// Read
+    /// Find
 
     // Object
-    public Object readObject(@NonNull Object container) {
-        return _findOne(container);
+    public Object findObject(@NonNull Object container) {
+        return _findOne(container, Function.identity());
     }
 
-    public Object readObject(@NonNull Object container, Object defaultValue) {
-        Object value = readObject(container);
+    public Object findObject(@NonNull Object container, Object defaultValue) {
+        Object value = findObject(container);
         return null == value ? defaultValue : value;
     }
 
     // String
-    public String readString(@NonNull Object container) {
+    public String findString(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.toString(value);
+            return _findOne(container, NodeUtil::toString);
         } catch (Exception e) {
-            throw new JsonException("Failed to read String by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find String by path '" + this + "': " + e.getMessage(), e);
         }
     }
-
-    public String readString(@NonNull Object container, String defaultValue) {
-        String value = readString(container);
+    public String findString(@NonNull Object container, String defaultValue) {
+        String value = findString(container);
         return value == null ? defaultValue : value;
     }
 
-    // Long
-    public Long readLong(@NonNull Object container) {
+    public String findAsString(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asLong(value);
+            Object value = findObject(container);
+            return NodeUtil.asString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Long by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to convert value at path '" + this + "' to String: " + e.getMessage(), e);
         }
     }
+    public String findAsString(@NonNull Object container, String defaultValue) {
+        String value = findAsString(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public long readLong(@NonNull Object container, long defaultValue) {
-        Long value = readLong(container);
+
+    // Long
+    public Long findLong(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.toLong(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to find Long by path '" + this + "': " + e.getMessage(), e);
+        }
+    }
+    public long findLong(@NonNull Object container, long defaultValue) {
+        Long value = findLong(container);
+        return value == null ? defaultValue : value;
+    }
+
+    public Long findAsLong(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asLong(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Long: " + e.getMessage(), e);
+        }
+    }
+    public long findAsLong(@NonNull Object container, long defaultValue) {
+        Long value = findAsLong(container);
         return value == null ? defaultValue : value;
     }
 
     // Integer
-    public Integer readInteger(@NonNull Object container) {
+    public Integer findInteger(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asInteger(value);
+            Object value = findObject(container);
+            return NodeUtil.toInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Integer by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find Integer by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public int findInteger(@NonNull Object container, int defaultValue) {
+        Integer value = findInteger(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public int readInteger(@NonNull Object container, int defaultValue) {
-        Integer value = readInteger(container);
+    public Integer findAsInteger(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asInteger(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Integer: " + e.getMessage(), e);
+        }
+    }
+    public int findAsInteger(@NonNull Object container, int defaultValue) {
+        Integer value = findAsInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // Short
-    public Short readShort(@NonNull Object container) {
+    public Short findShort(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asShort(value);
+            Object value = findObject(container);
+            return NodeUtil.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Short by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find Short by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public short findShort(@NonNull Object container, short defaultValue) {
+        Short value = findShort(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public short readShort(@NonNull Object container, short defaultValue) {
-        Short value = readShort(container);
+    public Short findAsShort(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asShort(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Short: " + e.getMessage(), e);
+        }
+    }
+    public short findAsShort(@NonNull Object container, short defaultValue) {
+        Short value = findAsShort(container);
         return value == null ? defaultValue : value;
     }
 
     // Byte
-    public Byte readByte(@NonNull Object container) {
+    public Byte findByte(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asByte(value);
+            Object value = findObject(container);
+            return NodeUtil.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Byte by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find Byte by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public byte findByte(@NonNull Object container, byte defaultValue) {
+        Byte value = findByte(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public byte readByte(@NonNull Object container, byte defaultValue) {
-        Byte value = readByte(container);
+    public Byte findAsByte(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asByte(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Byte: " + e.getMessage(), e);
+        }
+    }
+    public byte findAsByte(@NonNull Object container, byte defaultValue) {
+        Byte value = findAsByte(container);
         return value == null ? defaultValue : value;
     }
 
     // Double
-    public Double readDouble(@NonNull Object container) {
+    public Double findDouble(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asDouble(value);
+            Object value = findObject(container);
+            return NodeUtil.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Double by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find Double by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public double findDouble(@NonNull Object container, double defaultValue) {
+        Double value = findDouble(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public double readDouble(@NonNull Object container, double defaultValue) {
-        Double value = readDouble(container);
+    public Double findAsDouble(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asDouble(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Double: " + e.getMessage(), e);
+        }
+    }
+    public double findAsDouble(@NonNull Object container, double defaultValue) {
+        Double value = findAsDouble(container);
         return value == null ? defaultValue : value;
     }
 
     // Float
-    public Float readFloat(@NonNull Object container) {
+    public Float findFloat(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asFloat(value);
+            Object value = findObject(container);
+            return NodeUtil.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Float by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find Float by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public float findFloat(@NonNull Object container, float defaultValue) {
+        Float value = findFloat(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public float readFloat(@NonNull Object container, float defaultValue) {
-        Float value = readFloat(container);
+    public Float findAsFloat(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asFloat(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Float: " + e.getMessage(), e);
+        }
+    }
+    public float findAsFloat(@NonNull Object container, float defaultValue) {
+        Float value = findAsFloat(container);
         return value == null ? defaultValue : value;
     }
 
     // BigInteger
-    public BigInteger readBigInteger(@NonNull Object container) {
+    public BigInteger findBigInteger(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asBigInteger(value);
+            Object value = findObject(container);
+            return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read BigInteger by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find BigInteger by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public BigInteger findBigInteger(@NonNull Object container, BigInteger defaultValue) {
+        BigInteger value = findBigInteger(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public BigInteger readBigInteger(@NonNull Object container, BigInteger defaultValue) {
-        BigInteger value = readBigInteger(container);
+    public BigInteger findAsBigInteger(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asBigInteger(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to BigInteger: " + e.getMessage(), e);
+        }
+    }
+    public BigInteger findAsBigInteger(@NonNull Object container, BigInteger defaultValue) {
+        BigInteger value = findAsBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // BigDecimal
-    public BigDecimal readBigDecimal(@NonNull Object container) {
+    public BigDecimal findBigDecimal(@NonNull Object container) {
         try {
-            Object value = readObject(container);
-            return NodeUtil.asBigDecimal(value);
+            Object value = findObject(container);
+            return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read BigDecimal by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find BigDecimal by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public BigDecimal findBigDecimal(@NonNull Object container, BigDecimal defaultValue) {
+        BigDecimal value = findBigDecimal(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public BigDecimal readBigDecimal(@NonNull Object container, BigDecimal defaultValue) {
-        BigDecimal value = readBigDecimal(container);
+    public BigDecimal findAsBigDecimal(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asBigDecimal(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to BigDecimal: " + e.getMessage(), e);
+        }
+    }
+    public BigDecimal findAsBigDecimal(@NonNull Object container, BigDecimal defaultValue) {
+        BigDecimal value = findAsBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
     // Boolean
-    public Boolean readBoolean(@NonNull Object container) {
+    public Boolean findBoolean(@NonNull Object container) {
         try {
-            Object value = readObject(container);
+            Object value = findObject(container);
             return NodeUtil.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read Boolean by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find Boolean by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public boolean findBoolean(@NonNull Object container, boolean defaultValue) {
+        Boolean value = findBoolean(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public boolean readBoolean(@NonNull Object container, boolean defaultValue) {
-        Boolean value = readBoolean(container);
+    public Boolean findAsBoolean(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asBoolean(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Boolean: " + e.getMessage(), e);
+        }
+    }
+    public boolean findAsBoolean(@NonNull Object container, boolean defaultValue) {
+        Boolean value = findAsBoolean(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonObject
-    public JsonObject readJsonObject(@NonNull Object container) {
+    public JsonObject findJsonObject(@NonNull Object container) {
         try {
-            Object value = readObject(container);
+            Object value = findObject(container);
             return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read JsonObject by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find JsonObject by path '" + this + "': " + e.getMessage(), e);
         }
     }
+    public JsonObject findJsonObject(@NonNull Object container, JsonObject defaultValue) {
+        JsonObject value = findJsonObject(container);
+        return value == null ? defaultValue : value;
+    }
 
-    public JsonObject readJsonObject(@NonNull Object container, JsonObject defaultValue) {
-        JsonObject value = readJsonObject(container);
+    public JsonObject findAsJsonObject(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asJsonObject(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to JsonObject: " + e.getMessage(), e);
+        }
+    }
+    public JsonObject findAsJsonObject(@NonNull Object container, JsonObject defaultValue) {
+        JsonObject value = findAsJsonObject(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonArray
-    public JsonArray readJsonArray(@NonNull Object container) {
+    public JsonArray findJsonArray(@NonNull Object container) {
         try {
-            Object value = readObject(container);
+            Object value = findObject(container);
             return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to read JsonArray by path '" + raw + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to find JsonArray by path '" + this + "': " + e.getMessage(), e);
         }
     }
-
-    public JsonArray readJsonArray(@NonNull Object container, JsonArray defaultValue) {
-        JsonArray value = readJsonArray(container);
+    public JsonArray findJsonArray(@NonNull Object container, JsonArray defaultValue) {
+        JsonArray value = findJsonArray(container);
         return value == null ? defaultValue : value;
     }
 
-    public List<Object> readAll(@NonNull Object container) {
+    public JsonArray findAsJsonArray(@NonNull Object container) {
+        try {
+            Object value = findObject(container);
+            return NodeUtil.asJsonArray(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to JsonArray: " + e.getMessage(), e);
+        }
+    }
+    public JsonArray findAsJsonArray(@NonNull Object container, JsonArray defaultValue) {
+        JsonArray value = findAsJsonArray(container);
+        return value == null ? defaultValue : value;
+    }
+
+    // Clazz
+    public <T> T find(@NonNull Object container, @NonNull Class<T> clazz) {
+        try {
+            return _findOne(container, (n) -> NodeUtil.to(n, clazz));
+        } catch (Exception e) {
+            throw new JsonException("Failed to find " + clazz.getName() + " by path '" + this + "': " +
+                    e.getMessage(), e);
+        }
+    }
+    @SuppressWarnings("unchecked")
+    public <T> T find(@NonNull Object container, T... reified) {
+        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+        return find(container, clazz);
+    }
+
+    public <T> T findAs(@NonNull Object container, @NonNull Class<T> clazz) {
+        try {
+            return _findOne(container, (n) -> NodeUtil.as(n, clazz));
+        } catch (Exception e) {
+            throw new JsonException("Failed to find " + clazz.getName() + " by path '" + this + "': " +
+                    e.getMessage(), e);
+        }
+    }
+    @SuppressWarnings("unchecked")
+    public <T> T findAs(@NonNull Object container, T... reified) {
+        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+        return findAs(container, clazz);
+    }
+
+
+    /// All
+    public List<Object> findAll(@NonNull Object container) {
         List<Object> result = new ArrayList<>();
-        _findAll(container, 1, result);
+        _findAll(container, 1, result, (n) -> n);
+        return result;
+    }
+
+    public <T> List<T> findAll(@NonNull Object container, Class<T> clazz) {
+        List<T> result = new ArrayList<>();
+        _findAll(container, 1, result, (n) -> NodeUtil.to(n, clazz));
+        return result;
+    }
+
+    public <T> List<T> findAllAs(@NonNull Object container, Class<T> clazz) {
+        List<T> result = new ArrayList<>();
+        _findAll(container, 1, result, (n) -> NodeUtil.as(n, clazz));
         return result;
     }
 
@@ -292,7 +481,7 @@ public class JsonPath {
     }
 
     public boolean hasNonNull(@NonNull Object container) {
-        return readObject(container) != null;
+        return findObject(container) != null;
     }
 
     public void putNonNull(@NonNull Object container, Object value) {
@@ -343,7 +532,7 @@ public class JsonPath {
 
     /// private
 
-    public Object _findOne(@NonNull Object container) {
+    public <T> T _findOne(@NonNull Object container, Function<Object, T> converter) {
         Object node = container;
         for (int i = 1; i < tokens.size(); i++) {
             if (node == null) return null;
@@ -363,26 +552,26 @@ public class JsonPath {
                 }
             } else if (pt instanceof PathToken.Descendant) {
                 if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
-                List<Object> result = new ArrayList<>();
-                _findMatch(node, i + 1, result);
+                List<T> result = new ArrayList<>();
+                _findMatch(node, i + 1, result, converter);
                 if (result.isEmpty()) {
                     return null;
                 } else if (result.size() == 1) {
                     return result.get(0);
                 } else {
                     throw new JsonException("Path matched " + result.size() +
-                            " results, but read() returns only one value. Use readAll() to retrieve all matches.");
+                            " results, but find() returns only one value. Use findAll() to retrieve all matches.");
                 }
             } else {
-                throw new JsonException("Unsupported path token '" + pt + "' in read()");
+                throw new JsonException("Unsupported path token '" + pt + "' in find()");
             }
         }
-        return node;
+        return converter.apply(node);
     }
 
 
     // In the future, the `result` could be replaced with a callback to allow more flexible handling of matches.
-    private void _findAll(Object container, int tokenIdx, List<Object> result) {
+    private <T> void _findAll(Object container, int tokenIdx, List<T> result, Function<Object, T> converter) {
         Object node = container;
         for (int i = tokenIdx; i < tokens.size(); i++) {
             if (node ==  null) return;
@@ -401,29 +590,29 @@ public class JsonPath {
                 }
             } else if (pt instanceof PathToken.Wildcard) {
                 if (nt.isObject()) {
-                    JsonWalker.visitObject(node, (k, v) -> _findAll(v, nextI, result));
+                    JsonWalker.visitObject(node, (k, v) -> _findAll(v, nextI, result, converter));
                 } else if (nt.isArray()) {
-                    JsonWalker.visitArray(node, (j, v) -> _findAll(v, nextI, result));
+                    JsonWalker.visitArray(node, (j, v) -> _findAll(v, nextI, result, converter));
                 }
             } else if (pt instanceof PathToken.Descendant) {
                 if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
-                _findMatch(node, i + 1, result);
+                _findMatch(node, i + 1, result, converter);
             } else if (pt instanceof PathToken.Slice) {
                 PathToken.Slice slicePt = (PathToken.Slice) pt;
                 if (nt.isArray()) {
                     JsonWalker.visitArray(node, (j, v) -> {
-                        if (slicePt.match(j)) _findAll(v, nextI, result);
+                        if (slicePt.match(j)) _findAll(v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathToken.Union) {
                 PathToken.Union unionPt = (PathToken.Union) pt;
                 if (nt.isObject()) {
                     JsonWalker.visitObject(node, (k, v) -> {
-                        if (unionPt.match(k)) _findAll(v, nextI, result);
+                        if (unionPt.match(k)) _findAll(v, nextI, result, converter);
                     });
                 } else if (nt.isArray()) {
                     JsonWalker.visitArray(node, (j, v) -> {
-                        if (unionPt.match(j)) _findAll(v, nextI, result);
+                        if (unionPt.match(j)) _findAll(v, nextI, result, converter);
                     });
                 }
             } else {
@@ -431,27 +620,26 @@ public class JsonPath {
             }
             return;
         }
-
-        result.add(node);
+        result.add(converter.apply(node));
     }
 
-    private void _findMatch(Object container, int tokenIdx, List<Object> result) {
+    private <T> void _findMatch(Object container, int tokenIdx, List<T> result, Function<Object, T> converter) {
         if (container == null) return;
         PathToken pt = tokens.get(tokenIdx);
         NodeType nt = NodeType.of(container);
         if (nt.isObject()) {
             JsonWalker.visitObject(container, (k, v) -> {
                 if (pt.match(k)) {
-                    _findAll(v, tokenIdx + 1, result);
+                    _findAll(v, tokenIdx + 1, result, converter);
                 }
-                _findMatch(v, tokenIdx, result);
+                _findMatch(v, tokenIdx, result, converter);
             });
         } else if (nt.isArray()) {
             JsonWalker.visitArray(container, (j, v) -> {
                 if (pt.match(j)) {
-                    _findAll(v, tokenIdx + 1, result);
+                    _findAll(v, tokenIdx + 1, result, converter);
                 }
-                _findMatch(v, tokenIdx, result);
+                _findMatch(v, tokenIdx, result, converter);
             });
         }
     }

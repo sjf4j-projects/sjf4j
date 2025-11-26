@@ -36,7 +36,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                 throw new JsonException("Cannot read from object '" + object.getClass() + "' to node '" + type + "'");
             }
         } else if (object instanceof Number) {
-            return NumberUtil.numberAs((Number) object, rawClazz);
+            return NumberUtil.as((Number) object, rawClazz);
         } else if (object instanceof Boolean) {
             if (rawClazz == null || rawClazz == Object.class ||
                     rawClazz == boolean.class || rawClazz == Boolean.class) {

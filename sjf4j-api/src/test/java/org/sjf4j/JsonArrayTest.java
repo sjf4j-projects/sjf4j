@@ -68,29 +68,29 @@ class JsonArrayTest {
 
         assertEquals(5, ja.size());
         assertEquals((short)12, ja.getShort(0));
-        assertEquals(78f, ja.getJsonArray(2).getFloat(1));
-        assertEquals(0, ja.getJsonObject(4).getFloat("a"));
+        assertEquals(78f, ja.asJsonArray(2).getFloat(1));
+        assertEquals(0, ja.asJsonObject(4).getFloat("a"));
 
         System.out.println(ja.toJson());
     }
 
     public void testRemove1() {
         JsonArray ja = new JsonArray();
-        assertEquals("[]", ja.toString());
+        assertEquals("[]", ja.toJson());
 
         ja.add("higgs");
-        assertEquals("[\"higgs\"]", ja.toString());
+        assertEquals("[\"higgs\"]", ja.toJson());
+        assertEquals("J[higgs]", ja.inspect());
 
         ja.add(18.8);
         ja.add(0, "jackson");
         ja.remove(2);
-        assertEquals("[\"jackson\",\"higgs\"]", ja.toString());
+        assertEquals("[\"jackson\",\"higgs\"]", ja.toJson());
 
         JsonArray ja2 = new JsonArray();
         ja2.addAll("copy", "me", "yes?");
         ja.addAll(ja2);
-        assertEquals("[\"jackson\",\"higgs\",\"copy\",\"me\",\"yes?\"]", ja.toString());
-        System.out.println(ja.toJson());
+        assertEquals("[\"jackson\",\"higgs\",\"copy\",\"me\",\"yes?\"]", ja.toJson());
     }
 
     public void testParse1() {
@@ -108,7 +108,8 @@ class JsonArrayTest {
 
     public void testParse2() {
 //        JsonArray ja1 = new JsonArray("gaga", "haha", new String[]{"jiji", "kaka"});
-        JsonArray ja1 = new JsonArray("gaga", "haha", new JsonArray("jiji", "kaka"));
+        JsonArray ja1 = new JsonArray(
+                new Object[]{"gaga", "haha", new JsonArray(new String[]{"jiji", "kaka"})});
 
         JsonArray ja2 = JsonArray.fromJson("[\"gaga\",\"haha\",[\"jiji\",\"kaka\"]]");
         assertEquals(ja1, ja2);
@@ -176,10 +177,10 @@ class JsonArrayTest {
         JsonArray a1 = JsonArray.fromJson("[2,3,[4,[5,6]]]");
         JsonArray a2 = a1.deepCopy();
 
-        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
-        a1.getJsonArray(2).getJsonArray(1).set(1, 7);
-        assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInteger(1));
-        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
+        assertEquals(6, a2.asJsonArray(2).asJsonArray(1).getInteger(1));
+        a1.asJsonArray(2).asJsonArray(1).set(1, 7);
+        assertEquals(7, a1.asJsonArray(2).asJsonArray(1).getInteger(1));
+        assertEquals(6, a2.asJsonArray(2).asJsonArray(1).getInteger(1));
     }
 
     public void testByPath1() {
@@ -228,7 +229,7 @@ class JsonArrayTest {
     }
 
     public void testNegativeIndex() {
-        JsonArray ja = new JsonArray("a", "b", "c", "d");
+        JsonArray ja = new JsonArray(new String[]{"a", "b", "c", "d"});
         
         // 负数索引：从末尾开始
         assertEquals("d", ja.getString(-1));
@@ -245,13 +246,13 @@ class JsonArrayTest {
         assertEquals("z", ja.getString(3));
         
         // 使用负数索引获取不同类型
-        JsonArray ja2 = new JsonArray(1, 2, 3, 4);
+        JsonArray ja2 = new JsonArray(new Object[]{1, 2, 3, 4});
         assertEquals(4, ja2.getInteger(-1));
         assertEquals(1.0, ja2.getDouble(-4));
     }
 
     public void testSetAndAdd() {
-        JsonArray ja = new JsonArray("a", "b", "c");
+        JsonArray ja = new JsonArray(new Object[]{"a", "b", "c"});
         
         // 测试set
         ja.set(1, "x");
@@ -281,7 +282,7 @@ class JsonArrayTest {
     }
 
     public void testContainsIndex() {
-        JsonArray ja = new JsonArray("a", "b", "c");
+        JsonArray ja = new JsonArray(new Object[]{"a", "b", "c"});
         
         assertTrue(ja.containsIndex(0));
         assertTrue(ja.containsIndex(1));
@@ -296,7 +297,7 @@ class JsonArrayTest {
     }
 
     public void testForEach() {
-        JsonArray ja = new JsonArray("a", "b", "c");
+        JsonArray ja = new JsonArray(new Object[]{"a", "b", "c"});
         List<Object> collected = new java.util.ArrayList<>();
         
         ja.forEach(e -> collected.add(e));
@@ -331,6 +332,7 @@ class JsonArrayTest {
         assertTrue(empty.isEmpty());
     }
 
+    @Test
     public void testMerge() {
         JsonArray ja1 = JsonArray.fromJson("[1,2,{\"a\":\"b\"}]");
         JsonArray ja2 = JsonArray.fromJson("[3,4,{\"a\":\"c\",\"d\":\"e\"}]");
@@ -339,20 +341,21 @@ class JsonArrayTest {
         assertEquals(3, ja1.size());
         assertEquals(3, ja1.getInteger(0));
         assertEquals(4, ja1.getInteger(1));
-        assertEquals("c", ja1.getJsonObject(2).getString("a"));
-        assertEquals("e", ja1.getJsonObject(2).getString("d"));
+        assertEquals("c", ja1.asJsonObject(2).getString("a"));
+        assertEquals("e", ja1.asJsonObject(2).getString("d"));
         
         // 测试merge with copy
         JsonArray ja3 = JsonArray.fromJson("[{\"x\":1}]");
         JsonArray ja4 = JsonArray.fromJson("[{\"y\":2}]");
         ja3.mergeWithCopy(ja4);
         assertEquals(1, ja3.size());
-        assertEquals(1, ja3.getJsonObject(0).getInteger("x"));
-        assertEquals(2, ja3.getJsonObject(0).getInteger("y"));
+        log.info("ja3={}", ja3.inspect());
+        assertEquals(1, ja3.asJsonObject(0).getInteger("x"));
+        assertEquals(2, ja3.asJsonObject(0).getInteger("y"));
     }
 
     public void testToPojo1() {
-        JsonArray ja = new JsonArray(1, 2, "test", true);
+        JsonArray ja = new JsonArray(new Object[]{1, 2, "test", true});
         List<Object> list = ja.toPojo(new TypeReference<List<Object>>(){});
         
         assertEquals(4, list.size());
@@ -363,34 +366,34 @@ class JsonArrayTest {
     }
 
     public void testToPojo2() {
-        JsonArray ja = new JsonArray(1, 2, "test", true);
+        JsonArray ja = new JsonArray(new Object[]{1, 2, "test", true});
         assertThrows(JsonException.class, () -> ja.toPojo(Date.class));
     }
 
     public void testPrimitiveArrays() {
         // 测试boolean数组
-        JsonArray ja1 = new JsonArray(true, false, true);
+        JsonArray ja1 = new JsonArray(new Object[]{true, false, true});
         assertEquals(3, ja1.size());
         assertTrue(ja1.getBoolean(0));
         assertFalse(ja1.getBoolean(1));
         
         // 测试byte数组
-        JsonArray ja2 = new JsonArray((byte)1, (byte)2, (byte)3);
+        JsonArray ja2 = new JsonArray(new Object[]{(byte)1, (byte)2, (byte)3});
         assertEquals(3, ja2.size());
         assertEquals((byte)1, ja2.getByte(0));
         
         // 测试short数组
-        JsonArray ja3 = new JsonArray((short)10, (short)20);
+        JsonArray ja3 = new JsonArray(new Object[]{(short)10, (short)20});
         assertEquals(2, ja3.size());
         assertEquals((short)10, ja3.getShort(0));
         
         // 测试char数组
-        JsonArray ja4 = new JsonArray('a', 'b', 'c');
+        JsonArray ja4 = new JsonArray(new Object[]{'a', 'b', 'c'});
         assertEquals(3, ja4.size());
         assertEquals("a", ja4.getString(0));
         
         // 测试float数组
-        JsonArray ja5 = new JsonArray(1.1f, 2.2f);
+        JsonArray ja5 = new JsonArray(new Object[]{1.1f, 2.2f});
         assertEquals(2, ja5.size());
         assertEquals(1.1f, ja5.getFloat(0), 0.001f);
     }
@@ -409,7 +412,7 @@ class JsonArrayTest {
         ja2.add("string");
         ja2.add(true);
         ja2.add(new JsonObject("key", "value"));
-        ja2.add(new JsonArray(1, 2));
+        ja2.add(new JsonArray(new Object[]{1, 2}));
         assertEquals(5, ja2.size());
         
         // 测试非常大的数组
@@ -421,7 +424,7 @@ class JsonArrayTest {
         assertEquals(999, ja3.getInteger(999));
         
         // 测试getString的默认值
-        JsonArray ja4 = new JsonArray("a", null, "c");
+        JsonArray ja4 = new JsonArray(new Object[]{"a", null, "c"});
         assertEquals("default", ja4.getString(1, "default"));
         assertEquals("a", ja4.getString(0, "default"));
     }
