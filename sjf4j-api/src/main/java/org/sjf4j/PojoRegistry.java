@@ -5,52 +5,29 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.RecordUtil;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.util.PojoUtil;
 
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 
-// TODO:
-// 1. 高性能改造
-// 2. 区分 @ 和 #
 @Slf4j
 public final class PojoRegistry {
 
-    private static final Map<Class<?>, PojoInfo> POJO_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Optional<PojoInfo>> POJO_CACHE = new ConcurrentHashMap<>();
 
-
-    public static PojoInfo register(@NonNull Class<?> clazz) {
-        if (POJO_CACHE.containsKey(clazz)) {
-            return POJO_CACHE.get(clazz);
-        }
-
-        if (RecordUtil.isRecordClass(clazz)) {
-            //TODO
-            throw new JsonException("Not support Record yet");
-        }
-
-        PojoInfo pi = analyzePojo(clazz);
-        if (pi != null) {
-            POJO_CACHE.put(clazz, pi);
-        }
-        return pi;
+    public static Optional<PojoInfo> register(@NonNull Class<?> clazz) {
+        return POJO_CACHE.computeIfAbsent(clazz, PojoUtil::analyzePojo);
     }
 
     public static PojoInfo registerOrElseThrow(@NonNull Class<?> clazz) {
-        PojoInfo pi = register(clazz);
-        if (pi == null) throw new JsonException("Not a valid POJO");
-        pi.isPojoOrElseThrow();
-        return pi;
+        return register(clazz).orElseThrow(() -> new JsonException("Not a valid POJO"));
     }
 
     public static void remove(@NonNull Class<?> clazz) {
@@ -58,167 +35,76 @@ public final class PojoRegistry {
     }
 
     public static PojoInfo getPojoInfo(@NonNull Class<?> clazz) {
-        return POJO_CACHE.get(clazz);
+        return POJO_CACHE.get(clazz).orElse(null);
     }
 
     public static FieldInfo getFieldInfo(@NonNull Class<?> clazz, String fieldName) {
-        PojoInfo pi = register(clazz);
-        if (pi != null) {
-            return pi.getFields().get(fieldName);
-        }
-        return null;
+        Optional<PojoInfo> opt = register(clazz);
+        return opt.map(pi -> pi.getFields().get(fieldName)).orElse(null);
     }
 
     public static boolean isPojo(@NonNull Class<?> clazz) {
-        PojoInfo pi = register(clazz);
-        return pi != null && pi.isPojo();
+        return register(clazz).map(PojoInfo::isPojo).orElse(false);
     }
 
 
-
-    /// Private
-
-    private static boolean isPojoCandidate(@NonNull Class<?> clazz) {
-        if (clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
-                Number.class.isAssignableFrom(clazz) || clazz == Boolean.class) {
-            return false;
-        }
-        if (clazz == JsonObject.class || clazz == JsonArray.class) {
-//            log.debug("Skipping JsonObject/JsonArray class: {}", clazz);
-            return false;
-        }
-        if (Map.class.isAssignableFrom(clazz) || List.class.isAssignableFrom(clazz) ||
-                clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
-            return false;
-        }
-
-        String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
-        //            log.debug("Skipping Java system class: {}", clazz);
-        return !pkg.startsWith("java.") && !pkg.startsWith("javax.") && !pkg.startsWith("jakarta.") &&
-                !pkg.startsWith("jdk.");
-    }
-
-    private static final MethodHandles.Lookup ROOT_LOOKUP = MethodHandles.lookup();
-
-
-    // FIXME: Generic!!!
-    private static PojoInfo analyzePojo(@NonNull Class<?> clazz) {
-        if (!isPojoCandidate(clazz)) {
-            return null;
-        }
-
-        // Constructor
-        MethodHandle constructor = null;
-        try {
-            Constructor<?> con = clazz.getDeclaredConstructor();
-            try {
-                // JDK8
-                con.setAccessible(true);
-                constructor = ROOT_LOOKUP.unreflectConstructor(con);
-            } catch (IllegalAccessException e) {
-                try {
-                    // JDK9+
-                    Method m = MethodHandles.class.getMethod("privateLookupIn",
-                            Class.class, MethodHandles.Lookup.class);
-                    MethodHandles.Lookup lookup = (MethodHandles.Lookup) m.invoke(null, clazz, ROOT_LOOKUP);
-                    constructor = lookup.unreflectConstructor(con);
-                } catch (Exception e2) {
-//                    throw new JsonException("Cannot access no-argument constructor of type " + type.getName());
-                    log.warn("Cannot access no-args constructor of class {}", clazz.getName());
-                }
-            }
-        } catch (NoSuchMethodException e) {
-//            throw new JsonException("Missing no-argument constructor.");
-            log.warn("Missing no-args constructor of class {}", clazz.getName());
-        }
-        if (constructor == null) {
-            return null;
-        }
-
-        // Fields
-        Map<String, FieldInfo> fields = JsonConfig.global().mapSupplier.create();
-        Class<?> superClazz = clazz;
-        Type superType = superClazz;
-        while (isPojoCandidate(superClazz)) {
-            for (Field field : superClazz.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) { continue; }
-                MethodHandle getter = null;
-                MethodHandle setter = null;
-                try {
-                    // JDK8
-                    field.setAccessible(true);
-                    getter = ROOT_LOOKUP.unreflectGetter(field);
-                    setter = ROOT_LOOKUP.unreflectSetter(field);
-                } catch (IllegalAccessException e) {
-                    try {
-                        // JDK9+
-                        Method m = MethodHandles.class.getMethod("privateLookupIn",
-                                Class.class, MethodHandles.Lookup.class);
-                        MethodHandles.Lookup lookup = (MethodHandles.Lookup) m.invoke(null, superClazz, ROOT_LOOKUP);
-                        getter = lookup.unreflectGetter(field);
-                        setter = lookup.unreflectSetter(field);
-                    } catch (Exception e2) {
-                        log.warn("Cannot access field '{}' of {}", field.getName(), superClazz.getName(), e2);
-                    }
-                }
-                if (getter == null && setter == null) {
-                    log.warn("No accessible getter or setter found for field '{}' in class {}",
-                            field.getName(), superClazz.getName());
-                } else {
-                    Type fieldType = TypeUtil.getFieldType(superType, field);
-                    fields.put(field.getName(), new FieldInfo(field.getName(), fieldType, getter, setter));
-                }
-            }
-            superType = superClazz.getGenericSuperclass();
-            superClazz = superClazz.getSuperclass();
-        }
-
-        return new PojoInfo(clazz, constructor, fields);
-    }
-
-
-    /// Class
+    /// Info
 
     @Getter @Setter
     public static class PojoInfo {
         // Type may be better
         private Class<?> type;
         private MethodHandle constructor;
+        private Supplier<?> lambdaConstructor;
         private Map<String, FieldInfo> fields;
 
-        public PojoInfo(Class<?> type, MethodHandle constructor) {
-            this(type, constructor, null);
+        public PojoInfo(Class<?> type, MethodHandle constructor, Supplier<?> supplier) {
+            this(type, constructor, supplier, null);
         }
 
-        public PojoInfo(Class<?> type, MethodHandle constructor, Map<String, FieldInfo> fields) {
+        public PojoInfo(Class<?> type, MethodHandle constructor, Supplier<?> lambdaConstructor,
+                        Map<String, FieldInfo> fields) {
             this.type = type;
             this.constructor = constructor;
+            this.lambdaConstructor = lambdaConstructor;
             this.fields = fields;
         }
 
         public boolean isPojo() {
-            return constructor != null &&
-                    (JsonObject.class.isAssignableFrom(type) || (fields != null && !fields.isEmpty()));
+            return constructor != null || lambdaConstructor != null;
         }
 
         public void isPojoOrElseThrow() {
-            if (constructor == null) {
-                throw new JsonException("No-args constructor not found for POJO " + type);
+            if (constructor == null && lambdaConstructor == null) {
+                throw new JsonException("Not found no-args constructor of class " + type);
             }
-            if (!JsonObject.class.isAssignableFrom(type) && (fields == null || fields.isEmpty())) {
-                throw new JsonException("POJO " + type + " has no accessible fields and is not a JsonObject");
-            }
+//            if (!JsonObject.class.isAssignableFrom(type) && (fields == null || fields.isEmpty())) {
+//                throw new JsonException("POJO " + type + " has no accessible fields and is not a JsonObject");
+//            }
         }
 
         public Object newInstance() {
-            if (constructor == null) {
-                throw new JsonException("No-args constructor not found for POJO " + type);
+            if (lambdaConstructor != null) {
+                return lambdaConstructor.get();
+            } else if (constructor != null) {
+                try {
+                    return constructor.invoke();
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to invoke constructor of class " + type, e);
+                }
             }
-            try {
-                return constructor.invoke();
-            } catch (Throwable e) {
-                throw new JsonException("Failed to invoke constructor in POJO " + type, e);
+            throw new JsonException("Not found no-args constructor of class " + type);
+        }
+
+        public Object newInstance2() {
+            if (constructor != null) {
+                try {
+                    return constructor.invoke();
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to invoke constructor for '" + type + "'", e);
+                }
             }
+            throw new JsonException("No-args constructor not found for POJO " + type);
         }
 
     }
@@ -228,16 +114,36 @@ public final class PojoRegistry {
         private String name;
         private Type type;
         private MethodHandle getter;
+        private Function<Object, Object> lambdaGetter;
         private MethodHandle setter;
+        private BiConsumer<Object, Object> lambdaSetter;
 
-        public FieldInfo(String name, Type type, MethodHandle getter, MethodHandle setter) {
+        public FieldInfo(String name, Type type,
+                         MethodHandle getter, Function<Object, Object> lambdaGetter,
+                         MethodHandle setter, BiConsumer<Object, Object> lambdaSetter) {
             this.name = name;
             this.type = type;
             this.getter = getter;
+            this.lambdaGetter = lambdaGetter;
             this.setter = setter;
+            this.lambdaSetter = lambdaSetter;
         }
 
         public Object invokeGetter(@NonNull Object receiver) {
+            if (lambdaGetter != null) {
+                return lambdaGetter.apply(receiver);
+            }
+            if (getter == null) {
+                throw new JsonException("No getter available for field '" + name + "' of " + type);
+            }
+            try {
+                return getter.invoke(receiver);
+            } catch (Throwable e) {
+                throw new JsonException("Failed to invoke getter for field '" + name + "' of " + type, e);
+            }
+        }
+
+        public Object invokeGetter2(@NonNull Object receiver) {
             if (getter == null) {
                 throw new JsonException("No getter available for field '" + name + "' of " + type);
             }
@@ -249,6 +155,30 @@ public final class PojoRegistry {
         }
 
         public void invokeSetter(@NonNull Object receiver, Object value) {
+            if (setter == null) {
+                throw new JsonException("No setter available for field '" + name + "' of " + type);
+            }
+            if (value instanceof Number && type instanceof Class) {
+                Class<?> clazz = (Class<?>) type;
+                if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
+                        Number.class.isAssignableFrom(clazz)) {
+                    value = NumberUtil.as((Number) value, clazz);
+                }
+            }
+
+            if (lambdaSetter != null) {
+                lambdaSetter.accept(receiver, value);
+                return;
+            }
+            try {
+                setter.invoke(receiver, value);
+            } catch (Throwable e) {
+                throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +
+                        "' with value " + (value == null ? "null" : value.getClass()), e);
+            }
+        }
+
+        public void invokeSetter2(@NonNull Object receiver, Object value) {
             if (setter == null) {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             }

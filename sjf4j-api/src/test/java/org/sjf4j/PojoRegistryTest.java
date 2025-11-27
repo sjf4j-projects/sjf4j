@@ -29,7 +29,7 @@ public class PojoRegistryTest {
 
     @Getter
     @Setter
-    public static class Person {
+    public static class Person extends JsonObject {
         private String name;
         private int age;
         private JsonObject info;
@@ -38,7 +38,7 @@ public class PojoRegistryTest {
 
     @Test
     public void testRegister1() {
-        PojoRegistry.PojoInfo pi = PojoRegistry.register(Person.class);
+        PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.getFields().size());
@@ -63,6 +63,7 @@ public class PojoRegistryTest {
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);
-
     }
+
+
 }

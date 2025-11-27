@@ -11,6 +11,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.PojoRegistry;
 import org.sjf4j.util.NumberUtil;
+import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
 import java.util.Map;
@@ -22,6 +23,7 @@ public class GsonModule {
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
             Class<?> raw = type.getRawType();
             if (JsonObject.class.isAssignableFrom(raw)) {
+//                return null;
                 return new JsonObjectTypeAdapter<>(gson, type);
             }
             if (JsonArray.class.isAssignableFrom(raw)) {
@@ -37,7 +39,12 @@ public class GsonModule {
 
         public JsonObjectTypeAdapter(Gson gson, TypeToken<T> type) {
             this.gson = gson;
-            this.pi = PojoRegistry.getPojoInfo(type.getRawType());
+            Class<? super T> clazz = type.getRawType();
+            if (clazz == JsonObject.class) {
+                this.pi = null;
+            } else {
+                this.pi = PojoRegistry.registerOrElseThrow(type.getRawType());
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -49,7 +56,7 @@ public class GsonModule {
                 String name = in.nextName();
                 PojoRegistry.FieldInfo fi;
                 if (pi != null && (fi = pi.getFields().get(name)) != null) {
-                    TypeAdapter<?> adapter = gson.getAdapter(TypeToken.get(fi.getType()));
+                    TypeAdapter<?> adapter = gson.getAdapter(TypeUtil.getRawClass(fi.getType()));
                     Object value = adapter.read(in);
                     fi.invokeSetter(jo, value);
                 } else {

@@ -62,7 +62,7 @@ class JsonObjectTest {
         testHashCodeEquals();
         testClear();
         testPutNonNull();
-        testComputeIfAbsentOrNull();
+        testComputeIfAbsent();
         testBuilder();
         testEntrySetKeySet();
         testRemoveByPath();
@@ -128,10 +128,10 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
 
         assert(jo1.containsByPath("$.friends.jack"));
-        jo1.putByPathIfAbsentOrNull("$.friends.jack", "bad");
+        jo1.putByPathIfAbsent("$.friends.jack", "bad");
         assertEquals(JsonObject.fromJson(json1), jo1);
 
-        jo1.putByPathIfAbsentOrNull("$.friends.mark", "bad");
+        jo1.putByPathIfAbsent("$.friends.mark", "bad");
         String json2 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]},\"mark\":\"bad\"},\"sex\":true}";
         assertEquals(JsonObject.fromJson(json2), jo1);
     }
@@ -496,21 +496,21 @@ class JsonObjectTest {
         assertEquals(0, jo.getInteger("c"));
     }
 
-    public void testComputeIfAbsentOrNull() {
+    public void testComputeIfAbsent() {
         JsonObject jo = new JsonObject();
         
-        JsonObject nested = jo.computeIfAbsentOrNull("nested", k -> new JsonObject());
+        JsonObject nested = jo.computeIfAbsent("nested", k -> new JsonObject());
         assertNotNull(nested);
         assertEquals(nested, jo.getJsonObject("nested"));
         
-        JsonObject nested2 = jo.computeIfAbsentOrNull("nested", k -> new JsonObject());
+        JsonObject nested2 = jo.computeIfAbsent("nested", k -> new JsonObject());
         assertEquals(nested, nested2); // 应该返回同一个对象
         
-        JsonArray array = jo.computeIfAbsentOrNull("array", k -> new JsonArray());
+        JsonArray array = jo.computeIfAbsent("array", k -> new JsonArray());
         assertNotNull(array);
         assertEquals(array, jo.getJsonArray("array"));
         
-        JsonArray array2 = jo.computeIfAbsentOrNull("array", k -> new JsonArray());
+        JsonArray array2 = jo.computeIfAbsent("array", k -> new JsonArray());
         assertEquals(array, array2);
     }
 
@@ -532,7 +532,7 @@ class JsonObjectTest {
         JsonObject jo2 = JsonObject.builder()
                 .putByPath("$.user.name", "Bob")
                 .putNonNullByPath("$.user.age", 30)
-                .putByPathIfAbsentOrNull("$.user.email", "bob@example.com")
+                .putByPathIfAbsent("$.user.email", "bob@example.com")
                 .build();
         
         assertEquals("Bob", jo2.getStringByPath("$.user.name"));

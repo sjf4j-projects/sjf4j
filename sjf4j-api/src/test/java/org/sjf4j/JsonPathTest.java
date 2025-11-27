@@ -190,9 +190,9 @@ public class JsonPathTest {
         
         // 测试putIfAbsent
         JsonPath path4 = JsonPath.compile("$.a.e");
-        path4.putIfAbsentOrNull(jo, "first");
+        path4.putIfAbsent(jo, "first");
         assertEquals("first", jo.getStringByPath("$.a.e"));
-        path4.putIfAbsentOrNull(jo, "second");
+        path4.putIfAbsent(jo, "second");
         assertEquals("first", jo.getStringByPath("$.a.e")); // 不应该被覆盖
         
         // 测试remove

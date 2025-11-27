@@ -214,8 +214,8 @@ public abstract class JsonContainer {
         JsonPath.compile(path).putNonNull(this, value);
     }
 
-    public void putByPathIfAbsentOrNull(@NonNull String path, Object value) {
-        JsonPath.compile(path).putIfAbsentOrNull(this, value);
+    public void putByPathIfAbsent(@NonNull String path, Object value) {
+        JsonPath.compile(path).putIfAbsent(this, value);
     }
 
     public void removeByPath(@NonNull String path) {

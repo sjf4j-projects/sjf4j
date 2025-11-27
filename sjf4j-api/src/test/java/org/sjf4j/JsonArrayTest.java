@@ -188,7 +188,7 @@ class JsonArrayTest {
         assertEquals("[2,3,{}]", ja1.getObjectByPath("$").toString());
         assertEquals((byte) 3, ja1.getByteByPath("$[1]"));
 
-        ja1.putByPathIfAbsentOrNull("$[1]", 9);
+        ja1.putByPathIfAbsent("$[1]", 9);
         ja1.putByPath("$[2].a.b", "yes");
         log.info("ja1: {}", ja1);
         assertEquals("[2,3,{\"a\":{\"b\":\"yes\"}}]", ja1.toJson());

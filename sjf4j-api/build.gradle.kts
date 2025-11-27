@@ -54,11 +54,11 @@ tasks.test {
 
 // JMH
 jmh {
-    warmupIterations.set(3)
-    iterations.set(5)
-    fork.set(1)
-    timeOnIteration.set("500ms")
-    threads.set(1)
+//    warmupIterations.set(3)
+//    iterations.set(5)
+//    fork.set(1)
+//    timeOnIteration.set("500ms")
+//    threads.set(1)
 //    jvmArgs.set(listOf(
 //        "-XX:+UnlockDiagnosticVMOptions",
 //        "-XX:+PrintInlining"

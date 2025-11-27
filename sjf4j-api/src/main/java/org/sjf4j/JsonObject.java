@@ -3,7 +3,6 @@ package org.sjf4j;
 import lombok.NonNull;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
-import org.sjf4j.util.TypeUtil;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -164,6 +163,7 @@ public class JsonObject extends JsonContainer {
         return hash;
     }
 
+    @SuppressWarnings("EqualsDoesntCheckParameterClass")
     @Override
     public boolean equals(Object target) {
         return JsonWalker.equals(this, target);
@@ -718,19 +718,13 @@ public class JsonObject extends JsonContainer {
     }
 
     public void putIfAbsent(@NonNull String key, Object object) {
-        if (!containsKey(key)) {
-            put(key, object);
-        }
-    }
-
-    public void putIfAbsentOrNull(@NonNull String key, Object object) {
         if (getObject(key) == null) {
             put(key, object);
         }
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T computeIfAbsentOrNull(@NonNull String key, @NonNull Function<String, ? extends T> mappingFunction) {
+    public <T> T computeIfAbsent(@NonNull String key, @NonNull Function<String, ? extends T> mappingFunction) {
         T value = get(key);
         if (value == null) {
             value = mappingFunction.apply(key);
@@ -897,10 +891,6 @@ public class JsonObject extends JsonContainer {
             jo.putIfAbsent(key, value);
             return this;
         }
-        public Builder putIfAbsentOrNull(@NonNull String key, Object value) {
-            jo.putIfAbsentOrNull(key, value);
-            return this;
-        }
         public Builder putByPath(String path, Object value) {
             jo.putByPath(path, value);
             return this;
@@ -909,8 +899,8 @@ public class JsonObject extends JsonContainer {
             jo.putNonNullByPath(path, value);
             return this;
         }
-        public Builder putByPathIfAbsentOrNull(String path, Object value) {
-            jo.putByPathIfAbsentOrNull(path, value);
+        public Builder putByPathIfAbsent(String path, Object value) {
+            jo.putByPathIfAbsent(path, value);
             return this;
         }
         public JsonObject build() {

@@ -51,12 +51,11 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
     /// API
 
-
     public Object readNode(@NonNull Reader input, Type type) {
         try {
             switch (JsonConfig.global().facadeMode) {
                 case STREAMING_GENERAL:
-                    return JsonFacade.super.readNode(input, type);
+                    return readNodeWithSpecific(input, type);
                 case STREAMING_SPECIFIC:
                     return readNodeWithSpecific(input, type);
                 case MODULE_EXTRA:
@@ -68,9 +67,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    public Object readNodeWithGeneral(@NonNull Reader input, Type type) throws IOException {
+        return JsonFacade.super.readNode(input, type);
+    }
+
     public Object readNodeWithSpecific(@NonNull Reader input, Type type) throws IOException {
-        JsonParser parser = objectMapper.getFactory().createParser(input);
-        return JacksonStreamingUtil.readNode(parser, type);
+        try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
+            return JacksonStreamingUtil.readNode(parser, type);
+        }
     }
 
     public Object readNodeWithExtra(@NonNull Reader input, Type type) throws IOException {

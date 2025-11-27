@@ -21,8 +21,9 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     W createWriter(Writer output) throws IOException;
 
     default Object readNode(@NonNull Reader input, Type type) {
-        try {
-            FacadeReader reader = createReader(input);
+        // Always use try-with-resources here.
+        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
+        try (FacadeReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingUtil.readNode(reader, type);
             reader.endDocument();
@@ -33,8 +34,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     }
 
     default void writeNode(@NonNull Writer output, Object node) {
-        try {
-            FacadeWriter writer = createWriter(output);
+        try (FacadeWriter writer = createWriter(output)) {
             writer.startDocument();
             StreamingUtil.writeNode(writer, node);
             writer.endDocument();

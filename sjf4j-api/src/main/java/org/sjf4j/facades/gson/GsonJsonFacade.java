@@ -2,6 +2,7 @@ package org.sjf4j.facades.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonIOException;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
@@ -47,28 +48,35 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     /// API
 
     public Object readNode(@NonNull Reader input, Type type) {
-        try {
-            switch (JsonConfig.global().facadeMode) {
-                case STREAMING_GENERAL:
-                    return JsonFacade.super.readNode(input, type);
-                case STREAMING_SPECIFIC:
-                    return readNodeWithSpecific(input, type);
-                case MODULE_EXTRA:
-                default:
-                    return readNodeWithExtra(input, type);
-            }
+        switch (JsonConfig.global().facadeMode) {
+            case STREAMING_GENERAL:
+                return readNodeWithGeneral(input, type);
+            case STREAMING_SPECIFIC:
+                return readNodeWithSpecific(input, type);
+            case MODULE_EXTRA:
+            default:
+                return readNodeWithExtra(input, type);
+        }
+    }
+
+    public Object readNodeWithGeneral(@NonNull Reader input, Type type){
+        return JsonFacade.super.readNode(input, type);
+    }
+
+    public Object readNodeWithSpecific(@NonNull Reader input, Type type) {
+        try (JsonReader reader = gson.newJsonReader(input)) {
+            return GsonStreamingUtil.readNode(reader, type);
         } catch (Exception e) {
             throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
     }
 
-    public Object readNodeWithSpecific(@NonNull Reader input, Type type) throws IOException {
-        JsonReader reader = gson.newJsonReader(input);
-        return GsonStreamingUtil.readNode(reader, type);
-    }
-
-    public Object readNodeWithExtra(@NonNull Reader input, Type type) throws IOException {
-        return gson.fromJson(input, type);
+    public Object readNodeWithExtra(@NonNull Reader input, Type type) {
+        try (JsonReader reader = gson.newJsonReader(input)) {
+            return gson.fromJson(reader, type);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
+        }
     }
 
 

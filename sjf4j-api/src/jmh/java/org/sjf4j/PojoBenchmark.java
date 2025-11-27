@@ -1,0 +1,124 @@
+package org.sjf4j;
+
+
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Threads;
+import org.openjdk.jmh.annotations.Warmup;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 1)
+@Threads(1)
+public class PojoBenchmark {
+
+    // --------- 模拟的 POJO ------------
+    public static class Person extends JsonObject {
+        public String name;
+        public String nick;
+        public int age;
+        public Info info;
+        public List<Baby> babies;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getNick() {
+            return nick;
+        }
+
+        public void setNick(String nick) {
+            this.nick = nick;
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public void setAge(int age) {
+            this.age = age;
+        }
+
+        public Info getInfo() {
+            return info;
+        }
+
+        public void setInfo(Info info) {
+            this.info = info;
+        }
+
+        public List<Baby> getBabies() {
+            return babies;
+        }
+
+        public void setBabies(List<Baby> babies) {
+            this.babies = babies;
+        }
+    }
+
+    public static class Info extends JsonObject {
+        public String email;
+        public String city;
+    }
+
+    public static class Baby extends JsonObject {
+        public String name;
+        public int age;
+    }
+
+
+    private static PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(Person.class);
+    private static PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(Person.class, "name");
+
+    @Benchmark
+    public Object ctor_mh() {
+        return pi.newInstance2();
+    }
+
+    @Benchmark
+    public Object ctor_lambda() {
+        return pi.newInstance();
+    }
+
+    @Benchmark
+    public Object getter_lambda() {
+        Person p = new Person();
+        return fi.invokeGetter(p);
+    }
+
+    @Benchmark
+    public Object getter_mh() {
+        Person p = new Person();
+        return fi.invokeGetter2(p);
+    }
+
+    @Benchmark
+    public Object setter_lambda() {
+        Person p = new Person();
+        fi.invokeSetter(p, "hahaha");
+        return p;
+    }
+
+    @Benchmark
+    public Object setter_mh() {
+        Person p = new Person();
+        fi.invokeSetter2(p, "hahaha");
+        return p;
+    }
+
+
+}

@@ -122,7 +122,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                 }
                 return pjo;
             } else if (PojoRegistry.isPojo(rawClazz)) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.register(rawClazz);
+                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
                 Object pojo = pi.newInstance();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
                     PojoRegistry.FieldInfo fi = pi.getFields().get(entry.getKey().toString());

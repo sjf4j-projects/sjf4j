@@ -488,7 +488,7 @@ public class JsonPath {
         if (null != value) { put(container, value); }
     }
 
-    public void putIfAbsentOrNull(@NonNull Object container, Object value) {
+    public void putIfAbsent(@NonNull Object container, Object value) {
         if (!hasNonNull(container)) { put(container, value); }
     }
 

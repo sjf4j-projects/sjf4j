@@ -314,7 +314,7 @@ public class CompareReadTest {
 //        end = System.nanoTime();
 //        log.info("Fastjson2-walk2Map: {}", (end - start) / 1000_000);
 
-        for (long i = 0; i < 1000; i++) {
+        for (long i = 0; i < 1000_000; i++) {
             gson.fromJson(new StringReader(JSON_DATA), com.google.gson.JsonObject.class);
         }
 
