@@ -27,6 +27,7 @@ import org.sjf4j.facades.jackson.JacksonWalker;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -37,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
-public class JsonReadBenchmark {
+public class JsonWriteBenchmark {
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
 //    private static final String JSON_DATA = "{\"age\":25}";
@@ -47,6 +48,7 @@ public class JsonReadBenchmark {
 //    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"}}";
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"no_way\":99,\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
+    private static final Person PERSON = Sjf4j.fromJson(JSON_DATA, Person.class);
 
     private static final ObjectMapper JACKSON = new ObjectMapper();
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
@@ -57,107 +59,93 @@ public class JsonReadBenchmark {
     private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
 
 
-//    // ----- Jackson baselines -----
-//    @Benchmark
-//    public Object json_jackson_pojo() throws IOException {
-//        return JACKSON.readValue(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_node() throws IOException {
-//        return JACKSON.readTree(new StringReader(JSON_DATA));
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_walk2Map() throws IOException {
-//        JsonParser p = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-//        return JacksonWalker.walk2Map(p);
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_walk2Jo() throws IOException {
-//        JsonParser p = JACKSON.getFactory().createParser(new StringReader(JSON_DATA));
-//        return JacksonWalker.walk2Jo(p);
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_facade_spec() throws IOException {
-//        return JACKSON_FACADE.readNodeWithSpecific(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_facade_general() throws IOException {
-//        return JACKSON_FACADE.readNodeWithGeneral(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_facade_extra() throws IOException {
-//        return JACKSON_FACADE.readNodeWithModule(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//
-//    // ----- Gson baselines -----
-//    @Benchmark
-//    public Object json_gson_pojo() {
-//        return GSON.fromJson(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public void json_gson_walk2Null() throws IOException {
-//        GsonWalker.walk2Null(GSON.newJsonReader(new StringReader(JSON_DATA)));
-//    }
-//
-//    @Benchmark
-//    public void json_gson_walk2Jo() throws IOException {
-//        GsonWalker.walk2Jo(GSON.newJsonReader(new StringReader(JSON_DATA)));
-//    }
-//
-//    @Benchmark
-//    public Object json_gson_facade_general() {
-//        return GSON_FACADE.readNodeWithGeneral(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_gson_facade_spec() {
-//        return GSON_FACADE.readNodeWithSpecific(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_gson_facade_extra() {
-//        return GSON_FACADE.readNodeWithModule(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Test
-//    public void test_facade_extra() {
-//        GSON_FACADE.readNodeWithModule(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//
-//    // ----- Fastjson2 baselines -----
-//    @Benchmark
-//    public Object json_fastjson2_pojo() {
-//        return JSON.parseObject(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public void json_fastjson2_walk() throws IOException {
-//        Fastjson2Walker.walk2Jo(JSONReader.of(JSON_DATA));
-//    }
-//
-//    @Benchmark
-//    public Object json_fastjson2_facade_general() throws IOException {
-//        return FASTJSON2_FACADE.readNodeWithGeneral(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_fastjson2_facade_extra() throws IOException {
-//        return FASTJSON2_FACADE.readNodeWithModule(new StringReader(JSON_DATA), Person.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_fastjson2_facade_spec() throws IOException {
-//        return FASTJSON2_FACADE.readNodeWithSpecific(new StringReader(JSON_DATA), Person.class);
-//    }
+    // ----- Jackson baselines -----
+    @Benchmark
+    public Object write_jackson_native() throws IOException {
+        StringWriter output = new StringWriter();
+        JACKSON.writeValue(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_jackson_spec() throws IOException {
+        StringWriter output = new StringWriter();
+        JACKSON_FACADE.writeNodeWithSpecific(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_jackson_general() throws IOException {
+        StringWriter output = new StringWriter();
+        JACKSON_FACADE.writeNodeWithGeneral(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_jackson_module() throws IOException {
+        StringWriter output = new StringWriter();
+        JACKSON_FACADE.writeNodeWithModule(output, PERSON);
+        return output.toString();
+    }
+
+
+    // ----- Gson baselines -----
+    @Benchmark
+    public Object write_gson_native() {
+        StringWriter output = new StringWriter();
+        GSON.toJson(PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_gson_general() {
+        StringWriter output = new StringWriter();
+        GSON_FACADE.writeNodeWithGeneral(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_gson_spec() {
+        StringWriter output = new StringWriter();
+        GSON_FACADE.writeNodeWithSpecific(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_gson_module() {
+        StringWriter output = new StringWriter();
+        GSON_FACADE.writeNodeWithModule(output, PERSON);
+        return output.toString();
+    }
+
+    // ----- Fastjson2 baselines -----
+    @Benchmark
+    public Object write_fastjson2_native() {
+        StringWriter output = new StringWriter();
+        JSON.toJSONString(PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_fastjson2_general() {
+        StringWriter output = new StringWriter();
+        FASTJSON2_FACADE.writeNodeWithGeneral(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_fastjson2_spec() {
+        StringWriter output = new StringWriter();
+        FASTJSON2_FACADE.writeNodeWithSpecific(output, PERSON);
+        return output.toString();
+    }
+
+    @Benchmark
+    public Object write_fastjson2_module() {
+        StringWriter output = new StringWriter();
+        FASTJSON2_FACADE.writeNodeWithModule(output, PERSON);
+        return output.toString();
+    }
 
 
 

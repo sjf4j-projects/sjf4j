@@ -29,7 +29,10 @@ public class WalkerBechmark {
         // Each benchmark pre-walks 100 times to amortize JMH harness overhead; only the walker implementation differs.
         for (int i = 0; i < 100; i++) {
             JsonWalker.walk(JO, JsonWalker.Target.ANY, JsonWalker.Order.TOP_DOWN, 0,
-                    (k, v) -> bh.consume(k));
+                    (k, v) -> {
+                bh.consume(k);
+                return null;
+            });
         }
     }
 
