@@ -164,7 +164,7 @@ public class PojoUtil {
                     constructor.type().changeReturnType(clazz)
             ).getTarget().invoke();
         } catch (Throwable e) {
-            log.warn("Failed to create lambda constructor of {}", clazz, e);
+//            log.warn("Failed to create lambda constructor of {}", clazz, e);
             return null;
         }
     }
@@ -201,7 +201,7 @@ public class PojoUtil {
             } catch (Exception ignored) {}
         }
         if (getter == null) {
-            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
+//            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
             return null;
         }
 
@@ -218,7 +218,7 @@ public class PojoUtil {
                     getter.type()
             ).getTarget().invoke();
         } catch (Throwable e) {
-            log.warn("Failed to create lambda getter for '{}' of {}", field.getName(), clazz, e);
+//            log.warn("Failed to create lambda getter for '{}' of {}", field.getName(), clazz, e);
             return null;
         }
     }
@@ -237,7 +237,7 @@ public class PojoUtil {
             setter = lookup.findVirtual(clazz, "set" + capitalize(field.getName()),
                     MethodType.methodType(void.class, field.getType()));
         } catch (Exception e) {
-            log.warn("Failed to find lambda setter for '{}' of {}", field.getName(), clazz);
+//            log.warn("Failed to find lambda setter for '{}' of {}", field.getName(), clazz);
             return null;
         }
 
@@ -255,7 +255,7 @@ public class PojoUtil {
                     setter.type()     // implement signature
             ).getTarget().invoke();
         } catch (Throwable e) {
-            log.warn("Failed to create lambda setter for '{}' of {}", field.getName(), clazz, e);
+//            log.warn("Failed to create lambda setter for '{}' of {}", field.getName(), clazz, e);
             return null;
         }
     }

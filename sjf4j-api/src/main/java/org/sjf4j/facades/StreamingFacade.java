@@ -43,7 +43,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
                 ((Fastjson2Writer) writer).flushTo(output);
             }
         } catch (IOException e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "'", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
         }
     }
 

@@ -4,20 +4,18 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
-import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
+import com.alibaba.fastjson2.writer.ObjectWriterProvider;
 import lombok.NonNull;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.facades.jackson.JacksonStreamingUtil;
 import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 
@@ -45,8 +43,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         this.writerFeatures = writerFeatures;
         this.ctx = JSONFactory.createReadContext(readerFeatures);
 
-        // With Extra
-        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.MODULE_EXTRA) {
+        // With Module
+        if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
             ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
             provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
             this.ctx.setExtraProcessor((object, key, value) -> {
@@ -54,6 +52,10 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     ((JsonObject) object).put(key, value);
                 }
             });
+        }
+        if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
+            ObjectWriterProvider provider = JSONFactory.getDefaultObjectWriterProvider();
+            provider.register(new Fastjson2Module.MyObjectWriterModule());
         }
     }
 
@@ -72,16 +74,17 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
 
     /// Read
 
+    @Override
     public Object readNode(@NonNull Reader input, Type type) {
-        switch (JsonConfig.global().facadeMode) {
+        switch (JsonConfig.global().readMode) {
             case STREAMING_GENERAL:
                 return readNodeWithGeneral(input, type);
             case STREAMING_SPECIFIC:
                 return readNodeWithSpecific(input, type);
-            case MODULE_EXTRA:
-                return readNodeWithExtra(input, type);
+            case USE_MODULE:
+                return readNodeWithModule(input, type);
             default:
-                return readNodeWithExtra(input, type);
+                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
         }
     }
 
@@ -98,8 +101,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     }
 
 
-    public Object readNodeWithExtra(@NonNull Reader input, Type type) {
-        if (JsonConfig.global().facadeMode != JsonConfig.FacadeMode.MODULE_EXTRA) {
+    public Object readNodeWithModule(@NonNull Reader input, Type type) {
+        if (JsonConfig.global().readMode != JsonConfig.ReadMode.USE_MODULE) {
             ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
             provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
             this.ctx.setExtraProcessor((object, key, value) -> {
@@ -120,7 +123,28 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
 
     /// Write
 
+    @Override
     public void writeNode(@NonNull Writer output, Object node) {
+        switch (JsonConfig.global().writeMode) {
+            case STREAMING_GENERAL:
+                writeNodeWithGeneral(output, node);
+                break;
+            case STREAMING_SPECIFIC:
+                writeNodeWithSpecific(output, node);
+                break;
+            case USE_MODULE:
+                writeNodeWithModule(output, node);
+                break;
+            default:
+                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+        }
+    }
+
+    public void writeNodeWithGeneral(Writer output, Object node) {
+        JsonFacade.super.writeNode(output, node);
+    }
+
+    public void writeNodeWithSpecific(Writer output, Object node) {
         try {
             JSONWriter writer = JSONWriter.of(writerFeatures);
             Fastjson2StreamingUtil.startDocument(writer);
@@ -128,9 +152,26 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             Fastjson2StreamingUtil.endDocument(writer);
             writer.flushTo(output);
         } catch (IOException e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "'", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    "' to JSON streaming", e);
         }
     }
+
+    public void writeNodeWithModule(Writer output, Object node) {
+        try {
+            if (JsonConfig.global().writeMode != JsonConfig.WriteMode.USE_MODULE) {
+                ObjectWriterProvider provider = JSONFactory.getDefaultObjectWriterProvider();
+                provider.register(new Fastjson2Module.MyObjectWriterModule());
+            }
+            String json = JSON.toJSONString(node, writerFeatures);
+            output.write(json);
+        } catch (Exception e) {
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    "' to JSON streaming", e);
+        }
+    }
+
+
 
 
 }

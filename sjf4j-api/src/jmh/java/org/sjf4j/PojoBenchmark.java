@@ -80,41 +80,44 @@ public class PojoBenchmark {
         public int age;
     }
 
-
+    // Cache PojoInfo/FieldInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
     private static PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(Person.class);
     private static PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(Person.class, "name");
 
+    // ----- Constructor pathways -----
     @Benchmark
-    public Object ctor_mh() {
+    public Object pojo_ctor_mh() {
         return pi.newInstance2();
     }
 
     @Benchmark
-    public Object ctor_lambda() {
+    public Object pojo_ctor_lambda() {
         return pi.newInstance();
     }
 
+    // ----- Getter pathways -----
     @Benchmark
-    public Object getter_lambda() {
+    public Object pojo_getter_lambda() {
         Person p = new Person();
         return fi.invokeGetter(p);
     }
 
     @Benchmark
-    public Object getter_mh() {
+    public Object pojo_getter_mh() {
         Person p = new Person();
         return fi.invokeGetter2(p);
     }
 
+    // ----- Setter pathways -----
     @Benchmark
-    public Object setter_lambda() {
+    public Object pojo_setter_lambda() {
         Person p = new Person();
         fi.invokeSetter(p, "hahaha");
         return p;
     }
 
     @Benchmark
-    public Object setter_mh() {
+    public Object pojo_setter_mh() {
         Person p = new Person();
         fi.invokeSetter2(p, "hahaha");
         return p;

@@ -3,6 +3,7 @@ package org.sjf4j;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -263,8 +264,8 @@ public class JsonPathTest {
         // 使用通配符查找所有价格
         List<Object> prices = JsonPath.compile("$.store.book[*].price").findAll(jo);
         assertEquals(2, prices.size());
-        assertEquals(8.95, prices.get(0));
-        assertEquals(12.99, prices.get(1));
+        assertEquals(8.95, NodeUtil.toDouble(prices.get(0)));
+        assertEquals(12.99, NodeUtil.toDouble(prices.get(1)));
     }
 
     @Test

@@ -52,7 +52,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                     jo.put(k, vv);
                 });
                 return jo;
-            } else if (rawClazz.isAssignableFrom(Map.class)) {
+            } else if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, Map.class, 1);
                 Map<String, Object> map = JsonConfig.global().mapSupplier.create();
                 ((JsonObject) object).forEach((k, v) -> {
@@ -90,14 +90,14 @@ public class SimpleObjectFacade implements ObjectFacade {
                 throw new JsonException("Cannot read from object '" + object.getClass() + "' to node '" + type + "'");
             }
         } else if (object instanceof Map) {
-            if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
+            if (rawClazz == null || rawClazz == JsonObject.class) {
                 JsonObject jo = new JsonObject();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
                     Object vv = readNode(entry.getValue(), Object.class);
                     jo.put(entry.getKey().toString(), vv);
                 }
                 return jo;
-            } else if (rawClazz.isAssignableFrom(Map.class)) {
+            } else if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, Map.class, 1);
                 Map<String, Object> map = JsonConfig.global().mapSupplier.create();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
@@ -143,7 +143,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                     ja.add(vv);
                 }
                 return ja;
-            } else if (rawClazz.isAssignableFrom(List.class)) {
+            } else if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, List.class, 0);
                 List<Object> list = new ArrayList<>();
                 for (Object v : (JsonArray) object) {
@@ -170,7 +170,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                     ja.add(vv);
                 }
                 return ja;
-            } else if (rawClazz.isAssignableFrom(List.class)) {
+            } else if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, List.class, 0);
                 List<Object> list = new ArrayList<>();
                 for (Object v : (List<?>) object) {
@@ -197,7 +197,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                     ja.add(vv);
                 }
                 return ja;
-            } else if (rawClazz.isAssignableFrom(List.class)) {
+            } else if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, List.class, 0);
                 List<Object> list = new ArrayList<>();
                 for (int i = 0; i < Array.getLength(object); i++) {
@@ -225,7 +225,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                     jo.put(entry.getKey(), vv);
                 }
                 return jo;
-            } else if (rawClazz.isAssignableFrom(Map.class)) {
+            } else if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, Map.class, 1);
                 Map<String, Object> map = JsonConfig.global().mapSupplier.create();
                 PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(object.getClass());

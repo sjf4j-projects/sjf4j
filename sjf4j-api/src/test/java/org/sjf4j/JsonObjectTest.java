@@ -208,7 +208,7 @@ class JsonObjectTest {
         assertEquals("jj", jo4.asJsonObject("attr").getString("aa"));
         assertEquals("bb", jo5.asJsonObject("attr").getString("aa"));
 
-        JsonObject attr = jo5.get("attr");
+        JsonObject attr = jo5.as("attr");
         assertEquals("bb", attr.get("aa"));
 
         JsonObject jo6 = JsonObject.fromJson("{\"num\":5,\"duck\":[{\"j\":\"gaga\"}],\"x\":{\"y\":{\"z\":9}}}");
@@ -421,7 +421,7 @@ class JsonObjectTest {
     public void testYaml1() {
 
         String json1 = "{\"s1\":\"haha\",\"i2\":null,\"f3\":99.9,\"b4\":true,\"s\\\"5\":\"00\"}";
-        JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNodeWithExtra(
+        JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNodeWithModule(
                 new StringReader(json1), JsonObject.class);
 //        JsonObject jo1 = JsonObject.fromJson(json1);
         String ya1 = jo1.toYaml();
@@ -629,6 +629,5 @@ class JsonObjectTest {
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
         assertEquals(jo1, jo2);
     }
-
 
 }

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,9 +22,10 @@ public class JsonWalkerTest {
         List<String> paths = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         
-        JsonWalker.walkValues(jo, (path, value) -> {
+        JsonWalker.walk(jo, JsonWalker.Target.VALUE, (path, value) -> {
             paths.add(path.toString());
             values.add(value);
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("Paths: {}", paths);
@@ -49,9 +49,10 @@ public class JsonWalkerTest {
         
         List<String> containerPaths = new ArrayList<>();
         
-        JsonWalker.walkContainersBottomUp(jo, (path, container) -> {
-            containerPaths.add(path.toString());
-            assertNotNull(container);
+        JsonWalker.walk(jo, JsonWalker.Target.CONTAINER, JsonWalker.Order.BOTTOM_UP,
+                (path, container) -> {
+            containerPaths.add(path.toString());assertNotNull(container);
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("Container paths: {}", containerPaths);
@@ -68,9 +69,10 @@ public class JsonWalkerTest {
         AtomicInteger count = new AtomicInteger(0);
         List<String> paths = new ArrayList<>();
         
-        JsonWalker.walkValues(ja, (path, value) -> {
+        JsonWalker.walk(ja, JsonWalker.Target.VALUE, (path, value) -> {
             paths.add(path.toString());
             count.incrementAndGet();
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("Array paths: {}", paths);
@@ -93,8 +95,9 @@ public class JsonWalkerTest {
         map.put("nested", nested);
         
         List<String> paths = new ArrayList<>();
-        JsonWalker.walkValues(map, (path, value) -> {
+        JsonWalker.walk(map, JsonWalker.Target.VALUE, (path, value) -> {
             paths.add(path.toString());
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("Map paths: {}", paths);
@@ -112,8 +115,9 @@ public class JsonWalkerTest {
         list.add(nested);
         
         List<String> paths = new ArrayList<>();
-        JsonWalker.walkValues(list, (path, value) -> {
+        JsonWalker.walk(list, JsonWalker.Target.VALUE, (path, value) -> {
             paths.add(path.toString());
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("List paths: {}", paths);
@@ -127,8 +131,9 @@ public class JsonWalkerTest {
         int[] array = {1, 2, 3};
         
         List<String> paths = new ArrayList<>();
-        JsonWalker.walkValues(array, (path, value) -> {
+        JsonWalker.walk(array, JsonWalker.Target.VALUE, (path, value) -> {
             paths.add(path.toString());
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("Array object paths: {}", paths);
@@ -141,9 +146,10 @@ public class JsonWalkerTest {
     public void testWalkPrimitive() {
         AtomicInteger count = new AtomicInteger(0);
         
-        JsonWalker.walkValues("test", (path, value) -> {
+        JsonWalker.walk("test", JsonWalker.Target.VALUE, (path, value) -> {
             count.incrementAndGet();
             assertEquals("test", value);
+            return JsonWalker.Control.CONTINUE;
         });
         
         assertEquals(1, count.get());
@@ -163,9 +169,10 @@ public class JsonWalkerTest {
                 "}");
         
         AtomicInteger count = new AtomicInteger(0);
-        JsonWalker.walkValues(jo, (path, value) -> {
+        JsonWalker.walk(jo, JsonWalker.Target.VALUE, (path, value) -> {
             count.incrementAndGet();
             log.debug("Path: {}, Value: {}", path, value);
+            return JsonWalker.Control.CONTINUE;
         });
         
         log.info("Total values walked: {}", count.get());
@@ -201,12 +208,23 @@ public class JsonWalkerTest {
         Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
 
-        List<String> values = new ArrayList<>();
-        JsonWalker.walkValues(person, (path, node) -> {
-            log.info("walk path={}, node={}", path, node);
-            values.add(path.toString());
+        List<String> values1 = new ArrayList<>();
+        JsonWalker.walk(person, JsonWalker.Target.VALUE, (path, node) -> {
+            log.info("walk1 path={}, node={}", path, node);
+            values1.add(path.toString());
+            return JsonWalker.Control.CONTINUE;
         });
-        assertTrue(values.contains("$.babies[1].name"));
+        assertTrue(values1.contains("$.babies[1].name"));
+
+        List<String> values2 = new ArrayList<>();
+        JsonWalker.walk(person, JsonWalker.Target.ANY, JsonWalker.Order.BOTTOM_UP, (path, node) -> {
+            log.info("walk2 path={}, node={}", path, node);
+            values2.add(path.toString());
+            return JsonWalker.Control.CONTINUE;
+        });
+        assertEquals(16, values2.size());
+        assertEquals("$.name", values2.get(0));
+        assertEquals("$", values2.get(15));
     }
 
 }

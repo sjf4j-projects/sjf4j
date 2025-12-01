@@ -7,6 +7,9 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * FIXME: Deprecated
+ */
 public class ConverterRegistry {
 
     /// Converter

@@ -96,6 +96,7 @@ public final class PojoRegistry {
             throw new JsonException("Not found no-args constructor of class " + type);
         }
 
+        //FIXME: test
         public Object newInstance2() {
             if (constructor != null) {
                 try {
@@ -143,6 +144,7 @@ public final class PojoRegistry {
             }
         }
 
+        // FIXME: test
         public Object invokeGetter2(@NonNull Object receiver) {
             if (getter == null) {
                 throw new JsonException("No getter available for field '" + name + "' of " + type);
@@ -178,6 +180,7 @@ public final class PojoRegistry {
             }
         }
 
+        // FIXME: test
         public void invokeSetter2(@NonNull Object receiver, Object value) {
             if (setter == null) {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);

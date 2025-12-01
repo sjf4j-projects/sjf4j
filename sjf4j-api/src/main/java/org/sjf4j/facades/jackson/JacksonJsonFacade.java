@@ -10,12 +10,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.facades.FacadeReader;
-import org.sjf4j.facades.FacadeWriter;
 import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.facades.fastjson2.Fastjson2Writer;
-import org.sjf4j.util.StreamingUtil;
-import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
@@ -30,11 +25,17 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     public JacksonJsonFacade(@NonNull ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
 
-        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.MODULE_EXTRA) {
-            JacksonModule.JsonObjectModule module = new JacksonModule.JsonObjectModule();
+        JacksonModule.MySimpleModule module = null;
+        if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
+            module = new JacksonModule.MySimpleModule();
             module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
-            this.objectMapper.registerModule(module);
         }
+        if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
+            if (module == null) module = new JacksonModule.MySimpleModule();
+            module.addSerializer(JsonObject.class, new JacksonModule.JsonObjectSerializer());
+            module.addSerializer(JsonArray.class, new JacksonModule.JsonArraySerializer());
+        }
+        if (module != null) this.objectMapper.registerModule(module);
     }
 
     @Override
@@ -51,45 +52,72 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
     /// API
 
+    @Override
     public Object readNode(@NonNull Reader input, Type type) {
+        switch (JsonConfig.global().readMode) {
+            case STREAMING_GENERAL:
+                return readNodeWithGeneral(input, type);
+            case STREAMING_SPECIFIC:
+                return readNodeWithSpecific(input, type);
+            case USE_MODULE:
+                return readNodeWithModule(input, type);
+            default:
+                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+        }
+    }
+
+    public Object readNodeWithGeneral(@NonNull Reader input, Type type) {
+        return JsonFacade.super.readNode(input, type);
+    }
+
+    public Object readNodeWithSpecific(@NonNull Reader input, Type type) {
+        try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
+            return JacksonStreamingUtil.readNode(parser, type);
+        } catch (Exception e) {
+            throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
+        }
+    }
+
+    public Object readNodeWithModule(@NonNull Reader input, Type type) {
         try {
-            switch (JsonConfig.global().facadeMode) {
-                case STREAMING_GENERAL:
-                    return readNodeWithSpecific(input, type);
-                case STREAMING_SPECIFIC:
-                    return readNodeWithSpecific(input, type);
-                case MODULE_EXTRA:
-                default:
-                    return readNodeWithExtra(input, type);
+            if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
+                return objectMapper.readValue(input, objectMapper.constructType(type));
+            } else {
+                JacksonModule.MySimpleModule module = new JacksonModule.MySimpleModule();
+                module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
+                ObjectMapper om = new ObjectMapper();
+                om.registerModule(module);
+                return om.readValue(input, om.constructType(type));
             }
         } catch (Exception e) {
             throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
         }
     }
 
-    public Object readNodeWithGeneral(@NonNull Reader input, Type type) throws IOException {
-        return JsonFacade.super.readNode(input, type);
-    }
+    /// Write
 
-    public Object readNodeWithSpecific(@NonNull Reader input, Type type) throws IOException {
-        try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
-            return JacksonStreamingUtil.readNode(parser, type);
-        }
-    }
-
-    public Object readNodeWithExtra(@NonNull Reader input, Type type) throws IOException {
-        if (JsonConfig.global().facadeMode != JsonConfig.FacadeMode.MODULE_EXTRA) {
-            ObjectMapper om = new ObjectMapper();
-            JacksonModule.JsonObjectModule module = new JacksonModule.JsonObjectModule();
-            module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
-            om.registerModule(module);
-            return om.readValue(input, om.constructType(type));
-        } else {
-            return objectMapper.readValue(input, objectMapper.constructType(type));
-        }
-    }
-
+    @Override
     public void writeNode(@NonNull Writer output, Object node) {
+        switch (JsonConfig.global().writeMode) {
+            case STREAMING_GENERAL:
+                writeNodeWithGeneral(output, node);
+                break;
+            case STREAMING_SPECIFIC:
+                writeNodeWithSpecific(output, node);
+                break;
+            case USE_MODULE:
+                writeNodeWithModule(output, node);
+                break;
+            default:
+                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+        }
+    }
+
+    public void writeNodeWithGeneral(Writer output, Object node) {
+        JsonFacade.super.writeNode(output, node);
+    }
+
+    public void writeNodeWithSpecific(@NonNull Writer output, Object node) {
         try {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
             JacksonStreamingUtil.startDocument(gen);
@@ -97,10 +125,27 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             JacksonStreamingUtil.endDocument(gen);
             gen.flush();
         } catch (IOException e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    "' to JSON streaming", e);
         }
     }
 
-
+    public void writeNodeWithModule(Writer output, Object node) {
+        try {
+            if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
+                objectMapper.writeValue(output, node);
+            } else {
+                SimpleModule module = new JacksonModule.MySimpleModule();
+                module.addSerializer(JsonObject.class, new JacksonModule.JsonObjectSerializer());
+                module.addSerializer(JsonArray.class, new JacksonModule.JsonArraySerializer());
+                ObjectMapper om = new ObjectMapper();
+                om.registerModule(module);
+                om.writeValue(output, node);
+            }
+        } catch (IOException e) {
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    "' to JSON streaming", e);
+        }
+    }
 
 }

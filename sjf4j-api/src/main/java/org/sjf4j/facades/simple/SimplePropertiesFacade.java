@@ -23,10 +23,11 @@ public class SimplePropertiesFacade implements PropertiesFacade {
 
     @Override
     public void writeNode(@NonNull Properties props, @NonNull JsonObject node) {
-        JsonWalker.walkValues(node, (path, value) -> {
+        JsonWalker.walk(node, JsonWalker.Target.VALUE, JsonWalker.Order.TOP_DOWN, (path, value) -> {
             if (value != null) {
                 props.setProperty(jsonPath2PropKey(path.toString()), value.toString());
             }
+            return JsonWalker.Control.CONTINUE;
         });
     }
 

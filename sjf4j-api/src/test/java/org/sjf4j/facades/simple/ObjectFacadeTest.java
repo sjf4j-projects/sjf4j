@@ -225,7 +225,7 @@ public class ObjectFacadeTest {
 //        assertEquals("Alice", holder.nested.get("s1").name);
 
         JsonObject back = (JsonObject) objectFacade.readNode(holder, Object.class);
-        assertEquals(2, ((JsonObject) back.get("map")).size());
+        assertEquals(2, (back.asJsonObject("map")).size());
     }
 
     // ========== Enum ==========

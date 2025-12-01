@@ -17,7 +17,8 @@ public final class JsonConfig {
     private PropertiesFacade propertiesFacade;
     private ObjectFacade objectFacade;
 
-    public final FacadeMode facadeMode;
+    public final ReadMode readMode;
+    public final WriteMode writeMode;
 
     public final MapSupplier mapSupplier;
 
@@ -30,7 +31,8 @@ public final class JsonConfig {
         this.objectFacade = builder.objectFacade;
         this.mapSupplier = builder.mapSupplier;
         this.listSupplier = builder.listSupplier;
-        this.facadeMode = builder.facadeMode;
+        this.readMode = builder.readMode;
+        this.writeMode = builder.writeMode;
     }
 
     private static volatile JsonConfig GLOBAL = new JsonConfig.Builder().build();
@@ -83,14 +85,21 @@ public final class JsonConfig {
         return objectFacade;
     }
 
-    /// FacadeMode
+    /// Mode
 
-    public static enum FacadeMode {
+    public enum ReadMode {
         STREAMING_GENERAL,
         STREAMING_SPECIFIC,
+        USE_MODULE,
         FAST_UNSAFE,
-        MODULE_EXTRA
     }
+
+    public enum WriteMode {
+        STREAMING_GENERAL,
+        STREAMING_SPECIFIC,
+        USE_MODULE,
+    }
+
 
     /// Builder
 
@@ -104,7 +113,8 @@ public final class JsonConfig {
         private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
 
-        private FacadeMode facadeMode = FacadeMode.MODULE_EXTRA;
+        private ReadMode readMode = ReadMode.USE_MODULE;
+        private WriteMode writeMode = WriteMode.USE_MODULE;
 
 
         public Builder() {}
@@ -116,7 +126,8 @@ public final class JsonConfig {
 //            this.objectFacade = config.objectFacade;
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
-            this.facadeMode = config.facadeMode;
+            this.readMode = config.readMode;
+            this.writeMode = config.writeMode;
         }
 
         public JsonConfig build() {
@@ -147,8 +158,12 @@ public final class JsonConfig {
             this.listSupplier = listSupplier;
             return this;
         }
-        public Builder facadeMode(@NonNull FacadeMode facadeMode) {
-            this.facadeMode = facadeMode;
+        public Builder readMode(@NonNull JsonConfig.ReadMode readMode) {
+            this.readMode = readMode;
+            return this;
+        }
+        public Builder writeMode(@NonNull JsonConfig.WriteMode writeMode) {
+            this.writeMode = writeMode;
             return this;
         }
 

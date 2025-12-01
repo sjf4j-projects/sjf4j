@@ -1,6 +1,7 @@
 package org.sjf4j;
 
 import lombok.NonNull;
+import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
 import org.sjf4j.util.NodeUtil;
@@ -54,7 +55,7 @@ public class JsonPath {
         return JsonPointerUtil.genExpr(tokens);
     }
 
-    public int getDepth() {
+    public int depth() {
         return tokens.size();
     }
 
@@ -424,7 +425,7 @@ public class JsonPath {
     }
     @SuppressWarnings("unchecked")
     public <T> T find(@NonNull Object container, T... reified) {
-        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return find(container, clazz);
     }
@@ -439,7 +440,7 @@ public class JsonPath {
     }
     @SuppressWarnings("unchecked")
     public <T> T findAs(@NonNull Object container, T... reified) {
-        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return findAs(container, clazz);
     }

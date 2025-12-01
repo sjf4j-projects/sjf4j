@@ -19,10 +19,10 @@ import java.util.List;
 @Slf4j
 public class Fastjson2ModuleTest {
 
-    @BeforeAll
-    public static void init() {
-        JSONFactory.getDefaultObjectReaderProvider().register(new Fastjson2Module.MyObjectReaderModule());
-    }
+//    @BeforeAll
+//    public static void init() {
+//        JSONFactory.getDefaultObjectReaderProvider().register(new Fastjson2Module.MyObjectReaderModule());
+//    }
 
     @Getter
     @Setter

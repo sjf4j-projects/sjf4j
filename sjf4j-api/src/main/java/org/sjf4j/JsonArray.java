@@ -1,21 +1,20 @@
 package org.sjf4j;
 
 import lombok.NonNull;
+import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.NodeUtil;
-import org.sjf4j.util.TypeReference;
 
 import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -51,48 +50,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         }
     }
 
-//    public JsonArray(Object[] objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(short... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(int... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(long... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(float... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(double... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(char... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(boolean... objects) {
-//        this();
-//        addAll(objects);
-//    }
-//    public JsonArray(@NonNull List<Object> nodeList) {
-//        this();
-//        this.nodeList = nodeList;
-//    }
-
     /// Object
-
-    public String inspect() {
-        return NodeUtil.inspect(this);
-    }
 
     @Override
     public String toString() {
@@ -105,17 +63,6 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     @Override
-    public boolean equals(Object target) {
-        return JsonWalker.equals(this, target);
-//        if (target == this) return true;
-//        if (target == null) return false;
-//        if (target instanceof JsonArray) {
-//            return Objects.equals(nodeList, ((JsonArray) target).nodeList);
-//        }
-//        return false;
-    }
-
-    @Override
     public int size() {
         return nodeList == null ? 0 : nodeList.size();
     }
@@ -124,8 +71,62 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return nodeList == null || nodeList.isEmpty();
     }
 
-    private List<Object> toList() {
+    public List<Object> toList() {
         return nodeList == null ? Collections.emptyList() : nodeList;
+    }
+
+    public <T> List<T> toList(@NonNull Class<T> clazz) {
+        if (nodeList == null) {
+            return Collections.emptyList();
+        } else {
+            List<T> list = new ArrayList<>(nodeList.size());
+            for (Object node : nodeList) {
+                list.add(NodeUtil.to(node, clazz));
+            }
+            return list;
+        }
+    }
+
+    public <T> List<T> asList(@NonNull Class<T> clazz) {
+        if (nodeList == null) {
+            return Collections.emptyList();
+        } else {
+            List<T> list = new ArrayList<>(nodeList.size());
+            for (Object node : nodeList) {
+                list.add(NodeUtil.as(node, clazz));
+            }
+            return list;
+        }
+    }
+
+    public Object[] toArray() {
+        return nodeList == null ? new Object[0] : nodeList.toArray();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T[] toArray(@NonNull Class<T> clazz) {
+        if (nodeList == null) {
+            return (T[]) Array.newInstance(clazz, 0);
+        } else {
+            T[] arr = (T[]) Array.newInstance(clazz, nodeList.size());
+            for (int i = 0; i < nodeList.size(); i++) {
+                arr[i] = get(i, clazz);
+            }
+            return arr;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T[] asArray(@NonNull Class<T> clazz) {
+        if (nodeList == null) {
+            return (T[]) Array.newInstance(clazz, 0);
+        } else {
+            T[] arr = (T[]) Array.newInstance(clazz, nodeList.size());
+            for (int i = 0; i < nodeList.size(); i++) {
+                arr[i] = as(i, clazz);
+            }
+            return arr;
+        }
     }
 
     public void forEach(Consumer<Object> action) {
@@ -157,7 +158,11 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return idx >= 0 && idx < size();
     }
 
-    public boolean contains(Object value) {
+    public boolean hasNonNull(int idx) {
+        return getObject(idx) != null;
+    }
+
+    public boolean containsValue(Object value) {
         if (nodeList == null) return false;
         for (Object o : nodeList) {
             if (Objects.equals(o, value)) {
@@ -167,14 +172,19 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return false;
     }
 
+
     /// JSON Facade
 
     public static JsonArray fromJson(@NonNull String input) {
-        return fromJson(new StringReader(input));
+        return Sjf4j.fromJson(input, JsonArray.class);
     }
 
     public static JsonArray fromJson(@NonNull Reader input) {
         return Sjf4j.fromJson(input, JsonArray.class);
+    }
+
+    public void toJson(Writer output) {
+        Sjf4j.toJson(output, this);
     }
 
     public String toJson() {
@@ -184,7 +194,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// YAML Facade
 
     public static JsonArray fromYaml(@NonNull String input) {
-        return fromYaml(new StringReader(input));
+        return Sjf4j.fromYaml(input, JsonArray.class);
     }
 
     public static JsonArray fromYaml(@NonNull Reader input) {
@@ -192,31 +202,13 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public String toYaml() {
-        StringWriter output = new StringWriter();
-        toYaml(output);
-        return output.toString();
+        return Sjf4j.toYaml(this);
     }
 
     public void toYaml(@NonNull Writer output) {
-        Sjf4j.writeNodeToYaml(output, this);
+        Sjf4j.toYaml(output, this);
     }
 
-    /// POJO
-
-    public static JsonArray fromPojo(@NonNull Object pojo) {
-//        return (JsonObject) ObjectUtil.object2Value(pojo);
-        return (JsonArray) JsonConfig.global().getObjectFacade().readNode(pojo, JsonArray.class);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T toPojo(@NonNull Class<T> clazz) {
-        return (T) JsonConfig.global().getObjectFacade().readNode(this, clazz);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T toPojo(@NonNull TypeReference<T> type) {
-        return (T) JsonConfig.global().getObjectFacade().readNode(this, type.getType());
-    }
 
     /// Getter
 
@@ -555,7 +547,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
     @SuppressWarnings("unchecked")
     public <T> T get(int idx, T... reified) {
-        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(idx, clazz);
     }
@@ -571,7 +563,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
     @SuppressWarnings("unchecked")
     public <T> T as(int idx, T... reified) {
-        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return as(idx, clazz);
     }
@@ -580,12 +572,12 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// Adder
 
     public void add(Object object) {
-//        object = ObjectUtil.wrapObject(object);
-//        if (!ObjectUtil.isValidOrConvertible(object)) {
-//            throw new JsonException("Not a valid JSON value or a JSON-convertible object");
-//        }
         if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
         nodeList.add(object);
+    }
+
+    public void addNonNull(Object object) {
+        if (object != null) add(object);
     }
 
     public void add(int idx, Object object) {
@@ -594,10 +586,6 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
             throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
         }
 
-//        object = ObjectUtil.wrapObject(object);
-//        if (!ObjectUtil.isValidOrConvertible(object)) {
-//            throw new JsonException("Not a valid JSON value or a JSON-convertible object at index " + idx);
-//        }
         if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
         nodeList.add(pidx, object);
     }
@@ -607,13 +595,12 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         if (pidx < 0 || pidx >= size()) {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
         }
-
-//        object = ObjectUtil.wrapObject(object);
-//        if (!ObjectUtil.isValidOrConvertible(object)) {
-//            throw new JsonException("Not a valid JSON value or a JSON-convertible object at index " + idx);
-//        }
         if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
         nodeList.set(pidx, object);
+    }
+
+    public void setIfAbsent(int idx, Object object) {
+        if (getObject(idx) == null) set(idx, object);
     }
 
     public void addAll(Object... values) {
@@ -677,74 +664,27 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         nodeList.clear();
     }
 
+    /// Stream
+
+    public JsonStream<JsonArray> stream() {
+        return JsonStream.of(this);
+    }
+
     /// Copy, merge
 
-    public JsonArray deepCopy() {
-//        JsonArray copy = new JsonArray();
-//        for (int i = 0; i < size(); i++) {
-//            Object value = getObject(i);
-//            if (value instanceof JsonObject) {
-//                value = ((JsonObject) value).deepCopy();
-//            } else if (value instanceof JsonArray) {
-//                value = ((JsonArray) value).deepCopy();
-//            }
-//            copy.add(value);
-//        }
-//        return copy;
-        return (JsonArray) JsonConfig.global().getObjectFacade().readNode(this, JsonArray.class);
+    @SuppressWarnings("unchecked")
+    public <T extends JsonArray> T copy() {
+        return (T) ContainerUtil.copy(this);
+    }
+    @SuppressWarnings("unchecked")
+    public <T extends JsonArray> T deepCopy() {
+        return (T) ContainerUtil.deepCopy(this);
     }
 
     public void merge(JsonArray target, boolean preferTarget, boolean needCopy) {
-        JsonWalker.merge(this, target, preferTarget, needCopy);
-//        if (target == null) return;
-//        for (int i = 0; i < target.size() && i < size(); i++) {
-//            Object tarValue = target.getObject(i);
-//            if (tarValue instanceof JsonObject) {
-//                Object srcValue = getObject(i);
-//                if (srcValue instanceof JsonObject) {
-//                    ((JsonObject) srcValue).merge((JsonObject) tarValue, targetWin, needCopy);
-//                } else if (targetWin || srcValue == null) {
-//                    if (needCopy) {
-//                        set(i, ((JsonObject) tarValue).deepCopy());
-//                    } else {
-//                        set(i, tarValue);
-//                    }
-//                }
-//            } else if (tarValue instanceof JsonArray) {
-//                Object srcValue = getObject(i);
-//                if (srcValue instanceof JsonArray) {
-//                    ((JsonArray) srcValue).merge((JsonArray) tarValue, targetWin, needCopy);
-//                } else if (targetWin || srcValue == null) {
-//                    if (needCopy) {
-//                        set(i, ((JsonArray) tarValue).deepCopy());
-//                    } else {
-//                        set(i, tarValue);
-//                    }
-//                }
-//            } else if (targetWin && tarValue != null) {
-//                set(i, tarValue);
-//            }
-//        }
-//        if (target.size() > size()) {
-//            for (int i = size(); i < target.size(); i++) {
-//                Object tarValue = target.getObject(i);
-//                if (needCopy) {
-//                    if (tarValue instanceof JsonObject) add(((JsonObject) tarValue).deepCopy());
-//                    if (tarValue instanceof JsonArray) add(((JsonArray) tarValue).deepCopy());
-//                } else {
-//                    add(tarValue);
-//                }
-//            }
-//        }
+        ContainerUtil.merge(this, target, preferTarget, needCopy);
     }
 
-    /**
-     * Merges the given target JsonObject into the current JsonObject.
-     *
-     * <p>All key-value pairs from the target JsonObject will be merged into this JsonObject.
-     * When a key exists in both JsonObjects, the target wins.</p>
-     *
-     */
     public void merge(JsonArray target) {
         merge(target, true, false);
     }

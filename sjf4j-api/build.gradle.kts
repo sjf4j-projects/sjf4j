@@ -44,6 +44,11 @@ dependencies {
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
 }
 
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-Xlint:unchecked")
+}
+
 tasks.test {
     useJUnitPlatform()
     jvmArgs(

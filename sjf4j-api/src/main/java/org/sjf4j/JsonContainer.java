@@ -1,9 +1,13 @@
 package org.sjf4j;
 
 import lombok.NonNull;
+import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.NodeUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 public abstract class JsonContainer {
 
@@ -195,14 +199,8 @@ public abstract class JsonContainer {
     public <T> T getByPath(@NonNull String path, @NonNull Class<T> clazz) {
         return JsonPath.compile(path).find(this, clazz);
     }
-    public <T> T getByPath(@NonNull String path, @NonNull T... reified) {
-        return JsonPath.compile(path).find(this, reified);
-    }
     public <T> T asByPath(@NonNull String path, @NonNull Class<T> clazz) {
         return JsonPath.compile(path).findAs(this, clazz);
-    }
-    public <T> T asByPath(@NonNull String path, @NonNull T... reified) {
-        return JsonPath.compile(path).findAs(this, reified);
     }
     
     // Put by path
@@ -220,6 +218,40 @@ public abstract class JsonContainer {
 
     public void removeByPath(@NonNull String path) {
         JsonPath.compile(path).remove(this);
+    }
+
+
+    /// Walk
+
+    public void walk(@NonNull BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
+        JsonWalker.walk(this, visitor);
+    }
+
+    public void walk(@NonNull JsonWalker.Target target,
+                     @NonNull BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
+        JsonWalker.walk(this, target, visitor);
+    }
+
+    public void walk(@NonNull JsonWalker.Target target, @NonNull JsonWalker.Order order,
+                     @NonNull BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
+        JsonWalker.walk(this, target, order, visitor);
+    }
+
+    public void walk(@NonNull JsonWalker.Target target, @NonNull JsonWalker.Order order, int maxDepth,
+                     @NonNull BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
+        JsonWalker.walk(this, target, order, maxDepth, visitor);
+    }
+
+    /// Base
+
+    @SuppressWarnings("EqualsDoesntCheckParameterClass")
+    @Override
+    public boolean equals(Object target) {
+        return ContainerUtil.equals(this, target);
+    }
+
+    public String inspect() {
+        return ContainerUtil.inspect(this);
     }
 
 }

@@ -2,8 +2,7 @@ package org.sjf4j;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.TriConsumer;
+import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.TypeUtil;
 import org.sjf4j.util.TypedNode;
 
@@ -13,54 +12,53 @@ import java.util.AbstractMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 @Slf4j
 public class JsonWalker {
 
-    public enum WalkOrder { TOP_DOWN, BOTTOM_UP }
-    public enum Target { ANY, VALUE, CONTAINER }
-
     /// Walk
 
-    public static void walkValues(@NonNull Object container,
-                                  @NonNull BiConsumer<JsonPath, Object> consumer) {
-        _walk(container, new JsonPath(), consumer, Target.VALUE, WalkOrder.TOP_DOWN, 0);
-    }
+    public enum Order { TOP_DOWN, BOTTOM_UP }
+    public enum Target { ANY, CONTAINER, VALUE }
+    public enum Control { CONTINUE, STOP }
 
-    public static void walkContainersBottomUp(@NonNull Object container,
-                                              @NonNull BiConsumer<JsonPath, Object> consumer) {
-        _walk(container, new JsonPath(), consumer, Target.CONTAINER, WalkOrder.BOTTOM_UP, 0);
+    public static void walk(@NonNull Object container,
+                            @NonNull BiFunction<JsonPath, Object, Control> visitor) {
+        walk(container, Target.ANY, Order.TOP_DOWN, 0, visitor);
     }
 
     public static void walk(@NonNull Object container,
-                            @NonNull BiConsumer<JsonPath, Object> consumer) {
-        _walk(container, new JsonPath(), consumer, Target.ANY, WalkOrder.TOP_DOWN, 0);
+                            @NonNull Target target,
+                            @NonNull BiFunction<JsonPath, Object, Control> visitor) {
+        walk(container, target, Order.TOP_DOWN, 0, visitor);
     }
 
-    public static void walk(@NonNull Object container, @NonNull Target target,
-                            @NonNull BiConsumer<JsonPath, Object> consumer) {
-        _walk(container, new JsonPath(), consumer, target, WalkOrder.TOP_DOWN, 0);
+    public static void walk(@NonNull Object container,
+                            @NonNull Target target,
+                            @NonNull JsonWalker.Order order,
+                            @NonNull BiFunction<JsonPath, Object, Control> visitor) {
+        walk(container, target, order, 0, visitor);
     }
 
-    public static void walk(@NonNull Object container, @NonNull Target target, @NonNull WalkOrder order,
-                            @NonNull BiConsumer<JsonPath, Object> consumer) {
-        _walk(container, new JsonPath(), consumer, target, order, 0);
+    public static void walk(@NonNull Object container,
+                            @NonNull Target target,
+                            @NonNull JsonWalker.Order order,
+                            int maxDepth,
+                            @NonNull BiFunction<JsonPath, Object, Control> visitor) {
+        _walk(container, new JsonPath(), visitor, target, order, maxDepth);
     }
 
-    public static void walk(@NonNull Object container, @NonNull Target target, @NonNull WalkOrder order, int maxDepth,
-                            @NonNull BiConsumer<JsonPath, Object> consumer) {
-        _walk(container, new JsonPath(), consumer, target, order, maxDepth);
-    }
 
-    public static void walk2(@NonNull Object container, @NonNull Target target, @NonNull WalkOrder order, int maxDepth,
+    public static void walk2(@NonNull Object container, @NonNull Target target, @NonNull JsonWalker.Order order, int maxDepth,
                              @NonNull BiConsumer<JsonPath, Object> consumer) {
         _walk2(container, new JsonPath(), consumer, target, order, maxDepth);
     }
 
-    /// Container Util
+
+    // Visit
 
     @SuppressWarnings("unchecked")
     public static void visitObject(@NonNull Object container, @NonNull BiConsumer<String, Object> visitor) {
@@ -351,152 +349,51 @@ public class JsonWalker {
         }
     }
 
-    public static boolean equals(Object source, Object target) {
-        if (target == source) return true;
-        if (source == null || target == null) return false;
-        NodeType ntSource = NodeType.of(source);
-        NodeType ntTarget = NodeType.of(target);
-        if (ntSource.isNumber() && ntTarget.isNumber()) {
-            return NumberUtil.equals((Number) source, (Number) target);
-        } else if (ntSource.isValue() && ntTarget.isValue()) {
-            return source.equals(target);
-        } else if (ntSource == NodeType.OBJECT_POJO) {
-            return source.equals(target);
-        } else if (ntTarget == NodeType.OBJECT_POJO) {
-            return target.equals(source);
-        } else if (ntSource.isObject() && ntTarget.isObject()) {
-            if ((ntSource == NodeType.OBJECT_JOJO || ntTarget == NodeType.OBJECT_JOJO) &&
-                    source.getClass() != target.getClass()) {
-                return false;
-            }
-            if (sizeInObject(source) != sizeInObject(target)) return false;
-            for (Map.Entry<String, Object> entry : entrySetInObject(source)) {
-                Object subSrouce = entry.getValue();
-                Object subTarget = getInObject(target, entry.getKey());
-                if (!equals(subSrouce, subTarget)) return false;
-            }
-            return true;
-        } else if (ntSource.isArray() && ntTarget.isArray()) {
-            if (sizeInArray(source) != sizeInArray(target)) return false;
-            int size = sizeInArray(source);
-            for (int i = 0; i < size; i++) {
-                if (!equals(getInArray(source, i), getInArray(target, i))) return false;
-            }
-            return true;
-        } else if (ntSource.isUnknown() && ntTarget.isUnknown()) {
-            return source.equals(target);
-        }
-        return false;
-    }
 
-    public static Object deepCopy(Object container) {
-        // TODO:
-        return container;
-    }
-
-    public static void merge(Object source, Object target, boolean preferTarget, boolean needCopy) {
-        if (source == null || target == null) return;
-        NodeType ntSource = NodeType.of(source);
-        NodeType ntTarget = NodeType.of(target);
-        if (ntSource.isObject() && ntTarget.isObject()) {
-            visitObject(target, (key, subTarget) -> {
-                Object subSource = getInObject(source, key);
-                NodeType ntSubSource = NodeType.of(subSource);
-                NodeType ntSubTarget = NodeType.of(subTarget);
-                if (ntSubTarget.isObject()) {
-                    if (ntSubSource.isObject()) {
-                        merge(subSource, subTarget, preferTarget, needCopy);
-                    } else if (preferTarget || subSource == null) {
-                        if (needCopy) {
-                            putInObject(source, key, deepCopy(subTarget));
-                        } else {
-                            putInObject(source, key, subTarget);
-                        }
-                    }
-                } else if (ntSubTarget.isArray()) {
-                    if (ntSubSource.isArray()) {
-                        merge(subSource, subTarget, preferTarget, needCopy);
-                    } else if (preferTarget || subSource == null) {
-                        if (needCopy) {
-                            putInObject(source, key, deepCopy(subTarget));
-                        } else {
-                            putInObject(source, key, subTarget);
-                        }
-                    }
-                } else if (preferTarget || subSource == null) {
-                    putInObject(source, key, subTarget);
-                }
-            });
-        } else if (ntSource.isArray() && ntTarget.isArray()) {
-            visitArray(target, (i, subTarget) -> {
-                Object subSource = getInArray(source, i);
-                NodeType ntSubSource = NodeType.of(subSource);
-                NodeType ntSubTarget = NodeType.of(subTarget);
-                if (ntSubTarget.isObject()) {
-                    if (ntSubSource.isObject()) {
-                        merge(subSource, subTarget, preferTarget, needCopy);
-                    } else if (preferTarget || subSource == null) {
-                        if (needCopy) {
-                            setInArray(source, i, deepCopy(subTarget));
-                        } else {
-                            setInArray(source, i, subTarget);
-                        }
-                    }
-                } else if (ntSubTarget.isArray()) {
-                    if (ntSubSource.isArray()) {
-                        merge(subSource, subTarget, preferTarget, needCopy);
-                    } else if (preferTarget || subSource == null) {
-                        if (needCopy) {
-                            setInArray(source, i, deepCopy(subTarget));
-                        } else {
-                            setInArray(source, i, subTarget);
-                        }
-                    }
-                } else if (preferTarget || subSource == null) {
-                    setInArray(source, i, subTarget);
-                }
-            });
-        }
-    }
 
     /// Private
 
     private static void _walk(Object container, JsonPath path,
-                              BiConsumer<JsonPath, Object> consumer,
-                              Target target, WalkOrder order, int maxDepth) {
-        if (maxDepth > 0 && path.getDepth() > maxDepth) return;
+                              BiFunction<JsonPath, Object, Control> visitor,
+                              Target target, Order order, int maxDepth) {
+        if (maxDepth > 0 && path.depth() > maxDepth) return;
 
         NodeType nt = NodeType.of(container);
 
         if (nt.isObject()) {
-            if (order == WalkOrder.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
-                consumer.accept(path, container);
+            if (order == Order.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
+                Control control = visitor.apply(path, container);
+                if (control == Control.STOP) return;
             }
-            visitObject(container, (key, node) -> {
+            JsonWalker.visitObject(container, (key, node) -> {
                 JsonPath newPath = path.copy().push(new PathToken.Name(key));
                 if (node != null) {
-                    _walk(node, newPath, consumer, target, order, maxDepth);
+                    _walk(node, newPath, visitor, target, order, maxDepth);
                 }
             });
-            if (order == WalkOrder.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
-                consumer.accept(path, container);
+            if (order == Order.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
+                Control control = visitor.apply(path, container);
+                if (control == Control.STOP) return;
             }
         } else if (nt.isArray()) {
-            if (order == WalkOrder.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
-                consumer.accept(path, container);
+            if (order == Order.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
+                Control control = visitor.apply(path, container);
+                if (control == Control.STOP) return;
             }
-            visitArray(container, (idx, node) -> {
+            JsonWalker.visitArray(container, (idx, node) -> {
                 JsonPath newPath = path.copy().push(new PathToken.Index(idx));
                 if (node != null) {
-                    _walk(node, newPath, consumer, target, order, maxDepth);
+                    _walk(node, newPath, visitor, target, order, maxDepth);
                 }
             });
-            if (order == WalkOrder.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
-                consumer.accept(path, container);
+            if (order == Order.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
+                Control control = visitor.apply(path, container);
+                if (control == Control.STOP) return;
             }
         } else {
             if (target == Target.VALUE || target == Target.ANY) {
-                consumer.accept(path, container);
+                Control control = visitor.apply(path, container);
+                if (control == Control.STOP) return;
             }
         }
     }
@@ -504,11 +401,11 @@ public class JsonWalker {
 
     private static void _walk2(Object container, JsonPath path,
                                BiConsumer<JsonPath, Object> consumer,
-                               Target target, WalkOrder order, int maxDepth) {
-        if (maxDepth > 0 && path.getDepth() > maxDepth) return;
+                               Target target, Order order, int maxDepth) {
+        if (maxDepth > 0 && path.depth() > maxDepth) return;
 
         if (container instanceof JsonObject) {
-            if (order == WalkOrder.TOP_DOWN && target == Target.CONTAINER) {
+            if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
             ((JsonObject) container).forEach((key, node) -> {
@@ -517,11 +414,11 @@ public class JsonWalker {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
             });
-            if (order == WalkOrder.BOTTOM_UP && target == Target.CONTAINER) {
+            if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
         } else if (container instanceof Map) {
-            if (order == WalkOrder.TOP_DOWN && target == Target.CONTAINER) {
+            if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
@@ -531,11 +428,11 @@ public class JsonWalker {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
             }
-            if (order == WalkOrder.BOTTOM_UP && target == Target.CONTAINER) {
+            if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
         } else if (container instanceof JsonArray) {
-            if (order == WalkOrder.TOP_DOWN && target == Target.CONTAINER) {
+            if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
             JsonArray ja = (JsonArray) container;
@@ -546,11 +443,11 @@ public class JsonWalker {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
             }
-            if (order == WalkOrder.BOTTOM_UP && target == Target.CONTAINER) {
+            if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
         } else if (container instanceof List) {
-            if (order == WalkOrder.TOP_DOWN && target == Target.CONTAINER) {
+            if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
             List<?> list = (List<?>) container;
@@ -561,11 +458,11 @@ public class JsonWalker {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
             }
-            if (order == WalkOrder.BOTTOM_UP && target == Target.CONTAINER) {
+            if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
         } else if (container != null && container.getClass().isArray()) {
-            if (order == WalkOrder.TOP_DOWN && target == Target.CONTAINER) {
+            if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
             for (int i = 0; i < Array.getLength(container); i++) {
@@ -575,11 +472,11 @@ public class JsonWalker {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
             }
-            if (order == WalkOrder.BOTTOM_UP && target == Target.CONTAINER) {
+            if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
         } else if (container != null && PojoRegistry.isPojo(container.getClass())) {
-            if (order == WalkOrder.TOP_DOWN && target == Target.CONTAINER) {
+            if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
             PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
@@ -590,7 +487,7 @@ public class JsonWalker {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
             }
-            if (order == WalkOrder.BOTTOM_UP && target == Target.CONTAINER) {
+            if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
         } else {
@@ -598,7 +495,6 @@ public class JsonWalker {
                 consumer.accept(path, container);
             }
         }
-
     }
 
 }

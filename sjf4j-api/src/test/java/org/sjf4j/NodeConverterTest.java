@@ -1,11 +1,6 @@
 package org.sjf4j;
 
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Test;
-import org.sjf4j.converters.OffsetDateTimeConverter;
-
-import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

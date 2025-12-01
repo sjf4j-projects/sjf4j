@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 public enum NodeType {
-    ANY,
     VALUE_VOID,
     VALUE_STRING,
     VALUE_NUMBER,
@@ -83,10 +82,6 @@ public enum NodeType {
             return OBJECT_POJO;
         }
         return UNKNOWN;
-    }
-
-    public boolean isAny() {
-        return this == ANY;
     }
 
     public boolean isNumber() {

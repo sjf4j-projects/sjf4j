@@ -62,6 +62,7 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
 
     /// API
 
+    @Override
     public Object readNode(@NonNull Reader input, Type type) {
         try {
             Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
@@ -70,10 +71,11 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
             SnakeStreamingUtil.endDocument(parser);
             return node;
         } catch (IOException e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
+            throw new JsonException("Failed to read YAML streaming into node of type '" + type + "'", e);
         }
     }
 
+    @Override
     public void writeNode(@NonNull Writer output, Object node) {
         try {
             Emitter emitter = new Emitter(output, dumperOptions);
@@ -81,38 +83,9 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
             SnakeStreamingUtil.writeNode(emitter, node);
             SnakeStreamingUtil.endDocument(emitter);
         } catch (IOException e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to YAML streaming", e);
         }
     }
-
-
-    @SuppressWarnings("unchecked")
-    public <T> T readObject(@NonNull Reader input, @NonNull Class<T> clazz) {
-        try {
-            return (T) readNode(input, clazz);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public  <T> T readObject(@NonNull Reader input, @NonNull TypeReference<T> type) {
-        try {
-            return (T) readNode(input, type.getType());
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    public JsonObject readObject(@NonNull Reader input) {
-        try {
-            return readObject(input, JsonObject.class);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type 'JsonObject'", e);
-        }
-    }
-
-
 
 
 }

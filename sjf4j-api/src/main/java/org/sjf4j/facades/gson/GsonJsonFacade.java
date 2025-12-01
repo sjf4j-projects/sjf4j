@@ -2,8 +2,6 @@ package org.sjf4j.facades.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonIOException;
-import com.google.gson.ToNumberPolicy;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import lombok.Getter;
@@ -11,8 +9,6 @@ import lombok.NonNull;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.JsonObject;
-import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
@@ -26,10 +22,11 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     private final Gson gson;
 
     public GsonJsonFacade(@NonNull GsonBuilder gsonBuilder) {
-        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.MODULE_EXTRA) {
+        gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE ||
+                JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
-            gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
-            gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         }
         this.gson = gsonBuilder.create();
     }
@@ -47,15 +44,17 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
 
     /// API
 
+    @Override
     public Object readNode(@NonNull Reader input, Type type) {
-        switch (JsonConfig.global().facadeMode) {
+        switch (JsonConfig.global().readMode) {
             case STREAMING_GENERAL:
                 return readNodeWithGeneral(input, type);
             case STREAMING_SPECIFIC:
                 return readNodeWithSpecific(input, type);
-            case MODULE_EXTRA:
+            case USE_MODULE:
+                return readNodeWithModule(input, type);
             default:
-                return readNodeWithExtra(input, type);
+                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
         }
     }
 
@@ -71,7 +70,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         }
     }
 
-    public Object readNodeWithExtra(@NonNull Reader input, Type type) {
+    public Object readNodeWithModule(@NonNull Reader input, Type type) {
         try (JsonReader reader = gson.newJsonReader(input)) {
             return gson.fromJson(reader, type);
         } catch (Exception e) {
@@ -80,7 +79,28 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     }
 
 
+    @Override
     public void writeNode(@NonNull Writer output, Object node) {
+        switch (JsonConfig.global().writeMode) {
+            case STREAMING_GENERAL:
+                writeNodeWithGeneral(output, node);
+                break;
+            case STREAMING_SPECIFIC:
+                writeNodeWithSpecific(output, node);
+                break;
+            case USE_MODULE:
+                writeNodeWithModule(output, node);
+                break;
+            default:
+                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+        }
+    }
+
+    public void writeNodeWithGeneral(Writer output, Object node) {
+        JsonFacade.super.writeNode(output, node);
+    }
+
+    public void writeNodeWithSpecific(@NonNull Writer output, Object node) {
         try {
             JsonWriter writer = gson.newJsonWriter(output);
             GsonStreamingUtil.startDocument(writer);
@@ -88,35 +108,13 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             GsonStreamingUtil.endDocument(writer);
             writer.flush();
         } catch (IOException e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    "' to JSON streaming", e);
         }
     }
 
-
-    @SuppressWarnings("unchecked")
-    public <T> T readObject(@NonNull Reader input, @NonNull Class<T> clazz) {
-        try {
-            return (T) readNode(input, clazz);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + clazz + "'", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public  <T> T readObject(@NonNull Reader input, @NonNull TypeReference<T> type) {
-        try {
-            return (T) readNode(input, type.getType());
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    public JsonObject readObject(@NonNull Reader input) {
-        try {
-            return readObject(input, JsonObject.class);
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type 'JsonObject'", e);
-        }
+    public void writeNodeWithModule(Writer output, Object node) {
+        JsonFacade.super.writeNode(output, node);
     }
 
 

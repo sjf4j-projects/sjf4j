@@ -19,11 +19,12 @@ import java.util.Map;
 public class GsonModule {
 
     public static class MyTypeAdapterFactory implements TypeAdapterFactory {
+
+        @SuppressWarnings("unchecked")
         @Override
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
             Class<?> raw = type.getRawType();
             if (JsonObject.class.isAssignableFrom(raw)) {
-//                return null;
                 return new JsonObjectTypeAdapter<>(gson, type);
             }
             if (JsonArray.class.isAssignableFrom(raw)) {
@@ -39,7 +40,7 @@ public class GsonModule {
 
         public JsonObjectTypeAdapter(Gson gson, TypeToken<T> type) {
             this.gson = gson;
-            Class<? super T> clazz = type.getRawType();
+            Class<?> clazz = type.getRawType();
             if (clazz == JsonObject.class) {
                 this.pi = null;
             } else {

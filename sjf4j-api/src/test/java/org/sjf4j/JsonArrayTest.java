@@ -44,6 +44,7 @@ class JsonArrayTest {
         testParse3();
         testArray1();
         testArray2();
+        testToList1();
         testCopy();
         testByPath1();
         testByPath2();
@@ -55,8 +56,6 @@ class JsonArrayTest {
         testForEach();
         testEmptyArray();
         testMerge();
-        testToPojo1();
-        testToPojo2();
         testPrimitiveArrays();
         testEdgeCases();
     }
@@ -148,15 +147,19 @@ class JsonArrayTest {
     public void testArray1() {
         JsonArray a1 = JsonArray.fromJson("[2,3,4]");
 //        List<Object> list = a1.toList();
-        List<Integer> list1 = a1.toPojo(new TypeReference<List<Integer>>(){});
+        List<Integer> list1 = a1.toList(Integer.class);
         log.info("list1.type={}, list1={}", list1.getClass(), list1);
         assertEquals(3, list1.size());
         assertEquals(3, list1.get(1));
 
-        List<Float> list2 = a1.toPojo(new TypeReference<List<Float>>(){});
+        List<Float> list2 = a1.toList(Float.class);
         log.info("list2.type={}, list2={}", list2.getClass(), list2);
         assertEquals(Float.class, list2.get(1).getClass());
         assertEquals(3.0f, list2.get(1));
+
+        Float[] fs = a1.toArray(Float.class);
+        assertEquals(3, fs.length);
+        assertEquals(3.0f, fs[1]);
     }
 
     public void testArray2() {
@@ -354,20 +357,15 @@ class JsonArrayTest {
         assertEquals(2, ja3.asJsonObject(0).getInteger("y"));
     }
 
-    public void testToPojo1() {
+    public void testToList1() {
         JsonArray ja = new JsonArray(new Object[]{1, 2, "test", true});
-        List<Object> list = ja.toPojo(new TypeReference<List<Object>>(){});
+        List<Object> list = ja.toList();
         
         assertEquals(4, list.size());
         assertEquals(1, list.get(0));
         assertEquals(2, list.get(1));
         assertEquals("test", list.get(2));
         assertEquals(true, list.get(3));
-    }
-
-    public void testToPojo2() {
-        JsonArray ja = new JsonArray(new Object[]{1, 2, "test", true});
-        assertThrows(JsonException.class, () -> ja.toPojo(Date.class));
     }
 
     public void testPrimitiveArrays() {

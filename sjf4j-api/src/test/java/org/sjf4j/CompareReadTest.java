@@ -120,77 +120,33 @@ public class CompareReadTest {
         JacksonJsonFacade jacksonFacade = new JacksonJsonFacade(new ObjectMapper());
         long start, end;
 
-        for (long i = 0; i < 100_000; i++) {
-            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
-        }
-        for (long i = 0; i < 100_000; i++) {
-            Sjf4j.fromJson(new StringReader(JSON_DATA), Person.class);
-        }
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            Sjf4j.fromJson(new StringReader(JSON_DATA), Object.class);
+            Sjf4j.fromJson(JSON_DATA);
         }
         end = System.nanoTime();
-        log.info("Jackson-Sjf4j-jojo1: {}", (end - start) / 1000_000);
+        log.info("Jackson-Sjf4j-jo: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            Sjf4j.fromJson(new StringReader(JSON_DATA), Person.class);
+            Sjf4j.fromJson(JSON_DATA, Person.class);
         }
         end = System.nanoTime();
-        log.info("Jackson-Sjf4j-pojo1: {}", (end - start) / 1000_000);
+        log.info("Jackson-Sjf4j-pojo: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            JacksonWalker.walk2Map(om.getFactory().createParser(new StringReader(JSON_DATA)));
+            jacksonFacade.readNodeWithGeneral(new StringReader(JSON_DATA), Object.class);
         }
         end = System.nanoTime();
-        log.info("Jackson-walk2Map: {}", (end - start) / 1000_000);
+        log.info("Jackson-General-jo: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            JacksonWalker.walk2Jo(om.getFactory().createParser(new StringReader(JSON_DATA)));
+            jacksonFacade.readNodeWithGeneral(new StringReader(JSON_DATA), Person.class);
         }
         end = System.nanoTime();
-        log.info("Jackson-walk2Jo: {}", (end - start) / 1000_000);
-
-        start = System.nanoTime();
-        for (long i = 0; i < 100_000; i++) {
-            JsonParser parser = om.getFactory().createParser(new StringReader(JSON_DATA));
-            JacksonStreamingUtil.readNode(parser, Object.class);
-        }
-        end = System.nanoTime();
-        log.info("Jackson-Only-jojo1: {}", (end - start) / 1000_000);
-
-        start = System.nanoTime();
-        for (long i = 0; i < 100_000; i++) {
-            JsonParser parser = om.getFactory().createParser(new StringReader(JSON_DATA));
-            JacksonStreamingUtil.readNode(parser, Person.class);
-        }
-        end = System.nanoTime();
-        log.info("Jackson-Only-pojo1: {}", (end - start) / 1000_000);
-
-        start = System.nanoTime();
-        for (long i = 0; i < 100_000; i++) {
-            JsonParser parser = om.getFactory().createParser(new StringReader(JSON_DATA));
-            StreamingUtil.readNode(new JacksonReader(parser), Object.class);
-        }
-        end = System.nanoTime();
-        log.info("Jackson-Uni-jojo1: {}", (end - start) / 1000_000);
-
-        start = System.nanoTime();
-        for (long i = 0; i < 100_000; i++) {
-            jacksonFacade.readNode(new StringReader(JSON_DATA), Object.class);
-        }
-        end = System.nanoTime();
-        log.info("Jackson-Uni-jojo2: {}", (end - start) / 1000_000);
-
-        start = System.nanoTime();
-        for (long i = 0; i < 100_000; i++) {
-            jacksonFacade.readNode(new StringReader(JSON_DATA), Person.class);
-        }
-        end = System.nanoTime();
-        log.info("Jackson-Uni-pojo1: {}", (end - start) / 1000_000);
+        log.info("Jackson-General-pojo: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {

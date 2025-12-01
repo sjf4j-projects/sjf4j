@@ -274,6 +274,7 @@ public class NodeUtil {
     }
 
 
+    /// Only support JsonObject/JsonArray, but not POJO/Map/List
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> T as(Object node, @NonNull Class<T> clazz) {
         if (node == null) {
@@ -307,99 +308,6 @@ public class NodeUtil {
                 " to " + clazz.getName() + ": unsupported type");
     }
 
-
-    // J{email=.com, @User{@id=1, #name=Ja{a=b, c=d}}, Arr[haha, xi, 1])
-    // M{..}
-    // @User{..}
-    // J[..]
-    // L[..]
-    // A[..]
-    // !DateTime@12345
-    public static String inspect(Object node) {
-        StringBuilder sb = new StringBuilder();
-        _inspect(node, sb);
-        return sb.toString();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void _inspect(Object node, StringBuilder sb) {
-        NodeType nt = NodeType.of(node);
-        if (nt.isObject()) {
-            if (node instanceof JsonObject) {
-                JsonObject jo = (JsonObject) node;
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
-                if (pi == null) {
-                    sb.append("J{");
-                } else {
-                    sb.append("@").append(node.getClass().getSimpleName()).append("{");
-                }
-                AtomicInteger idx = new AtomicInteger(0);
-                jo.forEach((k, v) -> {
-                    if (idx.getAndIncrement() > 0) sb.append(", ");
-                    if (pi != null && pi.getFields().containsKey(k)) {
-                        sb.append("*");
-                    }
-                    sb.append(k).append("=");
-                    _inspect(v, sb);
-                });
-                sb.append("}");
-            } else if (node instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) node;
-                sb.append("M{");
-                int idx = 0;
-                for (Map.Entry<String, Object> entry : map.entrySet()) {
-                    if (idx++ > 0) sb.append(", ");
-                    sb.append(entry.getKey()).append("=");
-                    _inspect(entry.getValue(), sb);
-                }
-                sb.append("}");
-            } else if (PojoRegistry.isPojo(node.getClass())) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
-                sb.append("@").append(node.getClass().getSimpleName()).append("{");
-                int idx = 0;
-                for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
-                    if (idx++ > 0) sb.append(", ");
-                    sb.append("@").append(fi.getKey()).append("=");
-                    Object v = fi.getValue().invokeGetter(node);
-                    _inspect(v, sb);
-                }
-                sb.append("}");
-            }
-        } else if (nt.isArray()) {
-            if (node instanceof JsonArray) {
-                JsonArray ja = (JsonArray) node;
-                sb.append("J[");
-                int idx = 0;
-                for (Object v : ja) {
-                    if (idx++ > 0) sb.append(", ");
-                    _inspect(v, sb);
-                }
-                sb.append("]");
-            } else if (node instanceof List) {
-                List<Object> list = (List<Object>) node;
-                sb.append("L[");
-                int idx = 0;
-                for (Object v : list) {
-                    if (idx++ > 0) sb.append(", ");
-                    _inspect(v, sb);
-                }
-                sb.append("]");
-            } else if (node.getClass().isArray()) {
-                int len = Array.getLength(node);
-                sb.append("A[");
-                int idx = 0;
-                for (int i = 0; i < len; i++) {
-                    if (i > 0) sb.append(", ");
-                    _inspect(Array.get(node, i), sb);
-                }
-                sb.append("]");
-            }
-        } else if (nt.isValue()) {
-            sb.append(node);
-        } else {
-            sb.append("!").append(node);
-        }
-    }
 
 
 }

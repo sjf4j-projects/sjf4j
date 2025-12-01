@@ -1,12 +1,11 @@
 package org.sjf4j;
 
 import lombok.NonNull;
+import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
 
 import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -15,6 +14,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -37,27 +37,25 @@ public class JsonObject extends JsonContainer {
         if (node instanceof JsonObject) {
             JsonObject jo = (JsonObject) node;
             if (jo.fieldMap != null) {
-                if (this.nodeMap == null) this.nodeMap = JsonConfig.global().mapSupplier.create();
-                for (Map.Entry<String, PojoRegistry.FieldInfo> fi : fieldMap.entrySet()) {
+                for (Map.Entry<String, PojoRegistry.FieldInfo> fi : jo.fieldMap.entrySet()) {
                     Object v = fi.getValue().invokeGetter(node);
-                    this.nodeMap.put(fi.getKey(), v);
+                    put(fi.getKey(), v);
                 }
             }
             if (jo.nodeMap != null) {
                 if (this.nodeMap == null) {
                     this.nodeMap = jo.nodeMap;
                 } else {
-                    this.nodeMap.putAll(jo.nodeMap);
+                    putAll(jo.nodeMap);
                 }
             }
         } else if (node instanceof Map) {
             this.nodeMap = (Map<String, Object>) node;
         } else if (PojoRegistry.isPojo(node.getClass())) {
-            this.nodeMap = JsonConfig.global().mapSupplier.create();
             PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
             for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
-                this.nodeMap.put(fi.getKey(), v);
+                put(fi.getKey(), v);
             }
         } else {
             throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
@@ -142,10 +140,6 @@ public class JsonObject extends JsonContainer {
 
     /// Map
 
-    public String inspect() {
-        return NodeUtil.inspect(this);
-    }
-
     @Override
     public String toString() {
         return toJson();
@@ -163,11 +157,6 @@ public class JsonObject extends JsonContainer {
         return hash;
     }
 
-    @SuppressWarnings("EqualsDoesntCheckParameterClass")
-    @Override
-    public boolean equals(Object target) {
-        return JsonWalker.equals(this, target);
-    }
 
     @Override
     public int size() {
@@ -211,7 +200,7 @@ public class JsonObject extends JsonContainer {
         }
     }
 
-    private Map<String, Object> toMap() {
+    public Map<String, Object> toMap() {
         if (fieldMap == null) {
             return nodeMap == null ? Collections.emptyMap() : nodeMap;
         } else {
@@ -225,10 +214,6 @@ public class JsonObject extends JsonContainer {
             return merged;
         }
     }
-
-//    public Set<Map.Entry<String, Object>> entrySet() {
-//        return toMap().entrySet();
-//    }
 
     public Set<Map.Entry<String, Object>> entrySet() {
         Set<Map.Entry<String, Object>> set = new LinkedHashSet<>();
@@ -253,14 +238,15 @@ public class JsonObject extends JsonContainer {
         return false;
     }
 
+
     /// JSON Facade
 
     public static JsonObject fromJson(@NonNull String input) {
-        return fromJson(new StringReader(input));
+        return Sjf4j.fromJson(input);
     }
 
     public static JsonObject fromJson(@NonNull Reader input) {
-        return Sjf4j.fromJson(input, JsonObject.class);
+        return Sjf4j.fromJson(input);
     }
 
     public String toJson() {
@@ -270,7 +256,7 @@ public class JsonObject extends JsonContainer {
     ///  YAML Facade
 
     public static JsonObject fromYaml(@NonNull String input) {
-        return fromYaml(new StringReader(input));
+        return Sjf4j.fromYaml(input);
     }
 
     public static JsonObject fromYaml(@NonNull Reader input) {
@@ -278,31 +264,37 @@ public class JsonObject extends JsonContainer {
     }
 
     public String toYaml() {
-        StringWriter output = new StringWriter();
-        toYaml(output);
-        return output.toString();
+        return Sjf4j.toYaml(this);
     }
 
     public void toYaml(@NonNull Writer output) {
-        Sjf4j.writeNodeToYaml(output, this);
+        Sjf4j.toYaml(output, this);
     }
 
-    /// POJO
+    /// POJO Facade
+
+    public <T> T toPojo(@NonNull Class<T> clazz) {
+        return Sjf4j.fromPojo(this, clazz);
+    }
+
+    public <T> T toPojo(@NonNull TypeReference<T> type) {
+        return Sjf4j.fromPojo(this, type);
+    }
 
     public static JsonObject fromPojo(@NonNull Object pojo) {
-//        return (JsonObject) ObjectUtil.object2Value(pojo);
-        return (JsonObject) JsonConfig.global().getObjectFacade().readNode(pojo, JsonObject.class);
+        return Sjf4j.fromPojo(pojo);
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T toPojo(@NonNull Class<T> clazz) {
-        return (T) JsonConfig.global().getObjectFacade().readNode(this, clazz);
+    /// Properties Facade
+
+    public static JsonObject fromProperties(@NonNull Properties props) {
+        return Sjf4j.fromProperties(props);
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T toPojo(@NonNull TypeReference<T> type) {
-        return (T) JsonConfig.global().getObjectFacade().readNode(this, type.getType());
+    public void toProperties(Properties props) {
+        Sjf4j.toProperties(props, this);
     }
+
 
     /// Getter
 
@@ -668,7 +660,7 @@ public class JsonObject extends JsonContainer {
     }
     @SuppressWarnings("unchecked")
     public <T> T get(@NonNull String key, T... reified) {
-        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(key, clazz);
     }
@@ -684,7 +676,7 @@ public class JsonObject extends JsonContainer {
     }
     @SuppressWarnings("unchecked")
     public <T> T as(@NonNull String key, T... reified) {
-        if (reified.length > 0) throw new JsonException("`reified` should be empty.");
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return as(key, clazz);
     }
@@ -692,45 +684,48 @@ public class JsonObject extends JsonContainer {
 
     /// Putter
 
-    public void put(@NonNull String key, Object object) {
-//        object = ObjectUtil.wrapObject(object);
-//        if (!ObjectUtil.isValidOrConvertible(object)) {
-//            throw new JsonException("Invalid JSON value for key '" + key + "': object of " + object.getClass() +
-//                    " cannot be directly stored or converted to a JSON-compatible value.");
-//        }
+    public Object put(@NonNull String key, Object object) {
         if (fieldMap != null) {
             PojoRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
+                Object old = fi.invokeGetter(this);
                 fi.invokeSetter(this, object);
-                return;
+                return old;
             }
         }
         if (nodeMap == null) {
             nodeMap = JsonConfig.global().mapSupplier.create();
         }
-        nodeMap.put(key, object);
+        return nodeMap.put(key, object);
     }
 
-    public void putNonNull(@NonNull String key, Object object) {
-        if (object != null) {
-            put(key, object);
+    public Object putNonNull(@NonNull String key, Object node) {
+        if (node != null) {
+            return put(key, node);
+        } else {
+            return getObject(key);
         }
     }
 
-    public void putIfAbsent(@NonNull String key, Object object) {
-        if (getObject(key) == null) {
-            put(key, object);
+    public Object putIfAbsent(@NonNull String key, Object node) {
+        Object old = get(key);
+        if (old == null) {
+            old = put(key, node);
         }
+        return old;
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T computeIfAbsent(@NonNull String key, @NonNull Function<String, ? extends T> mappingFunction) {
-        T value = get(key);
-        if (value == null) {
-            value = mappingFunction.apply(key);
-            put(key, value);
+    public <T> T computeIfAbsent(@NonNull String key, @NonNull Function<String, T> computer) {
+        T old = get(key);
+        if (old == null) {
+            T newNode = computer.apply(key);
+            if (newNode != null) {
+                put(key, newNode);
+                return newNode;
+            }
         }
-        return value;
+        return old;
     }
 
     public void putAll(@NonNull JsonObject jsonObject) {
@@ -770,21 +765,14 @@ public class JsonObject extends JsonContainer {
 
     /// Copy, merge
 
-    public JsonObject deepCopy() {
-//        //TODO
-//        JsonObject copy = new JsonObject();
-//        for (String key : keySet()) {
-//            Object value = getObject(key);
-//            if (value instanceof JsonObject) {
-//                copy.put(key, ((JsonObject) value).deepCopy());
-//            } else if (value instanceof JsonArray) {
-//                copy.put(key, ((JsonArray) value).deepCopy());
-//            } else {
-//                copy.put(key, value);
-//            }
-//        }
-//        return copy;
-        return (JsonObject) JsonConfig.global().getObjectFacade().readNode(this, JsonObject.class);
+    @SuppressWarnings("unchecked")
+    public <T extends JsonObject>  T copy() {
+        return (T) ContainerUtil.copy(this);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends JsonObject>  T deepCopy() {
+        return (T) ContainerUtil.deepCopy(this);
     }
 
     /**
@@ -797,37 +785,7 @@ public class JsonObject extends JsonContainer {
      *
      */
     public void merge(JsonObject target, boolean preferTarget, boolean needCopy) {
-        JsonWalker.merge(this, target, preferTarget, needCopy);
-//        //TODO
-//        if (target == null) return;
-//        for (String key : target.keySet()) {
-//            Object tarValue = target.getObject(key);
-//            if (tarValue instanceof JsonObject) {
-//                Object srcValue = getObject(key);
-//                if (srcValue instanceof JsonObject) {
-//                    ((JsonObject) srcValue).merge((JsonObject) tarValue, targetWin, needCopy);
-//                } else if (targetWin || srcValue == null) {
-//                    if (needCopy) {
-//                        put(key, ((JsonObject) tarValue).deepCopy());
-//                    } else {
-//                        put(key, tarValue);
-//                    }
-//                }
-//            } else if (tarValue instanceof JsonArray) {
-//                Object srcValue = getObject(key);
-//                if (srcValue instanceof JsonArray) {
-//                    ((JsonArray) srcValue).merge((JsonArray) tarValue, targetWin, needCopy);
-//                } else if (targetWin || srcValue == null) {
-//                    if (needCopy) {
-//                        put(key, ((JsonArray) tarValue).deepCopy());
-//                    } else {
-//                        put(key, tarValue);
-//                    }
-//                }
-//            } else if (targetWin || !containsKey(key)) {
-//                put(key, tarValue);
-//            }
-//        }
+        ContainerUtil.merge(this, target, preferTarget, needCopy);
     }
 
     /**
@@ -846,14 +804,23 @@ public class JsonObject extends JsonContainer {
     }
 
     public void deepPruneNulls() {
-        JsonWalker.walkContainersBottomUp(this, (path, node) -> {
-            if (node instanceof JsonObject) {
-                ((JsonObject) node).removeIf(e -> e.getValue() == null);
-            } else if (node instanceof Map) {
-                ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
-            }
-        });
+        JsonWalker.walk(this, JsonWalker.Target.CONTAINER, JsonWalker.Order.BOTTOM_UP,
+                (path, node) -> {
+                    if (node instanceof JsonObject) {
+                        ((JsonObject) node).removeIf(e -> e.getValue() == null);
+                    } else if (node instanceof Map) {
+                        ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
+                    }
+                    return JsonWalker.Control.CONTINUE;
+                });
     }
+
+    /// Stream
+
+    public JsonStream<JsonObject> stream() {
+        return JsonStream.of(this);
+    }
+
 
     /// builder
 

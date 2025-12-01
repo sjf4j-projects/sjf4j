@@ -1,5 +1,9 @@
 package org.sjf4j;
 
+
+/**
+ * FIXME: Deprecated
+ */
 public interface NodeConverter<W, P> {
 
     Class<W> getWrapType();

@@ -24,22 +24,23 @@ public class WalkerBechmark {
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
     private static final JsonObject JO = JsonObject.fromJson(JSON_DATA);
 
-//    @Benchmark
-//    public void walk1(Blackhole bh) {
-//        for (int i = 0; i < 100; i++) {
-//            JsonWalker.walk(JO, JsonWalker.Target.ANY, JsonWalker.WalkOrder.TOP_DOWN, 0,
-//                    (k, v) -> bh.consume(k));
-//        }
-//    }
-//
-//
-//    @Benchmark
-//    public void walk2(Blackhole bh) {
-//        for (int i = 0; i < 100; i++) {
-//            JsonWalker.walk2(JO, JsonWalker.Target.ANY, JsonWalker.WalkOrder.TOP_DOWN, 0,
-//                    (k, v) -> bh.consume(k));
-//        }
-//    }
+    @Benchmark
+    public void walk_1(Blackhole bh) {
+        // Each benchmark pre-walks 100 times to amortize JMH harness overhead; only the walker implementation differs.
+        for (int i = 0; i < 100; i++) {
+            JsonWalker.walk(JO, JsonWalker.Target.ANY, JsonWalker.Order.TOP_DOWN, 0,
+                    (k, v) -> bh.consume(k));
+        }
+    }
+
+
+    @Benchmark
+    public void walk_2(Blackhole bh) {
+        for (int i = 0; i < 100; i++) {
+            JsonWalker.walk2(JO, JsonWalker.Target.ANY, JsonWalker.Order.TOP_DOWN, 0,
+                    (k, v) -> bh.consume(k));
+        }
+    }
 
 
 }
