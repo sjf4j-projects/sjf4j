@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonObject;
-import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -38,22 +38,23 @@ public class JacksonFacadeTest {
     public void testWithModule1() throws IOException {
         JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
 
+        JsonConfig.global(new JsonConfig.Builder().readMode(JsonConfig.ReadMode.USE_MODULE).build());
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
-        JsonObject jo1 = (JsonObject) facade.readNodeWithModule(new StringReader(json1), JsonObject.class);
+        JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         log.info("jo1={}", jo1.inspect());
 
-        Book jo2 = (Book) facade.readNodeWithModule(new StringReader(json1), Book.class);
+        Book jo2 = (Book) facade.readNode(new StringReader(json1), Book.class);
         log.info("jo2={}", jo2.inspect());
         assertEquals(20, jo2.getIntegerByPath("/friends/rose/age/1"));
 
         String json2 = "[1,2,3]";
-        JsonArray ja1 = (JsonArray) facade.readNodeWithModule(new StringReader(json2), JsonArray.class);
+        JsonArray ja1 = (JsonArray) facade.readNode(new StringReader(json2), JsonArray.class);
         log.info("ja1={}", ja1);
 
-        Object ja2 = facade.readNodeWithModule(new StringReader(json2), Object.class);
+        Object ja2 = facade.readNode(new StringReader(json2), Object.class);
         log.info("ja2={}, type={}", ja2, ja2.getClass());
 
-        Object ja3 = facade.readNodeWithModule(new StringReader(json2), int[].class);
+        Object ja3 = facade.readNode(new StringReader(json2), int[].class);
         log.info("ja3={}, type={}", ja3, ja3.getClass());
 
     }
@@ -65,19 +66,22 @@ public class JacksonFacadeTest {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
+        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_GENERAL).build());
         StringWriter output;
         output = new StringWriter();
-        facade.writeNodeWithGeneral(output, jo1);
+        facade.writeNode(output, jo1);
         String json2 = output.toString();
         assertEquals(json1, json2);
 
+        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_GENERAL).build());
         output = new StringWriter();
-        facade.writeNodeWithSpecific(output, jo1);
+        facade.writeNode(output, jo1);
         String json3 = output.toString();
         assertEquals(json1, json3);
 
+        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_GENERAL).build());
         output = new StringWriter();
-        facade.writeNodeWithModule(output, jo1);
+        facade.writeNode(output, jo1);
         String json4 = output.toString();
         assertEquals(json1, json4);
     }

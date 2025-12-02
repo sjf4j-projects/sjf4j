@@ -162,7 +162,6 @@ public class CompareWriteTest {
 //        }
 //        end = System.nanoTime();
 //        log.info("Fastjson2-walk2Map: {}", (end - start) / 1000_000);
-        new ObjectMapper().
 
         for (long i = 0; i < 1000; i++) {
             JSON.parseObject(new StringReader(JSON_DATA));

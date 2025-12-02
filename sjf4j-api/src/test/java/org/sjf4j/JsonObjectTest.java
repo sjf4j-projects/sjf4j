@@ -421,7 +421,7 @@ class JsonObjectTest {
     public void testYaml1() {
 
         String json1 = "{\"s1\":\"haha\",\"i2\":null,\"f3\":99.9,\"b4\":true,\"s\\\"5\":\"00\"}";
-        JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNodeWithModule(
+        JsonObject jo1 = (JsonObject) new Fastjson2JsonFacade().readNode(
                 new StringReader(json1), JsonObject.class);
 //        JsonObject jo1 = JsonObject.fromJson(json1);
         String ya1 = jo1.toYaml();
@@ -618,12 +618,12 @@ class JsonObjectTest {
 
     @Test
     public void testSupplier1() {
-        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
+        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
         JsonObject jo1 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"a\":\"aa\",\"b\":\"bb\",\"c\":\"cc\"}", jo1.toJson());
 
-        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
+        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
         JsonObject jo2 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());

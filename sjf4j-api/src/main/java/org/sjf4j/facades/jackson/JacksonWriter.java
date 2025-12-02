@@ -81,8 +81,8 @@ public class JacksonWriter implements FacadeWriter {
     }
 
     @Override
-    public void close() throws IOException {
-        gen.close();
+    public void flush() throws IOException {
+        gen.flush();
     }
 
 }

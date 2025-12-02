@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.facades.FacadeWriter;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -82,20 +83,23 @@ public class Fastjson2Writer implements FacadeWriter {
         writer.writeNull();
     }
 
+    // Ugly!
     @Override
-    public void close() throws IOException {
-        writer.close();
+    public void writeComma() {
+        writer.writeComma();
+    }
+
+    @Override
+    public void flush() {
+        // nothing
     }
 
     // Hacking
     public void flushTo(Writer out) throws IOException {
         writer.flushTo(out);
     }
-
-    // Very ugly!
-    @Override
-    public void writeComma() {
-        writer.writeComma();
+    public void flushTo(OutputStream out) throws IOException {
+        writer.flushTo(out);
     }
 
 }

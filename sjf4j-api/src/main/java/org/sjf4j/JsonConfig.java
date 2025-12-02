@@ -37,23 +37,23 @@ public final class JsonConfig {
 
     private static volatile JsonConfig GLOBAL = new JsonConfig.Builder().build();
 
-    public static void setGlobal(@NonNull JsonConfig config) {
-        GLOBAL = config;
+    public static void global(@NonNull JsonConfig jsonConfig) {
+        GLOBAL = jsonConfig;
     }
     public static JsonConfig global() {
         return GLOBAL;
     }
 
     public static void useJacksonAsGlobal() {
-        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global())
+        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
                 .jsonFacade(FacadeFactory.createJacksonFacade()).build());
     }
     public static void useGsonAsGlobal() {
-        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global())
+        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
                 .jsonFacade(FacadeFactory.createGsonFacade()).build());
     }
     public static void useFastjson2AsGlobal() {
-        JsonConfig.setGlobal(new JsonConfig.Builder(JsonConfig.global())
+        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
                 .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
     }
 

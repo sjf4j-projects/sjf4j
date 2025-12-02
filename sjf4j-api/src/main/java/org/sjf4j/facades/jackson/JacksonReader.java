@@ -11,7 +11,7 @@ public class JacksonReader implements FacadeReader {
 
     private final JsonParser parser;
 
-    public JacksonReader(@NonNull JsonParser parser) throws IOException {
+    public JacksonReader(@NonNull JsonParser parser) {
         this.parser = parser;
     }
 

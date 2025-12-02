@@ -2,7 +2,6 @@ package org.sjf4j;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONReader;
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -136,14 +135,14 @@ public class CompareReadTest {
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            jacksonFacade.readNodeWithGeneral(new StringReader(JSON_DATA), Object.class);
+            jacksonFacade.readNode(new StringReader(JSON_DATA), Object.class);
         }
         end = System.nanoTime();
         log.info("Jackson-General-jo: {}", (end - start) / 1000_000);
 
         start = System.nanoTime();
         for (long i = 0; i < 100_000; i++) {
-            jacksonFacade.readNodeWithGeneral(new StringReader(JSON_DATA), Person.class);
+            jacksonFacade.readNode(new StringReader(JSON_DATA), Person.class);
         }
         end = System.nanoTime();
         log.info("Jackson-General-pojo: {}", (end - start) / 1000_000);

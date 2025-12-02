@@ -3,7 +3,7 @@ package org.sjf4j.facades;
 import java.io.Closeable;
 import java.io.IOException;
 
-public interface FacadeWriter extends Closeable {
+public interface FacadeWriter {
 
     void startDocument() throws IOException;
 
@@ -27,6 +27,7 @@ public interface FacadeWriter extends Closeable {
 
     void writeNull() throws IOException;
 
-    default void writeComma() throws IOException {/* For Fastjson2 */}
+    default void writeComma() {/* For Fastjson2 */}
 
+    void flush() throws IOException;
 }

@@ -33,7 +33,7 @@ public class YamlFacadeTest {
         String ya1 = sw.toString();
         log.info("ya1: \n{}", ya1);
 
-        JsonObject jo2 = snake.readObject(new StringReader(ya1));
+        JsonObject jo2 = (JsonObject) snake.readNode(new StringReader(ya1), JsonObject.class);
         log.info("jo1.hash={}, jo2.hash={}", jo1.hashCode(), jo2.hashCode());
         assertEquals(jo1, jo2);
     }
@@ -56,7 +56,7 @@ public class YamlFacadeTest {
         String ya1 = sw.toString();
         log.info("ya1: \n{}", ya1);
 
-        Person p1 = snake.readObject(new StringReader(ya1), Person.class);
+        Person p1 = (Person) snake.readNode(new StringReader(ya1), Person.class);
         log.info("p1={}", p1);
         assertEquals(123, p1.getId());
         assertEquals("han", p1.getName());
@@ -64,7 +64,7 @@ public class YamlFacadeTest {
         assertEquals("han", p1.getStringByPath("$.name"));
         assertEquals(20, p1.getIntegerByPath("$.friends.rose.age[1]"));
 
-        Person p2 = snake.readObject(new StringReader(ya1), new TypeReference<Person>(){});
+        Person p2 = (Person) snake.readNode(new StringReader(ya1), new TypeReference<Person>(){}.getType());
         log.info("p2={}", p2);
         assertEquals(p1, p2);
     }

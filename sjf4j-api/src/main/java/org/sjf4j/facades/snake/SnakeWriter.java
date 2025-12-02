@@ -91,7 +91,7 @@ public class SnakeWriter implements FacadeWriter {
     }
 
     @Override
-    public void close() throws IOException {
-        // Nothing
+    public void flush() throws IOException {
+        // nothing
     }
 }
