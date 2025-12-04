@@ -6,20 +6,43 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Enumeration representing the different types of JSON nodes in the sjf4j library.
+ * This enum categorizes nodes into value types (void, string, number, boolean),
+ * object types (JSONObject, JoJo, Map, POJO), and array types (JSONArray, List, array).
+ */
 public enum NodeType {
+    /** Represents a null or void value. */
     VALUE_VOID,
+    /** Represents a string value. */
     VALUE_STRING,
+    /** Represents a numeric value. */
     VALUE_NUMBER,
+    /** Represents a boolean value. */
     VALUE_BOOLEAN,
+    /** Represents a standard {@link JsonObject}. */
     OBJECT_JSON_OBJECT,
+    /** Represents a custom JsonObject subtype (JoJo). */
     OBJECT_JOJO,
+    /** Represents a {@link Map} object. */
     OBJECT_MAP,
+    /** Represents a Plain Old Java Object (POJO). */
     OBJECT_POJO,
+    /** Represents a {@link JsonArray}. */
     ARRAY_JSON_ARRAY,
+    /** Represents a {@link List} collection. */
     ARRAY_LIST,
+    /** Represents a Java array. */
     ARRAY_ARRAY,
+    /** Represents an unknown node type. */
     UNKNOWN;
 
+    /**
+     * Determines the {@link NodeType} of a given object.
+     *
+     * @param node the object to determine the type of
+     * @return the corresponding NodeType enum value
+     */
     public static NodeType of(Object node) {
         if (node == null) {
             return VALUE_VOID;
@@ -47,6 +70,12 @@ public enum NodeType {
         return UNKNOWN;
     }
 
+    /**
+     * Determines the {@link NodeType} from a given {@link Type}.
+     *
+     * @param type the Type to determine the NodeType from
+     * @return the corresponding NodeType enum value
+     */
     public static NodeType of(Type type) {
         Class<?> clazz = TypeUtil.getRawClass(type);
 

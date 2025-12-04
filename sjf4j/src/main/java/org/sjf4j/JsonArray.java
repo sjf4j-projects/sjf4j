@@ -18,14 +18,43 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+/**
+ * Represents a JSON array that extends {@link JsonContainer} and provides a list-like interface
+ * for working with JSON data. JsonArray supports dynamic element storage and provides convenient
+ * methods for type conversion and navigation.
+ *
+ * <p>JsonArray can be initialized from various sources:
+ * <ul>
+ *   <li>Empty constructor for creating a new JsonArray</li>
+ *   <li>Existing JsonArray instances</li>
+ *   <li>List objects</li>
+ *   <li>Java arrays</li>
+ * </ul>
+ *
+ * <p>This class implements list-like operations while maintaining JSON type safety and
+ * providing convenient methods for type conversion and iteration.
+ */
 public class JsonArray extends JsonContainer implements Iterable<Object> {
 
+    /**
+     * Stores JSON elements as a list.
+     */
     protected transient List<Object> nodeList;
 
+    /**
+     * Creates an empty JsonArray instance.
+     */
     public JsonArray() {
         super();
     }
 
+    /**
+     * Creates a JsonArray from an existing object, supporting multiple input types.
+     *
+     * @param node the object to wrap or copy
+     * @throws IllegalArgumentException if the node is null
+     * @throws JsonException if the input object type is not supported
+     */
     @SuppressWarnings("unchecked")
     public JsonArray(Object node) {
         this();
@@ -53,29 +82,62 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     /// Object
 
+    /**
+     * Returns the JSON string representation of this JsonArray.
+     *
+     * @return the JSON string representation
+     */
     @Override
     public String toString() {
         return toJson();
     }
 
+    /**
+     * Returns the hash code value for this JsonArray.
+     *
+     * @return the hash code value
+     */
     @Override
     public int hashCode() {
         return nodeList == null ? 0 : nodeList.hashCode();
     }
 
+    /**
+     * Returns the number of elements in this JsonArray.
+     *
+     * @return the number of elements
+     */
     @Override
     public int size() {
         return nodeList == null ? 0 : nodeList.size();
     }
 
+    /**
+     * Returns true if this JsonArray contains no elements.
+     *
+     * @return true if empty, false otherwise
+     */
     public boolean isEmpty() {
         return nodeList == null || nodeList.isEmpty();
     }
 
+    /**
+     * Returns the elements of this JsonArray as a List.
+     *
+     * @return a List containing the elements, or empty list if no elements
+     */
     public List<Object> toList() {
         return nodeList == null ? Collections.emptyList() : nodeList;
     }
 
+    /**
+     * Converts the elements of this JsonArray to a List of the specified type.
+     *
+     * @param <T> the target type
+     * @param clazz the class of the target type
+     * @return a List containing the converted elements
+     * @throws IllegalArgumentException if clazz is null
+     */
     public <T> List<T> toList(Class<T> clazz) {
         if (clazz == null) {
             throw new IllegalArgumentException("Clazz must not be null");
@@ -91,6 +153,15 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         }
     }
 
+    /**
+     * Converts the elements of this JsonArray to a List of the specified type.
+     * Similar to {@link #toList(Class)}, but may use different conversion logic.
+     *
+     * @param <T> the target type
+     * @param clazz the class of the target type
+     * @return a List containing the converted elements
+     * @throws IllegalArgumentException if clazz is null
+     */
     public <T> List<T> asList(Class<T> clazz) {
         if (clazz == null) {
             throw new IllegalArgumentException("Clazz must not be null");

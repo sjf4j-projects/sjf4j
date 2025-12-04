@@ -5,37 +5,102 @@ import org.sjf4j.JsonException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * Utility class for handling number operations, conversions, and type checking.
+ * 
+ * <p>This class provides a set of static methods for safe numeric conversions between
+ * different Java number types, with range checking and appropriate exception handling.
+ * It also includes utility methods for checking numeric types and string representations.
+ */
 public class NumberUtil {
 
+    /**
+     * Maximum number of digits allowed for numeric values.
+     */
     private final static int MAX_NUMBER_DIGITS = 100;
+    
+    /**
+     * BigInteger representation of Long.MIN_VALUE.
+     */
     private final static BigInteger BI_MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
+    
+    /**
+     * BigInteger representation of Long.MAX_VALUE.
+     */
     private final static BigInteger BI_MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
+    
+    /**
+     * BigDecimal representation of Long.MIN_VALUE.
+     */
     private final static BigDecimal BD_MIN_LONG = BigDecimal.valueOf(Long.MIN_VALUE);
+    
+    /**
+     * BigDecimal representation of Long.MAX_VALUE.
+     */
     private final static BigDecimal BD_MAX_LONG = BigDecimal.valueOf(Long.MAX_VALUE);
 
+    /**
+     * Checks if a BigInteger value is within the range of a Long.
+     *
+     * @param value the BigInteger value to check
+     * @return true if the value is within Long range, false otherwise
+     * @throws IllegalArgumentException if value is null
+     */
     private static boolean inLongRange(BigInteger value) {
         if (value == null) throw new IllegalArgumentException("Value must not be null");
         return (value.compareTo(BI_MIN_LONG) >= 0) && (value.compareTo(BI_MAX_LONG) <= 0);
     }
 
+    /**
+     * Checks if a BigDecimal value is within the range of a Long.
+     *
+     * @param value the BigDecimal value to check
+     * @return true if the value is within Long range, false otherwise
+     * @throws IllegalArgumentException if value is null
+     */
     private static boolean inLongRange(BigDecimal value) {
         if (value == null) throw new IllegalArgumentException("Value must not be null");
         return (value.compareTo(BD_MIN_LONG) >= 0) && (value.compareTo(BD_MAX_LONG) <= 0);
     }
 
+    /**
+     * Checks if a double value is within the range of a Long.
+     *
+     * @param value the double value to check
+     * @return true if the value is within Long range, false otherwise
+     */
     private static boolean inLongRange(double value) {
         return (value >= Long.MIN_VALUE) && (value <= Long.MAX_VALUE);
     }
 
 
+    /**
+     * Checks if a Number is an integral type (Byte, Short, Integer, or Long).
+     *
+     * @param value the Number to check
+     * @return true if the Number is an integral type, false otherwise
+     */
     public static boolean isIntegralType(Number value) {
         return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long;
     }
 
+    /**
+     * Checks if a Number is a floating point type (Float or Double).
+     *
+     * @param value the Number to check
+     * @return true if the Number is a floating point type, false otherwise
+     */
     private static boolean isFloatingType(Number value) {
         return value instanceof Float || value instanceof Double;
     }
 
+    /**
+     * Converts a Number to a Long with range checking.
+     *
+     * @param value the Number to convert
+     * @return the Long representation
+     * @throws IllegalArgumentException if the value is outside the Long range
+     */
     public static Long asLong(Number value) {
         if (value == null) {
             return null;
@@ -49,6 +114,13 @@ public class NumberUtil {
         return ((Number) value).longValue();
     }
 
+    /**
+     * Converts a Number to an Integer with range checking.
+     *
+     * @param value the Number to convert
+     * @return the Integer representation
+     * @throws IllegalArgumentException if the value is outside the Integer range
+     */
     public static Integer asInteger(Number value) {
         Long longValue = asLong(value);
         if (longValue == null) {
@@ -59,6 +131,13 @@ public class NumberUtil {
         return longValue.intValue();
     }
 
+    /**
+     * Converts a Number to a Short with range checking.
+     *
+     * @param value the Number to convert
+     * @return the Short representation
+     * @throws IllegalArgumentException if the value is outside the Short range
+     */
     public static Short asShort(Number value) {
         Long longValue = asLong(value);
         if (longValue == null) {
@@ -69,6 +148,13 @@ public class NumberUtil {
         return longValue.shortValue();
     }
 
+    /**
+     * Converts a Number to a Byte with range checking.
+     *
+     * @param value the Number to convert
+     * @return the Byte representation
+     * @throws IllegalArgumentException if the value is outside the Byte range
+     */
     public static Byte asByte(Number value) {
         Long longValue = asLong(value);
         if (longValue == null) {
@@ -79,6 +165,13 @@ public class NumberUtil {
         return longValue.byteValue();
     }
 
+    /**
+     * Converts a Number to a Double with range checking.
+     *
+     * @param value the Number to convert
+     * @return the Double representation
+     * @throws IllegalArgumentException if the value is not a finite Double
+     */
     public static Double asDouble(Number value) {
         if (value == null) {
             return null;
@@ -92,6 +185,13 @@ public class NumberUtil {
         return dValue;
     }
 
+    /**
+     * Converts a Number to a Float with range checking.
+     *
+     * @param value the Number to convert
+     * @return the Float representation
+     * @throws IllegalArgumentException if the value is not a finite Float
+     */
     public static Float asFloat(Number value) {
         if (value == null) {
             return null;

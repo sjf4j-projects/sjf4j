@@ -22,10 +22,24 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * Utility class for handling conversion between Java objects (POJOs) and JSON structures.
+ * Provides functionality for analyzing POJOs, creating lambda constructors, getters, and setters,
+ * and determining if a class is a valid POJO candidate.
+ */
 public class PojoUtil {
 
+    /**
+     * Flag indicating if the current JVM is running JDK 8.
+     */
     public static final boolean IS_JDK8 = System.getProperty("java.version").startsWith("1.");
 
+    /**
+     * Determines if a given class is a valid POJO candidate for JSON conversion.
+     *
+     * @param clazz the class to check
+     * @return true if the class is a valid POJO candidate, false otherwise
+     */
     public static boolean isPojoCandidate(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
                 Number.class.isAssignableFrom(clazz) || clazz == Boolean.class) {
@@ -43,6 +57,12 @@ public class PojoUtil {
     }
 
     // FIXME: Generic!!!
+    /**
+     * Analyzes a POJO class and returns its metadata including constructor, fields, and their accessors.
+     *
+     * @param clazz the POJO class to analyze
+     * @return an Optional containing PojoInfo if the analysis was successful, empty otherwise
+     */
     public static Optional<PojoRegistry.PojoInfo> analyzePojo(Class<?> clazz) {
         if (!isPojoCandidate(clazz)) {
             return Optional.empty();

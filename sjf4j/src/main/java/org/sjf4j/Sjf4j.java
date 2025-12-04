@@ -24,66 +24,6 @@ public class Sjf4j {
 
     /// JSON
 
-//    /**
-//     * Reads a JSON node from the given reader with the specified type.
-//     * This method is currently commented out.
-//     *
-//     * @param input The reader containing the JSON input
-//     * @param type The type of the object to read
-//     * @return The parsed object
-//     */
-//    public static Object readNodeFromJson(Reader input, Type type) {
-//        JsonFacade<?, ?> facade = JsonConfig.global().getJsonFacade();
-//        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_GENERAL) {
-//            return facade.readNode(input, type);
-//        } else {
-//            if (facade instanceof JacksonJsonFacade) {
-//                JacksonJsonFacade jacksonFacade = (JacksonJsonFacade) facade;
-//                return jacksonFacade.readNode(input, type);
-//            }
-//            if (facade instanceof GsonJsonFacade) {
-//                GsonJsonFacade gsonFacade = (GsonJsonFacade) facade;
-//                return gsonFacade.readNode(input, type);
-//            }
-//            if (facade instanceof Fastjson2JsonFacade) {
-//                Fastjson2JsonFacade fastFacade = (Fastjson2JsonFacade) facade;
-//                return fastFacade.readNode(input, type);
-//            }
-//            throw new JsonException("No JsonFacade found '" + facade.getClass() + "'");
-//        }
-//    }
-
-//    /**
-//     * Writes a JSON node to the given writer.
-//     * This method is currently commented out.
-//     *
-//     * @param output The writer to write the JSON to
-//     * @param node The object to write as JSON
-//     */
-//    public static void writeNodeToJson(Writer output, Object node) {
-//        JsonFacade<?, ?> facade = JsonConfig.global().getJsonFacade();
-//        if (JsonConfig.global().facadeMode == JsonConfig.FacadeMode.STREAMING_GENERAL) {
-//            facade.writeNode(output, node);
-//        } else {
-//            if (facade instanceof JacksonJsonFacade) {
-//                JacksonJsonFacade jacksonFacade = (JacksonJsonFacade) facade;
-//                jacksonFacade.writeNode(output, node);
-//                return;
-//            }
-//            if (facade instanceof GsonJsonFacade) {
-//                GsonJsonFacade gsonFacade = (GsonJsonFacade) facade;
-//                gsonFacade.writeNode(output, node);
-//                return;
-//            }
-//            if (facade instanceof Fastjson2JsonFacade) {
-//                Fastjson2JsonFacade fastFacade = (Fastjson2JsonFacade) facade;
-//                fastFacade.writeNode(output, node);
-//                return;
-//            }
-//            throw new JsonException("No JsonFacade found '" + facade.getClass() + "'");
-//        }
-//    }
-
     /**
      * Parses JSON from a reader into an object of the specified class.
      *
@@ -188,40 +128,6 @@ public class Sjf4j {
 
 
     /// YAML
-
-//    /**
-//     * Reads a YAML node from the given reader with the specified type.
-//     * This method is currently commented out.
-//     *
-//     * @param input The reader containing the YAML input
-//     * @param type The type of the object to read
-//     * @return The parsed object
-//     */
-//    public static Object readNodeFromYaml(Reader input, Type type) {
-//        YamlFacade<?, ?> facade = JsonConfig.global().getYamlFacade();
-//        if (facade instanceof SnakeYamlFacade) {
-//            SnakeYamlFacade snakeFacade = (SnakeYamlFacade) facade;
-//            return snakeFacade.readNode(input, type);
-//        }
-//        throw new JsonException("No YamlFacade found");
-//    }
-
-//    /**
-//     * Writes a YAML node to the given writer.
-//     * This method is currently commented out.
-//     *
-//     * @param output The writer to write the YAML to
-//     * @param node The object to write as YAML
-//     */
-//    public static void writeNodeToYaml(Writer output, Object node) {
-//        YamlFacade<?, ?> facade = JsonConfig.global().getYamlFacade();
-//        if (facade instanceof SnakeYamlFacade) {
-//            SnakeYamlFacade snakeFacade = (SnakeYamlFacade) facade;
-//            snakeFacade.writeNode(output, node);
-//            return;
-//        }
-//        throw new JsonException("No YamlFacade found");
-//    }
 
     /**
      * Parses YAML from a reader into an object of the specified class.

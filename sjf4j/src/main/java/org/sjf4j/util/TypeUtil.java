@@ -14,14 +14,30 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Do not return null.
+ * Utility class for handling Java reflection types. Provides methods for resolving
+ * generic types, getting raw classes, determining array types, and performing type
+ * variable substitutions.
+ * <p>
+ * A core principle of this class is that it should not return null for any of its methods.
  */
 public class TypeUtil {
 
+    /**
+     * Gets the fully qualified class name of an object.
+     *
+     * @param object the object to get the class name from
+     * @return the fully qualified class name, or "[null]" if the object is null
+     */
     public static String typeName(Object object) {
         return (object == null) ? "[null]" : object.getClass().getName();
     }
 
+    /**
+     * Determines if a given type is an array type.
+     *
+     * @param type the type to check
+     * @return true if the type is an array type, false otherwise
+     */
     public static boolean isArray(Type type) {
         if (type == null) {
             return false;
@@ -32,6 +48,13 @@ public class TypeUtil {
         return type instanceof GenericArrayType;
     }
 
+    /**
+     * Gets the raw class for a given type, resolving generics as necessary.
+     *
+     * @param type the type to get the raw class from
+     * @return the raw Class object for the given type
+     * @throws IllegalArgumentException if the raw class cannot be determined
+     */
     public static Class<?> getRawClass(Type type) {
         if (type == null) {
             return Object.class;
@@ -62,7 +85,16 @@ public class TypeUtil {
     }
 
 
-    // Support: Map<String, Person>, Wrapper<Person>, Person[]
+    /**
+     * Resolves a type argument for a parameterized type.
+     * <p>
+     * Supports types like Map<String, Person>, Wrapper<Person>, Person[]
+     *
+     * @param type the parameterized type
+     * @param target the target class to resolve the type argument for
+     * @param index the index of the type argument to resolve
+     * @return the resolved type argument
+     */
     public static Type resolveTypeArgument(Type type, Class<?> target, int index) {
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = ((ParameterizedType) type);
@@ -78,6 +110,15 @@ public class TypeUtil {
         return resolve(type, target, index, typeVarMap);
     }
 
+    /**
+     * Recursively resolves a type argument by traversing class hierarchy.
+     *
+     * @param type the starting type to resolve from
+     * @param target the target class to find
+     * @param index the index of the type argument to resolve
+     * @param typeVarMap map of type variables to their actual types
+     * @return the resolved type argument, or null if not found
+     */
     private static Type resolve(Type type, Class<?> target, int index, Map<TypeVariable<?>, Type> typeVarMap) {
         if (type instanceof Class<?>) {
             Class<?> clazz = (Class<?>) type;

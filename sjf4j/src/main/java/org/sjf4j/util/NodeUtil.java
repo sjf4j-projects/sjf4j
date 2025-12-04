@@ -8,10 +8,25 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 
+/**
+ * Utility class for handling JSON node operations and type conversions.
+ * 
+ * <p>This class provides a set of static methods for safely converting between different
+ * JSON node types, with strict type checking and appropriate exception handling. It
+ * distinguishes between "toXxx" methods (which perform strict type checking) and "asXxx"
+ * methods (which perform more flexible conversions).
+ */
 public class NodeUtil {
 
     /// Output
 
+    /**
+     * Converts a node to a String with strict type checking.
+     *
+     * @param node the node to convert
+     * @return the string representation
+     * @throws JsonException if the node is not a CharSequence, Character, or Enum
+     */
     public static String toString(Object node) {
         if (node == null) {
             return null;
@@ -23,6 +38,12 @@ public class NodeUtil {
         throw new JsonException("Expected node type CharSequence or Character, but got " + node.getClass());
     }
 
+    /**
+     * Converts a node to a String with flexible type conversion.
+     *
+     * @param node the node to convert
+     * @return the string representation
+     */
     public static String asString(Object node) {
         if (node == null) {
             return null;
@@ -34,6 +55,13 @@ public class NodeUtil {
         return node.toString();
     }
 
+    /**
+     * Converts a node to a Number with strict type checking.
+     *
+     * @param node the node to convert
+     * @return the number representation
+     * @throws JsonException if the node is not a Number
+     */
     public static Number toNumber(Object node) {
         if (node == null) {
             return null;
@@ -43,6 +71,13 @@ public class NodeUtil {
         throw new JsonException("Expected node type Number, but got " + node.getClass());
     }
 
+    /**
+     * Converts a node to a Number with flexible type conversion.
+     *
+     * @param node the node to convert
+     * @return the number representation
+     * @throws JsonException if the node cannot be converted to a Number
+     */
     public static Number asNumber(Object node) {
         if (node == null) {
             return null;
@@ -62,6 +97,13 @@ public class NodeUtil {
     }
 
 
+    /**
+     * Converts a node to a Long with strict type checking.
+     *
+     * @param node the node to convert
+     * @return the Long representation
+     * @throws JsonException if the node is not a Number
+     */
     public static Long toLong(Object node) {
         if (node == null) {
             return null;
@@ -71,10 +113,23 @@ public class NodeUtil {
         throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
+    /**
+     * Converts a node to a Long with flexible type conversion.
+     *
+     * @param node the node to convert
+     * @return the Long representation
+     */
     public static Long asLong(Object node) {
         return NumberUtil.asLong(asNumber(node));
     }
 
+    /**
+     * Converts a node to an Integer with strict type checking.
+     *
+     * @param node the node to convert
+     * @return the Integer representation
+     * @throws JsonException if the node is not a Number
+     */
     public static Integer toInteger(Object node) {
         if (node == null) {
             return null;
@@ -84,10 +139,23 @@ public class NodeUtil {
         throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
+    /**
+     * Converts a node to an Integer with flexible type conversion.
+     *
+     * @param node the node to convert
+     * @return the Integer representation
+     */
     public static Integer asInteger(Object node) {
         return NumberUtil.asInteger(asNumber(node));
     }
 
+    /**
+     * Converts a node to a Short with strict type checking.
+     *
+     * @param node the node to convert
+     * @return the Short representation
+     * @throws JsonException if the node is not a Number
+     */
     public static Short toShort(Object node) {
         if (node == null) {
             return null;
@@ -97,6 +165,12 @@ public class NodeUtil {
         throw new JsonException("Expected node type Number, but got " + node.getClass().getName());
     }
 
+    /**
+     * Converts a node to a Short with flexible type conversion.
+     *
+     * @param node the node to convert
+     * @return the Short representation
+     */
     public static Short asShort(Object node) {
         return NumberUtil.asShort(asNumber(node));
     }

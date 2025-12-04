@@ -4,19 +4,27 @@ package org.sjf4j.facades;
 import java.io.Closeable;
 import java.io.IOException;
 
+/**
+ * Interface for reading JSON data in a streaming manner. This interface defines methods
+ * for parsing JSON tokens, navigating through JSON structures, and extracting values.
+ * It extends Closeable to ensure proper resource management.
+ */
 public interface FacadeReader extends Closeable {
 
+    /**
+     * Enum representing JSON token types.
+     */
     enum Token {
-        UNKNOWN,
-        START_OBJECT,
-        END_OBJECT,
-        START_ARRAY,
-        END_ARRAY,
-        NAME,
-        STRING,
-        NUMBER,
-        BOOLEAN,
-        NULL
+        UNKNOWN,     // Unknown token type
+        START_OBJECT, // Start of a JSON object '{'
+        END_OBJECT,   // End of a JSON object '}'
+        START_ARRAY,  // Start of a JSON array '['
+        END_ARRAY,    // End of a JSON array ']'
+        NAME,         // JSON object field name
+        STRING,       // JSON string value
+        NUMBER,       // JSON number value
+        BOOLEAN,      // JSON boolean value (true/false)
+        NULL          // JSON null value
     }
 
     int ID_UNKNOWN = -1;

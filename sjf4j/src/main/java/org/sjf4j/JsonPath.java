@@ -14,21 +14,58 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+/**
+ * Represents a JSON path that provides functionality for parsing and evaluating
+ * JSON path expressions. JsonPath supports both JSON Path syntax (starting with '$')
+ * and JSON Pointer syntax (starting with '/'), allowing navigation and manipulation
+ * of JSON data structures.
+ *
+ * <p>This class provides methods for:
+ * <ul>
+ *   <li>Compiling path expressions into executable path objects</li>
+ *   <li>Finding values in JSON containers by path</li>
+ *   <li>Putting values into JSON containers at specific paths</li>
+ *   <li>Removing values from JSON containers at specific paths</li>
+ *   <li>Converting between different path expression formats</li>
+ * </ul>
+ */
 public class JsonPath {
 
+    /**
+     * The raw path expression string.
+     */
     private String raw;
+    
+    /**
+     * List of parsed path tokens that represent the path expression.
+     */
     private final List<PathToken> tokens;
 
+    /**
+     * Creates a copy of an existing JsonPath instance.
+     *
+     * @param target the JsonPath to copy
+     */
     private JsonPath(JsonPath target) {
         this.raw = target.raw;
         this.tokens = new ArrayList<>(target.tokens);
     }
 
+    /**
+     * Creates an empty JsonPath with just a root token.
+     */
     public JsonPath() {
         this.tokens = new ArrayList<>();
         push(new PathToken.Root());
     }
 
+    /**
+     * Creates a JsonPath from a path expression string.
+     *
+     * @param expr the path expression to compile
+     * @throws IllegalArgumentException if expr is null
+     * @throws JsonException if the path expression is invalid
+     */
     public JsonPath(String expr) {
         if (expr == null) {
             throw new IllegalArgumentException("Expr must not be null");
@@ -44,27 +81,62 @@ public class JsonPath {
         this.raw = expr;
     }
     
+    /**
+     * Compiles a path expression string into a JsonPath instance.
+     *
+     * @param expr the path expression to compile
+     * @return a new JsonPath instance
+     * @throws IllegalArgumentException if expr is null
+     * @throws JsonException if the path expression is invalid
+     */
     public static JsonPath compile(String expr) {
         return new JsonPath(expr);
     }
 
+    /**
+     * Converts the path tokens back to a JSON Path expression string.
+     *
+     * @return the JSON Path expression string
+     */
     public String toExpr() {
         return JsonPathUtil.genExpr(tokens);
     }
 
+    /**
+     * Converts the path tokens to a JSON Pointer expression string.
+     *
+     * @return the JSON Pointer expression string
+     */
     public String toPointerExpr() {
         return JsonPointerUtil.genExpr(tokens);
     }
 
+    /**
+     * Returns the depth of the path (number of tokens).
+     *
+     * @return the depth of the path
+     */
     public int depth() {
         return tokens.size();
     }
 
+    /**
+     * Returns the string representation of the path.
+     *
+     * @return the raw path expression if available, otherwise the generated expression
+     */
     @Override
     public String toString() {
         return raw == null ? toExpr() : raw;
     }
 
+    /**
+     * Pushes a new path token to the end of the path.
+     *
+     * @param token the token to add
+     * @return this JsonPath instance for method chaining
+     * @throws IllegalArgumentException if token is null
+     */
     public JsonPath push(PathToken token) {
         if (token == null) {
             throw new IllegalArgumentException("Token must not be null");
@@ -73,10 +145,20 @@ public class JsonPath {
         return this;
     }
 
+    /**
+     * Returns the last token in the path without removing it.
+     *
+     * @return the last path token
+     */
     public PathToken peek() {
         return tokens.get(tokens.size() - 1);
     }
 
+    /**
+     * Creates a copy of this JsonPath instance.
+     *
+     * @return a new JsonPath instance with the same tokens
+     */
     public JsonPath copy() {
         return new JsonPath(this);
     }
@@ -84,7 +166,13 @@ public class JsonPath {
 
     /// Find
 
-    // Object
+    /**
+     * Finds an object at this path in the given container.
+     *
+     * @param container the JSON container to search
+     * @return the object found at the path, or null if not found
+     * @throws IllegalArgumentException if container is null
+     */
     public Object findObject(Object container) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
@@ -92,6 +180,13 @@ public class JsonPath {
         return _findOne(container);
     }
 
+    /**
+     * Finds an object at this path in the given container, or returns a default value if not found.
+     *
+     * @param container the JSON container to search
+     * @param defaultValue the value to return if the path doesn't exist
+     * @return the object found at the path, or the default value if not found
+     */
     public Object findObject(Object container, Object defaultValue) {
         Object value = findObject(container);
         return null == value ? defaultValue : value;

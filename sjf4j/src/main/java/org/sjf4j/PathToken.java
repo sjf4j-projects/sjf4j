@@ -3,17 +3,35 @@ package org.sjf4j;
 
 import java.util.List;
 
+/**
+ * Abstract base class representing tokens in a JSON path expression.
+ * This class provides the foundation for different types of path tokens used in
+ * JSON path expressions, including root, name, index, wildcard, slice, union,
+ * descendant, and function tokens.
+ */
 public abstract class PathToken {
 
+    /**
+     * Determines if a given key matches this path token.
+     *
+     * @param key the key to match against this token
+     * @return true if the key matches, false otherwise
+     */
     public abstract boolean match(Object key);
 
     /// Root, Name, Index, Wildcard, Slice, Union, Descendant, Function
 
+    /**
+     * Represents the root token ($) in a JSON path expression.
+     */
     public static class Root extends PathToken {
         @Override public boolean match(Object key) { return false; }
         @Override public String toString() { return "$"; }
     }
 
+    /**
+     * Represents a named property token in a JSON path expression.
+     */
     public static class Name extends PathToken {
         public final String name;
         public Name(String name) { this.name = name; }
@@ -29,6 +47,9 @@ public abstract class PathToken {
         }
     }
 
+    /**
+     * Represents an index token in a JSON path expression.
+     */
     public static class Index extends PathToken {
         public final int index;
         public Index(int index) { this.index = index; }
@@ -38,6 +59,9 @@ public abstract class PathToken {
         }
     }
 
+    /**
+     * Represents a wildcard token (*) in a JSON path expression.
+     */
     public static class Wildcard extends PathToken {
         public boolean arrayStyle = false;
         public Wildcard() {}
@@ -52,6 +76,9 @@ public abstract class PathToken {
         }
     }
 
+    /**
+     * Represents a slice token in a JSON path expression.
+     */
     public static class Slice extends PathToken {
         public final Integer start; // null allowed
         public final Integer end;   // null allowed
@@ -96,6 +123,9 @@ public abstract class PathToken {
         }
     }
 
+    /**
+     * Represents a union token in a JSON path expression.
+     */
     public static class Union extends PathToken {
         public final List<PathToken> union;
         public Union(List<PathToken> union) { this.union = union; }

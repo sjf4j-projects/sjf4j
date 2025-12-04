@@ -21,32 +21,90 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Supplier;
 
+/**
+ * Interface for streaming that provides methods for reading and writing
+ * JSON-like data through facade readers and writers. This interface serves as the base for
+ * all facade implementations, defining common streaming operations.
+ *
+ * @param <R> the type of FacadeReader associated with this facade
+ * @param <W> the type of FacadeWriter associated with this facade
+ */
 public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter> {
 
     /// Reader and Writer
 
+    /**
+     * Creates a new FacadeReader from the provided Reader.
+     *
+     * @param input the Reader to read from
+     * @return a new FacadeReader instance
+     * @throws IOException if an I/O error occurs
+     */
     R createReader(Reader input) throws IOException;
 
+    /**
+     * Creates a new FacadeReader from the provided InputStream, using UTF-8 charset.
+     *
+     * @param input the InputStream to read from
+     * @return a new FacadeReader instance
+     * @throws IOException if an I/O error occurs
+     */
     default R createReader(InputStream input) throws IOException {
         return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
+    /**
+     * Creates a new FacadeReader from the provided String.
+     *
+     * @param input the String to read from
+     * @return a new FacadeReader instance
+     * @throws IOException if an I/O error occurs
+     */
     default R createReader(String input) throws IOException {
         return createReader(new StringReader(input));
     }
 
+    /**
+     * Creates a new FacadeReader from the provided byte array, using UTF-8 charset.
+     *
+     * @param input the byte array to read from
+     * @return a new FacadeReader instance
+     * @throws IOException if an I/O error occurs
+     */
     default R createReader(byte[] input) throws IOException {
         return createReader(new ByteArrayInputStream(input));
     }
 
+    /**
+     * Creates a new FacadeWriter from the provided Writer.
+     *
+     * @param output the Writer to write to
+     * @return a new FacadeWriter instance
+     * @throws IOException if an I/O error occurs
+     */
     W createWriter(Writer output) throws IOException;
 
+    /**
+     * Creates a new FacadeWriter from the provided OutputStream, using UTF-8 charset.
+     *
+     * @param output the OutputStream to write to
+     * @return a new FacadeWriter instance
+     * @throws IOException if an I/O error occurs
+     */
     default W createWriter(OutputStream output) throws IOException {
         return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
     /// Default read and write
 
+//    /**
+//     * Reads a JSON node of the specified type using the provided FacadeReader supplier.
+//     *
+//     * @param supplier the supplier of FacadeReader instances
+//     * @param type the target type of the node
+//     * @return the read JSON node
+//     * @throws JsonException if reading fails
+//     */
 //    default Object readNode(Supplier<? extends FacadeReader> supplier, Type type) {
 //        // Always use try-with-resources here.
 //        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
@@ -60,6 +118,15 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
 //        }
 //    }
 
+    /**
+     * Reads a JSON node of the specified type from the provided Reader.
+     *
+     * @param input the Reader to read from
+     * @param type the target type of the node
+     * @return the read JSON node
+     * @throws IllegalArgumentException if input is null
+     * @throws JsonException if reading fails
+     */
     default Object readNode(Reader input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         // Always use try-with-resources here.
@@ -74,6 +141,15 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         }
     }
 
+    /**
+     * Reads a JSON node of the specified type from the provided InputStream.
+     *
+     * @param input the InputStream to read from
+     * @param type the target type of the node
+     * @return the read JSON node
+     * @throws IllegalArgumentException if input is null
+     * @throws JsonException if reading fails
+     */
     default Object readNode(InputStream input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         // Always use try-with-resources here.
@@ -88,6 +164,15 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         }
     }
 
+    /**
+     * Reads a JSON node of the specified type from the provided String.
+     *
+     * @param input the String to read from
+     * @param type the target type of the node
+     * @return the read JSON node
+     * @throws IllegalArgumentException if input is null
+     * @throws JsonException if reading fails
+     */
     default Object readNode(String input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         // Always use try-with-resources here.

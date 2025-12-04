@@ -16,10 +16,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Utility class for streaming JSON processing. Provides methods for reading JSON nodes from
+ * a {@link FacadeReader} and writing JSON nodes to a {@link FacadeWriter}, with support
+ * for type conversion and POJO handling.
+ */
 public class StreamingUtil {
 
     /// Read
 
+    /**
+     * Reads a JSON node from the provided {@link FacadeReader} and converts it to the appropriate
+     * Java object based on the token type and optional target type.
+     *
+     * @param reader the FacadeReader to read from
+     * @param type the target type for conversion (may be null)
+     * @return the parsed and converted JSON node
+     * @throws IOException if an I/O error occurs during reading
+     * @throws JsonException if an unexpected token is encountered
+     */
     public static Object readNode(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         int tid = reader.peekTokenId();
@@ -46,6 +61,15 @@ public class StreamingUtil {
         }
     }
 
+    /**
+     * Reads a JSON object from the provided {@link FacadeReader} and converts it to the appropriate
+     * Java object based on the target type.
+     *
+     * @param reader the FacadeReader to read from
+     * @param type the target type for conversion
+     * @return the parsed and converted JSON object
+     * @throws IOException if an I/O error occurs during reading
+     */
     public static Object readObject(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
