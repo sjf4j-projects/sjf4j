@@ -1,7 +1,7 @@
 
 rootProject.name = "sjf4j"
 
-include("sjf4j-api")
+include("sjf4j")
 
 
 
@@ -9,9 +9,9 @@ include("sjf4j-api")
 
 pluginManagement {
     repositories {
-        maven("https://maven.aliyun.com/repository/gradle-plugin")
         gradlePluginPortal()
         mavenCentral()
+        maven("https://maven.aliyun.com/repository/gradle-plugin")
     }
 }
 
@@ -21,5 +21,3 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-
-include("sjf4j-api")
