@@ -3,13 +3,13 @@
 
 ```mermaid
 graph BT
-    node(("JSON Node (=Plain Object)"))
-    node --> object(("JSON Object {"))
+    node(("JSON Node <br/> (=Object)"))
+    node --> object(("JSON Object <br/> {...}"))
         object --> jo("JsonObject")
         object --> map("Map")
         object --> pojo(" &lt;POJO&gt; ")
         object --> jojo(" &lt;JOJO&gt; (=POJO extends JsonObject)")
-    node --> array(("JSON Array ["))
+    node --> array(("JSON Array <br/> [...]"))
         array --> ja("JsonArray")
         array --> list("List")
         array --> arr("Array")
