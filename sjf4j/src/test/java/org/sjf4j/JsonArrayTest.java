@@ -4,9 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.sjf4j.util.TypeReference;
 
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -131,7 +129,7 @@ class JsonArrayTest {
 
         ja1 = JsonArray.fromJson("[\"number\",5,null,[\"gaga\",\"haha\"],45,32]");
         System.out.println(ja1);
-        assertNull(ja1.getObject(2));
+        assertNull(ja1.getNode(2));
 
         assertThrows(JsonException.class, () -> {
             JsonArray ja = JsonArray.fromJson("[\"number,5,null,[\"gaga\",\"haha\"],45,32]");
@@ -188,7 +186,7 @@ class JsonArrayTest {
 
     public void testByPath1() {
         JsonArray ja1 = JsonArray.fromJson("[2,3,{}]");
-        assertEquals("[2,3,{}]", ja1.getObjectByPath("$").toString());
+        assertEquals("[2,3,{}]", ja1.getNodeByPath("$").toString());
         assertEquals((byte) 3, ja1.getByteByPath("$[1]"));
 
         ja1.putByPathIfAbsent("$[1]", 9);
@@ -325,7 +323,7 @@ class JsonArrayTest {
         
         assertTrue(empty.isEmpty());
         assertEquals(0, empty.size());
-        assertNull(empty.getObject(0));
+        assertNull(empty.getNode(0));
         assertNull(empty.getString(0));
         
         // 空数组的迭代
@@ -401,7 +399,7 @@ class JsonArrayTest {
         JsonArray ja = new JsonArray();
         ja.add(null);
         ja.add("value");
-        assertNull(ja.getObject(0));
+        assertNull(ja.getNode(0));
         assertEquals("value", ja.getString(1));
         
         // 测试混合类型

@@ -230,7 +230,7 @@ public class JsonWalker {
             JsonArray ja = (JsonArray) node;
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx <= ja.size()) {
-                return TypedNode.infer(ja.getObject(idx));
+                return TypedNode.infer(ja.getNode(idx));
             } else {
                 return null;
             }
@@ -458,7 +458,7 @@ public class JsonWalker {
             JsonArray ja = (JsonArray) container;
             for (int i = 0; i < ja.size(); i++) {
                 JsonPath newPath = path.copy().push(new PathToken.Index(i));
-                Object node = ja.getObject(i);
+                Object node = ja.getNode(i);
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }

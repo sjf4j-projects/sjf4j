@@ -67,7 +67,7 @@ public class JsonPathTest {
 
 
     @Test
-    public void testFindObject1() {
+    public void testFindNode1() {
         String json1 = "{\n" +
                 "  \"book\": [\n" +
                 "    { \"title\": \"A\", \"price\": 10, \"tags\": [\"classic\"] },\n" +
@@ -81,20 +81,20 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        assertEquals("B", JsonPath.compile("$.book[1]['title']").findObject(jo1));
-        assertEquals("B", JsonPath.compile("/book/1/title").findObject(jo1));
-        assertEquals(10, JsonPath.compile("$.book[0].price").findObject(jo1));
-        assertEquals("classic", JsonPath.compile("$.book[0].tags[0]").findObject(jo1));
-        assertEquals(new JsonArray(), JsonPath.compile("$.emptyArray").findObject(jo1));
-        assertEquals(new JsonObject(), JsonPath.compile("$['emptyObject']").findObject(jo1));
-        assertNull(JsonPath.compile("$.nullValue").findObject(jo1));
-        assertEquals("v1", JsonPath.compile("$['weird.keys']['key with spaces']").findObject(jo1));
-        assertEquals("v1", JsonPath.compile("/weird.keys/key with spaces").findObject(jo1));
+        assertEquals("B", JsonPath.compile("$.book[1]['title']").findNode(jo1));
+        assertEquals("B", JsonPath.compile("/book/1/title").findNode(jo1));
+        assertEquals(10, JsonPath.compile("$.book[0].price").findNode(jo1));
+        assertEquals("classic", JsonPath.compile("$.book[0].tags[0]").findNode(jo1));
+        assertEquals(new JsonArray(), JsonPath.compile("$.emptyArray").findNode(jo1));
+        assertEquals(new JsonObject(), JsonPath.compile("$['emptyObject']").findNode(jo1));
+        assertNull(JsonPath.compile("$.nullValue").findNode(jo1));
+        assertEquals("v1", JsonPath.compile("$['weird.keys']['key with spaces']").findNode(jo1));
+        assertEquals("v1", JsonPath.compile("/weird.keys/key with spaces").findNode(jo1));
 
-        log.info("$: {}", JsonPath.compile("$").findObject(jo1));
-        assertEquals(JsonObject.class, JsonPath.compile("$").findObject(jo1).getClass());
+        log.info("$: {}", JsonPath.compile("$").findNode(jo1));
+        assertEquals(JsonObject.class, JsonPath.compile("$").findNode(jo1).getClass());
 
-        assertThrows(JsonException.class, () -> JsonPath.compile("$.book[*].price").findObject(jo1));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.book[*].price").findNode(jo1));
 
     }
 
@@ -166,7 +166,7 @@ public class JsonPathTest {
         log.info("jo1={}", jo1);
         assertEquals(2, new JsonPath("$.names[1]").findLong(jo1));
         assertEquals("ll", new JsonPath("$.map.lis[0].kk").findString(jo1));
-        assertEquals(ArrayList.class, new JsonPath("$.map.lis").findObject(jo1).getClass());
+        assertEquals(ArrayList.class, new JsonPath("$.map.lis").findNode(jo1).getClass());
     }
 
     public void testPutAndRemove() {
@@ -214,12 +214,12 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson("{\"a\":1}");
         
         // 测试不存在的路径
-        assertNull(JsonPath.compile("$.nonexist").findObject(jo));
+        assertNull(JsonPath.compile("$.nonexist").findNode(jo));
         assertEquals("default", JsonPath.compile("$.nonexist").findString(jo, "default"));
         
         // 测试通配符在findOne中
         assertThrows(JsonException.class, () -> {
-            JsonPath.compile("$.a[*]").findObject(jo);
+            JsonPath.compile("$.a[*]").findNode(jo);
         });
         
         // 测试无效的路径表达式
@@ -234,7 +234,7 @@ public class JsonPathTest {
         
         // 测试数组越界
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
-        assertNull(JsonPath.compile("$[10]").findObject(ja));
+        assertNull(JsonPath.compile("$[10]").findNode(ja));
     }
 
     @Test
@@ -251,9 +251,9 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(json);
         
         // 复杂路径查找
-        assertEquals("reference", JsonPath.compile("$.store.book[0].category").findObject(jo));
+        assertEquals("reference", JsonPath.compile("$.store.book[0].category").findNode(jo));
         assertEquals(12.99, JsonPath.compile("$.store.book[1].price").findDouble(jo));
-        assertEquals("red", JsonPath.compile("$.store.bicycle.color").findObject(jo));
+        assertEquals("red", JsonPath.compile("$.store.bicycle.color").findNode(jo));
         
         // 使用通配符查找所有
         List<Object> authors = JsonPath.compile("$.store.book[*].author").findAll(jo);
@@ -272,23 +272,23 @@ public class JsonPathTest {
     public void testEdgeCases() {
         // 测试根路径
         JsonObject jo = JsonObject.fromJson("{\"a\":1}");
-        Object root = JsonPath.compile("$").findObject(jo);
+        Object root = JsonPath.compile("$").findNode(jo);
         assertEquals(jo, root);
         
         // 测试空对象
         JsonObject empty = new JsonObject();
         assertFalse(JsonPath.compile("$.a").hasNonNull(empty));
-        assertNull(JsonPath.compile("$.a").findObject(empty));
+        assertNull(JsonPath.compile("$.a").findNode(empty));
         
         // 测试空数组
         JsonArray emptyArray = new JsonArray();
         assertFalse(JsonPath.compile("$[0]").hasNonNull(emptyArray));
-        assertNull(JsonPath.compile("$[0]").findObject(emptyArray));
+        assertNull(JsonPath.compile("$[0]").findNode(emptyArray));
         
         // 测试null值
         JsonObject withNull = JsonObject.fromJson("{\"a\":null}");
         assertFalse(JsonPath.compile("$.a").hasNonNull(withNull));
-        assertNull(JsonPath.compile("$.a").findObject(withNull));
+        assertNull(JsonPath.compile("$.a").findNode(withNull));
     }
 
 
@@ -380,8 +380,8 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(json);
 
         // 基础切片测试 - readObject
-        assertEquals(2, JsonPath.compile("$.numbers[2]").findObject(jo));
-        assertEquals(7, JsonPath.compile("$.numbers[-3]").findObject(jo)); // 倒数第三个
+        assertEquals(2, JsonPath.compile("$.numbers[2]").findNode(jo));
+        assertEquals(7, JsonPath.compile("$.numbers[-3]").findNode(jo)); // 倒数第三个
 
         // 切片测试 - readAll
         List<Object> slice1 = JsonPath.compile("$.numbers[1:5]").findAll(jo);
@@ -432,7 +432,7 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(json);
 
         // 多索引联合 - readObject (返回第一个)
-        assertThrows(JsonException.class, () -> JsonPath.compile("$.numbers[1,3,5]").findObject(jo));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.numbers[1,3,5]").findNode(jo));
 
         // 多索引联合 - readAll
         List<Object> multiIndex = JsonPath.compile("$.numbers[1,3,5]").findAll(jo);
@@ -500,9 +500,9 @@ public class JsonPathTest {
         assertTrue(allNames.contains("deepName"));
 
         // 递归查找第一个name - readObject
-        assertThrows(JsonException.class, () -> JsonPath.compile("$..name").findObject(jo));
-        assertEquals(1, JsonPath.compile("$..only").findObject(jo));
-        assertEquals(30, JsonPath.compile("$..nested..values[2]").findObject(jo));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$..name").findNode(jo));
+        assertEquals(1, JsonPath.compile("$..only").findNode(jo));
+        assertEquals(30, JsonPath.compile("$..nested..values[2]").findNode(jo));
 
         // 递归查找特定路径
         List<Object> allValues = JsonPath.compile("$..value").findAll(jo);

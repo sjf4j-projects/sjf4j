@@ -75,7 +75,7 @@ public class JojoTest {
         JsonObject jo1 = JsonObject.fromPojo(p1);
         assertNotEquals(p1, jo1);
         assertEquals(p1.toJson(), jo1.toJson());
-        assertEquals(JsonArray.class, jo1.getObject("babies").getClass());
+        assertEquals(JsonArray.class, jo1.getNode("babies").getClass());
     }
 
     @Getter @Setter

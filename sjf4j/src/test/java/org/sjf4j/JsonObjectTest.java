@@ -75,10 +75,10 @@ class JsonObjectTest {
         assertEquals(json1, jo.toJson());
         assertEquals(123, jo.getInteger("id"));
         assertEquals(123, jo.getBigInteger("id").intValue());
-        assertEquals(Integer.class, jo.getObject("id").getClass());
+        assertEquals(Integer.class, jo.getNode("id").getClass());
 
         assertEquals("han", jo.getString("name"));
-        assertEquals(123, jo.getObject("id"));
+        assertEquals(123, jo.getNode("id"));
         assertEquals(123.0d, jo.getDouble("id"));
 
         assertEquals(175.3f, jo.getFloat("height"));
@@ -86,7 +86,7 @@ class JsonObjectTest {
         assertEquals((short) 175, jo.getShort("height"));
 
 //        assertEquals(Double.class, jo.getObject("height").getClass()); // BigDecimal in Fastjson2
-        assertInstanceOf(Number.class, jo.getObject("height"));
+        assertInstanceOf(Number.class, jo.getNode("height"));
 
         assertThrows(JsonException.class, () -> jo.getString("height"));
         assertEquals("175.3", jo.asString("height"));
@@ -176,7 +176,7 @@ class JsonObjectTest {
 
         jo1 = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"],\"45\":32}");
         System.out.println(jo1);
-        assertNull(jo1.getObject("46"));
+        assertNull(jo1.getNode("46"));
 
         assertThrows(Exception.class, () -> {
             JsonObject jo = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"],45:32}");
@@ -227,9 +227,9 @@ class JsonObjectTest {
     public void testByPath1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"dodo\"],\"attr\":{\"aa\":\"bb\"}," +
                 "\"nested\":[{},{},{\"yes\":[{},{\"no\":5}]}]}");
-        assertEquals("bb", jo1.getObjectByPath("$.attr.aa"));
+        assertEquals("bb", jo1.getNodeByPath("$.attr.aa"));
         jo1.putByPath("$.x.y.z", 555);
-        assertEquals(555, (Integer) jo1.getObjectByPath("$.x.y.z"));
+        assertEquals(555, (Integer) jo1.getNodeByPath("$.x.y.z"));
 
         assertThrows(JsonException.class, () -> {
             jo1.putByPath("$.duck.yes", "no");
@@ -389,19 +389,19 @@ class JsonObjectTest {
         String json1 = "{\"big\":9999999}";
         JsonObject jo1 = JsonObject.fromJson(json1);
         System.out.println("jo1: " + jo1);
-        assertEquals(Integer.class, jo1.getObject("big").getClass());
+        assertEquals(Integer.class, jo1.getNode("big").getClass());
         assertEquals(json1, jo1.toJson());
 
         String json2 = "{\"big\":9999999999999999}";
         JsonObject jo2 = JsonObject.fromJson(json2);
         System.out.println("jo2: " + jo2);
-        assertEquals(Long.class, jo2.getObject("big").getClass());
+        assertEquals(Long.class, jo2.getNode("big").getClass());
         assertEquals(json2, jo2.toJson());
 
         String json3 = "{\"big\":999999999999999999999999999999999999999999999}";
         JsonObject jo3 = JsonObject.fromJson(json3);
         System.out.println("jo3: " + jo3);
-        assertEquals(BigInteger.class, jo3.getObject("big").getClass());
+        assertEquals(BigInteger.class, jo3.getNode("big").getClass());
         assertEquals(json3, jo3.toJson());
 
         /// Only gson
@@ -581,13 +581,13 @@ class JsonObjectTest {
         JsonObject empty = new JsonObject();
         assertTrue(empty.isEmpty());
         assertEquals(0, empty.size());
-        assertNull(empty.getObject("nonexist"));
+        assertNull(empty.getNode("nonexist"));
         
         // 测试null值
         JsonObject jo = new JsonObject();
         jo.put("nullKey", null);
         assertTrue(jo.containsKey("nullKey"));
-        assertNull(jo.getObject("nullKey"));
+        assertNull(jo.getNode("nullKey"));
         
         // 测试特殊字符键
         jo.put("key.with.dots", "value1");
@@ -603,7 +603,7 @@ class JsonObjectTest {
         
         // 测试非常大的数字
         jo.put("bigInt", new BigInteger("999999999999999999999999999"));
-        assertInstanceOf(BigInteger.class, jo.getObject("bigInt"));
+        assertInstanceOf(BigInteger.class, jo.getNode("bigInt"));
         
         // 测试嵌套深度
         JsonObject nested = new JsonObject();

@@ -173,7 +173,7 @@ public class JsonPath {
      * @return the object found at the path, or null if not found
      * @throws IllegalArgumentException if container is null
      */
-    public Object findObject(Object container) {
+    public Object findNode(Object container) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
         }
@@ -187,15 +187,15 @@ public class JsonPath {
      * @param defaultValue the value to return if the path doesn't exist
      * @return the object found at the path, or the default value if not found
      */
-    public Object findObject(Object container, Object defaultValue) {
-        Object value = findObject(container);
+    public Object findNode(Object container, Object defaultValue) {
+        Object value = findNode(container);
         return null == value ? defaultValue : value;
     }
 
     // String
     public String findString(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find String by path '" + this + "'", e);
@@ -208,7 +208,7 @@ public class JsonPath {
 
     public String findAsString(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to String", e);
@@ -223,7 +223,7 @@ public class JsonPath {
     // Long
     public Long findLong(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Long by path '" + this + "'", e);
@@ -236,7 +236,7 @@ public class JsonPath {
 
     public Long findAsLong(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Long", e);
@@ -250,7 +250,7 @@ public class JsonPath {
     // Integer
     public Integer findInteger(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Integer by path '" + this + "'", e);
@@ -263,7 +263,7 @@ public class JsonPath {
 
     public Integer findAsInteger(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Integer", e);
@@ -277,7 +277,7 @@ public class JsonPath {
     // Short
     public Short findShort(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Short by path '" + this + "'", e);
@@ -290,7 +290,7 @@ public class JsonPath {
 
     public Short findAsShort(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Short", e);
@@ -304,7 +304,7 @@ public class JsonPath {
     // Byte
     public Byte findByte(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Byte by path '" + this + "'", e);
@@ -317,7 +317,7 @@ public class JsonPath {
 
     public Byte findAsByte(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Byte", e);
@@ -331,7 +331,7 @@ public class JsonPath {
     // Double
     public Double findDouble(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Double by path '" + this + "'", e);
@@ -344,7 +344,7 @@ public class JsonPath {
 
     public Double findAsDouble(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Double", e);
@@ -358,7 +358,7 @@ public class JsonPath {
     // Float
     public Float findFloat(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Float by path '" + this + "'", e);
@@ -371,7 +371,7 @@ public class JsonPath {
 
     public Float findAsFloat(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Float", e);
@@ -385,7 +385,7 @@ public class JsonPath {
     // BigInteger
     public BigInteger findBigInteger(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find BigInteger by path '" + this + "'", e);
@@ -398,7 +398,7 @@ public class JsonPath {
 
     public BigInteger findAsBigInteger(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigInteger", e);
@@ -412,7 +412,7 @@ public class JsonPath {
     // BigDecimal
     public BigDecimal findBigDecimal(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find BigDecimal by path '" + this + "'", e);
@@ -425,7 +425,7 @@ public class JsonPath {
 
     public BigDecimal findAsBigDecimal(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigDecimal", e);
@@ -439,7 +439,7 @@ public class JsonPath {
     // Boolean
     public Boolean findBoolean(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Boolean by path '" + this + "'", e);
@@ -452,7 +452,7 @@ public class JsonPath {
 
     public Boolean findAsBoolean(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Boolean", e);
@@ -466,7 +466,7 @@ public class JsonPath {
     // JsonObject
     public JsonObject findJsonObject(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find JsonObject by path '" + this + "'", e);
@@ -479,7 +479,7 @@ public class JsonPath {
 
     public JsonObject findAsJsonObject(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to JsonObject", e);
@@ -493,7 +493,7 @@ public class JsonPath {
     // JsonArray
     public JsonArray findJsonArray(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find JsonArray by path '" + this + "'", e);
@@ -506,7 +506,7 @@ public class JsonPath {
 
     public JsonArray findAsJsonArray(Object container) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.asJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to JsonArray", e);
@@ -520,7 +520,7 @@ public class JsonPath {
     // Clazz
     public <T> T find(Object container, Class<T> clazz) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to find " + clazz.getName() + " by path '" + this + "': " +
@@ -536,7 +536,7 @@ public class JsonPath {
 
     public <T> T findAs(Object container, Class<T> clazz) {
         try {
-            Object value = findObject(container);
+            Object value = findNode(container);
             return NodeUtil.as(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to '" + clazz + "'", e);
@@ -604,7 +604,7 @@ public class JsonPath {
     }
 
     public boolean hasNonNull(Object container) {
-        return findObject(container) != null;
+        return findNode(container) != null;
     }
 
     public void putNonNull(Object container, Object value) {

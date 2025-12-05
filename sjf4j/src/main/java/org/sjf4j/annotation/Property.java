@@ -7,9 +7,10 @@ import java.lang.annotation.Target;
 
 @Target({})
 @Retention(RetentionPolicy.SOURCE)
-public @interface Prop {
+public @interface Property {
     String name();
     Class<?> type();
+    String path() default "";
     boolean getter() default true;
     boolean setter() default true;
     String defaultValue() default "";

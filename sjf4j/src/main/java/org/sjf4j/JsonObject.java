@@ -371,7 +371,7 @@ public class JsonObject extends JsonContainer {
      */
     public boolean hasNonNull(String key) {
         if (key == null) throw new IllegalArgumentException("Key must not be null");
-        return getObject(key) != null;
+        return getNode(key) != null;
     }
 
     /**
@@ -492,7 +492,7 @@ public class JsonObject extends JsonContainer {
 
     /// Getter
 
-    public Object getObject(String key) {
+    public Object getNode(String key) {
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         if (fieldMap != null) {
             PojoRegistry.FieldInfo fi = fieldMap.get(key);
@@ -506,14 +506,14 @@ public class JsonObject extends JsonContainer {
         return null;
     }
 
-    public Object getObject(String key, Object defaultValue) {
-        Object value = getObject(key);
+    public Object getNode(String key, Object defaultValue) {
+        Object value = getNode(key);
         return value == null ? defaultValue : value;
     }
 
     public String getString(String key) {
         try {
-            Object value = getObject(key);
+            Object value = getNode(key);
             return NodeUtil.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String of key '" + key + "': " + e.getMessage(), e);
@@ -525,7 +525,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public String asString(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         return NodeUtil.asString(value);
     }
     public String asString(String key, String defaultValue) {
@@ -534,7 +534,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Number getNumber(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toNumber(value);
         } catch (Exception e) {
@@ -547,7 +547,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Number asNumber(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asNumber(value);
         } catch (Exception e) {
@@ -560,7 +560,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Long getLong(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toLong(value);
         } catch (Exception e) {
@@ -573,7 +573,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Long asLong(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asLong(value);
         } catch (Exception e) {
@@ -586,7 +586,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Integer getInteger(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toInteger(value);
         } catch (Exception e) {
@@ -599,7 +599,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Integer asInteger(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asInteger(value);
         } catch (Exception e) {
@@ -612,7 +612,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Short getShort(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toShort(value);
         } catch (Exception e) {
@@ -625,7 +625,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Short asShort(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asShort(value);
         } catch (Exception e) {
@@ -638,7 +638,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Byte getByte(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toByte(value);
         } catch (Exception e) {
@@ -651,7 +651,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Byte asByte(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asByte(value);
         } catch (Exception e) {
@@ -664,7 +664,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Double getDouble(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toDouble(value);
         } catch (Exception e) {
@@ -677,7 +677,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Double asDouble(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asDouble(value);
         } catch (Exception e) {
@@ -690,7 +690,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Float getFloat(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toFloat(value);
         } catch (Exception e) {
@@ -703,7 +703,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Float asFloat(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asFloat(value);
         } catch (Exception e) {
@@ -716,7 +716,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public BigInteger getBigInteger(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
@@ -729,7 +729,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public BigInteger asBigInteger(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
@@ -742,7 +742,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public BigDecimal getBigDecimal(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
@@ -755,7 +755,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public BigDecimal asBigDecimal(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
@@ -768,7 +768,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Boolean getBoolean(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toBoolean(value);
         } catch (Exception e) {
@@ -781,7 +781,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Boolean asBoolean(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asBoolean(value);
         } catch (Exception e) {
@@ -794,7 +794,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public JsonObject getJsonObject(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
@@ -807,7 +807,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public JsonObject asJsonObject(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asJsonObject(value);
         } catch (Exception e) {
@@ -820,7 +820,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public JsonArray getJsonArray(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
@@ -833,7 +833,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public JsonArray asJsonArray(String key) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.asJsonArray(value);
         } catch (Exception e) {
@@ -846,7 +846,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public <T> T get(String key, Class<T> clazz) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
@@ -861,7 +861,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public <T> T as(String key, Class<T> clazz) {
-        Object value = getObject(key);
+        Object value = getNode(key);
         try {
             return NodeUtil.as(value, clazz);
         } catch (Exception e) {
@@ -899,7 +899,7 @@ public class JsonObject extends JsonContainer {
         if (node != null) {
             return put(key, node);
         } else {
-            return getObject(key);
+            return getNode(key);
         }
     }
 

@@ -91,9 +91,9 @@ public interface FacadeWriter {
     void writeNull() throws IOException;
 
     /**
-     * Writes a comma separator. This is a default implementation for Fastjson2 compatibility.
+     * Writes a comma separator. 
      */
-    default void writeComma() {/* For Fastjson2 */}
+    default void writeComma() {/* Only or Fastjson2 */}
 
     /**
      * Flushes any buffered output.

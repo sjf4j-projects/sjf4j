@@ -153,7 +153,7 @@ public class SimpleObjectFacade implements ObjectFacade {
                 JsonArray ja = (JsonArray) object;
                 Object arr = Array.newInstance(rawClazz.getComponentType(), ja.size());
                 for (int i = 0; i < ja.size(); i++) {
-                    Object vv = readNode(ja.getObject(i), rawClazz.getComponentType());
+                    Object vv = readNode(ja.getNode(i), rawClazz.getComponentType());
                     Array.set(arr, i, vv);
                 }
                 return arr;

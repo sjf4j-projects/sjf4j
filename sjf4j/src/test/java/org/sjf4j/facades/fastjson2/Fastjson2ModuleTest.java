@@ -3,14 +3,12 @@ package org.sjf4j.facades.fastjson2;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.filter.ExtraProcessor;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 
@@ -61,7 +59,7 @@ public class Fastjson2ModuleTest {
         JSONReader reader = JSONReader.of(JSON_DATA, context);
         Person p2 = reader.read(Person.class);
         log.info("p2={}", p2);
-        log.info("type={}", p2.getInfo().getObject("kk").getClass());
+        log.info("type={}", p2.getInfo().getNode("kk").getClass());
     }
 
 

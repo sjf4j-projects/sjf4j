@@ -25,7 +25,7 @@ public class PropertiesFacadeTest {
 
         JsonObject jo2 = new SimplePropertiesFacade().readNode(props);
 //        assertEquals(jo1, jo2);
-        assertEquals("18", jo2.getObjectByPath("$.friends.rose.age[0]"));
+        assertEquals("18", jo2.getNodeByPath("$.friends.rose.age[0]"));
     }
 
 

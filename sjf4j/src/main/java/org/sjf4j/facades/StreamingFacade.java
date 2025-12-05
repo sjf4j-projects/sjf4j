@@ -97,27 +97,6 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
 
     /// Default read and write
 
-//    /**
-//     * Reads a JSON node of the specified type using the provided FacadeReader supplier.
-//     *
-//     * @param supplier the supplier of FacadeReader instances
-//     * @param type the target type of the node
-//     * @return the read JSON node
-//     * @throws JsonException if reading fails
-//     */
-//    default Object readNode(Supplier<? extends FacadeReader> supplier, Type type) {
-//        // Always use try-with-resources here.
-//        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
-//        try (FacadeReader reader = supplier.get()) {
-//            reader.startDocument();
-//            Object node = StreamingUtil.readNode(reader, type);
-//            reader.endDocument();
-//            return node;
-//        } catch (Exception e) {
-//            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-//        }
-//    }
-
     /**
      * Reads a JSON node of the specified type from the provided Reader.
      *
@@ -200,17 +179,6 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         }
     }
 
-
-//    default void writeNode(Supplier<? extends FacadeWriter> supplier, Object node) {
-//        try {
-//            FacadeWriter writer = supplier.get();
-//            writer.startDocument();
-//            StreamingUtil.writeNode(writer, node);
-//            writer.endDocument();
-//        } catch (Exception e) {
-//            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
-//        }
-//    }
 
     default void writeNode(Writer output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");

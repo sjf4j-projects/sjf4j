@@ -56,7 +56,7 @@ public class JsonStream<T> {
     /**
      * Creates a JsonStream from a single JSON node.
      *
-     * @param node the JSON node
+     * @param node the JSON node (= Object)
      * @param <T> the type of the JSON node
      * @return a new JsonStream containing the single node
      * @throws IllegalArgumentException if node is null

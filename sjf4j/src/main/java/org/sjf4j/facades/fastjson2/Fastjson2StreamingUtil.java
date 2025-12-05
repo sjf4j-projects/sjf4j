@@ -328,7 +328,7 @@ public class Fastjson2StreamingUtil {
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
                 if (i > 0) writeComma(writer);
-                writeNode(writer, ja.getObject(i));
+                writeNode(writer, ja.getNode(i));
             }
             endArray(writer);
         } else if (node instanceof List) {

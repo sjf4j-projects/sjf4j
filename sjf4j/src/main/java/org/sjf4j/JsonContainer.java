@@ -43,8 +43,8 @@ public abstract class JsonContainer {
      * @param path the JSON path to get the value from
      * @return the value at the path, or null if it doesn't exist
      */
-    public Object getObjectByPath(String path) {
-        return JsonPath.compile(path).findObject(this);
+    public Object getNodeByPath(String path) {
+        return JsonPath.compile(path).findNode(this);
     }
     
     /**
@@ -54,8 +54,8 @@ public abstract class JsonContainer {
      * @param defaultValue the value to return if the path doesn't exist
      * @return the value at the path, or the default value if it doesn't exist
      */
-    public Object getObjectByPath(String path, Object defaultValue) {
-        return JsonPath.compile(path).findObject(this, defaultValue);
+    public Object getNodeByPath(String path, Object defaultValue) {
+        return JsonPath.compile(path).findNode(this, defaultValue);
     }
 
     // String

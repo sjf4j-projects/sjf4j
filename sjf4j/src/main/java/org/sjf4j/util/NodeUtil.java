@@ -1,11 +1,17 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.PojoRegistry;
 
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -289,6 +295,37 @@ public class NodeUtil {
         return new JsonObject(node);
     }
 
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> toMap(Object node) {
+        if (node == null) {
+            return null;
+        } else if (node instanceof Map) {
+            return (Map<String, Object>) node;
+        }
+        throw new JsonException("Expected node type Map, but got " + node.getClass().getName());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> asMap(Object node) {
+        if (node == null) {
+            return null;
+        } else if (node instanceof Map) {
+            return (Map<String, Object>) node;
+        } else if (node instanceof JsonObject) {
+            return ((JsonObject) node).toMap();
+        } else if (PojoRegistry.isPojo(node.getClass())) {
+            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
+            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                Object v = fi.getValue().invokeGetter(node);
+                map.put(fi.getKey(), v);
+            }
+            return map;
+        }
+        throw new JsonException("Cannot convert " + node.getClass().getName() + " '" + node +
+                "' to Map: unsupported type");
+    }
+
     public static JsonArray toJsonArray(Object node) {
         if (node == null) {
             return null;
@@ -298,7 +335,6 @@ public class NodeUtil {
         throw new JsonException("Expected node type JsonArray, but got " + node.getClass().getName());
     }
 
-    @SuppressWarnings("unchecked")
     public static JsonArray asJsonArray(Object node) {
         if (node == null) {
             return null;
@@ -306,6 +342,80 @@ public class NodeUtil {
             return (JsonArray) node;
         }
         return new JsonArray(node);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<Object> toList(Object node) {
+        if (node == null) {
+            return null;
+        } else if (node instanceof List) {
+            return (List<Object>) node;
+        }
+        throw new JsonException("Expected node type List, but got " + node.getClass().getName());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<Object> asList(Object node) {
+        if (node == null) {
+            return null;
+        } else if (node instanceof List) {
+            return (List<Object>) node;
+        } else if (node instanceof JsonArray) {
+            return ((JsonArray) node).toList();
+        } else if (node.getClass().isArray()) {
+            List<Object> list = JsonConfig.global().listSupplier.create();
+            int len = Array.getLength(node);
+            if (len > 0) {
+                for (int i = 0; i < len; i++) {
+                    list.add(Array.get(node, i));
+                }
+            }
+            return list;
+        }
+        throw new JsonException("Cannot convert " + node.getClass().getName() + " '" + node +
+                "' to List: unsupported type");
+    }
+
+    public static Object[] toArray(Object node) {
+        if (node == null) {
+            return null;
+        } else if (node.getClass().isArray()) {
+            if (node.getClass().getComponentType().isPrimitive()) {
+                int length = Array.getLength(node);
+                Object[] arr = new Object[length];
+                for (int i = 0; i < length; i++) {
+                    arr[i] = Array.get(node, i); // Auto boxing
+                }
+                return arr;
+            } else {
+                return (Object[]) node;
+            }
+        }
+        throw new JsonException("Expected node type Array, but got " + node.getClass().getName());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Object[] asArray(Object node) {
+        if (node == null) {
+            return null;
+        } else if (node.getClass().isArray()) {
+            if (node.getClass().getComponentType().isPrimitive()) {
+                int length = Array.getLength(node);
+                Object[] arr = new Object[length];
+                for (int i = 0; i < length; i++) {
+                    arr[i] = Array.get(node, i); // Auto boxing
+                }
+                return arr;
+            } else {
+                return (Object[]) node;
+            }
+        } else if (node instanceof List) {
+            return ((List<Object>) node).toArray();
+        } else if (node instanceof JsonArray) {
+            return ((JsonArray) node).toArray();
+        }
+        throw new JsonException("Cannot convert " + node.getClass().getName() + " '" + node +
+                "' to Array: unsupported type");
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -317,8 +427,14 @@ public class NodeUtil {
             return (T) node;
         } else if (clazz == JsonObject.class) {
             return (T) toJsonObject(node);
+        } else if (clazz == Map.class) {
+            return (T) toMap(node);
         } else if (clazz == JsonArray.class) {
             return (T) toJsonArray(node);
+        } else if (clazz == List.class) {
+            return (T) toList(node);
+        } else if (clazz.isArray()) {
+            return (T) toArray(node);
         } else if (clazz == String.class) {
             return (T) toString(node);
         } else if (clazz == Boolean.class) {

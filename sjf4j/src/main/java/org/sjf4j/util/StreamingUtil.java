@@ -3,7 +3,6 @@ package org.sjf4j.util;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeConverter;
 import org.sjf4j.PojoRegistry;
 import org.sjf4j.facades.FacadeReader;
 import org.sjf4j.facades.FacadeWriter;
@@ -261,7 +260,7 @@ public class StreamingUtil {
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
                 if (i > 0) writer.writeComma();
-                writeNode(writer, ja.getObject(i));
+                writeNode(writer, ja.getNode(i));
             }
             writer.endArray();
         } else if (node instanceof List) {
