@@ -4,7 +4,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeConverter;
 import org.sjf4j.PojoRegistry;
 import org.sjf4j.facades.FacadeReader;
 import org.sjf4j.util.NumberUtil;

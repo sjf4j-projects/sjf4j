@@ -3,6 +3,8 @@ package org.sjf4j;
 
 import org.sjf4j.util.TypeReference;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -25,10 +27,10 @@ public class Sjf4j {
     /// JSON
 
     /**
-     * Parses JSON from a reader into an object of the specified class.
+     * Parses JSON from a Reader into an object of the specified class.
      *
      * @param <T> The type of the object to parse
-     * @param input The reader containing the JSON input
+     * @param input The Reader containing the JSON input
      * @param clazz The class of the object to parse
      * @return The parsed object
      */
@@ -40,10 +42,10 @@ public class Sjf4j {
     }
 
     /**
-     * Parses JSON from a reader into an object of the specified type using TypeReference.
+     * Parses JSON from a Reader into an object of the specified type using TypeReference.
      *
      * @param <T> The type of the object to parse
-     * @param input The reader containing the JSON input
+     * @param input The Reader containing the JSON input
      * @param type The type reference of the object to parse
      * @return The parsed object
      */
@@ -55,9 +57,9 @@ public class Sjf4j {
     }
 
     /**
-     * Parses JSON from a reader into a JsonObject.
+     * Parses JSON from a Reader into a JsonObject.
      *
-     * @param input The reader containing the JSON input
+     * @param input The Reader containing the JSON input
      * @return The parsed JsonObject
      */
     public static JsonObject fromJson(Reader input) {
@@ -65,49 +67,144 @@ public class Sjf4j {
     }
 
     /**
-     * Parses JSON from a string into an object of the specified class.
+     * Parses JSON from a String into an object of the specified class.
      *
      * @param <T> The type of the object to parse
-     * @param input The string containing the JSON input
+     * @param input The String containing the JSON input
      * @param clazz The class of the object to parse
      * @return The parsed object
      */
+    @SuppressWarnings("unchecked")
     public static <T> T fromJson(String input, Class<T> clazz) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        return (T) fromJson(new StringReader(input), clazz);
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
     /**
-     * Parses JSON from a string into an object of the specified type using TypeReference.
+     * Parses JSON from a String into an object of the specified type using TypeReference.
      *
      * @param <T> The type of the object to parse
-     * @param input The string containing the JSON input
+     * @param input The String containing the JSON input
      * @param type The type reference of the object to parse
      * @return The parsed object
      */
+    @SuppressWarnings("unchecked")
     public static <T> T fromJson(String input, TypeReference<T> type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        return (T) fromJson(new StringReader(input), type);
+        if (type == null) throw new IllegalArgumentException("Type must not be null");
+        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
     /**
-     * Parses JSON from a string into a JsonObject.
+     * Parses JSON from a String into a JsonObject.
      *
-     * @param input The string containing the JSON input
+     * @param input The String containing the JSON input
      * @return The parsed JsonObject
      */
     public static JsonObject fromJson(String input) {
-        if (input == null) throw new IllegalArgumentException("Input must not be null");
-        return fromJson(new StringReader(input), JsonObject.class);
+        return fromJson(input, JsonObject.class);
     }
 
     /**
-     * Writes an object as JSON to the given writer.
+     * Parses JSON from a InputStream into an object of the specified class.
      *
-     * @param output The writer to write the JSON to
+     * @param <T> The type of the object to parse
+     * @param input The InputStream containing the JSON input
+     * @param clazz The class of the object to parse
+     * @return The parsed object
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T fromJson(InputStream input, Class<T> clazz) {
+        if (input == null) throw new IllegalArgumentException("Input must not be null");
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
+    }
+
+    /**
+     * Parses JSON from a InputStream into an object of the specified type using TypeReference.
+     *
+     * @param <T> The type of the object to parse
+     * @param input The InputStream containing the JSON input
+     * @param type The type reference of the object to parse
+     * @return The parsed object
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T fromJson(InputStream input, TypeReference<T> type) {
+        if (input == null) throw new IllegalArgumentException("Input must not be null");
+        if (type == null) throw new IllegalArgumentException("Type must not be null");
+        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
+    }
+
+    /**
+     * Parses JSON from a InputStream into a JsonObject.
+     *
+     * @param input The InputStream containing the JSON input
+     * @return The parsed JsonObject
+     */
+    public static JsonObject fromJson(InputStream input) {
+        return fromJson(input, JsonObject.class);
+    }
+
+    /**
+     * Parses JSON from a byte[] into an object of the specified class.
+     *
+     * @param <T> The type of the object to parse
+     * @param input The byte[] containing the JSON input
+     * @param clazz The class of the object to parse
+     * @return The parsed object
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T fromJson(byte[] input, Class<T> clazz) {
+        if (input == null) throw new IllegalArgumentException("Input must not be null");
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
+    }
+
+    /**
+     * Parses JSON from a byte[] into an object of the specified type using TypeReference.
+     *
+     * @param <T> The type of the object to parse
+     * @param input The byte[] containing the JSON input
+     * @param type The type reference of the object to parse
+     * @return The parsed object
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T fromJson(byte[] input, TypeReference<T> type) {
+        if (input == null) throw new IllegalArgumentException("Input must not be null");
+        if (type == null) throw new IllegalArgumentException("Type must not be null");
+        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
+    }
+
+    /**
+     * Parses JSON from a byte[] into a JsonObject.
+     *
+     * @param input The byte[] containing the JSON input
+     * @return The parsed JsonObject
+     */
+    public static JsonObject fromJson(byte[] input) {
+        return fromJson(input, JsonObject.class);
+    }
+
+    /**
+     * Writes an object as JSON to the given Writer.
+     *
+     * @param output The Writer to write the JSON to
      * @param node The object to write as JSON
      */
     public static void toJson(Writer output, Object node) {
+        if (output == null) throw new IllegalArgumentException("Output must not be null");
+        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        JsonConfig.global().getJsonFacade().writeNode(output, node);
+    }
+
+    /**
+     * Writes an object as JSON to the given OutputStream.
+     *
+     * @param output The OutputStream to write the JSON to
+     * @param node The object to write as JSON
+     */
+    public static void toJson(OutputStream output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
         if (node == null) throw new IllegalArgumentException("Node must not be null");
         JsonConfig.global().getJsonFacade().writeNode(output, node);

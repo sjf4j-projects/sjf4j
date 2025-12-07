@@ -512,6 +512,7 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to JsonArray", e);
         }
     }
+
     public JsonArray findAsJsonArray(Object container, JsonArray defaultValue) {
         JsonArray value = findAsJsonArray(container);
         return value == null ? defaultValue : value;
@@ -527,6 +528,8 @@ public class JsonPath {
                     e.getMessage(), e);
         }
     }
+
+
     @SuppressWarnings("unchecked")
     public <T> T find(Object container, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -551,7 +554,7 @@ public class JsonPath {
 
 
     /// All
-    public List<Object> findAll(Object container) {
+    public List<Object> findAllNodes(Object container) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
         }
@@ -572,6 +575,12 @@ public class JsonPath {
         return result;
     }
 
+//    public <T> List<T> findAll(Object container, T... reified) {
+//        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+//        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+//        return findAll(container, clazz);
+//    }
+
     public <T> List<T> findAllAs(Object container, Class<T> clazz) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
@@ -583,6 +592,13 @@ public class JsonPath {
         _findAll(container, 1, result, (n) -> NodeUtil.as(n, clazz));
         return result;
     }
+
+//    @SuppressWarnings("unchecked")
+//    public <T> List<T> findAllAs(Object container, T... reified) {
+//        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+//        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+//        return findAllAs(container, clazz);
+//    }
 
     /// Put
 

@@ -4,6 +4,7 @@ import org.sjf4j.util.ContainerUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.function.BiFunction;
 
 /**
@@ -599,7 +600,22 @@ public abstract class JsonContainer {
     public <T> T getByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).find(this, clazz);
     }
-    
+
+
+    /**
+     * Gets the value at the specified JSON path and converts it to the inferred class type.
+     * This is a convenience method that uses reified type parameters for type inference.
+     *
+     * @param <T> the type to convert to
+     * @param path the JSON path to get the value from
+     * @param reified an empty array of the target type (used for type inference only)
+     * @return the value at the path converted to the specified class, or null if it doesn't exist or can't be converted
+     */
+    @SafeVarargs
+    public final <T> T getByPath(String path, T... reified) {
+        return JsonPath.compile(path).find(this, reified);
+    }
+
     /**
      * Converts the value at the specified JSON path to the specified class type.
      *
@@ -610,6 +626,21 @@ public abstract class JsonContainer {
      */
     public <T> T asByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).findAs(this, clazz);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to the inferred class type.
+     * This is a convenience method that uses reified type parameters for type inference.
+     *
+     * @param <T> the type to convert to
+     * @param path the JSON path to get the value from
+     * @param reified an empty array of the target type (used for type inference only)
+     * @return the value at the path converted to the specified class, or null if it doesn't exist
+     * @throws IllegalArgumentException if reified is not empty
+     */
+    @SafeVarargs
+    public final <T> T asByPath(String path, T... reified) {
+        return JsonPath.compile(path).findAs(this, reified);
     }
     
     // Put by path
@@ -642,7 +673,7 @@ public abstract class JsonContainer {
      * @param path the JSON path to put the value at
      * @param value the value to put
      */
-    public void putByPathIfAbsent(String path, Object value) {
+    public void putIfAbsentByPath(String path, Object value) {
         JsonPath.compile(path).putIfAbsent(this, value);
     }
 
@@ -655,6 +686,19 @@ public abstract class JsonContainer {
         JsonPath.compile(path).remove(this);
     }
 
+    /// Find all
+
+    public List<Object> findAllNodes(String path) {
+        return JsonPath.compile(path).findAllNodes(this);
+    }
+
+    public <T> List<T> findAll(String path, Class<T> clazz) {
+        return JsonPath.compile(path).findAll(this, clazz);
+    }
+
+    public <T> List<T> findAllAs(String path, Class<T> clazz) {
+        return JsonPath.compile(path).findAllAs(this, clazz);
+    }
 
     /// Walk
 

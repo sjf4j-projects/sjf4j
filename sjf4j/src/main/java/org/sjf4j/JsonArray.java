@@ -82,13 +82,13 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// Object
 
     /**
-     * Returns the JSON string representation of this JsonArray.
+     * Returns the JSON-like string representation of this JsonArray.
      *
-     * @return the JSON string representation
+     * @return the JSON-like string representation
      */
     @Override
     public String toString() {
-        return toJson();
+        return inspect();
     }
 
     /**

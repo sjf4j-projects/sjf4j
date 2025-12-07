@@ -143,7 +143,7 @@ public class JsonPathUtil {
                         tokens.add(new PathToken.Slice(startIdx, endIdx, step));
                     } else if (content.startsWith("?")) {
                         throw new JsonException("Filter expression like '" + content + "' in path '" + expr +
-                                "' are not supported yet. You may use `JsonWalker` instead.");
+                                "' are not supported yet. You may use `JsonWalker` or `JsonStream` instead.");
                     } else {
                         try {
                             // Try to parse as numeric index

@@ -90,7 +90,7 @@ public class JsonPathUtilTest {
         testExpr("$.array[0,2,-1]", 2, "[0,2,-1]");
 
         // Multiple names
-        testCompile("$['name','age']", 2, PathToken.Root.class, PathToken.Union.class);
+        testCompile("$['name', 'age']", 2, PathToken.Root.class, PathToken.Union.class);
         testCompile("$[\"first name\",\"last name\"]", 2, PathToken.Root.class, PathToken.Union.class);
         PathToken pt = JsonPathUtil.compile("$[\"first name\",\"last name\"]").get(1);
         pt = ((PathToken.Union) pt).union.get(1);

@@ -139,7 +139,7 @@ public class Sjf4jExample {
         // 使用JsonStream处理
         List<String> userNames = JsonStream.of(users)
                 .find("$.name", String.class)
-                .map(name -> name.toUpperCase())
+                .map(String::toUpperCase)
                 .filter(name -> name.startsWith("A") || name.startsWith("J"))
                 .distinct()
                 .sorted()

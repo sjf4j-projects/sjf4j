@@ -286,13 +286,13 @@ public class JsonObject extends JsonContainer {
     /// Map
 
     /**
-     * Returns a JSON string representation of this JsonObject.
+     * Returns a JSON-like string representation of this JsonObject.
      *
-     * @return JSON string representation
+     * @return JSON-like string representation
      */
     @Override
     public String toString() {
-        return toJson();
+        return inspect();
     }
 
     /**
@@ -394,6 +394,13 @@ public class JsonObject extends JsonContainer {
         }
     }
 
+    /**
+     * Converts this JsonObject to a standard Map, merging both POJO fields and dynamic nodes.
+     * The returned map is a new instance if this JsonObject contains both POJO fields and dynamic nodes,
+     * otherwise it returns the underlying map or an empty map.
+     *
+     * @return a Map containing all entries from this JsonObject
+     */
     public Map<String, Object> toMap() {
         if (fieldMap == null) {
             return nodeMap == null ? Collections.emptyMap() : nodeMap;
@@ -409,6 +416,13 @@ public class JsonObject extends JsonContainer {
         }
     }
 
+    /**
+     * Returns a Set view of the mappings contained in this JsonObject, including both POJO fields
+     * and dynamic nodes. The set is backed by the JsonObject, so changes to the JsonObject are
+     * reflected in the set, and vice-versa.
+     *
+     * @return a Set view of the mappings in this JsonObject
+     */
     public Set<Map.Entry<String, Object>> entrySet() {
         Set<Map.Entry<String, Object>> set = new LinkedHashSet<>();
         if (fieldMap != null) {
@@ -424,7 +438,13 @@ public class JsonObject extends JsonContainer {
         return set;
     }
 
-    // Remove for nodeMap, Set-null for fieldMap
+    /**
+     * Removes all entries from this JsonObject that satisfy the given predicate. Only dynamic
+     * node entries are removed; POJO fields are not affected by this operation.
+     *
+     * @param filter the predicate used to filter entries to be removed
+     * @return true if any entries were removed, false otherwise
+     */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
         if (nodeMap != null) {
             return  nodeMap.entrySet().removeIf(filter);
@@ -439,9 +459,18 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromJson(input);
     }
 
+    public static <T extends JsonObject> T fromJson(String input, Class<T> clazz) {
+        return Sjf4j.fromJson(input, clazz);
+    }
+
     public static JsonObject fromJson(Reader input) {
         return Sjf4j.fromJson(input);
     }
+
+    public static <T extends JsonObject> T fromJson(Reader input, Class<T> clazz) {
+        return Sjf4j.fromJson(input, clazz);
+    }
+
 
     public String toJson() {
         return Sjf4j.toJson(this);
@@ -464,6 +493,7 @@ public class JsonObject extends JsonContainer {
     public void toYaml(Writer output) {
         Sjf4j.toYaml(output, this);
     }
+
 
     /// POJO Facade
 
@@ -492,6 +522,14 @@ public class JsonObject extends JsonContainer {
 
     /// Getter
 
+    /**
+     * Gets the raw node value associated with the specified key, checking both POJO fields
+     * and dynamic nodes. Returns null if the key does not exist.
+     *
+     * @param key the key to retrieve
+     * @return the value associated with the key, or null if the key doesn't exist
+     * @throws IllegalArgumentException if key is null
+     */
     public Object getNode(String key) {
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         if (fieldMap != null) {
@@ -506,11 +544,26 @@ public class JsonObject extends JsonContainer {
         return null;
     }
 
+    /**
+     * Gets the node value associated with the specified key, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the value associated with the key, or defaultValue if the key doesn't exist
+     */
     public Object getNode(String key, Object defaultValue) {
         Object value = getNode(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a String.
+     *
+     * @param key the key to retrieve
+     * @return the String value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a String
+     */
     public String getString(String key) {
         try {
             Object value = getNode(key);
@@ -519,20 +572,54 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get String of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a String, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the String value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a String
+     */
     public String getString(String key, String defaultValue) {
         String value = getString(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a String.
+     *
+     * @param key the key to retrieve
+     * @return the converted String value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a String
+     */
     public String asString(String key) {
         Object value = getNode(key);
         return NodeUtil.asString(value);
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a String, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted String value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a String
+     */
     public String asString(String key, String defaultValue) {
         String value = asString(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Number.
+     *
+     * @param key the key to retrieve
+     * @return the Number value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Number
+     */
     public Number getNumber(String key) {
         Object value = getNode(key);
         try {
@@ -541,11 +628,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Number of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a Number, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the Number value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Number
+     */
     public Number getNumber(String key, Number defaultValue) {
         Number value = getNumber(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Number.
+     *
+     * @param key the key to retrieve
+     * @return the converted Number value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Number
+     */
     public Number asNumber(String key) {
         Object value = getNode(key);
         try {
@@ -554,11 +658,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Number: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a Number, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted Number value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Number
+     */
     public Number asNumber(String key, Number defaultValue) {
         Number value = asNumber(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Long.
+     *
+     * @param key the key to retrieve
+     * @return the Long value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Long
+     */
     public Long getLong(String key) {
         Object value = getNode(key);
         try {
@@ -567,11 +688,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Long of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a long, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the long value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a long
+     */
     public long getLong(String key, long defaultValue) {
         Long value = getLong(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Long.
+     *
+     * @param key the key to retrieve
+     * @return the converted Long value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Long
+     */
     public Long asLong(String key) {
         Object value = getNode(key);
         try {
@@ -580,11 +718,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Long: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a long, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted long value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a long
+     */
     public long asLong(String key, long defaultValue) {
         Long value = asLong(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as an Integer.
+     *
+     * @param key the key to retrieve
+     * @return the Integer value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to an Integer
+     */
     public Integer getInteger(String key) {
         Object value = getNode(key);
         try {
@@ -593,11 +748,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Integer of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as an int, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the int value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to an int
+     */
     public int getInteger(String key, int defaultValue) {
         Integer value = getInteger(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as an Integer.
+     *
+     * @param key the key to retrieve
+     * @return the converted Integer value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to an Integer
+     */
     public Integer asInteger(String key) {
         Object value = getNode(key);
         try {
@@ -606,11 +778,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Integer: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as an int, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted int value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to an int
+     */
     public int asInteger(String key, int defaultValue) {
         Integer value = asInteger(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Short.
+     *
+     * @param key the key to retrieve
+     * @return the Short value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Short
+     */
     public Short getShort(String key) {
         Object value = getNode(key);
         try {
@@ -619,11 +808,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Short of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a short, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the short value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a short
+     */
     public short getShort(String key, short defaultValue) {
         Short value = getShort(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Short.
+     *
+     * @param key the key to retrieve
+     * @return the converted Short value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Short
+     */
     public Short asShort(String key) {
         Object value = getNode(key);
         try {
@@ -632,11 +838,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Short: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a short, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted short value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a short
+     */
     public short asShort(String key, short defaultValue) {
         Short value = asShort(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Byte.
+     *
+     * @param key the key to retrieve
+     * @return the Byte value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Byte
+     */
     public Byte getByte(String key) {
         Object value = getNode(key);
         try {
@@ -645,11 +868,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Byte of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a byte, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the byte value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a byte
+     */
     public byte getByte(String key, byte defaultValue) {
         Byte value = getByte(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Byte.
+     *
+     * @param key the key to retrieve
+     * @return the converted Byte value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Byte
+     */
     public Byte asByte(String key) {
         Object value = getNode(key);
         try {
@@ -658,11 +898,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Byte: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a byte, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted byte value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a byte
+     */
     public byte asByte(String key, byte defaultValue) {
         Byte value = asByte(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Double.
+     *
+     * @param key the key to retrieve
+     * @return the Double value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Double
+     */
     public Double getDouble(String key) {
         Object value = getNode(key);
         try {
@@ -671,11 +928,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Double of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a double, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the double value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a double
+     */
     public double getDouble(String key, double defaultValue) {
         Double value = getDouble(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Double.
+     *
+     * @param key the key to retrieve
+     * @return the converted Double value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Double
+     */
     public Double asDouble(String key) {
         Object value = getNode(key);
         try {
@@ -684,11 +958,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Double: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a double, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted double value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a double
+     */
     public double asDouble(String key, double defaultValue) {
         Double value = asDouble(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Float.
+     *
+     * @param key the key to retrieve
+     * @return the Float value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Float
+     */
     public Float getFloat(String key) {
         Object value = getNode(key);
         try {
@@ -697,11 +988,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Float of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a float, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the float value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a float
+     */
     public float getFloat(String key, float defaultValue) {
         Float value = getFloat(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Float.
+     *
+     * @param key the key to retrieve
+     * @return the converted Float value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Float
+     */
     public Float asFloat(String key) {
         Object value = getNode(key);
         try {
@@ -710,11 +1018,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Float: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a float, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted float value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a float
+     */
     public float asFloat(String key, float defaultValue) {
         Float value = asFloat(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a BigInteger.
+     *
+     * @param key the key to retrieve
+     * @return the BigInteger value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigInteger
+     */
     public BigInteger getBigInteger(String key) {
         Object value = getNode(key);
         try {
@@ -723,11 +1048,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get BigInteger of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a BigInteger, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the BigInteger value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigInteger
+     */
     public BigInteger getBigInteger(String key, BigInteger defaultValue) {
         BigInteger value = getBigInteger(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a BigInteger.
+     *
+     * @param key the key to retrieve
+     * @return the converted BigInteger value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigInteger
+     */
     public BigInteger asBigInteger(String key) {
         Object value = getNode(key);
         try {
@@ -736,11 +1078,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to BigInteger: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a BigInteger, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted BigInteger value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigInteger
+     */
     public BigInteger asBigInteger(String key, BigInteger defaultValue) {
         BigInteger value = asBigInteger(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a BigDecimal.
+     *
+     * @param key the key to retrieve
+     * @return the BigDecimal value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigDecimal
+     */
     public BigDecimal getBigDecimal(String key) {
         Object value = getNode(key);
         try {
@@ -749,11 +1108,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get BigDecimal of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a BigDecimal, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the BigDecimal value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigDecimal
+     */
     public BigDecimal getBigDecimal(String key, BigDecimal defaultValue) {
         BigDecimal value = getBigDecimal(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a BigDecimal.
+     *
+     * @param key the key to retrieve
+     * @return the converted BigDecimal value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigDecimal
+     */
     public BigDecimal asBigDecimal(String key) {
         Object value = getNode(key);
         try {
@@ -762,11 +1138,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to BigDecimal: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a BigDecimal, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted BigDecimal value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a BigDecimal
+     */
     public BigDecimal asBigDecimal(String key, BigDecimal defaultValue) {
         BigDecimal value = asBigDecimal(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a Boolean.
+     *
+     * @param key the key to retrieve
+     * @return the Boolean value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Boolean
+     */
     public Boolean getBoolean(String key) {
         Object value = getNode(key);
         try {
@@ -775,11 +1168,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get Boolean of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a boolean, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the boolean value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a boolean
+     */
     public boolean getBoolean(String key, boolean defaultValue) {
         Boolean value = getBoolean(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a Boolean.
+     *
+     * @param key the key to retrieve
+     * @return the converted Boolean value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a Boolean
+     */
     public Boolean asBoolean(String key) {
         Object value = getNode(key);
         try {
@@ -788,11 +1198,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to Boolean: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a boolean, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted boolean value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a boolean
+     */
     public boolean asBoolean(String key, boolean defaultValue) {
         Boolean value = asBoolean(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a JsonObject.
+     *
+     * @param key the key to retrieve
+     * @return the JsonObject value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonObject
+     */
     public JsonObject getJsonObject(String key) {
         Object value = getNode(key);
         try {
@@ -801,11 +1228,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get JsonObject of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a JsonObject, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the JsonObject value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonObject
+     */
     public JsonObject getJsonObject(String key, JsonObject defaultValue) {
         JsonObject value = getJsonObject(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a JsonObject.
+     *
+     * @param key the key to retrieve
+     * @return the converted JsonObject value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonObject
+     */
     public JsonObject asJsonObject(String key) {
         Object value = getNode(key);
         try {
@@ -814,11 +1258,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to JsonObject: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a JsonObject, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted JsonObject value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonObject
+     */
     public JsonObject asJsonObject(String key, JsonObject defaultValue) {
         JsonObject value = asJsonObject(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key as a JsonArray.
+     *
+     * @param key the key to retrieve
+     * @return the JsonArray value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonArray
+     */
     public JsonArray getJsonArray(String key) {
         Object value = getNode(key);
         try {
@@ -827,11 +1288,28 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get JsonArray of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key as a JsonArray, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the JsonArray value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonArray
+     */
     public JsonArray getJsonArray(String key, JsonArray defaultValue) {
         JsonArray value = getJsonArray(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Converts and gets the value associated with the specified key as a JsonArray.
+     *
+     * @param key the key to retrieve
+     * @return the converted JsonArray value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonArray
+     */
     public JsonArray asJsonArray(String key) {
         Object value = getNode(key);
         try {
@@ -840,11 +1318,30 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to convert key '" + key + "' to JsonArray: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key as a JsonArray, returning the default value
+     * if the key does not exist or the value is null.
+     *
+     * @param key the key to retrieve
+     * @param defaultValue the value to return if the key doesn't exist or is null
+     * @return the converted JsonArray value, or defaultValue if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to a JsonArray
+     */
     public JsonArray asJsonArray(String key, JsonArray defaultValue) {
         JsonArray value = asJsonArray(key);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Gets the value associated with the specified key and converts it to the given class type.
+     *
+     * @param <T> the type of the value to return
+     * @param key the key to retrieve
+     * @param clazz the class type to convert the value to
+     * @return the converted value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to the specified type
+     */
     public <T> T get(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
@@ -853,6 +1350,18 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get " + clazz.getName() + " of key '" + key + "': " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Gets the value associated with the specified key and converts it to the inferred class type.
+     * This is a convenience method that uses reified type parameters for type inference.
+     *
+     * @param <T> the type of the value to return
+     * @param key the key to retrieve
+     * @param reified an empty array of the target type (used for type inference only)
+     * @return the converted value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to the specified type
+     * @throws IllegalArgumentException if reified is not empty
+     */
     @SuppressWarnings("unchecked")
     public <T> T get(String key, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -860,6 +1369,15 @@ public class JsonObject extends JsonContainer {
         return get(key, clazz);
     }
 
+    /**
+     * Converts and gets the value associated with the specified key to the given class type.
+     *
+     * @param <T> the type of the value to return
+     * @param key the key to retrieve
+     * @param clazz the class type to convert the value to
+     * @return the converted value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to the specified type
+     */
     public <T> T as(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
@@ -869,6 +1387,18 @@ public class JsonObject extends JsonContainer {
                     ": " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Converts and gets the value associated with the specified key to the inferred class type.
+     * This is a convenience method that uses reified type parameters for type inference.
+     *
+     * @param <T> the type of the value to return
+     * @param key the key to retrieve
+     * @param reified an empty array of the target type (used for type inference only)
+     * @return the converted value, or null if the key doesn't exist
+     * @throws JsonException if the value cannot be converted to the specified type
+     * @throws IllegalArgumentException if reified is not empty
+     */
     @SuppressWarnings("unchecked")
     public <T> T as(String key, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -943,7 +1473,6 @@ public class JsonObject extends JsonContainer {
         }
     }
 
-
     public Object remove(String key) {
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         if (fieldMap != null && fieldMap.containsKey(key)) {
@@ -980,7 +1509,6 @@ public class JsonObject extends JsonContainer {
      * <p>All key-value pairs from the target object will be merged into this object.
      * When a key exists in both objects, the conflict resolution depends on the
      * {@code preferTarget} parameter.</p>
-     *
      *
      */
     public void merge(JsonObject target, boolean preferTarget, boolean needCopy) {
@@ -1027,15 +1555,6 @@ public class JsonObject extends JsonContainer {
         return new Builder(this);
     }
 
-//    public Builder getBuilder(String key) {
-//        JsonObject jo = getJsonObject(key);
-//        if (null == jo) {
-//            jo = new JsonObject();
-//            put(key, jo);
-//        }
-//        return new Builder(jo);
-//    }
-
     public static Builder builder() {
         return new Builder(new JsonObject());
     }
@@ -1065,8 +1584,8 @@ public class JsonObject extends JsonContainer {
             jo.putNonNullByPath(path, value);
             return this;
         }
-        public Builder putByPathIfAbsent(String path, Object value) {
-            jo.putByPathIfAbsent(path, value);
+        public Builder putIfAbsentByPath(String path, Object value) {
+            jo.putIfAbsentByPath(path, value);
             return this;
         }
         public JsonObject build() {

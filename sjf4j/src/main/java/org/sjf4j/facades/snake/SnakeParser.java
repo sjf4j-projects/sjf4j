@@ -3,7 +3,6 @@ package org.sjf4j.facades.snake;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeConverter;
 import org.sjf4j.PojoRegistry;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;

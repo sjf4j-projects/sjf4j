@@ -104,20 +104,30 @@ class JsonObjectTest {
 
     }
 
+    @Test
+    public void testGetter2() {
+        String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20],\"sex\":false}},\"sex\":true}";
+        JsonObject jo = JsonObject.fromJson(json1);
+        int id = jo.get("id");
+        String height = jo.as("height");
+        assertEquals(123, id);
+        assertEquals("175.3", height);
+    }
+
     public void testPutter1() {
         JsonObject jo = new JsonObject();
-        assertEquals("{}", jo.toString());
+        assertEquals("{}", jo.toJson());
 
         jo.put("name", "higgs");
-        assertEquals("{\"name\":\"higgs\"}", jo.toString());
+        assertEquals("{\"name\":\"higgs\"}", jo.toJson());
 
         jo.put("age", 18.8);
         jo.remove("name");
-        assertEquals("{\"age\":18.8}", jo.toString());
+        assertEquals("{\"age\":18.8}", jo.toJson());
 
         JsonObject jo2 = new JsonObject("copy", "me", "yes?", true);
         jo2.putAll(jo);
-        assertEquals("{\"copy\":\"me\",\"yes?\":true,\"age\":18.8}", jo2.toString());
+        assertEquals("{\"copy\":\"me\",\"yes?\":true,\"age\":18.8}", jo2.toJson());
 
         System.out.println(jo2.toJson());
     }
@@ -128,10 +138,10 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
 
         assert(jo1.containsByPath("$.friends.jack"));
-        jo1.putByPathIfAbsent("$.friends.jack", "bad");
+        jo1.putIfAbsentByPath("$.friends.jack", "bad");
         assertEquals(JsonObject.fromJson(json1), jo1);
 
-        jo1.putByPathIfAbsent("$.friends.mark", "bad");
+        jo1.putIfAbsentByPath("$.friends.mark", "bad");
         String json2 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]},\"mark\":\"bad\"},\"sex\":true}";
         assertEquals(JsonObject.fromJson(json2), jo1);
     }
@@ -532,7 +542,7 @@ class JsonObjectTest {
         JsonObject jo2 = JsonObject.builder()
                 .putByPath("$.user.name", "Bob")
                 .putNonNullByPath("$.user.age", 30)
-                .putByPathIfAbsent("$.user.email", "bob@example.com")
+                .putIfAbsentByPath("$.user.email", "bob@example.com")
                 .build();
         
         assertEquals("Bob", jo2.getStringByPath("$.user.name"));
