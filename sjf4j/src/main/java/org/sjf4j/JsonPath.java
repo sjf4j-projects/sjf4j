@@ -602,7 +602,7 @@ public class JsonPath {
 
     /// Put
 
-    public void put(Object container, Object value) {
+    public Object put(Object container, Object value) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
         }
@@ -610,65 +610,66 @@ public class JsonPath {
         PathToken lastToken = peek();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
-            JsonWalker.putInObject(lastContainer, name, value);
+            return JsonWalker.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathToken.Index) {
             int idx = ((PathToken.Index) lastToken).index;
             JsonWalker.setInArray(lastContainer, idx, value);
+            return null; // No need return old value in List/JsonArray
         } else {
             throw new JsonException("Unexpected path token '" + lastToken + "'");
         }
     }
 
-    public boolean hasNonNull(Object container) {
-        return findNode(container) != null;
+    public Object putNonNull(Object container, Object value) {
+        if (null != value) {
+            return put(container, value);
+        }
+        return findNode(container);
     }
 
-    public void putNonNull(Object container, Object value) {
-        if (null != value) { put(container, value); }
+    public Object putIfAbsent(Object container, Object value) {
+        Object old = findNode(container);
+        if (old == null) {
+            return put(container, value);
+        }
+        return old;
     }
 
-    public void putIfAbsent(Object container, Object value) {
-        if (!hasNonNull(container)) { put(container, value); }
+    @SuppressWarnings("unchecked")
+    public <T> T computeIfAbsent(Object container, Function<JsonPath, T> computer) {
+        if (computer == null) throw new IllegalArgumentException("Computer must not be null");
+        T old = find(container);
+        if (old == null) {
+            T newNode = computer.apply(this);
+            if (newNode != null) {
+                put(container, newNode);
+                return newNode;
+            }
+        }
+        return old;
     }
 
-    public void remove(Object container) {
+    public Object remove(Object container) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
         }
-        if (hasNonNull(container)) {
+        Object old = findNode(container);
+        if (old != null) {
             Object lastContainer = _ensureContainersInPath(container);
             PathToken lastToken = peek();
             if (lastToken instanceof PathToken.Name) {
-                if (lastContainer instanceof JsonObject) {
-                    ((JsonObject) lastContainer).remove(((PathToken.Name) lastToken).name);
-                } else if (lastContainer instanceof Map) {
-                    ((Map<?, ?>) lastContainer).remove(((PathToken.Name) lastToken).name);
-                } else if (PojoRegistry.isPojo(lastContainer.getClass())) {
-                    String name = ((PathToken.Name) lastToken).name;
-                    PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(lastContainer.getClass(), name);
-                    if (fi != null) {
-                        fi.invokeSetter(lastContainer, null);
-                    } else {
-                        throw new JsonException("Not found field '" + name + "' of POJO container type '" +
-                                lastContainer.getClass() + "'");
-                    }
-                } else {
-                    throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                            lastContainer.getClass() + "'");
-                }
+                String name = ((PathToken.Name) lastToken).name;
+                return JsonWalker.removeInObject(lastContainer, name);
             } else if (lastToken instanceof PathToken.Index) {
-                if (lastContainer instanceof JsonArray) {
-                    ((JsonArray) lastContainer).remove(((PathToken.Index) lastToken).index);
-                } else if (lastContainer instanceof List) {
-                    ((List<?>) lastContainer).remove(((PathToken.Index) lastToken).index);
-                } else if (lastContainer.getClass().isArray()) {
-                    throw new JsonException("Cannot remove item for Array");
-                } else {
-                    throw new JsonException("Mismatched path token " + lastToken + " with container type '" +
-                            lastContainer.getClass() + "'");
-                }
+                int idx = ((PathToken.Index) lastToken).index;
+                return JsonWalker.removeInArray(lastContainer, idx);
             }
         }
+        return old;
+    }
+
+    public boolean hasNonNull(Object container) {
+        return findNode(container) != null;
     }
 
 

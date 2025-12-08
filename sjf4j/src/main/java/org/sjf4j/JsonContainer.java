@@ -33,7 +33,7 @@ public abstract class JsonContainer {
      * @param path the JSON path to check
      * @return true if a non-null value exists at the path, false otherwise
      */
-    public boolean containsByPath(String path) {
+    public boolean hasNonNullByPath(String path) {
         return JsonPath.compile(path).hasNonNull(this);
     }
 

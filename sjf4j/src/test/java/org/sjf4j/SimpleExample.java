@@ -74,6 +74,7 @@ public class SimpleExample {
         List<String> tags2 = jo.stream()        // 参考 Java Stream 语法
                 .findAll("$.tags[*]", String.class)
                 .filter(tag -> tag.length() > 3)
+                .map(s -> "'" + s + "'")
                 .toList();
 
         int x = jo.stream()
@@ -85,7 +86,7 @@ public class SimpleExample {
 
         double avgScore = jo.stream()
                 .findAll("$.scores[*]", Double.class)
-                .filter(Double::isFinite)
+                .map(d -> d < 60 ? 60 : d)
                 .collect(Collectors.averagingDouble(s -> s));       // 利用 java.util.Collectors 提供的平均数计算方法
 
         // JsonArray 的用法与 JsonObject 基本一样，JsonObject是对 Map 的包装，JsonArray则是对 List 的包装

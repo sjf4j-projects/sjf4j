@@ -119,7 +119,11 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
             }
             case USE_MODULE: {
-                return gson.fromJson(input, type);
+                try {
+                    return gson.fromJson(input, type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON streaming into node of type '" + type + "'", e);
+                }
             }
             default:
                 throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");

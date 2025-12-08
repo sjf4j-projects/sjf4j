@@ -137,7 +137,7 @@ class JsonObjectTest {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        assert(jo1.containsByPath("$.friends.jack"));
+        assert(jo1.hasNonNullByPath("$.friends.jack"));
         jo1.putIfAbsentByPath("$.friends.jack", "bad");
         assertEquals(JsonObject.fromJson(json1), jo1);
 
@@ -574,12 +574,12 @@ class JsonObjectTest {
     public void testRemoveByPath() {
         JsonObject jo = JsonObject.fromJson("{\"a\":{\"b\":{\"c\":123}},\"array\":[1,2,3]}");
         
-        assertTrue(jo.containsByPath("$.a.b.c"));
+        assertTrue(jo.hasNonNullByPath("$.a.b.c"));
         jo.removeByPath("$.a.b.c");
-        assertFalse(jo.containsByPath("$.a.b.c"));
-        assertTrue(jo.containsByPath("$.a.b")); // 父对象还在
+        assertFalse(jo.hasNonNullByPath("$.a.b.c"));
+        assertTrue(jo.hasNonNullByPath("$.a.b")); // 父对象还在
         
-        assertTrue(jo.containsByPath("$.array[1]"));
+        assertTrue(jo.hasNonNullByPath("$.array[1]"));
         jo.removeByPath("$.array[1]");
         assertEquals(2, jo.asJsonArray("array").size());
         assertEquals(1, jo.asJsonArray("array").getInteger(0));

@@ -679,17 +679,21 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         nodeList.add(pidx, object);
     }
 
-    public void set(int idx, Object object) {
+    public Object set(int idx, Object object) {
         int pidx = posIndex(idx);
         if (pidx < 0 || pidx >= size()) {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
         }
         if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
-        nodeList.set(pidx, object);
+        return nodeList.set(pidx, object);
     }
 
-    public void setIfAbsent(int idx, Object object) {
-        if (getNode(idx) == null) set(idx, object);
+    public Object setIfAbsent(int idx, Object object) {
+        Object old = getNode(idx);
+        if (old == null) {
+            return set(idx, object);
+        }
+        return old;
     }
 
     public void addAll(Object... values) {

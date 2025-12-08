@@ -1441,6 +1441,7 @@ public class JsonObject extends JsonContainer {
         return old;
     }
 
+    // Try generic
     @SuppressWarnings("unchecked")
     public <T> T computeIfAbsent(String key, Function<String, T> computer) {
         if (computer == null) throw new IllegalArgumentException("Computer must not be null");

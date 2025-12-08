@@ -260,17 +260,19 @@ public class JsonWalker {
     }
 
     @SuppressWarnings("unchecked")
-    public static void putInObject(Object container, String key, Object node) {
+    public static Object putInObject(Object container, String key, Object node) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         if (container instanceof JsonObject) {
-            ((JsonObject) container).put(key, node);
+            return ((JsonObject) container).put(key, node);
         } else if (container instanceof Map) {
-            ((Map<String, Object>) container).put(key, node);
+            return ((Map<String, Object>) container).put(key, node);
         } else if (PojoRegistry.isPojo(container.getClass())) {
             PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(container.getClass(), key);
             if (fi != null) {
+                Object old = fi.invokeGetter(container);
                 fi.invokeSetter(container, node);
+                return old;
             } else {
                 throw new JsonException("Not found field '" + key + "' of POJO container type '" +
                         container.getClass() + "'");
@@ -281,14 +283,15 @@ public class JsonWalker {
     }
 
     @SuppressWarnings("unchecked")
-    public static void setInArray(Object container, int idx, Object node) {
+    public static Object setInArray(Object container, int idx, Object node) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (container instanceof JsonArray) {
             JsonArray ja = (JsonArray) container;
             if (idx == ja.size()) {
                 ja.add(node);
+                return null;
             } else if (ja.containsIndex(idx)) {
-                ja.set(idx, node);
+                return ja.set(idx, node);
             } else {
                 throw new JsonException("Cannot set/add index " + idx + " in JsonArray of size " +
                         ja.size() + " (index < size: modify; index == size: append)");
@@ -298,8 +301,9 @@ public class JsonWalker {
             idx = idx < 0 ? list.size() + idx : idx;
             if (idx == list.size()) {
                 list.add(node);
+                return null;
             } else if (idx >= 0 && idx < list.size()) {
-                list.set(idx, node);
+                return list.set(idx, node);
             } else {
                 throw new JsonException("Cannot set/add index " + idx + " in List of size " +
                         list.size() + " (index < size: modify; index == size: append)");
@@ -308,7 +312,9 @@ public class JsonWalker {
             int len = Array.getLength(container);
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 && idx < len) {
+                Object old = Array.get(container, idx);
                 Array.set(container, idx, node);
+                return old;
             } else {
                 throw new JsonException("Cannot set index " + idx + " in Array of size " +
                         len + " (index < size: modify)");
