@@ -140,10 +140,9 @@ public class SimpleExample {
 
         jo = Sjf4j.fromYaml(jo.toYaml());                       // YAML 与 JSON 基本一样
 
-        Properties props = new Properties();
-        props.load(new StringReader("aa.bb[0].cc=dd"));
-        JsonObject tmpJo = JsonObject.fromProperties(props);    // = {"aa":{"bb":[{"cc":"dd"}]}}, 能与 Properties 进行有限的转换
-        jo.toProperties(new Properties());
+        // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd
+        jo.toProperties(System.getProperties());                // Limited conversion to/from Properties
+
 
         // JsonObject <==> Map
         Map<String, Object> tmpMap = jo.toMap();

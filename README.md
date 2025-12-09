@@ -35,29 +35,30 @@ graph BT
         value --> converted("Object (with converter)")
 ```
 
-## User Manual
+## Getting Started with SJF4J
 
 ### Get it
-`Gradle`:
+
+SJF4J only requires **JDK 8** and has no additional runtime dependencies.  
+For `Gradle` : (Maven similar)
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
-SJF4J requires `JDK 8`, and has no additional runtime dependencies. 
 
-SJF4J includes built-in parsers for `Object-Tree` and `Properties`.
-To handle `JSON` data, simply add `Jackson`, `Gson`, or `Fastjson2` to your classpath.
+SJF4J includes built-in parsers for ***Object-Tree*** and ***Properties***.
+To handle ***JSON*** data, simply add `Jackson`, `Gson`, or `Fastjson2` to your classpath.
 The first available parser in this order will be automatically detected and used.
-To work with `YAML` data, just include `SnakeYAML`.
+To work with ***YAML*** data, just include `SnakeYAML`.
 
+---
 ### Basic Example
 
 Full codes are available at 
 [SimpleExample](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExample.java).
 
-
-`JsonObject` is essentially a wrapper of `Map`. 
-It provides map-like operations, type-safe access, dynamic type casting,
-cross-type conversion, builder-style chaining, path-based operations, and other expressive APIs.
+> `JsonObject` is essentially a wrapper of `Map`. 
+> It provides map-like operations, type-safe access, dynamic type casting, 
+> cross-type conversion, builder-style chaining, path-based operations, and other expressive APIs.
 ```java
     String json = "{\n" +
             "  \"id\": 1,\n" +
@@ -125,8 +126,9 @@ Secondly, the path-based operations include: `getByPath()`, `asByPath()`, `putBy
  * The path syntax supports the full (except Filter or Function yet)
  [JSON Path](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base) 
  and [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901).
- * Methods like `putByPath()`/`computeIfAbsentByPath()` can automatically create intermediate nodes, 
- which is particularly useful for nested structures.
+
+ * **Worth highlighting**: `putByPath()` / `computeIfAbsentByPath()` /.. can automatically create intermediate nodes,
+  which is extremely useful in practice.
 ```java
     String role2 = jo.getStringByPath("$.user.role");         
     // `getXxByPath()` supports JSON Path expressions
@@ -152,7 +154,8 @@ Secondly, the path-based operations include: `getByPath()`, `asByPath()`, `putBy
     List<Object> unions = jo.findAllNodes("$.user['role','profile']");  
     // Supports Union '[A,B,..]' of multiple fields
 ```
-Additionally, traversal with `walk()`, `stream()` 
+Additionally, the traversal APIs `walk()` and `stream()` provide powerful ways to programmatically navigate and 
+inspect the Object-Tree.
 ```java
     jo.walk(Target.CONTAINER, Order.BOTTOM_UP, (path, node) -> {
         // Target: CONTAINER or VALUE
@@ -179,20 +182,21 @@ Additionally, traversal with `walk()`, `stream()`
             .collect(Collectors.averagingDouble(s -> s));
 ```
 
-### Advanced Example with POJO / JOJO
+---
+### Example with POJO / JOJO
 
 Definitions:
  * **Map**: The standard Java container for dynamic elements. Flexible, but cannot provide compile-time checking 
 like a `POJO`.
  * **JsonObject**: A wrapper of `Map` that provides many additional APIs for convenient Object-Tree operations.
- * **POJO**: ***Plain Old Java Object***. `POJOs` offers the highest performance and type safety, but `fields` are fixed, 
-and must be defined at compile time. This is a key factor limiting Java development efficiency.
+ * **POJO**: ***Plain Old Java Object***. `POJO` offers the highest performance and type safety, but its `fields` 
+are fixed and must be defined at compile time. This is a key factor limiting development efficiency.
  * **JOJO**: ***JSON-Oriented Java Object***. Any subclass of `JsonObject` is automatically a `JOJO`.
 So a `POJO` can become a `JOJO` simply by extending `JsonObject`. 
 
 > **Key point**: `JOJO` combines the **type-safe, high-performance nature** of `POJOs` with the **dynamic flexibility** 
 > of `Maps`.  
-> It enables a **script-like, powerful** Java development experience and is highly recommended.
+> It enables a **script-like** Java development experience and is highly recommended.
  
 ```java
     // POJO example
@@ -227,7 +231,7 @@ So a `POJO` can become a `JOJO` simply by extending `JsonObject`.
             "}\n";
 ```
 
-Converting between `Input` and `JsonObject` / `Map` / `POJO` / `JOJO`.
+Converting between data `Input` and `JsonObject` / `Map` / `POJO` / `JOJO`.
 ```java
     JsonObject jo = Sjf4j.fromJson(json);                   // to JsonObject, = JsonObject.fromJson(json) 
     Map<String, Object> map = Sjf4j.fromJson(json,          // to Map
@@ -241,17 +245,19 @@ Converting between `Input` and `JsonObject` / `Map` / `POJO` / `JOJO`.
     System.out.println("user=" + Sjf4j.toJson(user));       // Only outputs fields defined in User
     System.out.println("user2=" + user2.toJson());          // Outputs both fixed fields in User2 and dynamic nodes in super JsonObject
 
-    jo = Sjf4j.fromYaml(jo.toYaml());                       // YAML format is equivalent to JSON
+    // YAML is handled the same way as JSON
+    jo = Sjf4j.fromYaml(jo.toYaml());
 
-    Properties props = new Properties();                    // Convert Properties to JsonObject 
-    props.load(new StringReader("aa.bb[0].cc=dd"));
+    // Limited conversion to/from Properties:
+    jo.toProperties(System.getProperties());                // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd                
+    
 ```
 
-Converting between `JsonObject` and `Map` / `POJO` / `JOJO`.
+Converting between `JsonObject`, `Map`, `POJO`, and `JOJO`.
 ```java
     // JsonObject <==> Map
     Map<String, Object> tmpMap = jo.toMap();
-    tmpJo = new JsonObject(map);    // Wrap it
+    tmpJo = new JsonObject(map);    // Just wrap it
 
     // JsonObject <==> POJO/JOJO
     User tmpUser = jo.toPojo(User.class);
@@ -261,13 +267,115 @@ Converting between `JsonObject` and `Map` / `POJO` / `JOJO`.
     tmpUser = user2.toPojo(User.class);
     User2 tmpUser2 = Sjf4j.fromPojo(user, User2.class);
 ```
-`JOJO` inherits all APIs from super class `JsonObject`, and also has `getters`/`setters` of `POJO`.
+`JOJO` inherits all APIs from super class `JsonObject`, and also has `getters` / `setters` of `POJO`.
 They are fully equivalent.
 ```java
-    System.out.println("keys=" + user2.keySet());       // ["id", "name", "friends", "age"]
-    System.out.println("name=" + user2.getName());      // = user2.getString("name"));
-    user2.put("name", "Jenny");                         // = user2.setName("Jenny")
-    int allUsers = user2.findAllNodes("$..id").size();  // Count all nodes with key "id" using JSON Path
+    System.out.println("keys=" + user2.keySet()); 
+    // ["id", "name", "friends", "age"]
+        
+    System.out.println("name=" + user2.getName());
+    // = user2.getString("name"));
+        
+    user2.put("name", "Jenny");
+    // = user2.setName("Jenny")
+
+    String bill = user2.getFriends().get(0).getName();
+    // = user2.getStringByPath("$.friends[0].name")
+
+    int allUsers = user2.findAllNodes("$..id").size();  
+    // Count all nodes with key "id" using JSON Path
+```
+
+---
+### Starting from Scratch
+
+**1. Early Stage: Use `JsonObject` or an Empty `JOJO`***  
+At the beginning, you can simply use `JsonObject`, or define an empty `JOJO` class:
+```java
+// Empty JOJO
+public class Person extends JsonObject {
+    // Nothing here
+}
+```
+An empty `JOJO` is equivalent to a plain `JsonObject`:
+it can store any JSON-like structure without loss and without predefined fields.
+
+---
+**2. Moving Toward Production: Two Evolution Paths**  
+As your project grows, you may want stronger structure, type safety, or better performance.
+There are two upgrade paths:
+
+ - **Path A — Evolve Toward a POJO**
+
+Gradually “solidify” frequently used properties into strongly typed POJO fields.
+This improves performance and enables static type checking while keeping flexibility for other fields.
+```java
+@Getter @Setter
+public class Person extends JsonObject {
+    private String name;    // Solidified as a field for the best performance
+    private int age;
+
+    // All other properties continue to exist inside JsonObject storage
+}
+```
+This hybrid design allows you to ***transition from dynamic to static structure*** without losing compatibility.
+
+ - **Path B — Use @Jojo Annotation** (Codegen, Not Yet Implemented - -! )
+
+You can annotate a class with `@Jojo` to automatically generate `Getters` / `Setters`
+(and possibly other convenience methods).
+```java
+@Jojo({
+        @Property(name = "name", type = String.class),
+        @Property(name = "age", type = int.class, comment = "? years")
+})
+public class Person extends JsonObject {
+    // Nothing
+}
+```
+Internally it is still Map-based, but with compile-time validation and `IDE` support.
+
+> Code generation is not yet implemented. Contributions are very welcome! 🙏
+
+---
+### From an Existing Project
+
+**1. If your project currently uses a dynamic map-like type**  
+(e.g., `Map/List`, `ObjectNode` in Jackson, `JsonObject` in Gson, `JSONObject` in Fastjson2):
+
+You may switch to **SJF4J’s** `JsonObject` if you want:
+- unified API across libraries
+- path-based and more convenient operations
+- interoperability with POJO / JOJO
+- JSON / YAML / Properties conversion
+
+---
+**2. If your project already uses POJOs**  
+There are two scenarios:
+
+**(1) Your POJO _can_ extend `JsonObject`**  
+If inheritance is allowed, simply let your POJO extend `JsonObject`.  
+You keep all existing fields and methods, while gaining full SJF4J capabilities.
+
+**(2) Your POJO _cannot_ extend `JsonObject`**  
+(e.g., Java Record, ProtoBuf Message, classes from external libraries)
+
+Then you must use ***copy-based wrapping***:
+```java
+    JsonObject jo = new JsonObject(myPojo);     // Shallow copy
+    ...
+    myPojo = jo.toPojo(Person.class);
+```
+
+In the future, annotation-based code generation may offer POJO-style accessors for such classes as well
+(though fundamentally still copy-based). 
+
+Maybe like this:
+```java
+@Jojo(target = Person.class)
+public class PersonJo extends JsonObject {
+
+}
 ```
 
 

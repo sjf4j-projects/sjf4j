@@ -10,4 +10,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface Jojo {
     Property[] value();
+    Class<?> ref() default Object.class;
 }
