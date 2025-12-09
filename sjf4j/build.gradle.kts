@@ -24,11 +24,11 @@ dependencies {
     compileOnly("org.yaml:snakeyaml:2.5")
 
     compileOnly("org.slf4j:slf4j-api:2.0.17")
-//    compileOnly("org.projectlombok:lombok:1.18.38")
-//    annotationProcessor("org.projectlombok:lombok:1.18.38")
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
 
+    testCompileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
     testImplementation("ch.qos.logback:logback-classic:1.5.18")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

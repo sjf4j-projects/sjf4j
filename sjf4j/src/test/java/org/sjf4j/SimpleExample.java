@@ -1,5 +1,7 @@
 package org.sjf4j;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.sjf4j.JsonWalker.Target;
 import org.sjf4j.JsonWalker.Order;
 import org.sjf4j.JsonWalker.Control;
@@ -16,10 +18,11 @@ import java.util.stream.Collectors;
 public class SimpleExample {
 
     public static void main(String[] args) {
-
+        basic();
+        withPojo();
     }
 
-    public void basic() {
+    public static void basic() {
         String json = "{\n" +
                 "  \"id\": 1,\n" +
                 "  \"name\": \"Alice\",\n" +
@@ -35,79 +38,119 @@ public class SimpleExample {
                 "  }\n" +
                 "}";
 
-        // Basic: `get`, `as`, `put`, `remove`, ...
-        JsonObject jo = JsonObject.fromJson(json);
-        Object nodeId = jo.getNode("id");                           // 获取原始 Node, 即 Object
-        int id = jo.getInteger("id");                               // `getXx()` 获取特定类型的 Node，Type内转换
-        String name = jo.get("name", String.class);                 // `get()` 动态指定类型
-        String name1 = jo.get("name");                              // 动态指定类型，省略形式
-        String active = jo.asString("active");                      // `asXxx()` 获取并转换类型，跨Type转换
-        String active2 = jo.as("active");                           // `as()` 动态转换类型，省略形式
-        String no = jo.getString("no", "yes");              // 带默认值的获取
-        String role = jo.asJsonObject("user").get("role");      // 链式操作
+        JsonObject jo = JsonObject.fromJson(json);  // Parse JSON string to JsonObject
 
-        jo.put("extra", "blabla");                              // Just like a Map: `putIfAbsent()`, `putNonNull()`
-        jo.toBuilder().putIfAbsent("x", "xx").putNonNull("y", "yy");    // 支持 Builder
-        jo.remove("extra");                                         // `removeIf()`, `forEach()`,
+        /// Basic
 
-        // By path: `getByPath`, `asByPath`, `putByPath`, `removeByPath`, ...
-        String role2 = jo.getStringByPath("$.user.role");               // `getXxByPath()` 支持 JSON Path
-        String role3 = jo.getByPath("/user/role");                  // 或 JSON Pointer ，省略形式
-        String role4 = jo.asByPath("$..role");                      // 支持 Descendant
+        Object nodeId = jo.getNode("id");
+        // Retrieve the raw node as an Object without type conversion.
 
-        jo.putByPath("/aa/bb", "cc");                           // 自动创建节点， {"aa":{"bb":"cc"},..}
-        jo.putIfAbsentByPath("$..level", 8);                    // Do nothing
-        jo.putNonNullByPath("$.scores[3]", 100);                // 支持 数组
+        Integer id = jo.getInteger("id");
+        // Retrieve the node as a specific type (int) using `getXx(key)`.
+        // Performs an internal cast/conversion if necessary.
 
-        List<String> tags = jo.findAll("$.tags[*]", String.class);          // `findAll()`支持 Wildcard
-        List<Short> scores = jo.findAllAs("$.scores[0:3]", Short.class);    // 支持 Slice
-        List<Object> unions = jo.findAllNodes("$.user['role','profile']");  // 支持 Union
+        int id2 = jo.getInteger("id", 0);
+        // Retrieve the node value with a default if the key is missing.
 
-        // Walker and Stream  (目前尚不支持JSON Path 的 Filter 语法，不过有更强大的 JsonWalker 和 JsonStream 作为替代)
+        String name = jo.get("name", String.class);
+        // Retrieve the node with an explicit type parameter.
+        // Ensures type-safe casting at runtime.
+
+        String name1 = jo.get("name");
+        // Dynamic type inference version of `get()`.
+        // Type is inferred based on the context, convenient for shorthand usage.
+
+        String active = jo.asString("active");
+        // Retrieve and convert the node value across types using `asXxx(key)`.
+        // Supports cross-type casting (e.g., Number → String).
+
+        String active2 = jo.as("active");
+        // Dynamic type conversion, short form of `asXxx()`.
+
+        /// By path
+
+        String role = jo.asJsonObject("user").get("role");
+        // Chain operations for nested nodes.
+        // First converts "user" node to JsonObject, then retrieves "role".
+
+        jo.put("extra", "blabla");
+        // See also: `putNonNull()`, `putIfAbsent()`, `computeIfAbsent()`
+
+        jo.toBuilder().putIfAbsent("x", "xx").put("y", "yy");
+        // Supports Builder-style chained operations
+
+        jo.remove("extra");
+        // See also: `removeIf()`, `forEach()`, `merge()` etc.
+
+        String role2 = jo.getStringByPath("$.user.role");
+        // `getXxByPath()` supports JSON Path expressions
+
+        String role3 = jo.getByPath("/user/role");
+        // And JSON Pointer as an alternative
+
+        String role4 = jo.asByPath("$..role");
+        // Supports descendant operator for deep traversal
+
+        jo.putByPath("/aa/bb", "cc");
+        // Automatically creates intermediate nodes!! e.g., {"aa":{"bb":"cc"},..}
+
+        jo.putNonNullByPath("$.scores[3]", 100);
+        // Supports array index insertion
+
+        List<String> tags = jo.findAll("$.tags[*]", String.class);
+        // Supports Wildcard '.*' or '[*]', `findAll()` return a list of nodes
+
+        List<Short> scores = jo.findAllAs("$.scores[0:3]", Short.class);
+        // Supports Slice '[from:to:step]'
+
+        List<Object> unions = jo.findAllNodes("$.user['role','profile']");
+        // Supports Union '[A,B,..]' of multiple fields
+
+        /// Walk and stream
+
         jo.walk(Target.CONTAINER, Order.BOTTOM_UP, (path, node) -> {
-            // Taget: Container, or Value
-            // Order: from bottom to top, or from top to bottom
+            // Target: CONTAINER or VALUE
+            // Order: BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf)
             System.out.println("path=" + path + ", node=" + node);
-            return Control.CONTINUE; // continue, or stop if you need
+            return Control.CONTINUE; // CONTINUE to proceed, or STOP if needed
         });
 
-        List<String> tags2 = jo.stream()        // 参考 Java Stream 语法
+        List<String> tags2 = jo.stream()                    // Follows Java Stream syntax
                 .findAll("$.tags[*]", String.class)
-                .filter(tag -> tag.length() > 3)
-                .map(s -> "'" + s + "'")
+                .filter(tag -> tag.length() > 3)            // Filter using Java codes
                 .toList();
 
         int x = jo.stream()
-                .findAllAs("$..profile", JsonObject.class)
-                .filter(n -> n.hasNonNull("values"))        // 必须包含 'values' 的key
-                .findAs("$..x", Integer.class)
-                .findFirst()                                                // 返回列表中的第一个
+                .findAllAs("$..profile", JsonObject.class)  // Primary find all
+                .filter(n -> n.hasNonNull("values"))
+                .findAs("$..x", Integer.class)              // Secondary find one
+                .findFirst()
                 .orElse(4);
 
         double avgScore = jo.stream()
                 .findAll("$.scores[*]", Double.class)
-                .map(d -> d < 60 ? 60 : d)
-                .collect(Collectors.averagingDouble(s -> s));       // 利用 java.util.Collectors 提供的平均数计算方法
-
-        // JsonArray 的用法与 JsonObject 基本一样，JsonObject是对 Map 的包装，JsonArray则是对 List 的包装
-        JsonArray ja = JsonArray.fromJson("[\"aa\", \"bb\"]");
-        String aa = ja.get(0);
-
+                .map(d -> d < 60 ? 60 : d)                  // No one failed!
+                .collect(Collectors.averagingDouble(s -> s));
     }
 
-    public void advanced() throws IOException {
 
-        class User {
-            int id;
-            String name;
-            List<User> friends;
-        }
+    // POJO example
+    @Getter @Setter
+    static class User {
+        int id;
+        String name;
+        List<User> friends;
+    }
 
-        class User2 extends JsonObject {
-            int id;
-            String name;
-            List<User2> friends;
-        }
+    // JOJO example
+    @Getter @Setter
+    static class User2 extends JsonObject {
+        int id;
+        String name;
+        List<User2> friends;
+    }
+
+    public static void withPojo() {
 
         String json = "{\n" +
                 "  \"id\": 1,\n" +
@@ -126,42 +169,55 @@ public class SimpleExample {
                 "  \"age\": 18\n" +
                 "}\n";
 
-        // JSON Input <==> JsonObject/Map/POJO/JOJO
-        JsonObject jo = Sjf4j.fromJson(json);                   // = JsonObject.fromJson(json)
-        Map<String, Object> map = Sjf4j.fromJson(json, new TypeReference<Map<String, Object>>() {
-        });
-        User user = Sjf4j.fromJson(json, User.class);
-        User2 user2 = Sjf4j.fromJson(json, User2.class);
+        JsonObject jo = Sjf4j.fromJson(json);               // = JsonObject.fromJson(json), to JsonObject
+        Map<String, Object> map = Sjf4j.fromJson(json,      // to Map
+                new TypeReference<Map<String, Object>>() {});
+        User user = Sjf4j.fromJson(json, User.class);       // to POJO
+        User2 user2 = Sjf4j.fromJson(json, User2.class);    // to JOJO
 
-        System.out.println("jo=" + jo.toJson());                // = Sjf4j.toJson(jo)
-        System.out.println("map=" + Sjf4j.toJson(map));         // JsonObject 只是 Map 的 Wrapper
-        System.out.println("user=" + Sjf4j.toJson(user));       // 与其他3个不同，只输出 User 中定义的内容
-        System.out.println("user2=" + user2.toJson());          // 既有 User2 中的固定Field，也有 JsonObject 中的动态nodes
+        // Serialize back to JSON
+        System.out.println("jo=" + jo.toJson());            // = Sjf4j.toJson(jo)
+        System.out.println("map=" + Sjf4j.toJson(map));     // Output dynamic nodes in Map
+        System.out.println("user=" + Sjf4j.toJson(user));   // Only outputs fields defined in User
+        System.out.println("user2=" + user2.toJson());
+        // Outputs both fixed fields in User2 and dynamic nodes in super JsonObject
 
-        jo = Sjf4j.fromYaml(jo.toYaml());                       // YAML 与 JSON 基本一样
+        // YAML is handled the same way as JSON
+        jo = JsonObject.fromYaml(jo.toYaml());
 
-        // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd
-        jo.toProperties(System.getProperties());                // Limited conversion to/from Properties
-
+        // Limited conversion to/from Properties:
+        jo.toProperties(System.getProperties());    // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd
 
         // JsonObject <==> Map
         Map<String, Object> tmpMap = jo.toMap();
-        tmpJo = new JsonObject(map);
+        JsonObject tmpJo = new JsonObject(map);    // Just wrap it
 
         // JsonObject <==> POJO/JOJO
-        User tmpUser = jo.toPojo(User.class);                   // = Sjf4j.fromPojo(jo, User.class)
+        User tmpUser = jo.toPojo(User.class);
         tmpJo = Sjf4j.fromPojo(user2);
 
-        // Jojo 拥有 JsonObject 的全部方法，同时也有 POJO 的原生 Getter/Setter
-        System.out.println("keys=" + user2.keySet());               // ["id", "name", "friends", "age"]
-        System.out.println("name=" + user2.getString("name"));      // = user2.getName() or user2.name
-        user2.put("name", "Jenny");                         // = user2.setName("Jenny") or user2.name = "Jenny"
+        // JOJO <==> POJO
+        tmpUser = user2.toPojo(User.class);
+        User2 tmpUser2 = Sjf4j.fromPojo(user, User2.class);
+
+        System.out.println("keys=" + user2.keySet());
+        // ["id",  "name",  "friends",  "age"]
+        //   └────────┼─────────┘         │
+        //            ↓                   ↓
+        //      Fields in POJO       Property in JsonObject
+
+        System.out.println("name=" + user2.getName());
+        // = user2.getString("name"));
+
+        user2.put("name", "Jenny");
+        // = user2.setName("Jenny")
+
+        String bill = user2.getFriends().get(0).getName();
+        // = user2.getStringByPath("$.friends[0].name")
+
         int allUsers = user2.findAllNodes("$..id").size();
-
-
-
+        // Use powerful methods from JsonObject
     }
-
 
 
 }
