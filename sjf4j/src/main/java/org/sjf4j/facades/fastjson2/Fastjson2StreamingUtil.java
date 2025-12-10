@@ -43,27 +43,27 @@ public class Fastjson2StreamingUtil {
 
     public static Object readNode(JSONReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        int tid = peekTokenId(reader);
-        switch (tid) {
-            case FacadeReader.ID_START_OBJECT:
+        FacadeReader.Token token = peekToken(reader);
+        switch (token) {
+            case START_OBJECT:
                 return readObject(reader, type);
-            case FacadeReader.ID_START_ARRAY:
+            case START_ARRAY:
                 return readArray(reader, type);
-            case FacadeReader.ID_STRING:
+            case STRING:
                 return nextString(reader);
 //                return ConverterRegistry.tryPure2Wrap(nextString(parser), type);
-            case FacadeReader.ID_NUMBER:
+            case NUMBER:
                 return nextNumber(reader);
 //                return ConverterRegistry.tryPure2Wrap(nextNumber(parser), type);
-            case FacadeReader.ID_BOOLEAN:
+            case BOOLEAN:
                 return nextBoolean(reader);
 //                return ConverterRegistry.tryPure2Wrap(nextBoolean(parser), type);
-            case FacadeReader.ID_NULL:
+            case NULL:
                 nextNull(reader);
                 return null;
 //                return ConverterRegistry.tryPure2Wrap(null, type);
             default:
-                throw new JsonException("Unexpected token id '" + tid + "'");
+                throw new JsonException("Unexpected token '" + token + "'");
         }
     }
 
@@ -222,25 +222,25 @@ public class Fastjson2StreamingUtil {
 
     /// Reader
 
-    public static int peekTokenId(JSONReader reader) throws IOException {
+    public static FacadeReader.Token peekToken(JSONReader reader) throws IOException {
         if (reader.isObject()) {
-            return FacadeReader.ID_START_OBJECT;
+            return FacadeReader.Token.START_OBJECT;
         } else if (reader.current() == '}') {
-            return FacadeReader.ID_END_OBJECT;
+            return FacadeReader.Token.END_OBJECT;
         } else if (reader.isArray()) {
-            return FacadeReader.ID_START_ARRAY;
+            return FacadeReader.Token.START_ARRAY;
         } else if (reader.current() == ']') {
-            return FacadeReader.ID_END_ARRAY;
+            return FacadeReader.Token.END_ARRAY;
         } else if (reader.isString()) {
-            return FacadeReader.ID_STRING;
+            return FacadeReader.Token.STRING;
         } else if (reader.isNumber()) {
-            return FacadeReader.ID_NUMBER;
+            return FacadeReader.Token.NUMBER;
         } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
-            return FacadeReader.ID_BOOLEAN;
+            return FacadeReader.Token.BOOLEAN;
         } else if (reader.isNull()) {
-            return FacadeReader.ID_NULL;
+            return FacadeReader.Token.NULL;
         } else {
-            return FacadeReader.ID_UNKNOWN;
+            return FacadeReader.Token.UNKNOWN;
         }
     }
 

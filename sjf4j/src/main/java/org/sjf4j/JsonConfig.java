@@ -99,6 +99,10 @@ public final class JsonConfig {
         JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
                 .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
     }
+    public static void useSimpleJsonAsGlobal() {
+        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
+                .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
+    }
 
     public JsonFacade<?, ?> getJsonFacade() {
         if (jsonFacade == null) {

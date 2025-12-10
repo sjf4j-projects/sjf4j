@@ -20,25 +20,26 @@ public interface FacadeReader extends Closeable {
         END_OBJECT,   // End of a JSON object '}'
         START_ARRAY,  // Start of a JSON array '['
         END_ARRAY,    // End of a JSON array ']'
-        NAME,         // JSON object field name
         STRING,       // JSON string value
         NUMBER,       // JSON number value
         BOOLEAN,      // JSON boolean value (true/false)
         NULL          // JSON null value
     }
 
-    int ID_UNKNOWN = -1;
-    int ID_START_OBJECT = 1;
-    int ID_END_OBJECT = 2;
-    int ID_START_ARRAY = 3;
-    int ID_END_ARRAY = 4;
-    int ID_NAME = 5;
-    int ID_STRING = 6;
-    int ID_NUMBER = 7;
-    int ID_BOOLEAN = 8;
-    int ID_NULL = 9;
+//    int ID_UNKNOWN = -1;
+//    int ID_START_OBJECT = 1;
+//    int ID_END_OBJECT = 2;
+//    int ID_START_ARRAY = 3;
+//    int ID_END_ARRAY = 4;
+//    int ID_NAME = 5;
+//    int ID_STRING = 6;
+//    int ID_NUMBER = 7;
+//    int ID_BOOLEAN = 8;
+//    int ID_NULL = 9;
 
-    int peekTokenId() throws IOException;
+//    int peekTokenId() throws IOException;
+
+    Token peekToken() throws IOException;
 
     void startDocument() throws IOException;
 

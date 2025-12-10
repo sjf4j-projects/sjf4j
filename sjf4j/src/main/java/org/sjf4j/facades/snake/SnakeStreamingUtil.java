@@ -56,27 +56,27 @@ public class SnakeStreamingUtil {
 
     public static Object readNode(Parser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        int tid = peekTokenId(parser);
-        switch (tid) {
-            case FacadeReader.ID_START_OBJECT:
+        FacadeReader.Token token = peekToken(parser);
+        switch (token) {
+            case START_OBJECT:
                 return readObject(parser, type);
-            case FacadeReader.ID_START_ARRAY:
+            case START_ARRAY:
                 return readArray(parser, type);
-            case FacadeReader.ID_STRING:
+            case STRING:
                 return nextString(parser);
 //                return ConverterRegistry.tryPure2Wrap(nextString(parser), type);
-            case FacadeReader.ID_NUMBER:
+            case NUMBER:
                 return nextNumber(parser);
 //                return ConverterRegistry.tryPure2Wrap(nextNumber(parser), type);
-            case FacadeReader.ID_BOOLEAN:
+            case BOOLEAN:
                 return nextBoolean(parser);
 //                return ConverterRegistry.tryPure2Wrap(nextBoolean(parser), type);
-            case FacadeReader.ID_NULL:
+            case NULL:
                 nextNull(parser);
                 return null;
 //                return ConverterRegistry.tryPure2Wrap(null, type);
             default:
-                throw new JsonException("Unexpected token id '" + tid + "'");
+                throw new JsonException("Unexpected token '" + token + "'");
         }
     }
 
@@ -236,43 +236,43 @@ public class SnakeStreamingUtil {
 
     /// Reader
 
-    public static int peekTokenId(Parser parser) throws IOException {
+    public static FacadeReader.Token peekToken(Parser parser) throws IOException {
         Event event = parser.peekEvent();
         if (event instanceof MappingStartEvent) {
-            return FacadeReader.ID_START_OBJECT;
+            return FacadeReader.Token.START_OBJECT;
         } else if (event instanceof MappingEndEvent) {
-            return FacadeReader.ID_END_OBJECT;
+            return FacadeReader.Token.END_OBJECT;
         } else if (event instanceof SequenceStartEvent) {
-            return FacadeReader.ID_START_ARRAY;
+            return FacadeReader.Token.START_ARRAY;
         } else if (event instanceof SequenceEndEvent) {
-            return FacadeReader.ID_END_ARRAY;
+            return FacadeReader.Token.END_ARRAY;
         } else if (event instanceof ScalarEvent) {
             ScalarEvent se = (ScalarEvent) event;
             String value = se.getValue();
             String tag = se.getTag();
             if (value == null || value.isEmpty() || "tag:yaml.org,2002:null".equals(tag) ||
                     value.equalsIgnoreCase("null") || value.equals("~")) {
-                return FacadeReader.ID_NULL;
+                return FacadeReader.Token.NULL;
             }
             if ("tag:yaml.org,2002:str".equals(tag) || "!".equals(tag)) {
-                return FacadeReader.ID_STRING;
+                return FacadeReader.Token.STRING;
             }
             String low = value.toLowerCase();
             if (low.equals("true") || low.equals("yes") || low.equals("on")) {
-                return FacadeReader.ID_BOOLEAN;
+                return FacadeReader.Token.BOOLEAN;
             }
             if (low.equals("false") || low.equals("no") || low.equals("off")) {
-                return FacadeReader.ID_BOOLEAN;
+                return FacadeReader.Token.BOOLEAN;
             }
             if (NumberUtil.isNumeric(value)) {
-                return FacadeReader.ID_NUMBER;
+                return FacadeReader.Token.NUMBER;
             } else {
-                return FacadeReader.ID_STRING;
+                return FacadeReader.Token.STRING;
             }
         } else if (event instanceof AliasEvent) {
             throw new JsonException("YAML anchors/aliases not supported.");
         } else {
-            return FacadeReader.ID_UNKNOWN;
+            return FacadeReader.Token.UNKNOWN;
         }
     }
 

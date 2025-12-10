@@ -44,27 +44,27 @@ public class GsonStreamingUtil {
 
     public static Object readNode(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        int tid = peekTokenId(reader);
-        switch (tid) {
-            case FacadeReader.ID_START_OBJECT:
+        FacadeReader.Token token = peekToken(reader);
+        switch (token) {
+            case START_OBJECT:
                 return readObject(reader, type);
-            case FacadeReader.ID_START_ARRAY:
+            case START_ARRAY:
                 return readArray(reader, type);
-            case FacadeReader.ID_STRING:
+            case STRING:
                 return nextString(reader);
 //                return ConverterRegistry.tryPure2Wrap(nextString(parser), type);
-            case FacadeReader.ID_NUMBER:
+            case NUMBER:
                 return nextNumber(reader);
 //                return ConverterRegistry.tryPure2Wrap(nextNumber(parser), type);
-            case FacadeReader.ID_BOOLEAN:
+            case BOOLEAN:
                 return nextBoolean(reader);
 //                return ConverterRegistry.tryPure2Wrap(nextBoolean(parser), type);
-            case FacadeReader.ID_NULL:
+            case NULL:
                 nextNull(reader);
                 return null;
 //                return ConverterRegistry.tryPure2Wrap(null, type);
             default:
-                throw new JsonException("Unexpected token id '" + tid + "'");
+                throw new JsonException("Unexpected token '" + token + "'");
         }
     }
 
@@ -224,27 +224,27 @@ public class GsonStreamingUtil {
 
     /// Reader
 
-    public static int peekTokenId(JsonReader reader) throws IOException {
+    public static FacadeReader.Token peekToken(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
             case BEGIN_OBJECT:
-                return FacadeReader.ID_START_OBJECT;
+                return FacadeReader.Token.START_OBJECT;
             case END_OBJECT:
-                return FacadeReader.ID_END_OBJECT;
+                return FacadeReader.Token.END_OBJECT;
             case BEGIN_ARRAY:
-                return FacadeReader.ID_START_ARRAY;
+                return FacadeReader.Token.START_ARRAY;
             case END_ARRAY:
-                return FacadeReader.ID_END_ARRAY;
+                return FacadeReader.Token.END_ARRAY;
             case STRING:
-                return FacadeReader.ID_STRING;
+                return FacadeReader.Token.STRING;
             case NUMBER:
-                return FacadeReader.ID_NUMBER;
+                return FacadeReader.Token.NUMBER;
             case BOOLEAN:
-                return FacadeReader.ID_BOOLEAN;
+                return FacadeReader.Token.BOOLEAN;
             case NULL:
-                return FacadeReader.ID_NULL;
+                return FacadeReader.Token.NULL;
             default:
-                return FacadeReader.ID_UNKNOWN;
+                return FacadeReader.Token.UNKNOWN;
         }
     }
 

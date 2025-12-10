@@ -29,6 +29,7 @@ import org.sjf4j.facades.gson.GsonJsonFacade;
 import org.sjf4j.facades.gson.GsonWalker;
 import org.sjf4j.facades.jackson.JacksonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonWalker;
+import org.sjf4j.facades.simple.SimpleJsonFacade;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -58,6 +59,7 @@ public class JsonReadBenchmark {
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
 
+    private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
     private static final JacksonJsonFacade JACKSON_FACADE = new JacksonJsonFacade(JACKSON);
     private static final GsonJsonFacade GSON_FACADE = new GsonJsonFacade(GSON_BUILDER);
     private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
@@ -69,6 +71,19 @@ public class JsonReadBenchmark {
     @Setup(Level.Trial)
     public void setup() {
         JsonConfig.global(new JsonConfig.Builder().readMode(JsonConfig.ReadMode.valueOf(readMode)).build());
+    }
+
+
+
+    // ----- Simple JSON baselines -----
+    @Benchmark
+    public Object json_simple_pojo() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(new StringReader(JSON_DATA), Person.class);
+    }
+
+    @Benchmark
+    public Object json_simple_node() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(new StringReader(JSON_DATA), JsonObject.class);
     }
 
 

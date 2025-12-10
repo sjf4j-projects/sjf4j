@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
-public class ObjectFacadeTest {
+public class SimpleObjectFacadeTest {
 
     @Data
     @NoArgsConstructor

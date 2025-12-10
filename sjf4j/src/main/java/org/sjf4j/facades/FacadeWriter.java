@@ -93,7 +93,7 @@ public interface FacadeWriter {
     /**
      * Writes a comma separator. 
      */
-    default void writeComma() {/* Only or Fastjson2 */}
+    default void writeComma() throws IOException {/* Only or Fastjson2 */}
 
     /**
      * Flushes any buffered output.

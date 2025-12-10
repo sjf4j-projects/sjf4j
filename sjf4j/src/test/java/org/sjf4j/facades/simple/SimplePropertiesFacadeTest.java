@@ -11,7 +11,7 @@ import java.util.Properties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-public class PropertiesFacadeTest {
+public class SimplePropertiesFacadeTest {
 
     @Test
     public void testToFrom1() throws IOException {

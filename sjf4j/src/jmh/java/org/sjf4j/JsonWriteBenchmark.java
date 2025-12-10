@@ -29,6 +29,7 @@ import org.sjf4j.facades.gson.GsonJsonFacade;
 import org.sjf4j.facades.gson.GsonWalker;
 import org.sjf4j.facades.jackson.JacksonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonWalker;
+import org.sjf4j.facades.simple.SimpleJsonFacade;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -60,6 +61,7 @@ public class JsonWriteBenchmark {
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
 
+    private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
     private static final JacksonJsonFacade JACKSON_FACADE = new JacksonJsonFacade(JACKSON);
     private static final GsonJsonFacade GSON_FACADE = new GsonJsonFacade(GSON_BUILDER);
     private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
@@ -74,6 +76,13 @@ public class JsonWriteBenchmark {
     }
 
 
+    // ----- Simple JSON baselines -----
+    @Benchmark
+    public Object write_simple_jojo() throws IOException {
+        StringWriter output = new StringWriter();
+        SIMPLE_JSON_FACADE.writeNode(output, PERSON);
+        return output.toString();
+    }
 
     // ----- Jackson baselines -----
     @Benchmark

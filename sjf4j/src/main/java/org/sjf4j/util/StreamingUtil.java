@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.PojoRegistry;
@@ -11,9 +12,9 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Utility class for streaming JSON processing. Provides methods for reading JSON nodes from
@@ -36,27 +37,23 @@ public class StreamingUtil {
      */
     public static Object readNode(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        int tid = reader.peekTokenId();
-        switch (tid) {
-            case FacadeReader.ID_START_OBJECT:
+        FacadeReader.Token token = reader.peekToken();
+        switch (token) {
+            case START_OBJECT:
                 return readObject(reader, type);
-            case FacadeReader.ID_START_ARRAY:
+            case START_ARRAY:
                 return readArray(reader, type);
-            case FacadeReader.ID_STRING:
+            case STRING:
                 return reader.nextString();
-//                return ConverterRegistry.tryPure2Wrap(reader.nextString(), type);
-            case FacadeReader.ID_NUMBER:
+            case NUMBER:
                 return reader.nextNumber();
-//                return ConverterRegistry.tryPure2Wrap(reader.nextNumber(), type);
-            case FacadeReader.ID_BOOLEAN:
+            case BOOLEAN:
                 return reader.nextBoolean();
-//                return ConverterRegistry.tryPure2Wrap(reader.nextBoolean(), type);
-            case FacadeReader.ID_NULL:
+            case NULL:
                 reader.nextNull();
                 return null;
-//                return ConverterRegistry.tryPure2Wrap(null, type);
             default:
-                throw new JsonException("Unexpected token id '" + tid + "'");
+                throw new JsonException("Unexpected token '" + token + "'");
         }
     }
 
@@ -100,13 +97,12 @@ public class StreamingUtil {
                 jo.put(key, value);
             }
             reader.endObject();
-//            return null;
             return jo;
         }
 
         if (rawClazz == Map.class) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = new HashMap<>();
+            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
             reader.startObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();
@@ -239,8 +235,11 @@ public class StreamingUtil {
             writer.writeValue((Boolean) node);
         } else if (node instanceof JsonObject) {
             writer.startObject();
+            AtomicBoolean veryStart = new AtomicBoolean(true);
             ((JsonObject) node).forEach((k, v) -> {
                 try {
+                    if (veryStart.get()) veryStart.set(false);
+                    else writer.writeComma();
                     writer.writeName(k);
                     writeNode(writer, v);
                 } catch (IOException e) {
@@ -250,7 +249,10 @@ public class StreamingUtil {
             writer.endObject();
         } else if (node instanceof Map) {
             writer.startObject();
+            boolean veryStart = true;
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                if (veryStart) veryStart = false;
+                else writer.writeComma();
                 writer.writeName(entry.getKey().toString());
                 writeNode(writer, entry.getValue());
             }
@@ -280,8 +282,11 @@ public class StreamingUtil {
             writer.endArray();
         } else if (PojoRegistry.isPojo(node.getClass())) {
             writer.startObject();
+            boolean veryStart = true;
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
+                if (veryStart) veryStart = false;
+                else writer.writeComma();
                 writer.writeName(entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(writer, vv);

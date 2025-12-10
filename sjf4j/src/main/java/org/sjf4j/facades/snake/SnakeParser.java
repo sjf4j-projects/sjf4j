@@ -1,6 +1,7 @@
 package org.sjf4j.facades.snake;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.PojoRegistry;
@@ -77,7 +78,7 @@ public class SnakeParser {
                         " for type " + type);
             }
             parser.getEvent(); // consume start
-            Map<String, Object> map = new HashMap<>();
+            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
             while (!(parser.peekEvent() instanceof MappingEndEvent)) {
                 String key = ((ScalarEvent) parser.getEvent()).getValue();
                 Object value = readAny(parser, valueType);

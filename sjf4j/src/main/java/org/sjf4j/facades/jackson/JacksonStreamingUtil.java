@@ -45,27 +45,27 @@ public class JacksonStreamingUtil {
 
     public static Object readNode(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        int tid = peekTokenId(parser);
-        switch (tid) {
-            case FacadeReader.ID_START_OBJECT:
+        FacadeReader.Token token = peekToken(parser);
+        switch (token) {
+            case START_OBJECT:
                 return readObject(parser, type);
-            case FacadeReader.ID_START_ARRAY:
+            case START_ARRAY:
                 return readArray(parser, type);
-            case FacadeReader.ID_STRING:
+            case STRING:
                 return nextString(parser);
 //                return ConverterRegistry.tryPure2Wrap(nextString(parser), type);
-            case FacadeReader.ID_NUMBER:
+            case NUMBER:
                 return nextNumber(parser);
 //                return ConverterRegistry.tryPure2Wrap(nextNumber(parser), type);
-            case FacadeReader.ID_BOOLEAN:
+            case BOOLEAN:
                 return nextBoolean(parser);
 //                return ConverterRegistry.tryPure2Wrap(nextBoolean(parser), type);
-            case FacadeReader.ID_NULL:
+            case NULL:
                 nextNull(parser);
                 return null;
 //                return ConverterRegistry.tryPure2Wrap(null, type);
             default:
-                throw new JsonException("Unexpected token id '" + tid + "'");
+                throw new JsonException("Unexpected token '" + token + "'");
         }
     }
 
@@ -225,7 +225,7 @@ public class JacksonStreamingUtil {
 
     /// Reader
 
-    public static int peekTokenId(JsonParser parser) throws IOException {
+    public static FacadeReader.Token peekToken(JsonParser parser) throws IOException {
         int tokenId = parser.currentTokenId();
         if (tokenId == JsonTokenId.ID_NO_TOKEN) {
             JsonToken tk = parser.nextToken();
@@ -233,25 +233,25 @@ public class JacksonStreamingUtil {
         }
         switch (tokenId) {
             case JsonTokenId.ID_START_OBJECT:
-                return FacadeReader.ID_START_OBJECT;
+                return FacadeReader.Token.START_OBJECT;
             case JsonTokenId.ID_END_OBJECT:
-                return FacadeReader.ID_END_OBJECT;
+                return FacadeReader.Token.END_OBJECT;
             case JsonTokenId.ID_START_ARRAY:
-                return FacadeReader.ID_START_ARRAY;
+                return FacadeReader.Token.START_ARRAY;
             case JsonTokenId.ID_END_ARRAY:
-                return FacadeReader.ID_END_ARRAY;
+                return FacadeReader.Token.END_ARRAY;
             case JsonTokenId.ID_STRING:
-                return FacadeReader.ID_STRING;
+                return FacadeReader.Token.STRING;
             case JsonTokenId.ID_NUMBER_INT:
             case JsonTokenId.ID_NUMBER_FLOAT:
-                return FacadeReader.ID_NUMBER;
+                return FacadeReader.Token.NUMBER;
             case JsonTokenId.ID_TRUE:
             case JsonTokenId.ID_FALSE:
-                return FacadeReader.ID_BOOLEAN;
+                return FacadeReader.Token.BOOLEAN;
             case JsonTokenId.ID_NULL:
-                return FacadeReader.ID_NULL;
+                return FacadeReader.Token.NULL;
             default:
-                return FacadeReader.ID_UNKNOWN;
+                return FacadeReader.Token.UNKNOWN;
         }
     }
 

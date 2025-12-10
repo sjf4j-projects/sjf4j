@@ -39,7 +39,7 @@ graph BT
 
 ### Get it
 
-SJF4J only requires **JDK 8** and has no additional runtime dependencies.  
+SJF4J requires only **JDK 8** and has no external dependencies.  
 For `Gradle` (`Maven` similar) :
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")

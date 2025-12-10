@@ -216,7 +216,7 @@ public class ContainerUtil {
             }
             case OBJECT_JOJO: {
                 JsonObject jo = (JsonObject) container;
-                sb.append("@").append(container.getClass().getSimpleName()).append("{");
+                sb.append(container.getClass().getSimpleName()).append("@").append("{");
                 PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
                 AtomicInteger idx = new AtomicInteger(0);
                 jo.forEach((k, v) -> {
@@ -232,11 +232,11 @@ public class ContainerUtil {
             }
             case OBJECT_POJO: {
                 PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
-                sb.append("@").append(container.getClass().getSimpleName()).append("{");
+                sb.append(container.getClass().getSimpleName()).append("@").append("{");
                 int idx = 0;
                 for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                     if (idx++ > 0) sb.append(", ");
-                    sb.append("@").append(fi.getKey()).append("=");
+                    sb.append("*").append(fi.getKey()).append("=");
                     Object v = fi.getValue().invokeGetter(container);
                     _inspect(v, sb);
                 }

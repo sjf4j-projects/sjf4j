@@ -16,28 +16,53 @@ public class GsonReader implements FacadeReader {
         this.reader = reader;
     }
 
+//    @Override
+//    public int peekTokenId() throws IOException {
+//        JsonToken token = reader.peek();
+//        switch (token) {
+//            case BEGIN_OBJECT:
+//                return ID_START_OBJECT;
+//            case END_OBJECT:
+//                return ID_END_OBJECT;
+//            case BEGIN_ARRAY:
+//                return ID_START_ARRAY;
+//            case END_ARRAY:
+//                return ID_END_ARRAY;
+//            case STRING:
+//                return ID_STRING;
+//            case NUMBER:
+//                return ID_NUMBER;
+//            case BOOLEAN:
+//                return ID_BOOLEAN;
+//            case NULL:
+//                return ID_NULL;
+//            default:
+//                return ID_UNKNOWN;
+//        }
+//    }
+
     @Override
-    public int peekTokenId() throws IOException {
+    public Token peekToken() throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
             case BEGIN_OBJECT:
-                return ID_START_OBJECT;
+                return Token.START_OBJECT;
             case END_OBJECT:
-                return ID_END_OBJECT;
+                return Token.END_OBJECT;
             case BEGIN_ARRAY:
-                return ID_START_ARRAY;
+                return Token.START_ARRAY;
             case END_ARRAY:
-                return ID_END_ARRAY;
+                return Token.END_ARRAY;
             case STRING:
-                return ID_STRING;
+                return Token.STRING;
             case NUMBER:
-                return ID_NUMBER;
+                return Token.NUMBER;
             case BOOLEAN:
-                return ID_BOOLEAN;
+                return Token.BOOLEAN;
             case NULL:
-                return ID_NULL;
+                return Token.NULL;
             default:
-                return ID_UNKNOWN;
+                return Token.UNKNOWN;
         }
     }
 
@@ -99,8 +124,8 @@ public class GsonReader implements FacadeReader {
 
     @Override
     public boolean hasNext() throws IOException {
-        int tid = peekTokenId();
-        return tid != ID_END_OBJECT && tid != ID_END_ARRAY;
+        Token token = peekToken();
+        return token != Token.END_OBJECT && token != Token.END_ARRAY;
     }
 
     @Override

@@ -24,6 +24,10 @@ class JsonObjectTest {
     @TestFactory
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
+                DynamicTest.dynamicTest("Run with Simple JSON", () -> {
+                    JsonConfig.useSimpleJsonAsGlobal();
+                    testAll();
+                }),
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
                     JsonConfig.useJacksonAsGlobal();
                     testAll();

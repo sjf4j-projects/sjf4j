@@ -41,43 +41,43 @@ public class SnakeReader implements FacadeReader {
 
 
     @Override
-    public int peekTokenId() {
+    public Token peekToken() {
         Event event = parser.peekEvent();
         if (event instanceof MappingStartEvent) {
-            return ID_START_OBJECT;
+            return Token.START_OBJECT;
         } else if (event instanceof MappingEndEvent) {
-            return ID_END_OBJECT;
+            return Token.END_OBJECT;
         } else if (event instanceof SequenceStartEvent) {
-            return ID_START_ARRAY;
+            return Token.START_ARRAY;
         } else if (event instanceof SequenceEndEvent) {
-            return ID_END_ARRAY;
+            return Token.END_ARRAY;
         } else if (event instanceof ScalarEvent) {
             ScalarEvent se = (ScalarEvent) event;
             String value = se.getValue();
             String tag = se.getTag();
             if (value == null || value.isEmpty() || "tag:yaml.org,2002:null".equals(tag) ||
                     value.equalsIgnoreCase("null") || value.equals("~")) {
-                return ID_NULL;
+                return Token.NULL;
             }
             if ("tag:yaml.org,2002:str".equals(tag) || "!".equals(tag)) {
-                return ID_STRING;
+                return Token.STRING;
             }
             String low = value.toLowerCase();
             if (low.equals("true") || low.equals("yes") || low.equals("on")) {
-                return ID_BOOLEAN;
+                return Token.BOOLEAN;
             }
             if (low.equals("false") || low.equals("no") || low.equals("off")) {
-                return ID_BOOLEAN;
+                return Token.BOOLEAN;
             }
             if (NumberUtil.isNumeric(value)) {
-                return ID_NUMBER;
+                return Token.NUMBER;
             } else {
-                return ID_STRING;
+                return Token.STRING;
             }
         } else if (event instanceof AliasEvent) {
             throw new JsonException("YAML anchors/aliases not supported.");
         } else {
-            return ID_UNKNOWN;
+            return Token.UNKNOWN;
         }
     }
 
@@ -147,8 +147,8 @@ public class SnakeReader implements FacadeReader {
 
     @Override
     public boolean hasNext() throws IOException {
-        int tid = peekTokenId();
-        return tid != ID_END_OBJECT && tid != ID_END_ARRAY;
+        Token token = peekToken();
+        return token != Token.END_OBJECT && token != Token.END_ARRAY;
     }
 
     @Override

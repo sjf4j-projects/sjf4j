@@ -11,6 +11,7 @@ import org.sjf4j.facades.YamlFacade;
 import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facades.gson.GsonJsonFacade;
 import org.sjf4j.facades.jackson.JacksonJsonFacade;
+import org.sjf4j.facades.simple.SimpleJsonFacade;
 import org.sjf4j.facades.simple.SimpleObjectFacade;
 import org.sjf4j.facades.simple.SimplePropertiesFacade;
 import org.sjf4j.facades.snake.SnakeYamlFacade;
@@ -102,7 +103,9 @@ public class FacadeFactory {
         } else if (FASTJSON2_PRESENT) {
             return createFastjson2Facade();
         } else {
-            throw new JsonException("No supported JSON library found. Please include one of Jackson / Gson / Fastjson2...");
+            System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson, Gson, Fastjson2).");
+            System.err.println("SJF4J: Falling back to build-in (Simple and Slow) JSON implementation.");
+            return createSimpleJsonFacade();
         }
     }
 
@@ -132,6 +135,16 @@ public class FacadeFactory {
     public static JsonFacade<?, ?> createFastjson2Facade() {
         return new Fastjson2JsonFacade();
     }
+
+    /**
+     * Creates a new Simple build-in JSON facade instance.
+     *
+     * @return A new Simple build-in JSON facade instance
+     */
+    public static JsonFacade<?, ?> createSimpleJsonFacade() {
+        return new SimpleJsonFacade();
+    }
+
 
 
     /**

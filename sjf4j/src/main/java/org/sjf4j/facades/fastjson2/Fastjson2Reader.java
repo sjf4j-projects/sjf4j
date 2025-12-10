@@ -16,26 +16,49 @@ public class Fastjson2Reader implements FacadeReader {
         this.reader = reader;
     }
 
+//    @Override
+//    public int peekTokenId() throws IOException {
+//        if (reader.isObject()) {
+//            return ID_START_OBJECT;
+//        } else if (reader.current() == '}') {
+//            return ID_END_OBJECT;
+//        } else if (reader.isArray()) {
+//            return ID_START_ARRAY;
+//        } else if (reader.current() == ']') {
+//            return ID_END_ARRAY;
+//        } else if (reader.isString()) {
+//            return ID_STRING;
+//        } else if (reader.isNumber()) {
+//            return ID_NUMBER;
+//        } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
+//            return ID_BOOLEAN;
+//        } else if (reader.isNull()) {
+//            return ID_NULL;
+//        } else {
+//            return ID_UNKNOWN;
+//        }
+//    }
+
     @Override
-    public int peekTokenId() throws IOException {
+    public Token peekToken() throws IOException {
         if (reader.isObject()) {
-            return ID_START_OBJECT;
+            return Token.START_OBJECT;
         } else if (reader.current() == '}') {
-            return ID_END_OBJECT;
+            return Token.END_OBJECT;
         } else if (reader.isArray()) {
-            return ID_START_ARRAY;
+            return Token.START_ARRAY;
         } else if (reader.current() == ']') {
-            return ID_END_ARRAY;
+            return Token.END_ARRAY;
         } else if (reader.isString()) {
-            return ID_STRING;
+            return Token.STRING;
         } else if (reader.isNumber()) {
-            return ID_NUMBER;
+            return Token.NUMBER;
         } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
-            return ID_BOOLEAN;
+            return Token.BOOLEAN;
         } else if (reader.isNull()) {
-            return ID_NULL;
+            return Token.NULL;
         } else {
-            return ID_UNKNOWN;
+            return Token.UNKNOWN;
         }
     }
 
@@ -110,8 +133,8 @@ public class Fastjson2Reader implements FacadeReader {
 
     @Override
     public boolean hasNext() throws IOException {
-        int tid = peekTokenId();
-        return tid != ID_END_OBJECT && tid != ID_END_ARRAY;
+        Token token = peekToken();
+        return token != Token.END_OBJECT && token != Token.END_ARRAY;
     }
 
     @Override
