@@ -80,7 +80,12 @@ public class SimpleJsonWriter implements FacadeWriter {
     }
 
     @Override
-    public void writeComma() throws IOException {
+    public void writeArrayComma() throws IOException {
+        writer.write(',');
+    }
+
+    @Override
+    public void writeObjectComma() throws IOException {
         writer.write(',');
     }
 

@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.PathToken;
 
@@ -182,6 +183,26 @@ public class JsonPathUtilTest {
         testCompile("$[*].length()", 3, PathToken.Root.class, PathToken.Wildcard.class, PathToken.Function.class);
     }
 
+    @Test
+    public void testFindMatchingParen() {
+        int end;
+        end = JsonPathUtil.findMatchingParen("?(@.name == \"foo(bar)\")", 1);
+        assertEquals(22, end);
+        end = JsonPathUtil.findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
+        assertEquals(22, end);
+        end = JsonPathUtil.findMatchingParen("(\"(abc)\")", 0);
+        assertEquals(8, end);
+    }
+
+    @Test
+    public void testParseFunctionArgs() {
+        List<String> args = JsonPathUtil.parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
+        System.out.println(new JsonArray(args));
+        System.out.println(args.get(0));
+        System.out.println(args.get(1));
+        assertEquals(4, args.size());
+        assertEquals("\"hello(world)\"", args.get(3));
+    }
 
     /// Private
 
@@ -232,4 +253,5 @@ public class JsonPathUtilTest {
                     "Token type mismatch at position " + i + " for: " + originalPath);
         }
     }
+
 }

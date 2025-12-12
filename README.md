@@ -1,7 +1,7 @@
 
 # SJF4J - Simple JSON Facade for Java
 
-
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j.svg)]()
 
 ## Overview
@@ -391,7 +391,7 @@ whether it’s code, documentation, examples, benchmarking, or simply filing an 
 
 ## License
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+MIT License
 
 
 

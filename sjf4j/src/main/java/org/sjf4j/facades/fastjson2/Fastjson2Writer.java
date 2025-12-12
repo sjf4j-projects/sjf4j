@@ -83,9 +83,8 @@ public class Fastjson2Writer implements FacadeWriter {
         writer.writeNull();
     }
 
-    // Ugly!
     @Override
-    public void writeComma() {
+    public void writeArrayComma() {
         writer.writeComma();
     }
 

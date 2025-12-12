@@ -8,7 +8,6 @@ import java.util.List;
 
 public class JsonPathUtil {
 
-
     public static List<PathToken> compile(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expr must not be null");
 
@@ -41,7 +40,7 @@ public class JsonPathUtil {
             if (c == '.') {
                 i++;
                 if (i >= expr.length())
-                    throw new JsonException("Unexpected EOF after '.' in path '" + expr + "' at pos " + i);
+                    throw new JsonException("Unexpected EOF after '.' in path '" + expr + "' at position " + i);
 
                 // Wildcard
                 if (expr.charAt(i) == '*') {
@@ -53,27 +52,45 @@ public class JsonPathUtil {
                 int start = i;
                 while (i < expr.length() && isNextTokenChar(expr.charAt(i))) i++;
                 if (start == i)
-                    throw new JsonException("Empty field name after '.' in path '" + expr + "' at pos " + i);
+                    throw new JsonException("Empty field name after '.' in path '" + expr + "' at position " + i);
 
-                if (i > start + 2 && expr.charAt(i - 2) == '(' && expr.charAt(i - 1) == ')') {
-                    // Function
-                    if (i == expr.length()) {
-                        String name = expr.substring(start, i - 2);
-                        tokens.add(new PathToken.Function(name));
-                    } else {
-                        throw new JsonException("Function call must be at the end of path '" + expr + "'");
+
+                // Check if function call: NAME(...)
+                if (i < expr.length() && expr.charAt(i) == '(') {
+                    int end = findMatchingParen(expr, i);
+                    if (end < 0) {
+                        throw new JsonException("Unclosed '(' in function at position " + i + " in path '" + expr + "'");
                     }
-                } else {
-                    // Name
-                    String name = expr.substring(start, i);
-                    tokens.add(new PathToken.Name(name));
+                    String funcName = expr.substring(start, i);
+                    String args = expr.substring(i + 1, end); // inside (...)
+                    tokens.add(new PathToken.Function(funcName, parseFunctionArgs(args)));
+                    i = end + 1;
+                    continue;
                 }
+
+                // Name
+                String name = expr.substring(start, i);
+                tokens.add(new PathToken.Name(name));
+
+//                if (i > start + 2 && expr.charAt(i - 2) == '(' && expr.charAt(i - 1) == ')') {
+//                    // Function
+//                    if (i == expr.length()) {
+//                        String name = expr.substring(start, i - 2);
+//                        tokens.add(new PathToken.Function(name));
+//                    } else {
+//                        throw new JsonException("Function call must be at the end of path '" + expr + "'");
+//                    }
+//                } else {
+//                    // Name
+//                    String name = expr.substring(start, i);
+//                    tokens.add(new PathToken.Name(name));
+//                }
 
             }
             else if (c == '[') {
                 i++;
                 if (i >= expr.length())
-                    throw new JsonException("Unexpected EOF after '[' in path '" + expr + "' at pos " + i);
+                    throw new JsonException("Unexpected EOF after '[' in path '" + expr + "' at position " + i);
 
                 // Scan and check
                 int start = i;
@@ -90,7 +107,7 @@ public class JsonPathUtil {
                             i++;
                         }
                         if (i >= expr.length()) {
-                            throw new JsonException("Unclosed quote in path '" + expr + "' at pos " + start);
+                            throw new JsonException("Unclosed quote in path '" + expr + "' at position " + start);
                         }
                         i++; // skip closing quote
                     } else if (ch == ',') {
@@ -104,7 +121,7 @@ public class JsonPathUtil {
                 }
 
                 if (i >= expr.length())
-                    throw new JsonException("Missing closing ']' in path '" + expr + "' at pos " + start);
+                    throw new JsonException("Missing closing ']' in path '" + expr + "' at position " + start);
 
                 // Extract content between [ and ]
                 String bracketContent = expr.substring(start, i);
@@ -120,7 +137,7 @@ public class JsonPathUtil {
                     String content = bracketContent.trim();
 
                     if (content.isEmpty()) {
-                        throw new JsonException("Empty content [] in path '" + expr + "' at pos " + i);
+                        throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
                     } else if (content.equals("*")) {
                         // [*]
                         tokens.add(new PathToken.Wildcard(true));
@@ -142,8 +159,10 @@ public class JsonPathUtil {
                         }
                         tokens.add(new PathToken.Slice(startIdx, endIdx, step));
                     } else if (content.startsWith("?")) {
-                        throw new JsonException("Filter expression like '" + content + "' in path '" + expr +
-                                "' are not supported yet. You may use `JsonWalker` or `JsonStream` instead.");
+//                        throw new JsonException("Filter expression like '" + content + "' in path '" + expr +
+//                                "' are not supported yet. You may use `JsonWalker` or `JsonStream` instead.");
+                        String filterExpr = content.substring(2, content.length() - 1).trim();
+                        tokens.add(new PathToken.Filter(filterExpr));
                     } else {
                         try {
                             // Try to parse as numeric index
@@ -157,7 +176,7 @@ public class JsonPathUtil {
 
             }
             else {
-                throw new JsonException("Unexpected char '" + c + "' in path '" + expr + "' at pos " + i);
+                throw new JsonException("Unexpected char '" + c + "' in path '" + expr + "' at position " + i);
             }
         }
 
@@ -190,7 +209,7 @@ public class JsonPathUtil {
 
     private static boolean isNextTokenChar(char c) {
 //        return Character.isLetterOrDigit(c) || c == '_' || c == '-';
-        return c != '.' && c != '[';
+        return c != '.' && c != '[' && c != '(';
     }
 
 
@@ -339,12 +358,118 @@ public class JsonPathUtil {
                     }
                 }
             } else {
-                throw new JsonException("Invalid first char '" + firstChar + "' at pos " + i +
+                throw new JsonException("Invalid first char '" + firstChar + "' at position " + i +
                         " in content '" + content + "'");
             }
         }
         return tokens;
     }
 
+    /**
+     * Finds the matching closing parenthesis for an expression starting at `start`,
+     * automatically skipping parentheses that appear inside quoted strings.
+     *
+     * Supports both single-quoted and double-quoted strings.
+     */
+    static int findMatchingParen(String s, int start) {
+        if (start < 0 || start >= s.length() || s.charAt(start) != '(') {
+            throw new IllegalArgumentException("start is not position of '('");
+        }
+
+        boolean inString = false;
+        char stringQuote = 0; // ' or "
+        boolean escape = false;
+        int depth = 0;
+
+        for (int i = start; i < s.length(); i++) {
+            char c = s.charAt(i);
+
+            // Handle escaping inside strings: \" or \'
+            if (escape) {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+
+            // Entering / exiting a string literal
+            if (inString) {
+                if (c == stringQuote) {
+                    inString = false; // end string
+                }
+                continue; // ignore all content inside strings
+            } else {
+                if (c == '"' || c == '\'') {
+                    inString = true;
+                    stringQuote = c;
+                    continue;
+                }
+            }
+
+            // Handle parentheses when NOT inside strings
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("No matching ')' found for '(' at position " + start);
+    }
+
+    static List<String> parseFunctionArgs(String s) {
+        List<String> args = new ArrayList<>();
+        if (s == null || s.isEmpty()) return args;
+
+        boolean inString = false;
+        char stringQuote = 0;
+        boolean escape = false;
+        int depth = 0;
+        int start = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+
+            if (escape) {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+
+            if (inString) {
+                if (c == stringQuote) inString = false;
+                continue;
+            } else if (c == '"' || c == '\'') {
+                inString = true;
+                stringQuote = c;
+                continue;
+            }
+
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+            } else if (c == ',' && depth == 0) {
+                args.add(s.substring(start, i).trim());
+                start = i + 1;
+            }
+        }
+
+        if (start < s.length()) {
+            args.add(s.substring(start).trim());
+        }
+
+        return args;
+    }
 
 }

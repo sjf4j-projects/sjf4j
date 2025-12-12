@@ -2,6 +2,7 @@ package org.sjf4j;
 
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Abstract base class representing tokens in a JSON path expression.
@@ -163,11 +164,24 @@ public abstract class PathToken {
 
     public static class Function extends PathToken {
         public final String name;
-        public Function(String name) { this.name = name; }
+        public final List<String> args;
+        public Function(String name, List<String> args) {
+            this.name = name;
+            this.args = args;
+        }
         @Override public boolean match(Object key) { return false; }
-        @Override public String toString() { return "." + name + "()"; }
+        @Override public String toString() {
+            if (args == null || args.isEmpty()) return "." + name + "()";
+            return "." + name + "(" + String.join(", ", args) + ")";
+        }
     }
 
+    public static class Filter extends PathToken {
+        public final String expr;
+        public Filter(String expr) { this.expr = expr; }
+        @Override public boolean match(Object key) { return false; }
+        public String toString() { return "[?(" + expr + ")]"; }
+    }
 
     /// protected
 

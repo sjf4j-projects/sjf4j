@@ -3,6 +3,7 @@ package org.sjf4j;
 import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
 import org.sjf4j.util.NodeUtil;
+import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 import org.sjf4j.util.TypedNode;
 
@@ -518,7 +519,6 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    // Clazz
     public <T> T find(Object container, Class<T> clazz) {
         try {
             Object value = findNode(container);
@@ -528,7 +528,6 @@ public class JsonPath {
                     e.getMessage(), e);
         }
     }
-
 
     @SuppressWarnings("unchecked")
     public <T> T find(Object container, T... reified) {
@@ -575,12 +574,6 @@ public class JsonPath {
         return result;
     }
 
-//    public <T> List<T> findAll(Object container, T... reified) {
-//        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
-//        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-//        return findAll(container, clazz);
-//    }
-
     public <T> List<T> findAllAs(Object container, Class<T> clazz) {
         if (container == null) {
             throw new IllegalArgumentException("Container must not be null");
@@ -593,12 +586,52 @@ public class JsonPath {
         return result;
     }
 
-//    @SuppressWarnings("unchecked")
-//    public <T> List<T> findAllAs(Object container, T... reified) {
-//        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
-//        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-//        return findAllAs(container, clazz);
-//    }
+    // eval is more powerful than find / findAll
+    public Object eval(Object container) {
+        if (container == null) {
+            throw new IllegalArgumentException("Container must not be null");
+        }
+        List<Object> result = new ArrayList<>();
+        _findAll(container, 1, result, (n) -> n);
+
+        PathToken tk = tokens.get(tokens.size() - 1);
+        if (tk instanceof PathToken.Function) {
+            PathToken.Function func = (PathToken.Function) tk;
+            if (result.isEmpty()) return null;
+
+            List<Object> args = new ArrayList<>();
+            Object firstArg = (result.size() == 1 ? result.get(0) : result);
+            args.add(firstArg);
+            for (String raw : func.args) {
+                Object arg = resolveFunctionArg(raw, firstArg);
+                args.add(arg);
+            }
+            return FunctionRegistry.invoke(func.name, args);
+        } else {
+            if (result.size() == 1) {
+                return result.get(0);
+            } else {
+                return result;
+            }
+        }
+    }
+
+    public <T> T eval(Object container, Class<T> clazz) {
+        try {
+            Object value = eval(container);
+            return NodeUtil.to(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to eval " + clazz.getName() + " by path '" + this + "': " +
+                    e.getMessage(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T eval(Object container, T... reified) {
+        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
+        return eval(container, clazz);
+    }
 
     /// Put
 
@@ -719,6 +752,7 @@ public class JsonPath {
         for (int i = tokenIdx; i < tokens.size(); i++) {
             if (node ==  null) return;
             PathToken pt = tokens.get(i);
+            if (i == tokens.size() - 1 && pt instanceof PathToken.Function) break;
             NodeType nt = NodeType.of(node);
             final int nextI = i + 1;
             if (pt instanceof PathToken.Name) {
@@ -886,6 +920,20 @@ public class JsonPath {
             }
         }
         return true;
+    }
+
+    private Object resolveFunctionArg(String raw, Object current) {
+        if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
+            return raw.substring(1, raw.length() - 1);
+        } else if ("true".equals(raw)) {
+            return true;
+        } else if ("false".equals(raw)) {
+            return false;
+        } else if (NumberUtil.isNumeric(raw)) {
+            return NumberUtil.toNumber(raw);
+        } else {
+            throw new JsonException("Invalid rawument '" + raw + "'");
+        }
     }
 
 }

@@ -219,7 +219,6 @@ public class StreamingUtil {
     }
 
 
-
     /// Write
 
     public static void writeNode(FacadeWriter writer, Object node) throws IOException {
@@ -239,7 +238,7 @@ public class StreamingUtil {
             ((JsonObject) node).forEach((k, v) -> {
                 try {
                     if (veryStart.get()) veryStart.set(false);
-                    else writer.writeComma();
+                    else writer.writeObjectComma();
                     writer.writeName(k);
                     writeNode(writer, v);
                 } catch (IOException e) {
@@ -252,7 +251,7 @@ public class StreamingUtil {
             boolean veryStart = true;
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
                 if (veryStart) veryStart = false;
-                else writer.writeComma();
+                else writer.writeObjectComma();
                 writer.writeName(entry.getKey().toString());
                 writeNode(writer, entry.getValue());
             }
@@ -261,7 +260,7 @@ public class StreamingUtil {
             writer.startArray();
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
-                if (i > 0) writer.writeComma();
+                if (i > 0) writer.writeArrayComma();
                 writeNode(writer, ja.getNode(i));
             }
             writer.endArray();
@@ -269,14 +268,14 @@ public class StreamingUtil {
             writer.startArray();
             List<?> list = (List<?>) node;
             for (int i = 0; i < list.size(); i++) {
-                if (i > 0) writer.writeComma();
+                if (i > 0) writer.writeArrayComma();
                 writeNode(writer, list.get(i));
             }
             writer.endArray();
         } else if (node.getClass().isArray()) {
             writer.startArray();
             for (int i = 0; i < Array.getLength(node); i++) {
-                if (i > 0) writer.writeComma();
+                if (i > 0) writer.writeArrayComma();
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();
@@ -286,7 +285,7 @@ public class StreamingUtil {
             for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
                     PojoRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
                 if (veryStart) veryStart = false;
-                else writer.writeComma();
+                else writer.writeObjectComma();
                 writer.writeName(entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(writer, vv);

@@ -1486,11 +1486,26 @@ public class JsonObject extends JsonContainer {
         return null;
     }
 
+    /**
+     * Clear all dynamic nodes while keeping the nodeMap container.
+     */
     public void clear() {
         if (nodeMap != null) {
             nodeMap.clear();
         }
     }
+
+    /**
+     * Clears the dynamic nodeMap container by setting it to null.
+     *
+     * <p>This effectively disables all dynamic properties for this JsonObject,
+     * leaving only the statically defined POJO fields in fieldMap.
+     * Can help reduce memory usage if the dynamic map is no longer needed.</p>
+     */
+    public void clean() {
+        nodeMap = null;
+    }
+
 
     /// Copy, merge
 

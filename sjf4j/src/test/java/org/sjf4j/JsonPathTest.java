@@ -680,4 +680,25 @@ public class JsonPathTest {
         assertEquals(100, descendant.size());
     }
 
+
+    @Test
+    public void testEval1() {
+        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        JsonPath pathSum = JsonPath.compile("$..age.sum()");
+        log.info("sum={}", pathSum.eval(person));
+
+        JsonPath pathLength = JsonPath.compile("$..age.length()");
+        log.info("length={}", pathLength.eval(person));
+
+        JsonPath pathCount = JsonPath.compile("$..age.count()");
+        log.info("count={}", pathCount.eval(person));
+
+        JsonPath pathMatch = JsonPath.compile("$..email.match('alice..xample.com')");
+        log.info("match={}", pathMatch.eval(person));
+
+        JsonPath pathSearch = JsonPath.compile("$..email.search('alice')");
+        log.info("search={}", pathSearch.eval(person));
+        JsonPath pathSearch2 = JsonPath.compile("$..email.search('zack')");
+        log.info("search={}", pathSearch2.eval(person, Boolean.class));
+    }
 }
