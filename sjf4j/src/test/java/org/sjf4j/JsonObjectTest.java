@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.sjf4j.facades.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;

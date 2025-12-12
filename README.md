@@ -11,7 +11,7 @@ Fastjson2), and other JSON-like libraries (e.g. SnakeYAML).
 It maps JSON-like data into an Object-Tree, and provides a unified, expressive, and powerful API for operating on this
 tree. 
 
-As shown in the Object-Tree node relationship diagram, each `JSON Object` node can be a type-safe `POJO`, 
+As shown in the **Object-Tree** node relationship diagram, each `JSON Object` node can be a type-safe `POJO`, 
 or a dynamic `Map` (or its wrapper `JsonObject`), or a hybrid type `JOJO` that combines the advantages of both 
 `POJO` and `Map`. The same design applies to `JSON Array` nodes as well.  
 This flexible representation is the core feature of the Object-Tree model.
@@ -39,11 +39,11 @@ graph BT
 
 ### Get it
 
-SJF4J requires only **JDK 8** and has no external dependencies.  
 `Gradle`:
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
+SJF4J requires only **JDK 8** and has no external dependencies.
 
 To handle ***JSON*** data, you need to add `Jackson`, `Gson`, or `Fastjson2` to your classpath. 
 The first available parser in this order will be automatically detected and used. 
@@ -195,9 +195,9 @@ Definitions:
  * **Map**: The standard Java container for dynamic elements. Flexible, but cannot provide compile-time checking 
 like a `POJO`.
  * **JsonObject**: A wrapper of `Map` that provides many additional APIs for convenient Object-Tree operations.
- * **POJO**: ***Plain Old Java Object***. `POJO` offers the highest performance and type safety, but its `fields` 
+ * **POJO**: Plain Old Java Object. `POJO` offers the highest performance and type safety, but its `fields` 
 are fixed and must be defined at compile time. This is a key factor limiting development efficiency.
- * **JOJO**: ***JSON-Oriented Java Object***. Any subclass of `JsonObject` is automatically a `JOJO`.
+ * **JOJO**: JSON-Oriented Java Object. Any subclass of `JsonObject` is automatically a `JOJO`.
 So a `POJO` can become a `JOJO` simply by extending `JsonObject`. 
 
 ```java

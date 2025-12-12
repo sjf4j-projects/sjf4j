@@ -1,9 +1,10 @@
 package org.sjf4j;
 
-import org.sjf4j.facades.JsonFacade;
-import org.sjf4j.facades.ObjectFacade;
-import org.sjf4j.facades.PropertiesFacade;
-import org.sjf4j.facades.YamlFacade;
+import org.sjf4j.facade.FacadeFactory;
+import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.ObjectFacade;
+import org.sjf4j.facade.PropertiesFacade;
+import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
 

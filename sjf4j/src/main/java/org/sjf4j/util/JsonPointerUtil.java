@@ -1,6 +1,6 @@
 package org.sjf4j.util;
 
-import org.sjf4j.PathToken;
+import org.sjf4j.path.PathToken;
 
 import java.util.ArrayList;
 import java.util.List;

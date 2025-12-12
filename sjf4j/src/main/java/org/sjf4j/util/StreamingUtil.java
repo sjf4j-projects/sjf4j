@@ -5,8 +5,8 @@ import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.PojoRegistry;
-import org.sjf4j.facades.FacadeReader;
-import org.sjf4j.facades.FacadeWriter;
+import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.FacadeWriter;
 
 import java.io.IOException;
 import java.lang.reflect.Array;

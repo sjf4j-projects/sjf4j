@@ -3,6 +3,7 @@ package org.sjf4j;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.path.JsonPath;
 import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
