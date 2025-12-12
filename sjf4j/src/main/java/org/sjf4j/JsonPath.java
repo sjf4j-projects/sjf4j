@@ -626,13 +626,6 @@ public class JsonPath {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T eval(Object container, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
-        Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-        return eval(container, clazz);
-    }
-
     /// Put
 
     public Object put(Object container, Object value) {
@@ -929,10 +922,12 @@ public class JsonPath {
             return true;
         } else if ("false".equals(raw)) {
             return false;
+        } else if ("null".equals(raw)) {
+            return null;
         } else if (NumberUtil.isNumeric(raw)) {
             return NumberUtil.toNumber(raw);
         } else {
-            throw new JsonException("Invalid rawument '" + raw + "'");
+            throw new JsonException("Invalid raw argument '" + raw + "'");
         }
     }
 

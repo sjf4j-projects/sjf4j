@@ -701,4 +701,21 @@ public class JsonPathTest {
         JsonPath pathSearch2 = JsonPath.compile("$..email.search('zack')");
         log.info("search={}", pathSearch2.eval(person, Boolean.class));
     }
+
+    @Test
+    public void testEval2() {
+        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+
+        int age = JsonPath.compile("$.age").eval(p1, int.class);
+        log.info("age={}", age);
+
+        List babies = JsonPath.compile("$.babies").eval(p1, List.class);
+        log.info("babies={}", babies);
+
+        long cnt = JsonPath.compile("$.babies.count()").eval(p1, Long.class);
+        log.info("cnt={}", cnt);
+
+    }
+
+
 }

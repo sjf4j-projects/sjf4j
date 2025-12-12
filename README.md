@@ -6,7 +6,7 @@
 
 ## Overview
 
-SJF4J (Simple JSON Facade for Java) serves as a simple facade for various JSON frameworks (e.g. Jackson, Gson, 
+**SJF4J (Simple JSON Facade for Java)** serves as a simple facade for various JSON frameworks (e.g. Jackson, Gson, 
 Fastjson2), and other JSON-like libraries (e.g. SnakeYAML).
 It maps JSON-like data into an Object-Tree, and provides a unified, expressive, and powerful API for operating on this
 tree. 
@@ -35,22 +35,28 @@ graph BT
         value --> converted("Object (with converter)")
 ```
 
-## Getting Started with SJF4J
+## Getting Started
 
 ### Get it
 
 SJF4J requires only **JDK 8** and has no external dependencies.  
-For `Gradle` (`Maven` similar) :
+`Gradle`:
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
 
-SJF4J includes built-in parsers for ***Object-Tree*** and ***Properties***.
-To handle ***JSON*** data, simply add `Jackson`, `Gson`, or `Fastjson2` to your classpath.
-The first available parser in this order will be automatically detected and used.
-To work with ***YAML*** data, just include `SnakeYAML`.
+To handle ***JSON*** data, you need to add `Jackson`, `Gson`, or `Fastjson2` to your classpath. 
+The first available parser in this order will be automatically detected and used. 
+If none of them are found, SJF4J will fall back to its own simple (and slower) JSON parser.
 
----
+To handle ***YAML*** data, simply include `SnakeYAML`.
+
+To handle ***Properties***, there is a built-in parser. 
+Note that conversion from `java.util.Properties` is limited by the inherent restrictions of the Properties format. 
+
+To work with ***POJOs***, SJF4J also provides built-in support for ***Object-Tree***, 
+so even if you do not process any JSON/YAML data and work only with POJOs, you can still use SJF4J effectively.
+
 ### Basic Example
 
 Full codes are available at 

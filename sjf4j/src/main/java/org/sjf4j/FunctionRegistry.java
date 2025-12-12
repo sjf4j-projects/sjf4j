@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -53,6 +54,10 @@ public class FunctionRegistry {
         } catch (Exception e) {
             throw new JsonException("Function '" + name + "' invoke error", e);
         }
+    }
+
+    public static Set<String> getFunctionNames() {
+        return FUNCTIONS.keySet();
     }
 
     static {
