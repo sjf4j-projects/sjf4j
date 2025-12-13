@@ -3,6 +3,8 @@ package org.sjf4j.util;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
+import org.sjf4j.path.FilterExpr;
+import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathToken;
 
 import java.util.List;
@@ -203,6 +205,45 @@ public class JsonPathUtilTest {
         assertEquals(4, args.size());
         assertEquals("\"hello(world)\"", args.get(3));
     }
+
+    @Test
+    public void testFilter1() {
+        FilterExpr fe = JsonPathUtil.parseFilter("@.age > 30");
+        System.out.println("fe=" + fe);
+        assertEquals("(@.age > 30.0)", fe.toString());
+
+        fe = JsonPathUtil.parseFilter("(@.age > 30 || @..['bb'].count() < 2)");
+        System.out.println("fe=" + fe);
+        assertEquals("((@.age > 30.0) || (@..['bb'].count() < 2.0))", fe.toString());
+
+        fe = JsonPathUtil.parseFilter("@.tags && @.tags.contains('urgent')");
+        System.out.println("fe=" + fe);
+        assertEquals("(@.tags && @.tags.contains('urgent'))", fe.toString());
+
+        JsonPath path = JsonPath.compile("$.babies[*][?@.age > 2].name");
+        System.out.println("path=" + path);
+    }
+
+    @Test
+    public void testFilter2() {
+        FilterExpr fe = JsonPathUtil.parseFilter("@.name == 'Bob'");
+        System.out.println("fe=" + fe);
+        assertEquals("(@.name == \"Bob\")", fe.toString());
+
+        fe = JsonPathUtil.parseFilter("@.active");
+        System.out.println("fe=" + fe);
+        assertEquals("@.active", fe.toString());
+
+        fe = JsonPathUtil.parseFilter("@.age >= 30 && !@.active");
+        System.out.println("fe=" + fe);
+        assertEquals("((@.age >= 30.0) && !@.active)", fe.toString());
+
+        fe = JsonPathUtil.parseFilter("@.members[?@.age > 30]");
+        System.out.println("fe=" + fe);
+        assertEquals("@.members[?@.age > 30]", fe.toString());
+    }
+
+
 
     /// Private
 

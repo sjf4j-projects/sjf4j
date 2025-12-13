@@ -3,6 +3,7 @@ package org.sjf4j.path;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonWalker;
 import org.sjf4j.NodeType;
+import org.sjf4j.util.IRegexpUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -101,21 +102,13 @@ public class FunctionRegistry {
         }));
 
         // match
+        // follows RFC i-regexp semantics and does not support full regular expressions.
         FunctionRegistry.register(new FunctionDescriptor("match", args -> {
             if (args.size() != 2) throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.size());
             Object node0 = args.get(0);
             Object node1 = args.get(1);
             if (node0 instanceof String && node1 instanceof String) {
-                String value = (String) node0;
-                String pattern = (String) node1;
-                if (value.length() != pattern.length()) return false;
-                for (int i = 0; i < pattern.length(); i++) {
-                    char pc = pattern.charAt(i);
-                    char vc = value.charAt(i);
-                    if (pc == '.') continue;
-                    if (pc != vc) return false;
-                }
-                return true;
+                return IRegexpUtil.match((String) node1, (String) node0);
             }
             return false;
         }));
@@ -126,7 +119,7 @@ public class FunctionRegistry {
             Object node0 = args.get(0);
             Object node1 = args.get(1);
             if (node0 instanceof String && node1 instanceof String) {
-                return ((String) node0).contains((String) node1);
+                return IRegexpUtil.search((String) node1, (String) node0);
             }
             return false;
         }));

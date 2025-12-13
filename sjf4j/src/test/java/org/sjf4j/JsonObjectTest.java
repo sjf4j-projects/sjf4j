@@ -73,6 +73,21 @@ class JsonObjectTest {
         testEdgeCases();
     }
 
+    final String JSON = "{\n" +
+            "  \"id\": 1,\n" +
+            "  \"name\": \"Alice\",\n" +
+            "  \"active\": true,\n" +
+            "  \"tags\": [\"java\", \"json\"],\n" +
+            "  \"scores\": [95, 88.8, 0.5],\n" +
+            "  \"user\": {\n" +
+            "    \"role\": \"coder\",\n" +
+            "    \"profile\": {\n" +
+            "      \"level\": 7,\n" +
+            "      \"values\": [1, \"two\", true, null, { \"x\": 3 }]\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
     public void testGetter1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20],\"sex\":false}},\"sex\":true}";
         JsonObject jo = JsonObject.fromJson(json1);
@@ -279,6 +294,21 @@ class JsonObjectTest {
 
     public void testByPath3() {
         JsonObject jo1 = new JsonObject();
+        assertThrows(JsonException.class, () -> jo1.putByPath("$.a.b[1].c", "444"));
+
+        JsonObject jo2 = new JsonObject();
+        jo2.putByPath("$.a.b", new JsonArray());
+        assertThrows(JsonException.class, () -> jo2.putByPath("$.a.b[1].c", "444"));
+
+        JsonObject jo3 = new JsonObject();
+        jo3.putByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
+        jo3.putByPath("$.a.b[1].c", "444");
+        assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
+        //FIXME: this is a bug!
+    }
+
+    public void testByPath4() {
+        JsonObject jo1 = JsonObject.fromJson(JSON);
         assertThrows(JsonException.class, () -> jo1.putByPath("$.a.b[1].c", "444"));
 
         JsonObject jo2 = new JsonObject();

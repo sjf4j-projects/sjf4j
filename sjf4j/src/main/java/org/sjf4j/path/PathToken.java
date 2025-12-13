@@ -30,6 +30,15 @@ public abstract class PathToken {
     }
 
     /**
+     * Represents the current token (@) in a JSON path expression.
+     * This token is used only inside filter expressions.
+     */
+    public static class Current extends PathToken {
+        @Override public boolean match(Object key) { return false; }
+        @Override public String toString() { return "@"; }
+    }
+
+    /**
      * Represents a named property token in a JSON path expression.
      */
     public static class Name extends PathToken {
@@ -176,10 +185,12 @@ public abstract class PathToken {
     }
 
     public static class Filter extends PathToken {
-        public final String expr;
-        public Filter(String expr) { this.expr = expr; }
+        public final FilterExpr filterExpr;
+        public Filter(FilterExpr filterExpr) {
+            this.filterExpr = filterExpr;
+        }
         @Override public boolean match(Object key) { return false; }
-        public String toString() { return "[?" + expr + "]"; }
+        public String toString() { return "[?" + filterExpr + "]"; }
     }
 
     /// protected

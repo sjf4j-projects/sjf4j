@@ -1,12 +1,32 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonException;
+import org.sjf4j.path.FilterExpr;
 import org.sjf4j.path.PathToken;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class JsonPathUtil {
+
+    public static String genExpr(List<PathToken> tokens) {
+        StringBuilder sb = new StringBuilder();
+        PathToken lastPt = null;
+        for (PathToken pt : tokens) {
+            if (lastPt instanceof PathToken.Descendant && pt instanceof PathToken.Name) {
+                PathToken.Name name = (PathToken.Name) pt;
+                if (name.needQuoted()) {
+                    sb.append("[").append(name.toQuoted()).append("]");
+                } else {
+                    sb.append(name.name);
+                }
+            } else {
+                sb.append(pt);
+            }
+            lastPt = pt;
+        }
+        return sb.toString();
+    }
 
     public static List<PathToken> compile(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expr must not be null");
@@ -17,8 +37,11 @@ public class JsonPathUtil {
         if (expr.charAt(i) == '$') {
             tokens.add(new PathToken.Root());
             i++;
+        } else if (expr.charAt(i) == '@') {
+            tokens.add(new PathToken.Current());
+            i++;
         } else {
-            throw new JsonException("Must start with '$' in path '" + expr + "'");
+            throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
         }
 
         while (i < expr.length()) {
@@ -54,8 +77,7 @@ public class JsonPathUtil {
                 if (start == i)
                     throw new JsonException("Empty field name after '.' in path '" + expr + "' at position " + i);
 
-
-                // Check if function call: NAME(...)
+                // Function
                 if (i < expr.length() && expr.charAt(i) == '(') {
                     int end = findMatchingParen(expr, i);
                     if (end < 0) {
@@ -71,21 +93,6 @@ public class JsonPathUtil {
                 // Name
                 String name = expr.substring(start, i);
                 tokens.add(new PathToken.Name(name));
-
-//                if (i > start + 2 && expr.charAt(i - 2) == '(' && expr.charAt(i - 1) == ')') {
-//                    // Function
-//                    if (i == expr.length()) {
-//                        String name = expr.substring(start, i - 2);
-//                        tokens.add(new PathToken.Function(name));
-//                    } else {
-//                        throw new JsonException("Function call must be at the end of path '" + expr + "'");
-//                    }
-//                } else {
-//                    // Name
-//                    String name = expr.substring(start, i);
-//                    tokens.add(new PathToken.Name(name));
-//                }
-
             }
             else if (c == '[') {
                 i++;
@@ -95,15 +102,14 @@ public class JsonPathUtil {
                 // Scan and check
                 int start = i;
                 boolean hasComma = false;
+                int depth = 0;
                 while (i < expr.length()) {
                     char ch = expr.charAt(i);
                     if (ch == '\'' || ch == '"') {
                         // Skip quoted content
                         i++; // skip opening quote
                         while (i < expr.length() && expr.charAt(i) != ch) {
-                            if (expr.charAt(i) == '\\') {
-                                i++; // skip escape char
-                            }
+                            if (expr.charAt(i) == '\\') i++; // skip escape char
                             i++;
                         }
                         if (i >= expr.length()) {
@@ -113,8 +119,16 @@ public class JsonPathUtil {
                     } else if (ch == ',') {
                         hasComma = true;
                         i++;
+                    } else if (ch == '[') {
+                        depth++;
+                        i++;
                     } else if (ch == ']') {
-                        break;
+                        if (depth == 0) {
+                            break;
+                        } else {
+                            depth--;
+                            i++;
+                        }
                     } else {
                         i++;
                     }
@@ -127,15 +141,19 @@ public class JsonPathUtil {
                 String bracketContent = expr.substring(start, i);
                 i++; // skip ]
 
+                // Single element: could be [*], [0], [-1], ['name'], or [start:end:step]
+                String content = bracketContent.trim();
                 // Dispatch based on content type
-                if (hasComma) {
+                if (content.startsWith("?")) {
+                    // Filter
+                    String filterStr = content.substring(1).trim();
+                    FilterExpr filterExpr = parseFilter(filterStr);
+                    tokens.add(new PathToken.Filter(filterExpr));
+                } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
-                    List<PathToken> unionTokens = parseUnionTokens(bracketContent);
+                    List<PathToken> unionTokens = parseUnionTokens(content);
                     tokens.add(new PathToken.Union(unionTokens));
                 } else {
-                    // Single element: could be [*], [0], [-1], ['name'], or [start:end:step]
-                    String content = bracketContent.trim();
-
                     if (content.isEmpty()) {
                         throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
                     } else if (content.equals("*")) {
@@ -158,11 +176,6 @@ public class JsonPathUtil {
                             throw new JsonException("Slice step cannot be 0 in path '" + expr + "'");
                         }
                         tokens.add(new PathToken.Slice(startIdx, endIdx, step));
-                    } else if (content.startsWith("?")) {
-//                        throw new JsonException("Filter expression like '" + content + "' in path '" + expr +
-//                                "' are not supported yet. You may use `JsonWalker` or `JsonStream` instead.");
-                        String filterExpr = content.substring(2, content.length() - 1).trim();
-                        tokens.add(new PathToken.Filter(filterExpr));
                     } else {
                         try {
                             // Try to parse as numeric index
@@ -182,28 +195,6 @@ public class JsonPathUtil {
 
         return tokens;
     }
-
-
-    public static String genExpr(List<PathToken> tokens) {
-        StringBuilder sb = new StringBuilder();
-        PathToken lastPt = null;
-        for (PathToken pt : tokens) {
-            if (lastPt instanceof PathToken.Descendant && pt instanceof PathToken.Name) {
-                PathToken.Name name = (PathToken.Name) pt;
-                if (name.needQuoted()) {
-                    sb.append("[").append(name.toQuoted()).append("]");
-                } else {
-                    sb.append(name.name);
-                }
-            } else {
-                sb.append(pt);
-            }
-            lastPt = pt;
-        }
-        return sb.toString();
-    }
-
-
 
     /// private
 
@@ -423,6 +414,7 @@ public class JsonPathUtil {
         throw new IllegalArgumentException("No matching ')' found for '(' at position " + start);
     }
 
+    // Function at last token, not in Filter
     static List<String> parseFunctionArgs(String s) {
         List<String> args = new ArrayList<>();
         if (s == null || s.isEmpty()) return args;
@@ -470,6 +462,281 @@ public class JsonPathUtil {
         }
 
         return args;
+    }
+
+
+    /// Filter
+
+    public static FilterExpr parseFilter(String s) {
+        int[] pos = {0};
+        skipWs(s, pos);
+        FilterExpr expr = parseOr(s, pos);
+        skipWs(s, pos);
+        if (pos[0] != s.length()) {
+            throw new JsonException("Trailing characters at pos " + pos[0]);
+        }
+        return expr;
+    }
+
+    // or := and ('||' and)*
+    private static FilterExpr parseOr(String s, int[] pos) {
+        FilterExpr left = parseAnd(s, pos);
+        while (true) {
+            skipWs(s, pos);
+            if (match(s, pos, "||")) {
+                FilterExpr right = parseAnd(s, pos);
+                left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.OR);
+            } else break;
+        }
+        return left;
+    }
+
+    // and := compare ('&&' compare)*
+    private static FilterExpr parseAnd(String s, int[] pos) {
+        FilterExpr left = parseCompare(s, pos);
+        while (true) {
+            skipWs(s, pos);
+            if (match(s, pos, "&&")) {
+                FilterExpr right = parseCompare(s, pos);
+                left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.AND);
+            } else break;
+        }
+        return left;
+    }
+
+    // compare := unary (op unary)?
+    private static FilterExpr parseCompare(String s, int[] pos) {
+        FilterExpr left = parseUnary(s, pos);
+        skipWs(s, pos);
+
+        FilterExpr.Op op = null;
+
+        if (match(s, pos, "==")) op = FilterExpr.Op.EQ;
+        else if (match(s, pos, "!=")) op = FilterExpr.Op.NE;
+        else if (match(s, pos, ">=")) op = FilterExpr.Op.GE;
+        else if (match(s, pos, "<=")) op = FilterExpr.Op.LE;
+        else if (match(s, pos, ">"))  op = FilterExpr.Op.GT;
+        else if (match(s, pos, "<"))  op = FilterExpr.Op.LT;
+
+        if (op != null) {
+            FilterExpr right = parseUnary(s, pos);
+            return new FilterExpr.BinaryExpr(left, right, op);
+        }
+
+        return left;
+    }
+
+    // unary := '!' unary | primary
+    private static FilterExpr parseUnary(String s, int[] pos) {
+        skipWs(s, pos);
+        if (match(s, pos, "!")) {
+            FilterExpr child = parseUnary(s, pos);
+            return new FilterExpr.UnaryExpr(false, child);
+        }
+        return parsePrimary(s, pos);
+    }
+
+    // primary := literal | path | '(' expr ')'
+    private static FilterExpr parsePrimary(String s, int[] pos) {
+        skipWs(s, pos);
+        char c = peek(s, pos);
+
+        // (expr)
+        if (c == '(') {
+            pos[0]++;
+            FilterExpr expr = parseOr(s, pos);
+            skipWs(s, pos);
+            if (peek(s, pos) != ')') {
+                throw new JsonException("Missing ')'");
+            }
+            pos[0]++;
+            return expr;
+        }
+
+        // String literal
+        if (c == '\'' || c == '"') {
+            return new FilterExpr.LiteralExpr(parseString(s, pos));
+        }
+
+        // Number literal
+        if (Character.isDigit(c) || c == '-') {
+            return new FilterExpr.LiteralExpr(parseNumber(s, pos));
+        }
+
+        // Path: @.a.b or $.x.y
+        if (c == '@' || c == '$') {
+            String path = parsePath(s, pos);
+            return new FilterExpr.PathExpr(path);
+        }
+
+        // Function: search(@.b, 'a')
+        if (isNamePart(c)) {
+            return parseFunction(s, pos);
+        }
+
+        throw new JsonException("Unexpected char '" + c + "' at pos " + pos[0]);
+    }
+
+    // function := name '(' [ expr (',' expr)* ] ')'
+    private static FilterExpr parseFunction(String s, int[] pos) {
+        // function name
+        int start = pos[0];
+        while (pos[0] < s.length() && isNamePart(s.charAt(pos[0]))) { pos[0]++; }
+        String name = s.substring(start, pos[0]);
+        skipWs(s, pos);
+
+        if (pos[0] >= s.length() || s.charAt(pos[0]) != '(') {
+            throw new JsonException("Expected '(' after function name: " + name);
+        }
+        pos[0]++; // '('
+
+        List<FilterExpr> args = new ArrayList<>();
+        skipWs(s, pos);
+
+        // empty arg list
+        if (pos[0] < s.length() && s.charAt(pos[0]) == ')') {
+            pos[0]++;
+            return new FilterExpr.FunctionExpr(name, args);
+        }
+
+        // arguments
+        while (true) {
+            FilterExpr arg = parseOr(s, pos);
+            args.add(arg);
+            skipWs(s, pos);
+
+            if (pos[0] >= s.length()) {
+                throw new JsonException("Unterminated function call: " + name);
+            }
+
+            char c = s.charAt(pos[0]);
+            if (c == ',') {
+                pos[0]++;
+                skipWs(s, pos);
+                continue;
+            }
+            if (c == ')') {
+                pos[0]++;
+                break;
+            }
+            throw new JsonException("Expected ',' or ')' in function call: " + name);
+        }
+
+        return new FilterExpr.FunctionExpr(name, args);
+    }
+
+    private static boolean isNamePart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    private static void skipWs(String s, int[] pos) {
+        while (pos[0] < s.length() && Character.isWhitespace(s.charAt(pos[0]))) {
+            pos[0]++;
+        }
+    }
+
+    private static boolean match(String s, int[] pos, String op) {
+        if (s.startsWith(op, pos[0])) {
+            pos[0] += op.length();
+            return true;
+        }
+        return false;
+    }
+
+    private static char peek(String s, int[] pos) {
+        return pos[0] < s.length() ? s.charAt(pos[0]) : '\0';
+    }
+
+    private static String parseString(String s, int[] pos) {
+        char quote = s.charAt(pos[0]++);
+        int start = pos[0];
+        boolean escape = false;
+        while (pos[0] < s.length()) {
+            char c = s.charAt(pos[0]);
+
+            if (escape) {
+                escape = false;
+                pos[0]++;
+                continue;
+            }
+
+            if (c == '\\') {
+                escape = true;
+                pos[0]++;
+                continue;
+            }
+
+            if (c == quote) {
+                String v = s.substring(start, pos[0]);
+                pos[0]++; // skip closing quote
+                return v;
+            }
+
+            pos[0]++;
+        }
+
+        // reached end without closing quote
+        throw new JsonException("Unterminated string literal starting at position " + start);
+    }
+
+
+    private static Number parseNumber(String s, int[] pos) {
+        int start = pos[0];
+        while (pos[0] < s.length() &&
+                (Character.isDigit(s.charAt(pos[0])) || s.charAt(pos[0]) == '.'
+                        || s.charAt(pos[0]) == '-')) {
+            pos[0]++;
+        }
+        return Double.valueOf(s.substring(start, pos[0]));
+    }
+
+    private static String parsePath(String s, int[] pos) {
+        int start = pos[0];
+        boolean inStr = false, escape = false, inBracket = false, inParen = false;
+        char quote = 0;
+
+        while (pos[0] < s.length()) {
+            char c = s.charAt(pos[0]);
+
+            if (escape) { escape = false; pos[0]++; continue; }
+            if (c == '\\') { escape = true; pos[0]++; continue; }
+
+            if (inStr) {
+                if (c == quote) inStr = false;
+                pos[0]++; continue;
+            }
+            if (c == '"' || c == '\'') {
+                inStr = true; quote = c;
+                pos[0]++; continue;
+            }
+
+            if (inBracket) {
+                if (c == ']') inBracket = false;
+                pos[0]++; continue;
+            }
+            if (c == '[') {
+                inBracket = true;
+                pos[0]++; continue;
+            }
+
+            if (inParen) {
+                if (c == ')') inParen = false;
+                pos[0]++; continue;
+            }
+            if (c == '(') {
+                inParen = true;
+                pos[0]++; continue;
+            }
+
+            // allowed path chars
+            if (Character.isAlphabetic(c) || Character.isDigit(c) ||
+                    c == '@' || c == '$' || c == '.' || c == '_' || c == '*') {
+                pos[0]++; continue;
+            }
+
+            break;
+        }
+        return s.substring(start, pos[0]);
     }
 
 }

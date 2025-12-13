@@ -43,11 +43,11 @@ graph BT
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
-SJF4J requires only **JDK 8** and has no external dependencies.
+SJF4J requires only `JDK 8` and has no external dependencies.
 
 To handle ***JSON*** data, you need to add `Jackson`, `Gson`, or `Fastjson2` to your classpath. 
-The first available parser in this order will be automatically detected and used. 
-If none of them are found, SJF4J will fall back to its own simple (and slower) JSON parser.
+The first available parser in this order will be automatically used. 
+If none of them are detected, SJF4J will fall back to its own simple (and slower) JSON parser.
 
 To handle ***YAML*** data, simply include `SnakeYAML`.
 
@@ -133,8 +133,9 @@ Secondly, the path-based operations include: `getByPath()`, `asByPath()`, `putBy
  [JSON Path](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base) 
  and [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901).
 
- * **Worth highlighting**: `putByPath()` / `computeIfAbsentByPath()` /.. can automatically create intermediate nodes,
-  which is extremely useful in practice.
+> **Highlighting**: `putByPath()` / `computeIfAbsentByPath()` /.. can automatically create intermediate nodes,
+>  which is extremely useful in practice.
+
 ```java
     String role2 = jo.getStringByPath("$.user.role");         
     // `getXxByPath()` supports JSON Path expressions

@@ -151,6 +151,22 @@ public class JsonWalker {
     }
 
     @SuppressWarnings("unchecked")
+    public static boolean containsInObject(Object container, String key) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (key == null) throw new IllegalArgumentException("Key must not be null");
+        if (container instanceof JsonObject) {
+            return ((JsonObject) container).containsKey(key);
+        } else if (container instanceof Map) {
+            return ((Map<String, Object>) container).containsKey(key);
+        } else if (PojoRegistry.isPojo(container.getClass())) {
+            PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(container.getClass(), key);
+            return fi != null;
+        } else {
+            throw new JsonException("Invalid object container: " + container.getClass());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     public static Object getInObject(Object container, String key) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (key == null) throw new IllegalArgumentException("Key must not be null");

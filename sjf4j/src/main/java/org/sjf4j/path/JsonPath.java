@@ -78,13 +78,13 @@ public class JsonPath {
         if (expr == null) {
             throw new IllegalArgumentException("Expr must not be null");
         }
-        if (expr.startsWith("$")) {
+        if (expr.startsWith("$") || expr.startsWith("@")) {
             this.tokens = JsonPathUtil.compile(expr);
         } else if (expr.startsWith("/")) {
             this.tokens = JsonPointerUtil.compile(expr);
         } else {
             throw new JsonException("Invalid path expression '" + expr + "'. " +
-                    "Must start with '$' for JSON Path or '/' for JSON Pointer.");
+                    "Must start with '$' or '@' for JSON Path, or '/' for JSON Pointer.");
         }
         this.raw = expr;
     }
@@ -154,11 +154,20 @@ public class JsonPath {
     }
 
     /**
+     * Returns the first token in the path without removing it.
+     *
+     * @return the first path token
+     */
+    public PathToken head() {
+        return tokens.get(0);
+    }
+
+    /**
      * Returns the last token in the path without removing it.
      *
      * @return the last path token
      */
-    public PathToken peek() {
+    public PathToken tail() {
         return tokens.get(tokens.size() - 1);
     }
 
@@ -565,7 +574,7 @@ public class JsonPath {
             throw new IllegalArgumentException("Container must not be null");
         }
         List<Object> result = new ArrayList<>();
-        _findAll(container, 1, result, (n) -> n);
+        _findAll(container, container, 1, result, (n) -> n);
         return result;
     }
 
@@ -577,7 +586,7 @@ public class JsonPath {
             throw new IllegalArgumentException("Clazz must not be null");
         }
         List<T> result = new ArrayList<>();
-        _findAll(container, 1, result, (n) -> NodeUtil.to(n, clazz));
+        _findAll(container, container, 1, result, (n) -> NodeUtil.to(n, clazz));
         return result;
     }
 
@@ -589,7 +598,7 @@ public class JsonPath {
             throw new IllegalArgumentException("Clazz must not be null");
         }
         List<T> result = new ArrayList<>();
-        _findAll(container, 1, result, (n) -> NodeUtil.as(n, clazz));
+        _findAll(container, container, 1, result, (n) -> NodeUtil.as(n, clazz));
         return result;
     }
 
@@ -599,7 +608,7 @@ public class JsonPath {
             throw new IllegalArgumentException("Container must not be null");
         }
         List<Object> result = new ArrayList<>();
-        _findAll(container, 1, result, (n) -> n);
+        _findAll(container, container, 1, result, (n) -> n);
 
         PathToken tk = tokens.get(tokens.size() - 1);
         if (tk instanceof PathToken.Function) {
@@ -615,11 +624,9 @@ public class JsonPath {
             }
             return FunctionRegistry.invoke(func.name, args);
         } else {
-            if (result.size() == 1) {
-                return result.get(0);
-            } else {
-                return result;
-            }
+            if (result.isEmpty()) return null;
+            else if (result.size() == 1) return result.get(0);
+            else return result;
         }
     }
 
@@ -640,7 +647,7 @@ public class JsonPath {
             throw new IllegalArgumentException("Container must not be null");
         }
         Object lastContainer = _ensureContainersInPath(container);
-        PathToken lastToken = peek();
+        PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
             return JsonWalker.putInObject(lastContainer, name, value);
@@ -689,7 +696,7 @@ public class JsonPath {
         Object old = findNode(container);
         if (old != null) {
             Object lastContainer = _ensureContainersInPath(container);
-            PathToken lastToken = peek();
+            PathToken lastToken = tail();
             if (lastToken instanceof PathToken.Name) {
                 String name = ((PathToken.Name) lastToken).name;
                 return JsonWalker.removeInObject(lastContainer, name);
@@ -729,7 +736,7 @@ public class JsonPath {
             } else if (pt instanceof PathToken.Descendant) {
                 if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
                 List<Object> result = new ArrayList<>();
-                _findMatch(node, i + 1, result, Function.identity());
+                _findMatch(container, node, i + 1, result, Function.identity());
                 if (result.isEmpty()) {
                     return null;
                 } else if (result.size() == 1) {
@@ -747,8 +754,9 @@ public class JsonPath {
 
 
     // In the future, the `result` could be replaced with a callback to allow more flexible handling of matches.
-    private <T> void _findAll(Object container, int tokenIdx, List<T> result, Function<Object, T> converter) {
-        Object node = container;
+    private <T> void _findAll(Object root, Object current, int tokenIdx,
+                              List<T> result, Function<Object, T> converter) {
+        Object node = current;
         for (int i = tokenIdx; i < tokens.size(); i++) {
             if (node ==  null) return;
             PathToken pt = tokens.get(i);
@@ -757,8 +765,11 @@ public class JsonPath {
             final int nextI = i + 1;
             if (pt instanceof PathToken.Name) {
                 if (nt.isObject()) {
-                    node = JsonWalker.getInObject(node, ((PathToken.Name) pt).name);
-                    continue;
+                    String name = ((PathToken.Name) pt).name;
+                    if (JsonWalker.containsInObject(node, name)) {
+                        node = JsonWalker.getInObject(node, name);
+                        continue;
+                    }
                 }
             } else if (pt instanceof PathToken.Index) {
                 if (nt.isArray()) {
@@ -767,30 +778,49 @@ public class JsonPath {
                 }
             } else if (pt instanceof PathToken.Wildcard) {
                 if (nt.isObject()) {
-                    JsonWalker.visitObject(node, (k, v) -> _findAll(v, nextI, result, converter));
+                    JsonWalker.visitObject(node, (k, v) -> _findAll(root, v, nextI, result, converter));
                 } else if (nt.isArray()) {
-                    JsonWalker.visitArray(node, (j, v) -> _findAll(v, nextI, result, converter));
+                    JsonWalker.visitArray(node, (j, v) -> _findAll(root, v, nextI, result, converter));
                 }
             } else if (pt instanceof PathToken.Descendant) {
                 if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
-                _findMatch(node, i + 1, result, converter);
+                _findMatch(root, node, i + 1, result, converter);
             } else if (pt instanceof PathToken.Slice) {
                 PathToken.Slice slicePt = (PathToken.Slice) pt;
                 if (nt.isArray()) {
                     JsonWalker.visitArray(node, (j, v) -> {
-                        if (slicePt.match(j)) _findAll(v, nextI, result, converter);
+                        if (slicePt.match(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathToken.Union) {
                 PathToken.Union unionPt = (PathToken.Union) pt;
                 if (nt.isObject()) {
                     JsonWalker.visitObject(node, (k, v) -> {
-                        if (unionPt.match(k)) _findAll(v, nextI, result, converter);
+                        if (unionPt.match(k)) _findAll(root, v, nextI, result, converter);
                     });
                 } else if (nt.isArray()) {
                     JsonWalker.visitArray(node, (j, v) -> {
-                        if (unionPt.match(j)) _findAll(v, nextI, result, converter);
+                        if (unionPt.match(j)) _findAll(root, v, nextI, result, converter);
                     });
+                }
+            } else if (pt instanceof PathToken.Filter) {
+                PathToken.Filter filterPt = (PathToken.Filter) pt;
+                if (nt.isArray()) {
+                    JsonWalker.visitArray(node, (j, v) -> {
+                        if (filterPt.filterExpr.evalTruth(root, v)) {
+                            _findAll(root, v, nextI, result, converter);
+                        }
+                    });
+                } else if (nt.isObject()) {
+                    JsonWalker.visitObject(node, (k, v) -> {
+                        if (filterPt.filterExpr.evalTruth(root, v)) {
+                            _findAll(root, v, nextI, result, converter);
+                        }
+                    });
+                } else {
+                    if (filterPt.filterExpr.evalTruth(root, node)) {
+                        continue;
+                    }
                 }
             } else {
                 throw new JsonException("Unexpected path token '" + pt + "'");
@@ -800,23 +830,23 @@ public class JsonPath {
         result.add(converter.apply(node));
     }
 
-    private <T> void _findMatch(Object container, int tokenIdx, List<T> result, Function<Object, T> converter) {
-        if (container == null) return;
+    private <T> void _findMatch(Object root, Object current, int tokenIdx, List<T> result, Function<Object, T> converter) {
+        if (current == null) return;
         PathToken pt = tokens.get(tokenIdx);
-        NodeType nt = NodeType.of(container);
+        NodeType nt = NodeType.of(current);
         if (nt.isObject()) {
-            JsonWalker.visitObject(container, (k, v) -> {
+            JsonWalker.visitObject(current, (k, v) -> {
                 if (pt.match(k)) {
-                    _findAll(v, tokenIdx + 1, result, converter);
+                    _findAll(root, v, tokenIdx + 1, result, converter);
                 }
-                _findMatch(v, tokenIdx, result, converter);
+                _findMatch(root, v, tokenIdx, result, converter);
             });
         } else if (nt.isArray()) {
-            JsonWalker.visitArray(container, (j, v) -> {
+            JsonWalker.visitArray(current, (j, v) -> {
                 if (pt.match(j)) {
-                    _findAll(v, tokenIdx + 1, result, converter);
+                    _findAll(root, v, tokenIdx + 1, result, converter);
                 }
-                _findMatch(v, tokenIdx, result, converter);
+                _findMatch(root, v, tokenIdx, result, converter);
             });
         }
     }

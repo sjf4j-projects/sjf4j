@@ -1,9 +1,12 @@
-package org.sjf4j;
+package org.sjf4j.path;
 
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonException;
+import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
@@ -715,8 +718,80 @@ public class JsonPathTest {
 
         long cnt = JsonPath.compile("$.babies.count()").eval(p1, Long.class);
         log.info("cnt={}", cnt);
+    }
 
+    @Test
+    public void testFilter1() {
+        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        String name = JsonPath.compile("$.babies[?@.age > 2].name").eval(p1, String.class);
+        log.info("name={}", name);
+        assertEquals("Baby-2", name);
     }
 
 
+    public static String RFC9535_EXAMPLE1 = "{\n" +
+            "  \"a\": [3, 5, 1, 2, 4, 6,\n" +
+            "        {\"b\": \"j\"},\n" +
+            "        {\"b\": \"k\"},\n" +
+            "        {\"b\": {}},\n" +
+            "        {\"b\": \"kilo\"}\n" +
+            "       ],\n" +
+            "  \"o\": {\"p\": 1, \"q\": 2, \"r\": 3, \"s\": 5, \"t\": {\"u\": 6}},\n" +
+            "  \"e\": \"f\"\n" +
+            "}";
+
+    @Test
+    public void testRfc9535_1() {
+        JsonObject jo = JsonObject.fromJson(RFC9535_EXAMPLE1);
+        Object rs1 = jo.evalByPath("$.a[?@.b == 'kilo']");
+        log.info("rs1={}", rs1);
+        Object rs2 = jo.evalByPath("$.a[?(@.b == 'kilo')]");
+        log.info("rs2={}", rs2);
+        Object rs3 = jo.evalByPath("$.a[?@>3.5]");
+        log.info("rs3={}", rs3);
+        Object rs4 = jo.evalByPath("$.a[?@.b]");
+        log.info("rs4={}", rs4);
+        Object rs5 = jo.evalByPath("$[?@.*]");
+        log.info("rs5={}", rs5);
+        Object rs6 = jo.evalByPath("$[?@[?@.b]]");
+        log.info("rs6={}", rs6);
+//        Object rs7 = jo.findAllNodes("$.o[?@<3, ?@<3]");
+        Object rs8 = jo.evalByPath("$.a[?@<2 || @.b == \"k\"]");
+        log.info("rs8={}", rs8);
+        Object rs9 = jo.evalByPath("$.a[?match(@.b, \"[jk]\")]");
+        log.info("rs9={}", rs9);
+        Object rs10 = jo.evalByPath("$.a[?search(@.b, \"[jk]\")]");
+        log.info("rs10={}", rs10);
+        Object rs11 = jo.evalByPath("$.o[?@>1 && @<4]");
+        log.info("rs11={}", rs11);
+        Object rs12 = jo.evalByPath("$.o[?@>1 && @<4]");
+        log.info("rs12={}", rs12);
+        Object rs13 = jo.evalByPath("$.o[?@.u || @.x]");
+        log.info("rs13={}", rs13);
+        Object rs14 = jo.evalByPath("$.a[?@.b == $.x]");
+        log.info("rs14={}", rs14);
+        Object rs15 = jo.evalByPath("$.a[?@ == @]");
+        log.info("rs15={}", rs15);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testRfc9535_2() {
+        JsonObject jo = JsonObject.fromJson(RFC9535_EXAMPLE1);
+        Object rs1 = jo.evalByPath("$.a[?@.b == 'kilo'].b");
+        log.info("rs1={}", rs1);
+        assertEquals("kilo", rs1);
+
+        Object rs3 = jo.evalByPath("$.a[?@>3.5].count()");
+        log.info("rs3={}", rs3);
+        assertEquals(3, rs3);
+
+        Object rs10 = jo.evalByPath("$.a[?search(@.b, \"[jk]\")].b");
+        log.info("rs10={}", rs10);
+        assertEquals("k", ((List<Object>) rs10).get(1));
+
+        Object v1 = jo.evalByPath("$..*[?(@.b == 'kilo')].b");
+        log.info("v1={}", v1);
+        assertEquals("kilo", v1);
+    }
 }

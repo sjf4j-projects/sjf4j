@@ -701,6 +701,15 @@ public abstract class JsonContainer {
         return JsonPath.compile(path).findAllAs(this, clazz);
     }
 
+    public Object evalByPath(String path) {
+        return JsonPath.compile(path).eval(this);
+    }
+
+    public <T> T evalByPath(String path, Class<T> clazz) {
+        return JsonPath.compile(path).eval(this, clazz);
+    }
+
+
     /// Walk
 
     /**
