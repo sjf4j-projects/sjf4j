@@ -5,8 +5,8 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8 // 限制语法
-    targetCompatibility = JavaVersion.VERSION_1_8 // 限制字节码
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
     withSourcesJar()
 //    withJavadocJar()
 }

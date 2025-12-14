@@ -8,7 +8,7 @@
 
 **SJF4J (Simple JSON Facade for Java)** serves as a simple facade for various JSON frameworks (e.g. Jackson, Gson, 
 Fastjson2), and other JSON-like libraries (e.g. SnakeYAML).
-It maps JSON-like data into an Object-Tree, and provides a unified, expressive, and powerful API for operating on this
+It maps JSON-like data into an Object-Tree, and provides a unified, expressive and powerful API for operating on this
 tree. 
 
 As shown in the **Object-Tree** node relationship diagram, each `JSON Object` node can be a type-safe `POJO`, 
@@ -17,7 +17,7 @@ or a dynamic `Map` (or its wrapper `JsonObject`), or a hybrid type `JOJO` that c
 This flexible representation is the core feature of the Object-Tree model.
 ```mermaid
 graph BT
-    node(("JSON Node <br/> (=Object)"))
+    node(("JSON Node <br/> (Object-Tree)"))
     node --> object(("JSON Object <br/> { }"))
         object --> jo("JsonObject")
         object --> map("Map")
@@ -39,11 +39,12 @@ graph BT
 
 ### Get it
 
+SJF4J requires only `JDK 8` and has no external dependencies.
 `Gradle`:
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
-SJF4J requires only `JDK 8` and has no external dependencies.
+
 
 To handle ***JSON*** data, you need to add `Jackson`, `Gson`, or `Fastjson2` to your classpath. 
 The first available parser in this order will be automatically used. 

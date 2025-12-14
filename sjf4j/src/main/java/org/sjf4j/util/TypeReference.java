@@ -10,9 +10,9 @@ import java.lang.reflect.Type;
  * during Java's type erasure process.
  *
  * <p>Usage example:
- * <pre>
- * Type listType = new TypeReference<List<String>>(){}.getType();
- * </pre>
+ * <pre>{@code
+ * Type listType = new TypeReference<List<String>>() {}.getType();
+ * }</pre>
  *
  * @param <T> the generic type to capture
  */
