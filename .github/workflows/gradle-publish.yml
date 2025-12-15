@@ -32,11 +32,11 @@ jobs:
           java-version: 17
           cache: gradle
 
-      # 3️⃣
-      - name: Set version from release tag
-        run: |
-          env
-          echo "version=${GITHUB_REF#refs/tags/v}" >> gradle.properties
+#      # 3️⃣
+#      - name: Set version from release tag
+#        run: |
+#          env
+#          echo "version=${GITHUB_REF_NAME#v}" >> gradle.properties
 
       # 4️⃣
       - name: Import GPG private key
