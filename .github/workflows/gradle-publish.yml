@@ -5,40 +5,56 @@
 # This workflow will build a package using Gradle and then publish it to GitHub packages when a release is created
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#Publishing-using-gradle
 
-name: Gradle Package
+name: Publish Release to Maven Central
 
 on:
   release:
-    types: [created]
+    types: [created]   # 手动发布
+  workflow_dispatch:    # 支持手动触发（可选）
 
 jobs:
-  build:
-
+  publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
-        settings-path: ${{ github.workspace }} # location for the settings.xml file
+      # 1️⃣
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      # 2️⃣
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
 
-    - name: Build with Gradle
-      run: ./gradlew build
+      # 3️⃣
+      - name: Set version from release tag
+        run: |
+          VERSION=${{ github.event.release.tag_name }}
+          VERSION=${VERSION#v}                 # v1.0.1 -> 1.0.1
+          echo "version=$VERSION" >> gradle.properties
 
-    # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
-    # the publishing section of your build.gradle
-    - name: Publish to GitHub Packages
-      run: ./gradlew publish
-      env:
-        USERNAME: ${{ github.actor }}
-        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 4️⃣
+      - name: Import GPG private key
+        run: |
+          echo "${{ secrets.SIGNING_SECRET_KEY }}" | base64 --decode > ./secring.gpg
+
+      # 5️⃣
+      - name: Configure Gradle credentials
+        run: |
+          cat <<EOF >> gradle.properties
+          mavenCentralUsername=${{ secrets.OSSRH_USERNAME }}
+          mavenCentralPassword=${{ secrets.OSSRH_PASSWORD }}
+          signing.keyId=${{ secrets.SIGNING_KEY_ID }}
+          signing.password=${{ secrets.SIGNING_PASSWORD }}
+          signing.secretKeyRingFile=./secring.gpg
+          EOF
+
+      # 6️⃣
+      - name: Publish to Maven Central
+        run: ./gradlew publishToMavenCentral --no-daemon
+
+      - name: Say done
+        run: echo "Publish Done"

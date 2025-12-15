@@ -71,7 +71,7 @@ mavenPublishing {
 }
 
 mavenPublishing {
-    coordinates(group.toString(), name.toString(), version.toString())
+    coordinates(group.toString(), name, version.toString())
 
     pom {
         name.set("SJF4J")
