@@ -42,7 +42,7 @@ jobs:
       # 4️⃣
       - name: Import GPG private key
         run: |
-          echo "${{ secrets.SIGNING_SECRET_KEY }}" | base64 --decode > ./secring.gpg
+          echo "${{ secrets.SIGNING_SECRET_KEY }}" | base64 --decode > $GITHUB_WORKSPACE/secring.gpg
 
       # 5️⃣
       - name: Configure Gradle credentials
@@ -51,7 +51,7 @@ jobs:
           echo "mavenCentralPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties && \
           echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties && \
           echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties && \
-          echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
+          echo "signing.secretKeyRingFile=$GITHUB_WORKSPACE/secring.gpg" >> gradle.properties
 
       # 6️⃣
       - name: Publish to Maven Central
