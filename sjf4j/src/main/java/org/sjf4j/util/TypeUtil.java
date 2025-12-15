@@ -88,7 +88,7 @@ public class TypeUtil {
     /**
      * Resolves a type argument for a parameterized type.
      * <p>
-     * Supports types like Map<String, Person>, Wrapper<Person>, Person[]
+     * Supports types like Map&lt;String, Person&gt;, Wrapper&lt;Person&gt;, Person[]
      *
      * @param type the parameterized type
      * @param target the target class to resolve the type argument for
@@ -123,7 +123,7 @@ public class TypeUtil {
         if (type instanceof Class<?>) {
             Class<?> clazz = (Class<?>) type;
 
-            // 1. 检查当前类是否就是 target
+            // 1. Check if current class is the target
             if (clazz == target) {
                 TypeVariable<? extends Class<?>>[] vars = clazz.getTypeParameters();
                 if (index < vars.length) {
@@ -132,13 +132,13 @@ public class TypeUtil {
                 return Object.class;
             }
 
-            // 2. 遍历接口
+            // 2. Iterate through interfaces
             for (Type itf : clazz.getGenericInterfaces()) {
                 Type result = resolve(itf, target, index, typeVarMap);
                 if (result != null) return result;
             }
 
-            // 3. 遍历父类
+            // 3. Iterate through superclass
             Type superType = clazz.getGenericSuperclass();
             if (superType != null) {
                 return resolve(superType, target, index, typeVarMap);
@@ -151,14 +151,14 @@ public class TypeUtil {
             ParameterizedType pt = (ParameterizedType) type;
             Class<?> raw = (Class<?>) pt.getRawType();
 
-            // 建立当前类泛型参数的替换关系
+            // Establish substitution relationship for current class generic parameters
             TypeVariable<?>[] vars = raw.getTypeParameters();
             Type[] args = pt.getActualTypeArguments();
             for (int i = 0; i < vars.length; i++) {
                 typeVarMap.put(vars[i], args[i]);
             }
 
-            // 1. 如果匹配到目标类
+            // 1. If target class is matched
             if (raw == target) {
                 if (index < args.length) {
                     return substitute(args[index], typeVarMap);
@@ -166,13 +166,13 @@ public class TypeUtil {
                 return Object.class;
             }
 
-            // 2. 搜索接口
+            // 2. Search interfaces
             for (Type itf : raw.getGenericInterfaces()) {
                 Type result = resolve(itf, target, index, typeVarMap);
                 if (result != null) return result;
             }
 
-            // 3. 搜索父类
+            // 3. Search superclass
             Type superType = raw.getGenericSuperclass();
             if (superType != null) {
                 return resolve(superType, target, index, typeVarMap);
@@ -211,7 +211,7 @@ public class TypeUtil {
         return type;
     }
 
-    // 用于构造新的 ParameterizedType
+    // Used to construct a new ParameterizedType
     private static ParameterizedType newResolvedParameterizedType(Class<?> raw, Type[] args, Type owner) {
         return new ParameterizedType() {
             @Override public Type[] getActualTypeArguments() { return args; }

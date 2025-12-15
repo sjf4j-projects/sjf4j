@@ -112,7 +112,7 @@ public class SimpleJsonWriter implements FacadeWriter {
                 case '\t': writer.write("\\t"); break;
                 default:
                     if (c < 0x20) {
-                        // 控制字符必须转义为 \\uXXXX
+                        // Control characters must be escaped as \\uXXXX
                         writer.write(String.format("\\u%04X", (int) c));
                     } else {
                         writer.write(c);

@@ -1509,11 +1509,30 @@ public class JsonObject extends JsonContainer {
 
     /// Copy, merge
 
+    /**
+     * Creates a shallow copy of the current JsonObject.
+     * <p>
+     * A shallow copy replicates only the object itself, not the reference-type fields it contains.
+     * The copied object shares the same internal data structure references as the original.
+     *
+     * @param <T> the target JsonObject type
+     * @return a shallow copy of the current JsonObject
+     */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T copy() {
         return (T) ContainerUtil.copy(this);
     }
 
+    /**
+     * Creates a deep copy of the current JsonObject.
+     * <p>
+     * A deep copy recursively replicates the object and all its contained reference-type fields,
+     * ensuring the copy is completely independent from the original. Modifications to the copy
+     * will not affect the original object.
+     *
+     * @param <T> the target JsonObject type
+     * @return a deep copy of the current JsonObject
+     */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T deepCopy() {
         return (T) ContainerUtil.deepCopy(this);
@@ -1526,6 +1545,9 @@ public class JsonObject extends JsonContainer {
      * When a key exists in both objects, the conflict resolution depends on the
      * {@code preferTarget} parameter.</p>
      *
+     * @param target the JsonObject to merge into this one
+     * @param preferTarget whether to use the target's values when keys conflict
+     * @param needCopy whether to create copies of merged values
      */
     public void merge(JsonObject target, boolean preferTarget, boolean needCopy) {
         ContainerUtil.merge(this, target, preferTarget, needCopy);
@@ -1537,15 +1559,30 @@ public class JsonObject extends JsonContainer {
      * <p>All key-value pairs from the target object will be merged into this object.
      * When a key exists in both objects, the target wins.</p>
      *
+     * @param target the JsonObject to merge into this one
      */
     public void merge(JsonObject target) {
         merge(target, true, false);
     }
 
+    /**
+     * Merges the given target JsonObject into the current JsonObject, creating copies of all merged values.
+     * <p>
+     * This method ensures that the merged values are independent copies, preventing unintended modifications
+     * to the original target object's data.
+     *
+     * @param target the JsonObject to merge into this one
+     */
     public void mergeWithCopy(JsonObject target) {
         merge(target, true, true);
     }
 
+    /**
+     * Recursively removes all null values from this JsonObject and its nested structures.
+     * <p>
+     * This operation traverses all nested objects and arrays, removing any null values found.
+     * Empty containers resulting from null removal are not automatically removed.
+     */
     public void deepPruneNulls() {
         JsonWalker.walk(this, JsonWalker.Target.CONTAINER, JsonWalker.Order.BOTTOM_UP,
                 (path, node) -> {

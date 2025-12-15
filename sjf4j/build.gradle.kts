@@ -64,8 +64,6 @@ tasks.test {
 /////////////////////
 /// Publish
 
-group = "org.sjf4j"
-version = "1.0.1-SNAPSHOT"
 
 mavenPublishing {
     publishToMavenCentral()

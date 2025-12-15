@@ -41,7 +41,7 @@ public class Fastjson2Module {
 //        @Override
 //        protected void processExtra(JSONReader reader, Object object) {
 //            String name = reader.getFieldName();
-//            Object val = reader.readAny(); // 支持任意 JSON
+//            Object val = reader.readAny(); // supports any JSON
 //
 //            if (object instanceof JsonObject) {
 //                ((JsonObject) object).put(name, val);
