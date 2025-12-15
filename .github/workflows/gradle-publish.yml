@@ -9,8 +9,8 @@ name: Publish Release to Maven Central
 
 on:
   release:
-    types: [created]   # 手动发布
-  workflow_dispatch:    # 支持手动触发（可选）
+    types: [created]
+  workflow_dispatch:
 
 jobs:
   publish:
