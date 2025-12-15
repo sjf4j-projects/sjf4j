@@ -13,7 +13,6 @@ permissions:
 on:
   release:
     types: [created]
-  workflow_dispatch:
 
 jobs:
   publish:
@@ -55,6 +54,3 @@ jobs:
       # 6️⃣
       - name: Publish to Maven Central
         run: ./gradlew publishToMavenCentral --no-daemon
-
-      - name: Say done
-        run: echo "Publish Done"

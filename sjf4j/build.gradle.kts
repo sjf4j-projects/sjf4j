@@ -68,9 +68,6 @@ tasks.test {
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
-}
-
-mavenPublishing {
     coordinates(group.toString(), name, version.toString())
 
     pom {
