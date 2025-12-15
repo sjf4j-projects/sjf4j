@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
- - A simple build-in JSON reader/writer 
-
 ### Changed
 ### Fixed
 ### Removed
 
+## [1.0.1] - 2025.12.15
+### Added
+ - A simple build-in JSON reader/writer
+ - SJF4J now Fully Supports JSONPath. 
+   - Added support for `Filter` and `Function`, including the `eval()` methods.
+   - Added support for registering custom functions via `FunctionRegistry`.
+
+### Changed
+### Fixed
+### Removed
 
 --- 
 ## [1.0.0] - 2025.12.05

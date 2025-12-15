@@ -46,14 +46,11 @@ jobs:
 
       # 5️⃣
       - name: Configure Gradle credentials
-        run: |
-          cat <<EOF >> gradle.properties
-          mavenCentralUsername=${{ secrets.OSSRH_USERNAME }}
-          mavenCentralPassword=${{ secrets.OSSRH_PASSWORD }}
-          signing.keyId=${{ secrets.SIGNING_KEY_ID }}
-          signing.password=${{ secrets.SIGNING_PASSWORD }}
-          signing.secretKeyRingFile=./secring.gpg
-          EOF
+        run:  echo "mavenCentralUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties && \
+              echo "mavenCentralPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties && \
+              echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties && \
+              echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties && \
+              echo "signing.secretKeyRingFile=./secring.gpg" >> gradle.properties
 
       # 6️⃣
       - name: Publish to Maven Central
