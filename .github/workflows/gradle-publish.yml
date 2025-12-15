@@ -35,9 +35,7 @@ jobs:
       # 3️⃣
       - name: Set version from release tag
         run: |
-          VERSION=${{ github.event.release.tag_name }}
-          VERSION=${VERSION#v}                 # v1.0.1 -> 1.0.1
-          echo "version=$VERSION" >> gradle.properties
+          echo "version=${GITHUB_REF#refs/tags/v}" >> gradle.properties
 
       # 4️⃣
       - name: Import GPG private key
