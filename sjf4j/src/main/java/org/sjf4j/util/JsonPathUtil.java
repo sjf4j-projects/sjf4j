@@ -35,10 +35,10 @@ public class JsonPathUtil {
         int i = 0;
 
         if (expr.charAt(i) == '$') {
-            tokens.add(new PathToken.Root());
+            tokens.add(PathToken.Root.INSTANCE);
             i++;
         } else if (expr.charAt(i) == '@') {
-            tokens.add(new PathToken.Current());
+            tokens.add(PathToken.Current.INSTANCE);
             i++;
         } else {
             throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
@@ -49,7 +49,7 @@ public class JsonPathUtil {
 
             // Descendant ..
             if (c == '.' && i + 1 < expr.length() && expr.charAt(i + 1) == '.') {
-                tokens.add(new PathToken.Descendant());
+                tokens.add(PathToken.Descendant.INSTANCE);
                 if (i + 2 == expr.length()) {
                     break;
                 } else if (expr.charAt(i + 2) == '[') {
@@ -67,7 +67,7 @@ public class JsonPathUtil {
 
                 // Wildcard
                 if (expr.charAt(i) == '*') {
-                    tokens.add(new PathToken.Wildcard());
+                    tokens.add(PathToken.Wildcard.INSTANCE);
                     i++;
                     continue;
                 }
@@ -158,7 +158,7 @@ public class JsonPathUtil {
                         throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
                     } else if (content.equals("*")) {
                         // [*]
-                        tokens.add(new PathToken.Wildcard(true));
+                        tokens.add(PathToken.Wildcard.INSTANCE);
                     } else if (content.startsWith("'") || content.startsWith("\"")) {
                         // Single quoted name ['name'] or ["name"]
                         String name = parseSingleQuotedName(content);

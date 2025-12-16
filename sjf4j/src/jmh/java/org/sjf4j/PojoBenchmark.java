@@ -97,6 +97,12 @@ public class PojoBenchmark {
 
     // ----- Getter pathways -----
     @Benchmark
+    public Object pojo_getter_native() {
+        Person p = new Person();
+        return p.getName();
+    }
+
+    @Benchmark
     public Object pojo_getter_lambda() {
         Person p = new Person();
         return fi.invokeGetter(p);
@@ -109,6 +115,13 @@ public class PojoBenchmark {
     }
 
     // ----- Setter pathways -----
+    @Benchmark
+    public Object pojo_setter_native() {
+        Person p = new Person();
+        p.setName("hahaha");
+        return p;
+    }
+
     @Benchmark
     public Object pojo_setter_lambda() {
         Person p = new Person();

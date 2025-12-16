@@ -1,7 +1,5 @@
 package org.sjf4j.path;
 
-import org.sjf4j.JsonContainer;
-import org.sjf4j.JsonException;
 import org.sjf4j.util.ContainerUtil;
 
 import java.util.ArrayList;
@@ -38,6 +36,8 @@ public interface FilterExpr {
         Object v = eval(rootNode, currentNode);
         return truth(v);
     }
+
+    /// Implements: LiteralExpr, PathExpr, UnaryExpr, FunctionExpr
 
     /**
      * A filter expression representing a literal value (constant).
@@ -209,9 +209,9 @@ public interface FilterExpr {
 
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            List<Object> values = new ArrayList<>(args.size());
-            for (FilterExpr arg : args) {
-                values.add(arg.eval(rootNode, currentNode));
+            Object[] values = new Object[args.size()];
+            for (int i = 0; i < args.size(); i++) {
+                values[i] = args.get(i).eval(rootNode, currentNode);
             }
             return FunctionRegistry.invoke(name, values);
         }

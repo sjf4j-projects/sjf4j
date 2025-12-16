@@ -64,7 +64,7 @@ public class JsonPath {
      */
     public JsonPath() {
         this.tokens = new ArrayList<>();
-        push(new PathToken.Root());
+        push(PathToken.Root.INSTANCE);
     }
 
     /**
@@ -75,9 +75,7 @@ public class JsonPath {
      * @throws JsonException if the path expression is invalid
      */
     public JsonPath(String expr) {
-        if (expr == null) {
-            throw new IllegalArgumentException("Expr must not be null");
-        }
+        if (expr == null) throw new IllegalArgumentException("Expr must not be null");
         if (expr.startsWith("$") || expr.startsWith("@")) {
             this.tokens = JsonPathUtil.compile(expr);
         } else if (expr.startsWith("/")) {
@@ -609,23 +607,19 @@ public class JsonPath {
         }
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);
+        if (result.isEmpty()) return null;
 
         PathToken tk = tokens.get(tokens.size() - 1);
         if (tk instanceof PathToken.Function) {
             PathToken.Function func = (PathToken.Function) tk;
-            if (result.isEmpty()) return null;
-
-            List<Object> args = new ArrayList<>();
-            Object firstArg = (result.size() == 1 ? result.get(0) : result);
-            args.add(firstArg);
-            for (String raw : func.args) {
-                Object arg = resolveFunctionArg(raw, firstArg);
-                args.add(arg);
+            Object[] args = new Object[1 + func.args.size()];
+            args[0] = (result.size() == 1 ? result.get(0) : result);
+            for (int i = 0; i < func.args.size(); i++) {
+                args[1 + i] = resolveFunctionArg(func.args.get(i));
             }
             return FunctionRegistry.invoke(func.name, args);
         } else {
-            if (result.isEmpty()) return null;
-            else if (result.size() == 1) return result.get(0);
+            if (result.size() == 1) return result.get(0);
             else return result;
         }
     }
@@ -789,18 +783,18 @@ public class JsonPath {
                 PathToken.Slice slicePt = (PathToken.Slice) pt;
                 if (nt.isArray()) {
                     JsonWalker.visitArray(node, (j, v) -> {
-                        if (slicePt.match(j)) _findAll(root, v, nextI, result, converter);
+                        if (slicePt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathToken.Union) {
                 PathToken.Union unionPt = (PathToken.Union) pt;
                 if (nt.isObject()) {
                     JsonWalker.visitObject(node, (k, v) -> {
-                        if (unionPt.match(k)) _findAll(root, v, nextI, result, converter);
+                        if (unionPt.matchKey(k)) _findAll(root, v, nextI, result, converter);
                     });
                 } else if (nt.isArray()) {
                     JsonWalker.visitArray(node, (j, v) -> {
-                        if (unionPt.match(j)) _findAll(root, v, nextI, result, converter);
+                        if (unionPt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathToken.Filter) {
@@ -836,14 +830,14 @@ public class JsonPath {
         NodeType nt = NodeType.of(current);
         if (nt.isObject()) {
             JsonWalker.visitObject(current, (k, v) -> {
-                if (pt.match(k)) {
+                if (pt.matchKey(k)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
                 }
                 _findMatch(root, v, tokenIdx, result, converter);
             });
         } else if (nt.isArray()) {
             JsonWalker.visitArray(current, (j, v) -> {
-                if (pt.match(j)) {
+                if (pt.matchIndex(j)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
                 }
                 _findMatch(root, v, tokenIdx, result, converter);
@@ -952,7 +946,7 @@ public class JsonPath {
         return true;
     }
 
-    private Object resolveFunctionArg(String raw, Object current) {
+    private Object resolveFunctionArg(String raw) {
         if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
             return raw.substring(1, raw.length() - 1);
         } else if ("true".equals(raw)) {

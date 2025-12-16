@@ -11,42 +11,41 @@ import java.util.List;
  */
 public abstract class PathToken {
 
-    /**
-     * Determines if a given key matches this path token.
-     *
-     * @param key the key to match against this token
-     * @return true if the key matches, false otherwise
-     */
-    public abstract boolean match(Object key);
+    public boolean matchKey(String key) { return false; }
+    public boolean matchIndex(int idx) { return false; }
 
-    /// Root, Name, Index, Wildcard, Slice, Union, Descendant, Function
+
+    /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function
 
     /**
      * Represents the root token ($) in a JSON path expression.
      */
-    public static class Root extends PathToken {
-        @Override public boolean match(Object key) { return false; }
+    public static final class Root extends PathToken {
+        private Root() {}
+        public static final Root INSTANCE = new Root();
         @Override public String toString() { return "$"; }
     }
+
 
     /**
      * Represents the current token (@) in a JSON path expression.
      * This token is used only inside filter expressions.
      */
-    public static class Current extends PathToken {
-        @Override public boolean match(Object key) { return false; }
+    public static final class Current extends PathToken {
+        private Current() {}
+        public static final Current INSTANCE = new Current();
         @Override public String toString() { return "@"; }
     }
 
     /**
      * Represents a named property token in a JSON path expression.
      */
-    public static class Name extends PathToken {
+    public static final class Name extends PathToken {
         public final String name;
         public Name(String name) { this.name = name; }
+        @Override public boolean matchKey(String key) { return name.equals(key); }
         public boolean needQuoted() { return shouldArrayStyle(name); }
         public String toQuoted() { return quoteName(name); }
-        @Override public boolean match(Object key) { return name.equals(key); }
         @Override public String toString() {
             if (shouldArrayStyle(name)) {
                 return "[" + quoteName(name) + "]";
@@ -59,10 +58,10 @@ public abstract class PathToken {
     /**
      * Represents an index token in a JSON path expression.
      */
-    public static class Index extends PathToken {
+    public static final class Index extends PathToken {
         public final int index;
         public Index(int index) { this.index = index; }
-        @Override public boolean match(Object key) { return key instanceof Integer && index == (int) key; }
+        public boolean matchIndex(int idx) { return index == idx; }
         @Override public String toString() {
             return "[" + index + "]";
         }
@@ -71,38 +70,30 @@ public abstract class PathToken {
     /**
      * Represents a wildcard token (*) in a JSON path expression.
      */
-    public static class Wildcard extends PathToken {
-        public boolean arrayStyle = false;
-        public Wildcard() {}
-        public Wildcard(boolean arrayStyle) { this.arrayStyle = arrayStyle; }
-        @Override public boolean match(Object key) { return true; }
-        @Override public String toString() {
-            if (arrayStyle) {
-                return "[*]";
-            } else {
-                return ".*";
-            }
-        }
+    public static final class Wildcard extends PathToken {
+        private Wildcard() {}
+        public static final Wildcard INSTANCE = new Wildcard();
+        @Override public boolean matchKey(String key) { return true; }
+        @Override public boolean matchIndex(int index) { return true; }
+        @Override public String toString() { return "[*]"; }
     }
 
     /**
      * Represents a slice token in a JSON path expression.
      */
-    public static class Slice extends PathToken {
+    public static final class Slice extends PathToken {
         public final Integer start; // null allowed
         public final Integer end;   // null allowed
         public final Integer step;  // null allowed
         public Slice(Integer s, Integer e, Integer st) {
             start = s; end = e; step = st;
         }
-        @Override public boolean match(Object key) { // Must be positive
-            if (!(key instanceof Integer)) return false;
-            int idx = (int) key;
-            if (start != null && idx < start) return false;
-            if (end != null && idx >= end) return false;
+        @Override public boolean matchIndex(int index) { // Must be positive
+            if (start != null && index < start) return false;
+            if (end != null && index >= end) return false;
             if (step != null) {
                 int mod = start == null ? 0 : start;
-                return (idx - mod) % step == 0;
+                return (index - mod) % step == 0;
             }
             return true;
         }
@@ -135,12 +126,18 @@ public abstract class PathToken {
     /**
      * Represents a union token in a JSON path expression.
      */
-    public static class Union extends PathToken {
+    public static final class Union extends PathToken {
         public final List<PathToken> union;
         public Union(List<PathToken> union) { this.union = union; }
-        @Override public boolean match(Object key) {
+        @Override public boolean matchKey(String key) {
             for (PathToken pt : union) {
-                if (pt.match(key)) return true;
+                if (pt.matchKey(key)) return true;
+            }
+            return false;
+        }
+        @Override public boolean matchIndex(int index) {
+            for (PathToken pt : union) {
+                if (pt.matchIndex(index)) return true;
             }
             return false;
         }
@@ -163,33 +160,32 @@ public abstract class PathToken {
         }
     }
 
-    public static class Descendant extends PathToken {
-        @Override public boolean match(Object key) { return true; }
+    public static final class Descendant extends PathToken {
+        private Descendant() {}
+        public static final Descendant INSTANCE = new Descendant();
         @Override public String toString() {
             return "..";
         }
     }
 
-    public static class Function extends PathToken {
+    public static final class Function extends PathToken {
         public final String name;
         public final List<String> args;
         public Function(String name, List<String> args) {
             this.name = name;
             this.args = args;
         }
-        @Override public boolean match(Object key) { return false; }
         @Override public String toString() {
             if (args == null || args.isEmpty()) return "." + name + "()";
             return "." + name + "(" + String.join(", ", args) + ")";
         }
     }
 
-    public static class Filter extends PathToken {
+    public static final class Filter extends PathToken {
         public final FilterExpr filterExpr;
         public Filter(FilterExpr filterExpr) {
             this.filterExpr = filterExpr;
         }
-        @Override public boolean match(Object key) { return false; }
         public String toString() { return "[?" + filterExpr + "]"; }
     }
 

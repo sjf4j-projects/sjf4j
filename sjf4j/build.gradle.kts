@@ -12,7 +12,7 @@ java {
 }
 
 configurations {
-    compileOnly {
+    testCompileOnly {
         extendsFrom(configurations.annotationProcessor.get())
     }
 }

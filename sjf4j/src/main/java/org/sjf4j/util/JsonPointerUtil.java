@@ -11,7 +11,7 @@ public class JsonPointerUtil {
     public static List<PathToken> compile(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expr must not be null");
         List<PathToken> tokens = new ArrayList<>();
-        tokens.add(new PathToken.Root());
+        tokens.add(PathToken.Root.INSTANCE);
         if (expr.isEmpty() || expr.equals("/")) return tokens;
         for (String seg : expr.split("/")) {
             if (seg.isEmpty()) continue;

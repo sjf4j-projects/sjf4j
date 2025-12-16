@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FunctionRegistry {
 
     public interface JsonFunction {
-        Object apply(List<Object> args);
+        Object apply(Object[] args);
     }
 
     public static class FunctionDescriptor {
@@ -28,7 +28,7 @@ public class FunctionRegistry {
             this.func = func;
         }
 
-        public Object invoke(List<Object> args) {
+        public Object invoke(Object[] args) {
             return func.apply(args);
         }
 
@@ -51,7 +51,7 @@ public class FunctionRegistry {
         return FUNCTIONS.get(name);
     }
 
-    public static Object invoke(String name, List<Object> args) {
+    public static Object invoke(String name, Object[] args) {
         FunctionDescriptor fd = get(name);
         if (fd == null) throw new JsonException("Function '" + name + "' not exist");
         try {
@@ -68,8 +68,9 @@ public class FunctionRegistry {
     static {
         // length
         FunctionRegistry.register(new FunctionDescriptor("length", args -> {
-            if (args.size() != 1) throw new JsonException("length(): expects exactly 1 argument, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1) 
+                throw new JsonException("length(): expects exactly 1 argument, but got: " + args.length);
+            Object node = args[0];
             switch (NodeType.of(node)) {
                 case VALUE_STRING:
                     return ((String) node).length();
@@ -89,8 +90,9 @@ public class FunctionRegistry {
 
         // count
         FunctionRegistry.register(new FunctionDescriptor("count", args -> {
-            if (args.size() != 1) throw new JsonException("count(): expects exactly 1 argument, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1) 
+                throw new JsonException("count(): expects exactly 1 argument, but got: " + args.length);
+            Object node = args[0];
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
                 case ARRAY_JSON_ARRAY:
@@ -104,9 +106,10 @@ public class FunctionRegistry {
         // match
         // follows RFC i-regexp semantics and does not support full regular expressions.
         FunctionRegistry.register(new FunctionDescriptor("match", args -> {
-            if (args.size() != 2) throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.size());
-            Object node0 = args.get(0);
-            Object node1 = args.get(1);
+            if (args.length != 2)
+                throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.length);
+            Object node0 = args[0];
+            Object node1 = args[1];
             if (node0 instanceof String && node1 instanceof String) {
                 return IRegexpUtil.match((String) node1, (String) node0);
             }
@@ -115,9 +118,10 @@ public class FunctionRegistry {
 
         // search
         FunctionRegistry.register(new FunctionDescriptor("search", args -> {
-            if (args.size() != 2) throw new JsonException("search(): expects exactly 2 arguments, but got: " + args.size());
-            Object node0 = args.get(0);
-            Object node1 = args.get(1);
+            if (args.length != 2)
+                throw new JsonException("search(): expects exactly 2 arguments, but got: " + args.length);
+            Object node0 = args[0];
+            Object node1 = args[1];
             if (node0 instanceof String && node1 instanceof String) {
                 return IRegexpUtil.search((String) node1, (String) node0);
             }
@@ -126,14 +130,16 @@ public class FunctionRegistry {
 
         // value
         FunctionRegistry.register(new FunctionDescriptor("value", args -> {
-            if (args.size() != 1) throw new JsonException("value(): expects exactly 1 arguments, but got: " + args.size());
-            return args.get(0);
+            if (args.length != 1)
+                throw new JsonException("value(): expects exactly 1 arguments, but got: " + args.length);
+            return args[0];
         }));
 
         // sum
         FunctionRegistry.register(new FunctionDescriptor("sum", args -> {
-            if (args.size() != 1) throw new JsonException("sum(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("sum(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             AtomicReference<Double> sum = new AtomicReference<>((double) 0);
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
@@ -150,8 +156,9 @@ public class FunctionRegistry {
 
         // min
         FunctionRegistry.register(new FunctionDescriptor("min", args -> {
-            if (args.size() != 1) throw new JsonException("min(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("min(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             AtomicReference<Double> min = new AtomicReference<>();
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
@@ -169,8 +176,9 @@ public class FunctionRegistry {
 
         // max
         FunctionRegistry.register(new FunctionDescriptor("max", args -> {
-            if (args.size() != 1) throw new JsonException("max(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("max(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             AtomicReference<Double> max = new AtomicReference<>();
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
@@ -188,8 +196,9 @@ public class FunctionRegistry {
 
         // avg
         FunctionRegistry.register(new FunctionDescriptor("avg", args -> {
-            if (args.size() != 1) throw new JsonException("avg(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("avg(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             AtomicReference<Double> sum = new AtomicReference<>((double) 0);
             AtomicInteger cnt = new AtomicInteger();
             switch (NodeType.of(node)) {
@@ -208,8 +217,9 @@ public class FunctionRegistry {
 
         // stddev
         FunctionRegistry.register(new FunctionDescriptor("stddev", args -> {
-            if (args.size() != 1) throw new JsonException("stddev(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("stddev(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             AtomicReference<Double> sum = new AtomicReference<>((double) 0);
             AtomicInteger cnt = new AtomicInteger();
             switch (NodeType.of(node)) {
@@ -242,8 +252,9 @@ public class FunctionRegistry {
 
         // first
         FunctionRegistry.register(new FunctionDescriptor("first", args -> {
-            if (args.size() != 1) throw new JsonException("first(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("first(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
@@ -257,8 +268,9 @@ public class FunctionRegistry {
 
         // last
         FunctionRegistry.register(new FunctionDescriptor("last", args -> {
-            if (args.size() != 1) throw new JsonException("last(): expects exactly 1 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 1)
+                throw new JsonException("last(): expects exactly 1 arguments, but got: " + args.length);
+            Object node = args[0];
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
@@ -273,15 +285,16 @@ public class FunctionRegistry {
 
         // index
         FunctionRegistry.register(new FunctionDescriptor("index", args -> {
-            if (args.size() != 2) throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.size());
-            Object node = args.get(0);
+            if (args.length != 2)
+                throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
+            Object node = args[0];
             switch (NodeType.of(node)) {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
                     int size = JsonWalker.sizeInArray(node);
                     if (size > 0) {
-                        int index = ((Number) args.get(1)).intValue();
+                        int index = ((Number) args[1]).intValue();
                         index = index >= 0 ? index : size + index;
                         if (index >= 0 && index < size) return JsonWalker.getInArray(node, index);
                     }
