@@ -4,12 +4,11 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -313,10 +312,10 @@ public class NodeUtil {
             return (Map<String, Object>) node;
         } else if (node instanceof JsonObject) {
             return ((JsonObject) node).toMap();
-        } else if (PojoRegistry.isPojo(node.getClass())) {
+        } else if (NodeRegistry.isPojo(node.getClass())) {
             Map<String, Object> map = JsonConfig.global().mapSupplier.create();
-            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
-            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 map.put(fi.getKey(), v);
             }

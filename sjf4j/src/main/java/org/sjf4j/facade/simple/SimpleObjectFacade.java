@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.ObjectFacade;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
@@ -59,11 +59,11 @@ public class SimpleObjectFacade implements ObjectFacade {
                 });
                 return map;
             } else if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                 JsonObject pjo = (JsonObject) pi.newInstance();
-                Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+                Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
                 ((JsonObject) object).forEach((k, v) -> {
-                    PojoRegistry.FieldInfo fi = fields.get(k);
+                    NodeRegistry.FieldInfo fi = fields.get(k);
                     if (fi != null) {
                         Object vv = readNode(v, fi.getType());
                         fi.invokeSetter(pjo, vv);
@@ -73,11 +73,11 @@ public class SimpleObjectFacade implements ObjectFacade {
                     }
                 });
                 return pjo;
-            } else if (PojoRegistry.isPojo(rawClazz)) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
+            } else if (NodeRegistry.isPojo(rawClazz)) {
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                 Object pojo = pi.newInstance();
                 ((JsonObject) object).forEach((k, v) -> {
-                    PojoRegistry.FieldInfo fi = pi.getFields().get(k);
+                    NodeRegistry.FieldInfo fi = pi.getFields().get(k);
                     if (fi != null) {
                         Object vv = readNode(v, fi.getType());
                         fi.invokeSetter(pojo, vv);
@@ -104,12 +104,12 @@ public class SimpleObjectFacade implements ObjectFacade {
                 }
                 return map;
             } else if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                 JsonObject pjo = (JsonObject) pi.newInstance();
-                Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+                Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
                     String k = entry.getKey().toString();
-                    PojoRegistry.FieldInfo fi = fields.get(k);
+                    NodeRegistry.FieldInfo fi = fields.get(k);
                     if (fi != null) {
                         Object vv = readNode(entry.getValue(), fi.getType());
                         fi.invokeSetter(pjo, vv);
@@ -119,11 +119,11 @@ public class SimpleObjectFacade implements ObjectFacade {
                     }
                 }
                 return pjo;
-            } else if (PojoRegistry.isPojo(rawClazz)) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
+            } else if (NodeRegistry.isPojo(rawClazz)) {
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                 Object pojo = pi.newInstance();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
-                    PojoRegistry.FieldInfo fi = pi.getFields().get(entry.getKey().toString());
+                    NodeRegistry.FieldInfo fi = pi.getFields().get(entry.getKey().toString());
                     if (fi != null) {
                         Object vv = readNode(entry.getValue(), fi.getType());
                         fi.invokeSetter(pojo, vv);
@@ -213,11 +213,11 @@ public class SimpleObjectFacade implements ObjectFacade {
             } else {
                 throw new JsonException("Cannot read from object '" + object.getClass() + "' to node '" + type + "'");
             }
-        } else if (PojoRegistry.isPojo(object.getClass())) {
+        } else if (NodeRegistry.isPojo(object.getClass())) {
             if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
                 JsonObject jo = new JsonObject();
-                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(object.getClass());
-                for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(object.getClass());
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
                     Object v = entry.getValue().invokeGetter(object);
                     Object vv = readNode(v, Object.class);
                     jo.put(entry.getKey(), vv);
@@ -226,22 +226,22 @@ public class SimpleObjectFacade implements ObjectFacade {
             } else if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz)) {
                 Type vtype = TypeUtil.resolveTypeArgument(type, Map.class, 1);
                 Map<String, Object> map = JsonConfig.global().mapSupplier.create();
-                PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(object.getClass());
-                for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(object.getClass());
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
                     Object v = entry.getValue().invokeGetter(object);
                     Object vv = readNode(v, vtype);
                     map.put(entry.getKey(), vv);
                 }
                 return map;
             } else if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                PojoRegistry.PojoInfo newPi = PojoRegistry.registerOrElseThrow(rawClazz);
-                Map<String, PojoRegistry.FieldInfo> newFields = newPi.getFields();
+                NodeRegistry.PojoInfo newPi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+                Map<String, NodeRegistry.FieldInfo> newFields = newPi.getFields();
                 JsonObject newJo = (JsonObject) newPi.newInstance();
-                PojoRegistry.PojoInfo oldPi = PojoRegistry.registerOrElseThrow(object.getClass());
-                for (Map.Entry<String, PojoRegistry.FieldInfo> entry : oldPi.getFields().entrySet()) {
+                NodeRegistry.PojoInfo oldPi = NodeRegistry.registerPojoOrElseThrow(object.getClass());
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.getFields().entrySet()) {
                     String k = entry.getKey();
                     Object v = entry.getValue().invokeGetter(object);
-                    PojoRegistry.FieldInfo fi = newFields.get(k);
+                    NodeRegistry.FieldInfo fi = newFields.get(k);
                     if (fi != null) {
                         Object vv = readNode(v, fi.getType());
                         fi.invokeSetter(newJo, vv);
@@ -251,14 +251,14 @@ public class SimpleObjectFacade implements ObjectFacade {
                     }
                 }
                 return newJo;
-            } else if (PojoRegistry.isPojo(rawClazz)) {
-                PojoRegistry.PojoInfo newPi = PojoRegistry.registerOrElseThrow(rawClazz);
-                Map<String, PojoRegistry.FieldInfo> newFields = newPi.getFields();
+            } else if (NodeRegistry.isPojo(rawClazz)) {
+                NodeRegistry.PojoInfo newPi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+                Map<String, NodeRegistry.FieldInfo> newFields = newPi.getFields();
                 Object newPojo = newPi.newInstance();
-                PojoRegistry.PojoInfo oldPi = PojoRegistry.registerOrElseThrow(object.getClass());
-                for (Map.Entry<String, PojoRegistry.FieldInfo> entry : oldPi.getFields().entrySet()) {
+                NodeRegistry.PojoInfo oldPi = NodeRegistry.registerPojoOrElseThrow(object.getClass());
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.getFields().entrySet()) {
                     String k = entry.getKey();
-                    PojoRegistry.FieldInfo fi = newFields.get(k);
+                    NodeRegistry.FieldInfo fi = newFields.get(k);
                     if (fi != null) {
                         Object v = entry.getValue().invokeGetter(object);
                         Object vv = readNode(v, fi.getType());

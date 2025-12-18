@@ -81,8 +81,8 @@ public class PojoBenchmark {
     }
 
     // Cache PojoInfo/FieldInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
-    private static PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(Person.class);
-    private static PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(Person.class, "name");
+    private static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+    private static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
 
     // ----- Constructor pathways -----
     @Benchmark

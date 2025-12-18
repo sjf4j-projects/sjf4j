@@ -2,8 +2,13 @@ package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
+import org.sjf4j.annotation.convertible.Convert;
+import org.sjf4j.annotation.convertible.Copy;
+import org.sjf4j.annotation.convertible.NodeConvertible;
+import org.sjf4j.annotation.convertible.Unconvert;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -17,22 +22,19 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * Utility class for handling conversion between Java objects (POJOs) and JSON structures.
- * Provides functionality for analyzing POJOs, creating lambda constructors, getters, and setters,
- * and determining if a class is a valid POJO candidate.
- */
-public class PojoUtil {
+public class ReflectUtil {
 
     /**
      * Flag indicating if the current JVM is running JDK 8.
      */
     public static final boolean IS_JDK8 = System.getProperty("java.version").startsWith("1.");
+
+
+    /// POJO
 
     /**
      * Determines if a given class is a valid POJO candidate for JSON conversion.
@@ -52,20 +54,17 @@ public class PojoUtil {
                 clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
+        if (clazz.isAnnotationPresent(NodeConvertible.class)) {
+            return false;
+        }
         String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
         return !inJdkPackage(pkg);
     }
 
-    // FIXME: Generic!!!
-    /**
-     * Analyzes a POJO class and returns its metadata including constructor, fields, and their accessors.
-     *
-     * @param clazz the POJO class to analyze
-     * @return an Optional containing PojoInfo if the analysis was successful, empty otherwise
-     */
-    public static Optional<PojoRegistry.PojoInfo> analyzePojo(Class<?> clazz) {
+
+    public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz) {
         if (!isPojoCandidate(clazz)) {
-            return Optional.empty();
+            return null;
         }
 
         // Constructor
@@ -90,12 +89,12 @@ public class PojoUtil {
         }
 
         if (constructor == null) {
-            return Optional.empty();
+            return null;
         }
         Supplier<?> lambdaConstructor = createLambdaConstructor(lookup, clazz, constructor);
 
         // Fields
-        Map<String, PojoRegistry.FieldInfo> fields = JsonConfig.global().mapSupplier.create();
+        Map<String, NodeRegistry.FieldInfo> fields = JsonConfig.global().mapSupplier.create();
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
@@ -127,7 +126,7 @@ public class PojoUtil {
                 } else {
                     Type fieldType = TypeUtil.getFieldType(curType, field);
                     fields.put(field.getName(),
-                            new PojoRegistry.FieldInfo(field.getName(), fieldType,
+                            new NodeRegistry.FieldInfo(field.getName(), fieldType,
                                     getter, lambdaGetter, setter, lambdaSetter));
                 }
             }
@@ -136,7 +135,7 @@ public class PojoUtil {
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
 
-        return Optional.of(new PojoRegistry.PojoInfo(clazz, constructor, lambdaConstructor, fields));
+        return new NodeRegistry.PojoInfo(clazz, constructor, lambdaConstructor, fields);
     }
 
 
@@ -157,7 +156,8 @@ public class PojoUtil {
 
     static {
         try {
-            PRIVATE_LOOKUP_IN = MethodHandles.class.getMethod("privateLookupIn", Class.class, MethodHandles.Lookup.class);
+            PRIVATE_LOOKUP_IN = MethodHandles.class.getMethod("privateLookupIn", Class.class,
+                    MethodHandles.Lookup.class);
         } catch (Exception e) {
             //FIXME: delete
             throw new RuntimeException(e);
@@ -181,7 +181,6 @@ public class PojoUtil {
                     constructor.type().changeReturnType(clazz)
             ).getTarget().invoke();
         } catch (Throwable e) {
-//            log.warn("Failed to create lambda constructor of {}", clazz, e);
             return null;
         }
     }
@@ -193,7 +192,7 @@ public class PojoUtil {
     }
 
     @SuppressWarnings("unchecked")
-    public static Function<Object, Object> createLambdaGetter(
+    private static Function<Object, Object> createLambdaGetter(
             MethodHandles.Lookup lookup,
             Class<?> clazz,
             Field field
@@ -241,7 +240,7 @@ public class PojoUtil {
     }
 
     @SuppressWarnings("unchecked")
-    public static BiConsumer<Object, Object> createLambdaSetter(
+    private static BiConsumer<Object, Object> createLambdaSetter(
             MethodHandles.Lookup lookup,
             Class<?> clazz,
             Field field
@@ -261,15 +260,14 @@ public class PojoUtil {
         try {
             MethodType invokedType = MethodType.methodType(BiConsumer.class);
             MethodType samMethodType = MethodType.methodType(void.class, Object.class, Object.class);
-//            MethodHandle boxedSetter = setter.asType(MethodType.methodType(void.class, Object.class, Object.class));
 
             return (BiConsumer<Object, Object>) LambdaMetafactory.metafactory(
                     lookup,
-                    "accept",          // BiConsumer.accept(T, V)
+                    "accept",   // BiConsumer.accept(T, V)
                     invokedType,
-                    samMethodType,     // erased signature:  (Object, Object)void
-                    setter,                // (T, V)void
-                    setter.type()     // implement signature
+                    samMethodType,          // erased signature:  (Object, Object)void
+                    setter,                 // (T, V)void
+                    setter.type()           // implement signature
             ).getTarget().invoke();
         } catch (Throwable e) {
 //            log.warn("Failed to create lambda setter for '{}' of {}", field.getName(), clazz, e);
@@ -277,5 +275,52 @@ public class PojoUtil {
         }
     }
 
+
+    /// Convertible
+
+    public static NodeRegistry.ConvertibleInfo analyzeConvertible(Class<?> clazz) {
+        if (!clazz.isAnnotationPresent(NodeConvertible.class))
+            throw new JsonException("Class " + clazz.getName() + " is not annotated with @NodeConvertible");
+
+        MethodHandle convertHandle = null, unconvertHandle = null, copyHandle = null;
+        MethodHandles.Lookup lookup = ROOT_LOOKUP;
+        if (!IS_JDK8) {
+            try {
+                lookup = (MethodHandles.Lookup) PRIVATE_LOOKUP_IN.invoke(null, clazz, ROOT_LOOKUP);
+            } catch (Exception ignored) {}
+        }
+
+        for (Method m : clazz.getDeclaredMethods()) {
+            if (m.isAnnotationPresent(Convert.class)) {
+                try {
+                    convertHandle = lookup.unreflect(m);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            } else if (m.isAnnotationPresent(Unconvert.class)) {
+                try {
+                    unconvertHandle = lookup.unreflect(m);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            } else if (m.isAnnotationPresent(Copy.class)) {
+                try {
+                    copyHandle = lookup.unreflect(m);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        // TODO: Check valid of convert/unconvert/copy
+
+        if (convertHandle == null)
+            throw new JsonException("Missing @Convert method in @NodeConvertible class " + clazz.getName());
+
+        if (unconvertHandle == null)
+            throw new JsonException("Missing @Unconvert method in @NodeConvertible class " + clazz.getName());
+
+        return new NodeRegistry.ConvertibleInfo(clazz, null,
+                convertHandle, unconvertHandle, copyHandle);
+    }
 
 }

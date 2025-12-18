@@ -70,9 +70,9 @@ public class JsonWalker {
             ((JsonObject) container).forEach(visitor);
         } else if (container instanceof Map) {
             ((Map<String, Object>) container).forEach(visitor);
-        } else if (PojoRegistry.isPojo(container.getClass())) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
                 Object node = entry.getValue().invokeGetter(container);
                 visitor.accept(entry.getKey(), node);
             }
@@ -110,10 +110,10 @@ public class JsonWalker {
             return ((JsonObject) container).entrySet();
         } else if (container instanceof Map) {
             return ((Map<String, Object>) container).entrySet();
-        } else if (PojoRegistry.isPojo(container.getClass())) {
+        } else if (NodeRegistry.isPojo(container.getClass())) {
             Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>();
-            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
-            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object node = fi.getValue().invokeGetter(container);
                 entrySet.add(new AbstractMap.SimpleEntry<>(fi.getKey(), node));
             }
@@ -130,8 +130,8 @@ public class JsonWalker {
             return ((JsonObject) container).size();
         } else if (container instanceof Map) {
             return ((Map<?, ?>) container).size();
-        } else if (PojoRegistry.isPojo(container.getClass())) {
-            return PojoRegistry.getPojoInfo(container.getClass()).getFields().size();
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            return NodeRegistry.getPojoInfo(container.getClass()).getFields().size();
         } else {
             throw new JsonException("Invalid object container: " + container.getClass());
         }
@@ -158,8 +158,8 @@ public class JsonWalker {
             return ((JsonObject) container).containsKey(key);
         } else if (container instanceof Map) {
             return ((Map<String, Object>) container).containsKey(key);
-        } else if (PojoRegistry.isPojo(container.getClass())) {
-            PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(container.getClass(), key);
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(container.getClass(), key);
             return fi != null;
         } else {
             throw new JsonException("Invalid object container: " + container.getClass());
@@ -174,8 +174,8 @@ public class JsonWalker {
             return ((JsonObject) container).get(key);
         } else if (container instanceof Map) {
             return ((Map<String, Object>) container).get(key);
-        } else if (PojoRegistry.isPojo(container.getClass())) {
-            PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(container.getClass(), key);
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(container.getClass(), key);
             if (fi != null) {
                 return fi.invokeGetter(container);
             } else {
@@ -185,6 +185,7 @@ public class JsonWalker {
             throw new JsonException("Invalid object container: " + container.getClass());
         }
     }
+
 
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object container, int idx) {
@@ -219,8 +220,8 @@ public class JsonWalker {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         Object node = container.getNode();
-        if (PojoRegistry.isPojo(node.getClass())) {
-            PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(node.getClass(), key);
+        if (NodeRegistry.isPojo(node.getClass())) {
+            NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(node.getClass(), key);
             if (fi != null) {
                 return TypedNode.of(fi.invokeGetter(node), fi.getType());
             } else if (node instanceof JsonObject) {
@@ -285,8 +286,8 @@ public class JsonWalker {
             return ((JsonObject) container).put(key, node);
         } else if (container instanceof Map) {
             return ((Map<String, Object>) container).put(key, node);
-        } else if (PojoRegistry.isPojo(container.getClass())) {
-            PojoRegistry.FieldInfo fi = PojoRegistry.getFieldInfo(container.getClass(), key);
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(container.getClass(), key);
             if (fi != null) {
                 Object old = fi.invokeGetter(container);
                 fi.invokeSetter(container, node);
@@ -364,7 +365,7 @@ public class JsonWalker {
             return ((JsonObject) container).remove(key);
         } else if (container instanceof Map) {
             return ((Map<String, Object>) container).remove(key);
-        } else if (PojoRegistry.isPojo(container.getClass())) {
+        } else if (NodeRegistry.isPojo(container.getClass())) {
             throw new JsonException("Cannot remove field '" + key + "' in POJO container '" +
                     container.getClass() + "'");
         } else {
@@ -519,12 +520,12 @@ public class JsonWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else if (container != null && PojoRegistry.isPojo(container.getClass())) {
+        } else if (container != null && NodeRegistry.isPojo(container.getClass())) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
                 JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey()));
                 Object node = entry.getValue().invokeGetter(container);
                 if (node != null) {

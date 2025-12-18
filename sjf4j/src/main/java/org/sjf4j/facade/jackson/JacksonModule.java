@@ -39,20 +39,6 @@ public class JacksonModule {
                     return builder;
                 }
             });
-//            setSerializerModifier(new BeanSerializerModifier() {
-//                @Override
-//                public BeanSerializerBuilder updateBuilder(
-//                        SerializationConfig config,
-//                        BeanDescription beanDesc,
-//                        BeanSerializerBuilder builder) {
-//                    Class<?> clazz = beanDesc.getBeanClass();
-//                    if (JsonObject.class.isAssignableFrom(clazz)) {
-//                        JavaType objType = config.constructType(Object.class);
-//                        builder.setAnySetter(new JsonObjectAnySetter(objType));
-//                    }
-//                    return builder;
-//                }
-//            });
         }
     }
 
@@ -115,6 +101,7 @@ public class JacksonModule {
         @Override
         public void serialize(JsonObject jo, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
+
             gen.writeStartObject();
             for (Map.Entry<String, Object> entry : jo.entrySet()) {
 //                gen.writeFieldName(entry.getKey());

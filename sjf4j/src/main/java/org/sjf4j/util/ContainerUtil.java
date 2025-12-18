@@ -2,11 +2,10 @@ package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonWalker;
 import org.sjf4j.NodeType;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 
 import java.lang.reflect.Array;
 import java.util.List;
@@ -71,13 +70,13 @@ public class ContainerUtil {
                 return (T) map;
             }
             case OBJECT_JOJO: {
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
                 JsonObject jojo = (JsonObject) pi.newInstance();
                 jojo.putAll(container);
                 return (T) jojo;
             }
             case OBJECT_POJO: {
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
                 Object pojo = pi.newInstance();
                 JsonWalker.visitObject(container, (k, v) -> JsonWalker.putInObject(pojo, k, v));
                 return (T) pojo;
@@ -217,7 +216,7 @@ public class ContainerUtil {
             case OBJECT_JOJO: {
                 JsonObject jo = (JsonObject) container;
                 sb.append(container.getClass().getSimpleName()).append("@").append("{");
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
                 AtomicInteger idx = new AtomicInteger(0);
                 jo.forEach((k, v) -> {
                     if (idx.getAndIncrement() > 0) sb.append(", ");
@@ -231,10 +230,10 @@ public class ContainerUtil {
                 return;
             }
             case OBJECT_POJO: {
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(container.getClass());
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
                 sb.append(container.getClass().getSimpleName()).append("@").append("{");
                 int idx = 0;
-                for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                     if (idx++ > 0) sb.append(", ");
                     sb.append("*").append(fi.getKey()).append("=");
                     Object v = fi.getValue().invokeGetter(container);

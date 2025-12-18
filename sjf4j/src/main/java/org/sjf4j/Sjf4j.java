@@ -9,6 +9,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -390,6 +391,11 @@ public class Sjf4j {
         if (props == null) throw new IllegalArgumentException("Props must not be null");
         if (node == null) throw new IllegalArgumentException("Node must not be null");
         JsonConfig.global().getPropertiesFacade().writeNode(props, node);
+    }
+
+
+    public static Map<String, Object> createMap() {
+        return JsonConfig.global().mapSupplier.create();
     }
 
 

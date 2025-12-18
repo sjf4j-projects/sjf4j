@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
 import org.sjf4j.facade.FacadeWriter;
 
@@ -14,6 +14,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -44,17 +45,73 @@ public class StreamingUtil {
             case START_ARRAY:
                 return readArray(reader, type);
             case STRING:
-                return reader.nextString();
+                return readString(reader, type);
             case NUMBER:
-                return reader.nextNumber();
+                return readNumber(reader, type);
             case BOOLEAN:
-                return reader.nextBoolean();
+                return readBoolean(reader, type);
             case NULL:
-                reader.nextNull();
-                return null;
+                return readNull(reader, type);
             default:
                 throw new JsonException("Unexpected token '" + token + "'");
         }
+    }
+
+    public static Object readNull(FacadeReader reader, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        reader.nextNull();
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci == null) return null;
+        return ci.unconvert(null);
+    }
+
+    public static Object readBoolean(FacadeReader reader, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
+            return reader.nextBoolean();
+        }
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+                + " cannot be deserialized from a Boolean value without a NodeConverter");
+        Boolean b = reader.nextBoolean();
+        return ci.unconvert(b);
+    }
+
+    public static Object readNumber(FacadeReader reader, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (rawClazz.isAssignableFrom(Number.class)) {
+            return reader.nextNumber();
+        }
+        if (Number.class.isAssignableFrom(rawClazz) ||
+                (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
+            Number n = reader.nextNumber();
+            return NumberUtil.as(n, rawClazz);
+        }
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+                + " cannot be deserialized from a Number value without a NodeConverter");
+        Number n = reader.nextNumber();
+        return ci.unconvert(n);
+    }
+
+    public static Object readString(FacadeReader reader, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (rawClazz.isAssignableFrom(String.class)) {
+            return reader.nextString();
+        }
+        if (rawClazz == Character.class || rawClazz == char.class) {
+            String s = reader.nextString();
+            return s.charAt(0);
+        }
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+                + " cannot be deserialized from a String value without a NodeConverter");
+        String s = reader.nextString();
+        return ci.unconvert(s);
     }
 
     /**
@@ -69,26 +126,22 @@ public class StreamingUtil {
     public static Object readObject(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
-//        NodeConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
 
-//        if (converter != null ) {
-//            if (converter.getPureType() == JsonObject.class) {
-//                JsonObject jo = new JsonObject();
-//                reader.startObject();
-//                while (reader.hasNext()) {
-//                    String key = reader.nextName();
-//                    Object value = readNode(reader, Object.class);
-//                    jo.put(key, value);
-//                }
-//                reader.endObject();
-//                return ((NodeConverter<Object, Object>) converter).pure2Wrap(jo);
-//            } else {
-//                throw new JsonException("Converter expects object '" + converter.getWrapType() +
-//                        "' and node '" + converter.getPureType() + "', but got node 'JsonObject'");
-//            }
-//        }
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            reader.startObject();
+            while (reader.hasNext()) {
+                String key = reader.nextName();
+                Object value = readNode(reader, valueType);
+                map.put(key, value);
+            }
+            reader.endObject();
+            return ci != null ? ci.unconvert(map) : map;
+        }
 
-        if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
+        if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
             reader.startObject();
             while (reader.hasNext()) {
@@ -100,27 +153,14 @@ public class StreamingUtil {
             return jo;
         }
 
-        if (rawClazz == Map.class) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
-            reader.startObject();
-            while (reader.hasNext()) {
-                String key = reader.nextName();
-                Object value = readNode(reader, valueType);
-                map.put(key, value);
-            }
-            reader.endObject();
-            return map;
-        }
-
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
             reader.startObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
                     fi.invokeSetter(jojo, vv);
@@ -133,14 +173,14 @@ public class StreamingUtil {
             return jojo;
         }
 
-        if (PojoRegistry.isPojo(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null) {
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
             reader.startObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
                     fi.invokeSetter(pojo, vv);
@@ -157,36 +197,9 @@ public class StreamingUtil {
     public static Object readArray(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
-//        NodeConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
 
-//        if (converter != null ) {
-//            if (converter.getPureType() == JsonArray.class) {
-//                JsonArray ja = new JsonArray();
-//                reader.startArray();
-//                while (reader.hasNext()) {
-//                    Object value = readNode(reader, Object.class);
-//                    ja.add(value);
-//                }
-//                reader.endArray();
-//                return ((NodeConverter<Object, Object>) converter).pure2Wrap(ja);
-//            } else {
-//                throw new JsonException("Converter expects object '" + converter.getWrapType() +
-//                        "' and node '" + converter.getPureType() + "', but got node 'JsonArray'");
-//            }
-//        }
-
-        if (rawClazz == null || rawClazz.isAssignableFrom(JsonArray.class)) {
-            JsonArray ja = new JsonArray();
-            reader.startArray();
-            while (reader.hasNext()) {
-                Object value = readNode(reader, Object.class);
-                ja.add(value);
-            }
-            reader.endArray();
-            return ja;
-        }
-
-        if (rawClazz == List.class) {
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.startArray();
@@ -195,7 +208,18 @@ public class StreamingUtil {
                 list.add(value);
             }
             reader.endArray();
-            return list;
+            return ci != null ? ci.unconvert(list) : list;
+        }
+
+        if (rawClazz.isAssignableFrom(JsonArray.class)) {
+            JsonArray ja = new JsonArray();
+            reader.startArray();
+            while (reader.hasNext()) {
+                Object value = readNode(reader, Object.class);
+                ja.add(value);
+            }
+            reader.endArray();
+            return ja;
         }
 
         if (rawClazz.isArray()) {
@@ -223,15 +247,43 @@ public class StreamingUtil {
 
     public static void writeNode(FacadeWriter writer, Object node) throws IOException {
         if (writer == null) throw new IllegalArgumentException("Writer must not be null");
-//        node = ConverterRegistry.tryWrap2Pure(node);
         if (node == null) {
             writer.writeNull();
-        } else if (node instanceof CharSequence || node instanceof Character) {
+            return;
+        }
+
+        Class<?> rawClazz = node.getClass();
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci != null) {
+            Object raw = ci.convert(node);
+            writeNode(writer, raw);
+            return;
+        }
+
+        if (node instanceof CharSequence || node instanceof Character) {
             writer.writeValue(node.toString());
         } else if (node instanceof Number) {
             writer.writeValue((Number) node);
         } else if (node instanceof Boolean) {
             writer.writeValue((Boolean) node);
+        } else if (node instanceof Map) {
+            writer.startObject();
+            boolean veryStart = true;
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                if (veryStart) veryStart = false;
+                else writer.writeObjectComma();
+                writer.writeName(entry.getKey().toString());
+                writeNode(writer, entry.getValue());
+            }
+            writer.endObject();
+        } else if (node instanceof List) {
+            writer.startArray();
+            List<?> list = (List<?>) node;
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) writer.writeArrayComma();
+                writeNode(writer, list.get(i));
+            }
+            writer.endArray();
         } else if (node instanceof JsonObject) {
             writer.startObject();
             AtomicBoolean veryStart = new AtomicBoolean(true);
@@ -246,30 +298,12 @@ public class StreamingUtil {
                 }
             });
             writer.endObject();
-        } else if (node instanceof Map) {
-            writer.startObject();
-            boolean veryStart = true;
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                if (veryStart) veryStart = false;
-                else writer.writeObjectComma();
-                writer.writeName(entry.getKey().toString());
-                writeNode(writer, entry.getValue());
-            }
-            writer.endObject();
         } else if (node instanceof JsonArray) {
             writer.startArray();
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
                 if (i > 0) writer.writeArrayComma();
                 writeNode(writer, ja.getNode(i));
-            }
-            writer.endArray();
-        } else if (node instanceof List) {
-            writer.startArray();
-            List<?> list = (List<?>) node;
-            for (int i = 0; i < list.size(); i++) {
-                if (i > 0) writer.writeArrayComma();
-                writeNode(writer, list.get(i));
             }
             writer.endArray();
         } else if (node.getClass().isArray()) {
@@ -279,22 +313,24 @@ public class StreamingUtil {
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();
-        } else if (PojoRegistry.isPojo(node.getClass())) {
-            writer.startObject();
-            boolean veryStart = true;
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
-                    PojoRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
-                if (veryStart) veryStart = false;
-                else writer.writeObjectComma();
-                writer.writeName(entry.getKey());
-                Object vv = entry.getValue().invokeGetter(node);
-                writeNode(writer, vv);
-            }
-            writer.endObject();
         } else {
-            throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() +
-                    "', expected one of [JsonObject, JsonArray, String, Number, Boolean] or a type registered in " +
-                    "ConverterRegistry or a valid POJO/JOJO, or a Map/List/Array of such elements.");
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+            if (pi != null) {
+                writer.startObject();
+                boolean veryStart = true;
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                    if (veryStart) veryStart = false;
+                    else writer.writeObjectComma();
+                    writer.writeName(entry.getKey());
+                    Object vv = entry.getValue().invokeGetter(node);
+                    writeNode(writer, vv);
+                }
+                writer.endObject();
+            } else {
+                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() +
+                        "', expected one of [JsonObject, JsonArray, String, Number, Boolean] or a type registered in " +
+                        "ConverterRegistry or a valid POJO/JOJO, or a Map/List/Array of such elements.");
+            }
         }
     }
 

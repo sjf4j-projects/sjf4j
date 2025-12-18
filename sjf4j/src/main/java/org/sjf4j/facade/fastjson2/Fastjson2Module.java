@@ -3,11 +3,14 @@ package org.sjf4j.facade.fastjson2;
 import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.modules.ObjectReaderModule;
 import com.alibaba.fastjson2.modules.ObjectWriterModule;
 import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.writer.ObjectWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.NodeRegistry;
+import org.sjf4j.util.TypeUtil;
 
 import java.lang.reflect.Type;
 
@@ -49,6 +52,22 @@ public class Fastjson2Module {
 //        }
 //    }
 
+    public static class MyReaderModule implements ObjectReaderModule {
+
+        @Override
+        public ObjectReader<?> getObjectReader(Type type) {
+            Class<?> rawClazz = TypeUtil.getRawClass(type);
+            if (JsonArray.class.isAssignableFrom(rawClazz)) {
+                return new JsonArrayReader();
+            }
+            NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+            if (ci != null) {
+                return new ConvertibleReader<>(ci);
+            }
+            return null;
+        }
+    }
+
     public static class JsonArrayReader implements ObjectReader<JsonArray> {
 
         @Override
@@ -64,29 +83,47 @@ public class Fastjson2Module {
             return ja;
         }
 
-        @Override
-        public Class<JsonArray> getObjectClass() {
-            return JsonArray.class;
+//        @Override
+//        public Class<JsonArray> getObjectClass() {
+//            return JsonArray.class;
+//        }
+
+    }
+
+    public static class ConvertibleReader<T> implements ObjectReader<T> {
+        private final NodeRegistry.ConvertibleInfo convertibleInfo;
+        public ConvertibleReader(NodeRegistry.ConvertibleInfo convertibleInfo) {
+            this.convertibleInfo = convertibleInfo;
         }
 
+        @SuppressWarnings("unchecked")
+        @Override
+        public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
+            Object raw = reader.readAny();
+            return (T) convertibleInfo.unconvert(raw);
+        }
     }
 
     /// Write
 
-    public static class MyObjectWriterModule implements ObjectWriterModule {
+    public static class MyWriterModule implements ObjectWriterModule {
         @Override
         public ObjectWriter<?> getObjectWriter(Type objectType, Class objectClass) {
             if (JsonObject.class.isAssignableFrom(objectClass)) {
-                return new JojoObjectWriter();
+                return new JsonObjectWriter();
             }
             if (JsonArray.class.isAssignableFrom(objectClass)) {
-                return new JojaObjectWriter();
+                return new JsonArrayWriter();
+            }
+            NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(objectClass);
+            if (ci != null) {
+                return new ConvertibleWriter<>(ci);
             }
             return null;
         }
     }
 
-    public static class JojoObjectWriter implements ObjectWriter<JsonObject> {
+    public static class JsonObjectWriter implements ObjectWriter<JsonObject> {
 
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
@@ -103,8 +140,7 @@ public class Fastjson2Module {
 
     }
 
-
-    public static class JojaObjectWriter implements ObjectWriter<JsonArray> {
+    public static class JsonArrayWriter implements ObjectWriter<JsonArray> {
 
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
@@ -120,5 +156,17 @@ public class Fastjson2Module {
 
     }
 
+    public static class ConvertibleWriter<T> implements ObjectWriter<T> {
+        private final NodeRegistry.ConvertibleInfo convertibleInfo;
+        public ConvertibleWriter(NodeRegistry.ConvertibleInfo convertibleInfo) {
+            this.convertibleInfo = convertibleInfo;
+        }
+
+        @Override
+        public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
+            Object raw = convertibleInfo.convert(object);
+            writer.writeAny(raw);
+        }
+    }
 
 }

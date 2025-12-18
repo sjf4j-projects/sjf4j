@@ -9,7 +9,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 
@@ -36,7 +36,7 @@ public class GsonModule {
 
     public static class JsonObjectTypeAdapter<T> extends TypeAdapter<T> {
         private final Gson gson;
-        private final PojoRegistry.PojoInfo pi;
+        private final NodeRegistry.PojoInfo pi;
 
         public JsonObjectTypeAdapter(Gson gson, TypeToken<T> type) {
             this.gson = gson;
@@ -44,7 +44,7 @@ public class GsonModule {
             if (clazz == JsonObject.class) {
                 this.pi = null;
             } else {
-                this.pi = PojoRegistry.registerOrElseThrow(type.getRawType());
+                this.pi = NodeRegistry.registerPojoOrElseThrow(type.getRawType());
             }
         }
 
@@ -55,7 +55,7 @@ public class GsonModule {
             in.beginObject();
             while (in.hasNext()) {
                 String name = in.nextName();
-                PojoRegistry.FieldInfo fi;
+                NodeRegistry.FieldInfo fi;
                 if (pi != null && (fi = pi.getFields().get(name)) != null) {
                     TypeAdapter<?> adapter = gson.getAdapter(TypeUtil.getRawClass(fi.getType()));
                     Object value = adapter.read(in);

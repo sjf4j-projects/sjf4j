@@ -6,7 +6,7 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonWalker;
 import org.sjf4j.NodeType;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
 import org.sjf4j.util.NodeUtil;
@@ -538,8 +538,7 @@ public class JsonPath {
             Object value = findNode(container);
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to find " + clazz.getName() + " by path '" + this + "': " +
-                    e.getMessage(), e);
+            throw new JsonException("Failed to find '" + clazz + "' by path '" + this + "'", e);
         }
     }
 
@@ -629,8 +628,16 @@ public class JsonPath {
             Object value = eval(container);
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to eval " + clazz.getName() + " by path '" + this + "': " +
-                    e.getMessage(), e);
+            throw new JsonException("Failed to eval '" + clazz + "' by path '" + this + "'", e);
+        }
+    }
+
+    public <T> T evalAs(Object container, Class<T> clazz) {
+        try {
+            Object value = eval(container);
+            return NodeUtil.as(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert eval-value at path '" + this + "' to '" + clazz + "'", e);
         }
     }
 
@@ -913,8 +920,8 @@ public class JsonPath {
                 return new JsonObject();
             } else if (clazz.isAssignableFrom(Map.class)) {
                 return JsonConfig.global().mapSupplier.create();
-            } else if (PojoRegistry.isPojo(clazz)) {
-                PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(clazz);
+            } else if (NodeRegistry.isPojo(clazz)) {
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(clazz);
                 return pi.newInstance();
             } else {
                 throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +

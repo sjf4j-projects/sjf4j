@@ -46,7 +46,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores field information for POJO mapping.
      */
-    protected transient Map<String, PojoRegistry.FieldInfo> fieldMap;
+    protected transient Map<String, NodeRegistry.FieldInfo> fieldMap;
 
     /**
      * Creates an empty JsonObject instance.
@@ -54,7 +54,7 @@ public class JsonObject extends JsonContainer {
      */
     public JsonObject() {
         if (this.getClass() != JsonObject.class) {
-            fieldMap = PojoRegistry.registerOrElseThrow(this.getClass()).getFields();
+            fieldMap = NodeRegistry.registerPojoOrElseThrow(this.getClass()).getFields();
         }
     }
 
@@ -72,7 +72,7 @@ public class JsonObject extends JsonContainer {
         if (node instanceof JsonObject) {
             JsonObject jo = (JsonObject) node;
             if (jo.fieldMap != null) {
-                for (Map.Entry<String, PojoRegistry.FieldInfo> fi : jo.fieldMap.entrySet()) {
+                for (Map.Entry<String, NodeRegistry.FieldInfo> fi : jo.fieldMap.entrySet()) {
                     Object v = fi.getValue().invokeGetter(node);
                     put(fi.getKey(), v);
                 }
@@ -86,9 +86,9 @@ public class JsonObject extends JsonContainer {
             }
         } else if (node instanceof Map) {
             this.nodeMap = (Map<String, Object>) node;
-        } else if (PojoRegistry.isPojo(node.getClass())) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.getPojoInfo(node.getClass());
-            for (Map.Entry<String, PojoRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+        } else if (NodeRegistry.isPojo(node.getClass())) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 put(fi.getKey(), v);
             }
@@ -305,7 +305,7 @@ public class JsonObject extends JsonContainer {
     public int hashCode() {
         int hash = nodeMap == null ? 0 : nodeMap.hashCode();
         if (fieldMap != null) {
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 hash += Objects.hashCode(entry.getKey()) ^
                         Objects.hashCode(entry.getValue().invokeGetter(this));
             }
@@ -383,7 +383,7 @@ public class JsonObject extends JsonContainer {
     public void forEach(BiConsumer<String, Object> action) {
         if (action == null) throw new IllegalArgumentException("Action must not be null");
         if (fieldMap != null) {
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 action.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
@@ -406,7 +406,7 @@ public class JsonObject extends JsonContainer {
             return nodeMap == null ? Collections.emptyMap() : nodeMap;
         } else {
             Map<String, Object> merged = JsonConfig.global().mapSupplier.create();
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()){
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
             if (nodeMap != null) {
@@ -426,7 +426,7 @@ public class JsonObject extends JsonContainer {
     public Set<Map.Entry<String, Object>> entrySet() {
         Set<Map.Entry<String, Object>> set = new LinkedHashSet<>();
         if (fieldMap != null) {
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry : fieldMap.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue().invokeGetter(this);
                 set.add(new AbstractMap.SimpleEntry<>(key, value));
@@ -533,7 +533,7 @@ public class JsonObject extends JsonContainer {
     public Object getNode(String key) {
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         if (fieldMap != null) {
-            PojoRegistry.FieldInfo fi = fieldMap.get(key);
+            NodeRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
                 return fi.invokeGetter(this);
             }
@@ -1412,7 +1412,7 @@ public class JsonObject extends JsonContainer {
     public Object put(String key, Object object) {
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         if (fieldMap != null) {
-            PojoRegistry.FieldInfo fi = fieldMap.get(key);
+            NodeRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
                 Object old = fi.invokeGetter(this);
                 fi.invokeSetter(this, object);
@@ -1468,8 +1468,8 @@ public class JsonObject extends JsonContainer {
     }
 
     public void putAll(Object pojo) {
-        PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(pojo.getClass());
-        for (Map.Entry<String, PojoRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(pojo.getClass());
+        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
             put(entry.getKey(), entry.getValue().invokeGetter(pojo));
         }
     }

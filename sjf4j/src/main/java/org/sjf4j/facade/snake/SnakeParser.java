@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 import org.yaml.snakeyaml.events.AliasEvent;
@@ -88,13 +88,13 @@ public class SnakeParser {
         }
 
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonObject pjo = (JsonObject) pi.newInstance();
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             parser.getEvent(); // consume start
             while (!(parser.peekEvent() instanceof MappingEndEvent)) {
                 String key = ((ScalarEvent) parser.getEvent()).getValue();
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readAny(parser, fi.getType());
                     fi.invokeSetter(pjo, vv);
@@ -107,14 +107,14 @@ public class SnakeParser {
             return pjo;
         }
 
-        if (PojoRegistry.isPojo(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
+        if (NodeRegistry.isPojo(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             Object pojo = pi.newInstance();
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             parser.getEvent(); // consume start
             while (!(parser.peekEvent() instanceof MappingEndEvent)) {
                 String key = ((ScalarEvent) parser.getEvent()).getValue();
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readAny(parser, fi.getType());
                     fi.invokeSetter(pojo, vv);

@@ -3,7 +3,7 @@ package org.sjf4j.facade.gson;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -59,10 +59,10 @@ public class OldGsonWriter {
                 writeAny(writer, Array.get(value, i));
             }
             writer.endArray();
-        } else if (PojoRegistry.isPojo(value.getClass())) {
+        } else if (NodeRegistry.isPojo(value.getClass())) {
             writer.beginObject();
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
-                    PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
+                    NodeRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
                 writer.name(entry.getKey());
                 Object vv = entry.getValue().invokeGetter(value);
                 writeAny(writer, vv);

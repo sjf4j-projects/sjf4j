@@ -1,7 +1,8 @@
 package org.sjf4j;
 
+import com.sun.org.apache.xalan.internal.lib.NodeInfo;
 import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.PojoUtil;
+import org.sjf4j.util.ReflectUtil;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
@@ -12,30 +13,162 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * Registry for POJO (Plain Old Java Object) information. This class maintains a cache of POJO metadata,
- * including constructors and field information, to optimize the conversion between POJOs and JSON structures.
- * <p>
- * It provides methods for registering, retrieving, and managing POJO information, including constructor
- * handles and field accessors (getters/setters).
- */
-public final class PojoRegistry {
+import static sun.awt.image.MultiResolutionCachedImage.map;
 
-    /**
-     * Thread-safe cache that stores POJO information by class type.
-     */
+
+public final class NodeRegistry {
+
+//    private static final Map<Class<?>, Optional<NodeInfo>> NODE_INFO_CACHE = new ConcurrentHashMap<>();
+
+//    public static class NodeInfo {
+//        ConvertibleInfo convertibleInfo;
+//        PojoInfo pojoInfo;
+//        public NodeInfo() {}
+//        public NodeInfo(ConvertibleInfo convertibleInfo, PojoInfo pojoInfo) {
+//            this.convertibleInfo = convertibleInfo;
+//            this.pojoInfo = pojoInfo;
+//        }
+//
+//        public boolean isConvertible() {
+//            return convertibleInfo != null;
+//        }
+//
+//        public boolean isPojo() {
+//            return convertibleInfo == null && pojoInfo != null && pojoInfo.isPojo();
+//        }
+//
+//        public ConvertibleInfo getConvertibleInfo() { return convertibleInfo; }
+//        public PojoInfo getPojoInfo() { return pojoInfo; }
+//    }
+
+//    public static Optional<NodeInfo> getNodeInfo(Class<?> clazz) {
+//        return NODE_INFO_CACHE.get(clazz);
+////        Optional<NodeInfo> opt = NODE_INFO_CACHE.get(clazz);
+////        if (opt != null && opt.isPresent()) {
+////            return opt.get();
+////        } else {
+////            return null;
+////        }
+//    }
+
+    /// Convertible
+
+    private static final Map<Class<?>, ConvertibleInfo> CONVERTIBLE_CACHE = new ConcurrentHashMap<>();
+
+    public static class ConvertibleInfo {
+        private final Class<?> clazz;
+        private final NodeConverter<Object> converter;
+        private final MethodHandle convertHandle;
+        private final MethodHandle unconvertHandle;
+        private final MethodHandle copyHandle;
+
+        @SuppressWarnings("unchecked")
+        public ConvertibleInfo(Class<?> clazz, NodeConverter<?> converter,
+                               MethodHandle convertHandle, MethodHandle unconvertHandle, MethodHandle copyHandle) {
+            this.clazz = clazz;
+            this.converter = (NodeConverter<Object>) converter;
+            this.convertHandle = convertHandle;
+            this.unconvertHandle = unconvertHandle;
+            this.copyHandle = copyHandle;
+        }
+
+        public Object convert(Object node) {
+            if (converter != null) {
+                try {
+                    return converter.convert(node);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to convert using converter " + converter.getClass().getName() +
+                            " for target type " + clazz.getName(), e);
+                }
+            } else if (convertHandle != null) {
+                try {
+                    return convertHandle.invoke(node);
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to convert using @Convert method in " + clazz.getName(), e);
+                }
+            } else {
+                throw new JsonException("No @Convert method or NodeConverter registered for " + clazz.getName());
+            }
+        }
+
+        public Object unconvert(Object raw) {
+            if (converter != null) {
+                try {
+                    return converter.unconvert(raw);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to unconvert using converter " + converter.getClass().getName() +
+                            " for target type " + clazz.getName(), e);
+                }
+            } else if (unconvertHandle != null) {
+                try {
+                    return unconvertHandle.invoke(raw);
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to unconvert using @Unconvert method in " + clazz.getName(), e);
+                }
+            } else {
+                throw new JsonException("No @Unconvert method or NodeConverter registered for " + clazz.getName());
+            }
+        }
+
+        public Object copy(Object node) {
+            if (converter != null) {
+                try {
+                    return converter.copy(node);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to copy using converter " + converter.getClass().getName() +
+                            " for target type " + clazz.getName(), e);
+                }
+            } else if (copyHandle != null) {
+                try {
+                    return copyHandle.invoke(node);
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to copy using @Copy method in " + clazz.getName(), e);
+                }
+            } else {
+                throw new JsonException("No @copy method or NodeConverter registered for " + clazz.getName());
+            }
+        }
+
+    }
+
+    public static ConvertibleInfo registerConvertible(Class<?> clazz) {
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        ConvertibleInfo ci = ReflectUtil.analyzeConvertible(clazz);
+        // FIXME: Facades
+        CONVERTIBLE_CACHE.put(clazz, ci);
+        return ci;
+    }
+
+    public static <T> ConvertibleInfo registerConvertible(Class<T> clazz, NodeConverter<T> converter) {
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        if (converter == null) throw new IllegalArgumentException("Converter must not be null");
+
+        ConvertibleInfo ci = new ConvertibleInfo(clazz, converter, null, null, null);
+        CONVERTIBLE_CACHE.put(clazz, ci);
+        return ci;
+    }
+
+    public static ConvertibleInfo getConvertibleInfo(Class<?> clazz) {
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        return CONVERTIBLE_CACHE.get(clazz);
+    }
+
+    public static boolean isConvertible(Class<?> clazz) {
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        return CONVERTIBLE_CACHE.containsKey(clazz);
+    }
+
+
+    /// POJO
+
     private static final Map<Class<?>, Optional<PojoInfo>> POJO_CACHE = new ConcurrentHashMap<>();
 
-    /**
-     * Registers a class and returns its POJO information if it's a valid POJO.
-     *
-     * @param clazz the class to register
-     * @return an Optional containing the PojoInfo if the class is a valid POJO, otherwise empty
-     * @throws IllegalArgumentException if the clazz parameter is null
-     */
-    public static Optional<PojoInfo> register(Class<?> clazz) {
+    public static PojoInfo registerPojo(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return POJO_CACHE.computeIfAbsent(clazz, PojoUtil::analyzePojo);
+        return POJO_CACHE.computeIfAbsent(clazz, (k) -> {
+            PojoInfo pi = ReflectUtil.analyzePojo(k);
+            return pi != null ? Optional.of(pi) : Optional.empty();
+        }).orElse(null);
     }
 
     /**
@@ -46,27 +179,13 @@ public final class PojoRegistry {
      * @throws IllegalArgumentException if the clazz parameter is null
      * @throws JsonException if the class is not a valid POJO
      */
-    public static PojoInfo registerOrElseThrow(Class<?> clazz) {
-        return register(clazz).orElseThrow(() -> new JsonException("Not a valid POJO"));
+    public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
+        PojoInfo pi = registerPojo(clazz);
+        if (pi == null) throw new JsonException("Not a valid POJO");
+        return pi;
     }
 
-    /**
-     * Removes a class from the POJO registry cache.
-     *
-     * @param clazz the class to remove
-     * @throws IllegalArgumentException if the clazz parameter is null
-     */
-    public static void remove(Class<?> clazz) {
-        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        POJO_CACHE.remove(clazz);
-    }
 
-    /**
-     * Retrieves the POJO information for a registered class.
-     *
-     * @param clazz the class to get information for
-     * @return the PojoInfo for the class, or null if the class is not registered or is not a valid POJO
-     */
     public static PojoInfo getPojoInfo(Class<?> clazz) {
         return POJO_CACHE.get(clazz).orElse(null);
     }
@@ -79,8 +198,7 @@ public final class PojoRegistry {
      * @return the FieldInfo for the specified field, or null if not found
      */
     public static FieldInfo getFieldInfo(Class<?> clazz, String fieldName) {
-        Optional<PojoInfo> opt = register(clazz);
-        return opt.map(pi -> pi.getFields().get(fieldName)).orElse(null);
+        return registerPojoOrElseThrow(clazz).getFields().get(fieldName);
     }
 
     /**
@@ -90,7 +208,8 @@ public final class PojoRegistry {
      * @return true if the class is a valid POJO, false otherwise
      */
     public static boolean isPojo(Class<?> clazz) {
-        return register(clazz).map(PojoInfo::isPojo).orElse(false);
+        PojoInfo pi = registerPojo(clazz);
+        return pi != null && pi.isPojo();
     }
 
 
@@ -100,34 +219,22 @@ public final class PojoRegistry {
      * Represents metadata about a POJO class, including its constructor and fields.
      */
     public static class PojoInfo {
-        // Type may be better
-        private final Class<?> type;
+        private final Class<?> clazz;
         private final MethodHandle constructor;
         private final Supplier<?> lambdaConstructor;
         private final Map<String, FieldInfo> fields;
 
         /**
-         * Constructs a PojoInfo with the specified type, constructor, and supplier.
-         *
-         * @param type the POJO class type
-         * @param constructor the method handle for the no-args constructor
-         * @param supplier a lambda that creates new instances of the POJO
-         */
-        public PojoInfo(Class<?> type, MethodHandle constructor, Supplier<?> supplier) {
-            this(type, constructor, supplier, null);
-        }
-
-        /**
          * Constructs a PojoInfo with the specified type, constructor, supplier, and fields.
          *
-         * @param type the POJO class type
+         * @param clazz the POJO class type
          * @param constructor the method handle for the no-args constructor
          * @param lambdaConstructor a lambda that creates new instances of the POJO
          * @param fields a map of field names to FieldInfo objects
          */
-        public PojoInfo(Class<?> type, MethodHandle constructor, Supplier<?> lambdaConstructor,
+        public PojoInfo(Class<?> clazz, MethodHandle constructor, Supplier<?> lambdaConstructor,
                         Map<String, FieldInfo> fields) {
-            this.type = type;
+            this.clazz = clazz;
             this.constructor = constructor;
             this.lambdaConstructor = lambdaConstructor;
             this.fields = fields;
@@ -151,19 +258,6 @@ public final class PojoRegistry {
             return constructor != null || lambdaConstructor != null;
         }
 
-        /**
-         * Checks if this object represents a valid POJO and throws an exception if not.
-         *
-         * @throws JsonException if no constructor is found for the POJO class
-         */
-        public void isPojoOrElseThrow() {
-            if (constructor == null && lambdaConstructor == null) {
-                throw new JsonException("Not found no-args constructor of class " + type);
-            }
-//            if (!JsonObject.class.isAssignableFrom(type) && (fields == null || fields.isEmpty())) {
-//                throw new JsonException("POJO " + type + " has no accessible fields and is not a JsonObject");
-//            }
-        }
 
         /**
          * Creates a new instance of the POJO using either the lambda constructor or the method handle.
@@ -178,10 +272,10 @@ public final class PojoRegistry {
                 try {
                     return constructor.invoke();
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke constructor of class " + type, e);
+                    throw new JsonException("Failed to invoke constructor of class " + clazz, e);
                 }
             }
-            throw new JsonException("Not found no-args constructor of class " + type);
+            throw new JsonException("Not found no-args constructor of class " + clazz);
         }
 
         /**
@@ -197,10 +291,10 @@ public final class PojoRegistry {
                 try {
                     return constructor.invoke();
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke constructor for '" + type + "'", e);
+                    throw new JsonException("Failed to invoke constructor for '" + clazz + "'", e);
                 }
             }
-            throw new JsonException("No-args constructor not found for POJO " + type);
+            throw new JsonException("No-args constructor not found for POJO " + clazz);
         }
 
     }

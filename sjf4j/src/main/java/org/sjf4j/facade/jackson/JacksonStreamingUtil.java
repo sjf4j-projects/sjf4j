@@ -8,7 +8,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
 import org.sjf4j.util.StreamingUtil;
 import org.sjf4j.util.TypeUtil;
@@ -118,13 +118,13 @@ public class JacksonStreamingUtil {
         }
 
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
             startObject(parser);
             while (hasNext(parser)) {
                 String key = nextName(parser);
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
                     fi.invokeSetter(jojo, vv);
@@ -137,14 +137,14 @@ public class JacksonStreamingUtil {
             return jojo;
         }
 
-        if (PojoRegistry.isPojo(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+        if (NodeRegistry.isPojo(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
             startObject(parser);
             while (hasNext(parser)) {
                 String key = nextName(parser);
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
                     fi.invokeSetter(pojo, vv);
@@ -365,10 +365,10 @@ public class JacksonStreamingUtil {
                 writeNode(gen, Array.get(node, i));
             }
             endArray(gen);
-        } else if (PojoRegistry.isPojo(node.getClass())) {
+        } else if (NodeRegistry.isPojo(node.getClass())) {
             startObject(gen);
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
-                    PojoRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
+                    NodeRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
                 writeName(gen, entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(gen, vv);

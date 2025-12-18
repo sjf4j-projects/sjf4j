@@ -2,7 +2,7 @@ package org.sjf4j.facade.snake;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
 import org.yaml.snakeyaml.events.ImplicitTuple;
@@ -72,11 +72,11 @@ public class SnakeEmitter {
                 writeAny(emitter, Array.get(value, i));
             }
             emitter.emit(new SequenceEndEvent(null, null));
-        } else if (PojoRegistry.isPojo(value.getClass())) {
+        } else if (NodeRegistry.isPojo(value.getClass())) {
             emitter.emit(new MappingStartEvent(null, null, true, null, null,
                     DumperOptions.FlowStyle.BLOCK));
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
-                    PojoRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
+                    NodeRegistry.getPojoInfo(value.getClass()).getFields().entrySet()) {
                 emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                         entry.getKey(), null, null, DumperOptions.ScalarStyle.PLAIN));
                 Object vv = entry.getValue().invokeGetter(value);

@@ -50,7 +50,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         // With Module
         if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
             ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
-            provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
+//            provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
+            provider.register(new Fastjson2Module.MyReaderModule());
             this.ctx.setExtraProcessor((object, key, value) -> {
                 if (object instanceof JsonObject) {
                     ((JsonObject) object).put(key, value);
@@ -59,7 +60,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
         if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
             ObjectWriterProvider provider = JSONFactory.getDefaultObjectWriterProvider();
-            provider.register(new Fastjson2Module.MyObjectWriterModule());
+            provider.register(new Fastjson2Module.MyWriterModule());
         }
     }
 
@@ -222,9 +223,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             case STREAMING_SPECIFIC: {
                 try {
                     JSONWriter writer = JSONWriter.of(writerFeatures);
-                    Fastjson2StreamingUtil.startDocument(writer);
                     Fastjson2StreamingUtil.writeNode(writer, node);
-                    Fastjson2StreamingUtil.endDocument(writer);
                     writer.flushTo(output);
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
@@ -259,9 +258,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             case STREAMING_SPECIFIC: {
                 try {
                     JSONWriter writer = JSONWriter.ofUTF8(writerFeatures);
-                    Fastjson2StreamingUtil.startDocument(writer);
                     Fastjson2StreamingUtil.writeNode(writer, node);
-                    Fastjson2StreamingUtil.endDocument(writer);
                     writer.flushTo(output);
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +

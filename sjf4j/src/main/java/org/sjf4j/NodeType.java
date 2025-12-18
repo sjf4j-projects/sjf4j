@@ -20,6 +20,9 @@ public enum NodeType {
     VALUE_NUMBER,
     /** Represents a boolean value. */
     VALUE_BOOLEAN,
+    /** Represents an atomic value with custom JSON conversion semantics. */
+    VALUE_CONVERTIBLE,
+
     /** Represents a standard {@link JsonObject}. */
     OBJECT_JSON_OBJECT,
     /** Represents a custom JsonObject subtype (JoJo). */
@@ -28,12 +31,14 @@ public enum NodeType {
     OBJECT_MAP,
     /** Represents a Plain Old Java Object (POJO). */
     OBJECT_POJO,
+
     /** Represents a {@link JsonArray}. */
     ARRAY_JSON_ARRAY,
     /** Represents a {@link List} collection. */
     ARRAY_LIST,
     /** Represents a Java array. */
     ARRAY_ARRAY,
+
     /** Represents an unknown node type. */
     UNKNOWN;
 
@@ -64,7 +69,7 @@ public enum NodeType {
             return ARRAY_LIST;
         } else if (node.getClass().isArray()) {
             return ARRAY_ARRAY;
-        } else if (PojoRegistry.isPojo(node.getClass())) {
+        } else if (NodeRegistry.isPojo(node.getClass())) {
             return OBJECT_POJO;
         }
         return UNKNOWN;
@@ -107,9 +112,14 @@ public enum NodeType {
             return ARRAY_ARRAY;
         } else if (clazz == Void.class) {
             return VALUE_VOID;
-        } else if (PojoRegistry.isPojo(clazz)) {
+        }
+
+        if (NodeRegistry.isConvertible(clazz)) {
+            return VALUE_CONVERTIBLE;
+        } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
+
         return UNKNOWN;
     }
 

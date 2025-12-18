@@ -7,7 +7,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.PojoRegistry;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.StreamingUtil;
@@ -117,13 +117,13 @@ public class GsonStreamingUtil {
         }
 
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
             startObject(reader);
             while (hasNext(reader)) {
                 String key = nextName(reader);
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
                     fi.invokeSetter(jojo, vv);
@@ -136,14 +136,14 @@ public class GsonStreamingUtil {
             return jojo;
         }
 
-        if (PojoRegistry.isPojo(rawClazz)) {
-            PojoRegistry.PojoInfo pi = PojoRegistry.registerOrElseThrow(rawClazz);
-            Map<String, PojoRegistry.FieldInfo> fields = pi.getFields();
+        if (NodeRegistry.isPojo(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
             startObject(reader);
             while (hasNext(reader)) {
                 String key = nextName(reader);
-                PojoRegistry.FieldInfo fi = fields.get(key);
+                NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
                     fi.invokeSetter(pojo, vv);
@@ -349,10 +349,10 @@ public class GsonStreamingUtil {
                 writeNode(writer, Array.get(node, i));
             }
             endArray(writer);
-        } else if (PojoRegistry.isPojo(node.getClass())) {
+        } else if (NodeRegistry.isPojo(node.getClass())) {
             startObject(writer);
-            for (Map.Entry<String, PojoRegistry.FieldInfo> entry :
-                    PojoRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
+                    NodeRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
                 writeName(writer, entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(writer, vv);
