@@ -3,6 +3,7 @@ package org.sjf4j;
 import com.sun.org.apache.xalan.internal.lib.NodeInfo;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.ReflectUtil;
+import org.sjf4j.util.TypeUtil;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
@@ -56,20 +57,26 @@ public final class NodeRegistry {
     private static final Map<Class<?>, ConvertibleInfo> CONVERTIBLE_CACHE = new ConcurrentHashMap<>();
 
     public static class ConvertibleInfo {
-        private final Class<?> clazz;
-        private final NodeConverter<Object> converter;
+        private final Class<?> nodeClazz;
+        private final Class<?> rawClazz;
+        private final NodeConverter<Object, Object> converter;
         private final MethodHandle convertHandle;
         private final MethodHandle unconvertHandle;
         private final MethodHandle copyHandle;
 
         @SuppressWarnings("unchecked")
-        public ConvertibleInfo(Class<?> clazz, NodeConverter<?> converter,
+        public ConvertibleInfo(Class<?> nodeClazz, Class<?> rawClazz, NodeConverter<?, ?> converter,
                                MethodHandle convertHandle, MethodHandle unconvertHandle, MethodHandle copyHandle) {
-            this.clazz = clazz;
-            this.converter = (NodeConverter<Object>) converter;
+            this.nodeClazz = nodeClazz;
+            this.rawClazz = rawClazz;
+            this.converter = (NodeConverter<Object, Object>) converter;
             this.convertHandle = convertHandle;
             this.unconvertHandle = unconvertHandle;
             this.copyHandle = copyHandle;
+        }
+
+        public Class<?> getNodeClass() {
+            return nodeClazz;
         }
 
         public Object convert(Object node) {
@@ -78,35 +85,38 @@ public final class NodeRegistry {
                     return converter.convert(node);
                 } catch (Exception e) {
                     throw new JsonException("Failed to convert using converter " + converter.getClass().getName() +
-                            " for target type " + clazz.getName(), e);
+                            " for target type " + nodeClazz.getName(), e);
                 }
             } else if (convertHandle != null) {
                 try {
                     return convertHandle.invoke(node);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to convert using @Convert method in " + clazz.getName(), e);
+                    throw new JsonException("Failed to convert using @Convert method in " + nodeClazz.getName(), e);
                 }
             } else {
-                throw new JsonException("No @Convert method or NodeConverter registered for " + clazz.getName());
+                throw new JsonException("No @Convert method or NodeConverter registered for " + nodeClazz.getName());
             }
         }
 
         public Object unconvert(Object raw) {
+            if (raw != null && !rawClazz.isInstance(raw))
+                throw new JsonException("Cannot unconvert from raw type " + raw.getClass().getName() + " to " +
+                        nodeClazz.getName() + ". Expected " + rawClazz.getName());
             if (converter != null) {
                 try {
                     return converter.unconvert(raw);
                 } catch (Exception e) {
                     throw new JsonException("Failed to unconvert using converter " + converter.getClass().getName() +
-                            " for target type " + clazz.getName(), e);
+                            " for target type " + nodeClazz.getName(), e);
                 }
             } else if (unconvertHandle != null) {
                 try {
                     return unconvertHandle.invoke(raw);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to unconvert using @Unconvert method in " + clazz.getName(), e);
+                    throw new JsonException("Failed to unconvert using @Unconvert method in " + nodeClazz.getName(), e);
                 }
             } else {
-                throw new JsonException("No @Unconvert method or NodeConverter registered for " + clazz.getName());
+                throw new JsonException("No @Unconvert method or NodeConverter registered for " + nodeClazz.getName());
             }
         }
 
@@ -116,16 +126,16 @@ public final class NodeRegistry {
                     return converter.copy(node);
                 } catch (Exception e) {
                     throw new JsonException("Failed to copy using converter " + converter.getClass().getName() +
-                            " for target type " + clazz.getName(), e);
+                            " for target type " + nodeClazz.getName(), e);
                 }
             } else if (copyHandle != null) {
                 try {
                     return copyHandle.invoke(node);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to copy using @Copy method in " + clazz.getName(), e);
+                    throw new JsonException("Failed to copy using @Copy method in " + nodeClazz.getName(), e);
                 }
             } else {
-                throw new JsonException("No @copy method or NodeConverter registered for " + clazz.getName());
+                throw new JsonException("No @copy method or NodeConverter registered for " + nodeClazz.getName());
             }
         }
 
@@ -134,18 +144,31 @@ public final class NodeRegistry {
     public static ConvertibleInfo registerConvertible(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
         ConvertibleInfo ci = ReflectUtil.analyzeConvertible(clazz);
-        // FIXME: Facades
         CONVERTIBLE_CACHE.put(clazz, ci);
+        notifyFacades(ci);
         return ci;
     }
 
-    public static <T> ConvertibleInfo registerConvertible(Class<T> clazz, NodeConverter<T> converter) {
-        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+    public static <N, R> ConvertibleInfo registerConvertible(NodeConverter<N, R> converter) {
         if (converter == null) throw new IllegalArgumentException("Converter must not be null");
 
-        ConvertibleInfo ci = new ConvertibleInfo(clazz, converter, null, null, null);
-        CONVERTIBLE_CACHE.put(clazz, ci);
+        Class<N> nodeClazz = converter.getNodeClass();
+        Class<R> rawClazz = converter.getRawClass();
+        if (!NodeType.of(rawClazz).isRaw())
+            throw new JsonException("Invalid @Convert return type in NodeConverter class " +
+                    converter.getClass().getName() + ": " + rawClazz.getName() +
+                    ". The return type must be a supported raw node value type (String, Number, Boolean, null, Map, or List).");
+
+        ConvertibleInfo ci = new ConvertibleInfo(nodeClazz, rawClazz, converter,
+                null, null, null);
+        CONVERTIBLE_CACHE.put(nodeClazz, ci);
+        notifyFacades(ci);
         return ci;
+    }
+
+    private static void notifyFacades(ConvertibleInfo newRegistered) {
+        JsonConfig.global().getJsonFacade().registerConvertible(newRegistered);
+        JsonConfig.global().getYamlFacade().registerConvertible(newRegistered);
     }
 
     public static ConvertibleInfo getConvertibleInfo(Class<?> clazz) {
@@ -158,6 +181,9 @@ public final class NodeRegistry {
         return CONVERTIBLE_CACHE.containsKey(clazz);
     }
 
+    public static Map<Class<?>, ConvertibleInfo> getAllConvertibles() {
+        return CONVERTIBLE_CACHE;
+    }
 
     /// POJO
 

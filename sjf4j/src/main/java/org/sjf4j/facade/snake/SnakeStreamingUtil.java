@@ -50,6 +50,7 @@ import java.util.Map;
  * perform constant folding, and optimize the parser loops specifically for the original API,
  * achieving lower per-call latency compared to the generic {@code StreamingUtil}.
  */
+@Deprecated // Old version
 public class SnakeStreamingUtil {
 
     /// Read

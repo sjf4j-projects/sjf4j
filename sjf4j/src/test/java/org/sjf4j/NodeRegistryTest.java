@@ -78,16 +78,17 @@ public class NodeRegistryTest {
         public Ops(LocalDate localDate) {
             this.localDate = localDate;
         }
+
         @Convert
         public String convert() {
             return localDate.toString();
         }
 
         @Unconvert
-        public static Ops unconvert(Object raw) {
+        public static Ops unconvert(String raw) {
             NodeType nt = NodeType.of(raw);
             if (nt == NodeType.VALUE_STRING) {
-                return new Ops(LocalDate.parse((String) raw));
+                return new Ops(LocalDate.parse(raw));
             }
             throw new RuntimeException("Wrong raw type");
         }
@@ -104,6 +105,45 @@ public class NodeRegistryTest {
         Ops ops = new Ops(now);
         Object raw = ci.convert(ops);
         log.info("raw={}", raw);
+        assertEquals(now.toString(), raw);
+
+        Ops ops2 = (Ops) ci.unconvert(raw);
+        log.info("ops2={}", ops2);
+        assertEquals(ops.localDate, ops2.localDate);
+    }
+
+
+    @Test
+    public void testConvertible2() {
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<Ops, String>() {
+            @Override
+            public String convert(Ops node) {
+                return node.convert();
+            }
+
+            @Override
+            public Ops unconvert(String raw) {
+                return Ops.unconvert(raw);
+            }
+
+            @Override
+            public Class<Ops> getNodeClass() {
+                return Ops.class;
+            }
+
+            @Override
+            public Class<String> getRawClass() {
+                return String.class;
+            }
+        });
+        log.info("ci={}", ci);
+        assertNotNull(ci);
+
+        LocalDate now = LocalDate.now();
+        Ops ops = new Ops(now);
+//        Object raw = ci.convert(ops);
+        String raw = (String) ci.convert(ops);
+        log.info("raw={} type={}", raw, raw.getClass());
         assertEquals(now.toString(), raw);
 
         Ops ops2 = (Ops) ci.unconvert(raw);

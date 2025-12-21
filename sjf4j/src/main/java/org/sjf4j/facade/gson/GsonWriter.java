@@ -14,16 +14,6 @@ public class GsonWriter implements FacadeWriter {
     }
 
     @Override
-    public void startDocument() throws IOException {
-        //Nothing
-    }
-
-    @Override
-    public void endDocument() throws IOException {
-        //Nothing
-    }
-
-    @Override
     public void startObject() throws IOException {
         writer.beginObject();
     }
@@ -49,17 +39,17 @@ public class GsonWriter implements FacadeWriter {
     }
 
     @Override
-    public void writeValue(String value) throws IOException {
+    public void writeString(String value) throws IOException {
         writer.value(value);
     }
 
     @Override
-    public void writeValue(Number value) throws IOException {
+    public void writeNumber(Number value) throws IOException {
         writer.value(value);
     }
 
     @Override
-    public void writeValue(Boolean value) throws IOException {
+    public void writeBoolean(Boolean value) throws IOException {
         writer.value(value);
     }
 

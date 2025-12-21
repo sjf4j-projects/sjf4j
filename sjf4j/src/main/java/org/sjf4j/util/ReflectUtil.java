@@ -5,6 +5,7 @@ import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.NodeRegistry;
+import org.sjf4j.NodeType;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.Copy;
 import org.sjf4j.annotation.convertible.NodeConvertible;
@@ -278,6 +279,14 @@ public class ReflectUtil {
 
     /// Convertible
 
+    /**
+     * A `@NodeConvertible` class must define a non-static `@Convert` method returning a supported node value,
+     * a static `@Unconvert` method accepting that value and returning the node type itself,
+     * and an optional non-static `@Copy` method returning the same node type.
+     *
+     * @param clazz     A node class annotated with @NodeConvertible
+     * @return          NodeRegistry.ConvertibleInfo
+     */
     public static NodeRegistry.ConvertibleInfo analyzeConvertible(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(NodeConvertible.class))
             throw new JsonException("Class " + clazz.getName() + " is not annotated with @NodeConvertible");
@@ -292,18 +301,30 @@ public class ReflectUtil {
 
         for (Method m : clazz.getDeclaredMethods()) {
             if (m.isAnnotationPresent(Convert.class)) {
+                if (convertHandle != null)
+                    throw new JsonException("Multiple @Convert methods found in " + clazz.getName());
+                if (Modifier.isStatic(m.getModifiers()))
+                    throw new JsonException("Cannot use @Convert on static methods");
                 try {
                     convertHandle = lookup.unreflect(m);
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
             } else if (m.isAnnotationPresent(Unconvert.class)) {
+                if (unconvertHandle != null)
+                    throw new JsonException("Multiple @Unconvert methods found in " + clazz.getName());
+                if (!Modifier.isStatic(m.getModifiers()))
+                    throw new JsonException("Must use @Unconvert on static methods");
                 try {
                     unconvertHandle = lookup.unreflect(m);
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
             } else if (m.isAnnotationPresent(Copy.class)) {
+                if (copyHandle != null)
+                    throw new JsonException("Multiple @Copy methods found in " + clazz.getName());
+                if (Modifier.isStatic(m.getModifiers()))
+                    throw new JsonException("Cannot use @Copy on static methods");
                 try {
                     copyHandle = lookup.unreflect(m);
                 } catch (IllegalAccessException e) {
@@ -311,15 +332,44 @@ public class ReflectUtil {
                 }
             }
         }
-        // TODO: Check valid of convert/unconvert/copy
 
         if (convertHandle == null)
             throw new JsonException("Missing @Convert method in @NodeConvertible class " + clazz.getName());
+        if (convertHandle.type().parameterCount() != 1) {
+            throw new JsonException("@Convert method must have no parameters, but found " +
+                    (convertHandle.type().parameterCount() - 1));
+        }
+        Class<?> rawClazz = convertHandle.type().returnType();
+        if (!NodeType.of(rawClazz).isRaw())
+            throw new JsonException("Invalid @Convert return type in @NodeConvertible class " +
+                    clazz.getName() + ": " + rawClazz.getName() +
+                    ". The return type must be a supported raw node value type (String, Number, Boolean, null, Map, or List).");
 
         if (unconvertHandle == null)
             throw new JsonException("Missing @Unconvert method in @NodeConvertible class " + clazz.getName());
+        if (unconvertHandle.type().parameterCount() != 1)
+            throw new JsonException("@Unconvert method must have exactly one parameter, but found " +
+                    unconvertHandle.type().parameterCount());
+        Class<?> rawClazz2 = unconvertHandle.type().parameterType(0);
+        Class<?> nodeClazz2 = unconvertHandle.type().returnType();
+        if (rawClazz2 != rawClazz)
+            throw new JsonException("@Unconvert method parameter type must match @Convert return type. " +
+                    "Expected: " + rawClazz.getName() + ", Found: " + rawClazz2.getName());
+        if (nodeClazz2 != clazz)
+            throw new JsonException("@Unconvert method return type must be " + clazz.getName() +
+                    ", but found " + nodeClazz2.getName());
 
-        return new NodeRegistry.ConvertibleInfo(clazz, null,
+        if (copyHandle != null) {
+            if (copyHandle.type().parameterCount() != 1)
+                throw new JsonException("@Copy method must have no parameters, but found " +
+                        (copyHandle.type().parameterCount() + 1));
+            Class<?> nodeClazz3 = copyHandle.type().returnType();
+            if (nodeClazz3 != clazz)
+                throw new JsonException("@Copy method return type must be " + clazz.getName() +
+                        ", but found " + nodeClazz3.getName());
+        }
+
+        return new NodeRegistry.ConvertibleInfo(clazz, rawClazz, null,
                 convertHandle, unconvertHandle, copyHandle);
     }
 

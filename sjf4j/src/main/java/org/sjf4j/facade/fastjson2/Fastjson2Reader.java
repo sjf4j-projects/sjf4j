@@ -63,16 +63,6 @@ public class Fastjson2Reader implements FacadeReader {
     }
 
     @Override
-    public void startDocument() throws IOException {
-        // Nothing
-    }
-
-    @Override
-    public void endDocument() throws IOException {
-        // Nothing
-    }
-
-    @Override
     public void startObject() throws IOException {
         if (!reader.nextIfObjectStart()) {
             throw new JsonException("Expected token 'START_OBJECT', but got " + reader.current());

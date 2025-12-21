@@ -13,14 +13,14 @@ public interface FacadeWriter {
      *
      * @throws IOException if an I/O error occurs
      */
-    void startDocument() throws IOException;
+    default void startDocument() throws IOException {}
 
     /**
      * Marks the end of a JSON document.
      *
      * @throws IOException if an I/O error occurs
      */
-    void endDocument() throws IOException;
+    default void endDocument() throws IOException {}
 
     /**
      * Writes the start of a JSON object '{'
@@ -64,7 +64,7 @@ public interface FacadeWriter {
      * @param value the string value to write
      * @throws IOException if an I/O error occurs
      */
-    void writeValue(String value) throws IOException;
+    void writeString(String value) throws IOException;
 
     /**
      * Writes a JSON number value.
@@ -72,7 +72,7 @@ public interface FacadeWriter {
      * @param value the number value to write
      * @throws IOException if an I/O error occurs
      */
-    void writeValue(Number value) throws IOException;
+    void writeNumber(Number value) throws IOException;
 
     /**
      * Writes a JSON boolean value.
@@ -80,7 +80,7 @@ public interface FacadeWriter {
      * @param value the boolean value to write
      * @throws IOException if an I/O error occurs
      */
-    void writeValue(Boolean value) throws IOException;
+    void writeBoolean(Boolean value) throws IOException;
 
     /**
      * Writes a JSON null value.

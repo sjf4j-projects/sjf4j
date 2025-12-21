@@ -16,16 +16,6 @@ public class JacksonWriter implements FacadeWriter {
     }
 
     @Override
-    public void startDocument() throws IOException {
-        // Nothing
-    }
-
-    @Override
-    public void endDocument() throws IOException {
-        // Nothing
-    }
-
-    @Override
     public void startObject() throws IOException {
         gen.writeStartObject();
     }
@@ -51,12 +41,12 @@ public class JacksonWriter implements FacadeWriter {
     }
 
     @Override
-    public void writeValue(String value) throws IOException {
+    public void writeString(String value) throws IOException {
         gen.writeString(value);
     }
 
     @Override
-    public void writeValue(Number value) throws IOException {
+    public void writeNumber(Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer) {
             gen.writeNumber(value.longValue());
         } else if (value instanceof Float || value instanceof Double) {
@@ -71,7 +61,7 @@ public class JacksonWriter implements FacadeWriter {
     }
 
     @Override
-    public void writeValue(Boolean value) throws IOException {
+    public void writeBoolean(Boolean value) throws IOException {
         gen.writeBoolean(value);
     }
 

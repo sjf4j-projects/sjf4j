@@ -77,16 +77,6 @@ public class SimpleJsonReader implements FacadeReader {
     }
 
     @Override
-    public void startDocument() throws IOException {
-
-    }
-
-    @Override
-    public void endDocument() throws IOException {
-
-    }
-
-    @Override
     public void startObject() throws IOException {
         bufferedToken = null;
         skipWhitespace();

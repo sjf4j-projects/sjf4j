@@ -166,4 +166,8 @@ public enum NodeType {
         return this == UNKNOWN;
     }
 
+    public boolean isRaw() {
+        return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_VOID ||
+                this == OBJECT_MAP || this == ARRAY_LIST;
+    }
 }

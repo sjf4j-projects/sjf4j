@@ -8,6 +8,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.util.TypeUtil;
 
@@ -21,23 +22,36 @@ import java.lang.reflect.Type;
 public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWriter> {
 
     private final ObjectMapper objectMapper;
+    private final JacksonModule.MySimpleModule module;
 
     public JacksonJsonFacade(ObjectMapper objectMapper) {
         if (objectMapper == null) throw new IllegalArgumentException("ObjectMapper must not be null");
         this.objectMapper = objectMapper;
 
-        JacksonModule.MySimpleModule module = null;
+        this.module = new JacksonModule.MySimpleModule();
         if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
-            module = new JacksonModule.MySimpleModule();
-            module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
+            this.module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
         }
         if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
-            if (module == null) module = new JacksonModule.MySimpleModule();
-            module.addSerializer(JsonObject.class, new JacksonModule.JsonObjectSerializer());
-            module.addSerializer(JsonArray.class, new JacksonModule.JsonArraySerializer());
+            this.module.addSerializer(JsonObject.class, new JacksonModule.JsonObjectSerializer());
+            this.module.addSerializer(JsonArray.class, new JacksonModule.JsonArraySerializer());
         }
-        if (module != null) this.objectMapper.registerModule(module);
+        registerConvertibles();
+        this.objectMapper.registerModule(this.module);
     }
+
+    private void registerConvertibles() {
+        for (NodeRegistry.ConvertibleInfo ci : NodeRegistry.getAllConvertibles().values()) {
+            registerConvertible(ci);
+        }
+    }
+
+    @Override
+    public void registerConvertible(NodeRegistry.ConvertibleInfo ci) {
+        this.module.addSerializer(ci.getNodeClass(), new JacksonModule.ConvertibleSerializer<>(ci));
+        this.module.addDeserializer(ci.getNodeClass(), new JacksonModule.ConvertibleDeserializer<>(ci));
+    }
+
 
     @Override
     public JacksonReader createReader(Reader input) throws IOException {
@@ -189,9 +203,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             case STREAMING_SPECIFIC: {
                 try {
                     JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
-                    JacksonStreamingUtil.startDocument(gen);
                     JacksonStreamingUtil.writeNode(gen, node);
-                    JacksonStreamingUtil.endDocument(gen);
                     gen.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
@@ -224,9 +236,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             case STREAMING_SPECIFIC: {
                 try {
                     JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
-                    JacksonStreamingUtil.startDocument(gen);
                     JacksonStreamingUtil.writeNode(gen, node);
-                    JacksonStreamingUtil.endDocument(gen);
                     gen.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +

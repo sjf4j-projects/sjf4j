@@ -109,11 +109,8 @@ public class Fastjson2FacadeTest {
         }
 
         @Unconvert
-        public static Ops unconvert(Object raw) {
-            if (raw instanceof String) {
-                return new Ops(LocalDate.parse((String) raw));
-            }
-            return null;
+        public static Ops unconvert(String raw) {
+            return new Ops(LocalDate.parse(raw));
         }
     }
 
@@ -121,7 +118,8 @@ public class Fastjson2FacadeTest {
     @Test
     public void testConvertible1() {
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
-        NodeRegistry.registerConvertible(Ops.class);
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(Ops.class);
+        facade.registerConvertible(ci);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());

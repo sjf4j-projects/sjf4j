@@ -1,17 +1,17 @@
 package org.sjf4j;
 
 
-/**
- * Converter for a custom NodeConvertible type.
- * Provides projection to/from Node-Tree and underlying JSON representation.
- */
-public interface NodeConverter<T> {
+public interface NodeConverter<N, R> {
 
-    Object convert(T node);
+    R convert(N node);
 
-    T unconvert(Object raw);
+    N unconvert(R raw);
 
-    default T copy(T node) {
+    Class<N> getNodeClass();
+
+    Class<R> getRawClass();
+
+    default N copy(N node) {
         return node;
     }
 

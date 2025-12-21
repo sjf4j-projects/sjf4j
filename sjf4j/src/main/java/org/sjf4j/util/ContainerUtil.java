@@ -102,6 +102,11 @@ public class ContainerUtil {
 
     @SuppressWarnings("unchecked")
     public static <T> T deepCopy(T container) {
+        if (container instanceof Map) {
+            return (T) JsonConfig.global().getObjectFacade().readNode(container, Map.class);
+        } else if (container instanceof List) {
+            return (T) JsonConfig.global().getObjectFacade().readNode(container, List.class);
+        }
         return (T) JsonConfig.global().getObjectFacade().readNode(container, container.getClass());
     }
 

@@ -19,38 +19,40 @@ import java.util.Map;
 public class GsonModule {
 
     public static class MyTypeAdapterFactory implements TypeAdapterFactory {
-
         @SuppressWarnings("unchecked")
         @Override
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-            Class<?> raw = type.getRawType();
-            if (JsonObject.class.isAssignableFrom(raw)) {
-                return new JsonObjectTypeAdapter<>(gson, type);
+            Class<?> rawClazz = type.getRawType();
+            if (JsonObject.class.isAssignableFrom(rawClazz)) {
+                return (TypeAdapter<T>) new JsonObjectAdapter(gson, rawClazz);
             }
-            if (JsonArray.class.isAssignableFrom(raw)) {
-                return new JsonArrayTypeAdapter<>(gson, type);
+            if (JsonArray.class.isAssignableFrom(rawClazz)) {
+                return (TypeAdapter<T>) new JsonArrayAdapter(gson, rawClazz);
+            }
+
+            NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+            if (ci != null) {
+                return new ConvertibleAdapter<>(gson, rawClazz, ci);
             }
             return null;
         }
     }
 
-    public static class JsonObjectTypeAdapter<T> extends TypeAdapter<T> {
+    public static class JsonObjectAdapter extends TypeAdapter<JsonObject> {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
 
-        public JsonObjectTypeAdapter(Gson gson, TypeToken<T> type) {
+        public JsonObjectAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
-            Class<?> clazz = type.getRawType();
             if (clazz == JsonObject.class) {
                 this.pi = null;
             } else {
-                this.pi = NodeRegistry.registerPojoOrElseThrow(type.getRawType());
+                this.pi = NodeRegistry.registerPojoOrElseThrow(clazz);
             }
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public T read(JsonReader in) throws IOException {
+        public JsonObject read(JsonReader in) throws IOException {
             JsonObject jo = pi == null ? new JsonObject() : (JsonObject) pi.newInstance();
             in.beginObject();
             while (in.hasNext()) {
@@ -67,13 +69,12 @@ public class GsonModule {
                 }
             }
             in.endObject();
-            return (T) jo;
+            return jo;
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public void write(JsonWriter out, T node) throws IOException {
-            JsonObject jo = (JsonObject) node;
+        public void write(JsonWriter out, JsonObject jo) throws IOException {
             out.beginObject();
             for (Map.Entry<String, Object> entry : jo.entrySet()) {
                 out.name(entry.getKey());
@@ -86,16 +87,15 @@ public class GsonModule {
     }
 
 
-    public static class JsonArrayTypeAdapter<T> extends TypeAdapter<T> {
+    public static class JsonArrayAdapter extends TypeAdapter<JsonArray> {
         private final Gson gson;
 
-        public JsonArrayTypeAdapter(Gson gson, TypeToken<T> type) {
+        public JsonArrayAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public T read(JsonReader in) throws IOException {
+        public JsonArray read(JsonReader in) throws IOException {
             JsonArray ja = new JsonArray();
             in.beginArray();
             TypeAdapter<?> adapter = gson.getAdapter(Object.class);
@@ -104,12 +104,11 @@ public class GsonModule {
                 ja.add(value);
             }
             in.endArray();
-            return (T) ja;
+            return ja;
         }
 
         @Override
-        public void write(JsonWriter out, T node) throws IOException {
-            JsonArray ja = (JsonArray) node;
+        public void write(JsonWriter out, JsonArray ja) throws IOException {
             out.beginArray();
             TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
             for (Object v : ja) {
@@ -119,6 +118,34 @@ public class GsonModule {
         }
     }
 
+
+    public static class ConvertibleAdapter<T> extends TypeAdapter<T> {
+        private final Gson gson;
+        private final NodeRegistry.ConvertibleInfo ci;
+
+        public ConvertibleAdapter(Gson gson, Class<?> clazz, NodeRegistry.ConvertibleInfo ci) {
+            this.gson = gson;
+            this.ci = ci;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public T read(JsonReader in) throws IOException {
+            TypeAdapter<?> adapter = gson.getAdapter(Object.class);
+            Object raw = adapter.read(in);
+            return (T) ci.unconvert(raw);
+        }
+
+        @Override
+        public void write(JsonWriter out, T node) throws IOException {
+            Object raw = ci.convert(node);
+            TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
+            adapter.write(out, raw);
+        }
+    }
+
+
+    /// To Number
 
     public static class MyToNumberStrategy implements ToNumberStrategy {
         @Override

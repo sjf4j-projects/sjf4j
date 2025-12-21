@@ -169,9 +169,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             case STREAMING_SPECIFIC: {
                 try {
                     JsonWriter writer = gson.newJsonWriter(output);
-                    GsonStreamingUtil.startDocument(writer);
                     GsonStreamingUtil.writeNode(writer, node);
-                    GsonStreamingUtil.endDocument(writer);
                     writer.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
@@ -200,9 +198,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             case STREAMING_SPECIFIC: {
                 try {
                     JsonWriter writer = gson.newJsonWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
-                    GsonStreamingUtil.startDocument(writer);
                     GsonStreamingUtil.writeNode(writer, node);
-                    GsonStreamingUtil.endDocument(writer);
                     writer.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +

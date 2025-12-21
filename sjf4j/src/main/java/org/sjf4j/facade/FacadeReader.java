@@ -41,9 +41,9 @@ public interface FacadeReader extends Closeable {
 
     Token peekToken() throws IOException;
 
-    void startDocument() throws IOException;
+    default void startDocument() throws IOException {}
 
-    void endDocument() throws IOException;
+    default void endDocument() throws IOException {}
 
     void startObject() throws IOException;
 

@@ -14,7 +14,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -62,8 +61,11 @@ public class StreamingUtil {
         reader.nextNull();
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) return null;
-        return ci.unconvert(null);
+        if (ci != null) {
+            return ci.unconvert(null);
+        }
+
+        return null;
     }
 
     public static Object readBoolean(FacadeReader reader, Type type) throws IOException {
@@ -73,10 +75,13 @@ public class StreamingUtil {
         }
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+        if (ci != null) {
+            Boolean b = reader.nextBoolean();
+            return ci.unconvert(b);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
                 + " cannot be deserialized from a Boolean value without a NodeConverter");
-        Boolean b = reader.nextBoolean();
-        return ci.unconvert(b);
     }
 
     public static Object readNumber(FacadeReader reader, Type type) throws IOException {
@@ -91,12 +96,16 @@ public class StreamingUtil {
         }
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+        if (ci != null) {
+            Number n = reader.nextNumber();
+            return ci.unconvert(n);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
                 + " cannot be deserialized from a Number value without a NodeConverter");
-        Number n = reader.nextNumber();
-        return ci.unconvert(n);
     }
 
+    @SuppressWarnings("unchecked")
     public static Object readString(FacadeReader reader, Type type) throws IOException {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
         if (rawClazz.isAssignableFrom(String.class)) {
@@ -108,10 +117,18 @@ public class StreamingUtil {
         }
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+        if (ci != null) {
+            String s = reader.nextString();
+            return ci.unconvert(s);
+        }
+
+        if (rawClazz.isEnum()) {
+            String s = reader.nextString();
+            return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
                 + " cannot be deserialized from a String value without a NodeConverter");
-        String s = reader.nextString();
-        return ci.unconvert(s);
     }
 
     /**
@@ -261,11 +278,13 @@ public class StreamingUtil {
         }
 
         if (node instanceof CharSequence || node instanceof Character) {
-            writer.writeValue(node.toString());
+            writer.writeString(node.toString());
+        } else if (node instanceof Enum) {
+            writer.writeString(((Enum<?>) node).name());
         } else if (node instanceof Number) {
-            writer.writeValue((Number) node);
+            writer.writeNumber((Number) node);
         } else if (node instanceof Boolean) {
-            writer.writeValue((Boolean) node);
+            writer.writeBoolean((Boolean) node);
         } else if (node instanceof Map) {
             writer.startObject();
             boolean veryStart = true;

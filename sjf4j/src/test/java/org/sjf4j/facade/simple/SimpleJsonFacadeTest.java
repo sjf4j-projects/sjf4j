@@ -8,7 +8,6 @@ import org.sjf4j.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.NodeConvertible;
 import org.sjf4j.annotation.convertible.Unconvert;
-import org.sjf4j.facade.jackson.JacksonFacadeTest;
 import org.sjf4j.util.TypeReference;
 
 import java.io.StringReader;
@@ -60,7 +59,7 @@ public class SimpleJsonFacadeTest {
         SimpleJsonFacade facade = new SimpleJsonFacade();
 
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
-        JacksonFacadeTest.Book jo1 = (JacksonFacadeTest.Book) facade.readNode(new StringReader(json1), JacksonFacadeTest.Book.class);
+        Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
         StringWriter output;
         output = new StringWriter();
@@ -83,11 +82,8 @@ public class SimpleJsonFacadeTest {
         }
 
         @Unconvert
-        public static Ops unconvert(Object raw) {
-            if (raw instanceof String) {
-                return new Ops(LocalDate.parse((String) raw));
-            }
-            return null;
+        public static Ops unconvert(String raw) {
+            return new Ops(LocalDate.parse(raw));
         }
     }
 

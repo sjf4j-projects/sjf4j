@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+ - Introduced `@Convertible` annotation and `Converter` interface to support a pluggable custom conversion mechanism
+ - Added native support for `enum` types
+ - Added support for `JsonPatch` (RFC 6902)
 
 ### Improved
- - Optimize `JsonPath` performance
-
+ - Optimized `JsonPath` evaluation performance
+ - Improved overall conversion and traversal efficiency
 
 ### Changed
 ### Fixed

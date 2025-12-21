@@ -68,8 +68,11 @@ public class Fastjson2StreamingUtil {
         reader.nextIfNull();
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) return  null;
-        return ci.unconvert(null);
+        if (ci != null) {
+            return ci.unconvert(null);
+        }
+
+        return  null;
     }
 
     public static Object readBoolean(JSONReader reader, Type type) throws IOException {
@@ -79,10 +82,13 @@ public class Fastjson2StreamingUtil {
         }
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+        if (ci != null) {
+            Boolean b = reader.readBoolValue();
+            return ci.unconvert(b);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
                 + " cannot be deserialized from a Boolean value without a NodeConverter");
-        Boolean b = reader.readBoolValue();
-        return ci.unconvert(b);
     }
 
     public static Object readNumber(JSONReader reader, Type type) throws IOException {
@@ -103,12 +109,16 @@ public class Fastjson2StreamingUtil {
         }
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+        if (ci != null) {
+            Number n = reader.readNumber();
+            return ci.unconvert(n);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
                 + " cannot be deserialized from a Number value without a NodeConverter");
-        Number n = reader.readNumber();
-        return ci.unconvert(n);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JSONReader reader, Type type) throws IOException {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
         if (rawClazz.isAssignableFrom(String.class)) {
@@ -120,10 +130,18 @@ public class Fastjson2StreamingUtil {
         }
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci == null) throw new JsonException("Type " + rawClazz.getName()
+        if (ci != null) {
+            String s = reader.readString();
+            return ci.unconvert(s);
+        }
+
+        if (rawClazz.isEnum()) {
+            String s = reader.readString();
+            return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
                 + " cannot be deserialized from a String value without a NodeConverter");
-        String s = reader.readString();
-        return ci.unconvert(s);
     }
 
 
@@ -329,11 +347,13 @@ public class Fastjson2StreamingUtil {
         }
 
         if (node instanceof CharSequence || node instanceof Character) {
-            writeValue(writer, node.toString());
+            writer.writeString(node.toString());
+        } else if (node instanceof Enum) {
+            writer.writeString(((Enum<?>) node).name());
         } else if (node instanceof Number) {
-            writeValue(writer, (Number) node);
+            writeNumber(writer, (Number) node);
         } else if (node instanceof Boolean) {
-            writeValue(writer, (Boolean) node);
+            writer.writeBool((Boolean) node);
         } else if (node instanceof JsonObject) {
             writer.startObject();
             ((JsonObject) node).forEach((k, v) -> {
@@ -427,11 +447,11 @@ public class Fastjson2StreamingUtil {
 //        writer.writeColon();
 //    }
 
-    public static void writeValue(JSONWriter writer, String value) throws IOException {
-        writer.writeString(value);
-    }
+//    public static void writeValue(JSONWriter writer, String value) throws IOException {
+//        writer.writeString(value);
+//    }
 
-    public static void writeValue(JSONWriter writer, Number value) throws IOException {
+    public static void writeNumber(JSONWriter writer, Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer) {
             writer.writeInt64(value.longValue());
         } else if (value instanceof Float || value instanceof Double) {
@@ -445,13 +465,13 @@ public class Fastjson2StreamingUtil {
         }
     }
 
-    public static void writeValue(JSONWriter writer, Boolean value) throws IOException {
-        writer.writeBool(value);
-    }
+//    public static void writeValue(JSONWriter writer, Boolean value) throws IOException {
+//        writer.writeBool(value);
+//    }
 
-    public static void writeNull(JSONWriter writer) throws IOException {
-        writer.writeNull();
-    }
+//    public static void writeNull(JSONWriter writer) throws IOException {
+//        writer.writeNull();
+//    }
 
 //    public static void writeComma(JSONWriter writer) {
 //        writer.writeComma();

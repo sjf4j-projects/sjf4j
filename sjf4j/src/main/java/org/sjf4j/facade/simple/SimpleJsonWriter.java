@@ -20,16 +20,6 @@ public class SimpleJsonWriter implements FacadeWriter {
     }
 
     @Override
-    public void startDocument() throws IOException {
-
-    }
-
-    @Override
-    public void endDocument() throws IOException {
-
-    }
-
-    @Override
     public void startObject() throws IOException {
         writer.write('{');
     }
@@ -52,24 +42,24 @@ public class SimpleJsonWriter implements FacadeWriter {
     @Override
     public void writeName(String name) throws IOException {
         if (name == null) throw new IOException("Name must not be null");
-        writeString(name);
+        nativeWrite(name);
         writer.write(':');
     }
 
     @Override
-    public void writeValue(String value) throws IOException {
+    public void writeString(String value) throws IOException {
         if (value == null) writeNull();
-        else writeString(value);
+        else nativeWrite(value);
     }
 
     @Override
-    public void writeValue(Number value) throws IOException {
+    public void writeNumber(Number value) throws IOException {
         if (value == null) writeNull();
         else writer.write(value.toString());
     }
 
     @Override
-    public void writeValue(Boolean value) throws IOException {
+    public void writeBoolean(Boolean value) throws IOException {
         if (value == null) writeNull();
         else writer.write(value ? "true" : "false");
     }
@@ -97,7 +87,7 @@ public class SimpleJsonWriter implements FacadeWriter {
 
     /// Private
 
-    private void writeString(String s) throws IOException {
+    private void nativeWrite(String s) throws IOException {
         writer.write('"');
         final int len = s.length();
         for (int i = 0; i < len; i++) {

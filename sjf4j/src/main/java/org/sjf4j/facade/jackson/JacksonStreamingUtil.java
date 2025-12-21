@@ -10,6 +10,7 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.StreamingUtil;
 import org.sjf4j.util.TypeUtil;
 
@@ -52,78 +53,150 @@ public class JacksonStreamingUtil {
             case START_ARRAY:
                 return readArray(parser, type);
             case STRING:
-                return nextString(parser);
-//                return ConverterRegistry.tryPure2Wrap(nextString(parser), type);
+                return readString(parser, type);
             case NUMBER:
-                return nextNumber(parser);
-//                return ConverterRegistry.tryPure2Wrap(nextNumber(parser), type);
+                return readNumber(parser, type);
             case BOOLEAN:
-                return nextBoolean(parser);
-//                return ConverterRegistry.tryPure2Wrap(nextBoolean(parser), type);
+                return readBoolean(parser, type);
             case NULL:
-                nextNull(parser);
-                return null;
-//                return ConverterRegistry.tryPure2Wrap(null, type);
+                return readNull(parser, type);
             default:
                 throw new JsonException("Unexpected token '" + token + "'");
         }
+    }
+
+    public static Object readNull(JsonParser parser, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        parser.nextToken();
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci != null) {
+            return ci.unconvert(null);
+        }
+
+        return  null;
+    }
+
+    public static Object readBoolean(JsonParser parser, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
+            Boolean b = parser.getBooleanValue();
+            parser.nextToken();
+            return b;
+        }
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci != null) {
+            Boolean b = parser.getBooleanValue();
+            parser.nextToken();
+            return ci.unconvert(b);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
+                + " cannot be deserialized from a Boolean value without a NodeConverter");
+    }
+
+    public static Object readNumber(JsonParser parser, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (rawClazz.isAssignableFrom(Number.class)) {
+            Number n = parser.getNumberValue();
+            parser.nextToken();
+            // Double is more popular and common usage
+            if (n instanceof BigDecimal) {
+                double f = n.doubleValue();
+                if (Double.isFinite(f)) return f;
+            }
+            return n;
+        }
+        if (Number.class.isAssignableFrom(rawClazz) ||
+                (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
+            Number n = parser.getNumberValue();
+            parser.nextToken();
+            return NumberUtil.as(n, rawClazz);
+        }
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci != null) {
+            Number n = parser.getNumberValue();
+            parser.nextToken();
+            return ci.unconvert(n);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
+                + " cannot be deserialized from a Number value without a NodeConverter");
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object readString(JsonParser parser, Type type) throws IOException {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (rawClazz.isAssignableFrom(String.class)) {
+            String s = parser.getText();
+            parser.nextToken();
+            return s;
+        }
+        if (rawClazz == Character.class || rawClazz == char.class) {
+            String s = parser.getText();
+            parser.nextToken();
+            return s.charAt(0);
+        }
+
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci != null) {
+            String s = parser.getText();
+            parser.nextToken();
+            return ci.unconvert(s);
+        }
+
+        if (rawClazz.isEnum()) {
+            String s = parser.getText();
+            return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
+        }
+
+        throw new JsonException("Type " + rawClazz.getName()
+                + " cannot be deserialized from a String value without a NodeConverter");
     }
 
 
     public static Object readObject(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
-//        NodeConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
 
-//        if (converter != null ) {
-//            if (converter.getPureType() == JsonObject.class) {
-//                JsonObject jo = new JsonObject();
-//                startObject(parser);
-//                while (hasNext(parser)) {
-//                    String key = nextName(parser);
-//                    Object value = readNode(parser, Object.class);
-//                    jo.put(key, value);
-//                }
-//                endObject(parser);
-//                return ((NodeConverter<Object, Object>) converter).pure2Wrap(jo);
-//            } else {
-//                throw new JsonException("Converter expects object '" + converter.getWrapType() +
-//                        "' and node '" + converter.getPureType() + "', but got node 'JsonObject'");
-//            }
-//        }
-
-        if (rawClazz == null || rawClazz.isAssignableFrom(JsonObject.class)) {
-            JsonObject jo = new JsonObject();
-            startObject(parser);
-            while (hasNext(parser)) {
-                String key = nextName(parser);
-                Object value = readNode(parser, Object.class);
-                jo.put(key, value);
-            }
-            endObject(parser);
-            return jo;
-        }
-
-        if (rawClazz == Map.class) {
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = JsonConfig.global().mapSupplier.create();
-            startObject(parser);
-            while (hasNext(parser)) {
-                String key = nextName(parser);
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+                String key = parser.currentName();
+                parser.nextToken();
                 Object value = readNode(parser, valueType);
                 map.put(key, value);
             }
-            endObject(parser);
-            return map;
+            parser.nextToken();
+            return ci != null ? ci.unconvert(map) : map;
+        }
+
+        if (rawClazz.isAssignableFrom(JsonObject.class)) {
+            JsonObject jo = new JsonObject();
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+                String key = parser.currentName();
+                parser.nextToken();
+                Object value = readNode(parser, Object.class);
+                jo.put(key, value);
+            }
+            parser.nextToken();
+            return jo;
         }
 
         if (JsonObject.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
-            startObject(parser);
-            while (hasNext(parser)) {
-                String key = nextName(parser);
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+                String key = parser.currentName();
+                parser.nextToken();
                 NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
@@ -133,24 +206,25 @@ public class JacksonStreamingUtil {
                     jojo.put(key, vv);
                 }
             }
-            endObject(parser);
+            parser.nextToken();
             return jojo;
         }
 
-        if (NodeRegistry.isPojo(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null) {
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
-            startObject(parser);
-            while (hasNext(parser)) {
-                String key = nextName(parser);
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+                String key = parser.currentName();
+                parser.nextToken();
                 NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
                     fi.invokeSetter(pojo, vv);
                 }
             }
-            endObject(parser);
+            parser.nextToken();
             return pojo;
         }
 
@@ -162,55 +236,39 @@ public class JacksonStreamingUtil {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
-//        NodeConverter<?, ?> converter = ConverterRegistry.getConverter(rawClazz);
-//        if (converter != null ) {
-//            if (converter.getPureType() == JsonArray.class) {
-//                JsonArray ja = new JsonArray();
-//                startArray(parser);
-//                while (hasNext(parser)) {
-//                    Object value = readNode(parser, Object.class);
-//                    ja.add(value);
-//                }
-//                endArray(parser);
-//                return ((NodeConverter<Object, Object>) converter).pure2Wrap(ja);
-//            } else {
-//                throw new JsonException("Converter expects object '" + converter.getWrapType() +
-//                        "' and node '" + converter.getPureType() + "', but got node 'JsonArray'");
-//            }
-//        }
-
-        if (rawClazz == null || rawClazz.isAssignableFrom(JsonArray.class)) {
-            JsonArray ja = new JsonArray();
-            startArray(parser);
-            while (hasNext(parser)) {
-                Object value = readNode(parser, Object.class);
-                ja.add(value);
-            }
-            endArray(parser);
-            return ja;
-        }
-
-        if (rawClazz == List.class) {
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
-            startArray(parser);
-            while (hasNext(parser)) {
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
                 Object value = readNode(parser, valueType);
                 list.add(value);
             }
-            endArray(parser);
-            return list;
+            parser.nextToken();
+            return ci != null ? ci.unconvert(list) : list;
+        }
+
+        if (rawClazz.isAssignableFrom(JsonArray.class)) {
+            JsonArray ja = new JsonArray();
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+                Object value = readNode(parser, Object.class);
+                ja.add(value);
+            }
+            parser.nextToken();
+            return ja;
         }
 
         if (rawClazz.isArray()) {
             Class<?> valueClazz = rawClazz.getComponentType();
             List<Object> list = new ArrayList<>();
-            startArray(parser);
-            while (hasNext(parser)) {
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
                 Object value = readNode(parser, valueClazz);
                 list.add(value);
             }
-            endArray(parser);
+            parser.nextToken();
 
             Object array = Array.newInstance(valueClazz, list.size());
             for (int i = 0; i < list.size(); i++) {
@@ -255,62 +313,62 @@ public class JacksonStreamingUtil {
         }
     }
 
-    public static void startDocument(JsonParser parser) throws IOException {
-        // Nothing
-    }
+//    public static void startDocument(JsonParser parser) throws IOException {
+//        // Nothing
+//    }
+//
+//    public static void endDocument(JsonParser parser) throws IOException {
+//        // Nothing
+//    }
+//
+//    public static void startObject(JsonParser parser) throws IOException {
+//        parser.nextToken();
+//    }
+//
+//    public static void endObject(JsonParser parser) throws IOException {
+//        parser.nextToken();
+//    }
+//
+//    public static void startArray(JsonParser parser) throws IOException {
+//        parser.nextToken();
+//    }
+//
+//    public static void endArray(JsonParser parser) throws IOException {
+//        parser.nextToken();
+//    }
 
-    public static void endDocument(JsonParser parser) throws IOException {
-        // Nothing
-    }
+//    public static String nextName(JsonParser parser) throws IOException {
+//        String name = parser.currentName();
+//        parser.nextToken();
+//        return name;
+//    }
 
-    public static void startObject(JsonParser parser) throws IOException {
-        parser.nextToken();
-    }
+//    public static String nextString(JsonParser parser) throws IOException {
+//        String value = parser.getText();
+//        parser.nextToken();
+//        return value;
+//    }
+//
+//    public static Number nextNumber(JsonParser parser) throws IOException {
+//        Number value = parser.getNumberValue();
+//        parser.nextToken();
+//        return value;
+//    }
+//
+//    public static Boolean nextBoolean(JsonParser parser) throws IOException {
+//        Boolean value = parser.getBooleanValue();
+//        parser.nextToken();
+//        return value;
+//    }
+//
+//    public static void nextNull(JsonParser parser) throws IOException {
+//        parser.nextToken();
+//    }
 
-    public static void endObject(JsonParser parser) throws IOException {
-        parser.nextToken();
-    }
-
-    public static void startArray(JsonParser parser) throws IOException {
-        parser.nextToken();
-    }
-
-    public static void endArray(JsonParser parser) throws IOException {
-        parser.nextToken();
-    }
-
-    public static String nextName(JsonParser parser) throws IOException {
-        String name = parser.currentName();
-        parser.nextToken();
-        return name;
-    }
-
-    public static String nextString(JsonParser parser) throws IOException {
-        String value = parser.getText();
-        parser.nextToken();
-        return value;
-    }
-
-    public static Number nextNumber(JsonParser parser) throws IOException {
-        Number value = parser.getNumberValue();
-        parser.nextToken();
-        return value;
-    }
-
-    public static Boolean nextBoolean(JsonParser parser) throws IOException {
-        Boolean value = parser.getBooleanValue();
-        parser.nextToken();
-        return value;
-    }
-
-    public static void nextNull(JsonParser parser) throws IOException {
-        parser.nextToken();
-    }
-
-    public static boolean hasNext(JsonParser parser) throws IOException {
-        int tid = parser.currentTokenId();
-        return tid != JsonTokenId.ID_END_OBJECT && tid != JsonTokenId.ID_END_ARRAY;
-    }
+//    public static boolean hasNext(JsonParser parser) throws IOException {
+//        int tid = parser.currentTokenId();
+//        return tid != JsonTokenId.ID_END_OBJECT && tid != JsonTokenId.ID_END_ARRAY;
+//    }
 
 
 
@@ -318,62 +376,72 @@ public class JacksonStreamingUtil {
 
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
         if (gen == null) throw new IllegalArgumentException("Gen must not be null");
-//        node = ConverterRegistry.tryWrap2Pure(node);
         if (node == null) {
-            writeNull(gen);
-        } else if (node instanceof CharSequence || node instanceof Character) {
+            gen.writeNull();
+            return;
+        }
+
+        Class<?> rawClazz = node.getClass();
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        if (ci != null) {
+            Object raw = ci.convert(node);
+            writeNode(gen, raw);
+            return;
+        }
+
+        if (node instanceof CharSequence || node instanceof Character) {
             writeValue(gen, node.toString());
         } else if (node instanceof Number) {
             writeValue(gen, (Number) node);
         } else if (node instanceof Boolean) {
             writeValue(gen, (Boolean) node);
         } else if (node instanceof JsonObject) {
-            startObject(gen);
+            gen.writeStartObject();
             ((JsonObject) node).forEach((k, v) -> {
                 try {
-                    writeName(gen, k);
+                    gen.writeFieldName(k);
                     writeNode(gen, v);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             });
-            endObject(gen);
+            gen.writeEndObject();
         } else if (node instanceof Map) {
-            startObject(gen);
+            gen.writeStartObject();
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                writeName(gen, entry.getKey().toString());
+                gen.writeFieldName(entry.getKey().toString());
                 writeNode(gen, entry.getValue());
             }
-            endObject(gen);
+            gen.writeEndObject();
         } else if (node instanceof JsonArray) {
-            startArray(gen);
+            gen.writeStartArray();
             JsonArray ja = (JsonArray) node;
             for (Object v : ja) {
                 writeNode(gen, v);
             }
-            endArray(gen);
+            gen.writeEndArray();
         } else if (node instanceof List) {
-            startArray(gen);
+            gen.writeStartArray();
             List<?> list = (List<?>) node;
             for (Object v : list) {
                 writeNode(gen, v);
             }
-            endArray(gen);
+            gen.writeEndArray();
         } else if (node.getClass().isArray()) {
-            startArray(gen);
+            gen.writeStartArray();
             for (int i = 0; i < Array.getLength(node); i++) {
                 writeNode(gen, Array.get(node, i));
             }
-            endArray(gen);
+            gen.writeEndArray();
         } else if (NodeRegistry.isPojo(node.getClass())) {
-            startObject(gen);
+            gen.writeStartObject();
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
                     NodeRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
-                writeName(gen, entry.getKey());
+                gen.writeFieldName(entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(gen, vv);
             }
-            endObject(gen);
+            gen.writeEndObject();
         } else {
             throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() +
                     "', expected one of [JsonObject, JsonArray, String, Number, Boolean] or a type registered in " +
@@ -383,33 +451,33 @@ public class JacksonStreamingUtil {
 
     /// Writer
 
-    public static void startDocument(JsonGenerator gen) throws IOException {
-        // Nothing
-    }
-
-    public static void endDocument(JsonGenerator gen) throws IOException {
-        // Nothing
-    }
-
-    public static void startObject(JsonGenerator gen) throws IOException {
-        gen.writeStartObject();
-    }
-
-    public static void endObject(JsonGenerator gen) throws IOException {
-        gen.writeEndObject();
-    }
-
-    public static void startArray(JsonGenerator gen) throws IOException {
-        gen.writeStartArray();
-    }
-
-    public static void endArray(JsonGenerator gen) throws IOException {
-        gen.writeEndArray();
-    }
-
-    public static void writeName(JsonGenerator gen, String name) throws IOException {
-        gen.writeFieldName(name);
-    }
+//    public static void startDocument(JsonGenerator gen) throws IOException {
+//        // Nothing
+//    }
+//
+//    public static void endDocument(JsonGenerator gen) throws IOException {
+//        // Nothing
+//    }
+//
+//    public static void startObject(JsonGenerator gen) throws IOException {
+//        gen.writeStartObject();
+//    }
+//
+//    public static void endObject(JsonGenerator gen) throws IOException {
+//        gen.writeEndObject();
+//    }
+//
+//    public static void startArray(JsonGenerator gen) throws IOException {
+//        gen.writeStartArray();
+//    }
+//
+//    public static void endArray(JsonGenerator gen) throws IOException {
+//        gen.writeEndArray();
+//    }
+//
+//    public static void writeName(JsonGenerator gen, String name) throws IOException {
+//        gen.writeFieldName(name);
+//    }
 
     public static void writeValue(JsonGenerator gen, String value) throws IOException {
         gen.writeString(value);
@@ -433,8 +501,8 @@ public class JacksonStreamingUtil {
         gen.writeBoolean(value);
     }
 
-    public static void writeNull(JsonGenerator gen) throws IOException {
-        gen.writeNull();
-    }
+//    public static void writeNull(JsonGenerator gen) throws IOException {
+//        gen.writeNull();
+//    }
 
 }

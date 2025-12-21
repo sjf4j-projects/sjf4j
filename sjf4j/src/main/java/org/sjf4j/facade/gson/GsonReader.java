@@ -67,16 +67,6 @@ public class GsonReader implements FacadeReader {
     }
 
     @Override
-    public void startDocument() {
-        // Nothing
-    }
-
-    @Override
-    public void endDocument() {
-        // Nothing
-    }
-
-    @Override
     public void startObject() throws IOException {
         reader.beginObject();
     }

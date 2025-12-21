@@ -67,19 +67,19 @@ public class SnakeWriter implements FacadeWriter {
     }
 
     @Override
-    public void writeValue(String value) throws IOException {
+    public void writeString(String value) throws IOException {
         emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                 value, null, null, DumperOptions.ScalarStyle.PLAIN));
     }
 
     @Override
-    public void writeValue(Number value) throws IOException {
+    public void writeNumber(Number value) throws IOException {
         emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                 value.toString(), null, null, DumperOptions.ScalarStyle.PLAIN));
     }
 
     @Override
-    public void writeValue(Boolean value) throws IOException {
+    public void writeBoolean(Boolean value) throws IOException {
         emitter.emit(new ScalarEvent(null, null, new ImplicitTuple(true, false),
                 value.toString(), null, null, DumperOptions.ScalarStyle.PLAIN));
     }

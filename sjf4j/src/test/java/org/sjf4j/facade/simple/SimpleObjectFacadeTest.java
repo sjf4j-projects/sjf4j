@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("unchecked")
 @Slf4j
 public class SimpleObjectFacadeTest {
 
@@ -60,12 +61,12 @@ public class SimpleObjectFacadeTest {
         lily.setRoles(Collections.singletonMap("kk", new Role("Mom", 90.0f)));
 
         // object2Value
-        Object value = objectFacade.readNode(lily, null);
+        Object value = objectFacade.readNode(lily, JsonObject.class);
         log.info("value type={}, value={}", value.getClass(), value);
         assertEquals(JsonObject.class, value.getClass());
         assertEquals(25, ((JsonObject) value).getInteger("age"));
         assertEquals("Baby",
-                ((JsonObject) value).getJsonArray("friends").getJsonObject(0).getString("name"));
+                ((JsonObject) value).asJsonArray("friends").asJsonObject(0).getString("name"));
         assertEquals(90f, ((JsonObject) value).getFloatByPath("$.roles.kk.percentage"));
 
         // value2Object
@@ -140,8 +141,8 @@ public class SimpleObjectFacadeTest {
         assertEquals("New York", p.address.city);
         assertEquals("5th Ave", p.address.street);
 
-        JsonObject back = (JsonObject) objectFacade.readNode(p, null);
-        assertEquals("Bob", back.getString("name"));
+        Map<String, Object> back = (Map<String, Object>) objectFacade.readNode(p, null);
+        assertEquals("Bob", back.get("name"));
     }
 
     // ========== List 和 数组 ==========
@@ -163,7 +164,7 @@ public class SimpleObjectFacadeTest {
         assertEquals(Arrays.asList("Tom", "Jerry"), t.members);
         assertArrayEquals(new int[]{10, 20, 30}, t.scores);
 
-        JsonObject back = (JsonObject) objectFacade.readNode(t, Object.class);
+        Map<String, Object> back = (Map<String, Object>) objectFacade.readNode(t, Object.class);
         assertEquals("Rangers", back.get("teamName"));
     }
 
@@ -195,7 +196,7 @@ public class SimpleObjectFacadeTest {
         Assertions.assertNotNull(back);
         Object students = back.get("students");
         log.info("students type={}, json={}", students.getClass(), students);
-        assertTrue(students instanceof JsonArray);
+        assertTrue(students instanceof List);
     }
 
     // ========== Map ==========
@@ -224,7 +225,7 @@ public class SimpleObjectFacadeTest {
         assertEquals(1, holder.map.get("a"));
 //        assertEquals("Alice", holder.nested.get("s1").name);
 
-        JsonObject back = (JsonObject) objectFacade.readNode(holder, Object.class);
+        JsonObject back = (JsonObject) objectFacade.readNode(holder, JsonObject.class);
         assertEquals(2, (back.asJsonObject("map")).size());
     }
 
@@ -235,6 +236,7 @@ public class SimpleObjectFacadeTest {
         public Status status;
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testEnum() {
         JsonObject jo = new JsonObject();
@@ -243,8 +245,8 @@ public class SimpleObjectFacadeTest {
         Msg msg = (Msg) objectFacade.readNode(jo, Msg.class);
         assertEquals(Status.OK, msg.status);
 
-        JsonObject back = (JsonObject) objectFacade.readNode(msg, null);
-        assertEquals("OK", back.getString("status"));
+        Map<String, Object> back = (Map<String, Object>) objectFacade.readNode(msg, null);
+        assertEquals("OK", back.get("status"));
     }
 
     // ========== Boolean Getter ==========
