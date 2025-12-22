@@ -15,7 +15,7 @@ public abstract class PathToken {
     public boolean matchIndex(int idx) { return false; }
 
 
-    /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function
+    /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function, Filter, APPEND
 
     /**
      * Represents the root token ($) in a JSON path expression.
@@ -187,6 +187,14 @@ public abstract class PathToken {
             this.filterExpr = filterExpr;
         }
         public String toString() { return "[?" + filterExpr + "]"; }
+    }
+
+    public static final class Append extends PathToken {
+        private Append() {}
+        public static final Append INSTANCE = new Append();
+        @Override public String toString() {
+            return "-";
+        }
     }
 
     /// protected

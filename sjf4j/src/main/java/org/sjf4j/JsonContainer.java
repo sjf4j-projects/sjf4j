@@ -32,6 +32,16 @@ public abstract class JsonContainer {
      * Checks if a value exists at the specified JSON path.
      *
      * @param path the JSON path to check
+     * @return true if a value exists at the path, even it is null, false otherwise
+     */
+    public boolean containsByPath(String path) {
+        return JsonPath.compile(path).contains(this);
+    }
+
+    /**
+     * Checks if a value is null at the specified JSON path.
+     *
+     * @param path the JSON path to check
      * @return true if a non-null value exists at the path, false otherwise
      */
     public boolean hasNonNullByPath(String path) {
@@ -652,8 +662,8 @@ public abstract class JsonContainer {
      * @param path the JSON path to put the value at
      * @param value the value to put
      */
-    public void putByPath(String path, Object value) {
-        JsonPath.compile(path).put(this, value);
+    public void ensurePutByPath(String path, Object value) {
+        JsonPath.compile(path).ensurePut(this, value);
     }
 
     /**
@@ -663,8 +673,8 @@ public abstract class JsonContainer {
      * @param path the JSON path to put the value at
      * @param value the value to put (must be non-null)
      */
-    public void putNonNullByPath(String path, Object value) {
-        JsonPath.compile(path).putNonNull(this, value);
+    public void ensurePutNonNullByPath(String path, Object value) {
+        JsonPath.compile(path).ensurePutNonNull(this, value);
     }
 
     /**
@@ -674,15 +684,18 @@ public abstract class JsonContainer {
      * @param path the JSON path to put the value at
      * @param value the value to put
      */
-    public void putIfAbsentByPath(String path, Object value) {
-        JsonPath.compile(path).putIfAbsent(this, value);
+    public void ensurePutIfAbsentByPath(String path, Object value) {
+        JsonPath.compile(path).ensurePutIfAbsent(this, value);
     }
 
-    /**
-     * Removes the value at the specified JSON path.
-     *
-     * @param path the JSON path to remove the value from
-     */
+    public void addByPath(String path, Object value) {
+        JsonPath.compile(path).add(this, value);
+    }
+
+    public void replaceByPath(String path, Object value) {
+        JsonPath.compile(path).replace(this, value);
+    }
+
     public void removeByPath(String path) {
         JsonPath.compile(path).remove(this);
     }
@@ -717,8 +730,8 @@ public abstract class JsonContainer {
      *
      * @param visitor the function to apply to each node during traversal
      */
-    public void walk(BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
-        JsonWalker.walk(this, visitor);
+    public void walk(BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+        NodeWalker.walk(this, visitor);
     }
 
     /**
@@ -727,9 +740,9 @@ public abstract class JsonContainer {
      * @param target the target nodes to visit (objects, arrays, values, or all)
      * @param visitor the function to apply to each node during traversal
      */
-    public void walk(JsonWalker.Target target,
-                     BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
-        JsonWalker.walk(this, target, visitor);
+    public void walk(NodeWalker.Target target,
+                     BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+        NodeWalker.walk(this, target, visitor);
     }
 
     /**
@@ -739,9 +752,9 @@ public abstract class JsonContainer {
      * @param order the traversal order (depth-first or breadth-first)
      * @param visitor the function to apply to each node during traversal
      */
-    public void walk(JsonWalker.Target target, JsonWalker.Order order,
-                     BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
-        JsonWalker.walk(this, target, order, visitor);
+    public void walk(NodeWalker.Target target, NodeWalker.Order order,
+                     BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+        NodeWalker.walk(this, target, order, visitor);
     }
 
     /**
@@ -752,9 +765,9 @@ public abstract class JsonContainer {
      * @param maxDepth the maximum depth to traverse
      * @param visitor the function to apply to each node during traversal
      */
-    public void walk(JsonWalker.Target target, JsonWalker.Order order, int maxDepth,
-                     BiFunction<JsonPath, Object, JsonWalker.Control> visitor) {
-        JsonWalker.walk(this, target, order, maxDepth, visitor);
+    public void walk(NodeWalker.Target target, NodeWalker.Order order, int maxDepth,
+                     BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+        NodeWalker.walk(this, target, order, maxDepth, visitor);
     }
 
     /// Base

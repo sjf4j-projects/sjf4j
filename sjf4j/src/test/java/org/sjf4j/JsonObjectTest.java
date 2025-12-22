@@ -157,10 +157,10 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
 
         assert(jo1.hasNonNullByPath("$.friends.jack"));
-        jo1.putIfAbsentByPath("$.friends.jack", "bad");
+        jo1.ensurePutIfAbsentByPath("$.friends.jack", "bad");
         assertEquals(JsonObject.fromJson(json1), jo1);
 
-        jo1.putIfAbsentByPath("$.friends.mark", "bad");
+        jo1.ensurePutIfAbsentByPath("$.friends.mark", "bad");
         String json2 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]},\"mark\":\"bad\"},\"sex\":true}";
         assertEquals(JsonObject.fromJson(json2), jo1);
     }
@@ -257,21 +257,21 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"dodo\"],\"attr\":{\"aa\":\"bb\"}," +
                 "\"nested\":[{},{},{\"yes\":[{},{\"no\":5}]}]}");
         assertEquals("bb", jo1.getNodeByPath("$.attr.aa"));
-        jo1.putByPath("$.x.y.z", 555);
+        jo1.ensurePutByPath("$.x.y.z", 555);
         assertEquals(555, (Integer) jo1.getNodeByPath("$.x.y.z"));
 
         assertThrows(JsonException.class, () -> {
-            jo1.putByPath("$.duck.yes", "no");
+            jo1.ensurePutByPath("$.duck.yes", "no");
         });
 
-        jo1.putByPath("$.num", "6");
+        jo1.ensurePutByPath("$.num", "6");
         assertEquals("6", jo1.getString("num"));
         System.out.println(jo1);
 
         // array in path
         assertEquals("dodo", jo1.getStringByPath("$.duck[1]"));
 
-        jo1.putByPath("$.duck[1]", "xixi");
+        jo1.ensurePutByPath("$.duck[1]", "xixi");
         assertEquals("xixi", jo1.getStringByPath("$.duck[1]"));
         System.out.println(jo1.toJson());
 
@@ -286,7 +286,7 @@ class JsonObjectTest {
         assertNull(jo1.getIntegerByPath("$.ss\\.ss[0]"));
         assertEquals(1, jo1.getIntegerByPath("$['ss.ss'][0]"));
 
-        jo1.putByPath("$.query['idea.fqmn']", "::bad::good");
+        jo1.ensurePutByPath("$.query['idea.fqmn']", "::bad::good");
         assertEquals("::bad::good", jo1.getStringByPath("$.query['idea.fqmn']"));
         assertEquals("::bad::good", jo1.getJsonObject("query").getString("idea.fqmn"));
         System.out.println("jo1: " + jo1);
@@ -294,30 +294,30 @@ class JsonObjectTest {
 
     public void testByPath3() {
         JsonObject jo1 = new JsonObject();
-        assertThrows(JsonException.class, () -> jo1.putByPath("$.a.b[1].c", "444"));
+        assertThrows(JsonException.class, () -> jo1.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo2 = new JsonObject();
-        jo2.putByPath("$.a.b", new JsonArray());
-        assertThrows(JsonException.class, () -> jo2.putByPath("$.a.b[1].c", "444"));
+        jo2.ensurePutByPath("$.a.b", new JsonArray());
+        assertThrows(JsonException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
-        jo3.putByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
-        jo3.putByPath("$.a.b[1].c", "444");
+        jo3.ensurePutByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
+        jo3.ensurePutByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
         //FIXME: this is a bug!
     }
 
     public void testByPath4() {
         JsonObject jo1 = JsonObject.fromJson(JSON);
-        assertThrows(JsonException.class, () -> jo1.putByPath("$.a.b[1].c", "444"));
+        assertThrows(JsonException.class, () -> jo1.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo2 = new JsonObject();
-        jo2.putByPath("$.a.b", new JsonArray());
-        assertThrows(JsonException.class, () -> jo2.putByPath("$.a.b[1].c", "444"));
+        jo2.ensurePutByPath("$.a.b", new JsonArray());
+        assertThrows(JsonException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
-        jo3.putByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
-        jo3.putByPath("$.a.b[1].c", "444");
+        jo3.ensurePutByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
+        jo3.ensurePutByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
         //FIXME: this is a bug!
     }

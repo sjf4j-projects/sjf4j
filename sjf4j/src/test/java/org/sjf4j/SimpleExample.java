@@ -2,17 +2,13 @@ package org.sjf4j;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.sjf4j.JsonWalker.Target;
-import org.sjf4j.JsonWalker.Order;
-import org.sjf4j.JsonWalker.Control;
+import org.sjf4j.NodeWalker.Target;
+import org.sjf4j.NodeWalker.Order;
+import org.sjf4j.NodeWalker.Control;
 import org.sjf4j.util.TypeReference;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
 import java.util.stream.Collectors;
 
 public class SimpleExample {
@@ -91,10 +87,10 @@ public class SimpleExample {
         String role4 = jo.asByPath("$..role");
         // Supports descendant operator for deep traversal
 
-        jo.putByPath("/aa/bb", "cc");
+        jo.ensurePutByPath("/aa/bb", "cc");
         // Automatically creates intermediate nodes!! e.g., {"aa":{"bb":"cc"},..}
 
-        jo.putNonNullByPath("$.scores[3]", 100);
+        jo.ensurePutNonNullByPath("$.scores[3]", 100);
         // Supports array index insertion
 
         List<String> tags = jo.findAll("$.tags[*]", String.class);

@@ -1,11 +1,10 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonException;
-import org.sjf4j.JsonWalker;
+import org.sjf4j.NodeWalker;
 import org.sjf4j.NodeType;
 import org.sjf4j.util.IRegexpUtil;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,14 +13,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class FunctionRegistry {
 
-    public interface JsonFunction {
+    @FunctionalInterface
+    public interface PathFunction {
         Object apply(Object[] args);
     }
 
     public static class FunctionDescriptor {
         private final String name;
-        private final JsonFunction func;
-        public FunctionDescriptor(String name, JsonFunction func) {
+        private final PathFunction func;
+        public FunctionDescriptor(String name, PathFunction func) {
             if (name == null || name.isEmpty()) throw new JsonException("Name must not be empty");
             if (func == null) throw new JsonException("Func must not be null");
             this.name = name;
@@ -37,18 +37,18 @@ public class FunctionRegistry {
 
     /// Register
 
-    private static final Map<String, FunctionDescriptor> FUNCTIONS = new ConcurrentHashMap<>();
+    private static final Map<String, FunctionDescriptor> FUNCTION_CACHE = new ConcurrentHashMap<>();
 
     public static void register(FunctionDescriptor descriptor) {
-        FUNCTIONS.put(descriptor.getName(), descriptor);
+        FUNCTION_CACHE.put(descriptor.getName(), descriptor);
     }
 
     public static boolean exists(String name) {
-        return FUNCTIONS.containsKey(name);
+        return FUNCTION_CACHE.containsKey(name);
     }
 
     public static FunctionDescriptor get(String name) {
-        return FUNCTIONS.get(name);
+        return FUNCTION_CACHE.get(name);
     }
 
     public static Object invoke(String name, Object[] args) {
@@ -62,9 +62,10 @@ public class FunctionRegistry {
     }
 
     public static Set<String> getFunctionNames() {
-        return FUNCTIONS.keySet();
+        return FUNCTION_CACHE.keySet();
     }
 
+    // Pre-register build-in functions
     static {
         // length
         FunctionRegistry.register(new FunctionDescriptor("length", args -> {
@@ -78,11 +79,11 @@ public class FunctionRegistry {
                 case OBJECT_MAP:
                 case OBJECT_POJO:
                 case OBJECT_JOJO:
-                    return JsonWalker.sizeInObject(node);
+                    return NodeWalker.sizeInObject(node);
                 case ARRAY_ARRAY:
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_LIST:
-                    return JsonWalker.sizeInArray(node);
+                    return NodeWalker.sizeInArray(node);
                 default:
                     return null;
             }
@@ -97,7 +98,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_LIST:
-                    return JsonWalker.sizeInArray(node);
+                    return NodeWalker.sizeInArray(node);
                 default:
                     return null;
             }
@@ -145,7 +146,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    JsonWalker.visitArray(node, (i, n) -> {
+                    NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
                         }
@@ -164,7 +165,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    JsonWalker.visitArray(node, (i, n) -> {
+                    NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
                             if (min.get() == null || min.get() > d) min.set(d);
@@ -184,7 +185,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    JsonWalker.visitArray(node, (i, n) -> {
+                    NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
                             if (max.get() == null || max.get() < d) max.set(d);
@@ -205,7 +206,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    JsonWalker.visitArray(node, (i, n) -> {
+                    NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
                             cnt.getAndIncrement();
@@ -226,7 +227,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    JsonWalker.visitArray(node, (i, n) -> {
+                    NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
                             cnt.getAndIncrement();
@@ -240,7 +241,7 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    JsonWalker.visitArray(node, (i, n) -> {
+                    NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
                             qe.updateAndGet(v -> v + (d - avg) * (d - avg));
@@ -259,8 +260,8 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    if (JsonWalker.sizeInArray(node) > 0) {
-                        return JsonWalker.getInArray(node, 0);
+                    if (NodeWalker.sizeInArray(node) > 0) {
+                        return NodeWalker.getInArray(node, 0);
                     }
             }
             return null;
@@ -275,9 +276,9 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    int size = JsonWalker.sizeInArray(node);
+                    int size = NodeWalker.sizeInArray(node);
                     if (size > 0) {
-                        return JsonWalker.getInArray(node, size - 1);
+                        return NodeWalker.getInArray(node, size - 1);
                     }
             }
             return null;
@@ -292,17 +293,16 @@ public class FunctionRegistry {
                 case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
-                    int size = JsonWalker.sizeInArray(node);
+                    int size = NodeWalker.sizeInArray(node);
                     if (size > 0) {
                         int index = ((Number) args[1]).intValue();
                         index = index >= 0 ? index : size + index;
-                        if (index >= 0 && index < size) return JsonWalker.getInArray(node, index);
+                        if (index >= 0 && index < size) return NodeWalker.getInArray(node, index);
                     }
             }
             return null;
         }));
 
     }
-
 
 }

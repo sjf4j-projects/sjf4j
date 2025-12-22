@@ -28,7 +28,7 @@ public class WalkerBechmark {
     public void walk_1(Blackhole bh) {
         // Each benchmark pre-walks 100 times to amortize JMH harness overhead; only the walker implementation differs.
         for (int i = 0; i < 100; i++) {
-            JsonWalker.walk(JO, JsonWalker.Target.ANY, JsonWalker.Order.TOP_DOWN, 0,
+            NodeWalker.walk(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
                     (k, v) -> {
                 bh.consume(k);
                 return null;
@@ -40,7 +40,7 @@ public class WalkerBechmark {
     @Benchmark
     public void walk_2(Blackhole bh) {
         for (int i = 0; i < 100; i++) {
-            JsonWalker.walk2(JO, JsonWalker.Target.ANY, JsonWalker.Order.TOP_DOWN, 0,
+            NodeWalker.walk2(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
                     (k, v) -> bh.consume(k));
         }
     }

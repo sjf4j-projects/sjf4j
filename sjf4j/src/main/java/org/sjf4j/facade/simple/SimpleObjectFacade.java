@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.JsonWalker;
+import org.sjf4j.NodeWalker;
 import org.sjf4j.NodeRegistry;
 import org.sjf4j.facade.ObjectFacade;
 import org.sjf4j.util.NumberUtil;
@@ -130,7 +130,7 @@ public class SimpleObjectFacade implements ObjectFacade {
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = JsonConfig.global().mapSupplier.create();
-            JsonWalker.visitObject(container, (k, v) -> {
+            NodeWalker.visitObject(container, (k, v) -> {
                 Object vv = readNode(v, valueType);
                 map.put(k, vv);
             });
@@ -139,7 +139,7 @@ public class SimpleObjectFacade implements ObjectFacade {
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
-            JsonWalker.visitObject(container, (k, v) -> {
+            NodeWalker.visitObject(container, (k, v) -> {
                 Object vv = readNode(v, Object.class);
                 jo.put(k, vv);
             });
@@ -150,7 +150,7 @@ public class SimpleObjectFacade implements ObjectFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
-            JsonWalker.visitObject(container, (k, v) -> {
+            NodeWalker.visitObject(container, (k, v) -> {
                 NodeRegistry.FieldInfo fi = fields.get(k);
                 if (fi != null) {
                     Object vv = readNode(v, fi.getType());
@@ -167,7 +167,7 @@ public class SimpleObjectFacade implements ObjectFacade {
         if (pi != null) {
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
-            JsonWalker.visitObject(container, (k, v) -> {
+            NodeWalker.visitObject(container, (k, v) -> {
                 NodeRegistry.FieldInfo fi = fields.get(k);
                 if (fi != null) {
                     Object vv = readNode(v, fi.getType());
@@ -189,7 +189,7 @@ public class SimpleObjectFacade implements ObjectFacade {
         if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
-            JsonWalker.visitArray(container, (i, v) -> {
+            NodeWalker.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, valueType);
                 list.add(vv);
             });
@@ -198,7 +198,7 @@ public class SimpleObjectFacade implements ObjectFacade {
 
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
-            JsonWalker.visitArray(container, (i, v) -> {
+            NodeWalker.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, Object.class);
                 ja.add(vv);
             });
@@ -208,7 +208,7 @@ public class SimpleObjectFacade implements ObjectFacade {
         if (rawClazz.isArray()) {
             Class<?> valueClazz = rawClazz.getComponentType();
             List<Object> list = new ArrayList<>();
-            JsonWalker.visitArray(container, (i, v) -> {
+            NodeWalker.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, valueClazz);
                 list.add(vv);
             });

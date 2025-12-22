@@ -1584,14 +1584,14 @@ public class JsonObject extends JsonContainer {
      * Empty containers resulting from null removal are not automatically removed.
      */
     public void deepPruneNulls() {
-        JsonWalker.walk(this, JsonWalker.Target.CONTAINER, JsonWalker.Order.BOTTOM_UP,
+        NodeWalker.walk(this, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
                 (path, node) -> {
                     if (node instanceof JsonObject) {
                         ((JsonObject) node).removeIf(e -> e.getValue() == null);
                     } else if (node instanceof Map) {
                         ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
                     }
-                    return JsonWalker.Control.CONTINUE;
+                    return NodeWalker.Control.CONTINUE;
                 });
     }
 
@@ -1630,15 +1630,15 @@ public class JsonObject extends JsonContainer {
             return this;
         }
         public Builder putByPath(String path, Object value) {
-            jo.putByPath(path, value);
+            jo.ensurePutByPath(path, value);
             return this;
         }
         public Builder putNonNullByPath(String path, Object value) {
-            jo.putNonNullByPath(path, value);
+            jo.ensurePutNonNullByPath(path, value);
             return this;
         }
         public Builder putIfAbsentByPath(String path, Object value) {
-            jo.putIfAbsentByPath(path, value);
+            jo.ensurePutIfAbsentByPath(path, value);
             return this;
         }
         public JsonObject build() {

@@ -126,37 +126,22 @@ public enum NodeType {
     public boolean isNumber() {
         return this == VALUE_NUMBER;
     }
-//    public boolean isNumberOrAny() {
-//        return isNumber() || isAny();
-//    }
 
     public boolean isValue() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_VOID;
     }
-//    public boolean isValueOrAny() {
-//        return isValue() || isAny();
-//    }
 
     public boolean isObject() {
         return this == OBJECT_JSON_OBJECT || this == OBJECT_JOJO || this == OBJECT_MAP || this == OBJECT_POJO;
     }
-//    public boolean isObjectOrAny() {
-//        return isObject() || isAny();
-//    }
 
     public boolean isArray() {
         return this == ARRAY_JSON_ARRAY || this == ARRAY_LIST || this == ARRAY_ARRAY;
     }
-//    public boolean isArrayOrAny() {
-//        return isArray() || isAny();
-//    }
 
     public boolean isContainer() {
         return isObject() || isArray();
     }
-//    public boolean isContainerOrAny() {
-//        return isContainer() || isAny();
-//    }
 
     public boolean isPured() {
         return isValue() || this == OBJECT_JOJO || this == ARRAY_JSON_ARRAY;

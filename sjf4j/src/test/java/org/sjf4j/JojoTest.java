@@ -51,7 +51,7 @@ public class JojoTest {
         p1.put("age", 25);
         assertEquals(25, p1.getAge());
 
-        p1.putByPath("$.babies[0].name", "B");
+        p1.ensurePutByPath("$.babies[0].name", "B");
         assertEquals("B", p1.getBabies().get(0).getName());
 
         String json1 = p1.toJson();

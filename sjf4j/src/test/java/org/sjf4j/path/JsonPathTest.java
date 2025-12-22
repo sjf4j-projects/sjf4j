@@ -145,13 +145,13 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        JsonPath.compile("$.book[0].box[0].gg").put(jo1, "mm");
+        JsonPath.compile("$.book[0].box[0].gg").ensurePut(jo1, "mm");
         JsonObject container1 = JsonPath.compile("$.book[0].box[0]").findAsJsonObject(jo1);
         log.info("container1={} jo1={}", container1, jo1);
         assertEquals(JsonObject.class, container1.getClass());
         assertEquals(1, jo1.getJsonArrayByPath("$.book[0].box").size());
 
-        JsonPath.compile("$.book[2].tags['gg mm'][0]").put(jo1, "mm");
+        JsonPath.compile("$.book[2].tags['gg mm'][0]").ensurePut(jo1, "mm");
         JsonArray container2 = JsonPath.compile("$.book[2].tags['gg mm']").findAsJsonArray(jo1);
         log.info("container2={} jo1={}", container2, jo1);
         assertEquals(JsonArray.class, container2.getClass());
@@ -168,36 +168,36 @@ public class JsonPathTest {
         jo1.put("map", map);
 
         log.info("jo1={}", jo1);
-        assertEquals(2, new JsonPath("$.names[1]").findLong(jo1));
-        assertEquals("ll", new JsonPath("$.map.lis[0].kk").findString(jo1));
-        assertEquals(ArrayList.class, new JsonPath("$.map.lis").findNode(jo1).getClass());
+        assertEquals(2, JsonPath.compile("$.names[1]").findLong(jo1));
+        assertEquals("ll", JsonPath.compile("$.map.lis[0].kk").findString(jo1));
+        assertEquals(ArrayList.class, JsonPath.compile("$.map.lis").findNode(jo1).getClass());
     }
 
-    public void testPutAndRemove() {
+    public void testEnsurePutAndRemove() {
         JsonObject jo = JsonObject.fromJson("{\"a\":{\"b\":123},\"array\":[1,2,3]}");
         
         // 测试put
         JsonPath path1 = JsonPath.compile("$.a.c");
-        path1.put(jo, "newValue");
+        path1.ensurePut(jo, "newValue");
         assertEquals("newValue", jo.getStringByPath("$.a.c"));
         
         // 测试put数组索引
         JsonPath path2 = JsonPath.compile("$.array[1]");
-        path2.put(jo, 999);
+        path2.ensurePut(jo, 999);
         assertEquals(999, jo.getIntegerByPath("$.array[1]"));
         
         // 测试putNonNull
         JsonPath path3 = JsonPath.compile("$.a.d");
-        path3.putNonNull(jo, "value");
+        path3.ensurePutNonNull(jo, "value");
         assertEquals("value", jo.getStringByPath("$.a.d"));
-        path3.putNonNull(jo, null);
+        path3.ensurePutNonNull(jo, null);
         assertEquals("value", jo.getStringByPath("$.a.d")); // 不应该被覆盖
         
         // 测试putIfAbsent
         JsonPath path4 = JsonPath.compile("$.a.e");
-        path4.putIfAbsent(jo, "first");
+        path4.ensurePutIfAbsent(jo, "first");
         assertEquals("first", jo.getStringByPath("$.a.e"));
-        path4.putIfAbsent(jo, "second");
+        path4.ensurePutIfAbsent(jo, "second");
         assertEquals("first", jo.getStringByPath("$.a.e")); // 不应该被覆盖
         
         // 测试remove
@@ -334,19 +334,19 @@ public class JsonPathTest {
         JsonObject jo1 = Sjf4j.fromJson(JSON_DATA, JsonObject.class);
         log.info("jo1={}", jo1);
 
-        JsonPath.compile("$.babies[0].age").put(jo1, 33);
+        JsonPath.compile("$.babies[0].age").ensurePut(jo1, 33);
         log.info("jo1={}", jo1);
         assertEquals(33, jo1.asJsonArray("babies").asJsonObject(0).getInteger("age"));
 
-        JsonPath.compile("$.babies[1].name").put(jo1, "Grace");
+        JsonPath.compile("$.babies[1].name").ensurePut(jo1, "Grace");
         log.info("jo1={}", jo1);
         assertEquals("Grace", jo1.asJsonArray("babies").asJsonObject(1).getString("name"));
 
-        JsonPath.compile("$.babies[3].name").put(jo1, "Zack");
+        JsonPath.compile("$.babies[3].name").ensurePut(jo1, "Zack");
         log.info("jo1={}", jo1);
         assertEquals("Zack", jo1.asJsonArray("babies").asJsonObject(3).getString("name"));
 
-        assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").put(jo1, "Error"));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").ensurePut(jo1, "Error"));
     }
 
     @Test
@@ -354,19 +354,19 @@ public class JsonPathTest {
         Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
-        JsonPath.compile("$.babies[0].age").put(p1, 33);
+        JsonPath.compile("$.babies[0].age").ensurePut(p1, 33);
         log.info("p1={}", p1);
         assertEquals(33, p1.babies.get(0).age);
 
-        JsonPath.compile("$.babies[1].name").put(p1, "Grace");
+        JsonPath.compile("$.babies[1].name").ensurePut(p1, "Grace");
         log.info("p1={}", p1);
         assertEquals("Grace", p1.babies.get(1).name);
 
-        JsonPath.compile("$.babies[3].name").put(p1, "Zack");
+        JsonPath.compile("$.babies[3].name").ensurePut(p1, "Zack");
         log.info("p1={}", p1);
         assertEquals("Zack", p1.babies.get(3).name);
 
-        assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").put(p1, "Error"));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").ensurePut(p1, "Error"));
     }
 
     @Test

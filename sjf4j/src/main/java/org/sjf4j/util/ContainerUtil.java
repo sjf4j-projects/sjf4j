@@ -3,7 +3,7 @@ package org.sjf4j.util;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonConfig;
 import org.sjf4j.JsonObject;
-import org.sjf4j.JsonWalker;
+import org.sjf4j.NodeWalker;
 import org.sjf4j.NodeType;
 import org.sjf4j.NodeRegistry;
 
@@ -34,18 +34,18 @@ public class ContainerUtil {
                     source.getClass() != target.getClass()) {
                 return false;
             }
-            if (JsonWalker.sizeInObject(source) != JsonWalker.sizeInObject(target)) return false;
-            for (Map.Entry<String, Object> entry : JsonWalker.entrySetInObject(source)) {
+            if (NodeWalker.sizeInObject(source) != NodeWalker.sizeInObject(target)) return false;
+            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(source)) {
                 Object subSrouce = entry.getValue();
-                Object subTarget = JsonWalker.getInObject(target, entry.getKey());
+                Object subTarget = NodeWalker.getInObject(target, entry.getKey());
                 if (!equals(subSrouce, subTarget)) return false;
             }
             return true;
         } else if (ntSource.isArray() && ntTarget.isArray()) {
-            if (JsonWalker.sizeInArray(source) != JsonWalker.sizeInArray(target)) return false;
-            int size = JsonWalker.sizeInArray(source);
+            if (NodeWalker.sizeInArray(source) != NodeWalker.sizeInArray(target)) return false;
+            int size = NodeWalker.sizeInArray(source);
             for (int i = 0; i < size; i++) {
-                if (!equals(JsonWalker.getInArray(source, i), JsonWalker.getInArray(target, i))) return false;
+                if (!equals(NodeWalker.getInArray(source, i), NodeWalker.getInArray(target, i))) return false;
             }
             return true;
         } else if (ntSource.isUnknown() && ntTarget.isUnknown()) {
@@ -78,7 +78,7 @@ public class ContainerUtil {
             case OBJECT_POJO: {
                 NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
                 Object pojo = pi.newInstance();
-                JsonWalker.visitObject(container, (k, v) -> JsonWalker.putInObject(pojo, k, v));
+                NodeWalker.visitObject(container, (k, v) -> NodeWalker.putInObject(pojo, k, v));
                 return (T) pojo;
             }
             case ARRAY_JSON_ARRAY: {
@@ -115,8 +115,8 @@ public class ContainerUtil {
         NodeType ntSource = NodeType.of(source);
         NodeType ntTarget = NodeType.of(target);
         if (ntSource.isObject() && ntTarget.isObject()) {
-            JsonWalker.visitObject(target, (key, subTarget) -> {
-                Object subSource = JsonWalker.getInObject(source, key);
+            NodeWalker.visitObject(target, (key, subTarget) -> {
+                Object subSource = NodeWalker.getInObject(source, key);
                 NodeType ntSubSource = NodeType.of(subSource);
                 NodeType ntSubTarget = NodeType.of(subTarget);
                 if (ntSubTarget.isObject()) {
@@ -124,9 +124,9 @@ public class ContainerUtil {
                         merge(subSource, subTarget, preferTarget, needCopy);
                     } else if (preferTarget || subSource == null) {
                         if (needCopy) {
-                            JsonWalker.putInObject(source, key, deepCopy(subTarget));
+                            NodeWalker.putInObject(source, key, deepCopy(subTarget));
                         } else {
-                            JsonWalker.putInObject(source, key, subTarget);
+                            NodeWalker.putInObject(source, key, subTarget);
                         }
                     }
                 } else if (ntSubTarget.isArray()) {
@@ -134,18 +134,18 @@ public class ContainerUtil {
                         merge(subSource, subTarget, preferTarget, needCopy);
                     } else if (preferTarget || subSource == null) {
                         if (needCopy) {
-                            JsonWalker.putInObject(source, key, deepCopy(subTarget));
+                            NodeWalker.putInObject(source, key, deepCopy(subTarget));
                         } else {
-                            JsonWalker.putInObject(source, key, subTarget);
+                            NodeWalker.putInObject(source, key, subTarget);
                         }
                     }
                 } else if (preferTarget || subSource == null) {
-                    JsonWalker.putInObject(source, key, subTarget);
+                    NodeWalker.putInObject(source, key, subTarget);
                 }
             });
         } else if (ntSource.isArray() && ntTarget.isArray()) {
-            JsonWalker.visitArray(target, (i, subTarget) -> {
-                Object subSource = JsonWalker.getInArray(source, i);
+            NodeWalker.visitArray(target, (i, subTarget) -> {
+                Object subSource = NodeWalker.getInArray(source, i);
                 NodeType ntSubSource = NodeType.of(subSource);
                 NodeType ntSubTarget = NodeType.of(subTarget);
                 if (ntSubTarget.isObject()) {
@@ -153,9 +153,9 @@ public class ContainerUtil {
                         merge(subSource, subTarget, preferTarget, needCopy);
                     } else if (preferTarget || subSource == null) {
                         if (needCopy) {
-                            JsonWalker.setInArray(source, i, deepCopy(subTarget));
+                            NodeWalker.setInArray(source, i, deepCopy(subTarget));
                         } else {
-                            JsonWalker.setInArray(source, i, subTarget);
+                            NodeWalker.setInArray(source, i, subTarget);
                         }
                     }
                 } else if (ntSubTarget.isArray()) {
@@ -163,13 +163,13 @@ public class ContainerUtil {
                         merge(subSource, subTarget, preferTarget, needCopy);
                     } else if (preferTarget || subSource == null) {
                         if (needCopy) {
-                            JsonWalker.setInArray(source, i, deepCopy(subTarget));
+                            NodeWalker.setInArray(source, i, deepCopy(subTarget));
                         } else {
-                            JsonWalker.setInArray(source, i, subTarget);
+                            NodeWalker.setInArray(source, i, subTarget);
                         }
                     }
                 } else if (preferTarget || subSource == null) {
-                    JsonWalker.setInArray(source, i, subTarget);
+                    NodeWalker.setInArray(source, i, subTarget);
                 }
             });
         }

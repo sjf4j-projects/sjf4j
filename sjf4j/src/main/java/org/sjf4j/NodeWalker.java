@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-public class JsonWalker {
+public class NodeWalker {
 
     /// Walk
 
@@ -36,14 +36,14 @@ public class JsonWalker {
 
     public static void walk(Object container,
                             Target target,
-                            JsonWalker.Order order,
+                            NodeWalker.Order order,
                             BiFunction<JsonPath, Object, Control> visitor) {
         walk(container, target, order, 0, visitor);
     }
 
     public static void walk(Object container,
                             Target target,
-                            JsonWalker.Order order,
+                            NodeWalker.Order order,
                             int maxDepth,
                             BiFunction<JsonPath, Object, Control> visitor) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
@@ -54,7 +54,7 @@ public class JsonWalker {
     }
 
 
-    public static void walk2(Object container, Target target, JsonWalker.Order order, int maxDepth,
+    public static void walk2(Object container, Target target, NodeWalker.Order order, int maxDepth,
                              BiConsumer<JsonPath, Object> consumer) {
         _walk2(container, new JsonPath(), consumer, target, order, maxDepth);
     }
@@ -163,6 +163,24 @@ public class JsonWalker {
             return fi != null;
         } else {
             throw new JsonException("Invalid object container: " + container.getClass());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static boolean containsInArray(Object container, int idx) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (container instanceof JsonArray) {
+            return ((JsonArray) container).containsIndex(idx);
+        } else if (container instanceof List) {
+            List<Object> list = (List<Object>) container;
+            idx = idx < 0 ? list.size() + idx : idx;
+            return idx >= 0 && idx < list.size();
+        } else if (container.getClass().isArray()) {
+            int len = Array.getLength(container);
+            idx = idx < 0 ? len + idx : idx;
+            return idx >= 0 && idx < len;
+        } else {
+            throw new JsonException("Invalid array container: " + container.getClass());
         }
     }
 
@@ -351,7 +369,21 @@ public class JsonWalker {
         } else if (container instanceof List) {
             ((List<Object>) container).add(node);
         } else if (container.getClass().isArray()) {
-            throw new JsonException("Java arrays do not support append");
+            throw new JsonException("Java Array do not support append operation");
+        } else {
+            throw new JsonException("Invalid array container: " + container.getClass());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void addInArray(Object container, int idx, Object node) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (container instanceof JsonArray) {
+            ((JsonArray) container).add(idx, node);
+        } else if (container instanceof List) {
+            ((List<Object>) container).add(idx, node);
+        } else if (container.getClass().isArray()) {
+            throw new JsonException("Java Array do not support add operation");
         } else {
             throw new JsonException("Invalid array container: " + container.getClass());
         }
@@ -410,8 +442,9 @@ public class JsonWalker {
                 Control control = visitor.apply(path, container);
                 if (control == Control.STOP) return;
             }
-            JsonWalker.visitObject(container, (key, node) -> {
-                JsonPath newPath = path.copy().push(new PathToken.Name(key));
+            NodeWalker.visitObject(container, (key, node) -> {
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Name(key));
                 if (node != null) {
                     _walk(node, newPath, visitor, target, order, maxDepth);
                 }
@@ -425,8 +458,9 @@ public class JsonWalker {
                 Control control = visitor.apply(path, container);
                 if (control == Control.STOP) return;
             }
-            JsonWalker.visitArray(container, (idx, node) -> {
-                JsonPath newPath = path.copy().push(new PathToken.Index(idx));
+            NodeWalker.visitArray(container, (idx, node) -> {
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Index(idx));
                 if (node != null) {
                     _walk(node, newPath, visitor, target, order, maxDepth);
                 }
@@ -454,7 +488,8 @@ public class JsonWalker {
                 consumer.accept(path, container);
             }
             ((JsonObject) container).forEach((key, node) -> {
-                JsonPath newPath = path.copy().push(new PathToken.Name(key));
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Name(key));
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
                 }
@@ -467,7 +502,8 @@ public class JsonWalker {
                 consumer.accept(path, container);
             }
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
-                JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey().toString()));
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Name(entry.getKey().toString()));
                 Object node = entry.getValue();
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
@@ -482,7 +518,8 @@ public class JsonWalker {
             }
             JsonArray ja = (JsonArray) container;
             for (int i = 0; i < ja.size(); i++) {
-                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Index(i));
                 Object node = ja.getNode(i);
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
@@ -497,7 +534,8 @@ public class JsonWalker {
             }
             List<?> list = (List<?>) container;
             for (int i = 0; i < list.size(); i++) {
-                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Index(i));
                 Object node = list.get(i);
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
@@ -511,7 +549,8 @@ public class JsonWalker {
                 consumer.accept(path, container);
             }
             for (int i = 0; i < Array.getLength(container); i++) {
-                JsonPath newPath = path.copy().push(new PathToken.Index(i));
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Index(i));
                 Object node = Array.get(container, i);
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);
@@ -526,7 +565,8 @@ public class JsonWalker {
             }
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-                JsonPath newPath = path.copy().push(new PathToken.Name(entry.getKey()));
+                JsonPath newPath = path.copy();
+                newPath.append(new PathToken.Name(entry.getKey()));
                 Object node = entry.getValue().invokeGetter(container);
                 if (node != null) {
                     _walk2(node, newPath, consumer, target, order, maxDepth);

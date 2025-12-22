@@ -1,5 +1,6 @@
 package org.sjf4j.util;
 
+import org.sjf4j.JsonException;
 import org.sjf4j.path.PathToken;
 
 import java.util.ArrayList;
@@ -18,6 +19,8 @@ public class JsonPointerUtil {
             String name = seg.replace("~1", "/").replace("~0", "~");
             if (name.matches("\\d+")) {
                 tokens.add(new PathToken.Index(Integer.parseInt(name)));
+            } else if (name.equals("-")) {
+                tokens.add(PathToken.Append.INSTANCE);
             } else {
                 tokens.add(new PathToken.Name(name));
             }
@@ -29,22 +32,26 @@ public class JsonPointerUtil {
     public static String genExpr(List<PathToken> tokens) {
         if (tokens == null) throw new IllegalArgumentException("Tokens must not be null");
         StringBuilder sb = new StringBuilder();
-        for (PathToken token : tokens) {
+        for (int i = 0; i != tokens.size(); i++) {
+            PathToken token = tokens.get(i);
             if (token instanceof PathToken.Root) {
-                sb.append("/");
+                if (i != 0) throw new JsonException("Root token must be the first token in JSON Pointer");
             } else if (token instanceof PathToken.Index) {
-                sb.append(((PathToken.Index) token).index);
                 sb.append("/");
+                sb.append(((PathToken.Index) token).index);
             } else if (token instanceof PathToken.Name) {
+                sb.append("/");
                 String name = ((PathToken.Name) token).name
                         .replace("~", "~0")
                         .replace("/", "~1");
                 sb.append(name);
-                sb.append("/");
+            } else if (token instanceof PathToken.Append) {
+                sb.append("/-");
+                if (i != tokens.size() - 1)
+                    throw new JsonException("Append token '-' can only appear at the end of a JSON Patch path");
+            } else {
+                throw new JsonException("Unsupported PathToken type: " + token.getClass().getName());
             }
-        }
-        if (sb.length() > 1 && sb.charAt(sb.length() - 1) == '/') {
-            sb.deleteCharAt(sb.length() - 1);
         }
         return sb.toString();
     }

@@ -193,17 +193,17 @@ class JsonArrayTest {
         assertEquals(JsonArray.class, ja1.getNodeByPath("$").getClass());
         assertEquals((byte) 3, ja1.getByteByPath("$[1]"));
 
-        ja1.putIfAbsentByPath("$[1]", 9);
-        ja1.putByPath("$[2].a.b", "yes");
+        ja1.ensurePutIfAbsentByPath("$[1]", 9);
+        ja1.ensurePutByPath("$[2].a.b", "yes");
         log.info("ja1: {}", ja1);
         assertEquals("[2,3,{\"a\":{\"b\":\"yes\"}}]", ja1.toJson());
     }
 
     public void testByPath2() {
         JsonArray ja1 = JsonArray.fromJson("[2,3,{}]");
-        ja1.putByPath("$[2]", new JsonArray());
-        ja1.putByPath("$[2][0].a.b", "yes");
-        ja1.putNonNullByPath("$[2][1]", null);
+        ja1.ensurePutByPath("$[2]", new JsonArray());
+        ja1.ensurePutByPath("$[2][0].a.b", "yes");
+        ja1.ensurePutNonNullByPath("$[2][1]", null);
         log.info("ja1={}", ja1);
         assertEquals("[2,3,[{\"a\":{\"b\":\"yes\"}}]]", ja1.toJson());
     }
