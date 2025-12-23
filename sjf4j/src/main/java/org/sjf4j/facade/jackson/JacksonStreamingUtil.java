@@ -162,7 +162,7 @@ public class JacksonStreamingUtil {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
@@ -237,7 +237,7 @@ public class JacksonStreamingUtil {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             parser.nextToken();
@@ -251,6 +251,18 @@ public class JacksonStreamingUtil {
 
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+                Object value = readNode(parser, Object.class);
+                ja.add(value);
+            }
+            parser.nextToken();
+            return ja;
+        }
+
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray ja = (JsonArray) pi.newInstance();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
                 Object value = readNode(parser, Object.class);

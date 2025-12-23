@@ -190,7 +190,7 @@ public final class NodeRegistry {
     public static PojoInfo registerPojo(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
         return POJO_CACHE.computeIfAbsent(clazz, (k) -> {
-            PojoInfo pi = ReflectUtil.analyzePojo(k);
+            PojoInfo pi = ReflectUtil.analyzePojo(k, false);
             return pi != null ? Optional.of(pi) : Optional.empty();
         }).orElse(null);
     }
@@ -204,9 +204,11 @@ public final class NodeRegistry {
      * @throws JsonException if the class is not a valid POJO
      */
     public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
-        PojoInfo pi = registerPojo(clazz);
-        if (pi == null) throw new JsonException("Not a valid POJO");
-        return pi;
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        return POJO_CACHE.computeIfAbsent(clazz, (k) -> {
+            PojoInfo pi = ReflectUtil.analyzePojo(k, true);
+            return pi != null ? Optional.of(pi) : Optional.empty();
+        }).orElseThrow(() -> new JsonException("Failed to register class " + clazz.getName() + " as a valid POJO"));
     }
 
 

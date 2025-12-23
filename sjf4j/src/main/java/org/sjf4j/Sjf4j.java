@@ -330,42 +330,21 @@ public class Sjf4j {
 
     /// POJO
 
-    /**
-     * Converts a POJO to an object of the specified class.
-     *
-     * @param <T> The type of the object to convert to
-     * @param pojo The POJO to convert from
-     * @param clazz The class of the object to convert to
-     * @return The converted object
-     */
+
     @SuppressWarnings("unchecked")
-    public static <T> T fromPojo(Object pojo, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getObjectFacade().readNode(pojo, clazz);
+    public static <T> T fromNode(Object node, Class<T> clazz) {
+        return (T) Sjf4jConfig.global().getObjectFacade().readNode(node, clazz);
     }
 
-    /**
-     * Converts a POJO to an object of the specified type using TypeReference.
-     *
-     * @param <T> The type of the object to convert to
-     * @param pojo The POJO to convert from
-     * @param type The type reference of the object to convert to
-     * @return The converted object
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromPojo(Object pojo, TypeReference<T> type) {
-        if (pojo == null) throw new IllegalArgumentException("Pojo must not be null");
-        return (T) Sjf4jConfig.global().getObjectFacade().readNode(pojo, type.getType());
+    public static <T> T fromNode(Object node, TypeReference<T> type) {
+        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        return (T) Sjf4jConfig.global().getObjectFacade().readNode(node, type.getType());
     }
 
-    /**
-     * Converts a POJO to a JsonObject.
-     *
-     * @param pojo The POJO to convert from
-     * @return The converted JsonObject
-     */
-    public static JsonObject fromPojo(Object pojo) {
-        if (pojo == null) throw new IllegalArgumentException("Pojo must not be null");
-        return fromPojo(pojo, JsonObject.class);
+    public static JsonObject fromNode(Object node) {
+        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        return fromNode(node, JsonObject.class);
     }
 
     /// Properties

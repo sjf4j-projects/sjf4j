@@ -963,7 +963,7 @@ public class JsonPath {
 
     private Object _createContainer(PathToken pt, Class<?> clazz) {
         if (pt instanceof PathToken.Name) {
-            if (clazz.isAssignableFrom(Map.class)) {
+            if (clazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(clazz)) {
                 return Sjf4jConfig.global().mapSupplier.create();
             } else if (clazz.isAssignableFrom(JsonObject.class)) {
                 return new JsonObject();
@@ -975,10 +975,13 @@ public class JsonPath {
                         pt + "'. The type must be one of JsonObject/Map/POJO.");
             }
         } else if (pt instanceof PathToken.Index) {
-            if (clazz.isAssignableFrom(List.class)) {
+            if (clazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(clazz)) {
                 return Sjf4jConfig.global().listSupplier.create();
             } else if (clazz.isAssignableFrom(JsonArray.class)) {
                 return new JsonArray();
+            } else if (JsonArray.class.isAssignableFrom(clazz)) {
+                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
+                return pi.newInstance();
             } else if (clazz.isArray()) {
                 int idx = ((PathToken.Index) pt).index;
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1

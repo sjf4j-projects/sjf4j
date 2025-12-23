@@ -38,22 +38,19 @@ public class GsonModule {
         }
     }
 
-    public static class JsonObjectAdapter extends TypeAdapter<JsonObject> {
+    public static class JsonObjectAdapter<T extends JsonObject> extends TypeAdapter<T> {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
 
         public JsonObjectAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
-            if (clazz == JsonObject.class) {
-                this.pi = null;
-            } else {
-                this.pi = NodeRegistry.registerPojoOrElseThrow(clazz);
-            }
+            this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
         }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public JsonObject read(JsonReader in) throws IOException {
-            JsonObject jo = pi == null ? new JsonObject() : (JsonObject) pi.newInstance();
+        public T read(JsonReader in) throws IOException {
+            T jo = pi == null ? (T) new JsonObject() : (T) pi.newInstance();
             in.beginObject();
             while (in.hasNext()) {
                 String name = in.nextName();
@@ -87,16 +84,19 @@ public class GsonModule {
     }
 
 
-    public static class JsonArrayAdapter extends TypeAdapter<JsonArray> {
+    public static class JsonArrayAdapter<T extends JsonArray> extends TypeAdapter<T> {
         private final Gson gson;
+        private final NodeRegistry.PojoInfo pi;
 
         public JsonArrayAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
+            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
         }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public JsonArray read(JsonReader in) throws IOException {
-            JsonArray ja = new JsonArray();
+        public T read(JsonReader in) throws IOException {
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
             in.beginArray();
             TypeAdapter<?> adapter = gson.getAdapter(Object.class);
             while (in.hasNext()) {

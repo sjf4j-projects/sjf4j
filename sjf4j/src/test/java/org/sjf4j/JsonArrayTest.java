@@ -429,5 +429,17 @@ class JsonArrayTest {
         assertEquals("a", ja4.getString(0, "default"));
     }
 
+    public static class MyArray extends JsonArray {
+        private int a = 33;
+    }
+
+    @Test
+    public void testExtend1() {
+        String json1 = "[1,2,{\"a\":\"b\"}]";
+        MyArray my1 = Sjf4j.fromJson(json1, MyArray.class);
+        log.info("my1={}", my1);
+        String json2 = my1.toJson();
+        assertEquals(json1, json2);
+    }
 
 }

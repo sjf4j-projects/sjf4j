@@ -262,12 +262,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return Sjf4j.fromJson(input, JsonArray.class);
     }
 
-    public static JsonArray fromJson(Reader input) {
-        return Sjf4j.fromJson(input, JsonArray.class);
-    }
-
-    public void toJson(Writer output) {
-        Sjf4j.toJson(output, this);
+    public static <T extends JsonArray> T fromJson(String input, Class<T> clazz) {
+        return Sjf4j.fromJson(input, clazz);
     }
 
     public String toJson() {
@@ -280,16 +276,17 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return Sjf4j.fromYaml(input, JsonArray.class);
     }
 
-    public static JsonArray fromYaml(Reader input) {
-        return Sjf4j.fromYaml(input, JsonArray.class);
+    public static <T extends JsonArray> T fromYaml(String input, Class<T> clazz) {
+        return Sjf4j.fromYaml(input, clazz);
     }
-
     public String toYaml() {
         return Sjf4j.toYaml(this);
     }
 
-    public void toYaml(Writer output) {
-        Sjf4j.toYaml(output, this);
+    /// Object Facade
+
+    public static <T extends JsonArray> T fromNode(Object node, Class<T> clazz) {
+        return Sjf4j.fromNode(node, clazz);
     }
 
 

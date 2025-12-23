@@ -58,7 +58,7 @@ public class Fastjson2Module {
         public ObjectReader<?> getObjectReader(Type type) {
             Class<?> rawClazz = TypeUtil.getRawClass(type);
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
-                return new JsonArrayReader();
+                return new JsonArrayReader<>(rawClazz);
             }
             NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
             if (ci != null) {
@@ -68,26 +68,24 @@ public class Fastjson2Module {
         }
     }
 
-    public static class JsonArrayReader implements ObjectReader<JsonArray> {
+    public static class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
+        private final NodeRegistry.PojoInfo pi;
+        public JsonArrayReader(Class<?> clazz) {
+            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+        }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public JsonArray readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
-            if (!reader.nextIfArrayStart()) {
-                throw new JSONException(reader.info("expect '['"));
-            }
-            JsonArray ja = new JsonArray();
+        public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
+            if (!reader.nextIfArrayStart()) throw new JSONException(reader.info("expect '['"));
+
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
             while (!reader.nextIfArrayEnd()) {
                 Object value = reader.readAny();
                 ja.add(value);
             }
             return ja;
         }
-
-//        @Override
-//        public Class<JsonArray> getObjectClass() {
-//            return JsonArray.class;
-//        }
-
     }
 
     public static class ConvertibleReader<T> implements ObjectReader<T> {
@@ -124,7 +122,6 @@ public class Fastjson2Module {
     }
 
     public static class JsonObjectWriter implements ObjectWriter<JsonObject> {
-
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
@@ -137,11 +134,9 @@ public class Fastjson2Module {
             });
             writer.endObject();
         }
-
     }
 
     public static class JsonArrayWriter implements ObjectWriter<JsonArray> {
-
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
@@ -153,7 +148,6 @@ public class Fastjson2Module {
             });
             writer.endArray();
         }
-
     }
 
     public static class ConvertibleWriter<T> implements ObjectWriter<T> {

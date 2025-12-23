@@ -2,7 +2,7 @@ package org.sjf4j;
 
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.ObjectFacade;
+import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.supplier.ListSupplier;
@@ -40,7 +40,7 @@ public final class Sjf4jConfig {
     /**
      * The Object facade implementation to use for object conversion operations.
      */
-    private ObjectFacade objectFacade;
+    private NodeFacade nodeFacade;
 
     /**
      * The read mode for data processing.
@@ -71,7 +71,7 @@ public final class Sjf4jConfig {
         this.jsonFacade = builder.jsonFacade;
         this.yamlFacade = builder.yamlFacade;
         this.propertiesFacade = builder.propertiesFacade;
-        this.objectFacade = builder.objectFacade;
+        this.nodeFacade = builder.nodeFacade;
         this.mapSupplier = builder.mapSupplier;
         this.listSupplier = builder.listSupplier;
         this.readMode = builder.readMode;
@@ -126,11 +126,11 @@ public final class Sjf4jConfig {
         return propertiesFacade;
     }
 
-    public ObjectFacade getObjectFacade() {
-        if (objectFacade == null) {
-            objectFacade = FacadeFactory.getDefaultObjectFacade();
+    public NodeFacade getObjectFacade() {
+        if (nodeFacade == null) {
+            nodeFacade = FacadeFactory.getDefaultObjectFacade();
         }
-        return objectFacade;
+        return nodeFacade;
     }
 
     /// Mode
@@ -156,7 +156,7 @@ public final class Sjf4jConfig {
         private JsonFacade<?, ?> jsonFacade;
         private YamlFacade<?, ?> yamlFacade;
         private PropertiesFacade propertiesFacade;
-        private ObjectFacade objectFacade;
+        private NodeFacade nodeFacade;
 
         private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
@@ -201,9 +201,9 @@ public final class Sjf4jConfig {
             this.propertiesFacade = propertiesFacade;
             return this;
         }
-        public Builder objectFacade(ObjectFacade objectFacade) {
-            if (objectFacade == null) throw new IllegalArgumentException("objectFacade must not be null");
-            this.objectFacade = objectFacade;
+        public Builder objectFacade(NodeFacade nodeFacade) {
+            if (nodeFacade == null) throw new IllegalArgumentException("objectFacade must not be null");
+            this.nodeFacade = nodeFacade;
             return this;
         }
         public Builder mapSupplier(MapSupplier mapSupplier) {

@@ -43,7 +43,7 @@ public class ReflectUtil {
      * @param clazz the class to check
      * @return true if the class is a valid POJO candidate, false otherwise
      */
-    public static boolean isPojoCandidate(Class<?> clazz) {
+    public static boolean  isPojoCandidate(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
                 Number.class.isAssignableFrom(clazz) || clazz == Boolean.class) {
             return false;
@@ -63,9 +63,10 @@ public class ReflectUtil {
     }
 
 
-    public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz) {
+    public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
         if (!isPojoCandidate(clazz)) {
-            return null;
+            if (orElseThrow) throw new JsonException("Class " + clazz.getName() + " cannot be a POJO candidate");
+            else return null;
         }
 
         // Constructor
@@ -84,9 +85,9 @@ public class ReflectUtil {
             con.setAccessible(true);
             constructor = lookup.unreflectConstructor(con);
         } catch (NoSuchMethodException e) {
-//            log.debug("Missing no-args constructor of {}", clazz);
+            if (orElseThrow) throw new JsonException("Missing no-args constructor of " + clazz.getName(), e);
         } catch (IllegalAccessException e) {
-//            log.debug("Cannot access no-args constructor of {}", clazz);
+            if (orElseThrow) throw new JsonException("Cannot access no-args constructor of " + clazz.getName(), e);
         }
 
         if (constructor == null) {

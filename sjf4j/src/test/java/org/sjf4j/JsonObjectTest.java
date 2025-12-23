@@ -499,7 +499,7 @@ class JsonObjectTest {
         assertEquals("New York", p1.address.city);
         assertEquals("5th Ave", p1.address.street);
 
-        JsonObject back = JsonObject.fromPojo(p1);
+        JsonObject back = JsonObject.fromNode(p1);
         assertEquals("Bob", back.getString("name"));
     }
 

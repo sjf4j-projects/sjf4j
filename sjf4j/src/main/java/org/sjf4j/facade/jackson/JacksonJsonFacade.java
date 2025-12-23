@@ -29,13 +29,6 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         this.objectMapper = objectMapper;
 
         this.module = new JacksonModule.MySimpleModule();
-        if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE) {
-            this.module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
-        }
-        if (Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
-            this.module.addSerializer(JsonObject.class, new JacksonModule.JsonObjectSerializer());
-            this.module.addSerializer(JsonArray.class, new JacksonModule.JsonArraySerializer());
-        }
         registerConvertibles();
         this.objectMapper.registerModule(this.module);
     }
@@ -48,8 +41,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
     @Override
     public void registerConvertible(NodeRegistry.ConvertibleInfo ci) {
-        this.module.addSerializer(ci.getNodeClass(), new JacksonModule.ConvertibleSerializer<>(ci));
         this.module.addDeserializer(ci.getNodeClass(), new JacksonModule.ConvertibleDeserializer<>(ci));
+        this.module.addSerializer(ci.getNodeClass(), new JacksonModule.ConvertibleSerializer<>(ci));
     }
 
 

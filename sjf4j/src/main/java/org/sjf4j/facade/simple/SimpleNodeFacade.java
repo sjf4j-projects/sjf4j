@@ -6,7 +6,7 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.facade.ObjectFacade;
+import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 
@@ -17,40 +17,39 @@ import java.util.List;
 import java.util.Map;
 
 
-public class SimpleObjectFacade implements ObjectFacade {
+public class SimpleNodeFacade implements NodeFacade {
 
     @Override
-    public Object readNode(Object object, Type type) {
-
-        if (object == null) {
+    public Object readNode(Object node, Type type) {
+        if (node == null) {
             return readNull(type);
-        } else if (object instanceof CharSequence || object instanceof Character || object instanceof Enum) {
-            return readString(object.toString(), type);
-        } else if (object instanceof Number) {
-            return readNumber((Number) object, type);
-        } else if (object instanceof Boolean) {
-            return readBoolean((Boolean) object, type);
+        } else if (node instanceof CharSequence || node instanceof Character || node instanceof Enum) {
+            return readString(node.toString(), type);
+        } else if (node instanceof Number) {
+            return readNumber((Number) node, type);
+        } else if (node instanceof Boolean) {
+            return readBoolean((Boolean) node, type);
         }
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(object.getClass());
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(node.getClass());
         if (ci != null) {
             Class<?> rawClazz = TypeUtil.getRawClass(type);
             if (rawClazz == Object.class) {
-                return ci.convert(object);
-            } else if (rawClazz.isInstance(object)) {
-                return ci.copy(object);
+                return ci.convert(node);
+            } else if (rawClazz.isInstance(node)) {
+                return ci.copy(node);
             } else {
-                throw new JsonException("Cannot convert object from '" + object.getClass() + "' to '" + rawClazz + "'");
+                throw new JsonException("Cannot convert node from '" + node.getClass() + "' to '" + rawClazz + "'");
             }
         }
 
-        if (object instanceof Map || object instanceof JsonObject || NodeRegistry.isPojo(object.getClass())) {
-            return readObject(object, type);
-        } else if (object instanceof List || object instanceof JsonArray || object.getClass().isArray()) {
-            return readArray(object, type);
+        if (node instanceof Map || node instanceof JsonObject || NodeRegistry.isPojo(node.getClass())) {
+            return readObject(node, type);
+        } else if (node instanceof List || node instanceof JsonArray || node.getClass().isArray()) {
+            return readArray(node, type);
         }
 
-        throw new JsonException("Cannot convert value of type '" + object.getClass().getName() +
+        throw new JsonException("Cannot convert value of type '" + node.getClass().getName() +
                 "' to target type '" + type + "'. No built-in mapping, POJO support, or Converter was found."
         );
     }
@@ -198,6 +197,16 @@ public class SimpleObjectFacade implements ObjectFacade {
 
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
+            NodeWalker.visitArray(container, (i, v) -> {
+                Object vv = readNode(v, Object.class);
+                ja.add(vv);
+            });
+            return ja;
+        }
+
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray ja = (JsonArray) pi.newInstance();
             NodeWalker.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, Object.class);
                 ja.add(vv);

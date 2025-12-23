@@ -190,11 +190,11 @@ public class SimpleExample {
 
         // JsonObject <==> POJO/JOJO
         User tmpUser = jo.toPojo(User.class);
-        tmpJo = Sjf4j.fromPojo(user2);
+        tmpJo = Sjf4j.fromNode(user2);
 
         // JOJO <==> POJO
         tmpUser = user2.toPojo(User.class);
-        User2 tmpUser2 = Sjf4j.fromPojo(user, User2.class);
+        User2 tmpUser2 = Sjf4j.fromNode(user, User2.class);
 
         System.out.println("keys=" + user2.keySet());
         // ["id",  "name",  "friends",  "age"]

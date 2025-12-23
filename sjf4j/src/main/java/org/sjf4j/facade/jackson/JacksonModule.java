@@ -10,35 +10,62 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.util.ReflectUtil;
 
 import java.io.IOException;
 import java.util.Map;
 
 public class JacksonModule {
 
-
     public static class MySimpleModule extends SimpleModule {
         public MySimpleModule() {
             setDeserializerModifier(new BeanDeserializerModifier() {
                 @Override
-                public BeanDeserializerBuilder updateBuilder(
-                        DeserializationConfig config,
-                        BeanDescription beanDesc,
-                        BeanDeserializerBuilder builder) {
-                    Class<?> clazz = beanDesc.getBeanClass();
-                    if (JsonObject.class.isAssignableFrom(clazz)) {
+                public BeanDeserializerBuilder updateBuilder(DeserializationConfig config,
+                                                             BeanDescription beanDesc,
+                                                             BeanDeserializerBuilder builder) {
+                    if (JsonObject.class.isAssignableFrom(beanDesc.getBeanClass())) {
                         JavaType objType = config.constructType(Object.class);
                         builder.setAnySetter(new JsonObjectAnySetter(objType));
                     }
                     return builder;
+                }
+
+                @Override
+                public JsonDeserializer<?> modifyDeserializer(DeserializationConfig config,
+                                                              BeanDescription beanDesc,
+                                                              JsonDeserializer<?> deserializer) {
+                    Class<?> clazz = beanDesc.getBeanClass();
+                    if (JsonArray.class.isAssignableFrom(clazz)) {
+                        return new JsonArrayDeserializer<>(clazz);
+                    }
+                    return deserializer;
+                }
+            });
+
+            setSerializerModifier(new BeanSerializerModifier() {
+                @Override
+                public JsonSerializer<?> modifySerializer(SerializationConfig config,
+                                                          BeanDescription beanDesc,
+                                                          JsonSerializer<?> serializer) {
+                    if (JsonObject.class.isAssignableFrom(beanDesc.getBeanClass())) {
+                        return new JsonObjectSerializer();
+                    }
+                    if (JsonArray.class.isAssignableFrom(beanDesc.getBeanClass())) {
+                        return new JsonArraySerializer();
+                    }
+                    return serializer;
                 }
             });
         }
@@ -74,9 +101,16 @@ public class JacksonModule {
 
     }
 
-    public static class JsonArrayDeserializer extends JsonDeserializer<JsonArray> {
+    public static class JsonArrayDeserializer<T extends JsonArray> extends JsonDeserializer<T> {
+        private final NodeRegistry.PojoInfo pi;
+        public JsonArrayDeserializer(Class<?> clazz) {
+            super();
+            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+        }
+
+        @SuppressWarnings("unchecked")
         @Override
-        public JsonArray deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
+        public T deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
             if (p.currentToken() == null) {
                 p.nextToken();
             }
@@ -84,11 +118,11 @@ public class JacksonModule {
                 ctx.reportInputMismatch(JsonArray.class, "JsonArray must start with [");
             }
 
-            JsonArray ja = new JsonArray();
-            JsonDeserializer<Object> elementDeser =
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
+            JsonDeserializer<Object> deserializer =
                     ctx.findRootValueDeserializer(ctx.constructType(Object.class));
             while (p.nextToken() != JsonToken.END_ARRAY) {
-                Object v = elementDeser.deserialize(p, ctx);
+                Object v = deserializer.deserialize(p, ctx);
                 ja.add(v);
             }
             return ja;
@@ -116,7 +150,6 @@ public class JacksonModule {
         @Override
         public void serialize(JsonObject jo, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
-
             gen.writeStartObject();
             for (Map.Entry<String, Object> entry : jo.entrySet()) {
                 serializers.defaultSerializeField(entry.getKey(), entry.getValue(), gen);

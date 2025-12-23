@@ -6,8 +6,6 @@ import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
 
-import java.io.Reader;
-import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.AbstractMap;
@@ -465,14 +463,9 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromJson(input, clazz);
     }
 
-    public static JsonObject fromJson(Reader input) {
-        return Sjf4j.fromJson(input);
+    public static <T extends JsonObject> T fromJson(String input, TypeReference<T> type) {
+        return Sjf4j.fromJson(input, type);
     }
-
-    public static <T extends JsonObject> T fromJson(Reader input, Class<T> clazz) {
-        return Sjf4j.fromJson(input, clazz);
-    }
-
 
     public String toJson() {
         return Sjf4j.toJson(this);
@@ -484,31 +477,38 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromYaml(input);
     }
 
-    public static JsonObject fromYaml(Reader input) {
-        return Sjf4j.fromYaml(input);
+    public static <T extends JsonObject> T fromYaml(String input, Class<T> clazz) {
+        return Sjf4j.fromYaml(input, clazz);
+    }
+
+    public static <T extends JsonObject> T fromYaml(String input, TypeReference<T> type) {
+        return Sjf4j.fromYaml(input, type);
     }
 
     public String toYaml() {
         return Sjf4j.toYaml(this);
     }
 
-    public void toYaml(Writer output) {
-        Sjf4j.toYaml(output, this);
-    }
-
-
     /// POJO Facade
 
+    public static JsonObject fromNode(Object node) {
+        return Sjf4j.fromNode(node);
+    }
+
+    public static <T extends JsonObject> T fromNode(Object node, Class<T> clazz) {
+        return Sjf4j.fromNode(node, clazz);
+    }
+
+    public static <T extends JsonObject> T fromNode(Object node, TypeReference<T> type) {
+        return Sjf4j.fromNode(node, type);
+    }
+
     public <T> T toPojo(Class<T> clazz) {
-        return Sjf4j.fromPojo(this, clazz);
+        return Sjf4j.fromNode(this, clazz);
     }
 
     public <T> T toPojo(TypeReference<T> type) {
-        return Sjf4j.fromPojo(this, type);
-    }
-
-    public static JsonObject fromPojo(Object pojo) {
-        return Sjf4j.fromPojo(pojo);
+        return Sjf4j.fromNode(this, type);
     }
 
     /// Properties Facade

@@ -8,7 +8,7 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleObjectFacade;
+import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.facade.simple.SimplePropertiesFacade;
 import org.sjf4j.facade.snake.SnakeYamlFacade;
 
@@ -183,8 +183,8 @@ public class FacadeFactory {
      *
      * @return The default Object facade implementation
      */
-    public static ObjectFacade getDefaultObjectFacade() {
-        return new SimpleObjectFacade();
+    public static NodeFacade getDefaultObjectFacade() {
+        return new SimpleNodeFacade();
     }
 
 
