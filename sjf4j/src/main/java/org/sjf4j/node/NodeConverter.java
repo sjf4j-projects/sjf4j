@@ -1,4 +1,4 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
 
 public interface NodeConverter<N, R> {

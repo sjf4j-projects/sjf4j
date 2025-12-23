@@ -9,7 +9,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 

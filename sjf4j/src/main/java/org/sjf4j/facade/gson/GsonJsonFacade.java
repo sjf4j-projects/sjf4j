@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.util.TypeUtil;
@@ -29,8 +29,8 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         if (gsonBuilder == null) throw new IllegalArgumentException("GsonBuilder must not be null");
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE ||
-                JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
+        if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE ||
+                Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
         }
         this.gson = gsonBuilder.create();
@@ -55,7 +55,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public Object readNode(Reader input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -74,14 +74,14 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(InputStream input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -100,14 +100,14 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(String input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -126,13 +126,13 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(byte[] input, Type type) {
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -153,7 +153,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
@@ -161,7 +161,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public void writeNode(Writer output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
-        switch (JsonConfig.global().writeMode) {
+        switch (Sjf4jConfig.global().writeMode) {
             case STREAMING_GENERAL: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -182,7 +182,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
         }
     }
 
@@ -190,7 +190,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public void writeNode(OutputStream output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
-        switch (JsonConfig.global().writeMode) {
+        switch (Sjf4jConfig.global().writeMode) {
             case STREAMING_GENERAL: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -211,7 +211,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
         }
     }
 

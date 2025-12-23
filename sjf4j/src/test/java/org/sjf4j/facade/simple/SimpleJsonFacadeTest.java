@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.NodeConvertible;
 import org.sjf4j.annotation.convertible.Unconvert;

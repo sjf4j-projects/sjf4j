@@ -1,9 +1,9 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
-import com.sun.org.apache.xalan.internal.lib.NodeInfo;
+import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.JsonException;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.ReflectUtil;
-import org.sjf4j.util.TypeUtil;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
@@ -13,8 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import static sun.awt.image.MultiResolutionCachedImage.map;
 
 
 public final class NodeRegistry {
@@ -167,8 +165,8 @@ public final class NodeRegistry {
     }
 
     private static void notifyFacades(ConvertibleInfo newRegistered) {
-        JsonConfig.global().getJsonFacade().registerConvertible(newRegistered);
-        JsonConfig.global().getYamlFacade().registerConvertible(newRegistered);
+        Sjf4jConfig.global().getJsonFacade().registerConvertible(newRegistered);
+        Sjf4jConfig.global().getYamlFacade().registerConvertible(newRegistered);
     }
 
     public static ConvertibleInfo getConvertibleInfo(Class<?> clazz) {

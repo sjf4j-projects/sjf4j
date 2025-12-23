@@ -9,6 +9,7 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.node.NodeRegistry;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;

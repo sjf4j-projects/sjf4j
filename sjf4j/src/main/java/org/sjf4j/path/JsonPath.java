@@ -1,12 +1,12 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeWalker;
-import org.sjf4j.NodeType;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.JsonPointerUtil;
 import org.sjf4j.util.NodeUtil;
@@ -20,7 +20,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -965,7 +964,7 @@ public class JsonPath {
     private Object _createContainer(PathToken pt, Class<?> clazz) {
         if (pt instanceof PathToken.Name) {
             if (clazz.isAssignableFrom(Map.class)) {
-                return JsonConfig.global().mapSupplier.create();
+                return Sjf4jConfig.global().mapSupplier.create();
             } else if (clazz.isAssignableFrom(JsonObject.class)) {
                 return new JsonObject();
             } else if (NodeRegistry.isPojo(clazz)) {
@@ -977,7 +976,7 @@ public class JsonPath {
             }
         } else if (pt instanceof PathToken.Index) {
             if (clazz.isAssignableFrom(List.class)) {
-                return JsonConfig.global().listSupplier.create();
+                return Sjf4jConfig.global().listSupplier.create();
             } else if (clazz.isAssignableFrom(JsonArray.class)) {
                 return new JsonArray();
             } else if (clazz.isArray()) {

@@ -149,13 +149,13 @@ public class JsonPathTest {
         JsonObject container1 = JsonPath.compile("$.book[0].box[0]").findAsJsonObject(jo1);
         log.info("container1={} jo1={}", container1, jo1);
         assertEquals(JsonObject.class, container1.getClass());
-        assertEquals(1, jo1.getJsonArrayByPath("$.book[0].box").size());
+        assertEquals(1, jo1.asJsonArrayByPath("$.book[0].box").size());
 
         JsonPath.compile("$.book[2].tags['gg mm'][0]").ensurePut(jo1, "mm");
         JsonArray container2 = JsonPath.compile("$.book[2].tags['gg mm']").findAsJsonArray(jo1);
         log.info("container2={} jo1={}", container2, jo1);
         assertEquals(JsonArray.class, container2.getClass());
-        assertEquals(1, jo1.getJsonArrayByPath("$.book[2].tags['gg mm']").size());
+        assertEquals(1, jo1.asJsonArrayByPath("$.book[2].tags['gg mm']").size());
     }
 
     @Test

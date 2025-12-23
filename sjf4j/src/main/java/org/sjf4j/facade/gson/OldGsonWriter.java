@@ -3,7 +3,7 @@ package org.sjf4j.facade.gson;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 
 import java.io.IOException;
 import java.lang.reflect.Array;

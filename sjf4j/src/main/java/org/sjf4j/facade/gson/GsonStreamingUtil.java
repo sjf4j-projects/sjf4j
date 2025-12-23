@@ -1,14 +1,13 @@
 package org.sjf4j.facade.gson;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.StreamingUtil;
@@ -17,7 +16,6 @@ import org.sjf4j.util.TypeUtil;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -148,7 +146,7 @@ public class GsonStreamingUtil {
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.beginObject();
             while (reader.peek() != JsonToken.END_OBJECT) {
                 String key = reader.nextName();

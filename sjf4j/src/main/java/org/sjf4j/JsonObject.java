@@ -1,5 +1,7 @@
 package org.sjf4j;
 
+import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
@@ -405,7 +407,7 @@ public class JsonObject extends JsonContainer {
         if (fieldMap == null) {
             return nodeMap == null ? Collections.emptyMap() : nodeMap;
         } else {
-            Map<String, Object> merged = JsonConfig.global().mapSupplier.create();
+            Map<String, Object> merged = Sjf4jConfig.global().mapSupplier.create();
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
@@ -1420,7 +1422,7 @@ public class JsonObject extends JsonContainer {
             }
         }
         if (nodeMap == null) {
-            nodeMap = JsonConfig.global().mapSupplier.create();
+            nodeMap = Sjf4jConfig.global().mapSupplier.create();
         }
         return nodeMap.put(key, object);
     }
@@ -1539,42 +1541,60 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Merges the given target JsonObject into the current JsonObject.
+     * Merges the specified {@code mergePatch} into this {@code JsonObject}.
      *
-     * <p>All key-value pairs from the target object will be merged into this object.
-     * When a key exists in both objects, the conflict resolution depends on the
-     * {@code preferTarget} parameter.</p>
+     * <p>The merge is applied in place. Objects and arrays are merged recursively
+     * according to {@link ContainerUtil#merge(Object, Object, boolean, boolean)}.
      *
-     * @param target the JsonObject to merge into this one
-     * @param preferTarget whether to use the target's values when keys conflict
-     * @param needCopy whether to create copies of merged values
+     * @param mergePatch    the patch object to merge
+     * @param overwrite     whether existing non-null values should be replaced
+     * @param deepCopy      whether composite values from the patch should be deep-copied
      */
-    public void merge(JsonObject target, boolean preferTarget, boolean needCopy) {
-        ContainerUtil.merge(this, target, preferTarget, needCopy);
+    public void merge(Object mergePatch, boolean overwrite, boolean deepCopy) {
+        ContainerUtil.merge(this, mergePatch, overwrite, deepCopy);
     }
 
     /**
-     * Merges the given target JsonObject into the current JsonObject.
+     * Merges the specified {@code mergePatch} into this {@code JsonObject}.
      *
-     * <p>All key-value pairs from the target object will be merged into this object.
-     * When a key exists in both objects, the target wins.</p>
+     * <p>This is equivalent to {@link #merge(Object, boolean, boolean)} with
+     * {@code overwrite=true} and {@code deepCopy=false}.
      *
-     * @param target the JsonObject to merge into this one
+     * @param mergePatch    the patch object to merge
      */
-    public void merge(JsonObject target) {
-        merge(target, true, false);
+    public void merge(Object mergePatch) {
+        merge(mergePatch, true, false);
     }
 
     /**
-     * Merges the given target JsonObject into the current JsonObject, creating copies of all merged values.
-     * <p>
-     * This method ensures that the merged values are independent copies, preventing unintended modifications
-     * to the original target object's data.
+     * Merges the specified {@code mergePatch} into this {@code JsonObject},
+     * making deep copies of any composite values from the patch.
      *
-     * @param target the JsonObject to merge into this one
+     * <p>This is equivalent to {@link #merge(Object, boolean, boolean)} with
+     * {@code overwrite=true} and {@code deepCopy=true}.
+     *
+     * @param mergePatch    the patch object to merge
      */
-    public void mergeWithCopy(JsonObject target) {
-        merge(target, true, true);
+    public void mergeWithCopy(Object mergePatch) {
+        merge(mergePatch, true, true);
+    }
+
+    /**
+     * Applies a <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386 (JSON Merge Patch)</a>
+     * to this {@code JsonObject}.
+     *
+     * <p>Strictly follows the semantics defined in RFC 7386:
+     * <ul>
+     *     <li>Objects are merged by key recursively</li>
+     *     <li>Arrays are replaced as a whole</li>
+     *     <li>A {@code null} value deletes the corresponding target member</li>
+     *     <li>No deep copy is performed</li>
+     * </ul>
+     *
+     * @param mergePatch the JSON Merge Patch to apply
+     */
+    public void mergeRfc7386(Object mergePatch) {
+        ContainerUtil.mergeRfc7386(this, mergePatch);
     }
 
     /**

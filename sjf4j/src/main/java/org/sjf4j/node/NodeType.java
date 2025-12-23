@@ -1,5 +1,7 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.util.TypeUtil;
 
 import java.lang.reflect.Type;

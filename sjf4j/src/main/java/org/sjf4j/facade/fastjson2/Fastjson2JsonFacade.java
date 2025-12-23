@@ -6,8 +6,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.alibaba.fastjson2.writer.ObjectWriterProvider;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.JsonFacade;
@@ -48,7 +47,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         this.ctx = JSONFactory.createReadContext(readerFeatures);
 
         // With Module
-        if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
+        if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE) {
             ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
 //            provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
             provider.register(new Fastjson2Module.MyReaderModule());
@@ -58,7 +57,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             });
         }
-        if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
+        if (Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
             ObjectWriterProvider provider = JSONFactory.getDefaultObjectWriterProvider();
             provider.register(new Fastjson2Module.MyWriterModule());
         }
@@ -109,7 +108,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNode(Reader input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -128,14 +127,14 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(InputStream input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -155,14 +154,14 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(String input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -181,13 +180,13 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(byte[] input, Type type) {
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -206,7 +205,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
@@ -215,7 +214,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNode(Writer output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
-        switch (JsonConfig.global().writeMode) {
+        switch (Sjf4jConfig.global().writeMode) {
             case STREAMING_GENERAL: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -242,7 +241,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
         }
     }
 
@@ -250,7 +249,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNode(OutputStream output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
-        switch (JsonConfig.global().writeMode) {
+        switch (Sjf4jConfig.global().writeMode) {
             case STREAMING_GENERAL: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -277,7 +276,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
         }
     }
 

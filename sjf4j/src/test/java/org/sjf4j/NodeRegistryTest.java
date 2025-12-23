@@ -10,6 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.NodeConvertible;
 import org.sjf4j.annotation.convertible.Unconvert;
+import org.sjf4j.node.NodeConverter;
+import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.NodeType;
 import org.sjf4j.util.TypeReference;
 
 import java.time.LocalDate;

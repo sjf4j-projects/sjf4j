@@ -64,7 +64,7 @@ public class JsonReadBenchmark {
 
     @Setup(Level.Trial)
     public void setup() {
-        JsonConfig.global(new JsonConfig.Builder().readMode(JsonConfig.ReadMode.valueOf(readMode)).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.valueOf(readMode)).build());
     }
 
 

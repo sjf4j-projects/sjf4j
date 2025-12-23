@@ -20,7 +20,7 @@ import org.sjf4j.supplier.MapSupplier;
  * It uses the builder pattern to create and configure instances, allowing for flexible
  * customization of SJF4J behavior.
  */
-public final class JsonConfig {
+public final class Sjf4jConfig {
 
     /**
      * The JSON facade implementation to use for JSON operations.
@@ -67,7 +67,7 @@ public final class JsonConfig {
      *
      * @param builder The builder containing the configuration settings
      */
-    private JsonConfig(Builder builder) {
+    private Sjf4jConfig(Builder builder) {
         this.jsonFacade = builder.jsonFacade;
         this.yamlFacade = builder.yamlFacade;
         this.propertiesFacade = builder.propertiesFacade;
@@ -78,30 +78,30 @@ public final class JsonConfig {
         this.writeMode = builder.writeMode;
     }
 
-    private static volatile JsonConfig GLOBAL = new JsonConfig.Builder().build();
+    private static volatile Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
 
-    public static void global(JsonConfig jsonConfig) {
-        if (jsonConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
-        GLOBAL = jsonConfig;
+    public static void global(Sjf4jConfig sjf4jConfig) {
+        if (sjf4jConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
+        GLOBAL = sjf4jConfig;
     }
-    public static JsonConfig global() {
+    public static Sjf4jConfig global() {
         return GLOBAL;
     }
 
     public static void useJacksonAsGlobal() {
-        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createJacksonFacade()).build());
     }
     public static void useGsonAsGlobal() {
-        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createGsonFacade()).build());
     }
     public static void useFastjson2AsGlobal() {
-        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
     }
     public static void useSimpleJsonAsGlobal() {
-        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global())
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
     }
 
@@ -174,7 +174,7 @@ public final class JsonConfig {
          *
          * @param config The configuration to copy settings from
          */
-        public Builder(JsonConfig config) {
+        public Builder(Sjf4jConfig config) {
             if (config == null) throw new IllegalArgumentException("JsonConfig must not be null");
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
@@ -182,8 +182,8 @@ public final class JsonConfig {
             this.writeMode = config.writeMode;
         }
 
-        public JsonConfig build() {
-            return new JsonConfig(this);
+        public Sjf4jConfig build() {
+            return new Sjf4jConfig(this);
         }
 
         public Builder jsonFacade(JsonFacade<?, ?> jsonFacade) {
@@ -216,12 +216,12 @@ public final class JsonConfig {
             this.listSupplier = listSupplier;
             return this;
         }
-        public Builder readMode(JsonConfig.ReadMode readMode) {
+        public Builder readMode(Sjf4jConfig.ReadMode readMode) {
             if (readMode == null) throw new IllegalArgumentException("readMode must not be null");
             this.readMode = readMode;
             return this;
         }
-        public Builder writeMode(JsonConfig.WriteMode writeMode) {
+        public Builder writeMode(Sjf4jConfig.WriteMode writeMode) {
             if (writeMode == null) throw new IllegalArgumentException("writeMode must not be null");
             this.writeMode = writeMode;
             return this;

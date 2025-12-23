@@ -2,9 +2,9 @@ package org.sjf4j;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.sjf4j.NodeWalker.Target;
-import org.sjf4j.NodeWalker.Order;
-import org.sjf4j.NodeWalker.Control;
+import org.sjf4j.node.NodeWalker.Target;
+import org.sjf4j.node.NodeWalker.Order;
+import org.sjf4j.node.NodeWalker.Control;
 import org.sjf4j.util.TypeReference;
 
 import java.util.List;

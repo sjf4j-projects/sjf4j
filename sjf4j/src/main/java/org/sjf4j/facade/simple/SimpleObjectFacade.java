@@ -1,11 +1,11 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeWalker;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.ObjectFacade;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
@@ -127,9 +127,9 @@ public class SimpleObjectFacade implements ObjectFacade {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             NodeWalker.visitObject(container, (k, v) -> {
                 Object vv = readNode(v, valueType);
                 map.put(k, vv);
@@ -186,7 +186,7 @@ public class SimpleObjectFacade implements ObjectFacade {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             NodeWalker.visitArray(container, (i, v) -> {

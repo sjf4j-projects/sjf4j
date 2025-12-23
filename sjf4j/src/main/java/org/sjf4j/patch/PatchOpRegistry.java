@@ -94,17 +94,17 @@ public class PatchOpRegistry {
 
         // copy
         PatchOpRegistry.register("move", (target, op) -> {
-            Object value = op.getPath().findNode(target);
-            if (value == null) throw new JsonException("'copy' operation failed at path " + op.getPath() +
+            Object value = op.getFrom().findNode(target);
+            if (value == null) throw new JsonException("'copy' operation failed at from " + op.getFrom() +
                     ": value is not exist");
             op.getPath().add(target, value);
             return target;
         });
 
         // move
-        PatchOpRegistry.register("move", (target, op) -> {
-            Object value = op.getPath().remove(target);
-            if (value == null) throw new JsonException("'move' operation failed at path " + op.getPath() +
+        PatchOpRegistry.register(PatchOp.STD_MOVE, (target, op) -> {
+            Object value = op.getFrom().remove(target);
+            if (value == null) throw new JsonException("'move' operation failed at from " + op.getFrom() +
                     ": value is not exist");
             op.getPath().add(target, value);
             return target;

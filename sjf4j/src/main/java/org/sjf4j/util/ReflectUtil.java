@@ -1,11 +1,11 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
-import org.sjf4j.NodeType;
+import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.NodeType;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.Copy;
 import org.sjf4j.annotation.convertible.NodeConvertible;
@@ -95,7 +95,7 @@ public class ReflectUtil {
         Supplier<?> lambdaConstructor = createLambdaConstructor(lookup, clazz, constructor);
 
         // Fields
-        Map<String, NodeRegistry.FieldInfo> fields = JsonConfig.global().mapSupplier.create();
+        Map<String, NodeRegistry.FieldInfo> fields = Sjf4jConfig.global().mapSupplier.create();
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
@@ -299,7 +299,9 @@ public class ReflectUtil {
             } catch (Exception ignored) {}
         }
 
+        Method[] methods = clazz.getDeclaredMethods();
         for (Method m : clazz.getDeclaredMethods()) {
+            if (m.isBridge()) continue;
             if (m.isAnnotationPresent(Convert.class)) {
                 if (convertHandle != null)
                     throw new JsonException("Multiple @Convert methods found in " + clazz.getName());

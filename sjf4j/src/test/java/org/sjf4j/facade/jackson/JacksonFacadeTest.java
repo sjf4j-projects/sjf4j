@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.NodeConvertible;
 import org.sjf4j.annotation.convertible.Unconvert;
@@ -45,7 +45,7 @@ public class JacksonFacadeTest {
     public void testWithModule1() throws IOException {
         JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
 
-        JsonConfig.global(new JsonConfig.Builder().readMode(JsonConfig.ReadMode.USE_MODULE).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.USE_MODULE).build());
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         log.info("jo1={}", jo1.inspect());
@@ -73,20 +73,20 @@ public class JacksonFacadeTest {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_GENERAL).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.STREAMING_GENERAL).build());
         StringWriter output;
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json2 = output.toString();
         assertEquals(json1, json2);
 
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_SPECIFIC).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.STREAMING_SPECIFIC).build());
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json3 = output.toString();
         assertEquals(json1, json3);
 
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.USE_MODULE).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.USE_MODULE).build());
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json4 = output.toString();

@@ -3,14 +3,12 @@ package org.sjf4j.facade.fastjson2;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.NodeConvertible;
 import org.sjf4j.annotation.convertible.Unconvert;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacadeTest;
 import org.sjf4j.util.TypeReference;
 
 import java.io.StringReader;
@@ -27,7 +25,7 @@ public class Fastjson2FacadeTest {
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        JsonConfig.global(new JsonConfig.Builder().readMode(JsonConfig.ReadMode.STREAMING_GENERAL).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.STREAMING_GENERAL).build());
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
 
@@ -47,7 +45,7 @@ public class Fastjson2FacadeTest {
     public void testReadModule1() {
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
 
-        JsonConfig.global(new JsonConfig.Builder().readMode(JsonConfig.ReadMode.USE_MODULE).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.USE_MODULE).build());
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         log.info("jo1={}", jo1.inspect());
@@ -75,20 +73,20 @@ public class Fastjson2FacadeTest {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_GENERAL).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.STREAMING_GENERAL).build());
         StringWriter output;
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json2 = output.toString();
         assertEquals(json1, json2);
 
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.STREAMING_SPECIFIC).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.STREAMING_SPECIFIC).build());
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json3 = output.toString();
         assertEquals(json1, json3);
 
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.USE_MODULE).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.USE_MODULE).build());
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json4 = output.toString();

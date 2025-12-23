@@ -1,7 +1,7 @@
 package org.sjf4j.facade;
 
 import org.sjf4j.JsonException;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.fastjson2.Fastjson2Writer;
 import org.sjf4j.util.StreamingUtil;
 import org.sjf4j.util.TypeUtil;

@@ -3,10 +3,10 @@ package org.sjf4j.facade.fastjson2;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.StreamingUtil;
@@ -152,7 +152,7 @@ public class Fastjson2StreamingUtil {
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
             while (reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();

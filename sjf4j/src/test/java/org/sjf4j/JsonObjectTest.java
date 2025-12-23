@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.node.NodeType;
 import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;
@@ -25,19 +26,19 @@ class JsonObjectTest {
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Simple JSON", () -> {
-                    JsonConfig.useSimpleJsonAsGlobal();
+                    Sjf4jConfig.useSimpleJsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    JsonConfig.useJacksonAsGlobal();
+                    Sjf4jConfig.useJacksonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    JsonConfig.useGsonAsGlobal();
+                    Sjf4jConfig.useGsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    JsonConfig.useFastjson2AsGlobal();
+                    Sjf4jConfig.useFastjson2AsGlobal();
                     testAll();
                 })
         );
@@ -288,7 +289,7 @@ class JsonObjectTest {
 
         jo1.ensurePutByPath("$.query['idea.fqmn']", "::bad::good");
         assertEquals("::bad::good", jo1.getStringByPath("$.query['idea.fqmn']"));
-        assertEquals("::bad::good", jo1.getJsonObject("query").getString("idea.fqmn"));
+        assertEquals("::bad::good", jo1.asJsonObject("query").getString("idea.fqmn"));
         System.out.println("jo1: " + jo1);
     }
 
@@ -662,12 +663,12 @@ class JsonObjectTest {
 
     @Test
     public void testSupplier1() {
-        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
         JsonObject jo1 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"a\":\"aa\",\"b\":\"bb\",\"c\":\"cc\"}", jo1.toJson());
 
-        JsonConfig.global(new JsonConfig.Builder(JsonConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
         JsonObject jo2 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());

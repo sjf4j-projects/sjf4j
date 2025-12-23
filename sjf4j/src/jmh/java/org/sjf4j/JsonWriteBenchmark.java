@@ -65,7 +65,7 @@ public class JsonWriteBenchmark {
 
     @Setup(Level.Trial)
     public void setup() {
-        JsonConfig.global(new JsonConfig.Builder().writeMode(JsonConfig.WriteMode.valueOf(writeMode)).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.valueOf(writeMode)).build());
     }
 
 

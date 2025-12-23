@@ -1,10 +1,10 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -313,7 +313,7 @@ public class NodeUtil {
         } else if (node instanceof JsonObject) {
             return ((JsonObject) node).toMap();
         } else if (NodeRegistry.isPojo(node.getClass())) {
-            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
@@ -362,7 +362,7 @@ public class NodeUtil {
         } else if (node instanceof JsonArray) {
             return ((JsonArray) node).toList();
         } else if (node.getClass().isArray()) {
-            List<Object> list = JsonConfig.global().listSupplier.create();
+            List<Object> list = Sjf4jConfig.global().listSupplier.create();
             int len = Array.getLength(node);
             if (len > 0) {
                 for (int i = 0; i < len; i++) {

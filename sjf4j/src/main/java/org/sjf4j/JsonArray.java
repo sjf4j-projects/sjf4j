@@ -68,7 +68,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         } else if (node.getClass().isArray()) {
             int len = Array.getLength(node);
             if (len > 0) {
-                this.nodeList = JsonConfig.global().listSupplier.create();
+                this.nodeList = Sjf4jConfig.global().listSupplier.create();
                 for (int i = 0; i < len; i++) {
                     this.nodeList.add(Array.get(node, i));
                 }
@@ -661,7 +661,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// Adder
 
     public void add(Object object) {
-        if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
+        if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
         nodeList.add(object);
     }
 
@@ -675,7 +675,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
             throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
         }
 
-        if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
+        if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
         nodeList.add(pidx, object);
     }
 
@@ -684,7 +684,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         if (pidx < 0 || pidx >= size()) {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
         }
-        if (nodeList == null) nodeList = JsonConfig.global().listSupplier.create();
+        if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
         return nodeList.set(pidx, object);
     }
 

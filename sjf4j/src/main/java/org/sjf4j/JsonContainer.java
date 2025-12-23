@@ -1,11 +1,14 @@
 package org.sjf4j;
 
+import org.sjf4j.node.NodeWalker;
+import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.util.ContainerUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 /**
@@ -17,6 +20,8 @@ import java.util.function.BiFunction;
  */
 public abstract class JsonContainer {
 
+    /// Base
+
     /**
      * Returns the size of the container.
      * For JsonObject, this returns the number of key-value pairs.
@@ -25,6 +30,30 @@ public abstract class JsonContainer {
      * @return the size of the container
      */
     public abstract int size();
+
+    /**
+     * Compares this container to another object for equality.
+     * Uses {@link ContainerUtil#equals(Object, Object)} to perform deep equality comparison.
+     *
+     * @param target the object to compare to
+     * @return true if the objects are deeply equal, false otherwise
+     */
+    @SuppressWarnings("EqualsDoesntCheckParameterClass")
+    @Override
+    public boolean equals(Object target) {
+        return ContainerUtil.equals(this, target);
+    }
+
+    /**
+     * Returns a string representation of this container for debugging purposes.
+     * Uses {@link ContainerUtil#inspect(Object)} to generate the string.
+     *
+     * @return a debug string representation of the container
+     */
+    public String inspect() {
+        return ContainerUtil.inspect(this);
+    }
+
 
     /// By path
 
@@ -770,29 +799,10 @@ public abstract class JsonContainer {
         NodeWalker.walk(this, target, order, maxDepth, visitor);
     }
 
-    /// Base
+    /// Patch
 
-    /**
-     * Compares this container to another object for equality.
-     * Uses {@link ContainerUtil#equals(Object, Object)} to perform deep equality comparison.
-     *
-     * @param target the object to compare to
-     * @return true if the objects are deeply equal, false otherwise
-     */
-    @SuppressWarnings("EqualsDoesntCheckParameterClass")
-    @Override
-    public boolean equals(Object target) {
-        return ContainerUtil.equals(this, target);
-    }
-
-    /**
-     * Returns a string representation of this container for debugging purposes.
-     * Uses {@link ContainerUtil#inspect(Object)} to generate the string.
-     *
-     * @return a debug string representation of the container
-     */
-    public String inspect() {
-        return ContainerUtil.inspect(this);
+    public void apply(JsonPatch patch) {
+        patch.apply(this);
     }
 
 }

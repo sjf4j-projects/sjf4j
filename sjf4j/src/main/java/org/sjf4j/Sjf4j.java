@@ -39,7 +39,7 @@ public class Sjf4j {
     public static <T> T fromJson(Reader input, Class<T> clazz) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
     /**
@@ -54,7 +54,7 @@ public class Sjf4j {
     public static <T> T fromJson(Reader input, TypeReference<T> type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (type == null) throw new IllegalArgumentException("Type must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
     /**
@@ -79,7 +79,7 @@ public class Sjf4j {
     public static <T> T fromJson(String input, Class<T> clazz) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
     /**
@@ -94,7 +94,7 @@ public class Sjf4j {
     public static <T> T fromJson(String input, TypeReference<T> type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (type == null) throw new IllegalArgumentException("Type must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
     /**
@@ -119,7 +119,7 @@ public class Sjf4j {
     public static <T> T fromJson(InputStream input, Class<T> clazz) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
     /**
@@ -134,7 +134,7 @@ public class Sjf4j {
     public static <T> T fromJson(InputStream input, TypeReference<T> type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (type == null) throw new IllegalArgumentException("Type must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
     /**
@@ -159,7 +159,7 @@ public class Sjf4j {
     public static <T> T fromJson(byte[] input, Class<T> clazz) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, clazz);
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
     /**
@@ -174,7 +174,7 @@ public class Sjf4j {
     public static <T> T fromJson(byte[] input, TypeReference<T> type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (type == null) throw new IllegalArgumentException("Type must not be null");
-        return (T) JsonConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
     /**
@@ -196,7 +196,7 @@ public class Sjf4j {
     public static void toJson(Writer output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        JsonConfig.global().getJsonFacade().writeNode(output, node);
+        Sjf4jConfig.global().getJsonFacade().writeNode(output, node);
     }
 
     /**
@@ -208,7 +208,7 @@ public class Sjf4j {
     public static void toJson(OutputStream output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        JsonConfig.global().getJsonFacade().writeNode(output, node);
+        Sjf4jConfig.global().getJsonFacade().writeNode(output, node);
     }
 
     /**
@@ -239,7 +239,7 @@ public class Sjf4j {
     public static <T> T fromYaml(Reader input, Class<T> clazz) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return (T) JsonConfig.global().getYamlFacade().readNode(input, clazz);
+        return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, clazz);
     }
 
     /**
@@ -254,7 +254,7 @@ public class Sjf4j {
     public static <T> T fromYaml(Reader input, TypeReference<T> type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
         if (type == null) throw new IllegalArgumentException("Type must not be null");
-        return (T) JsonConfig.global().getYamlFacade().readNode(input, type.getType());
+        return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, type.getType());
     }
 
     /**
@@ -312,7 +312,7 @@ public class Sjf4j {
     public static void toYaml(Writer output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        JsonConfig.global().getYamlFacade().writeNode(output, node);
+        Sjf4jConfig.global().getYamlFacade().writeNode(output, node);
     }
 
     /**
@@ -340,7 +340,7 @@ public class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public static <T> T fromPojo(Object pojo, Class<T> clazz) {
-        return (T) JsonConfig.global().getObjectFacade().readNode(pojo, clazz);
+        return (T) Sjf4jConfig.global().getObjectFacade().readNode(pojo, clazz);
     }
 
     /**
@@ -354,7 +354,7 @@ public class Sjf4j {
     @SuppressWarnings("unchecked")
     public static <T> T fromPojo(Object pojo, TypeReference<T> type) {
         if (pojo == null) throw new IllegalArgumentException("Pojo must not be null");
-        return (T) JsonConfig.global().getObjectFacade().readNode(pojo, type.getType());
+        return (T) Sjf4jConfig.global().getObjectFacade().readNode(pojo, type.getType());
     }
 
     /**
@@ -378,7 +378,7 @@ public class Sjf4j {
      */
     public static JsonObject fromProperties(Properties props) {
         if (props == null) throw new IllegalArgumentException("Props must not be null");
-        return JsonConfig.global().getPropertiesFacade().readNode(props);
+        return Sjf4jConfig.global().getPropertiesFacade().readNode(props);
     }
 
     /**
@@ -390,12 +390,12 @@ public class Sjf4j {
     public static void toProperties(Properties props, JsonObject node) {
         if (props == null) throw new IllegalArgumentException("Props must not be null");
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        JsonConfig.global().getPropertiesFacade().writeNode(props, node);
+        Sjf4jConfig.global().getPropertiesFacade().writeNode(props, node);
     }
 
 
     public static Map<String, Object> createMap() {
-        return JsonConfig.global().mapSupplier.create();
+        return Sjf4jConfig.global().mapSupplier.create();
     }
 
 

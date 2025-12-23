@@ -5,10 +5,10 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.util.TypeUtil;
 
@@ -29,10 +29,10 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         this.objectMapper = objectMapper;
 
         this.module = new JacksonModule.MySimpleModule();
-        if (JsonConfig.global().readMode == JsonConfig.ReadMode.USE_MODULE) {
+        if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE) {
             this.module.addDeserializer(JsonArray.class, new JacksonModule.JsonArrayDeserializer());
         }
-        if (JsonConfig.global().writeMode == JsonConfig.WriteMode.USE_MODULE) {
+        if (Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
             this.module.addSerializer(JsonObject.class, new JacksonModule.JsonObjectSerializer());
             this.module.addSerializer(JsonArray.class, new JacksonModule.JsonArraySerializer());
         }
@@ -90,7 +90,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public Object readNode(Reader input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -109,14 +109,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(InputStream input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -135,14 +135,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(String input, Type type) {
         if (input == null) throw new IllegalArgumentException("Input must not be null");
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -161,13 +161,13 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
     @Override
     public Object readNode(byte[] input, Type type) {
-        switch (JsonConfig.global().readMode) {
+        switch (Sjf4jConfig.global().readMode) {
             case STREAMING_GENERAL: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -186,7 +186,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + JsonConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
         }
     }
 
@@ -195,7 +195,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public void writeNode(Writer output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
-        switch (JsonConfig.global().writeMode) {
+        switch (Sjf4jConfig.global().writeMode) {
             case STREAMING_GENERAL: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -221,14 +221,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
         }
     }
 
     @Override
     public void writeNode(OutputStream output, Object node) {
         if (output == null) throw new IllegalArgumentException("Output must not be null");
-        switch (JsonConfig.global().writeMode) {
+        switch (Sjf4jConfig.global().writeMode) {
             case STREAMING_GENERAL: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -254,7 +254,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + JsonConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
         }
     }
 

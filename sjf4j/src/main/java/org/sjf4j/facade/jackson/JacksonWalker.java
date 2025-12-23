@@ -3,7 +3,7 @@ package org.sjf4j.facade.jackson;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 
 import java.io.IOException;
@@ -21,7 +21,7 @@ public class JacksonWalker {
             case NOT_AVAILABLE:
                 return null;
             case START_OBJECT:
-                Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+                Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
                 p.nextToken();
                 JsonToken jt;
                 while ((jt = p.currentToken()) != JsonToken.END_OBJECT) {

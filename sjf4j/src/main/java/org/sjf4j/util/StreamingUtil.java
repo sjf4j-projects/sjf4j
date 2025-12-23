@@ -1,10 +1,10 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonConfig;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeRegistry;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
 import org.sjf4j.facade.FacadeWriter;
 
@@ -147,7 +147,7 @@ public class StreamingUtil {
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = JsonConfig.global().mapSupplier.create();
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.startObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();

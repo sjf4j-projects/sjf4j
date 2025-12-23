@@ -20,19 +20,19 @@ class JsonArrayTest {
     public Stream<DynamicTest> testWithJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Simple JSON", () -> {
-                    JsonConfig.useSimpleJsonAsGlobal();
+                    Sjf4jConfig.useSimpleJsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    JsonConfig.useJacksonAsGlobal();
+                    Sjf4jConfig.useJacksonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    JsonConfig.useGsonAsGlobal();
+                    Sjf4jConfig.useGsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    JsonConfig.useFastjson2AsGlobal();
+                    Sjf4jConfig.useFastjson2AsGlobal();
                     testAll();
                 })
         );

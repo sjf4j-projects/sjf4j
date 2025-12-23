@@ -10,6 +10,7 @@ import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
+import org.sjf4j.node.NodeWalker;
 
 import java.util.concurrent.TimeUnit;
 

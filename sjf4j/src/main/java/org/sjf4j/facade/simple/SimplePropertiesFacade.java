@@ -1,7 +1,7 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeWalker;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.facade.PropertiesFacade;
 
 import java.util.Properties;
