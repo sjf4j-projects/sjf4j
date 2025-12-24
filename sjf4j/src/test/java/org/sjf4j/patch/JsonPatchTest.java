@@ -2,8 +2,8 @@ package org.sjf4j.patch;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.util.ContainerUtil;
 
@@ -11,10 +11,185 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 public class JsonPatchTest {
+
+    @Test
+    void testBuiltinPatchOpsRegistered() {
+        assertTrue(PatchOpRegistry.exists(PatchOp.STD_ADD));
+        assertTrue(PatchOpRegistry.exists(PatchOp.STD_REMOVE));
+        assertTrue(PatchOpRegistry.exists(PatchOp.STD_REPLACE));
+        assertTrue(PatchOpRegistry.exists(PatchOp.STD_COPY));
+        assertTrue(PatchOpRegistry.exists(PatchOp.STD_MOVE));
+        assertTrue(PatchOpRegistry.exists(PatchOp.STD_TEST));
+
+        assertTrue(PatchOpRegistry.exists(PatchOp.EXT_EXIST));
+        assertTrue(PatchOpRegistry.exists(PatchOp.EXT_ENSURE_PUT));
+    }
+
+    @Test
+    void testAddOperation() {
+        JsonObject target = new JsonObject();
+        JsonPatch patch = new JsonPatch();
+
+        patch.add(new PatchOp(
+                PatchOp.STD_ADD,
+                JsonPointer.compile("/a"),
+                1,
+                null
+        ));
+
+        patch.apply(target);
+        assertEquals(1, target.getInteger("a"));
+    }
+
+    @Test
+    void testRemoveOperation() {
+        JsonObject target = new JsonObject();
+        target.put("a", 1);
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.STD_REMOVE,
+                JsonPointer.compile("/a"),
+                null,
+                null
+        ));
+
+        patch.apply(target);
+        assertFalse(target.containsKey("a"));
+    }
+
+    @Test
+    void testReplaceOperation() {
+        JsonObject target = new JsonObject();
+        target.put("a", 1);
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.STD_REPLACE,
+                JsonPointer.compile("/a"),
+                2,
+                null
+        ));
+
+        patch.apply(target);
+        assertEquals(2, target.getInteger("a"));
+    }
+
+    @Test
+    void testReplaceNonExistentPathFails() {
+        JsonObject target = new JsonObject();
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.STD_REPLACE,
+                JsonPointer.compile("/a"),
+                1,
+                null
+        ));
+
+        assertThrows(JsonException.class, () -> patch.apply(target));
+    }
+
+    @Test
+    void testTestOperationSuccess() {
+        JsonObject target = new JsonObject();
+        target.put("a", 1);
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.STD_TEST,
+                JsonPointer.compile("/a"),
+                1,
+                null
+        ));
+        assertDoesNotThrow(() -> patch.apply(target));
+
+        JsonPatch patch2 = new JsonPatch();
+        patch2.add(new PatchOp(
+                PatchOp.STD_TEST,
+                JsonPointer.compile("/a"),
+                2,
+                null
+        ));
+        assertThrows(JsonException.class, () -> patch2.apply(target));
+    }
+
+    @Test
+    void testCopyOperation() {
+        JsonObject target = new JsonObject();
+        target.put("a", 1);
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.STD_COPY,
+                JsonPointer.compile("/b"),
+                null,
+                JsonPointer.compile("/a")
+        ));
+
+        patch.apply(target);
+        assertEquals(1, target.getInteger("b"));
+    }
+
+    @Test
+    void testMoveOperation() {
+        JsonObject target = new JsonObject();
+        target.put("a", 1);
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.STD_MOVE,
+                JsonPointer.compile("/b"),
+                null,
+                JsonPointer.compile("/a")
+        ));
+
+        patch.apply(target);
+
+        assertEquals(1, target.getInteger("b"));
+        assertFalse(target.containsKey("a"));
+    }
+
+    @Test
+    void testExistOperation() {
+        JsonObject target = new JsonObject();
+        target.put("a", 1);
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.EXT_EXIST,
+                JsonPointer.compile("/a"),
+                null,
+                null
+        ));
+
+        assertDoesNotThrow(() -> patch.apply(target));
+    }
+
+    @Test
+    void testEnsurePutOperation() {
+        JsonObject target = new JsonObject();
+
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp(
+                PatchOp.EXT_ENSURE_PUT,
+                JsonPointer.compile("/a/b/c"),
+                1,
+                null
+        ));
+
+        patch.apply(target);
+        assertEquals(1, target.getIntegerByPath("/a/b/c"));
+    }
+
 
     @Test
     public void testAddAppendToArray() {
@@ -62,7 +237,22 @@ public class JsonPatchTest {
     }
 
     @Test
-    public void testDiffAndApply() {
+    void testDiffAndApply1() {
+        JsonObject source = new JsonObject();
+        source.put("a", 1);
+
+        JsonObject target = new JsonObject();
+        target.put("a", 2);
+        target.put("b", 3);
+
+        JsonPatch patch = JsonPatch.diff(source, target);
+        Object result = patch.apply(source);
+
+        assertEquals(target, result);
+    }
+
+    @Test
+    public void testDiffAndApply2() {
         List<Integer> a = Arrays.asList(1, 2, 3);
         List<Integer> b = Arrays.asList(1, 20, 3, 4);
 
@@ -113,6 +303,5 @@ public class JsonPatchTest {
 
         JsonObject jo2 = JsonObject.fromJson(json2);
         assertEquals(jo2, jo1);
-
     }
 }

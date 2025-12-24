@@ -2,6 +2,8 @@ package org.sjf4j.patch;
 
 
 import org.sjf4j.JsonException;
+import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.NodeUtil;
 
 import java.util.Map;
 import java.util.Objects;
@@ -45,16 +47,16 @@ public class PatchOpRegistry {
         try {
             return opHandler.apply(target, op);
         } catch (Exception e) {
-            throw new JsonException("PatchOp '" + op.getOp() + "' apply failed", e);
+            throw new JsonException("Failed to apply PatchOp '" + op.getOp() + "'", e);
         }
     }
 
     // Pre-register build-in PatchOps
     static {
         // test
-        PatchOpRegistry.register("test", (target, op) -> {
+        PatchOpRegistry.register(PatchOp.STD_TEST, (target, op) -> {
             Object node = op.getPath().findNode(target);
-            if (Objects.equals(node, op)) {
+            if (ContainerUtil.equals(node, op.getValue())) {
                 return target;
             } else {
                 throw new JsonException("'test' operation failed at path " + op.getPath() + ": expected " +
@@ -62,29 +64,20 @@ public class PatchOpRegistry {
             }
         });
 
-        // exist
-        PatchOpRegistry.register("exist", (target, op) -> {
-            if (op.getPath().contains(target)) {
-                return target;
-            } else  {
-                throw new JsonException("'exist' operation failed at path " + op.getPath());
-            }
-        });
-
         // add
-        PatchOpRegistry.register("add", (target, op) -> {
+        PatchOpRegistry.register(PatchOp.STD_ADD, (target, op) -> {
             op.getPath().add(target, op.getValue());
             return target;
         });
 
         // remove
-        PatchOpRegistry.register("remove", (target, op) -> {
+        PatchOpRegistry.register(PatchOp.STD_REMOVE, (target, op) -> {
             op.getPath().remove(target);
             return target;
         });
 
         // replace
-        PatchOpRegistry.register("replace", (target, op) -> {
+        PatchOpRegistry.register(PatchOp.STD_REPLACE, (target, op) -> {
             if (!op.getPath().hasNonNull(target))
                 throw new JsonException("'replace' operation failed at path " + op.getPath() +
                         ": cannot replace value at non-existent path");
@@ -93,7 +86,7 @@ public class PatchOpRegistry {
         });
 
         // copy
-        PatchOpRegistry.register("move", (target, op) -> {
+        PatchOpRegistry.register(PatchOp.STD_COPY, (target, op) -> {
             Object value = op.getFrom().findNode(target);
             if (value == null) throw new JsonException("'copy' operation failed at from " + op.getFrom() +
                     ": value is not exist");
@@ -110,8 +103,17 @@ public class PatchOpRegistry {
             return target;
         });
 
+        // exist
+        PatchOpRegistry.register(PatchOp.EXT_EXIST, (target, op) -> {
+            if (op.getPath().contains(target)) {
+                return target;
+            } else  {
+                throw new JsonException("'exist' operation failed at path " + op.getPath());
+            }
+        });
+
         // ensurePut
-        PatchOpRegistry.register("ensurePut", (target, op) -> {
+        PatchOpRegistry.register(PatchOp.EXT_ENSURE_PUT, (target, op) -> {
             op.getPath().ensurePut(target, op.getValue());
             return target;
         });

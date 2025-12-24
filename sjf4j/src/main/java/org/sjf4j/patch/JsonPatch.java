@@ -1,12 +1,7 @@
 package org.sjf4j.patch;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.util.ContainerUtil;
-import org.sjf4j.util.TypeReference;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,6 +36,7 @@ public class JsonPatch extends JsonArray {
     }
 
     public Object apply(Object target) {
+        Objects.requireNonNull(target, "target must not be null");
         forEach(v -> {
             PatchOp op =  (PatchOp) v;
             op.apply(target);

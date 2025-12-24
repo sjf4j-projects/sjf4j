@@ -1,7 +1,7 @@
 package org.sjf4j.patch;
 
-import org.sjf4j.annotation.convertible.NodeConvertible;
 import org.sjf4j.path.JsonPointer;
+
 
 public final class PatchOp {
 
