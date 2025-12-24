@@ -1,5 +1,6 @@
 package org.sjf4j.patch;
 
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.util.ContainerUtil;
@@ -9,21 +10,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class JsonPatch {
+public class JsonPatch extends JsonArray {
 
-    private final List<PatchOp> ops;
+    @Override
+    public Class<?> elementType() {
+        return PatchOp.class;
+    }
 
     public JsonPatch() {
-        this.ops = new ArrayList<>();
+        super();
     }
 
     public JsonPatch(List<PatchOp> ops) {
-        this.ops = ops;
+        super(ops);
     }
 
     public static JsonPatch fromJson(String json) {
-        List<PatchOp> ops = Sjf4j.fromJson(json, new TypeReference<List<PatchOp>>() {});
-        return new JsonPatch(ops);
+        return JsonPatch.fromJson(json, JsonPatch.class);
     }
 
     public static JsonPatch diff(Object source, Object target) {
@@ -31,27 +34,17 @@ public class JsonPatch {
         return new JsonPatch(ops);
     }
 
-    public String toJson() {
-        return Sjf4j.toJson(ops);
-    }
-
-    public List<PatchOp> toList() {
-        return ops;
-    }
-
-    public int size() {
-        return ops.size();
-    }
 
     public void add(PatchOp op) {
         Objects.requireNonNull(op, "op must not be null");
-        ops.add(op);
+        super.add(op);
     }
 
     public Object apply(Object target) {
-        for (PatchOp op : ops) {
-            target = op.apply(target);
-        }
+        forEach(v -> {
+            PatchOp op =  (PatchOp) v;
+            op.apply(target);
+        });
         return target;
     }
 

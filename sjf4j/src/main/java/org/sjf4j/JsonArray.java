@@ -57,17 +57,40 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     @SuppressWarnings("unchecked")
     public JsonArray(Object node) {
         this();
-        if (node == null) {
-            throw new IllegalArgumentException("Node must not be null");
-        } if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            this.nodeList = ja.nodeList;
-        } else if (node instanceof List) {
+        if (node == null) throw new IllegalArgumentException("Node must not be null");
+
+        Class<?> elemClazz = elementType();
+        if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            if (!list.isEmpty()) this.nodeList = list;
+            if (elemClazz != Object.class) {
+                list.forEach(v -> {
+                    if (v != null && !elemClazz.isInstance(v))
+                        throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
+                                ", but got " + v.getClass().getName());
+                });
+            }
+            this.nodeList = list;
+        } else if (node instanceof JsonArray) {
+            JsonArray ja = (JsonArray) node;
+            if (!elemClazz.isAssignableFrom(ja.elementType())) {
+                ja.forEach(v -> {
+                    if (v != null && !elemClazz.isInstance(v))
+                        throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
+                                ", but got " + v.getClass().getName());
+                });
+            }
+            this.nodeList = ja.nodeList;
         } else if (node.getClass().isArray()) {
             int len = Array.getLength(node);
             if (len > 0) {
+                if (!elemClazz.isAssignableFrom(node.getClass().getComponentType())) {
+                    for (int i = 0; i < len; i++) {
+                        Object v = Array.get(node, i);
+                        if (v != null && !elemClazz.isInstance(v))
+                            throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
+                                    ", but got " + v.getClass().getName());
+                    }
+                }
                 this.nodeList = Sjf4jConfig.global().listSupplier.create();
                 for (int i = 0; i < len; i++) {
                     this.nodeList.add(Array.get(node, i));
@@ -80,6 +103,26 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     /// Object
+
+    /**
+     * Returns the expected element type of this JSON array.
+     *
+     * <p>The default implementation returns {@link Object}, indicating that
+     * this array accepts arbitrary element values.</p>
+     *
+     * <p>Subclasses may override this method to declare a more specific
+     * element type. This information can be used by JSON backends to
+     * correctly deserialize array elements and to perform runtime
+     * validation.</p>
+     *
+     * <p>This method serves as a semantic hint only and does not introduce
+     * compile-time type constraints.</p>
+     *
+     * @return      the expected runtime type of elements contained in this array
+     */
+    public Class<?> elementType() {
+        return Object.class;
+    }
 
     /**
      * Returns the JSON-like string representation of this JsonArray.
@@ -138,9 +181,11 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
      * @throws IllegalArgumentException if clazz is null
      */
     public <T> List<T> toList(Class<T> clazz) {
-        if (clazz == null) {
-            throw new IllegalArgumentException("Clazz must not be null");
-        }
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        if (!(elementType().isAssignableFrom(clazz) || clazz.isAssignableFrom(elementType())))
+            throw new IllegalArgumentException("Cannot convert this JsonArray with elementType '" +
+                    elementType().getName() + "' to List<" + clazz.getName() + ">");
+
         if (nodeList == null) {
             return Collections.emptyList();
         } else {
@@ -162,9 +207,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
      * @throws IllegalArgumentException if clazz is null
      */
     public <T> List<T> asList(Class<T> clazz) {
-        if (clazz == null) {
-            throw new IllegalArgumentException("Clazz must not be null");
-        }
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+
         if (nodeList == null) {
             return Collections.emptyList();
         } else {
@@ -182,9 +226,11 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @SuppressWarnings("unchecked")
     public <T> T[] toArray(Class<T> clazz) {
-        if (clazz == null) {
-            throw new IllegalArgumentException("Clazz must not be null");
-        }
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        if (!(elementType().isAssignableFrom(clazz) || clazz.isAssignableFrom(elementType())))
+            throw new IllegalArgumentException("Cannot convert this JsonArray with elementType '" +
+                    elementType().getName() + "' to " + clazz.getName() + "[]");
+
         if (nodeList == null) {
             return (T[]) Array.newInstance(clazz, 0);
         } else {
@@ -198,9 +244,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @SuppressWarnings("unchecked")
     public <T> T[] asArray(Class<T> clazz) {
-        if (clazz == null) {
-            throw new IllegalArgumentException("Clazz must not be null");
-        }
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+
         if (nodeList == null) {
             return (T[]) Array.newInstance(clazz, 0);
         } else {
@@ -658,6 +703,10 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// Adder
 
     public void add(Object object) {
+        if (object != null && !elementType().isInstance(object))
+            throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
+                    " to JsonArray with elementType '" + elementType().getName() + "'");
+
         if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
         nodeList.add(object);
     }
@@ -667,6 +716,10 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public void add(int idx, Object object) {
+        if (object != null && !elementType().isInstance(object))
+            throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
+                    " to JsonArray with elementType '" + elementType().getName() + "'");
+
         int pidx = posIndex(idx);
         if (pidx < 0 || pidx > size()) {
             throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
@@ -677,6 +730,10 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     }
 
     public Object set(int idx, Object object) {
+        if (object != null && !elementType().isInstance(object))
+            throw new IllegalArgumentException("Cannot set element of type " + object.getClass().getName() +
+                    " to JsonArray with elementType '" + elementType().getName() + "'");
+
         int pidx = posIndex(idx);
         if (pidx < 0 || pidx >= size()) {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());

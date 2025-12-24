@@ -120,7 +120,7 @@ public class JacksonModule {
 
             T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
             JsonDeserializer<Object> deserializer =
-                    ctx.findRootValueDeserializer(ctx.constructType(Object.class));
+                    ctx.findRootValueDeserializer(ctx.constructType(ja.elementType()));
             while (p.nextToken() != JsonToken.END_ARRAY) {
                 Object v = deserializer.deserialize(p, ctx);
                 ja.add(v);

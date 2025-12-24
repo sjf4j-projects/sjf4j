@@ -244,7 +244,7 @@ public class StreamingUtil {
             JsonArray ja = (JsonArray) pi.newInstance();
             reader.startArray();
             while (reader.hasNext()) {
-                Object value = readNode(reader, Object.class);
+                Object value = readNode(reader, ja.elementType());
                 ja.add(value);
             }
             reader.endArray();

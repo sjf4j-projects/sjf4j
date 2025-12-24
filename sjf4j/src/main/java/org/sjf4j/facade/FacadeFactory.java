@@ -179,11 +179,11 @@ public class FacadeFactory {
     }
 
     /**
-     * Gets the default Object facade implementation.
+     * Gets the default Node facade implementation.
      *
-     * @return The default Object facade implementation
+     * @return The default Node facade implementation
      */
-    public static NodeFacade getDefaultObjectFacade() {
+    public static NodeFacade getDefaultNodeFacade() {
         return new SimpleNodeFacade();
     }
 

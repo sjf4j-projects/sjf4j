@@ -126,9 +126,9 @@ public final class Sjf4jConfig {
         return propertiesFacade;
     }
 
-    public NodeFacade getObjectFacade() {
+    public NodeFacade getNodeFacade() {
         if (nodeFacade == null) {
-            nodeFacade = FacadeFactory.getDefaultObjectFacade();
+            nodeFacade = FacadeFactory.getDefaultNodeFacade();
         }
         return nodeFacade;
     }
@@ -201,8 +201,8 @@ public final class Sjf4jConfig {
             this.propertiesFacade = propertiesFacade;
             return this;
         }
-        public Builder objectFacade(NodeFacade nodeFacade) {
-            if (nodeFacade == null) throw new IllegalArgumentException("objectFacade must not be null");
+        public Builder nodeFacade(NodeFacade nodeFacade) {
+            if (nodeFacade == null) throw new IllegalArgumentException("nodeFacade must not be null");
             this.nodeFacade = nodeFacade;
             return this;
         }

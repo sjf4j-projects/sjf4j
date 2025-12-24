@@ -260,4 +260,25 @@ public class JojoTest {
 
     }
 
+    @Test
+    public void testAsPojo() {
+        Person parent = new Person();
+        parent.setName("Parent");
+        JsonObject info = new JsonObject();
+        info.put("height", 175);
+        info.put("weight", 70);
+        parent.setInfo(info);
+        Baby baby = new Baby();
+        baby.setName("Child1");
+        baby.setMonth(12);
+        parent.setBabies(Collections.singletonList(baby));
+
+        JsonObject jo2 = Sjf4j.fromNode(parent);
+        log.info("jo2={}", jo2);
+
+        Baby baby2 = jo2.asByPath("/babies/0", Baby.class);
+        log.info("baby2={}", baby2);
+        assertEquals("Child1", baby2.getName());
+    }
+
 }

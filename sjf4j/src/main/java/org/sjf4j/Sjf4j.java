@@ -333,13 +333,13 @@ public class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getObjectFacade().readNode(node, clazz);
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, TypeReference<T> type) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        return (T) Sjf4jConfig.global().getObjectFacade().readNode(node, type.getType());
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType());
     }
 
     public static JsonObject fromNode(Object node) {

@@ -7,7 +7,6 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.patch.PatchOp;
-import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
 
@@ -25,6 +24,7 @@ public class ContainerUtil {
     public static boolean equals(Object source, Object target) {
         if (target == source) return true;
         if (source == null || target == null) return false;
+
         NodeType ntSource = NodeType.of(source);
         NodeType ntTarget = NodeType.of(target);
         if (ntSource.isNumber() && ntTarget.isNumber()) {
@@ -36,8 +36,8 @@ public class ContainerUtil {
         } else if (ntTarget == NodeType.OBJECT_POJO) {
             return target.equals(source);
         } else if (ntSource.isObject() && ntTarget.isObject()) {
-            if ((ntSource == NodeType.OBJECT_JOJO || ntTarget == NodeType.OBJECT_JOJO) &&
-                    source.getClass() != target.getClass()) {
+            if ((ntSource == NodeType.OBJECT_JOJO || ntTarget == NodeType.OBJECT_JOJO)
+                    && source.getClass() != target.getClass()) {
                 return false;
             }
             if (NodeWalker.sizeInObject(source) != NodeWalker.sizeInObject(target)) return false;
@@ -48,6 +48,10 @@ public class ContainerUtil {
             }
             return true;
         } else if (ntSource.isArray() && ntTarget.isArray()) {
+            if ((ntSource == NodeType.ARRAY_JAJO || ntTarget == NodeType.ARRAY_JAJO)
+                    && source.getClass() != target.getClass()) {
+                return false;
+            }
             if (NodeWalker.sizeInArray(source) != NodeWalker.sizeInArray(target)) return false;
             int size = NodeWalker.sizeInArray(source);
             for (int i = 0; i < size; i++) {
@@ -67,13 +71,13 @@ public class ContainerUtil {
     public static <T> T copy(T container) {
         NodeType nt = NodeType.of(container);
         switch (nt) {
-            case OBJECT_JSON_OBJECT: {
-                return (T) new JsonObject(container);
-            }
             case OBJECT_MAP: {
                 Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
                 map.putAll((Map<String, ?>) container);
                 return (T) map;
+            }
+            case OBJECT_JSON_OBJECT: {
+                return (T) new JsonObject(container);
             }
             case OBJECT_JOJO: {
                 NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
@@ -87,13 +91,19 @@ public class ContainerUtil {
                 NodeWalker.visitObject(container, (k, v) -> NodeWalker.putInObject(pojo, k, v));
                 return (T) pojo;
             }
-            case ARRAY_JSON_ARRAY: {
-                return (T) new JsonArray(container);
-            }
             case ARRAY_LIST: {
                 List<Object> list = Sjf4jConfig.global().listSupplier.create();
                 list.addAll((List<?>) container);
                 return (T) list;
+            }
+            case ARRAY_JSON_ARRAY: {
+                return (T) new JsonArray(container);
+            }
+            case ARRAY_JAJO: {
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
+                JsonArray jajo = (JsonArray) pi.newInstance();
+                jajo.addAll((JsonArray) container);
+                return (T) jajo;
             }
             case ARRAY_ARRAY: {
                 int len = Array.getLength(container);
@@ -108,7 +118,7 @@ public class ContainerUtil {
 
     @SuppressWarnings("unchecked")
     public static <T> T deepCopy(T container) {
-        return (T) Sjf4jConfig.global().getObjectFacade().readNode(container, container.getClass());
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(container, container.getClass());
     }
 
     /**
@@ -260,18 +270,6 @@ public class ContainerUtil {
     private static void _inspect(Object container, StringBuilder sb) {
         NodeType nt = NodeType.of(container);
         switch (nt) {
-            case OBJECT_JSON_OBJECT: {
-                JsonObject jo = (JsonObject) container;
-                sb.append("J{");
-                int idx = 0;
-                for (Map.Entry<String, Object> entry : jo.entrySet()) {
-                    if (idx++ > 0) sb.append(", ");
-                    sb.append(entry.getKey()).append("=");
-                    _inspect(entry.getValue(), sb);
-                }
-                sb.append("}");
-                return;
-            }
             case OBJECT_MAP: {
                 Map<String, Object> map = (Map<String, Object>) container;
                 sb.append("M{");
@@ -284,9 +282,21 @@ public class ContainerUtil {
                 sb.append("}");
                 return;
             }
+            case OBJECT_JSON_OBJECT: {
+                JsonObject jo = (JsonObject) container;
+                sb.append("J{");
+                int idx = 0;
+                for (Map.Entry<String, Object> entry : jo.entrySet()) {
+                    if (idx++ > 0) sb.append(", ");
+                    sb.append(entry.getKey()).append("=");
+                    _inspect(entry.getValue(), sb);
+                }
+                sb.append("}");
+                return;
+            }
             case OBJECT_JOJO: {
                 JsonObject jo = (JsonObject) container;
-                sb.append(container.getClass().getSimpleName()).append("@").append("{");
+                sb.append("@").append(container.getClass().getSimpleName()).append("{");
                 NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
                 AtomicInteger idx = new AtomicInteger(0);
                 jo.forEach((k, v) -> {
@@ -302,7 +312,7 @@ public class ContainerUtil {
             }
             case OBJECT_POJO: {
                 NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
-                sb.append(container.getClass().getSimpleName()).append("@").append("{");
+                sb.append("@").append(container.getClass().getSimpleName()).append("{");
                 int idx = 0;
                 for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                     if (idx++ > 0) sb.append(", ");
@@ -311,6 +321,17 @@ public class ContainerUtil {
                     _inspect(v, sb);
                 }
                 sb.append("}");
+                return;
+            }
+            case ARRAY_LIST: {
+                List<Object> list = (List<Object>) container;
+                sb.append("L[");
+                int idx = 0;
+                for (Object v : list) {
+                    if (idx++ > 0) sb.append(", ");
+                    _inspect(v, sb);
+                }
+                sb.append("]");
                 return;
             }
             case ARRAY_JSON_ARRAY: {
@@ -324,11 +345,11 @@ public class ContainerUtil {
                 sb.append("]");
                 return;
             }
-            case ARRAY_LIST: {
-                List<Object> list = (List<Object>) container;
-                sb.append("L[");
+            case ARRAY_JAJO: {
+                JsonArray ja = (JsonArray) container;
+                sb.append("@").append(container.getClass().getSimpleName()).append("[");
                 int idx = 0;
-                for (Object v : list) {
+                for (Object v : ja) {
                     if (idx++ > 0) sb.append(", ");
                     _inspect(v, sb);
                 }

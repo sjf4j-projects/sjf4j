@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
@@ -417,7 +418,7 @@ public class NodeUtil {
                 "' to Array: unsupported type");
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     public static <T> T to(Object node, Class<T> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
         if (node == null) {
@@ -451,7 +452,7 @@ public class NodeUtil {
                 return NumberUtil.as(n, clazz);
             }
         } else if (clazz.isEnum()) {
-            return (T) Enum.valueOf((Class<? extends Enum>) clazz, toString(node));
+            if (node.getClass().isEnum()) return (T) node;
         }
         throw new JsonException("Type mismatch, expected " + clazz.getName() + ", but got " +
                 node.getClass().getName());
@@ -487,10 +488,17 @@ public class NodeUtil {
                 return NumberUtil.as(n, clazz);
             }
         } else if (clazz.isEnum()) {
-            return (T) Enum.valueOf((Class<? extends Enum>) clazz, asString(node));
+            if (node.getClass().isEnum()) return (T) node;
+            else return (T) Enum.valueOf((Class<? extends Enum>) clazz, asString(node));
         }
-        throw new JsonException("Cannot convert " + node.getClass().getName()  +
-                " to " + clazz.getName() + ": unsupported type");
+
+        try {
+            return Sjf4j.fromNode(node, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert " + node.getClass().getName()  +
+                    " to " + clazz.getName(), e);
+        }
+
     }
 
 

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -429,17 +430,25 @@ class JsonArrayTest {
         assertEquals("a", ja4.getString(0, "default"));
     }
 
-    public static class MyArray extends JsonArray {
+    public static class MyArray1 extends JsonArray {
+        private int a = 33;
+        @Override
+        public Class<?> elementType() {
+            return int.class;
+        }
+    }
+
+    public static class MyArray2 extends JsonArray {
         private int a = 33;
     }
 
     @Test
     public void testExtend1() {
         String json1 = "[1,2,{\"a\":\"b\"}]";
-        MyArray my1 = Sjf4j.fromJson(json1, MyArray.class);
-        log.info("my1={}", my1);
-        String json2 = my1.toJson();
-        assertEquals(json1, json2);
+        assertThrows(Exception.class, () -> Sjf4j.fromJson(json1, MyArray1.class));
+        MyArray2 my2 = Sjf4j.fromJson(json1, MyArray2.class);
+        log.info("my2={}", my2);
+        assertEquals(json1, my2.toJson());
     }
 
 }

@@ -265,7 +265,7 @@ public class JacksonStreamingUtil {
             JsonArray ja = (JsonArray) pi.newInstance();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
-                Object value = readNode(parser, Object.class);
+                Object value = readNode(parser, ja.elementType());
                 ja.add(value);
             }
             parser.nextToken();

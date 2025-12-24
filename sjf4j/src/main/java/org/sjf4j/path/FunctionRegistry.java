@@ -75,14 +75,15 @@ public class FunctionRegistry {
             switch (NodeType.of(node)) {
                 case VALUE_STRING:
                     return ((String) node).length();
-                case OBJECT_JSON_OBJECT:
                 case OBJECT_MAP:
-                case OBJECT_POJO:
+                case OBJECT_JSON_OBJECT:
                 case OBJECT_JOJO:
+                case OBJECT_POJO:
                     return NodeWalker.sizeInObject(node);
-                case ARRAY_ARRAY:
-                case ARRAY_JSON_ARRAY:
                 case ARRAY_LIST:
+                case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     return NodeWalker.sizeInArray(node);
                 default:
                     return null;
@@ -95,9 +96,10 @@ public class FunctionRegistry {
                 throw new JsonException("count(): expects exactly 1 argument, but got: " + args.length);
             Object node = args[0];
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
-                case ARRAY_JSON_ARRAY:
                 case ARRAY_LIST:
+                case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     return NodeWalker.sizeInArray(node);
                 default:
                     return null;
@@ -143,9 +145,10 @@ public class FunctionRegistry {
             Object node = args[0];
             AtomicReference<Double> sum = new AtomicReference<>((double) 0);
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
@@ -162,9 +165,10 @@ public class FunctionRegistry {
             Object node = args[0];
             AtomicReference<Double> min = new AtomicReference<>();
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
@@ -182,9 +186,10 @@ public class FunctionRegistry {
             Object node = args[0];
             AtomicReference<Double> max = new AtomicReference<>();
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
@@ -203,9 +208,10 @@ public class FunctionRegistry {
             AtomicReference<Double> sum = new AtomicReference<>((double) 0);
             AtomicInteger cnt = new AtomicInteger();
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
@@ -224,9 +230,10 @@ public class FunctionRegistry {
             AtomicReference<Double> sum = new AtomicReference<>((double) 0);
             AtomicInteger cnt = new AtomicInteger();
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
@@ -238,9 +245,10 @@ public class FunctionRegistry {
             double avg = sum.get() / cnt.get();
             AtomicReference<Double> qe = new AtomicReference<>((double) 0);
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     NodeWalker.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
@@ -257,9 +265,10 @@ public class FunctionRegistry {
                 throw new JsonException("first(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     if (NodeWalker.sizeInArray(node) > 0) {
                         return NodeWalker.getInArray(node, 0);
                     }
@@ -273,9 +282,10 @@ public class FunctionRegistry {
                 throw new JsonException("last(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     int size = NodeWalker.sizeInArray(node);
                     if (size > 0) {
                         return NodeWalker.getInArray(node, size - 1);
@@ -290,9 +300,10 @@ public class FunctionRegistry {
                 throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];
             switch (NodeType.of(node)) {
-                case ARRAY_ARRAY:
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
+                case ARRAY_JAJO:
+                case ARRAY_ARRAY:
                     int size = NodeWalker.sizeInArray(node);
                     if (size > 0) {
                         int index = ((Number) args[1]).intValue();

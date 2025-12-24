@@ -98,7 +98,7 @@ public class GsonModule {
         public T read(JsonReader in) throws IOException {
             T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
             in.beginArray();
-            TypeAdapter<?> adapter = gson.getAdapter(Object.class);
+            TypeAdapter<?> adapter = gson.getAdapter(ja.elementType());
             while (in.hasNext()) {
                 Object value = adapter.read(in);
                 ja.add(value);

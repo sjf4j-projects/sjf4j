@@ -203,7 +203,8 @@ public class NodeUtilTest {
         assertNull(NodeUtil.to(null, String.class));
         
         // 测试enum
-        assertEquals(TestEnum.A, NodeUtil.to("A", TestEnum.class));
+        assertEquals(TestEnum.A, NodeUtil.to(TestEnum.A, TestEnum.class));
+        assertEquals(TestEnum.A, NodeUtil.as("A", TestEnum.class));
         
         // 测试不匹配的类型
         assertThrows(JsonException.class, () -> {

@@ -81,7 +81,7 @@ public class Fastjson2Module {
 
             T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
             while (!reader.nextIfArrayEnd()) {
-                Object value = reader.readAny();
+                Object value = reader.read(ja.elementType());
                 ja.add(value);
             }
             return ja;

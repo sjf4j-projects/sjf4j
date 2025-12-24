@@ -208,7 +208,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray ja = (JsonArray) pi.newInstance();
             NodeWalker.visitArray(container, (i, v) -> {
-                Object vv = readNode(v, Object.class);
+                Object vv = readNode(v, ja.elementType());
                 ja.add(vv);
             });
             return ja;

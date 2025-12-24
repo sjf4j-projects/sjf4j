@@ -243,7 +243,7 @@ public class Fastjson2StreamingUtil {
             JsonArray ja = (JsonArray) pi.newInstance();
             reader.nextIfArrayStart();
             while (reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, Object.class);
+                Object value = readNode(reader, ja.elementType());
                 ja.add(value);
             }
             return ja;

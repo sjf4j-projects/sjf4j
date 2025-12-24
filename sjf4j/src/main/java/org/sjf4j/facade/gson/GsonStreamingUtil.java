@@ -244,7 +244,7 @@ public class GsonStreamingUtil {
             JsonArray ja = (JsonArray) pi.newInstance();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {
-                Object value = readNode(reader, Object.class);
+                Object value = readNode(reader, ja.elementType());
                 ja.add(value);
             }
             reader.endArray();
