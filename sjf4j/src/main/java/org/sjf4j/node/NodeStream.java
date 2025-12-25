@@ -25,7 +25,7 @@ import java.util.stream.Stream;
  *
  * @param <T> the type of JSON nodes in the stream
  */
-public class JsonStream<T> {
+public class NodeStream<T> {
 
     /**
      * The underlying Java Stream that contains the JSON nodes.
@@ -38,7 +38,7 @@ public class JsonStream<T> {
      * @param stream the stream of JSON nodes to wrap
      * @throws IllegalArgumentException if nodeStream is null
      */
-    protected JsonStream(Stream<T> stream) {
+    protected NodeStream(Stream<T> stream) {
         if (stream == null) throw new IllegalArgumentException("NodeStream must not be null");
         this.stream = stream;
     }
@@ -51,9 +51,9 @@ public class JsonStream<T> {
      * @return a new JsonStream containing the nodes
      * @throws IllegalArgumentException if nodes is null
      */
-    public static <T>JsonStream<T> of(List<T> nodes) {
+    public static <T> NodeStream<T> of(List<T> nodes) {
         if (nodes == null) throw new IllegalArgumentException("Nodes must not be null");
-        return new JsonStream<>(nodes.stream());
+        return new NodeStream<>(nodes.stream());
     }
 
     /**
@@ -64,9 +64,9 @@ public class JsonStream<T> {
      * @return a new JsonStream containing the single node
      * @throws IllegalArgumentException if node is null
      */
-    public static <T>JsonStream<T> of(T node) {
+    public static <T> NodeStream<T> of(T node) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        return new JsonStream<>(Stream.of(node));
+        return new NodeStream<>(Stream.of(node));
     }
 
     /**
@@ -77,9 +77,9 @@ public class JsonStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing the found values
      */
-    public <R> JsonStream<R> find(String path, Class<R> clazz) {
+    public <R> NodeStream<R> find(String path, Class<R> clazz) {
         Stream<R> ns = stream.map(node -> JsonPath.compile(path).find(node, clazz));
-        return new JsonStream<>(ns);
+        return new NodeStream<>(ns);
     }
 
     /**
@@ -91,9 +91,9 @@ public class JsonStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing the found and converted values
      */
-    public <R> JsonStream<R> findAs(String path, Class<R> clazz) {
+    public <R> NodeStream<R> findAs(String path, Class<R> clazz) {
         Stream<R> ns = stream.map(node -> JsonPath.compile(path).findAs(node, clazz));
-        return new JsonStream<>(ns);
+        return new NodeStream<>(ns);
     }
 
     /**
@@ -104,9 +104,9 @@ public class JsonStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing all found values
      */
-    public <R> JsonStream<R> findAll(String path, Class<R> clazz) {
+    public <R> NodeStream<R> findAll(String path, Class<R> clazz) {
         Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAll(node, clazz).stream());
-        return new JsonStream<>(ns);
+        return new NodeStream<>(ns);
     }
 
     /**
@@ -118,9 +118,9 @@ public class JsonStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing all found and converted values
      */
-    public <R> JsonStream<R> findAllAs(String path, Class<R> clazz) {
+    public <R> NodeStream<R> findAllAs(String path, Class<R> clazz) {
         Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAllAs(node, clazz).stream());
-        return new JsonStream<>(ns);
+        return new NodeStream<>(ns);
     }
 
     /**
@@ -129,8 +129,8 @@ public class JsonStream<T> {
      * @param predicate the predicate to apply to each element to determine if it should be included
      * @return a new JsonStream with the filtered elements
      */
-    public JsonStream<T> filter(Predicate<? super T> predicate) {
-        return new JsonStream<>(stream.filter(predicate));
+    public NodeStream<T> filter(Predicate<? super T> predicate) {
+        return new NodeStream<>(stream.filter(predicate));
     }
 
     /**
@@ -140,8 +140,8 @@ public class JsonStream<T> {
      * @param <R> the type of the new elements
      * @return a new JsonStream with the mapped elements
      */
-    public <R> JsonStream<R> map(Function<? super T, ? extends R> mapper) {
-        return new JsonStream<>(stream.map(mapper));
+    public <R> NodeStream<R> map(Function<? super T, ? extends R> mapper) {
+        return new NodeStream<>(stream.map(mapper));
     }
 
     /**
@@ -149,8 +149,8 @@ public class JsonStream<T> {
      *
      * @return a new JsonStream with distinct elements
      */
-    public JsonStream<T> distinct() {
-        return new JsonStream<>(stream.distinct());
+    public NodeStream<T> distinct() {
+        return new NodeStream<>(stream.distinct());
     }
 
     /**
@@ -160,8 +160,8 @@ public class JsonStream<T> {
      * @param action the action to perform on each element
      * @return a new JsonStream with the peeked elements
      */
-    public JsonStream<T> peek(Consumer<? super T> action) {
-        return new JsonStream<>(stream.peek(action));
+    public NodeStream<T> peek(Consumer<? super T> action) {
+        return new NodeStream<>(stream.peek(action));
     }
 
     /**
@@ -171,8 +171,8 @@ public class JsonStream<T> {
      * @param maxSize the maximum number of elements to include
      * @return a new JsonStream with the limited elements
      */
-    public JsonStream<T> limit(long maxSize) {
-        return new JsonStream<>(stream.limit(maxSize));
+    public NodeStream<T> limit(long maxSize) {
+        return new NodeStream<>(stream.limit(maxSize));
     }
 
     /**
@@ -182,8 +182,8 @@ public class JsonStream<T> {
      * @param n the number of leading elements to skip
      * @return a new JsonStream with the skipped elements
      */
-    public JsonStream<T> skip(long n) {
-        return new JsonStream<>(stream.skip(n));
+    public NodeStream<T> skip(long n) {
+        return new NodeStream<>(stream.skip(n));
     }
 
     /**
@@ -193,8 +193,8 @@ public class JsonStream<T> {
      * @param comparator the comparator to determine the order of the stream
      * @return a new JsonStream with the sorted elements
      */
-    public JsonStream<T> sorted(Comparator<? super T> comparator) {
-        return new JsonStream<>(stream.sorted(comparator));
+    public NodeStream<T> sorted(Comparator<? super T> comparator) {
+        return new NodeStream<>(stream.sorted(comparator));
     }
 
     /**
@@ -205,8 +205,8 @@ public class JsonStream<T> {
      * @param <R> the type of the new elements
      * @return a new JsonStream with the flattened elements
      */
-    public <R> JsonStream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper) {
-        return new JsonStream<>(stream.flatMap(mapper));
+    public <R> NodeStream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper) {
+        return new NodeStream<>(stream.flatMap(mapper));
     }
 
     /**

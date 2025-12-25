@@ -2,7 +2,7 @@ package org.sjf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.JsonStream;
+import org.sjf4j.node.NodeStream;
 
 import java.util.List;
 import java.util.Objects;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-public class JsonStreamTest {
+public class NodeStreamTest {
 
     @Test
     public void testFind() {
@@ -28,7 +28,7 @@ public class JsonStreamTest {
                 "  \"weird.keys\": { \"key with spaces\": \"v1\" }\n" +
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
-        JsonStream<JsonObject> js = JsonStream.of(jo1);
+        NodeStream<JsonObject> js = NodeStream.of(jo1);
         String[] abc = js.findAllAs("$.book.*", JsonObject.class)
                 .filter(n -> n.hasNonNull("tags"))
                 .findAs("$.title", String.class)

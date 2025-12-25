@@ -327,19 +327,17 @@ public class NumberUtil {
         return digitSeen;
     }
 
-    public static boolean equals(Number source, Number target) {
-        if (source == target) return true;
-        if (source == null || target == null) return false;
+    public static int compare(Number source, Number target) {
+        if (source == null || target == null) throw new IllegalArgumentException("Source and target must not be null");
         if (source instanceof BigDecimal || target instanceof BigDecimal
                 || source instanceof BigInteger || target instanceof BigInteger) {
-            return asBigDecimal(source).compareTo(asBigDecimal(target)) == 0;
+            return asBigDecimal(source).compareTo(asBigDecimal(target));
         }
         if (isIntegralType(source) && isIntegralType(target)) {
-            return source.longValue() == target.longValue();
+            return Long.compare(source.longValue(), target.longValue());
         }
-        return source.doubleValue() == target.doubleValue();
+        return Double.compare(source.doubleValue(), target.doubleValue());
     }
-
 
 
 }

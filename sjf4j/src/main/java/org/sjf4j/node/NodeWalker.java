@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
 public class NodeWalker {
 
@@ -105,6 +106,86 @@ public class NodeWalker {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static boolean anyMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (predicate == null) throw new IllegalArgumentException("Predicate must not be null");
+        if (container instanceof JsonArray) {
+            JsonArray ja = (JsonArray) container;
+            for (int i = 0; i < ja.size(); i++) {
+                if (predicate.test(i, ja.get(i))) return true;
+            }
+            return false;
+        } else if (container instanceof List) {
+            List<Object> list = (List<Object>) container;
+            for (int i = 0; i < list.size(); i++) {
+                if (predicate.test(i, list.get(i))) return true;
+            }
+            return false;
+        } else if (container.getClass().isArray()) {
+            int len = Array.getLength(container);
+            for (int i = 0; i < len; i++) {
+                if (predicate.test(i, Array.get(container, i))) return true;
+            }
+            return false;
+        } else {
+            throw new JsonException("Invalid array container: " + container.getClass());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static boolean allMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (predicate == null) throw new IllegalArgumentException("Predicate must not be null");
+        if (container instanceof JsonArray) {
+            JsonArray ja = (JsonArray) container;
+            for (int i = 0; i < ja.size(); i++) {
+                if (!predicate.test(i, ja.get(i))) return false;
+            }
+            return true;
+        } else if (container instanceof List) {
+            List<Object> list = (List<Object>) container;
+            for (int i = 0; i < list.size(); i++) {
+                if (!predicate.test(i, list.get(i))) return false;
+            }
+            return true;
+        } else if (container.getClass().isArray()) {
+            int len = Array.getLength(container);
+            for (int i = 0; i < len; i++) {
+                if (!predicate.test(i, Array.get(container, i))) return false;
+            }
+            return true;
+        } else {
+            throw new JsonException("Invalid array container: " + container.getClass());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static boolean noneMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (predicate == null) throw new IllegalArgumentException("Predicate must not be null");
+        if (container instanceof JsonArray) {
+            JsonArray ja = (JsonArray) container;
+            for (int i = 0; i < ja.size(); i++) {
+                if (predicate.test(i, ja.get(i))) return false;
+            }
+            return true;
+        } else if (container instanceof List) {
+            List<Object> list = (List<Object>) container;
+            for (int i = 0; i < list.size(); i++) {
+                if (predicate.test(i, list.get(i))) return false;
+            }
+            return true;
+        } else if (container.getClass().isArray()) {
+            int len = Array.getLength(container);
+            for (int i = 0; i < len; i++) {
+                if (predicate.test(i, Array.get(container, i))) return false;
+            }
+            return true;
+        } else {
+            throw new JsonException("Invalid array container: " + container.getClass());
+        }
+    }
 
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object container) {

@@ -144,6 +144,16 @@ public enum NodeType {
         return this == VALUE_NUMBER;
     }
 
+    public boolean isString() {
+        return this == VALUE_STRING;
+    }
+
+    public boolean isBoolean() {return this == VALUE_BOOLEAN;}
+
+    public boolean isVoid() {return this == VALUE_VOID;}
+
+    public boolean isConvertible() {return this == VALUE_CONVERTIBLE;}
+
     public boolean isValue() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN ||
                 this == VALUE_VOID || this == VALUE_CONVERTIBLE;

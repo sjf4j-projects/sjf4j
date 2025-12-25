@@ -4,6 +4,7 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.NodeUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -40,7 +41,7 @@ public abstract class JsonContainer {
     @SuppressWarnings("EqualsDoesntCheckParameterClass")
     @Override
     public boolean equals(Object target) {
-        return ContainerUtil.equals(this, target);
+        return NodeUtil.equals(this, target);
     }
 
     /**

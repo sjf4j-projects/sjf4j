@@ -21,49 +21,6 @@ public class ContainerUtil {
 
     // Basic
 
-    public static boolean equals(Object source, Object target) {
-        if (target == source) return true;
-        if (source == null || target == null) return false;
-
-        NodeType ntSource = NodeType.of(source);
-        NodeType ntTarget = NodeType.of(target);
-        if (ntSource.isNumber() && ntTarget.isNumber()) {
-            return NumberUtil.equals((Number) source, (Number) target);
-        } else if (ntSource.isValue() && ntTarget.isValue()) {
-            return source.equals(target);
-        } else if (ntSource == NodeType.OBJECT_POJO) {
-            return source.equals(target);
-        } else if (ntTarget == NodeType.OBJECT_POJO) {
-            return target.equals(source);
-        } else if (ntSource.isObject() && ntTarget.isObject()) {
-            if ((ntSource == NodeType.OBJECT_JOJO || ntTarget == NodeType.OBJECT_JOJO)
-                    && source.getClass() != target.getClass()) {
-                return false;
-            }
-            if (NodeWalker.sizeInObject(source) != NodeWalker.sizeInObject(target)) return false;
-            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(source)) {
-                Object subSrouce = entry.getValue();
-                Object subTarget = NodeWalker.getInObject(target, entry.getKey());
-                if (!equals(subSrouce, subTarget)) return false;
-            }
-            return true;
-        } else if (ntSource.isArray() && ntTarget.isArray()) {
-            if ((ntSource == NodeType.ARRAY_JAJO || ntTarget == NodeType.ARRAY_JAJO)
-                    && source.getClass() != target.getClass()) {
-                return false;
-            }
-            if (NodeWalker.sizeInArray(source) != NodeWalker.sizeInArray(target)) return false;
-            int size = NodeWalker.sizeInArray(source);
-            for (int i = 0; i < size; i++) {
-                if (!equals(NodeWalker.getInArray(source, i), NodeWalker.getInArray(target, i))) return false;
-            }
-            return true;
-        } else if (ntSource.isUnknown() && ntTarget.isUnknown()) {
-            return source.equals(target);
-        }
-        return false;
-    }
-
     /**
      * Returns a shallow copy of the given container.
      */

@@ -6,6 +6,7 @@ import org.sjf4j.path.PathToken;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class JsonPathUtil {
 
@@ -195,6 +196,7 @@ public class JsonPathUtil {
 
         return tokens;
     }
+
 
     /// private
 
@@ -512,6 +514,7 @@ public class JsonPathUtil {
         FilterExpr.Op op = null;
 
         if (match(s, pos, "==")) op = FilterExpr.Op.EQ;
+        else if (match(s, pos, "=~")) op = FilterExpr.Op.MATCH;
         else if (match(s, pos, "!=")) op = FilterExpr.Op.NE;
         else if (match(s, pos, ">=")) op = FilterExpr.Op.GE;
         else if (match(s, pos, "<=")) op = FilterExpr.Op.LE;
@@ -567,6 +570,11 @@ public class JsonPathUtil {
         if (c == '@' || c == '$') {
             String path = parsePath(s, pos);
             return new FilterExpr.PathExpr(path);
+        }
+
+        // Regex: /^a/i
+        if (c == '/') {
+            return parseRegex(s, pos);
         }
 
         // Function: search(@.b, 'a')
@@ -737,6 +745,68 @@ public class JsonPathUtil {
             break;
         }
         return s.substring(start, pos[0]);
+    }
+
+    @SuppressWarnings("MagicConstant")
+    private static FilterExpr.RegexExpr parseRegex(String s, int[] pos) {
+        int start = pos[0];
+        if (s.charAt(pos[0]++) != '/') throw new JsonException("Regex must start with '/' at pos " + pos[0]);
+
+        boolean escape = false;
+        while (pos[0] < s.length()) {
+            char c = s.charAt(pos[0]);
+            if (escape) {
+                escape = false;
+                pos[0]++;
+                continue;
+            }
+            if (c == '\\') {
+                escape = true;
+                pos[0]++;
+                continue;
+            }
+            if (c == '/') {
+                // end of regex
+                String regex = s.substring(start + 1, pos[0]);
+                pos[0]++; // skip closing '/'
+
+                // parse optional flags
+                int flagsStart = pos[0];
+                while (pos[0] < s.length()) {
+                    char f = s.charAt(pos[0]);
+                    if (f == 'i' || f == 'm' || f == 's' || f == 'u' || f == 'g') {
+                        pos[0]++;
+                    } else {
+                        break;
+                    }
+                }
+                String flags = s.substring(flagsStart, pos[0]);
+                String source = s.substring(start, pos[0]);
+                Pattern pattern = Pattern.compile(regex, toFlags(flags));
+                return new FilterExpr.RegexExpr(source, pattern);
+            }
+            pos[0]++;
+        }
+
+        throw new JsonException("Unterminated regex starting at pos " + start);
+    }
+
+    private static int toFlags(String flags) {
+        int f = 0;
+        for (char c : flags.toCharArray()) {
+            switch (c) {
+                case 'i': f |= Pattern.CASE_INSENSITIVE; break;
+                case 'm': f |= Pattern.MULTILINE; break;
+                case 's': f |= Pattern.DOTALL; break;
+                case 'u': f |= Pattern.UNICODE_CASE; break;
+                case 'g':
+                    // Not support global
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported regex flag: " + c);
+            }
+        }
+        return f;
     }
 
 }

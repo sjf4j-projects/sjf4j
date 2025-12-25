@@ -1,10 +1,9 @@
 package org.sjf4j;
 
+import org.sjf4j.node.NodeStream;
 import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.NodeUtil;
 
-import java.io.Reader;
-import java.io.Writer;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -813,8 +812,8 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     /// Stream
 
-    public JsonStream<JsonArray> stream() {
-        return JsonStream.of(this);
+    public NodeStream<JsonArray> stream() {
+        return NodeStream.of(this);
     }
 
     /// Copy, merge

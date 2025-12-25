@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.ContainerUtil;
@@ -1617,8 +1618,8 @@ public class JsonObject extends JsonContainer {
 
     /// Stream
 
-    public JsonStream<JsonObject> stream() {
-        return JsonStream.of(this);
+    public NodeStream<JsonObject> stream() {
+        return NodeStream.of(this);
     }
 
 
