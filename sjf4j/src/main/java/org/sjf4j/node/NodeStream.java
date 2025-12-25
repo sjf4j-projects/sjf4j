@@ -1,6 +1,7 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
 
+import org.sjf4j.JsonArray;
 import org.sjf4j.path.JsonPath;
 
 import java.util.Comparator;
@@ -29,17 +30,17 @@ public class JsonStream<T> {
     /**
      * The underlying Java Stream that contains the JSON nodes.
      */
-    private final Stream<T> nodeStream;
+    private final Stream<T> stream;
 
     /**
      * Creates a JsonStream from an existing Stream of JSON nodes.
      *
-     * @param nodeStream the stream of JSON nodes to wrap
+     * @param stream the stream of JSON nodes to wrap
      * @throws IllegalArgumentException if nodeStream is null
      */
-    protected JsonStream(Stream<T> nodeStream) {
-        if (nodeStream == null) throw new IllegalArgumentException("NodeStream must not be null");
-        this.nodeStream = nodeStream;
+    protected JsonStream(Stream<T> stream) {
+        if (stream == null) throw new IllegalArgumentException("NodeStream must not be null");
+        this.stream = stream;
     }
 
     /**
@@ -77,7 +78,7 @@ public class JsonStream<T> {
      * @return a new JsonStream containing the found values
      */
     public <R> JsonStream<R> find(String path, Class<R> clazz) {
-        Stream<R> ns = nodeStream.map(node -> JsonPath.compile(path).find(node, clazz));
+        Stream<R> ns = stream.map(node -> JsonPath.compile(path).find(node, clazz));
         return new JsonStream<>(ns);
     }
 
@@ -91,7 +92,7 @@ public class JsonStream<T> {
      * @return a new JsonStream containing the found and converted values
      */
     public <R> JsonStream<R> findAs(String path, Class<R> clazz) {
-        Stream<R> ns = nodeStream.map(node -> JsonPath.compile(path).findAs(node, clazz));
+        Stream<R> ns = stream.map(node -> JsonPath.compile(path).findAs(node, clazz));
         return new JsonStream<>(ns);
     }
 
@@ -104,7 +105,7 @@ public class JsonStream<T> {
      * @return a new JsonStream containing all found values
      */
     public <R> JsonStream<R> findAll(String path, Class<R> clazz) {
-        Stream<R> ns = nodeStream.flatMap(node -> JsonPath.compile(path).findAll(node, clazz).stream());
+        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAll(node, clazz).stream());
         return new JsonStream<>(ns);
     }
 
@@ -118,7 +119,7 @@ public class JsonStream<T> {
      * @return a new JsonStream containing all found and converted values
      */
     public <R> JsonStream<R> findAllAs(String path, Class<R> clazz) {
-        Stream<R> ns = nodeStream.flatMap(node -> JsonPath.compile(path).findAllAs(node, clazz).stream());
+        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAllAs(node, clazz).stream());
         return new JsonStream<>(ns);
     }
 
@@ -129,7 +130,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the filtered elements
      */
     public JsonStream<T> filter(Predicate<? super T> predicate) {
-        return new JsonStream<>(nodeStream.filter(predicate));
+        return new JsonStream<>(stream.filter(predicate));
     }
 
     /**
@@ -140,7 +141,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the mapped elements
      */
     public <R> JsonStream<R> map(Function<? super T, ? extends R> mapper) {
-        return new JsonStream<>(nodeStream.map(mapper));
+        return new JsonStream<>(stream.map(mapper));
     }
 
     /**
@@ -149,7 +150,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with distinct elements
      */
     public JsonStream<T> distinct() {
-        return new JsonStream<>(nodeStream.distinct());
+        return new JsonStream<>(stream.distinct());
     }
 
     /**
@@ -160,7 +161,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the peeked elements
      */
     public JsonStream<T> peek(Consumer<? super T> action) {
-        return new JsonStream<>(nodeStream.peek(action));
+        return new JsonStream<>(stream.peek(action));
     }
 
     /**
@@ -171,7 +172,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the limited elements
      */
     public JsonStream<T> limit(long maxSize) {
-        return new JsonStream<>(nodeStream.limit(maxSize));
+        return new JsonStream<>(stream.limit(maxSize));
     }
 
     /**
@@ -182,7 +183,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the skipped elements
      */
     public JsonStream<T> skip(long n) {
-        return new JsonStream<>(nodeStream.skip(n));
+        return new JsonStream<>(stream.skip(n));
     }
 
     /**
@@ -193,7 +194,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the sorted elements
      */
     public JsonStream<T> sorted(Comparator<? super T> comparator) {
-        return new JsonStream<>(nodeStream.sorted(comparator));
+        return new JsonStream<>(stream.sorted(comparator));
     }
 
     /**
@@ -205,7 +206,7 @@ public class JsonStream<T> {
      * @return a new JsonStream with the flattened elements
      */
     public <R> JsonStream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper) {
-        return new JsonStream<>(nodeStream.flatMap(mapper));
+        return new JsonStream<>(stream.flatMap(mapper));
     }
 
     /**
@@ -214,7 +215,7 @@ public class JsonStream<T> {
      * @return the count of elements
      */
     public long count() {
-        return nodeStream.count();
+        return stream.count();
     }
 
     /**
@@ -224,7 +225,7 @@ public class JsonStream<T> {
      * @return {@code true} if any elements of the stream match the predicate, otherwise {@code false}
      */
     public boolean anyMatch(Predicate<? super T> predicate) {
-        return nodeStream.anyMatch(predicate);
+        return stream.anyMatch(predicate);
     }
 
     /**
@@ -234,7 +235,7 @@ public class JsonStream<T> {
      * @return {@code true} if all elements of the stream match the predicate, otherwise {@code false}
      */
     public boolean allMatch(Predicate<? super T> predicate) {
-        return nodeStream.allMatch(predicate);
+        return stream.allMatch(predicate);
     }
 
     /**
@@ -244,11 +245,11 @@ public class JsonStream<T> {
      * @return {@code true} if no elements of the stream match the predicate, otherwise {@code false}
      */
     public boolean noneMatch(Predicate<? super T> predicate) {
-        return nodeStream.noneMatch(predicate);
+        return stream.noneMatch(predicate);
     }
 
     public List<T> toList() {
-        return nodeStream.collect(Collectors.toList());
+        return stream.collect(Collectors.toList());
     }
 
     public JsonArray toJsonArray() {
@@ -256,15 +257,15 @@ public class JsonStream<T> {
     }
 
     public Optional<T> findFirst() {
-        return nodeStream.findFirst();
+        return stream.findFirst();
     }
 
     public Optional<T> findAny() {
-        return nodeStream.findAny();
+        return stream.findAny();
     }
 
     public <R, A> R collect(Collector<? super T, A, R> collector) {
-        return nodeStream.collect(collector);
+        return stream.collect(collector);
     }
 
 

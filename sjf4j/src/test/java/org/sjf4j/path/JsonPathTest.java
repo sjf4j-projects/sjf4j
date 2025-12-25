@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -796,6 +797,50 @@ public class JsonPathTest {
     }
 
 
+    @Test
+    public void testStringMatch() {
+        JsonArray ja1 = new JsonArray();
+        ja1.add(new JsonObject("name", "Alice"));
 
+        JsonObject jo1 = JsonPath.compile("$[?(@.name =~ /^A/)]").eval(ja1, JsonObject.class);
+        assertNotNull(jo1);
+        assertEquals("Alice", jo1.get("name"));
+
+        Object jo2 = JsonPath.compile("$[?(@.name =~ /^B/)]").eval(ja1);
+        assertNull(jo2);
+    }
+
+    @Test
+    public void testRegexArrayElement() {
+        JsonArray array = new JsonArray();
+        array.add("Alice");
+        array.add("Bob");
+        array.add("Andrew");
+
+        // Regex matches any string starting with 'A'
+        List<Object> result = JsonPath.compile("$[?(@ =~ /^A/)]").findAllNodes(array);
+        assertEquals(2, result.size());
+        assertTrue(result.contains("Alice"));
+        assertTrue(result.contains("Andrew"));
+    }
+
+    @Test
+    public void testComplexRegexWithGroups() {
+        JsonArray array = new JsonArray();
+        array.addAll(
+                new JsonObject("name", "Alice_01"),
+                new JsonObject("name", "Bob_99"),
+                new JsonObject("name", "ALIcE_02"),
+                new JsonObject("name", "ALICE_334"),
+                new JsonObject("name", "Alice-x")
+        );
+
+        List<JsonObject> result =
+                JsonPath.compile("$[?@.name =~ /^(alice)_\\d{2}$/i]").findAll(array, JsonObject.class);
+
+        assertEquals(2, result.size());
+        assertEquals("Alice_01", result.get(0).getString("name"));
+        assertEquals("ALIcE_02", result.get(1).getString("name"));
+    }
 
 }

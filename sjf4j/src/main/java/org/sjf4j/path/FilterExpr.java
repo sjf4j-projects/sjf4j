@@ -1,9 +1,15 @@
 package org.sjf4j.path;
 
+import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.JsonPathUtil;
+import org.sjf4j.util.NodeUtil;
+import org.sjf4j.util.NumberUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Interface representing a filter expression for JSON Path queries.
@@ -175,6 +181,7 @@ public interface FilterExpr {
                 case LE: return le(a, b);
                 case AND: return truth(a) && truth(b);
                 case OR:  return truth(a) || truth(b);
+                case MATCH: return match(a, b);
             }
             return false;
         }
@@ -217,6 +224,27 @@ public interface FilterExpr {
         }
     }
 
+    class RegexExpr implements FilterExpr {
+        private final String source;
+        private final Pattern pattern;
+
+        public RegexExpr(String source, Pattern pattern) {
+            this.source = source;
+            this.pattern = pattern;
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode) {
+            return pattern;
+        }
+
+        @Override
+        public String toString() {
+            return source;
+        }
+
+    }
+
     /// Default
 
     /**
@@ -226,7 +254,7 @@ public interface FilterExpr {
      */
     enum Op {
         EQ("=="), NE("!="), GT(">"), GE(">="),
-        LT("<"), LE("<="), AND("&&"), OR("||");
+        LT("<"), LE("<="), AND("&&"), OR("||"), MATCH("=~");;
 
         private final String symbol;
         Op(String symbol) { this.symbol = symbol; }
@@ -244,12 +272,7 @@ public interface FilterExpr {
      * @return true if the objects are equal according to JSON rules
      */
     static boolean eq(Object a, Object b) {
-        return ContainerUtil.equals(a, b);
-//        if (a == b) return true;
-//        if (a == null || b == null) return false;
-//        if (a instanceof Number && b instanceof Number)
-//            return ((Number)a).doubleValue() == ((Number)b).doubleValue();
-//        return a.equals(b);
+        return NodeUtil.equals(a, b);
     }
 
     /**
@@ -262,11 +285,13 @@ public interface FilterExpr {
      * @return true if a &gt; b according to JSON comparison rules
      */
     static boolean gt(Object a, Object b) {
-        if (a instanceof Number && b instanceof Number) {
-            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) > 0;
+        NodeType aNt = NodeType.of(a);
+        NodeType bNt = NodeType.of(b);
+        if (aNt.isNumber() && bNt.isNumber()) {
+            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) > 0;
         }
-        if (a instanceof String && b instanceof String) {
-            return ((String) a).compareTo((String) b) > 0;
+        if (aNt.isString() && bNt.isString()) {
+            return a.toString().compareTo(b.toString()) > 0;
         }
         return false;
     }
@@ -281,11 +306,13 @@ public interface FilterExpr {
      * @return true if a &gt;= b according to JSON comparison rules
      */
     static boolean ge(Object a, Object b) {
-        if (a instanceof Number && b instanceof Number) {
-            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) >= 0;
+        NodeType aNt = NodeType.of(a);
+        NodeType bNt = NodeType.of(b);
+        if (aNt.isNumber() && bNt.isNumber()) {
+            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) >= 0;
         }
-        if (a instanceof String && b instanceof String) {
-            return ((String) a).compareTo((String) b) >= 0;
+        if (aNt.isString() && bNt.isString()) {
+            return a.toString().compareTo(b.toString()) >= 0;
         }
         return false;
     }
@@ -300,11 +327,13 @@ public interface FilterExpr {
      * @return true if a &lt; b according to JSON comparison rules
      */
     static boolean lt(Object a, Object b) {
-        if (a instanceof Number && b instanceof Number) {
-            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) < 0;
+        NodeType aNt = NodeType.of(a);
+        NodeType bNt = NodeType.of(b);
+        if (aNt.isNumber() && bNt.isNumber()) {
+            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) < 0;
         }
-        if (a instanceof String && b instanceof String) {
-            return ((String) a).compareTo((String) b) < 0;
+        if (aNt.isString() && bNt.isString()) {
+            return NodeUtil.toString(a).compareTo(NodeUtil.toString(b)) < 0;
         }
         return false;
     }
@@ -319,12 +348,33 @@ public interface FilterExpr {
      * @return true if a &lt;= b according to JSON comparison rules
      */
     static boolean le(Object a, Object b) {
-        if (a instanceof Number && b instanceof Number) {
-            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) <= 0;
+        NodeType aNt = NodeType.of(a);
+        NodeType bNt = NodeType.of(b);
+        if (aNt.isNumber() && bNt.isNumber()) {
+            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) <= 0;
         }
-        if (a instanceof String && b instanceof String) {
-            return ((String) a).compareTo((String) b) <= 0;
+        if (aNt.isString() && bNt.isString()) {
+            return NodeUtil.toString(a).compareTo(NodeUtil.toString(b)) <= 0;
         }
+        return false;
+    }
+
+    static boolean match(Object a, Object b) {
+        if (!(b instanceof Pattern)) return false;
+        if (a == null) return false;
+        Pattern p = (Pattern) b;
+
+        NodeType aNt = NodeType.of(a);
+        if (aNt.isString()) {
+            return p.matcher(NodeUtil.toString(a)).find();
+        }
+
+        // Matches if at least one element in the array matches
+        if (aNt.isArray()) {
+            return NodeWalker.anyMatchInArray(a,
+                    (i, v) -> NodeType.of(v).isString() && p.matcher(NodeUtil.toString(v)).find());
+        }
+
         return false;
     }
 
@@ -351,10 +401,12 @@ public interface FilterExpr {
      */
     static boolean truth(Object x) {
         if (x == null) return false;
-        if (x instanceof Boolean) return (Boolean) x;
-        if (x instanceof Number) return ((Number) x).doubleValue() != 0;
-        if (x instanceof String) return !((String) x).isEmpty();
-        if (x instanceof List) return !((List<?>) x).isEmpty();
+
+        NodeType xNt = NodeType.of(x);
+        if (xNt.isBoolean()) return (Boolean) x;
+        if (xNt.isNumber()) return ((Number) x).doubleValue() != 0;
+        if (xNt.isString()) return !NodeUtil.toString(x).isEmpty();
+        if (xNt.isArray()) return NodeWalker.sizeInArray(x) > 0;
         return true;
     }
 
