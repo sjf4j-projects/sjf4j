@@ -7,7 +7,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
-import org.sjf4j.annotation.convertible.NodeConvertible;
+import org.sjf4j.annotation.convertible.Convertible;
 import org.sjf4j.annotation.convertible.Unconvert;
 import org.sjf4j.util.TypeReference;
 
@@ -26,6 +26,21 @@ public class Fastjson2FacadeTest {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
         Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.STREAMING_GENERAL).build());
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+        JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
+
+        StringWriter sw = new StringWriter();
+        facade.writeNode(sw, jo1);
+        String res1 = sw.toString();
+        log.info("res1: {}", res1);
+        assertEquals(json1, res1);
+    }
+
+    @Test
+    public void testSerDe2() {
+        String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
+
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.STREAMING_SPECIFIC).build());
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
 
@@ -94,7 +109,7 @@ public class Fastjson2FacadeTest {
     }
 
 
-    @NodeConvertible
+    @Convertible
     public static class Ops {
         private final LocalDate localDate;
 

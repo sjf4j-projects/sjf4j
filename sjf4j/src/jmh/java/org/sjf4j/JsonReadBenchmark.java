@@ -87,10 +87,10 @@ public class JsonReadBenchmark {
         return JACKSON.readValue(new StringReader(JSON_DATA), Person.class);
     }
 
-    @Benchmark
-    public Object json_jackson_node() throws IOException {
-        return JACKSON.readTree(new StringReader(JSON_DATA));
-    }
+//    @Benchmark
+//    public Object json_jackson_node() throws IOException {
+//        return JACKSON.readTree(new StringReader(JSON_DATA));
+//    }
 
 //    @Benchmark
 //    public Object json_jackson_walk2Map() throws IOException {

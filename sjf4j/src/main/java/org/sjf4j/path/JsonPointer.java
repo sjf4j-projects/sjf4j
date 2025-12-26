@@ -3,11 +3,11 @@ package org.sjf4j.path;
 
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.Copy;
-import org.sjf4j.annotation.convertible.NodeConvertible;
+import org.sjf4j.annotation.convertible.Convertible;
 import org.sjf4j.annotation.convertible.Unconvert;
 import org.sjf4j.node.NodeRegistry;
 
-@NodeConvertible
+@Convertible
 public class JsonPointer extends JsonPath {
 
     public JsonPointer() {

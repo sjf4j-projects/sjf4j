@@ -8,7 +8,7 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.Copy;
-import org.sjf4j.annotation.convertible.NodeConvertible;
+import org.sjf4j.annotation.convertible.Convertible;
 import org.sjf4j.annotation.convertible.Unconvert;
 
 import java.lang.invoke.LambdaMetafactory;
@@ -55,7 +55,7 @@ public class ReflectUtil {
                 clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
-        if (clazz.isAnnotationPresent(NodeConvertible.class)) {
+        if (clazz.isAnnotationPresent(Convertible.class)) {
             return false;
         }
         String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
@@ -289,7 +289,7 @@ public class ReflectUtil {
      * @return          NodeRegistry.ConvertibleInfo
      */
     public static NodeRegistry.ConvertibleInfo analyzeConvertible(Class<?> clazz) {
-        if (!clazz.isAnnotationPresent(NodeConvertible.class))
+        if (!clazz.isAnnotationPresent(Convertible.class))
             throw new JsonException("Class " + clazz.getName() + " is not annotated with @NodeConvertible");
 
         MethodHandle convertHandle = null, unconvertHandle = null, copyHandle = null;

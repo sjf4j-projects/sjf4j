@@ -154,7 +154,7 @@ public class Fastjson2StreamingUtil {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
-            while (reader.nextIfObjectEnd()) {
+            while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
                 Object value = readNode(reader, valueType);
                 map.put(key, value);
@@ -165,7 +165,7 @@ public class Fastjson2StreamingUtil {
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
             reader.nextIfObjectStart();
-            while (reader.nextIfObjectEnd()) {
+            while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
                 Object value = readNode(reader, Object.class);
                 jo.put(key, value);
@@ -178,7 +178,7 @@ public class Fastjson2StreamingUtil {
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
             reader.nextIfObjectStart();
-            while (reader.nextIfObjectEnd()) {
+            while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
                 NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
@@ -197,7 +197,7 @@ public class Fastjson2StreamingUtil {
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
             reader.nextIfObjectStart();
-            while (reader.nextIfObjectEnd()) {
+            while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
                 NodeRegistry.FieldInfo fi = fields.get(key);
                 if (fi != null) {
@@ -221,7 +221,7 @@ public class Fastjson2StreamingUtil {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.nextIfArrayStart();
-            while (reader.nextIfArrayEnd()) {
+            while (!reader.nextIfArrayEnd()) {
                 Object value = readNode(reader, valueType);
                 list.add(value);
             }
@@ -231,7 +231,7 @@ public class Fastjson2StreamingUtil {
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
             reader.nextIfArrayStart();
-            while (reader.nextIfArrayEnd()) {
+            while (!reader.nextIfArrayEnd()) {
                 Object value = readNode(reader, Object.class);
                 ja.add(value);
             }
@@ -242,7 +242,7 @@ public class Fastjson2StreamingUtil {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray ja = (JsonArray) pi.newInstance();
             reader.nextIfArrayStart();
-            while (reader.nextIfArrayEnd()) {
+            while (!reader.nextIfArrayEnd()) {
                 Object value = readNode(reader, ja.elementType());
                 ja.add(value);
             }
@@ -253,7 +253,7 @@ public class Fastjson2StreamingUtil {
             Class<?> valueClazz = rawClazz.getComponentType();
             List<Object> list = new ArrayList<>();
             reader.nextIfArrayStart();
-            while (reader.nextIfArrayEnd()) {
+            while (!reader.nextIfArrayEnd()) {
                 Object value = readNode(reader, valueClazz);
                 list.add(value);
             }

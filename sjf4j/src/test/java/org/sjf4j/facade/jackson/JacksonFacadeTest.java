@@ -9,7 +9,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
-import org.sjf4j.annotation.convertible.NodeConvertible;
+import org.sjf4j.annotation.convertible.Convertible;
 import org.sjf4j.annotation.convertible.Unconvert;
 import org.sjf4j.util.TypeReference;
 
@@ -94,7 +94,7 @@ public class JacksonFacadeTest {
     }
 
 
-    @NodeConvertible
+    @Convertible
     public static class Ops {
         private final LocalDate localDate;
 

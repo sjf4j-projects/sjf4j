@@ -17,22 +17,23 @@ or a dynamic `Map` (or its wrapper `JsonObject`), or a hybrid type `JOJO` that c
 This flexible representation is the core feature of the Object-Tree model.
 ```mermaid
 graph BT
-    node(("JSON Node <br/> (Object-Tree)"))
+    node(("Object-Based Node Tree"))
     node --> object(("JSON Object <br/> { }"))
-        object --> jo("JsonObject")
         object --> map("Map")
+        object --> jo("JsonObject")
+            jo --> jojo(" &lt;JOJO&gt; <br/> (extends JsonObject)")
         object --> pojo(" &lt;POJO&gt; ")
-        object --> jojo(" &lt;JOJO&gt; (=POJO extends JsonObject)")
     node --> array(("JSON Array <br/> [ ]"))
-        array --> ja("JsonArray")
         array --> list("List")
+        array --> ja("JsonArray")
+            ja --> jajo(" &lt;JAJO&gt; <br/> (extends JsonArray)")
         array --> arr("Array")
     node --> value(("JSON Value <br/> ..."))
         value --> string("String")
         value --> number("Number")
         value --> boolean("Boolean")
-        value --> null("Null")
-        value --> converted("Object (with converter)")
+        value ---> converted("Object <br/> (with Convertor or <br/> @Convertible)")
+        
 ```
 
 ## Getting Started
