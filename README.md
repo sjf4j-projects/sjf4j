@@ -6,15 +6,14 @@
 
 ## Overview
 
-**SJF4J (Simple JSON Facade for Java)** serves as a simple facade for various JSON frameworks (e.g. Jackson, Gson, 
-Fastjson2), and other JSON-like libraries (e.g. SnakeYAML).
-It maps JSON-like data into an Object-Tree, and provides a unified, expressive and powerful API for operating on this
-tree. 
+**SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
+(e.g. Jackson, Gson, Fastjson2) as well as other JSON-like data parsers (e.g. SnakeYAML, Java Properties).
 
-As shown in the **Object-Tree** node relationship diagram, each `JSON Object` node can be a type-safe `POJO`, 
-or a dynamic `Map` (or its wrapper `JsonObject`), or a hybrid type `JOJO` that combines the advantages of both 
-`POJO` and `Map`. The same design applies to `JSON Array` nodes as well.  
-This flexible representation is the core feature of the Object-Tree model.
+SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
+for navigating, querying, validating, and mutating that tree.  
+Its design follows the core data model and semantics defined by published JSON RFCs 
+as well as relevant draft specifications.
+
 ```mermaid
 graph BT
     node(("Object-Based Node Tree"))
@@ -27,25 +26,60 @@ graph BT
         array --> list("List")
         array --> ja("JsonArray")
             ja --> jajo(" &lt;JAJO&gt; <br/> (extends JsonArray)")
-        array --> arr("Array")
+        array --> arr("&lt;Array&gt;")
     node --> value(("JSON Value <br/> ..."))
         value --> string("String")
         value --> number("Number")
         value --> boolean("Boolean")
-        value ---> converted("Object <br/> (with Convertor or <br/> @Convertible)")
-        
+        value ---> converted("&lt;Object&gt; <br/> (via Convertor or <br/> @Convertible)")
 ```
+
+> Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
+> **all nodes in SJF4J are represented as native Java objects**, allowing seamless integration with existing Java code, type systems, and frameworks.
+
+#### JSON Object (`{}`)
+- **`Map`**  
+A generic key-value representation using standard Java `Map`.
+- **`JsonObject`**  
+A lightweight wrapper around a map structure that provides JSON-oriented APIs,
+and can also wrap POJO fields via getter/setter access when backed by a subclass.
+- **`<POJO>`(Plain Old Java Object)**  
+A strongly typed Java object with fields, getters, and setters.
+- **`<JOJO>`(JSON Object Java Object)**   
+A hybrid object that extends `JsonObject` while also behaving like a typed Java object,
+combining the flexibility of dynamic JSON access with the safety and expressiveness of `POJOs`.
+
+#### JSON Array (`[]`)
+- `List`  
+A standard Java `List` used as a direct representation of a JSON array.
+- `JsonArray`  
+A structured wrapper around a JSON array that provides a rich, JSON-aware API.
+- `<JAJO>`  
+An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
+(never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
+- `<Array>`  
+A native Java array (e.g. `Object[]`, `String[]`, `int[]`) used when a fixed-size, 
+strongly typed representation is desired.
+
+#### JSON Value (`..`)
+- `String`  Represents JSON string values.
+- `Number`  Represents JSON numeric values, including integers and floating-point numbers.
+- `Boolean` Represents JSON boolean values (`true` and `false`).
+- `Null`    Represents the JSON `null` literal.
+- `<Object>`:  
+SJF4J allows JSON values to be **converted into arbitrary Java objects** through a pluggable conversion mechanism 
+(via `Converter` or `@Convertible`), enabling seamless integration with **domain-specific types** (e.g. `LocalDate`).
 
 ## Getting Started
 
-### Get it
+### Installation
 
 SJF4J requires only `JDK 8` and has no external dependencies.
+
 `Gradle`:
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
-
 
 To handle ***JSON*** data, you need to add `Jackson`, `Gson`, or `Fastjson2` to your classpath. 
 The first available parser in this order will be automatically used. 
@@ -53,20 +87,32 @@ If none of them are detected, SJF4J will fall back to its own simple (and slower
 
 To handle ***YAML*** data, simply include `SnakeYAML`.
 
-To handle ***Properties***, there is a built-in parser. 
-Note that conversion from `java.util.Properties` is limited by the inherent restrictions of the Properties format. 
+To handle ***Java Properties***, there is a built-in parser.
+Note that conversion from `java.util.Properties` is limited by its format restrictions. 
 
-To work with ***POJOs***, SJF4J also provides built-in support for ***Object-Tree***, 
-so even if you do not process any JSON/YAML data and work only with POJOs, you can still use SJF4J effectively.
+In ***No-Data*** scenarios, SJF4J can also ***be used without parsing any external data***.
+It operates directly on in-memory object graphs via the Object-Based Node Tree,
+providing the same JSON-oriented APIs.
 
-### Basic Example
+### Starting from `JsonObject`
+`JsonObject` is the primary entry point for interacting with JSON-style object nodes, so we start from it.  
+All the APIs are JSON-semantic, for example, `hasNonNull()` for not `null` vs `containsKey()` for missing.
 
-Full codes are available at 
+- `getNode(key)`  
+Returns the raw underlying node as an `Object`, without any type conversion or adaptation.
+- `get(key, type)` / `getString(key)`/ `getLong(key)` ...  
+Performs in-type access with minimal adaptation when required (e.g. `Double` → `Float`, `Integer` → `Long`).
+- `as(key, type)` / `asString(key)` / `asLong(key)` ...  
+Performs cross-type conversion, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`).
+Useful for schema-less data handling.
+- `put(key, value)` / `putIfAbsent(key, value)` / `remove(key)` ...  
+Inserts, replaces, or removes property.
+- `builder()` / `toBuilder().put(..).put(..)`  
+Supports builder-style chained operations.
+
+The full codes are available at
 [SimpleExample](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExample.java).
 
-> `JsonObject` is essentially a wrapper of `Map`. 
-> It provides map-like operations, type-safe access, dynamic type casting, 
-> cross-type conversion, builder-style chaining, path-based operations, and other expressive APIs.
 ```java
     String json = "{\n" +
             "  \"id\": 1,\n" +
@@ -83,21 +129,17 @@ Full codes are available at
             "  }\n" +
             "}";
 
-    JsonObject jo = JsonObject.fromJson(json);  // Parse JSON string to JsonObject
-```
+    JsonObject jo = JsonObject.fromJson(json);  
+    // Parse JSON string to JsonObject
 
-Firstly, the basic operations include: `get()`, `as()`, `put()` and `remove()`. 
- * The `get()` will automatically perform an in-type cast (e.g., Double → Float) if necessary.
- * The `as()` is more aggressive, supporting cross-type conversion (e.g., String → Number).
-```java
-    Object nodeId = jo.getNode("id");
+    Object node = jo.getNode("id");
     // Retrieve the raw node as an Object without type conversion.
 
     Integer id = jo.getInteger("id");
     // Retrieve the node as a specific type (int) using `getXx(key)`.
     // Performs an internal cast/conversion if necessary.
 
-    int id2 = jo.getInteger("id", 0);
+    double id2 = jo.getDouble("id", 0d);
     // Retrieve the node value with a default if the key is missing.
 
     String name = jo.get("name", String.class);
@@ -113,30 +155,43 @@ Firstly, the basic operations include: `get()`, `as()`, `put()` and `remove()`.
     // Supports cross-type casting (e.g., Number → String).
 
     String active2 = jo.as("active");
-    // Dynamic type conversion, short form of `asXxx()`.
+    // Dynamic type conversion, short form of `as(key, type)`.
 
     String role = jo.asJsonObject("user").get("role");
     // Chain operations for nested nodes.
     // First converts "user" node to JsonObject, then retrieves "role".
 
     jo.put("extra", "blabla");
-    // See also: `putNonNull()`, `putIfAbsent()`, `computeIfAbsent()`
+    // Inserts or replaces, see also: `putNonNull()`, `putIfAbsent()`, `computeIfAbsent()`
 
     jo.toBuilder().putIfAbsent("x", "xx").put("y", "yy");
     // Supports Builder-style chained operations
 
     jo.remove("extra");
-    // See also: `removeIf()`, `forEach()`, `merge()` etc.
+    // See also: `removeIf()`, `forEach()` etc.
 ```
+
+> `JsonArray` represents JSON-style array nodes.  
+> It follows the same API philosophy as `JsonObject`, including JSON-semantic access, mutation, and type conversion, 
+> but applies them to ordered array elements rather than object properties.
+
+### Path-Based Operating with `JsonPath`/`JsonPointer`
+
+### Diffing and Merging with `JsonPatch`
+
+### Validating with `JsonSchema`
+
+TODO
+
+### Modeling Domain Objects with `<JOJO>`/`<JAJO>`
+
+### Converting Between JSON-like Data and Java Objects
 
 Secondly, the path-based operations include: `getByPath()`, `asByPath()`, `putByPath()`, and `removeByPath()`.
 
  * The path syntax supports the full (except Filter or Function yet)
  [JSON Path](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base) 
  and [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901).
-
-> **Highlighting**: `putByPath()` / `computeIfAbsentByPath()` /.. can automatically create intermediate nodes,
->  which is extremely useful in practice.
 
 ```java
     String role2 = jo.getStringByPath("$.user.role");         

@@ -45,7 +45,7 @@ public class SimpleExample {
         // Retrieve the node as a specific type (int) using `getXx(key)`.
         // Performs an internal cast/conversion if necessary.
 
-        int id2 = jo.getInteger("id", 0);
+        double id2 = jo.getDouble("id", 0d);
         // Retrieve the node value with a default if the key is missing.
 
         String name = jo.get("name", String.class);
@@ -93,13 +93,13 @@ public class SimpleExample {
         jo.ensurePutNonNullByPath("$.scores[3]", 100);
         // Supports array index insertion
 
-        List<String> tags = jo.findAll("$.tags[*]", String.class);
+        List<String> tags = jo.findByPath("$.tags[*]", String.class);
         // Supports Wildcard '.*' or '[*]', `findAll()` return a list of nodes
 
-        List<Short> scores = jo.findAllAs("$.scores[0:3]", Short.class);
+        List<Short> scores = jo.findAsByPath("$.scores[0:3]", Short.class);
         // Supports Slice '[from:to:step]'
 
-        List<Object> unions = jo.findAllNodes("$.user['role','profile']");
+        List<Object> unions = jo.findNodesByPath("$.user['role','profile']");
         // Supports Union '[A,B,..]' of multiple fields
 
         /// Walk and stream
@@ -211,7 +211,7 @@ public class SimpleExample {
         String bill = user2.getFriends().get(0).getName();
         // = user2.getStringByPath("$.friends[0].name")
 
-        int allUsers = user2.findAllNodes("$..id").size();
+        int allUsers = user2.findNodesByPath("$..id").size();
         // Use powerful methods from JsonObject
     }
 
