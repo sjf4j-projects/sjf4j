@@ -1444,6 +1444,14 @@ public class JsonObject extends JsonContainer {
         return old;
     }
 
+    public Object replace(String key, Object value) {
+        Object old = get(key);
+        if (old != null) {
+            return put(key, value);
+        }
+        return null;
+    }
+
     // Try generic
     @SuppressWarnings("unchecked")
     public <T> T computeIfAbsent(String key, Function<String, T> computer) {

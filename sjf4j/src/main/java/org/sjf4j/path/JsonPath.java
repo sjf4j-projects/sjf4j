@@ -186,7 +186,7 @@ public class JsonPath {
      * @return the object found at the path, or null if not found
      * @throws IllegalArgumentException if container is null
      */
-    public Object findNode(Object container) {
+    public Object getNode(Object container) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         return _findOne(container, 0);
     }
@@ -198,340 +198,340 @@ public class JsonPath {
      * @param defaultValue the value to return if the path doesn't exist
      * @return the object found at the path, or the default value if not found
      */
-    public Object findNode(Object container, Object defaultValue) {
-        Object value = findNode(container);
+    public Object getNode(Object container, Object defaultValue) {
+        Object value = getNode(container);
         return null == value ? defaultValue : value;
     }
 
     // String
-    public String findString(Object container) {
+    public String getString(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find String by path '" + this + "'", e);
         }
     }
-    public String findString(Object container, String defaultValue) {
-        String value = findString(container);
+    public String getString(Object container, String defaultValue) {
+        String value = getString(container);
         return value == null ? defaultValue : value;
     }
 
-    public String findAsString(Object container) {
+    public String asString(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to String", e);
         }
     }
-    public String findAsString(Object container, String defaultValue) {
-        String value = findAsString(container);
+    public String asString(Object container, String defaultValue) {
+        String value = asString(container);
         return value == null ? defaultValue : value;
     }
 
 
     // Long
-    public Long findLong(Object container) {
+    public Long getLong(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Long by path '" + this + "'", e);
         }
     }
-    public long findLong(Object container, long defaultValue) {
-        Long value = findLong(container);
+    public long getLong(Object container, long defaultValue) {
+        Long value = getLong(container);
         return value == null ? defaultValue : value;
     }
 
-    public Long findAsLong(Object container) {
+    public Long asLong(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Long", e);
         }
     }
-    public long findAsLong(Object container, long defaultValue) {
-        Long value = findAsLong(container);
+    public long asLong(Object container, long defaultValue) {
+        Long value = asLong(container);
         return value == null ? defaultValue : value;
     }
 
     // Integer
-    public Integer findInteger(Object container) {
+    public Integer getInteger(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Integer by path '" + this + "'", e);
         }
     }
-    public int findInteger(Object container, int defaultValue) {
-        Integer value = findInteger(container);
+    public int getInteger(Object container, int defaultValue) {
+        Integer value = getInteger(container);
         return value == null ? defaultValue : value;
     }
 
-    public Integer findAsInteger(Object container) {
+    public Integer asInteger(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Integer", e);
         }
     }
-    public int findAsInteger(Object container, int defaultValue) {
-        Integer value = findAsInteger(container);
+    public int asInteger(Object container, int defaultValue) {
+        Integer value = asInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // Short
-    public Short findShort(Object container) {
+    public Short getShort(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Short by path '" + this + "'", e);
         }
     }
-    public short findShort(Object container, short defaultValue) {
-        Short value = findShort(container);
+    public short getShort(Object container, short defaultValue) {
+        Short value = getShort(container);
         return value == null ? defaultValue : value;
     }
 
-    public Short findAsShort(Object container) {
+    public Short asShort(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Short", e);
         }
     }
-    public short findAsShort(Object container, short defaultValue) {
-        Short value = findAsShort(container);
+    public short asShort(Object container, short defaultValue) {
+        Short value = asShort(container);
         return value == null ? defaultValue : value;
     }
 
     // Byte
-    public Byte findByte(Object container) {
+    public Byte getByte(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Byte by path '" + this + "'", e);
         }
     }
-    public byte findByte(Object container, byte defaultValue) {
-        Byte value = findByte(container);
+    public byte getByte(Object container, byte defaultValue) {
+        Byte value = getByte(container);
         return value == null ? defaultValue : value;
     }
 
-    public Byte findAsByte(Object container) {
+    public Byte asByte(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Byte", e);
         }
     }
-    public byte findAsByte(Object container, byte defaultValue) {
-        Byte value = findAsByte(container);
+    public byte asByte(Object container, byte defaultValue) {
+        Byte value = asByte(container);
         return value == null ? defaultValue : value;
     }
 
     // Double
-    public Double findDouble(Object container) {
+    public Double getDouble(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Double by path '" + this + "'", e);
         }
     }
-    public double findDouble(Object container, double defaultValue) {
-        Double value = findDouble(container);
+    public double getDouble(Object container, double defaultValue) {
+        Double value = getDouble(container);
         return value == null ? defaultValue : value;
     }
 
-    public Double findAsDouble(Object container) {
+    public Double asDouble(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Double", e);
         }
     }
-    public double findAsDouble(Object container, double defaultValue) {
-        Double value = findAsDouble(container);
+    public double asDouble(Object container, double defaultValue) {
+        Double value = asDouble(container);
         return value == null ? defaultValue : value;
     }
 
     // Float
-    public Float findFloat(Object container) {
+    public Float getFloat(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Float by path '" + this + "'", e);
         }
     }
-    public float findFloat(Object container, float defaultValue) {
-        Float value = findFloat(container);
+    public float getFloat(Object container, float defaultValue) {
+        Float value = getFloat(container);
         return value == null ? defaultValue : value;
     }
 
-    public Float findAsFloat(Object container) {
+    public Float asFloat(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Float", e);
         }
     }
-    public float findAsFloat(Object container, float defaultValue) {
-        Float value = findAsFloat(container);
+    public float asFloat(Object container, float defaultValue) {
+        Float value = asFloat(container);
         return value == null ? defaultValue : value;
     }
 
     // BigInteger
-    public BigInteger findBigInteger(Object container) {
+    public BigInteger getBigInteger(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find BigInteger by path '" + this + "'", e);
         }
     }
-    public BigInteger findBigInteger(Object container, BigInteger defaultValue) {
-        BigInteger value = findBigInteger(container);
+    public BigInteger getBigInteger(Object container, BigInteger defaultValue) {
+        BigInteger value = getBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
-    public BigInteger findAsBigInteger(Object container) {
+    public BigInteger asBigInteger(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigInteger", e);
         }
     }
-    public BigInteger findAsBigInteger(Object container, BigInteger defaultValue) {
-        BigInteger value = findAsBigInteger(container);
+    public BigInteger asBigInteger(Object container, BigInteger defaultValue) {
+        BigInteger value = asBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // BigDecimal
-    public BigDecimal findBigDecimal(Object container) {
+    public BigDecimal getBigDecimal(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find BigDecimal by path '" + this + "'", e);
         }
     }
-    public BigDecimal findBigDecimal(Object container, BigDecimal defaultValue) {
-        BigDecimal value = findBigDecimal(container);
+    public BigDecimal getBigDecimal(Object container, BigDecimal defaultValue) {
+        BigDecimal value = getBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
-    public BigDecimal findAsBigDecimal(Object container) {
+    public BigDecimal asBigDecimal(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigDecimal", e);
         }
     }
-    public BigDecimal findAsBigDecimal(Object container, BigDecimal defaultValue) {
-        BigDecimal value = findAsBigDecimal(container);
+    public BigDecimal asBigDecimal(Object container, BigDecimal defaultValue) {
+        BigDecimal value = asBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
     // Boolean
-    public Boolean findBoolean(Object container) {
+    public Boolean getBoolean(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find Boolean by path '" + this + "'", e);
         }
     }
-    public boolean findBoolean(Object container, boolean defaultValue) {
-        Boolean value = findBoolean(container);
+    public boolean getBoolean(Object container, boolean defaultValue) {
+        Boolean value = getBoolean(container);
         return value == null ? defaultValue : value;
     }
 
-    public Boolean findAsBoolean(Object container) {
+    public Boolean asBoolean(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Boolean", e);
         }
     }
-    public boolean findAsBoolean(Object container, boolean defaultValue) {
-        Boolean value = findAsBoolean(container);
+    public boolean asBoolean(Object container, boolean defaultValue) {
+        Boolean value = asBoolean(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonObject
-    public JsonObject findJsonObject(Object container) {
+    public JsonObject getJsonObject(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find JsonObject by path '" + this + "'", e);
         }
     }
-    public JsonObject findJsonObject(Object container, JsonObject defaultValue) {
-        JsonObject value = findJsonObject(container);
+    public JsonObject getJsonObject(Object container, JsonObject defaultValue) {
+        JsonObject value = getJsonObject(container);
         return value == null ? defaultValue : value;
     }
 
-    public JsonObject findAsJsonObject(Object container) {
+    public JsonObject asJsonObject(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to JsonObject", e);
         }
     }
-    public JsonObject findAsJsonObject(Object container, JsonObject defaultValue) {
-        JsonObject value = findAsJsonObject(container);
+    public JsonObject asJsonObject(Object container, JsonObject defaultValue) {
+        JsonObject value = asJsonObject(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonArray
-    public JsonArray findJsonArray(Object container) {
+    public JsonArray getJsonArray(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to find JsonArray by path '" + this + "'", e);
         }
     }
-    public JsonArray findJsonArray(Object container, JsonArray defaultValue) {
-        JsonArray value = findJsonArray(container);
+    public JsonArray getJsonArray(Object container, JsonArray defaultValue) {
+        JsonArray value = getJsonArray(container);
         return value == null ? defaultValue : value;
     }
 
-    public JsonArray findAsJsonArray(Object container) {
+    public JsonArray asJsonArray(Object container) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.asJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to JsonArray", e);
         }
     }
 
-    public JsonArray findAsJsonArray(Object container, JsonArray defaultValue) {
-        JsonArray value = findAsJsonArray(container);
+    public JsonArray asJsonArray(Object container, JsonArray defaultValue) {
+        JsonArray value = asJsonArray(container);
         return value == null ? defaultValue : value;
     }
 
-    public <T> T find(Object container, Class<T> clazz) {
+    public <T> T get(Object container, Class<T> clazz) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to find '" + clazz + "' by path '" + this + "'", e);
@@ -539,37 +539,37 @@ public class JsonPath {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T find(Object container, T... reified) {
+    public <T> T get(Object container, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-        return find(container, clazz);
+        return get(container, clazz);
     }
 
-    public <T> T findAs(Object container, Class<T> clazz) {
+    public <T> T as(Object container, Class<T> clazz) {
         try {
-            Object value = findNode(container);
+            Object value = getNode(container);
             return NodeUtil.as(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to '" + clazz + "'", e);
         }
     }
     @SuppressWarnings("unchecked")
-    public <T> T findAs(Object container, T... reified) {
+    public <T> T as(Object container, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-        return findAs(container, clazz);
+        return as(container, clazz);
     }
 
 
     /// All
-    public List<Object> findAllNodes(Object container) {
+    public List<Object> findNodes(Object container) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);
         return result;
     }
 
-    public <T> List<T> findAll(Object container, Class<T> clazz) {
+    public <T> List<T> find(Object container, Class<T> clazz) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
         List<T> result = new ArrayList<>();
@@ -577,7 +577,7 @@ public class JsonPath {
         return result;
     }
 
-    public <T> List<T> findAllAs(Object container, Class<T> clazz) {
+    public <T> List<T> findAs(Object container, Class<T> clazz) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
         List<T> result = new ArrayList<>();
@@ -585,7 +585,7 @@ public class JsonPath {
         return result;
     }
 
-    // eval is more powerful than find / findAll
+    // eval() is more powerful than get() / find()
     public Object eval(Object container) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         List<Object> result = new ArrayList<>();
@@ -648,11 +648,11 @@ public class JsonPath {
         if (null != value) {
             return ensurePut(container, value);
         }
-        return findNode(container);
+        return getNode(container);
     }
 
     public Object ensurePutIfAbsent(Object container, Object value) {
-        Object old = findNode(container);
+        Object old = getNode(container);
         if (old == null) {
             return ensurePut(container, value);
         }
@@ -662,7 +662,7 @@ public class JsonPath {
     @SuppressWarnings("unchecked")
     public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
         if (computer == null) throw new IllegalArgumentException("Computer must not be null");
-        T old = find(container);
+        T old = get(container);
         if (old == null) {
             T newNode = computer.apply(this);
             if (newNode != null) {
@@ -676,7 +676,7 @@ public class JsonPath {
     /// has
 
     public boolean hasNonNull(Object container) {
-        return findNode(container) != null;
+        return getNode(container) != null;
     }
 
     public boolean contains(Object container) {
@@ -791,10 +791,10 @@ public class JsonPath {
                     return result.get(0);
                 } else {
                     throw new JsonException("Path matched " + result.size() +
-                            " results, but find() returns only one value. Use findAll() to retrieve all matches.");
+                            " results, but this method can only returns one value.");
                 }
             } else {
-                throw new JsonException("Unsupported path token '" + pt + "' in find()");
+                throw new JsonException("Unsupported path token '" + pt + "'");
             }
         }
         return node;

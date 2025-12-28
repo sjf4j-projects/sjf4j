@@ -2,7 +2,6 @@ package org.sjf4j.patch;
 
 
 import org.sjf4j.JsonException;
-import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.NodeUtil;
 
 import java.util.Map;
@@ -55,7 +54,7 @@ public class PatchOpRegistry {
     static {
         // test
         PatchOpRegistry.register(PatchOp.STD_TEST, (target, op) -> {
-            Object node = op.getPath().findNode(target);
+            Object node = op.getPath().getNode(target);
             if (NodeUtil.equals(node, op.getValue())) {
                 return target;
             } else {
@@ -87,7 +86,7 @@ public class PatchOpRegistry {
 
         // copy
         PatchOpRegistry.register(PatchOp.STD_COPY, (target, op) -> {
-            Object value = op.getFrom().findNode(target);
+            Object value = op.getFrom().getNode(target);
             if (value == null) throw new JsonException("'copy' operation failed at from " + op.getFrom() +
                     ": value is not exist");
             op.getPath().add(target, value);

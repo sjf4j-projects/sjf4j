@@ -33,7 +33,7 @@ public abstract class JsonContainer {
 
     /**
      * Compares this container to another object for equality.
-     * Uses {@link ContainerUtil#equals(Object, Object)} to perform deep equality comparison.
+     * Uses {@link NodeUtil#equals(Object, Object)} to perform deep equality comparison.
      *
      * @param target the object to compare to
      * @return true if the objects are deeply equal, false otherwise
@@ -85,7 +85,7 @@ public abstract class JsonContainer {
      * @return the value at the path, or null if it doesn't exist
      */
     public Object getNodeByPath(String path) {
-        return JsonPath.compile(path).findNode(this);
+        return JsonPath.compile(path).getNode(this);
     }
     
     /**
@@ -96,7 +96,7 @@ public abstract class JsonContainer {
      * @return the value at the path, or the default value if it doesn't exist
      */
     public Object getNodeByPath(String path, Object defaultValue) {
-        return JsonPath.compile(path).findNode(this, defaultValue);
+        return JsonPath.compile(path).getNode(this, defaultValue);
     }
 
     // String
@@ -108,7 +108,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a String, or null if it doesn't exist or can't be converted
      */
     public String getStringByPath(String path) {
-        return JsonPath.compile(path).findString(this);
+        return JsonPath.compile(path).getString(this);
     }
     
     /**
@@ -119,7 +119,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a String, or the default value if it doesn't exist or can't be converted
      */
     public String getStringByPath(String path, String defaultValue) {
-        return JsonPath.compile(path).findString(this, defaultValue);
+        return JsonPath.compile(path).getString(this, defaultValue);
     }
     
     /**
@@ -129,7 +129,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a String, or null if it doesn't exist
      */
     public String asStringByPath(String path) {
-        return JsonPath.compile(path).findAsString(this);
+        return JsonPath.compile(path).asString(this);
     }
     
     /**
@@ -140,7 +140,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a String, or the default value if it doesn't exist
      */
     public String asStringByPath(String path, String defaultValue) {
-        return JsonPath.compile(path).findAsString(this, defaultValue);
+        return JsonPath.compile(path).asString(this, defaultValue);
     }
 
     // Long
@@ -152,7 +152,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a Long, or null if it doesn't exist or can't be converted
      */
     public Long getLongByPath(String path) {
-        return JsonPath.compile(path).findLong(this);
+        return JsonPath.compile(path).getLong(this);
     }
     
     /**
@@ -163,7 +163,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a long, or the default value if it doesn't exist or can't be converted
      */
     public long getLongByPath(String path, long defaultValue) {
-        return JsonPath.compile(path).findLong(this, defaultValue);
+        return JsonPath.compile(path).getLong(this, defaultValue);
     }
     
     /**
@@ -173,7 +173,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Long, or null if it doesn't exist
      */
     public Long asLongByPath(String path) {
-        return JsonPath.compile(path).findAsLong(this);
+        return JsonPath.compile(path).asLong(this);
     }
     
     /**
@@ -184,7 +184,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a long, or the default value if it doesn't exist
      */
     public long asLongByPath(String path, long defaultValue) {
-        return JsonPath.compile(path).findAsLong(this, defaultValue);
+        return JsonPath.compile(path).asLong(this, defaultValue);
     }
 
     // Integer
@@ -196,7 +196,7 @@ public abstract class JsonContainer {
      * @return the value at the path as an Integer, or null if it doesn't exist or can't be converted
      */
     public Integer getIntegerByPath(String path) {
-        return JsonPath.compile(path).findInteger(this);
+        return JsonPath.compile(path).getInteger(this);
     }
     
     /**
@@ -207,7 +207,7 @@ public abstract class JsonContainer {
      * @return the value at the path as an int, or the default value if it doesn't exist or can't be converted
      */
     public int getIntegerByPath(String path, int defaultValue) {
-        return JsonPath.compile(path).findInteger(this, defaultValue);
+        return JsonPath.compile(path).getInteger(this, defaultValue);
     }
     
     /**
@@ -217,7 +217,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to an Integer, or null if it doesn't exist
      */
     public Integer asIntegerByPath(String path) {
-        return JsonPath.compile(path).findAsInteger(this);
+        return JsonPath.compile(path).asInteger(this);
     }
     
     /**
@@ -228,7 +228,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to an int, or the default value if it doesn't exist
      */
     public int asIntegerByPath(String path, int defaultValue) {
-        return JsonPath.compile(path).findAsInteger(this, defaultValue);
+        return JsonPath.compile(path).asInteger(this, defaultValue);
     }
 
     // Short
@@ -240,7 +240,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a Short, or null if it doesn't exist or can't be converted
      */
     public Short getShortByPath(String path) {
-        return JsonPath.compile(path).findShort(this);
+        return JsonPath.compile(path).getShort(this);
     }
     
     /**
@@ -251,7 +251,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a short, or the default value if it doesn't exist or can't be converted
      */
     public short getShortByPath(String path, short defaultValue) {
-        return JsonPath.compile(path).findShort(this, defaultValue);
+        return JsonPath.compile(path).getShort(this, defaultValue);
     }
     
     /**
@@ -261,7 +261,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Short, or null if it doesn't exist
      */
     public Short asShortByPath(String path) {
-        return JsonPath.compile(path).findAsShort(this);
+        return JsonPath.compile(path).asShort(this);
     }
     
     /**
@@ -272,7 +272,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a short, or the default value if it doesn't exist
      */
     public short asShortByPath(String path, short defaultValue) {
-        return JsonPath.compile(path).findAsShort(this, defaultValue);
+        return JsonPath.compile(path).asShort(this, defaultValue);
     }
 
     // Byte
@@ -284,7 +284,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a Byte, or null if it doesn't exist or can't be converted
      */
     public Byte getByteByPath(String path) {
-        return JsonPath.compile(path).findByte(this);
+        return JsonPath.compile(path).getByte(this);
     }
     
     /**
@@ -295,7 +295,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a byte, or the default value if it doesn't exist or can't be converted
      */
     public byte getByteByPath(String path, byte defaultValue) {
-        return JsonPath.compile(path).findByte(this, defaultValue);
+        return JsonPath.compile(path).getByte(this, defaultValue);
     }
     
     /**
@@ -305,7 +305,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Byte, or null if it doesn't exist
      */
     public Byte asByteByPath(String path) {
-        return JsonPath.compile(path).findAsByte(this);
+        return JsonPath.compile(path).asByte(this);
     }
     
     /**
@@ -316,7 +316,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a byte, or the default value if it doesn't exist
      */
     public byte asByteByPath(String path, byte defaultValue) {
-        return JsonPath.compile(path).findAsByte(this, defaultValue);
+        return JsonPath.compile(path).asByte(this, defaultValue);
     }
 
     // Double
@@ -328,7 +328,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a Double, or null if it doesn't exist or can't be converted
      */
     public Double getDoubleByPath(String path) {
-        return JsonPath.compile(path).findDouble(this);
+        return JsonPath.compile(path).getDouble(this);
     }
     
     /**
@@ -339,7 +339,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a double, or the default value if it doesn't exist or can't be converted
      */
     public double getDoubleByPath(String path, double defaultValue) {
-        return JsonPath.compile(path).findDouble(this, defaultValue);
+        return JsonPath.compile(path).getDouble(this, defaultValue);
     }
     
     /**
@@ -349,7 +349,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Double, or null if it doesn't exist
      */
     public Double asDoubleByPath(String path) {
-        return JsonPath.compile(path).findAsDouble(this);
+        return JsonPath.compile(path).asDouble(this);
     }
     
     /**
@@ -360,7 +360,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a double, or the default value if it doesn't exist
      */
     public double asDoubleByPath(String path, double defaultValue) {
-        return JsonPath.compile(path).findAsDouble(this, defaultValue);
+        return JsonPath.compile(path).asDouble(this, defaultValue);
     }
 
     // Float
@@ -372,7 +372,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a Float, or null if it doesn't exist or can't be converted
      */
     public Float getFloatByPath(String path) {
-        return JsonPath.compile(path).findFloat(this);
+        return JsonPath.compile(path).getFloat(this);
     }
     
     /**
@@ -383,7 +383,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a float, or the default value if it doesn't exist or can't be converted
      */
     public float getFloatByPath(String path, float defaultValue) {
-        return JsonPath.compile(path).findFloat(this, defaultValue);
+        return JsonPath.compile(path).getFloat(this, defaultValue);
     }
     
     /**
@@ -393,7 +393,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Float, or null if it doesn't exist
      */
     public Float asFloatByPath(String path) {
-        return JsonPath.compile(path).findAsFloat(this);
+        return JsonPath.compile(path).asFloat(this);
     }
     
     /**
@@ -404,7 +404,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a float, or the default value if it doesn't exist
      */
     public float asFloatByPath(String path, float defaultValue) {
-        return JsonPath.compile(path).findAsFloat(this, defaultValue);
+        return JsonPath.compile(path).asFloat(this, defaultValue);
     }
 
     // BigInteger
@@ -416,7 +416,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a BigInteger, or null if it doesn't exist or can't be converted
      */
     public BigInteger getBigIntegerByPath(String path) {
-        return JsonPath.compile(path).findBigInteger(this);
+        return JsonPath.compile(path).getBigInteger(this);
     }
     
     /**
@@ -427,7 +427,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a BigInteger, or the default value if it doesn't exist or can't be converted
      */
     public BigInteger getBigIntegerByPath(String path, BigInteger defaultValue) {
-        return JsonPath.compile(path).findBigInteger(this, defaultValue);
+        return JsonPath.compile(path).getBigInteger(this, defaultValue);
     }
     
     /**
@@ -437,7 +437,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a BigInteger, or null if it doesn't exist
      */
     public BigInteger asBigIntegerByPath(String path) {
-        return JsonPath.compile(path).findAsBigInteger(this);
+        return JsonPath.compile(path).asBigInteger(this);
     }
     
     /**
@@ -448,7 +448,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a BigInteger, or the default value if it doesn't exist
      */
     public BigInteger asBigIntegerByPath(String path, BigInteger defaultValue) {
-        return JsonPath.compile(path).findAsBigInteger(this, defaultValue);
+        return JsonPath.compile(path).asBigInteger(this, defaultValue);
     }
 
     // BigDecimal
@@ -460,7 +460,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a BigDecimal, or null if it doesn't exist or can't be converted
      */
     public BigDecimal getBigDecimalByPath(String path) {
-        return JsonPath.compile(path).findBigDecimal(this);
+        return JsonPath.compile(path).getBigDecimal(this);
     }
     
     /**
@@ -471,7 +471,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a BigDecimal, or the default value if it doesn't exist or can't be converted
      */
     public BigDecimal getBigDecimalByPath(String path, BigDecimal defaultValue) {
-        return JsonPath.compile(path).findBigDecimal(this, defaultValue);
+        return JsonPath.compile(path).getBigDecimal(this, defaultValue);
     }
     
     /**
@@ -481,7 +481,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a BigDecimal, or null if it doesn't exist
      */
     public BigDecimal asBigDecimalByPath(String path) {
-        return JsonPath.compile(path).findAsBigDecimal(this);
+        return JsonPath.compile(path).asBigDecimal(this);
     }
     
     /**
@@ -492,7 +492,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a BigDecimal, or the default value if it doesn't exist
      */
     public BigDecimal asBigDecimalByPath(String path, BigDecimal defaultValue) {
-        return JsonPath.compile(path).findAsBigDecimal(this, defaultValue);
+        return JsonPath.compile(path).asBigDecimal(this, defaultValue);
     }
 
     // Boolean
@@ -504,7 +504,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a Boolean, or null if it doesn't exist or can't be converted
      */
     public Boolean getBooleanByPath(String path) {
-        return JsonPath.compile(path).findBoolean(this);
+        return JsonPath.compile(path).getBoolean(this);
     }
     
     /**
@@ -515,7 +515,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a boolean, or the default value if it doesn't exist or can't be converted
      */
     public boolean getBooleanByPath(String path, boolean defaultValue) {
-        return JsonPath.compile(path).findBoolean(this, defaultValue);
+        return JsonPath.compile(path).getBoolean(this, defaultValue);
     }
     
     /**
@@ -525,7 +525,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Boolean, or null if it doesn't exist
      */
     public Boolean asBooleanByPath(String path) {
-        return JsonPath.compile(path).findAsBoolean(this);
+        return JsonPath.compile(path).asBoolean(this);
     }
     
     /**
@@ -536,7 +536,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a boolean, or the default value if it doesn't exist
      */
     public boolean asBooleanByPath(String path, boolean defaultValue) {
-        return JsonPath.compile(path).findAsBoolean(this, defaultValue);
+        return JsonPath.compile(path).asBoolean(this, defaultValue);
     }
 
     // JsonObject
@@ -548,7 +548,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a JsonObject, or null if it doesn't exist or can't be converted
      */
     public JsonObject getJsonObjectByPath(String path) {
-        return JsonPath.compile(path).findJsonObject(this);
+        return JsonPath.compile(path).getJsonObject(this);
     }
     
     /**
@@ -559,7 +559,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a JsonObject, or the default value if it doesn't exist or can't be converted
      */
     public JsonObject getJsonObjectByPath(String path, JsonObject defaultValue) {
-        return JsonPath.compile(path).findJsonObject(this, defaultValue);
+        return JsonPath.compile(path).getJsonObject(this, defaultValue);
     }
     
     /**
@@ -569,7 +569,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a JsonObject, or null if it doesn't exist
      */
     public JsonObject asJsonObjectByPath(String path) {
-        return JsonPath.compile(path).findAsJsonObject(this);
+        return JsonPath.compile(path).asJsonObject(this);
     }
     
     /**
@@ -580,7 +580,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a JsonObject, or the default value if it doesn't exist
      */
     public JsonObject asJsonObjectByPath(String path, JsonObject defaultValue) {
-        return JsonPath.compile(path).findAsJsonObject(this, defaultValue);
+        return JsonPath.compile(path).asJsonObject(this, defaultValue);
     }
 
     // JsonArray
@@ -592,7 +592,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a JsonArray, or null if it doesn't exist or can't be converted
      */
     public JsonArray getJsonArrayByPath(String path) {
-        return JsonPath.compile(path).findJsonArray(this);
+        return JsonPath.compile(path).getJsonArray(this);
     }
     
     /**
@@ -603,7 +603,7 @@ public abstract class JsonContainer {
      * @return the value at the path as a JsonArray, or the default value if it doesn't exist or can't be converted
      */
     public JsonArray getJsonArrayByPath(String path, JsonArray defaultValue) {
-        return JsonPath.compile(path).findJsonArray(this, defaultValue);
+        return JsonPath.compile(path).getJsonArray(this, defaultValue);
     }
     
     /**
@@ -613,7 +613,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a JsonArray, or null if it doesn't exist
      */
     public JsonArray asJsonArrayByPath(String path) {
-        return JsonPath.compile(path).findAsJsonArray(this);
+        return JsonPath.compile(path).asJsonArray(this);
     }
     
     /**
@@ -624,7 +624,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a JsonArray, or the default value if it doesn't exist
      */
     public JsonArray asJsonArrayByPath(String path, JsonArray defaultValue) {
-        return JsonPath.compile(path).findAsJsonArray(this, defaultValue);
+        return JsonPath.compile(path).asJsonArray(this, defaultValue);
     }
 
     // Clazz
@@ -638,7 +638,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to the specified class, or null if it doesn't exist or can't be converted
      */
     public <T> T getByPath(String path, Class<T> clazz) {
-        return JsonPath.compile(path).find(this, clazz);
+        return JsonPath.compile(path).get(this, clazz);
     }
 
 
@@ -653,7 +653,7 @@ public abstract class JsonContainer {
      */
     @SafeVarargs
     public final <T> T getByPath(String path, T... reified) {
-        return JsonPath.compile(path).find(this, reified);
+        return JsonPath.compile(path).get(this, reified);
     }
 
     /**
@@ -665,7 +665,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to the specified class, or null if it doesn't exist
      */
     public <T> T asByPath(String path, Class<T> clazz) {
-        return JsonPath.compile(path).findAs(this, clazz);
+        return JsonPath.compile(path).as(this, clazz);
     }
 
     /**
@@ -680,7 +680,7 @@ public abstract class JsonContainer {
      */
     @SafeVarargs
     public final <T> T asByPath(String path, T... reified) {
-        return JsonPath.compile(path).findAs(this, reified);
+        return JsonPath.compile(path).as(this, reified);
     }
     
     // Put by path
@@ -731,16 +731,16 @@ public abstract class JsonContainer {
 
     /// Find all
 
-    public List<Object> findAllNodes(String path) {
-        return JsonPath.compile(path).findAllNodes(this);
+    public List<Object> findNodesByPath(String path) {
+        return JsonPath.compile(path).findNodes(this);
     }
 
-    public <T> List<T> findAll(String path, Class<T> clazz) {
-        return JsonPath.compile(path).findAll(this, clazz);
+    public <T> List<T> findByPath(String path, Class<T> clazz) {
+        return JsonPath.compile(path).find(this, clazz);
     }
 
-    public <T> List<T> findAllAs(String path, Class<T> clazz) {
-        return JsonPath.compile(path).findAllAs(this, clazz);
+    public <T> List<T> findAsByPath(String path, Class<T> clazz) {
+        return JsonPath.compile(path).findAs(this, clazz);
     }
 
     public Object evalByPath(String path) {

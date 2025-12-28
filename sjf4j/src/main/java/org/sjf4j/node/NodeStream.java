@@ -78,7 +78,7 @@ public class NodeStream<T> {
      * @return a new JsonStream containing the found values
      */
     public <R> NodeStream<R> find(String path, Class<R> clazz) {
-        Stream<R> ns = stream.map(node -> JsonPath.compile(path).find(node, clazz));
+        Stream<R> ns = stream.map(node -> JsonPath.compile(path).get(node, clazz));
         return new NodeStream<>(ns);
     }
 
@@ -92,7 +92,7 @@ public class NodeStream<T> {
      * @return a new JsonStream containing the found and converted values
      */
     public <R> NodeStream<R> findAs(String path, Class<R> clazz) {
-        Stream<R> ns = stream.map(node -> JsonPath.compile(path).findAs(node, clazz));
+        Stream<R> ns = stream.map(node -> JsonPath.compile(path).as(node, clazz));
         return new NodeStream<>(ns);
     }
 
@@ -105,7 +105,7 @@ public class NodeStream<T> {
      * @return a new JsonStream containing all found values
      */
     public <R> NodeStream<R> findAll(String path, Class<R> clazz) {
-        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAll(node, clazz).stream());
+        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).find(node, clazz).stream());
         return new NodeStream<>(ns);
     }
 
@@ -119,7 +119,7 @@ public class NodeStream<T> {
      * @return a new JsonStream containing all found and converted values
      */
     public <R> NodeStream<R> findAllAs(String path, Class<R> clazz) {
-        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAllAs(node, clazz).stream());
+        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAs(node, clazz).stream());
         return new NodeStream<>(ns);
     }
 
