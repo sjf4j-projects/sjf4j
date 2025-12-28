@@ -729,7 +729,7 @@ public abstract class JsonContainer {
         JsonPath.compile(path).remove(this);
     }
 
-    /// Find all
+    /// Find
 
     public List<Object> findNodesByPath(String path) {
         return JsonPath.compile(path).findNodes(this);
@@ -742,6 +742,8 @@ public abstract class JsonContainer {
     public <T> List<T> findAsByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).findAs(this, clazz);
     }
+
+    /// Eval
 
     public Object evalByPath(String path) {
         return JsonPath.compile(path).eval(this);

@@ -10,9 +10,12 @@
 (e.g. Jackson, Gson, Fastjson2) as well as other JSON-like data parsers (e.g. SnakeYAML, Java Properties).
 
 SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
-for navigating, querying, validating, and mutating that tree.  
+for navigating, querying, validating, and mutating that tree. 
 Its design follows the core data model and semantics defined by published JSON RFCs 
 as well as relevant draft specifications.
+
+> Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
+> **all nodes in SJF4J are represented as native Java objects**, allowing seamless integration with existing Java code, type systems, and frameworks.
 
 ```mermaid
 graph BT
@@ -34,9 +37,6 @@ graph BT
         value ---> converted("&lt;Object&gt; <br/> (via Convertor or <br/> @Convertible)")
 ```
 
-> Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
-> **all nodes in SJF4J are represented as native Java objects**, allowing seamless integration with existing Java code, type systems, and frameworks.
-
 #### JSON Object (`{}`)
 - **`Map`**  
 A generic key-value representation using standard Java `Map`.
@@ -54,16 +54,16 @@ combining the flexibility of dynamic JSON access with the safety and expressiven
 A standard Java `List` used as a direct representation of a JSON array.
 - `JsonArray`  
 A structured wrapper around a JSON array that provides a rich, JSON-aware API.
-- `<JAJO>`  
-An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
-(never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
 - `<Array>`  
 A native Java array (e.g. `Object[]`, `String[]`, `int[]`) used when a fixed-size, 
 strongly typed representation is desired.
+- **`<JAJO>` (JSON Array Java Object)**  
+  An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
+  (never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
 
 #### JSON Value (`..`)
-- `String`  Represents JSON string values.
-- `Number`  Represents JSON numeric values, including integers and floating-point numbers.
+- `String`  Represents JSON `string` values.
+- `Number`  Represents JSON `numeric` values, including integers and floating-point numbers.
 - `Boolean` Represents JSON boolean values (`true` and `false`).
 - `Null`    Represents the JSON `null` literal.
 - `<Object>`:  
@@ -96,7 +96,7 @@ providing the same JSON-oriented APIs.
 
 ### Starting from `JsonObject`
 `JsonObject` is the primary entry point for interacting with JSON-style object nodes, so we start from it.  
-All the APIs are JSON-semantic, for example, `hasNonNull()` for not `null` vs `containsKey()` for missing.
+Its methods follow JSON semantics, for example, `hasNonNull()` for not `null` vs `containsKey()` for missing.
 
 - `getNode(key)`  
 Returns the raw underlying node as an `Object`, without any type conversion or adaptation.
@@ -106,11 +106,11 @@ Performs in-type access with minimal adaptation when required (e.g. `Double` →
 Performs cross-type conversion, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`).
 Useful for schema-less data handling.
 - `put(key, value)` / `putIfAbsent(key, value)` / `remove(key)` ...  
-Inserts, replaces, or removes property.
+Inserts, replaces, or removes.
 - `builder()` / `toBuilder().put(..).put(..)`  
 Supports builder-style chained operations.
 
-The full codes are available at
+Full codes are available at
 [SimpleExample](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExample.java).
 
 ```java
@@ -134,13 +134,14 @@ The full codes are available at
 
     Object node = jo.getNode("id");
     // Retrieve the raw node as an Object without type conversion.
+    // Return null if the key is missing.
 
     Integer id = jo.getInteger("id");
-    // Retrieve the node as a specific type (int) using `getXx(key)`.
-    // Performs an internal cast/conversion if necessary.
+    // Retrieve the node as a specific type using getXxx(key).
+    // Performs numeric conversion within the Number hierarchy if necessary.
 
     double id2 = jo.getDouble("id", 0d);
-    // Retrieve the node value with a default if the key is missing.
+    // Returns the node value, or the default if the property is null or missing.
 
     String name = jo.get("name", String.class);
     // Retrieve the node with an explicit type parameter.
@@ -162,20 +163,78 @@ The full codes are available at
     // First converts "user" node to JsonObject, then retrieves "role".
 
     jo.put("extra", "blabla");
-    // Inserts or replaces, see also: `putNonNull()`, `putIfAbsent()`, `computeIfAbsent()`
+    // See also: `putNonNull()`, `putIfAbsent()`, `computeIfAbsent()`
 
     jo.toBuilder().putIfAbsent("x", "xx").put("y", "yy");
-    // Supports Builder-style chained operations
+    // Provides Builder-style chained operations.
 
     jo.remove("extra");
     // See also: `removeIf()`, `forEach()` etc.
 ```
 
-> `JsonArray` represents JSON-style array nodes.  
+> `JsonArray` represents JSON-style array nodes.
 > It follows the same API philosophy as `JsonObject`, including JSON-semantic access, mutation, and type conversion, 
 > but applies them to ordered array elements rather than object properties.
 
-### Path-Based Operating with `JsonPath`/`JsonPointer`
+### Path-based Operating with `JsonPath`/`JsonPointer`
+
+The path syntax supports the **full** [JSON Path](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base)
+/ [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) specifications.  
+
+**JSON Path Syntax**
+
+| Syntax                                 | Description                                               | Example                  |
+|----------------------------------------|-----------------------------------------------------------|--------------------------|
+| `$`                                    | Root object                                               | `$`                      |
+| `@`                                    | Current node (Filter context only)                        | `@.name`                 |
+| `.name`, `['name']`                    | Object member name                                        | `$['store'].book`        |
+| `[index]`                              | Array index (0-based; negative values index from the end) | `$.store['book'][0]`     |
+| `..`                                   | Recursive descent (object or array)                       | `$..author`              |
+| `.*`, `[*]`                            | Wildcard (all children)                                   | `$.store[*]`             |
+| `[start:end]`, `[start:end:step]`      | Array slice (end exclusive)                               | `$.*.book[1:3]`          |
+| `[index1,index2]`, `['name1','name2']` | Union of array indices or object members                  | `$.store.book[0, -1]`    |
+| `[?(<filter>)]`                        | Filter expression                                         | `$..book[?@.price < 10]` |
+| `func()`                               | Function call at the end of a path or in a filter         | `$..book.size()`         |
+
+
+**Filter Expressions**
+
+| Syntax                  | Description                    | Example                                                    |
+|-------------------------|--------------------------------|------------------------------------------------------------|
+| `@`, `$`                | Path expression                | `$.orders[?(@.amount > $.config.minAmount)]`               |
+| `==`, `!=`              | Equality / inequality          | `@.category == 'fiction'`                                  |
+| `<`, `<=`, `>`, `>=`    | Numeric comparison             | `@.price >= 20`                                            |
+| `&&`, `\|\|`, `!`, `()` | Logical operators and grouping | `@.author != null \|\| ($..book.length() < 10 && !@.isbn)` |
+| `=~`                    | Full regular expression match  | `@.author =~ /.*lice/i`                                    |
+
+**Functions**
+
+| Syntax                                         | Description                                                                                                             | Example                           |
+|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
+| `length()`                                     | Returns the length of a string, array, or object                                                                        | `$[?length(@.authors) >= 5]`      |
+| `count()`                                      | Returns the number of nodes in a nodelist                                                                               | `$[?count(@.*.author) >= 5]`      |
+| `match()`                                      | Tests whether a string matches a given [I-Regexp](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-iregexp-08) | `$[?match(@.date, "1974-05-..")]` |
+| `search()`                                     | Tests whether a string contains a substring that `match()`                                                              | `$[?search(@.author, "[BR]ob")]`  |
+| `value()`                                      | Convert an instance of NodesType to a value                                                                             | `$[?value(@..color) == "red"]`    |
+| `sum()`, `min()`, `max()`, `avg()`, `stddev()` | Numeric aggregation functions                                                                                           | `$[?sum(@.price) < 20]`           |
+| `first()`, `last()`, `index()`                 | Returns the first, last, or indexed element of an array                                                                 | `$[?first(@.title) =~ /^J/]`      |
+
+> **Extensibility**: Use `FunctionRegistry.register()` to add your own functions and extend JSON Path with custom logic.
+
+**JSON Pointer Syntax**
+
+| Syntax  | Description              | Example         |
+|---------|--------------------------|-----------------|
+| `/`     | Root separator           | `/` (root)      |
+| `/name` | Object member access     | `/store/book`   |
+| `/0`    | Array index (0-based)    | `/store/book/0` |
+| `~0`    | Escape for `~` character | `/a~0b`         |
+| `~1`    | Escape for `/` character | `/a~1b`         |
+
+**Note**: JSON Pointer paths always start with `/`, 
+and only direct navigation is supported; no wildcards or filters.
+
+
 
 ### Diffing and Merging with `JsonPatch`
 
@@ -187,14 +246,8 @@ TODO
 
 ### Converting Between JSON-like Data and Java Objects
 
-Secondly, the path-based operations include: `getByPath()`, `asByPath()`, `putByPath()`, and `removeByPath()`.
-
- * The path syntax supports the full (except Filter or Function yet)
- [JSON Path](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base) 
- and [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901).
-
 ```java
-    String role2 = jo.getStringByPath("$.user.role");         
+    Object role2 = jo.getNodeByPath("$.user.role");         
     // `getXxByPath()` supports JSON Path expressions
     
     String role3 = jo.getByPath("/user/role");                
@@ -202,21 +255,29 @@ Secondly, the path-based operations include: `getByPath()`, `asByPath()`, `putBy
     
     String role4 = jo.asByPath("$..role");                    
     // Supports descendant operator for deep traversal
+
+    String role5 = JsonPath.compile("$.user.role").getString(jo);
+    // `JsonPath.compile(expr)` 
+
+    List<String> tags = jo.findByPath("$.tags[*]", String.class);          
+    // Supports Wildcard '.*' or '[*]', `find()` return a list of nodes
     
-    jo.putByPath("/aa/bb", "cc");                             
-    // Automatically creates intermediate nodes!! e.g., {"aa":{"bb":"cc"},..}
-    
-    jo.putNonNullByPath("$.scores[3]", 100);                  
-    // Supports array index insertion
-    
-    List<String> tags = jo.findAll("$.tags[*]", String.class);          
-    // Supports Wildcard '.*' or '[*]', `findAll()` return a list of nodes
-    
-    List<Short> scores = jo.findAllAs("$.scores[0:3]", Short.class);    
+    List<Short> scores = jo.findAsByPath("$.scores[0:3]", Short.class);    
     // Supports Slice '[from:to:step]'
     
-    List<Object> unions = jo.findAllNodes("$.user['role','profile']");  
+    List<Object> unions = jo.findNodesByPath("$.user['role','profile']");  
     // Supports Union '[A,B,..]' of multiple fields
+    
+    jo.putByPath("/aa/bb", "cc");
+    // Automatically creates intermediate nodes!! e.g., {"aa":{"bb":"cc"},..}
+    
+    jo.putNonNullByPath("$.scores[3]", 100);
+    // Supports array index insertion
+
+    int count = jo.evalByPath("$.scores.count()", int.class);
+    // Supports Function at the end.
+    // 
+
 ```
 Additionally, the traversal APIs `walk()` and `stream()` provide powerful ways to programmatically navigate and 
 inspect the Object-Tree.
@@ -443,19 +504,19 @@ public class PersonJo extends JsonObject {
 }
 ```
 
----
 ## Contributing
 
-SJF4J is built to ***make Java development more enjoyable***, and your interest already means a lot.  
-Feel free to open an issue just to say hi or ask for guidance — I’ll be happy to help.
-
-Contributions of all kinds are truly appreciated! —
-whether it’s code, documentation, examples, benchmarking, or simply filing an issue. 🙏🙏
-
+SJF4J is built to *make Java Development more enjoyable*.  
+Feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new) for questions, bugs, ideas,
+or simply to say hi — your interest already means a lot to the project.  
+Contributions of all kinds, whether it’s code, documentation, examples, benchmarking, or simply filing an issue, 
+are truly appreciated! ❤️
 
 ## License
 
-MIT License
+SJF4J is licensed under the [MIT License](https://opensource.org/licenses/MIT).  
+Free to use, modify, and distribute this project in both open-source and commercial applications, 
+with minimal restrictions.
 
 
 
