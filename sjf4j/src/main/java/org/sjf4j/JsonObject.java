@@ -3,7 +3,7 @@ package org.sjf4j;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeWalker;
-import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.PatchUtil;
 import org.sjf4j.util.TypeReference;
 import org.sjf4j.util.NodeUtil;
 
@@ -1531,7 +1531,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T copy() {
-        return (T) ContainerUtil.copy(this);
+        return (T) NodeUtil.copy(this);
     }
 
     /**
@@ -1546,21 +1546,21 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T deepCopy() {
-        return (T) ContainerUtil.deepCopy(this);
+        return (T) NodeUtil.deepCopy(this);
     }
 
     /**
      * Merges the specified {@code mergePatch} into this {@code JsonObject}.
      *
      * <p>The merge is applied in place. Objects and arrays are merged recursively
-     * according to {@link ContainerUtil#merge(Object, Object, boolean, boolean)}.
+     * according to {@link PatchUtil#merge(Object, Object, boolean, boolean)}.
      *
      * @param mergePatch    the patch object to merge
      * @param overwrite     whether existing non-null values should be replaced
      * @param deepCopy      whether composite values from the patch should be deep-copied
      */
     public void merge(Object mergePatch, boolean overwrite, boolean deepCopy) {
-        ContainerUtil.merge(this, mergePatch, overwrite, deepCopy);
+        PatchUtil.merge(this, mergePatch, overwrite, deepCopy);
     }
 
     /**
@@ -1603,7 +1603,7 @@ public class JsonObject extends JsonContainer {
      * @param mergePatch the JSON Merge Patch to apply
      */
     public void mergeRfc7386(Object mergePatch) {
-        ContainerUtil.mergeRfc7386(this, mergePatch);
+        PatchUtil.mergeRfc7386(this, mergePatch);
     }
 
     /**

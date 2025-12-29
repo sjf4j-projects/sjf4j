@@ -5,20 +5,27 @@ import lombok.Setter;
 import org.sjf4j.node.NodeWalker.Target;
 import org.sjf4j.node.NodeWalker.Order;
 import org.sjf4j.node.NodeWalker.Control;
+import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.util.TypeReference;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class SimpleExample {
 
     public static void main(String[] args) {
-        basic();
+        startingFrom();
+        pathBasedOperating();
+        diffingAndMerging();
         withPojo();
     }
 
-    public static void basic() {
+    public static void startingFrom() {
         String json = "{\n" +
                 "  \"id\": 1,\n" +
                 "  \"name\": \"Alice\",\n" +
@@ -62,6 +69,27 @@ public class SimpleExample {
 
         String active2 = jo.as("active");
         // Dynamic type conversion, short form of `asXxx()`.
+
+    }
+
+
+    public static void pathBasedOperating() {
+        String json = "{\n" +
+                "  \"id\": 1,\n" +
+                "  \"name\": \"Alice\",\n" +
+                "  \"active\": true,\n" +
+                "  \"tags\": [\"java\", \"json\"],\n" +
+                "  \"scores\": [95, 88.8, 0.5],\n" +
+                "  \"user\": {\n" +
+                "    \"role\": \"coder\",\n" +
+                "    \"profile\": {\n" +
+                "      \"level\": 7,\n" +
+                "      \"values\": [1, \"two\", true, null, { \"x\": 3 }]\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+
+        JsonObject jo = JsonObject.fromJson(json);  // Parse JSON string to JsonObject
 
         /// By path
 
@@ -112,22 +140,56 @@ public class SimpleExample {
         });
 
         List<String> tags2 = jo.stream()                    // Follows Java Stream syntax
-                .findAll("$.tags[*]", String.class)
+                .findByPath("$.tags[*]", String.class)
                 .filter(tag -> tag.length() > 3)            // Filter using Java codes
                 .toList();
 
         int x = jo.stream()
-                .findAllAs("$..profile", JsonObject.class)  // Primary find all
+                .findAsByPath("$..profile", JsonObject.class)  // Primary find all
                 .filter(n -> n.hasNonNull("values"))
-                .findAs("$..x", Integer.class)              // Secondary find one
+                .asByPath("$..x", Integer.class)              // Secondary find one
                 .findFirst()
                 .orElse(4);
 
         double avgScore = jo.stream()
-                .findAll("$.scores[*]", Double.class)
+                .findByPath("$.scores[*]", Double.class)
                 .map(d -> d < 60 ? 60 : d)                  // No one failed!
                 .collect(Collectors.averagingDouble(s -> s));
     }
+
+
+    public static void diffingAndMerging() {
+        List<Integer> source = new ArrayList<>(Arrays.asList(1, 2, 3));
+        List<Integer> target = new ArrayList<>(Arrays.asList(1, 20, 3, 4));
+        JsonPatch patch = JsonPatch.diff(source, target);
+        patch.apply(source);
+        assertEquals(target, source);
+        // Creates a `JsonPatch` by diffing the source and target objects,
+        // then applies the patch to transform the source into the target.
+
+        JsonPatch patch2 = JsonPatch.fromJson("[\n" +
+                "  { \"op\": \"add\", \"path\": \"/scores/-\", \"value\": 100 },\n" +       // Appends a new element
+                "  { \"op\": \"replace\", \"path\": \"/name\", \"value\": \"Alice\" },\n" +
+                "  { \"op\": \"remove\", \"path\": \"/active\" }\n" +
+                "]");
+        JsonObject before = JsonObject.fromJson("{\n" +
+                "  \"name\": \"Bob\",\n" +
+                "  \"scores\": [90, 95, 98],\n" +
+                "  \"active\": true\n" +
+                "}\n");
+        before.apply(patch2);
+        // Applies the `JsonPatch` directly to the `JsonObject`.
+
+        JsonObject after = JsonObject.fromJson("{\n" +
+                "  \"name\": \"Alice\",\n" +
+                "  \"scores\": [90, 95, 98, 100]\n" +
+                "}\n");
+        assertEquals(after, before);
+        // All operations (`add`, `replace`, `remove`) follow standard JSON Patch semantics.
+        // Patch operations are applied sequentially, and each operation mutates the target object in place.
+
+    }
+
 
 
     // POJO example

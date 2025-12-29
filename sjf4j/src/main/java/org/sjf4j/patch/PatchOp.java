@@ -48,8 +48,8 @@ public final class PatchOp {
         return from;
     }
 
-    public Object apply(Object target) {
-        return PatchOpRegistry.apply(target, this);
+    public void apply(Object target) {
+        PatchOpRegistry.apply(target, this);
     }
 
 }

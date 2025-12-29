@@ -3,7 +3,9 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.path.JsonPath;
+import org.sjf4j.util.NodeUtil;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -77,8 +79,9 @@ public class NodeStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing the found values
      */
-    public <R> NodeStream<R> find(String path, Class<R> clazz) {
-        Stream<R> ns = stream.map(node -> JsonPath.compile(path).get(node, clazz));
+    public <R> NodeStream<R> getByPath(String path, Class<R> clazz) {
+        JsonPath jp = JsonPath.compile(path);
+        Stream<R> ns = stream.map(node -> jp.get(node, clazz));
         return new NodeStream<>(ns);
     }
 
@@ -91,8 +94,9 @@ public class NodeStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing the found and converted values
      */
-    public <R> NodeStream<R> findAs(String path, Class<R> clazz) {
-        Stream<R> ns = stream.map(node -> JsonPath.compile(path).as(node, clazz));
+    public <R> NodeStream<R> asByPath(String path, Class<R> clazz) {
+        JsonPath jp = JsonPath.compile(path);
+        Stream<R> ns = stream.map(node -> jp.as(node, clazz));
         return new NodeStream<>(ns);
     }
 
@@ -104,8 +108,9 @@ public class NodeStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing all found values
      */
-    public <R> NodeStream<R> findAll(String path, Class<R> clazz) {
-        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).find(node, clazz).stream());
+    public <R> NodeStream<R> findByPath(String path, Class<R> clazz) {
+        JsonPath jp = JsonPath.compile(path);
+        Stream<R> ns = stream.flatMap(node -> jp.find(node, clazz).stream());
         return new NodeStream<>(ns);
     }
 
@@ -118,10 +123,54 @@ public class NodeStream<T> {
      * @param <R> the type of the returned values
      * @return a new JsonStream containing all found and converted values
      */
-    public <R> NodeStream<R> findAllAs(String path, Class<R> clazz) {
-        Stream<R> ns = stream.flatMap(node -> JsonPath.compile(path).findAs(node, clazz).stream());
+    public <R> NodeStream<R> findAsByPath(String path, Class<R> clazz) {
+        JsonPath jp = JsonPath.compile(path);
+        Stream<R> ns = stream.flatMap(node -> jp.findAs(node, clazz).stream());
         return new NodeStream<>(ns);
     }
+
+    public <R> NodeStream<R> evalByPath(String path, Class<R> clazz) {
+        JsonPath jp = JsonPath.compile(path);
+        Stream<R> ns = stream.flatMap(node -> {
+            Object result = jp.eval(node);
+            if (result == null) {
+                return Stream.empty();
+            } else if (result instanceof List) {
+                List<?> raw = (List<?>) result;
+                List<R> list = new ArrayList<>(raw.size());
+                for (Object o : raw) {
+                    list.add(NodeUtil.to(o, clazz));
+                }
+                return list.stream();
+            } else {
+                return Stream.of(NodeUtil.to(result, clazz));
+            }
+        });
+        return new NodeStream<>(ns);
+    }
+
+    public <R> NodeStream<R> evalAsByPath(String path, Class<R> clazz) {
+        JsonPath jp = JsonPath.compile(path);
+        Stream<R> ns = stream.flatMap(node -> {
+            Object result = jp.eval(node);
+            if (result == null) {
+                return Stream.empty();
+            } else if (result instanceof List) {
+                List<?> raw = (List<?>) result;
+                List<R> list = new ArrayList<>(raw.size());
+                for (Object o : raw) {
+                    list.add(NodeUtil.as(o, clazz));
+                }
+                return list.stream();
+            } else {
+                return Stream.of(NodeUtil.as(result, clazz));
+            }
+        });
+        return new NodeStream<>(ns);
+    }
+
+
+    /// Java Stream
 
     /**
      * Filters the stream using the specified predicate.

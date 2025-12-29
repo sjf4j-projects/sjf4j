@@ -2,12 +2,9 @@ package org.sjf4j.path;
 
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeWalker;
-import org.sjf4j.util.ContainerUtil;
-import org.sjf4j.util.JsonPathUtil;
 import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.NumberUtil;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 

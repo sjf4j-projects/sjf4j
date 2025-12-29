@@ -96,22 +96,22 @@ providing the same JSON-oriented APIs.
 
 ### Starting from `JsonObject`
 `JsonObject` is the primary entry point for interacting with JSON-style object nodes, so we start from it.  
-Its methods follow JSON semantics, for example, `hasNonNull()` for not `null` vs `containsKey()` for missing.
 
-- `getNode(key)`  
-Returns the raw underlying node as an `Object`, without any type conversion or adaptation.
-- `get(key, type)` / `getString(key)`/ `getLong(key)` ...  
-Performs in-type access with minimal adaptation when required (e.g. `Double` → `Float`, `Integer` → `Long`).
-- `as(key, type)` / `asString(key)` / `asLong(key)` ...  
-Performs cross-type conversion, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`).
-Useful for schema-less data handling.
-- `put(key, value)` / `putIfAbsent(key, value)` / `remove(key)` ...  
-Inserts, replaces, or removes.
-- `builder()` / `toBuilder().put(..).put(..)`  
-Supports builder-style chained operations.
+**Basic methods**:
 
-Full codes are available at
-[SimpleExample](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExample.java).
+> All APIs in SJF4J follow JSON semantics, for example, `hasNonNull()` for not `null` vs `containsKey()` for missing.
+
+| Method                                                        | Description                                                                                                                                                        |
+|---------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `getNode(key)`                                                | Returns the raw underlying node as an `Object`, without any type conversion or adaptation.                                                                         |
+| `get(key, type)` / `getString(key)` / `getLong(key)` ...      | Performs type-safe access with minimal adaptation when necessary (e.g. `Double` → `Float`, `Integer` → `Long`).                                                    |
+| `as(key, type)` / `asString(key)` / `asLong(key)` ...         | Performs cross-type conversion, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`). <br/> ***Useful for schema-less data handling***. |
+| `put(key, value)` / `replace(key, value)` / `remove(key)` ... | Performs mutation operations such as insert, replace, and remove.                                                                                                  |
+| `builder()` / `toBuilder().put(..).put(..)`                   | Provides a builder-style API that supports fluent, chained operations.                                                                                             |
+
+
+Example: (Full codes are available at
+[SimpleExample](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExample.java))
 
 ```java
     String json = "{\n" +
@@ -172,56 +172,59 @@ Full codes are available at
     // See also: `removeIf()`, `forEach()` etc.
 ```
 
-> `JsonArray` represents JSON-style array nodes.
+> **Note**: `JsonArray` represents JSON Array nodes.
 > It follows the same API philosophy as `JsonObject`, including JSON-semantic access, mutation, and type conversion, 
 > but applies them to ordered array elements rather than object properties.
 
 ### Path-based Operating with `JsonPath`/`JsonPointer`
 
-The path syntax supports the **full** [JSON Path](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base)
-/ [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) specifications.  
+`JsonPath` provides **full support** for the [JSON Path (Draft)](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-base)
+/ [JSON Pointer (RFC 6901)](https://datatracker.ietf.org/doc/html/rfc6901) specifications.  
 
 **JSON Path Syntax**
 
-| Syntax                                 | Description                                               | Example                  |
-|----------------------------------------|-----------------------------------------------------------|--------------------------|
-| `$`                                    | Root object                                               | `$`                      |
-| `@`                                    | Current node (Filter context only)                        | `@.name`                 |
-| `.name`, `['name']`                    | Object member name                                        | `$['store'].book`        |
-| `[index]`                              | Array index (0-based; negative values index from the end) | `$.store['book'][0]`     |
-| `..`                                   | Recursive descent (object or array)                       | `$..author`              |
-| `.*`, `[*]`                            | Wildcard (all children)                                   | `$.store[*]`             |
-| `[start:end]`, `[start:end:step]`      | Array slice (end exclusive)                               | `$.*.book[1:3]`          |
-| `[index1,index2]`, `['name1','name2']` | Union of array indices or object members                  | `$.store.book[0, -1]`    |
-| `[?(<filter>)]`                        | Filter expression                                         | `$..book[?@.price < 10]` |
-| `func()`                               | Function call at the end of a path or in a filter         | `$..book.size()`         |
+| Syntax                                   | Description                                               | Example                  |
+|------------------------------------------|-----------------------------------------------------------|--------------------------|
+| `$`                                      | Root object                                               | `$`                      |
+| `@`                                      | Current node (Filter context only)                        | `@.name`                 |
+| `.name`, `['name']`                      | Object member name                                        | `$['store'].book`        |
+| `[index]`                                | Array index (0-based; negative values index from the end) | `$.store['book'][0]`     |
+| `..`                                     | Recursive descent (object or array)                       | `$..author`              |
+| `.*`, `[*]`                              | Wildcard (all children)                                   | `$.store[*]`             |
+| `[start:end]`, `[start:end:step]`        | Array slice (end exclusive)                               | `$.*.book[1:3]`          |
+| `[index1, index2]`, `['name1', 'name2']` | Union of array indices or object members                  | `$.store.book[0, -1]`    |
+| `[?(<filter>)]`                          | Filter expression                                         | `$..book[?@.price < 10]` |
+| `func()`                                 | Function call at the end of a path or in a filter         | `$..book.size()`         |
 
 
 **Filter Expressions**
 
-| Syntax                  | Description                    | Example                                                    |
-|-------------------------|--------------------------------|------------------------------------------------------------|
-| `@`, `$`                | Path expression                | `$.orders[?(@.amount > $.config.minAmount)]`               |
-| `==`, `!=`              | Equality / inequality          | `@.category == 'fiction'`                                  |
-| `<`, `<=`, `>`, `>=`    | Numeric comparison             | `@.price >= 20`                                            |
-| `&&`, `\|\|`, `!`, `()` | Logical operators and grouping | `@.author != null \|\| ($..book.length() < 10 && !@.isbn)` |
-| `=~`                    | Full regular expression match  | `@.author =~ /.*lice/i`                                    |
+| Syntax                  | Description                               | Example                                                    |
+|-------------------------|-------------------------------------------|------------------------------------------------------------|
+| `@`, `$`                | Path expression (automatically evaluated) | `$.orders[?(@.amount > $.config.minAmount)]`               |
+| `==`, `!=`              | Equality / inequality                     | `@.category == 'fiction'`                                  |
+| `<`, `<=`, `>`, `>=`    | Numeric comparison                        | `@.price >= 20`                                            |
+| `&&`, `\|\|`, `!`, `()` | Logical operators and grouping            | `@.author != null \|\| ($..book.length() < 10 && !@.isbn)` |
+| `=~`                    | Full regular expression match             | `@.author =~ /.*lice/i`                                    |
 
 **Functions**
 
-| Syntax                                         | Description                                                                                                             | Example                           |
-|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| `length()`                                     | Returns the length of a string, array, or object                                                                        | `$[?length(@.authors) >= 5]`      |
-| `count()`                                      | Returns the number of nodes in a nodelist                                                                               | `$[?count(@.*.author) >= 5]`      |
-| `match()`                                      | Tests whether a string matches a given [I-Regexp](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-iregexp-08) | `$[?match(@.date, "1974-05-..")]` |
-| `search()`                                     | Tests whether a string contains a substring that `match()`                                                              | `$[?search(@.author, "[BR]ob")]`  |
-| `value()`                                      | Convert an instance of NodesType to a value                                                                             | `$[?value(@..color) == "red"]`    |
-| `sum()`, `min()`, `max()`, `avg()`, `stddev()` | Numeric aggregation functions                                                                                           | `$[?sum(@.price) < 20]`           |
-| `first()`, `last()`, `index()`                 | Returns the first, last, or indexed element of an array                                                                 | `$[?first(@.title) =~ /^J/]`      |
+| Syntax                                         | Description                                                                                                                     | Example                           |
+|------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
+| `length()`                                     | Returns the length of a string, array, or object                                                                                | `$[?length(@.authors) >= 5]`      |
+| `count()`                                      | Returns the number of nodes in a nodelist                                                                                       | `$[?count(@.*.author) >= 5]`      |
+| `match()`                                      | Tests whether a string matches a given [I-Regexp (Draft)](https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-iregexp-08) | `$[?match(@.date, "1974-05-..")]` |
+| `search()`                                     | Tests whether a string contains a substring that `match()`                                                                      | `$[?search(@.author, "[BR]ob")]`  |
+| `value()`                                      | Convert an instance of NodesType to a value                                                                                     | `$[?value(@..color) == "red"]`    |
+| `sum()`, `min()`, `max()`, `avg()`, `stddev()` | Numeric aggregation functions                                                                                                   | `$[?sum(@.price) < 20]`           |
+| `first()`, `last()`, `index()`                 | Returns the first, last, or indexed element of an array                                                                         | `$[?first(@.title) =~ /^J/]`      |
 
 > **Extensibility**: Use `FunctionRegistry.register()` to add your own functions and extend JSON Path with custom logic.
 
 **JSON Pointer Syntax**
+
+JSON Pointer paths always start with `/`, 
+and only direct navigation is supported; no wildcards or filters.
 
 | Syntax  | Description              | Example         |
 |---------|--------------------------|-----------------|
@@ -231,12 +234,170 @@ The path syntax supports the **full** [JSON Path](https://datatracker.ietf.org/d
 | `~0`    | Escape for `~` character | `/a~0b`         |
 | `~1`    | Escape for `/` character | `/a~1b`         |
 
-**Note**: JSON Pointer paths always start with `/`, 
-and only direct navigation is supported; no wildcards or filters.
+**Path-based methods**:
 
+| Type                            | Methods                                                                                                                                        | Description                                                                                                                                                                                                                                                                 |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `JsonPath`                      | `JsonPath.compile(path)`                                                                                                                       | Compiles a JSON Path or JSON Pointer expression into a reusable `JsonPath` instance.                                                                                                                                                                                        |
+| `JsonPath`                      | `getNode(container)` <br/> `get(container)` / ... <br/> `as(container)` / ...                                                                  | Returns a ***single matched node***, with `getXx()` providing type-safe access and `asXxx()` performing cross-type conversion. Returns `null` if no nodes found.                                                                                                            |
+| `JsonPath`                      | `find(container)` <br/> `findAs(container, type)`                                                                                              | Returns a ***list of matched nodes***. Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                                 |
+| `JsonPath`                      | `eval(container)` <br/> `evalAs(container, type)`                                                                                              | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
+| `JsonPath`                      | `add(container, value)` <br/> `replace(container, value)` <br/> `remove(container)`                                                            | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
+| `JsonPath`                      | `ensurePut(container, value)`                                                                                                                  | Ensures the path exists and inserts the value, creating intermediate nodes if necessary; for arrays, appends the value when the target index equals the current array size.                                                                                                 |
+| `JsonObject`/ <br/> `JsonArray` | `getNodeByPath(path)` <br/> `getByPath(path)` / ... <br/> `asByPath(path)` / ... <br/> `findByPath(path)` / ... <br/> `evalByPath(path)` / ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
+| `JsonObject`/ <br/> `JsonArray` | `addByPath(path, value)` <br/> `replaceByPath(path, value)` <br/> `removeByPath(path)` <br/> `ensurePut(path, vlaue)`                          | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
 
+**Examples**: Access and mutation
+
+```java
+    JsonPath jp = JsonPath.compile("$.user.role");
+    Object role2 = jp.getNode(jo);         
+    // Compiles the JSONPath expression into a reusable JsonPath instance,
+    // returning the single matched node without type conversion.
+    
+    String role3 = jo.getStringByPath("/user/role");
+    // Uses a JSON Pointer expression to access the same node via a one-shot path API.
+    
+    String role4 = jo.asByPath("$..role");
+    // Uses the descendant operator (`..`) to deep traversal
+
+    List<String> tags = jo.findByPath("$.tags[*]", String.class);
+    // Uses a wildcard (`*`) to match all array elements; `find()` always returns a list
+    
+    List<Short> scores = jo.findAsByPath("$.scores[0:3]", Short.class);
+    // Uses array slicing (`[start:end:step]`)
+    
+    List<Object> unions = jo.findNodesByPath("$.user['role','profile']");
+    // Uses a union expression to select multiple object members
+
+    int count = JsonPath.compile("$.scores.count()").eval(jo, int.class);
+    // Evaluates the path and calls the function `count()` at the end of the path,
+    // returning the number of elements in the `scores` array.
+
+    jo.addByPath("$.aa", "bb");
+    // Adds a new property to the object at the specified path
+    
+    jo.ensurePutNonNullByPath("$.cc.dd[0]", 100);
+    // Ensures the full path exists and inserts the value, creating intermediate objects or arrays as needed. 
+    // Result: {..., "cc": {"dd": [100]}}
+
+    JsonPointer.compile("/scores/2").remove(jo);
+    // Removes the element of array using `JsonPointer`.
+```
+
+> **Note**: `JsonPointer` is a specialized subclass of `JsonPath`.
+> It behaves identically to `JsonPath`, except that it only accepts JSON Pointer expressions.
+
+### Stream-based Programmatic Processing
+
+Beyond path-based access and mutation with `JsonPath` / `JsonPointer`, 
+SJF4J provides a higher-level, declarative traversal and stream-based processing model.
+
+**Example**: Depth-first traversal with `walk()`:
+```java
+jo.walk(
+        Target.CONTAINER,       // Target: CONTAINER or VALUE 
+        Order.BOTTOM_UP,        // Order:  BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf) 
+        (path, node) -> {
+            System.out.println("path=" + path + ", node=" + node);
+            return Control.CONTINUE;    
+            // CONTINUE to proceed, or STOP to terminate traversal
+        });
+```
+
+**Example**: Use `stream()` to begin Java Stream-style processing:
+```java
+List<String> tags = jo.stream()
+        .findByPath("$.tags[*]", String.class)      // Path-based selection
+        .filter(tag -> tag.length() > 3)            // Programmatic filtering
+        .toList();
+```
+
+**Example**: Supports multi-stage evaluation:
+```java
+int x = jo.stream()
+        .findAsByPath("$..profile", JsonObject.class)   // Primary `findAsByPath()`
+        .filter(n -> n.hasNonNull("values")) 
+        .asByPath("$..x", Integer.class)                // Secondary `asByPath()`
+        .findFirst()
+        .orElse(4);
+```
+**Example**: Programmatic aggregation and computation
+```java
+double avgScore = jo.stream()
+        .find("$.scores[*]", Double.class)
+        .map(d -> d < 60 ? 60 : d)                      // Normalization
+        .collect(Collectors.averagingDouble(s -> s));
+```
 
 ### Diffing and Merging with `JsonPatch`
+
+`JsonPatch` provides a complete and extensible implementation of [JSON Patch (RFC 6902)](https://datatracker.ietf.org/doc/html/rfc6902), 
+enabling declarative, path-based modifications to the **Object-Based Node Tree**.
+
+**Example**: Applying a JsonPatch directly on a `JsonObject` via `apply(patch)`
+```java
+    JsonObject before = JsonObject.fromJson("{\n" +
+        "  \"name\": \"Bob\",\n" +
+        "  \"scores\": [90, 95, 98],\n" +
+        "  \"active\": true\n" +
+        "}\n");
+    JsonPatch patch1 = JsonPatch.fromJson("[\n" +
+        "  { \"op\": \"add\", \"path\": \"/scores/-\", \"value\": 100 },\n" +   // Appends a new element
+        "  { \"op\": \"replace\", \"path\": \"/name\", \"value\": \"Alice\" },\n" +
+        "  { \"op\": \"remove\", \"path\": \"/active\" }\n" +
+        "]");
+    before.apply(patch1);
+    // Applies the `JsonPatch` directly to the `JsonObject`.
+
+    JsonObject after = JsonObject.fromJson("{\n" +
+        "  \"name\": \"Alice\",\n" +
+        "  \"scores\": [90, 95, 98, 100]\n" +
+        "}\n");
+    assertEquals(after, before);
+    // All operations (`add`, `replace`, `remove`) follow standard JSON Patch semantics.
+    // Patch operations are applied sequentially, and each operation mutates the target object in place.
+```
+
+**Example**: State restoration via `JsonPatch` using `diff()` and `apply()`
+```java
+    List<Integer> source = new ArrayList<>(Arrays.asList(1, 2, 3));
+    List<Integer> target = new ArrayList<>(Arrays.asList(1, 20, 3, 4));
+    JsonPatch patch = JsonPatch.diff(source, target);
+    patch.apply(source);
+    assertEquals(target, source);
+    // Creates a `JsonPatch` by diffing the source and target objects,
+    // then applies the patch to transform the source into the target.
+```
+
+A `JsonPatch` is essentially an **ordered list of `PatchOp` operations**.  
+Each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
+
+**Patch Operations**: (including RFC 6902 and SJF4J extension)
+
+| Operation   | Specification | Description                                                                             | Example                                                        |
+|-------------|---------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `add`       | RFC 6902      | Adds a value at the target path                                                         | `{ "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] }` |
+| `remove`    | RFC 6902      | Removes the value at the target path                                                    | `{ "op": "remove", "path": "/a/b/c" }`                         |
+| `replace`   | RFC 6902      | Replaces the value at the target path (must already exist)                              | `{ "op": "replace", "path": "/a/b/c", "value": 42 }`           |
+| `move`      | RFC 6902      | Moves a value from one path to another                                                  | `{ "op": "move", "from": "/a/b/c", "path": "/a/b/d" }`         |
+| `copy`      | RFC 6902      | Copies a value from one path to another                                                 | `{ "op": "copy", "from": "/a/b/c", "path": "/a/b/e" }`         |
+| `test`      | RFC 6902      | Tests whether the value at the path equals the expected value                           | `{ "op": "test", "path": "/a/b/c", "value": "foo" }`           |
+| `exist`     | SJF4J         | Asserts that the target path exists                                                     | `{ "op": "exist", "path": "/a/b/c" }`                          |
+| `ensurePut` | SJF4J         | Ensures the path exists and inserts the value, creating intermediate nodes if necessary | `{ "op": "ensurePut", "path": "/x/y", "value": "z" }`          |
+
+> **Extensibility**: Use `PatchOpRegistry.register()` to define your own patch operations.
+
+Defining a custom operation is simple:
+```java
+    // Standard RFC `add`
+    PatchOpRegistry.register("add", (target, op) -> {
+        op.getPath().add(target, op.getValue());    // Replace with your own custom logic
+    });
+```
+
+and [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386)
+
 
 ### Validating with `JsonSchema`
 
@@ -246,68 +407,6 @@ TODO
 
 ### Converting Between JSON-like Data and Java Objects
 
-```java
-    Object role2 = jo.getNodeByPath("$.user.role");         
-    // `getXxByPath()` supports JSON Path expressions
-    
-    String role3 = jo.getByPath("/user/role");                
-    // And JSON Pointer as an alternative
-    
-    String role4 = jo.asByPath("$..role");                    
-    // Supports descendant operator for deep traversal
-
-    String role5 = JsonPath.compile("$.user.role").getString(jo);
-    // `JsonPath.compile(expr)` 
-
-    List<String> tags = jo.findByPath("$.tags[*]", String.class);          
-    // Supports Wildcard '.*' or '[*]', `find()` return a list of nodes
-    
-    List<Short> scores = jo.findAsByPath("$.scores[0:3]", Short.class);    
-    // Supports Slice '[from:to:step]'
-    
-    List<Object> unions = jo.findNodesByPath("$.user['role','profile']");  
-    // Supports Union '[A,B,..]' of multiple fields
-    
-    jo.putByPath("/aa/bb", "cc");
-    // Automatically creates intermediate nodes!! e.g., {"aa":{"bb":"cc"},..}
-    
-    jo.putNonNullByPath("$.scores[3]", 100);
-    // Supports array index insertion
-
-    int count = jo.evalByPath("$.scores.count()", int.class);
-    // Supports Function at the end.
-    // 
-
-```
-Additionally, the traversal APIs `walk()` and `stream()` provide powerful ways to programmatically navigate and 
-inspect the Object-Tree.
-```java
-    jo.walk(Target.CONTAINER, Order.BOTTOM_UP, (path, node) -> {
-        // Target: CONTAINER or VALUE
-        // Order: BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf)
-        System.out.println("path=" + path + ", node=" + node);
-        return Control.CONTINUE; // CONTINUE to proceed, or STOP if needed
-    });
-
-    List<String> tags2 = jo.stream()                    // Follows Java Stream syntax
-            .findAll("$.tags[*]", String.class)
-            .filter(tag -> tag.length() > 3)            // Filter using Java codes
-            .toList();
-    
-    int x = jo.stream()
-            .findAllAs("$..profile", JsonObject.class)  // Primary find all
-            .filter(n -> n.hasNonNull("values")) 
-            .findAs("$..x", Integer.class)              // Secondary find one
-            .findFirst()
-            .orElse(4);
-    
-    double avgScore = jo.stream()
-            .findAll("$.scores[*]", Double.class)
-            .map(d -> d < 60 ? 60 : d)                  // No one failed!
-            .collect(Collectors.averagingDouble(s -> s));
-```
-
----
 ### Example with POJO / JOJO
 
 Definitions:

@@ -3,7 +3,6 @@ package org.sjf4j;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
-import org.sjf4j.util.ContainerUtil;
 import org.sjf4j.util.NodeUtil;
 
 import java.math.BigDecimal;
@@ -46,12 +45,12 @@ public abstract class JsonContainer {
 
     /**
      * Returns a string representation of this container for debugging purposes.
-     * Uses {@link ContainerUtil#inspect(Object)} to generate the string.
+     * Uses {@link NodeUtil#inspect(Object)} to generate the string.
      *
      * @return a debug string representation of the container
      */
     public String inspect() {
-        return ContainerUtil.inspect(this);
+        return NodeUtil.inspect(this);
     }
 
 

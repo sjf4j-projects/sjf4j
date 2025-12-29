@@ -1,7 +1,7 @@
 package org.sjf4j.patch;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.PatchUtil;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,7 +25,7 @@ public class JsonPatch extends JsonArray {
     }
 
     public static JsonPatch diff(Object source, Object target) {
-        List<PatchOp> ops = ContainerUtil.diff(source, target);
+        List<PatchOp> ops = PatchUtil.diff(source, target);
         return new JsonPatch(ops);
     }
 
@@ -35,15 +35,14 @@ public class JsonPatch extends JsonArray {
         super.add(op);
     }
 
-    public Object apply(Object target) {
+
+    public void apply(Object target) {
         Objects.requireNonNull(target, "target must not be null");
         forEach(v -> {
             PatchOp op =  (PatchOp) v;
             op.apply(target);
         });
-        return target;
     }
-
 
 }
 

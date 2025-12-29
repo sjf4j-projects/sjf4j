@@ -214,6 +214,8 @@ public class NodeUtilTest {
 
 
 
+    /// Basic
+
     @Getter
     @Setter
     @AllArgsConstructor
@@ -221,6 +223,7 @@ public class NodeUtilTest {
     public static class Baby extends JsonObject {
         private String name;
         private int month;
+        public List<String> friends;
     }
 
     @Getter @Setter
@@ -230,6 +233,86 @@ public class NodeUtilTest {
         private int age;
         private JsonObject info;
         private List<Baby> babies;
+        private Address address;
+    }
+
+    public static class Address extends JsonObject {
+        public String city;
+        public String street;
+    }
+
+    @Test
+    public void testEquals() {
+        JsonObject jo = new JsonObject(
+                "name", "Bob",
+                "address", new JsonObject(
+                "city", "New York",
+                "street", "5th Ave"));
+        Person p1 = jo.toPojo(Person.class);
+        JsonObject jo1 = new JsonObject(p1);
+        assertNotEquals(p1, jo1);
+        assertNotEquals(jo1, p1);
+
+        Map<String, Object> map1 = jo1.toMap();
+        assertEquals(jo1, map1);
+        assertNotEquals(map1, jo1);
+    }
+
+
+    @Test
+    public void testCopy1() {
+        JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
+        JsonObject jo2 = NodeUtil.copy(jo1);
+        JsonObject jo3 = NodeUtil.deepCopy(jo1);
+        assertEquals(jo1, jo2);
+        assertEquals(jo1, jo3);
+
+        jo1.put("num", "7");
+        assertEquals(jo1, jo2);
+        assertNotEquals(jo1, jo3);
+    }
+
+    @Test
+    public void testCopy2() {
+        JsonObject jo = new JsonObject(
+                "name", "Bob",
+                "address", new JsonObject(
+                "city", "New York",
+                "street", "5th Ave"));
+        Person p1 = jo.toPojo(Person.class);
+        Person p2 = NodeUtil.copy(p1);
+        Person p3 = NodeUtil.deepCopy(p1);
+        assertEquals(p1, p2);
+        assertEquals(p1, p3);
+
+        p1.address.city = "Beijing";
+        assertEquals(p1, p2);
+        assertNotEquals(p1, p3);
+
+        p1.name = "Tom";
+        assertNotEquals(p1, p2);
+    }
+
+    @Test
+    public void testCopy3() {
+        JsonObject jo = new JsonObject(
+                "name", "Bob",
+                "friends", new String[]{"Tom", "Jay"});
+        Baby b1 = jo.toPojo(Baby.class);
+        Baby b2 = NodeUtil.copy(b1);
+        Baby b3 = NodeUtil.deepCopy(b1);
+        log.info("b1={}, b3={}", b1, b3);
+        log.info("b2={}, b3={}", b2, b3);
+        assertEquals(b1, b2);
+        assertEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b2));
+        assertEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b3));
+
+        b1.friends.set(0, "Jim");
+        assertEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b2));
+        assertNotEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b3));
+
+        b1.name = "Bro";
+        assertNotEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b2));
     }
 
     @Test
@@ -239,6 +322,7 @@ public class NodeUtilTest {
         log.info("person={}", person.toString());
         log.info("person={}", person.inspect());
     }
+
 
 }
 

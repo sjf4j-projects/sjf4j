@@ -38,10 +38,8 @@ public class WalkerBechmark {
 
     @Benchmark
     public void walk_2(Blackhole bh) {
-        for (int i = 0; i < 100; i++) {
-            NodeWalker.walk2(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
-                    (k, v) -> bh.consume(k));
-        }
+        NodeWalker.walk2(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
+                (k, v) -> bh.consume(k));
     }
 
 

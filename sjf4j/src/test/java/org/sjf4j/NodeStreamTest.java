@@ -29,9 +29,9 @@ public class NodeStreamTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
         NodeStream<JsonObject> js = NodeStream.of(jo1);
-        String[] abc = js.findAllAs("$.book.*", JsonObject.class)
+        String[] abc = js.findAsByPath("$.book.*", JsonObject.class)
                 .filter(n -> n.hasNonNull("tags"))
-                .findAs("$.title", String.class)
+                .asByPath("$.title", String.class)
                 .toList().toArray(new String[0]);
         assertArrayEquals(new String[]{"A", "B"}, abc);
     }
@@ -52,7 +52,7 @@ public class NodeStreamTest {
                 "  \"weird.keys\": { \"key with spaces\": \"v1\" }\n" +
                 "}";
         List<Integer> prices = JsonObject.fromJson(json1).stream()
-                .findAll("$..price", Integer.class)
+                .findByPath("$..price", Integer.class)
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -60,7 +60,7 @@ public class NodeStreamTest {
         assertEquals(88, prices.get(1));
 
         int priceSum = JsonObject.fromJson(json1).stream()
-                .findAll("$..price", Integer.class)
+                .findByPath("$..price", Integer.class)
                 .filter(Objects::nonNull)
                 .collect(Collectors.summingInt(x -> x));
         assertEquals(98, priceSum);

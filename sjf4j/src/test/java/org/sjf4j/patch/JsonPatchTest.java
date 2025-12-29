@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.path.JsonPointer;
-import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -198,9 +198,9 @@ public class JsonPatchTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOp(PatchOp.STD_ADD, JsonPointer.compile("/-"), 4, null));
 
-        Object result = patch.apply(src);
-        log.info("result: {}", result);
-        assertEquals(Arrays.asList(1, 2, 3, 4), result);
+        patch.apply(src);
+        log.info("src: {}", src);
+        assertEquals(Arrays.asList(1, 2, 3, 4), src);
     }
 
     @Test
@@ -210,8 +210,8 @@ public class JsonPatchTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOp(PatchOp.STD_REPLACE, JsonPointer.compile("/1"), 20, null));
 
-        Object result = patch.apply(src);
-        assertEquals(Arrays.asList(1, 20, 3), result);
+        patch.apply(src);
+        assertEquals(Arrays.asList(1, 20, 3), src);
     }
 
     @Test
@@ -221,8 +221,8 @@ public class JsonPatchTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.compile("/10"), null, null));
 
-        Object result = patch.apply(src);
-        assertEquals(Arrays.asList(1, 2, 3), result);
+        patch.apply(src);
+        assertEquals(Arrays.asList(1, 2, 3), src);
     }
 
     @Test
@@ -232,8 +232,8 @@ public class JsonPatchTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOp(PatchOp.STD_MOVE, JsonPointer.compile("/-"), null, JsonPointer.compile("/0")));
 
-        Object result = patch.apply(src);
-        assertEquals(Arrays.asList("b", "c", "a"), result);
+        patch.apply(src);
+        assertEquals(Arrays.asList("b", "c", "a"), src);
     }
 
     @Test
@@ -246,9 +246,9 @@ public class JsonPatchTest {
         target.put("b", 3);
 
         JsonPatch patch = JsonPatch.diff(source, target);
-        Object result = patch.apply(source);
+        patch.apply(source);
 
-        assertEquals(target, result);
+        assertEquals(target, source);
     }
 
     @Test
@@ -257,9 +257,10 @@ public class JsonPatchTest {
         List<Integer> b = Arrays.asList(1, 20, 3, 4);
 
         JsonPatch patch = JsonPatch.diff(a, b);
-        Object result = patch.apply(ContainerUtil.deepCopy(a));
+        List<Integer> c = NodeUtil.deepCopy(a);
+        patch.apply(c);
 
-        assertEquals(b, result);
+        assertEquals(b, c);
     }
 
     @Test

@@ -1,7 +1,7 @@
 package org.sjf4j;
 
 import org.sjf4j.node.NodeStream;
-import org.sjf4j.util.ContainerUtil;
+import org.sjf4j.util.PatchUtil;
 import org.sjf4j.util.NodeUtil;
 
 import java.lang.reflect.Array;
@@ -820,15 +820,15 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T copy() {
-        return (T) ContainerUtil.copy(this);
+        return (T) NodeUtil.copy(this);
     }
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T deepCopy() {
-        return (T) ContainerUtil.deepCopy(this);
+        return (T) NodeUtil.deepCopy(this);
     }
 
     public void merge(JsonArray target, boolean preferTarget, boolean needCopy) {
-        ContainerUtil.merge(this, target, preferTarget, needCopy);
+        PatchUtil.merge(this, target, preferTarget, needCopy);
     }
 
     public void merge(JsonArray target) {

@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -546,6 +547,219 @@ public class NodeUtil {
             return source.equals(target);
         }
         return false;
+    }
+
+    /**
+     * Returns a shallow copy of the given node.
+     */
+    @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
+    public static <T> T copy(T node) {
+        NodeType nt = NodeType.of(node);
+        switch (nt) {
+            case OBJECT_MAP: {
+                Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+                map.putAll((Map<String, ?>) node);
+                return (T) map;
+            }
+            case OBJECT_JSON_OBJECT: {
+                return (T) new JsonObject(node);
+            }
+            case OBJECT_JOJO: {
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+                JsonObject jojo = (JsonObject) pi.newInstance();
+                jojo.putAll(node);
+                return (T) jojo;
+            }
+            case OBJECT_POJO: {
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+                Object pojo = pi.newInstance();
+                NodeWalker.visitObject(node, (k, v) -> NodeWalker.putInObject(pojo, k, v));
+                return (T) pojo;
+            }
+            case ARRAY_LIST: {
+                List<Object> list = Sjf4jConfig.global().listSupplier.create();
+                list.addAll((List<?>) node);
+                return (T) list;
+            }
+            case ARRAY_JSON_ARRAY: {
+                return (T) new JsonArray(node);
+            }
+            case ARRAY_JAJO: {
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+                JsonArray jajo = (JsonArray) pi.newInstance();
+                jajo.addAll((JsonArray) node);
+                return (T) jajo;
+            }
+            case ARRAY_ARRAY: {
+                int len = Array.getLength(node);
+                Object arr = Array.newInstance(node.getClass().getComponentType(), len);
+                System.arraycopy(node, 0, arr, 0, len);
+                return (T) arr;
+            }
+            case VALUE_CONVERTIBLE: {
+                NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(node.getClass());
+                return (T) ci.copy(node);
+            }
+            default:
+                return node;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T deepCopy(T node) {
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, node.getClass());
+    }
+
+    /**
+     * Returns a compact, human-readable representation of the given object.
+     * <p>
+     * This method is mainly used for debugging and logging. It prints objects
+     * in a deterministic, structure-oriented format instead of relying on
+     * {@link Object#toString()}.
+     *
+     * <h3>Type Notation</h3>
+     * <ul>
+     *   <li>{@code M{..}}  – Map</li>
+     *   <li>{@code J{..}}  – JsonObject</li>
+     *   <li>{@code L[..]}  – List</li>
+     *   <li>{@code J[..]}  – JsonArray</li>
+     *   <li>{@code A[..]}  – Java Array</li>
+     *   <li>{@code @Type{..}} – POJO / JOJO</li>
+     *   <li>{@code @Type[..]} – JAJO</li>
+     *   <li>{@code !Type#raw} – Convertible</li>
+     *   <li>{@code !Object@hash} – Unknown</li>
+     * </ul>
+     *
+     * <h3>Example</h3>
+     * <pre>{@code
+     * J{email=.com, user=@User{*id=1, name=M{a=b, c=d}}, arr=A[haha, xi, 1], date=!LocalDate#2025-12-29}
+     * }</pre>
+     *
+     * @param node the object to inspect
+     * @return a compact structural string
+     */
+    public static String inspect(Object node) {
+        StringBuilder sb = new StringBuilder();
+        _inspect(node, sb);
+        return sb.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void _inspect(Object node, StringBuilder sb) {
+        NodeType nt = NodeType.of(node);
+        switch (nt) {
+            case OBJECT_MAP: {
+                Map<String, Object> map = (Map<String, Object>) node;
+                sb.append("M{");
+                int idx = 0;
+                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                    if (idx++ > 0) sb.append(", ");
+                    sb.append(entry.getKey()).append("=");
+                    _inspect(entry.getValue(), sb);
+                }
+                sb.append("}");
+                return;
+            }
+            case OBJECT_JSON_OBJECT: {
+                JsonObject jo = (JsonObject) node;
+                sb.append("J{");
+                int idx = 0;
+                for (Map.Entry<String, Object> entry : jo.entrySet()) {
+                    if (idx++ > 0) sb.append(", ");
+                    sb.append(entry.getKey()).append("=");
+                    _inspect(entry.getValue(), sb);
+                }
+                sb.append("}");
+                return;
+            }
+            case OBJECT_JOJO: {
+                JsonObject jo = (JsonObject) node;
+                sb.append("@").append(node.getClass().getSimpleName()).append("{");
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+                AtomicInteger idx = new AtomicInteger(0);
+                jo.forEach((k, v) -> {
+                    if (idx.getAndIncrement() > 0) sb.append(", ");
+                    if (pi != null && pi.getFields().containsKey(k)) {
+                        sb.append("*");
+                    }
+                    sb.append(k).append("=");
+                    _inspect(v, sb);
+                });
+                sb.append("}");
+                return;
+            }
+            case OBJECT_POJO: {
+                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+                sb.append("@").append(node.getClass().getSimpleName()).append("{");
+                int idx = 0;
+                for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                    if (idx++ > 0) sb.append(", ");
+                    sb.append("*").append(fi.getKey()).append("=");
+                    Object v = fi.getValue().invokeGetter(node);
+                    _inspect(v, sb);
+                }
+                sb.append("}");
+                return;
+            }
+            case ARRAY_LIST: {
+                List<Object> list = (List<Object>) node;
+                sb.append("L[");
+                int idx = 0;
+                for (Object v : list) {
+                    if (idx++ > 0) sb.append(", ");
+                    _inspect(v, sb);
+                }
+                sb.append("]");
+                return;
+            }
+            case ARRAY_JSON_ARRAY: {
+                JsonArray ja = (JsonArray) node;
+                sb.append("J[");
+                int idx = 0;
+                for (Object v : ja) {
+                    if (idx++ > 0) sb.append(", ");
+                    _inspect(v, sb);
+                }
+                sb.append("]");
+                return;
+            }
+            case ARRAY_JAJO: {
+                JsonArray ja = (JsonArray) node;
+                sb.append("@").append(node.getClass().getSimpleName()).append("[");
+                int idx = 0;
+                for (Object v : ja) {
+                    if (idx++ > 0) sb.append(", ");
+                    _inspect(v, sb);
+                }
+                sb.append("]");
+                return;
+            }
+            case ARRAY_ARRAY: {
+                int len = Array.getLength(node);
+                sb.append("A[");
+                for (int i = 0; i < len; i++) {
+                    if (i > 0) sb.append(", ");
+                    _inspect(Array.get(node, i), sb);
+                }
+                sb.append("]");
+                return;
+            }
+            case VALUE_CONVERTIBLE: {
+                NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(node.getClass());
+                Object raw = ci.convert(node);
+                sb.append("!").append(node.getClass().getSimpleName()).append("#");
+                _inspect(raw, sb);
+                return;
+            }
+            case UNKNOWN: {
+                sb.append("!").append(node);
+                return;
+            }
+            default: {
+                sb.append(node);
+                return;
+            }
+        }
     }
 
 
