@@ -281,16 +281,16 @@ public class ReflectUtil {
     /// Convertible
 
     /**
-     * A `@NodeConvertible` class must define a non-static `@Convert` method returning a supported node value,
+     * A `@Convertible` class must define a non-static `@Convert` method returning a supported node value,
      * a static `@Unconvert` method accepting that value and returning the node type itself,
      * and an optional non-static `@Copy` method returning the same node type.
      *
-     * @param clazz     A node class annotated with @NodeConvertible
+     * @param clazz     A node class annotated with @Convertible
      * @return          NodeRegistry.ConvertibleInfo
      */
     public static NodeRegistry.ConvertibleInfo analyzeConvertible(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(Convertible.class))
-            throw new JsonException("Class " + clazz.getName() + " is not annotated with @NodeConvertible");
+            throw new JsonException("Class " + clazz.getName() + " is not annotated with @Convertible");
 
         MethodHandle convertHandle = null, unconvertHandle = null, copyHandle = null;
         MethodHandles.Lookup lookup = ROOT_LOOKUP;
@@ -337,19 +337,19 @@ public class ReflectUtil {
         }
 
         if (convertHandle == null)
-            throw new JsonException("Missing @Convert method in @NodeConvertible class " + clazz.getName());
+            throw new JsonException("Missing @Convert method in @Convertible class " + clazz.getName());
         if (convertHandle.type().parameterCount() != 1) {
             throw new JsonException("@Convert method must have no parameters, but found " +
                     (convertHandle.type().parameterCount() - 1));
         }
         Class<?> rawClazz = convertHandle.type().returnType();
         if (!NodeType.of(rawClazz).isRaw())
-            throw new JsonException("Invalid @Convert return type in @NodeConvertible class " +
+            throw new JsonException("Invalid @Convert return type in @Convertible class " +
                     clazz.getName() + ": " + rawClazz.getName() +
                     ". The return type must be a supported raw node value type (String, Number, Boolean, null, Map, or List).");
 
         if (unconvertHandle == null)
-            throw new JsonException("Missing @Unconvert method in @NodeConvertible class " + clazz.getName());
+            throw new JsonException("Missing @Unconvert method in @Convertible class " + clazz.getName());
         if (unconvertHandle.type().parameterCount() != 1)
             throw new JsonException("@Unconvert method must have exactly one parameter, but found " +
                     unconvertHandle.type().parameterCount());

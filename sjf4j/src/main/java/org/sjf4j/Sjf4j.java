@@ -332,19 +332,19 @@ public class Sjf4j {
 
 
     @SuppressWarnings("unchecked")
-    public static <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);
+    public static <T> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, deepCopy);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T fromNode(Object node, TypeReference<T> type) {
+    public static <T> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType());
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), deepCopy);
     }
 
     public static JsonObject fromNode(Object node) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        return fromNode(node, JsonObject.class);
+        return fromNode(node, JsonObject.class, true);
     }
 
     /// Properties

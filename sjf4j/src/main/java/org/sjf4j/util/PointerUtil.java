@@ -6,7 +6,7 @@ import org.sjf4j.path.PathToken;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JsonPointerUtil {
+public class PointerUtil {
 
 
     public static List<PathToken> compile(String expr) {

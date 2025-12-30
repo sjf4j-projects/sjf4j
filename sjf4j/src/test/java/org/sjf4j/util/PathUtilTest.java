@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class JsonPathUtilTest {
+public class PathUtilTest {
 
     @Test
     public void testBasicPaths() {
@@ -95,7 +95,7 @@ public class JsonPathUtilTest {
         // Multiple names
         testCompile("$['name', 'age']", 2, PathToken.Root.class, PathToken.Union.class);
         testCompile("$[\"first name\",\"last name\"]", 2, PathToken.Root.class, PathToken.Union.class);
-        PathToken pt = JsonPathUtil.compile("$[\"first name\",\"last name\"]").get(1);
+        PathToken pt = PathUtil.compile("$[\"first name\",\"last name\"]").get(1);
         pt = ((PathToken.Union) pt).union.get(1);
         assertEquals("last name", ((PathToken.Name) pt).name);
         testCompileFailure("$[name,age]", "name");
@@ -126,7 +126,7 @@ public class JsonPathUtilTest {
 
         // Union with special characters
         testCompile("$['a,b','c:d','e[f]g']", 2, PathToken.Root.class, PathToken.Union.class);
-        PathToken pt = JsonPathUtil.compile("$['a,b','c:d','e[f]g']").get(1);
+        PathToken pt = PathUtil.compile("$['a,b','c:d','e[f]g']").get(1);
         pt = ((PathToken.Union) pt).union.get(2);
         assertEquals("['e[f]g']", pt.toString());
     }
@@ -188,17 +188,17 @@ public class JsonPathUtilTest {
     @Test
     public void testFindMatchingParen() {
         int end;
-        end = JsonPathUtil.findMatchingParen("?(@.name == \"foo(bar)\")", 1);
+        end = PathUtil.findMatchingParen("?(@.name == \"foo(bar)\")", 1);
         assertEquals(22, end);
-        end = JsonPathUtil.findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
+        end = PathUtil.findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
         assertEquals(22, end);
-        end = JsonPathUtil.findMatchingParen("(\"(abc)\")", 0);
+        end = PathUtil.findMatchingParen("(\"(abc)\")", 0);
         assertEquals(8, end);
     }
 
     @Test
     public void testParseFunctionArgs() {
-        List<String> args = JsonPathUtil.parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
+        List<String> args = PathUtil.parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
         System.out.println(new JsonArray(args));
         System.out.println(args.get(0));
         System.out.println(args.get(1));
@@ -208,15 +208,15 @@ public class JsonPathUtilTest {
 
     @Test
     public void testFilter1() {
-        FilterExpr fe = JsonPathUtil.parseFilter("@.age > 30");
+        FilterExpr fe = PathUtil.parseFilter("@.age > 30");
         System.out.println("fe=" + fe);
         assertEquals("(@.age > 30.0)", fe.toString());
 
-        fe = JsonPathUtil.parseFilter("(@.age > 30 || @..['bb'].count() < 2)");
+        fe = PathUtil.parseFilter("(@.age > 30 || @..['bb'].count() < 2)");
         System.out.println("fe=" + fe);
         assertEquals("((@.age > 30.0) || (@..['bb'].count() < 2.0))", fe.toString());
 
-        fe = JsonPathUtil.parseFilter("@.tags && @.tags.contains('urgent')");
+        fe = PathUtil.parseFilter("@.tags && @.tags.contains('urgent')");
         System.out.println("fe=" + fe);
         assertEquals("(@.tags && @.tags.contains('urgent'))", fe.toString());
 
@@ -226,19 +226,19 @@ public class JsonPathUtilTest {
 
     @Test
     public void testFilter2() {
-        FilterExpr fe = JsonPathUtil.parseFilter("@.name == 'Bob'");
+        FilterExpr fe = PathUtil.parseFilter("@.name == 'Bob'");
         System.out.println("fe=" + fe);
         assertEquals("(@.name == \"Bob\")", fe.toString());
 
-        fe = JsonPathUtil.parseFilter("@.active");
+        fe = PathUtil.parseFilter("@.active");
         System.out.println("fe=" + fe);
         assertEquals("@.active", fe.toString());
 
-        fe = JsonPathUtil.parseFilter("@.age >= 30 && !@.active");
+        fe = PathUtil.parseFilter("@.age >= 30 && !@.active");
         System.out.println("fe=" + fe);
         assertEquals("((@.age >= 30.0) && !@.active)", fe.toString());
 
-        fe = JsonPathUtil.parseFilter("@.members[?@.age > 30]");
+        fe = PathUtil.parseFilter("@.members[?@.age > 30]");
         System.out.println("fe=" + fe);
         assertEquals("@.members[?@.age > 30]", fe.toString());
     }
@@ -249,7 +249,7 @@ public class JsonPathUtilTest {
 
     // Helper methods
     private void testCompile(String path, int expectedTokenCount, Class<?>... expectedTokenTypes) {
-        List<PathToken> tokens = JsonPathUtil.compile(path);
+        List<PathToken> tokens = PathUtil.compile(path);
         assertNotNull(tokens, "Tokens should not be null for path: " + path);
         assertEquals(expectedTokenCount, tokens.size(), "Token count mismatch for path: " + path);
 
@@ -261,7 +261,7 @@ public class JsonPathUtilTest {
 
     private void testCompileFailure(String path, String expectedError) {
         try {
-            JsonPathUtil.compile(path);
+            PathUtil.compile(path);
             fail("Expected JsonException for path: " + path);
         } catch (JsonException e) {
             assertTrue(e.getMessage().toLowerCase().contains(expectedError.toLowerCase()),
@@ -270,7 +270,7 @@ public class JsonPathUtilTest {
     }
 
     private void testExpr(String path, int tokenIndex, String expectedExpr) {
-        List<PathToken> tokens = JsonPathUtil.compile(path);
+        List<PathToken> tokens = PathUtil.compile(path);
         if (tokenIndex >= tokens.size()) {
             fail("tokenIndex '" + tokenIndex + "' >= tokens.size '" + tokens.size() + "'");
         }
@@ -280,11 +280,11 @@ public class JsonPathUtilTest {
     }
 
     private void testRoundTrip(String originalPath) {
-        List<PathToken> tokens = JsonPathUtil.compile(originalPath);
-        String rebuilt = JsonPathUtil.genExpr(tokens);
+        List<PathToken> tokens = PathUtil.compile(originalPath);
+        String rebuilt = PathUtil.genExpr(tokens);
 
         // Recompile the rebuilt path to ensure it's valid
-        List<PathToken> roundTripTokens = JsonPathUtil.compile(rebuilt);
+        List<PathToken> roundTripTokens = PathUtil.compile(rebuilt);
         assertEquals(tokens.size(), roundTripTokens.size(),
                 "Round-trip token count mismatch for: " + originalPath);
 

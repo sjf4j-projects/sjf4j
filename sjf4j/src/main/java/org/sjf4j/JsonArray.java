@@ -3,6 +3,7 @@ package org.sjf4j;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.util.PatchUtil;
 import org.sjf4j.util.NodeUtil;
+import org.sjf4j.util.TypeReference;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -310,6 +311,10 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return Sjf4j.fromJson(input, clazz);
     }
 
+    public static <T extends JsonArray> T fromJson(String input, TypeReference<T> type) {
+        return Sjf4j.fromJson(input, type);
+    }
+
     public String toJson() {
         return Sjf4j.toJson(this);
     }
@@ -327,10 +332,26 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return Sjf4j.toYaml(this);
     }
 
-    /// Object Facade
+    /// Node Facade
 
-    public static <T extends JsonArray> T fromNode(Object node, Class<T> clazz) {
-        return Sjf4j.fromNode(node, clazz);
+    public static JsonArray fromNode(Object node) {
+        return Sjf4j.fromNode(node, JsonArray.class, true);
+    }
+
+    public static <T extends JsonArray> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
+        return Sjf4j.fromNode(node, clazz, deepCopy);
+    }
+
+    public static <T extends JsonArray> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
+        return Sjf4j.fromNode(node, type, deepCopy);
+    }
+
+    public <T> T toNode(Class<T> clazz, boolean deepCopy) {
+        return Sjf4j.fromNode(this, clazz, deepCopy);
+    }
+
+    public <T> T toNode(TypeReference<T> type, boolean deepCopy) {
+        return Sjf4j.fromNode(this, type, deepCopy);
     }
 
 
@@ -816,7 +837,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         return NodeStream.of(this);
     }
 
-    /// Copy, merge
+    /// Copy
 
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T copy() {
@@ -826,19 +847,5 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public <T extends JsonArray> T deepCopy() {
         return (T) NodeUtil.deepCopy(this);
     }
-
-    public void merge(JsonArray target, boolean preferTarget, boolean needCopy) {
-        PatchUtil.merge(this, target, preferTarget, needCopy);
-    }
-
-    public void merge(JsonArray target) {
-        merge(target, true, false);
-    }
-
-    public void mergeWithCopy(JsonArray target) {
-        merge(target, true, true);
-    }
-
-
 
 }

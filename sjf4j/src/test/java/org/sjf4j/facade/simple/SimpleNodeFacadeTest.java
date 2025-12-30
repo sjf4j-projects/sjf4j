@@ -60,7 +60,7 @@ public class SimpleNodeFacadeTest {
         lily.setRoles(Collections.singletonMap("kk", new Role("Mom", 90.0f)));
 
         // object2Value
-        Object value = nodeFacade.readNode(lily, JsonObject.class);
+        Object value = nodeFacade.readNode(lily, JsonObject.class, false);
         log.info("value type={}, value={}", value.getClass(), value);
         assertEquals(JsonObject.class, value.getClass());
         assertEquals(25, ((JsonObject) value).getInteger("age"));
@@ -69,20 +69,20 @@ public class SimpleNodeFacadeTest {
         assertEquals(90f, ((JsonObject) value).getFloatByPath("$.roles.kk.percentage"));
 
         // value2Object
-        Object object = nodeFacade.readNode(value, User.class);
+        Object object = nodeFacade.readNode(value, User.class, false);
         log.info("object type={}, object={}", object.getClass(), object);
     }
 
     @Test
     public void testValue2Object2() {
-        Object o1 = nodeFacade.readNode(new JsonObject("percentage", 0), Role.class);
+        Object o1 = nodeFacade.readNode(new JsonObject("percentage", 0), Role.class, false);
         log.info("o1 type={}, o1={}", o1.getClass(), o1);
         assertEquals(Role.class, o1.getClass());
     }
 
     @Test
     public void testValue2Object3() {
-        Object o1 = nodeFacade.readNode(5.55, long.class);
+        Object o1 = nodeFacade.readNode(5.55, long.class, false);
         log.info("o1 type={}, o1={}", o1.getClass(), o1);
     }
 
@@ -105,13 +105,13 @@ public class SimpleNodeFacadeTest {
         jo.put("vip", true);
         jo.put("score", 99.5);
 
-        BasicTypes pojo = (BasicTypes) nodeFacade.readNode(jo, BasicTypes.class);
+        BasicTypes pojo = (BasicTypes) nodeFacade.readNode(jo, BasicTypes.class, false);
         assertEquals("Alice", pojo.name);
         assertEquals(18, pojo.age);
         assertTrue(pojo.vip);
         assertEquals(99.5, pojo.score);
 
-        JsonObject back = (JsonObject) nodeFacade.readNode(pojo, JsonObject.class);
+        JsonObject back = (JsonObject) nodeFacade.readNode(pojo, JsonObject.class, false);
         assertEquals("Alice", back.get("name"));
     }
 
@@ -135,12 +135,12 @@ public class SimpleNodeFacadeTest {
         jo.put("name", "Bob");
         jo.put("address", addr);
 
-        Person p = (Person) nodeFacade.readNode(jo, Person.class);
+        Person p = (Person) nodeFacade.readNode(jo, Person.class, false);
         assertEquals("Bob", p.name);
         assertEquals("New York", p.address.city);
         assertEquals("5th Ave", p.address.street);
 
-        Map<String, Object> back = (Map<String, Object>) nodeFacade.readNode(p, null);
+        Map<String, Object> back = (Map<String, Object>) nodeFacade.readNode(p, null, true);
         assertEquals("Bob", back.get("name"));
     }
 
@@ -158,12 +158,12 @@ public class SimpleNodeFacadeTest {
         jo.put("members", Arrays.asList("Tom", "Jerry"));
         jo.put("scores", new int[]{10, 20, 30});
 
-        Team t = (Team) nodeFacade.readNode(jo, Team.class);
+        Team t = (Team) nodeFacade.readNode(jo, Team.class, false);
         assertEquals("Rangers", t.teamName);
         assertEquals(Arrays.asList("Tom", "Jerry"), t.members);
         assertArrayEquals(new int[]{10, 20, 30}, t.scores);
 
-        Map<String, Object> back = (Map<String, Object>) nodeFacade.readNode(t, Object.class);
+        Map<String, Object> back = (Map<String, Object>) nodeFacade.readNode(t, Object.class, true);
         assertEquals("Rangers", back.get("teamName"));
     }
 
@@ -185,12 +185,12 @@ public class SimpleNodeFacadeTest {
         list.add(new JsonObject("name", "Ben", "age", 12));
         jo.put("students", list);
 
-        ClassRoom c = (ClassRoom) nodeFacade.readNode(jo, ClassRoom.class);
+        ClassRoom c = (ClassRoom) nodeFacade.readNode(jo, ClassRoom.class, false);
         log.info("c={}", c);
         assertEquals(2, c.students.size());
         assertEquals("Ann", c.students.get(0).name);
 
-        JsonObject back = (JsonObject) nodeFacade.readNode(c, JsonObject.class);
+        JsonObject back = (JsonObject) nodeFacade.readNode(c, JsonObject.class, false);
         log.info("back={}", back);
         Assertions.assertNotNull(back);
         Object students = back.get("students");
@@ -219,12 +219,12 @@ public class SimpleNodeFacadeTest {
         jo.put("nested", nested);
 
         log.info("jo={}", jo);
-        DictHolder holder = (DictHolder) nodeFacade.readNode(jo, DictHolder.class);
+        DictHolder holder = (DictHolder) nodeFacade.readNode(jo, DictHolder.class, false);
         log.info("holder={} map={}", holder, holder.map);
         assertEquals(1, holder.map.get("a"));
 //        assertEquals("Alice", holder.nested.get("s1").name);
 
-        JsonObject back = (JsonObject) nodeFacade.readNode(holder, JsonObject.class);
+        JsonObject back = (JsonObject) nodeFacade.readNode(holder, JsonObject.class, false);
         assertEquals(2, (back.asJsonObject("map")).size());
     }
 
@@ -241,10 +241,10 @@ public class SimpleNodeFacadeTest {
         JsonObject jo = new JsonObject();
         jo.put("status", "OK");
 
-        Msg msg = (Msg) nodeFacade.readNode(jo, Msg.class);
+        Msg msg = (Msg) nodeFacade.readNode(jo, Msg.class, false);
         assertEquals(Status.OK, msg.status);
 
-        Map<String, Object> back = (Map<String, Object>) nodeFacade.readNode(msg, null);
+        Map<String, Object> back = (Map<String, Object>) nodeFacade.readNode(msg, null, true);
         assertEquals("OK", back.get("status"));
     }
 
@@ -257,7 +257,7 @@ public class SimpleNodeFacadeTest {
     public void testBooleanField() {
         JsonObject jo = new JsonObject();
         jo.put("active", true);
-        Flag f = (Flag) nodeFacade.readNode(jo, Flag.class);
+        Flag f = (Flag) nodeFacade.readNode(jo, Flag.class, false);
         assertTrue(f.active);
     }
 
@@ -266,12 +266,12 @@ public class SimpleNodeFacadeTest {
     public void testNullFields() {
         JsonObject jo = new JsonObject();
         jo.put("name", null);
-        BasicTypes bt = (BasicTypes) nodeFacade.readNode(jo, BasicTypes.class);
+        BasicTypes bt = (BasicTypes) nodeFacade.readNode(jo, BasicTypes.class, false);
         assertNull(bt.name);
         assertEquals(0, bt.age); // 默认 int=0
 
         jo.put("age", null);
-        assertThrows(JsonException.class, () -> nodeFacade.readNode(jo, BasicTypes.class));
+        assertThrows(JsonException.class, () -> nodeFacade.readNode(jo, BasicTypes.class, false));
     }
 
 

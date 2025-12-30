@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class NodeUtil {
 
-    /// Output
+    /// Type-safe access and cross-type conversion
 
     /**
      * Converts a node to a String with strict type checking.
@@ -496,7 +496,7 @@ public class NodeUtil {
         }
 
         try {
-            return Sjf4j.fromNode(node, clazz);
+            return Sjf4j.fromNode(node, clazz, false);
         } catch (Exception e) {
             throw new JsonException("Failed to convert " + node.getClass().getName()  +
                     " to " + clazz.getName(), e);
@@ -607,7 +607,7 @@ public class NodeUtil {
 
     @SuppressWarnings("unchecked")
     public static <T> T deepCopy(T node) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, node.getClass());
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, node.getClass(), true);
     }
 
     /**

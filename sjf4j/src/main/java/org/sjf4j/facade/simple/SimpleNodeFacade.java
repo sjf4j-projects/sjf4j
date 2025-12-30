@@ -20,126 +20,96 @@ import java.util.Map;
 public class SimpleNodeFacade implements NodeFacade {
 
     @Override
-    public Object readNode(Object node, Type type) {
-        if (node == null) {
-            return readNull(type);
-        } else if (node instanceof CharSequence || node instanceof Character || node instanceof Enum) {
-            return readString(node.toString(), type);
-        } else if (node instanceof Number) {
-            return readNumber((Number) node, type);
-        } else if (node instanceof Boolean) {
-            return readBoolean((Boolean) node, type);
-        }
-
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(node.getClass());
-        if (ci != null) {
-            Class<?> rawClazz = TypeUtil.getRawClass(type);
-            if (rawClazz == Object.class) {
-                return ci.convert(node);
-            } else if (rawClazz.isInstance(node)) {
-                return ci.copy(node);
-            } else {
-                throw new JsonException("Cannot convert node from '" + node.getClass() + "' to '" + rawClazz + "'");
+    public Object readNode(Object node, Type type, boolean deepCopy) {
+        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        if (!deepCopy) {
+            if (rawClazz == Object.class || (type instanceof Class && rawClazz.isInstance(node))) {
+                return node;
             }
         }
 
-        if (node instanceof Map || node instanceof JsonObject || NodeRegistry.isPojo(node.getClass())) {
-            return readObject(node, type);
-        } else if (node instanceof List || node instanceof JsonArray || node.getClass().isArray()) {
-            return readArray(node, type);
-        }
-
-        throw new JsonException("Cannot convert value of type '" + node.getClass().getName() +
-                "' to target type '" + type + "'. No built-in mapping, POJO support, or Converter was found."
-        );
-    }
-
-    private Object readNull(Type type) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
         NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
         if (ci != null) {
-            return ci.unconvert(null);
+            if (rawClazz.isInstance(node)) {
+                return deepCopy ? ci.copy(node) : node;
+            } else {
+                return ci.unconvert(node);
+            }
         }
+
+        if (node == null) {
+            return readNull(rawClazz);
+        } else if (node instanceof CharSequence || node instanceof Character || node instanceof Enum) {
+            return readString(node.toString(), rawClazz);
+        } else if (node instanceof Number) {
+            return readNumber((Number) node, rawClazz);
+        } else if (node instanceof Boolean) {
+            return readBoolean((Boolean) node, rawClazz);
+        } else if (node instanceof Map || node instanceof JsonObject || NodeRegistry.isPojo(node.getClass())) {
+            return readObject(node, type, deepCopy);
+        } else if (node instanceof List || node instanceof JsonArray || node.getClass().isArray()) {
+            return readArray(node, type, deepCopy);
+        }
+
+        throw new JsonException("Cannot deserialize value of type '" + node.getClass().getName() +
+                "' to target type '" + type + "'.");
+    }
+
+    private Object readNull(Class<?> rawClazz) {
         return  null;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Object readString(String s, Type type) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+    private Object readString(String s, Class<?> rawClazz) {
         if (rawClazz.isAssignableFrom(String.class)) {
             return s;
-        }
-        if (rawClazz == Character.class || rawClazz == char.class) {
+        } else if (rawClazz == Character.class || rawClazz == char.class) {
             return s.charAt(0);
-        }
-
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci != null) {
-            return ci.unconvert(s);
-        }
-
-        if (rawClazz.isEnum()) {
+        } else if (rawClazz.isEnum()) {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
-
         throw new JsonException("Cannot deserialize String value '" + s + "' to target type '" +
                 rawClazz.getName() + "'. Expected String, char, enum, or a registered Converter.");
     }
 
 
-    private Object readNumber(Number n, Type type) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+    private Object readNumber(Number n, Class<?> rawClazz) {
         if (rawClazz.isAssignableFrom(Number.class)) {
             return n;
-        }
-        if (Number.class.isAssignableFrom(rawClazz) ||
+        } else if (Number.class.isAssignableFrom(rawClazz) ||
                 (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
             return NumberUtil.as(n, rawClazz);
         }
-
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci != null) {
-            return ci.unconvert(n);
-        }
-
         throw new JsonException("Cannot deserialize Number value '" + n + "' (" + n.getClass().getName() +
                 ") to target type '" + rawClazz.getName() + "'. Expected Number type or a registered Converter.");
     }
 
-    private Object readBoolean(Boolean b, Type type) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+    private Object readBoolean(Boolean b, Class<?> rawClazz) {
         if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
             return b;
         }
-
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (ci != null) {
-            return ci.unconvert(b);
-        }
-
         throw new JsonException("Cannot deserialize Boolean value '" + b + "' to target type '" +
                 rawClazz.getName() + "'. Expected boolean/Boolean or a registered Converter.");
     }
 
 
-    private Object readObject(Object container, Type type) {
+    private Object readObject(Object container, Type type, boolean deepCopy) {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) ) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             NodeWalker.visitObject(container, (k, v) -> {
-                Object vv = readNode(v, valueType);
+                Object vv = readNode(v, valueType, deepCopy);
                 map.put(k, vv);
             });
-            return ci != null ? ci.unconvert(map) : map;
+            return map;
         }
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
             NodeWalker.visitObject(container, (k, v) -> {
-                Object vv = readNode(v, Object.class);
+                Object vv = readNode(v, Object.class, deepCopy);
                 jo.put(k, vv);
             });
             return jo;
@@ -152,10 +122,10 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeWalker.visitObject(container, (k, v) -> {
                 NodeRegistry.FieldInfo fi = fields.get(k);
                 if (fi != null) {
-                    Object vv = readNode(v, fi.getType());
+                    Object vv = readNode(v, fi.getType(), deepCopy);
                     fi.invokeSetter(jojo, vv);
                 } else {
-                    Object vv = readNode(v, Object.class);
+                    Object vv = readNode(v, Object.class, deepCopy);
                     jojo.put(k, vv);
                 }
             });
@@ -169,7 +139,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeWalker.visitObject(container, (k, v) -> {
                 NodeRegistry.FieldInfo fi = fields.get(k);
                 if (fi != null) {
-                    Object vv = readNode(v, fi.getType());
+                    Object vv = readNode(v, fi.getType(), deepCopy);
                     fi.invokeSetter(pojo, vv);
                 }
             });
@@ -177,28 +147,27 @@ public class SimpleNodeFacade implements NodeFacade {
         }
 
         throw new JsonException("Cannot deserialize object value to target type '" + rawClazz.getName() +
-                "'. Expected Map, JsonObject, JOJO, POJO, or a registered Converter.");
+                "'. Expected Map, JsonObject, JOJO, POJO, or a registered convertible object.");
     }
 
 
-    private Object readArray(Object container, Type type) {
+    private Object readArray(Object container, Type type, boolean deepCopy) {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz)) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             NodeWalker.visitArray(container, (i, v) -> {
-                Object vv = readNode(v, valueType);
+                Object vv = readNode(v, valueType, deepCopy);
                 list.add(vv);
             });
-            return ci != null ? ci.unconvert(list) : list;
+            return list;
         }
 
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
             NodeWalker.visitArray(container, (i, v) -> {
-                Object vv = readNode(v, Object.class);
+                Object vv = readNode(v, Object.class, deepCopy);
                 ja.add(vv);
             });
             return ja;
@@ -208,7 +177,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray ja = (JsonArray) pi.newInstance();
             NodeWalker.visitArray(container, (i, v) -> {
-                Object vv = readNode(v, ja.elementType());
+                Object vv = readNode(v, ja.elementType(), deepCopy);
                 ja.add(vv);
             });
             return ja;
@@ -218,10 +187,9 @@ public class SimpleNodeFacade implements NodeFacade {
             Class<?> valueClazz = rawClazz.getComponentType();
             List<Object> list = new ArrayList<>();
             NodeWalker.visitArray(container, (i, v) -> {
-                Object vv = readNode(v, valueClazz);
+                Object vv = readNode(v, valueClazz, deepCopy);
                 list.add(vv);
             });
-
             Object array = Array.newInstance(valueClazz, list.size());
             for (int i = 0; i < list.size(); i++) {
                 Array.set(array, i, list.get(i));

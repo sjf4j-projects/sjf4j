@@ -3,6 +3,7 @@ package org.sjf4j.facade.jackson;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
@@ -26,8 +27,10 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
     public JacksonJsonFacade(ObjectMapper objectMapper) {
         if (objectMapper == null) throw new IllegalArgumentException("ObjectMapper must not be null");
-        this.objectMapper = objectMapper;
 
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        this.objectMapper = objectMapper;
         this.module = new JacksonModule.MySimpleModule();
         registerConvertibles();
         this.objectMapper.registerModule(this.module);

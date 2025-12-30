@@ -10,9 +10,12 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.node.NodeConverter;
+import org.sjf4j.node.NodeRegistry;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -248,7 +251,7 @@ public class NodeUtilTest {
                 "address", new JsonObject(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.toPojo(Person.class);
+        Person p1 = jo.toNode(Person.class, false);
         JsonObject jo1 = new JsonObject(p1);
         assertNotEquals(p1, jo1);
         assertNotEquals(jo1, p1);
@@ -279,7 +282,7 @@ public class NodeUtilTest {
                 "address", new JsonObject(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.toPojo(Person.class);
+        Person p1 = jo.toNode(Person.class, true);
         Person p2 = NodeUtil.copy(p1);
         Person p3 = NodeUtil.deepCopy(p1);
         assertEquals(p1, p2);
@@ -298,7 +301,7 @@ public class NodeUtilTest {
         JsonObject jo = new JsonObject(
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
-        Baby b1 = jo.toPojo(Baby.class);
+        Baby b1 = jo.toNode(Baby.class, false);
         Baby b2 = NodeUtil.copy(b1);
         Baby b3 = NodeUtil.deepCopy(b1);
         log.info("b1={}, b3={}", b1, b3);
@@ -316,13 +319,45 @@ public class NodeUtilTest {
     }
 
     @Test
-    public void testInspect() {
+    public void testInspect1() {
         String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
         Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("person={}", person.toString());
         log.info("person={}", person.inspect());
     }
 
+    @Test
+    public void testInspect2() {
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
+            @Override
+            public String convert(LocalDate node) {
+                return node.toString();
+            }
+
+            @Override
+            public LocalDate unconvert(String raw) {
+                return LocalDate.parse(raw);
+            }
+
+            @Override
+            public Class<LocalDate> getNodeClass() {
+                return LocalDate.class;
+            }
+
+            @Override
+            public Class<String> getRawClass() {
+                return String.class;
+            }
+        });
+
+        LocalDate date1 = LocalDate.now();
+        LocalDate date2 = Sjf4j.fromNode(date1.toString(), LocalDate.class, false);
+        log.info("date2={}", date2);
+        assertEquals(date1, date2);
+
+        log.info("inspect={}", NodeUtil.inspect(date2));
+        assertEquals("!LocalDate#" + date1.toString(), NodeUtil.inspect(date2));
+    }
 
 }
 

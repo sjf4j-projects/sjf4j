@@ -2,6 +2,7 @@ package org.sjf4j;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.junit.jupiter.api.Test;
 import org.sjf4j.node.NodeWalker.Target;
 import org.sjf4j.node.NodeWalker.Order;
 import org.sjf4j.node.NodeWalker.Control;
@@ -16,13 +17,12 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class SimpleExample {
+public class SimpleExampleTest {
 
     public static void main(String[] args) {
         startingFrom();
         pathBasedOperating();
         diffingAndMerging();
-        withPojo();
     }
 
     public static void startingFrom() {
@@ -192,21 +192,21 @@ public class SimpleExample {
 
 
 
-    // POJO example
-    @Getter @Setter
-    static class User {
-        int id;
-        String name;
-        List<User> friends;
-    }
-
-    // JOJO example
-    @Getter @Setter
-    static class User2 extends JsonObject {
-        int id;
-        String name;
-        List<User2> friends;
-    }
+//    // POJO example
+//    @Getter @Setter
+//    static class User {
+//        int id;
+//        String name;
+//        List<User> friends;
+//    }
+//
+//    // JOJO example
+//    @Getter @Setter
+//    static class User2 extends JsonObject {
+//        int id;
+//        String name;
+//        List<User2> friends;
+//    }
 
     public static void withPojo() {
 
@@ -251,12 +251,12 @@ public class SimpleExample {
         JsonObject tmpJo = new JsonObject(map);    // Just wrap it
 
         // JsonObject <==> POJO/JOJO
-        User tmpUser = jo.toPojo(User.class);
+        User tmpUser = jo.toNode(User.class, false);
         tmpJo = Sjf4j.fromNode(user2);
 
         // JOJO <==> POJO
-        tmpUser = user2.toPojo(User.class);
-        User2 tmpUser2 = Sjf4j.fromNode(user, User2.class);
+        tmpUser = user2.toNode(User.class, false);
+        User2 tmpUser2 = Sjf4j.fromNode(user, User2.class, false);
 
         System.out.println("keys=" + user2.keySet());
         // ["id",  "name",  "friends",  "age"]
@@ -264,18 +264,66 @@ public class SimpleExample {
         //            ↓                   ↓
         //      Fields in POJO       Property in JsonObject
 
-        System.out.println("name=" + user2.getName());
+        System.out.println("name=" + user2.name);
         // = user2.getString("name"));
 
         user2.put("name", "Jenny");
         // = user2.setName("Jenny")
 
-        String bill = user2.getFriends().get(0).getName();
+        String bill = user2.friends.get(0).name;
         // = user2.getStringByPath("$.friends[0].name")
 
         int allUsers = user2.findNodesByPath("$..id").size();
         // Use powerful methods from JsonObject
     }
 
+    // Define a POJO `User`
+    @Getter @Setter
+    static class User {
+        String name;
+        List<User> friends;
+    }
+
+    // Define a JOJO `User2`
+    @Getter @Setter
+    static class User2 extends JsonObject {
+        String name;
+        List<User2> friends;
+    }
+
+    @Test
+    public void modelingDomainObjects() {
+        String json = "{\n" +
+                "  \"name\": \"Alice\",\n" +
+                "  \"friends\": [\n" +
+                "    {\"name\": \"Bill\", \"active\": true },\n" +
+                "    {\n" +
+                "      \"name\": \"Cindy\",\n" +
+                "      \"friends\": [\n" +
+                "        {\"name\": \"David\"},\n" +
+                "        {\"id\": 5, \"info\": \"blabla\"}\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  ],\n" +
+                "  \"age\": 18\n" +
+                "}\n";
+        User user = Sjf4j.fromJson(json, User.class);
+        User2 user2 = Sjf4j.fromJson(json, User2.class);
+
+        assertEquals(user.getName(), user2.getName());
+        // user2 与 user 在已定义的字段上都是一样的
+
+        assertEquals(18, user2.getInteger("age"));
+        // 不同的是 user2 还能持有 age
+
+        System.out.println("user2=" + user2);
+        // user2=@User2{*name=Alice, *friends=L[@User2{*name=Bill, *friends=null, active=true}, @User2{..}], age=18}
+        //                └─────────────┴─────┬──────────┴─────────────┘             └───────────┬───────────┘
+        //                                    ↓                                                  ↓
+        //                           Fields in POJO/JOJO                               Properties in JOJO
+
+        List<String> allFriends = user2.findByPath("$.friends..name", String.class);
+        // ["Bill", "Cindy", "David"]
+    }
 
 }

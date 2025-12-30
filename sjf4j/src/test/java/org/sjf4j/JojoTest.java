@@ -39,7 +39,7 @@ public class JojoTest {
     }
 
     @Test
-    public void testToPojo1() {
+    public void testToNode1() {
         Person p1 = new Person();
         p1.setName("Lily");
         p1.setAge(22);
@@ -57,13 +57,13 @@ public class JojoTest {
         String json1 = p1.toJson();
         log.info("json1={}", json1);
 
-        Person p2 = JsonObject.fromJson(json1).toPojo(Person.class);
+        Person p2 = JsonObject.fromJson(json1).toNode(Person.class, false);
         log.info("p2={}", p2.inspect());
         assertEquals(p1, p2);
     }
 
     @Test
-    public void testFromPojo1() {
+    public void testFromNode1() {
         Person p1 = new Person();
         p1.setName("Lily");
         p1.setAge(22);

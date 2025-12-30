@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class JsonPathUtil {
+public class PathUtil {
 
     public static String genExpr(List<PathToken> tokens) {
         StringBuilder sb = new StringBuilder();

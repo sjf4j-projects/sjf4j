@@ -4,10 +4,12 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.util.NodeUtil;
+import org.sjf4j.util.PatchUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
@@ -53,6 +55,23 @@ public abstract class JsonContainer {
         return NodeUtil.inspect(this);
     }
 
+    /**
+     * Recursively removes all null values from this JsonObject and its nested structures.
+     * <p>
+     * This operation traverses all nested objects and arrays, removing any null values found.
+     * Empty containers resulting from null removal are not automatically removed.
+     */
+    public void deepPruneNulls() {
+        NodeWalker.walk(this, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
+                (path, node) -> {
+                    if (node instanceof JsonObject) {
+                        ((JsonObject) node).removeIf(e -> e.getValue() == null);
+                    } else if (node instanceof Map) {
+                        ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
+                    }
+                    return NodeWalker.Control.CONTINUE;
+                });
+    }
 
     /// By path
 
@@ -805,5 +824,64 @@ public abstract class JsonContainer {
     public void apply(JsonPatch patch) {
         patch.apply(this);
     }
+
+    /**
+     * Merges the specified {@code mergePatch} into this {@code JsonObject}.
+     *
+     * <p>The merge is applied in place. Objects and arrays are merged recursively
+     * according to {@link PatchUtil#merge(Object, Object, boolean, boolean)}.
+     *
+     * @param mergePatch    the patch object to merge
+     * @param overwrite     whether existing non-null values should be replaced
+     * @param deepCopy      whether composite values from the patch should be deep-copied
+     */
+    public void merge(Object mergePatch, boolean overwrite, boolean deepCopy) {
+        PatchUtil.merge(this, mergePatch, overwrite, deepCopy);
+    }
+
+    /**
+     * Merges the specified {@code mergePatch} into this {@code JsonObject}.
+     *
+     * <p>This is equivalent to {@link #merge(Object, boolean, boolean)} with
+     * {@code overwrite=true} and {@code deepCopy=false}.
+     *
+     * @param mergePatch    the patch object to merge
+     */
+    public void merge(Object mergePatch) {
+        merge(mergePatch, true, false);
+    }
+
+    /**
+     * Merges the specified {@code mergePatch} into this {@code JsonObject},
+     * making deep copies of any composite values from the patch.
+     *
+     * <p>This is equivalent to {@link #merge(Object, boolean, boolean)} with
+     * {@code overwrite=true} and {@code deepCopy=true}.
+     *
+     * @param mergePatch    the patch object to merge
+     */
+    public void mergeWithCopy(Object mergePatch) {
+        merge(mergePatch, true, true);
+    }
+
+    /**
+     * Applies a <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386 (JSON Merge Patch)</a>
+     * to this {@code JsonObject}.
+     *
+     * <p>Strictly follows the semantics defined in RFC 7386:
+     * <ul>
+     *     <li>Objects are merged by key recursively</li>
+     *     <li>Arrays are replaced as a whole</li>
+     *     <li>A {@code null} value deletes the corresponding target member</li>
+     *     <li>No deep copy is performed</li>
+     * </ul>
+     *
+     * @param mergePatch the JSON Merge Patch to apply
+     */
+    public void mergeRfc7386(Object mergePatch) {
+        PatchUtil.mergeRfc7386(this, mergePatch);
+    }
+
+
 
 }

@@ -7,8 +7,8 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.util.JsonPathUtil;
-import org.sjf4j.util.JsonPointerUtil;
+import org.sjf4j.util.PathUtil;
+import org.sjf4j.util.PointerUtil;
 import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
@@ -77,9 +77,9 @@ public class JsonPath {
     protected JsonPath(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expr must not be null");
         if (expr.startsWith("$") || expr.startsWith("@")) {
-            this.tokens = JsonPathUtil.compile(expr);
+            this.tokens = PathUtil.compile(expr);
         } else if (expr.startsWith("/")) {
-            this.tokens = JsonPointerUtil.compile(expr);
+            this.tokens = PointerUtil.compile(expr);
         } else {
             throw new JsonException("Invalid path expression '" + expr + "'. " +
                     "Must start with '$' or '@' for JSON Path, or '/' for JSON Pointer.");
@@ -105,7 +105,7 @@ public class JsonPath {
      * @return the JSON Path expression string
      */
     public String toExpr() {
-        return JsonPathUtil.genExpr(tokens);
+        return PathUtil.genExpr(tokens);
     }
 
     /**
@@ -114,7 +114,7 @@ public class JsonPath {
      * @return the JSON Pointer expression string
      */
     public String toPointerExpr() {
-        return JsonPointerUtil.genExpr(tokens);
+        return PointerUtil.genExpr(tokens);
     }
 
     /**
