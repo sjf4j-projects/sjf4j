@@ -235,7 +235,7 @@ and only direct navigation is supported; no wildcards or filters.
 | `~0`    | Escape for `~` character | `/a~0b`         |
 | `~1`    | Escape for `/` character | `/a~1b`         |
 
-**Path-Based Methods** (`JsonPath` and `JsonObject`/`JsonArray`)
+**Path-Based Methods** (in `JsonPath` and `JsonObject`/`JsonArray`)
 
 | Type                            | Methods                                                                                                                                        | Description                                                                                                                                                                                                                                                                 |
 |---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -248,7 +248,7 @@ and only direct navigation is supported; no wildcards or filters.
 | `JsonObject`/ <br/> `JsonArray` | `getNodeByPath(path)` <br/> `getByPath(path)` / ... <br/> `asByPath(path)` / ... <br/> `findByPath(path)` / ... <br/> `evalByPath(path)` / ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
 | `JsonObject`/ <br/> `JsonArray` | `addByPath(path, value)` <br/> `replaceByPath(path, value)` <br/> `removeByPath(path)` <br/> `ensurePut(path, vlaue)`                          | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
 
-**Path-Based Examples**: Access and mutation
+**Examples**: Path-Based Access and mutation
 
 ```java
     JsonPath jp = JsonPath.compile("$.user.role");
@@ -498,20 +498,22 @@ while still retaining the ability to carry additional properties when needed.
 
 #### Practices: Starting from an Existing Project
 
-**1) If** projects based on dynamic, map-like data structures:  
-(e.g. `Map` / `List`, Jackson `JsonNode`, Gson `JsonObject`, Fastjson2 `JSONObject`)
+**1.** If projects based on dynamic map-like data structures, 
+such as Java `Map` / `List`, Jackson `JsonNode`, Gson `JsonObject`, Fastjson2 `JSONObject`.
 
-Such projects can migrate directly to **SJF4J’s `JsonObject`**,
+Such projects may migrate to **SJF4J’s `JsonObject`**,
 preserving the original data model while gaining a unified, JSON-oriented API
 for traversal, querying, and mutation.
 
-**2) If** projects based on domain `POJOs`:  
-   - `POJOs` that **can** extend `JsonObjet`  
-Just let the `POJOs` directly extend `JsonObject`.  
+**2.** If projects based on domain `POJOs`, 又分为两种情况.
+
+   - If `POJOs` **can** extend `JsonObjet`, just let the `POJOs` directly extend `JsonObject`.  
 
 
-   - `POJOs` that **cannot** extend `JsonObjet`  
-   (e.g. Java `Record`, `Protobuf` messages, or classes from external libraries)  
+   - If `POJOs` **cannot** extend `JsonObjet`, 
+   such as Java `Record`, `Protobuf` messages, or classes from external libraries
+
+
 
 ### Converting Between JSON-like Data and Java Objects
 

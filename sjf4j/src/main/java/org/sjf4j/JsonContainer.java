@@ -32,17 +32,9 @@ public abstract class JsonContainer {
      */
     public abstract int size();
 
-    /**
-     * Compares this container to another object for equality.
-     * Uses {@link NodeUtil#equals(Object, Object)} to perform deep equality comparison.
-     *
-     * @param target the object to compare to
-     * @return true if the objects are deeply equal, false otherwise
-     */
-    @SuppressWarnings("EqualsDoesntCheckParameterClass")
-    @Override
-    public boolean equals(Object target) {
-        return NodeUtil.equals(this, target);
+
+    public boolean nodeEquals(Object target) {
+        return NodeUtil.nodeEquals(this, target);
     }
 
     /**

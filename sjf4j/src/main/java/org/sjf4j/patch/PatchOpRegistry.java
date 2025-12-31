@@ -55,7 +55,7 @@ public class PatchOpRegistry {
         // test
         PatchOpRegistry.register(PatchOp.STD_TEST, (target, op) -> {
             Object node = op.getPath().getNode(target);
-            if (!NodeUtil.equals(node, op.getValue())) {
+            if (!Objects.equals(node, op.getValue())) {
                 throw new JsonException("'test' operation failed at path " + op.getPath() + ": expected " +
                         op.getValue() + ", found " + node);
             }

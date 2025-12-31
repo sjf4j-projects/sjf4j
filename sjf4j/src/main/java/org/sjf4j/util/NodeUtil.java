@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -496,7 +497,7 @@ public class NodeUtil {
         }
 
         try {
-            return Sjf4j.fromNode(node, clazz, false);
+            return Sjf4j.fromNode(node, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert " + node.getClass().getName()  +
                     " to " + clazz.getName(), e);
@@ -506,7 +507,33 @@ public class NodeUtil {
 
     /// Basic
 
-    public static boolean equals(Object source, Object target) {
+
+    /**
+     * Compares two objects using <b>Object-Based Node Tree</b> semantics.
+     * <p>
+     * This method determines whether {@code source} and {@code target} represent
+     * the same logical JSON node, independent of their concrete Java types.
+     * <p>
+     * <b>JSON container semantics:</b>
+     * <ul>
+     *   <li><b>JSON Object</b> are compared by key sets and corresponding values,
+     *       regardless of whether they are backed by {@code Map}, {@code JsonObject},
+     *       {@code JOJO}, or {@code POJO}.</li>
+     *   <li><b>JSON Array</b> are compared by element order and values,
+     *       regardless of whether they are backed by {@code List},
+     *       {@code JsonArray}, {@code JAJO}, or Java arrays.</li>
+     * </ul>
+     * <p>
+     * The comparison is recursive and applies to nested objects, arrays, and primitive
+     * values. It focuses on node-level equivalence rather than Java
+     * {@link Object#equals(Object)} semantics.
+     *
+     * @param source the source object
+     * @param target the target object
+     * @return {@code true} if both objects are equivalent under node semantics;
+     *         {@code false} otherwise
+     */
+    public static boolean nodeEquals(Object source, Object target) {
         if (target == source) return true;
         if (source == null || target == null) return false;
 
@@ -516,35 +543,25 @@ public class NodeUtil {
             return NumberUtil.compare((Number) source, (Number) target) == 0;
         } else if (ntSource.isValue() && ntTarget.isValue()) {
             return source.equals(target);
-        } else if (ntSource == NodeType.OBJECT_POJO) {
-            return source.equals(target);
-        } else if (ntTarget == NodeType.OBJECT_POJO) {
-            return target.equals(source);
         } else if (ntSource.isObject() && ntTarget.isObject()) {
-            if ((ntSource == NodeType.OBJECT_JOJO || ntTarget == NodeType.OBJECT_JOJO)
-                    && source.getClass() != target.getClass()) {
-                return false;
-            }
             if (NodeWalker.sizeInObject(source) != NodeWalker.sizeInObject(target)) return false;
             for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(source)) {
                 Object subSrouce = entry.getValue();
                 Object subTarget = NodeWalker.getInObject(target, entry.getKey());
-                if (!equals(subSrouce, subTarget)) return false;
+                if (!nodeEquals(subSrouce, subTarget)) return false;
             }
             return true;
         } else if (ntSource.isArray() && ntTarget.isArray()) {
-            if ((ntSource == NodeType.ARRAY_JAJO || ntTarget == NodeType.ARRAY_JAJO)
-                    && source.getClass() != target.getClass()) {
-                return false;
-            }
             if (NodeWalker.sizeInArray(source) != NodeWalker.sizeInArray(target)) return false;
             int size = NodeWalker.sizeInArray(source);
             for (int i = 0; i < size; i++) {
-                if (!equals(NodeWalker.getInArray(source, i), NodeWalker.getInArray(target, i))) return false;
+                Object subSrouce = NodeWalker.getInArray(source, i);
+                Object subTarget = NodeWalker.getInArray(target, i);
+                if (!nodeEquals(subSrouce, subTarget)) return false;
             }
             return true;
         } else if (ntSource.isUnknown() && ntTarget.isUnknown()) {
-            return source.equals(target);
+            return Objects.equals(source, target);
         }
         return false;
     }

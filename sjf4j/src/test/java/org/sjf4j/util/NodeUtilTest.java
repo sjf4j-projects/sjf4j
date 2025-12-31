@@ -251,14 +251,18 @@ public class NodeUtilTest {
                 "address", new JsonObject(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.toNode(Person.class, false);
+        Person p1 = jo.toNode(Person.class);
         JsonObject jo1 = new JsonObject(p1);
         assertNotEquals(p1, jo1);
         assertNotEquals(jo1, p1);
 
         Map<String, Object> map1 = jo1.toMap();
-        assertEquals(jo1, map1);
+        assertNotEquals(jo1, map1);
         assertNotEquals(map1, jo1);
+
+        assertEquals(jo1.toJson(), Sjf4j.toJson(map1));
+        assertEquals(jo1.toJson(), p1.toJson());
+        assertTrue(jo1.nodeEquals(map1));
     }
 
 
@@ -282,7 +286,7 @@ public class NodeUtilTest {
                 "address", new JsonObject(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.toNode(Person.class, true);
+        Person p1 = jo.toNode(Person.class);
         Person p2 = NodeUtil.copy(p1);
         Person p3 = NodeUtil.deepCopy(p1);
         assertEquals(p1, p2);
@@ -301,7 +305,7 @@ public class NodeUtilTest {
         JsonObject jo = new JsonObject(
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
-        Baby b1 = jo.toNode(Baby.class, false);
+        Baby b1 = jo.toNode(Baby.class);
         Baby b2 = NodeUtil.copy(b1);
         Baby b3 = NodeUtil.deepCopy(b1);
         log.info("b1={}, b3={}", b1, b3);
@@ -351,7 +355,7 @@ public class NodeUtilTest {
         });
 
         LocalDate date1 = LocalDate.now();
-        LocalDate date2 = Sjf4j.fromNode(date1.toString(), LocalDate.class, false);
+        LocalDate date2 = Sjf4j.fromNode(date1.toString(), LocalDate.class);
         log.info("date2={}", date2);
         assertEquals(date1, date2);
 

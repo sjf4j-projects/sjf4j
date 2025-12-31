@@ -57,7 +57,7 @@ public class JojoTest {
         String json1 = p1.toJson();
         log.info("json1={}", json1);
 
-        Person p2 = JsonObject.fromJson(json1).toNode(Person.class, false);
+        Person p2 = JsonObject.fromJson(json1).toNode(Person.class);
         log.info("p2={}", p2.inspect());
         assertEquals(p1, p2);
     }
@@ -72,7 +72,7 @@ public class JojoTest {
         p1.setBabies(babies);
         p1.put("ex", "wang");
 
-        JsonObject jo1 = JsonObject.fromNode(p1);
+        JsonObject jo1 = JsonObject.deepNode(p1);
         assertNotEquals(p1, jo1);
         assertEquals(p1.toJson(), jo1.toJson());
         assertEquals(ArrayList.class, jo1.getNode("babies").getClass());

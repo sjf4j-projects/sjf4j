@@ -312,6 +312,19 @@ public class JsonObject extends JsonContainer {
         return hash;
     }
 
+    @Override
+    public boolean equals(Object target) {
+        if (target == this) return true;
+        if (target == null || target.getClass() != this.getClass()) return false;
+        JsonObject targetJo = (JsonObject) target;
+        if (targetJo.size() != this.size()) return false;
+        for (Map.Entry<String, Object> entry : entrySet()) {
+            Object targetValue = targetJo.get(entry.getKey());
+            if (!Objects.equals(targetValue, entry.getValue())) return false;
+        }
+        return true;
+    }
+
     /**
      * Returns the total number of entries in this JsonObject, including both
      * POJO fields and dynamic nodes.
@@ -494,20 +507,40 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromNode(node);
     }
 
-    public static <T extends JsonObject> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
-        return Sjf4j.fromNode(node, clazz, deepCopy);
+    public static <T extends JsonObject> T fromNode(Object node, Class<T> clazz) {
+        return Sjf4j.fromNode(node, clazz);
     }
 
-    public static <T extends JsonObject> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
-        return Sjf4j.fromNode(node, type, deepCopy);
+    public static <T extends JsonObject> T fromNode(Object node, TypeReference<T> type) {
+        return Sjf4j.fromNode(node, type);
     }
 
-    public <T> T toNode(Class<T> clazz, boolean deepCopy) {
-        return Sjf4j.fromNode(this, clazz, deepCopy);
+    public <T> T toNode(Class<T> clazz) {
+        return Sjf4j.fromNode(this, clazz);
     }
 
-    public <T> T toNode(TypeReference<T> type, boolean deepCopy) {
-        return Sjf4j.fromNode(this, type, deepCopy);
+    public <T> T toNode(TypeReference<T> type) {
+        return Sjf4j.fromNode(this, type);
+    }
+
+    public static JsonObject deepNode(Object node) {
+        return Sjf4j.deepNode(node);
+    }
+
+    public static <T extends JsonObject> T deepNode(Object node, Class<T> clazz) {
+        return Sjf4j.deepNode(node, clazz);
+    }
+
+    public static <T extends JsonObject> T deepNode(Object node, TypeReference<T> type) {
+        return Sjf4j.deepNode(node, type);
+    }
+
+    public <T> T deepNode(Class<T> clazz) {
+        return Sjf4j.deepNode(this, clazz);
+    }
+
+    public <T> T deepNode(TypeReference<T> type) {
+        return Sjf4j.deepNode(this, type);
     }
 
 

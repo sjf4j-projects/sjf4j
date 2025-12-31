@@ -114,7 +114,8 @@ class JsonArrayTest {
                 new Object[]{"gaga", "haha", new JsonArray(new String[]{"jiji", "kaka"})});
 
         JsonArray ja2 = JsonArray.fromJson("[\"gaga\",\"haha\",[\"jiji\",\"kaka\"]]");
-        assertEquals(ja1, ja2);
+        assertNotEquals(ja1, ja2);
+        assertTrue(ja1.nodeEquals(ja2));
         assertEquals(ja1.toJson(), ja2.toJson());
 
         assertEquals("[\"jiji\",\"kaka\"]", ja1.getJsonArray(2).toJson());

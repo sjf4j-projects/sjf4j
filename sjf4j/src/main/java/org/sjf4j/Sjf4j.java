@@ -328,23 +328,38 @@ public class Sjf4j {
         return out.toString();
     }
 
-    /// POJO
-
+    /// Node
 
     @SuppressWarnings("unchecked")
-    public static <T> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, deepCopy);
+    public static <T> T fromNode(Object node, Class<T> clazz) {
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, false);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
+    public static <T> T fromNode(Object node, TypeReference<T> type) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), deepCopy);
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), false);
     }
 
     public static JsonObject fromNode(Object node) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
-        return fromNode(node, JsonObject.class, true);
+        return fromNode(node, JsonObject.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T deepNode(Object node, Class<T> clazz) {
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, true);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T deepNode(Object node, TypeReference<T> type) {
+        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), true);
+    }
+
+    public static JsonObject deepNode(Object node) {
+        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        return deepNode(node, JsonObject.class);
     }
 
     /// Properties

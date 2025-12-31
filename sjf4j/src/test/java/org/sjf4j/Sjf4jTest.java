@@ -39,7 +39,7 @@ public class Sjf4jTest {
         Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
-        JsonObject jo1 = Sjf4j.fromNode(p1);
+        JsonObject jo1 = Sjf4j.deepNode(p1);
         log.info("jo1={}", jo1);
 
         JsonObject jo2 = Sjf4j.fromJson(JSON_DATA, JsonObject.class);

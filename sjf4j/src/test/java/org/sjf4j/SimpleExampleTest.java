@@ -251,12 +251,12 @@ public class SimpleExampleTest {
         JsonObject tmpJo = new JsonObject(map);    // Just wrap it
 
         // JsonObject <==> POJO/JOJO
-        User tmpUser = jo.toNode(User.class, false);
+        User tmpUser = jo.toNode(User.class);
         tmpJo = Sjf4j.fromNode(user2);
 
         // JOJO <==> POJO
-        tmpUser = user2.toNode(User.class, false);
-        User2 tmpUser2 = Sjf4j.fromNode(user, User2.class, false);
+        tmpUser = user2.toNode(User.class);
+        User2 tmpUser2 = Sjf4j.fromNode(user, User2.class);
 
         System.out.println("keys=" + user2.keySet());
         // ["id",  "name",  "friends",  "age"]

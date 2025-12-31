@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -142,6 +143,15 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     @Override
     public int hashCode() {
         return nodeList == null ? 0 : nodeList.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object target) {
+        if (target == this) return true;
+        if (target == null || target.getClass() != this.getClass()) return false;
+        JsonArray targetJa = (JsonArray) target;
+        if (targetJa.size() != this.size()) return false;
+        return Objects.equals(this.nodeList, targetJa.nodeList);
     }
 
     /**
@@ -335,23 +345,43 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     /// Node Facade
 
     public static JsonArray fromNode(Object node) {
-        return Sjf4j.fromNode(node, JsonArray.class, true);
+        return Sjf4j.fromNode(node, JsonArray.class);
     }
 
-    public static <T extends JsonArray> T fromNode(Object node, Class<T> clazz, boolean deepCopy) {
-        return Sjf4j.fromNode(node, clazz, deepCopy);
+    public static <T extends JsonArray> T fromNode(Object node, Class<T> clazz) {
+        return Sjf4j.fromNode(node, clazz);
     }
 
-    public static <T extends JsonArray> T fromNode(Object node, TypeReference<T> type, boolean deepCopy) {
-        return Sjf4j.fromNode(node, type, deepCopy);
+    public static <T extends JsonArray> T fromNode(Object node, TypeReference<T> type) {
+        return Sjf4j.fromNode(node, type);
     }
 
-    public <T> T toNode(Class<T> clazz, boolean deepCopy) {
-        return Sjf4j.fromNode(this, clazz, deepCopy);
+    public <T> T toNode(Class<T> clazz) {
+        return Sjf4j.fromNode(this, clazz);
     }
 
-    public <T> T toNode(TypeReference<T> type, boolean deepCopy) {
-        return Sjf4j.fromNode(this, type, deepCopy);
+    public <T> T toNode(TypeReference<T> type) {
+        return Sjf4j.fromNode(this, type);
+    }
+
+    public static JsonArray deepNode(Object node) {
+        return Sjf4j.deepNode(node, JsonArray.class);
+    }
+
+    public static <T extends JsonArray> T deepNode(Object node, Class<T> clazz) {
+        return Sjf4j.deepNode(node, clazz);
+    }
+
+    public static <T extends JsonArray> T deepNode(Object node, TypeReference<T> type) {
+        return Sjf4j.deepNode(node, type);
+    }
+
+    public <T> T deepNode(Class<T> clazz) {
+        return Sjf4j.deepNode(this, clazz);
+    }
+
+    public <T> T deepNode(TypeReference<T> type) {
+        return Sjf4j.deepNode(this, type);
     }
 
 

@@ -11,6 +11,7 @@ import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,8 +91,8 @@ public class JsonPathTest {
         assertEquals("B", JsonPath.compile("/book/1/title").getNode(jo1));
         assertEquals(10, JsonPath.compile("$.book[0].price").getNode(jo1));
         assertEquals("classic", JsonPath.compile("$.book[0].tags[0]").getNode(jo1));
-        assertEquals(new JsonArray(), JsonPath.compile("$.emptyArray").getNode(jo1));
-        assertEquals(new JsonObject(), JsonPath.compile("$['emptyObject']").getNode(jo1));
+        assertEquals(Collections.emptyList(), JsonPath.compile("$.emptyArray").getNode(jo1));
+        assertEquals(Collections.emptyMap(), JsonPath.compile("$['emptyObject']").getNode(jo1));
         assertNull(JsonPath.compile("$.nullValue").getNode(jo1));
         assertEquals("v1", JsonPath.compile("$['weird.keys']['key with spaces']").getNode(jo1));
         assertEquals("v1", JsonPath.compile("/weird.keys/key with spaces").getNode(jo1));

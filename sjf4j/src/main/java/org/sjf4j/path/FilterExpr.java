@@ -6,6 +6,7 @@ import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.NumberUtil;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
@@ -269,7 +270,7 @@ public interface FilterExpr {
      * @return true if the objects are equal according to JSON rules
      */
     static boolean eq(Object a, Object b) {
-        return NodeUtil.equals(a, b);
+        return Objects.equals(a, b);
     }
 
     /**
