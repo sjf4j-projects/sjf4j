@@ -7,29 +7,30 @@
 ## Overview
 
 **SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
-(e.g. Jackson, Gson, Fastjson2) as well as other JSON-like data parsers (e.g. SnakeYAML, Java Properties).
+(e.g. Jackson, Gson, Fastjson2) and other JSON-like data formats (e.g. SnakeYAML, Java Properties).
 
-SJF4J is not another JSON library — it's a ***unified abstraction layer for structured data processing in Java***.  
-Instead, SJF4J focuses on the common needs that arise in real-world applications:
+Beyond parsing, SJF4J is a ***unified abstraction layer for structured data processing in Java***.
+It solves several recurring needs in real-world applications:
 - **Unifying Static and Dynamic Data Models**  
   Java developers traditionally choose between type safety (POJOs) and flexibility (Map/List). 
   SJF4J eliminates this choice by unifying POJOs, Maps, and JSON objects in a single **Object-Based Node Tree**.
 
 
-- **Providing One API Across Multiple Formats and Parsers**  
-  SJF4J avoids locking your application into a specific JSON library or data format by exposing a
+- **Exposing One API Across Multiple Formats and Parsers**  
+  SJF4J avoids locking your application into a specific JSON library or data format by providing a
   consistent, format-agnostic API.
 
 
-- **Delivering a Complete JSON Processing Toolkit**  
+- **Providing a Complete JSON Processing Toolkit**  
   Beyond basic parsing and serialization, SJF4J includes JSON Path (RFC 9535), JSON Pointer (RFC 6901), 
   JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386).
 
 
-### Object-Based Node Tree
+## Object-Based Node Tree
 
 SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
 for navigation, querying, mutation, and validation.  
+
 Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
 **all nodes in SJF4J are represented as native Java objects**, 
 allowing seamless integration with existing Java codes and frameworks.
@@ -54,7 +55,7 @@ graph BT
         value ---> convertible("&lt;Object&gt; <br/> (via @Convertible <br/> or Converter)")
 ```
 
-#### JSON Object (`{}`)
+### JSON Object (`{}`)
 - **`Map`**  
 A generic key-value representation using standard Java `Map`.
 - **`JsonObject`**  
@@ -66,7 +67,7 @@ A strongly typed Java object with fields, getters, and setters.
 A hybrid object that extends `JsonObject` while also behaving like a typed Java object,
 combining the flexibility of dynamic JSON access with the safety and expressiveness of `POJOs`.
 
-#### JSON Array (`[]`)
+### JSON Array (`[]`)
 - **`List`**  
 A standard Java `List` used as a direct representation of a JSON array.
 - **`JsonArray`**  
@@ -78,7 +79,7 @@ strongly typed representation is desired.
   An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
   (never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
 
-#### JSON Value (`..`)
+### JSON Value (`..`)
 - **`String`**  Represents JSON `string` values.
 - **`Number`**  Represents JSON `numeric` values, including integers and floating-point numbers.
 - **`Boolean`** Represents JSON boolean values (`true` and `false`).
