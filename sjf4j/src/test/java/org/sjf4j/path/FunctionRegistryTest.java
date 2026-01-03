@@ -1,9 +1,8 @@
-package org.sjf4j;
+package org.sjf4j.path;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.path.FunctionRegistry;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.JsonObject;
 
 import java.util.Arrays;
 import java.util.Set;

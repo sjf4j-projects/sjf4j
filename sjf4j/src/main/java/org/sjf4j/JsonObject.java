@@ -550,8 +550,8 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromProperties(props);
     }
 
-    public void toProperties(Properties props) {
-        Sjf4j.toProperties(props, this);
+    public Properties toProperties() {
+        return Sjf4j.toProperties(this);
     }
 
 

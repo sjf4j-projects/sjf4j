@@ -901,7 +901,6 @@ public class JsonPath {
 
     // 1. Automatically create or extends JsonObject nodes when they do not exist.
     // 2. Automatically create or extends JsonArray nodes when they do not exist and the index is 0.
-    // FIXME: Need to support POJO with generic parameter type
     private Object _ensureContainersInPath(Object container) {
         if (!_isSingle()) {
             throw new JsonException("JsonPath '" + this +

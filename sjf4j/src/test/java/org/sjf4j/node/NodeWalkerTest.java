@@ -1,9 +1,11 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
 
 import java.util.ArrayList;
 import java.util.HashMap;

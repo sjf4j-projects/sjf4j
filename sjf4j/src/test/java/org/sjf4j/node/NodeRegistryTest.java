@@ -1,4 +1,4 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,12 +7,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JojoTest;
+import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.convertible.Convert;
 import org.sjf4j.annotation.convertible.Convertible;
+import org.sjf4j.annotation.convertible.Copy;
 import org.sjf4j.annotation.convertible.Unconvert;
-import org.sjf4j.node.NodeConverter;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.NodeType;
 import org.sjf4j.util.TypeReference;
 
 import java.time.LocalDate;
@@ -75,10 +76,9 @@ public class NodeRegistryTest {
 
 
     @Convertible
-    public static class Ops {
+    public static class BigDay {
         private final LocalDate localDate;
-
-        public Ops(LocalDate localDate) {
+        public BigDay(LocalDate localDate) {
             this.localDate = localDate;
         }
 
@@ -88,50 +88,55 @@ public class NodeRegistryTest {
         }
 
         @Unconvert
-        public static Ops unconvert(String raw) {
-            NodeType nt = NodeType.of(raw);
-            if (nt == NodeType.VALUE_STRING) {
-                return new Ops(LocalDate.parse(raw));
-            }
-            throw new RuntimeException("Wrong raw type");
+        public static BigDay unconvert(String raw) {
+            return new BigDay(LocalDate.parse(raw));
+        }
+
+        @Copy
+        public BigDay copy() {
+            return new BigDay(localDate);
         }
     }
 
 
     @Test
     public void testConvertible1() {
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(Ops.class);
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(BigDay.class);
         log.info("ci={}", ci);
         assertNotNull(ci);
 
         LocalDate now = LocalDate.now();
-        Ops ops = new Ops(now);
-        Object raw = ci.convert(ops);
+        BigDay day = new BigDay(now);
+        Object raw = ci.convert(day);
         log.info("raw={}", raw);
         assertEquals(now.toString(), raw);
 
-        Ops ops2 = (Ops) ci.unconvert(raw);
-        log.info("ops2={}", ops2);
-        assertEquals(ops.localDate, ops2.localDate);
+        BigDay day2 = (BigDay) ci.unconvert(raw);
+        log.info("day2={}", day2);
+        assertEquals(day.localDate, day2.localDate);
+
+        BigDay big = Sjf4j.fromJson("\"2026-01-01\"", BigDay.class);
+        log.info("big={}", big);
+        assertEquals("\"2026-01-01\"", Sjf4j.toJson(big));
     }
 
 
     @Test
     public void testConvertible2() {
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<Ops, String>() {
+        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
             @Override
-            public String convert(Ops node) {
-                return node.convert();
+            public String convert(LocalDate node) {
+                return node.toString();
             }
 
             @Override
-            public Ops unconvert(String raw) {
-                return Ops.unconvert(raw);
+            public LocalDate unconvert(String raw) {
+                return LocalDate.parse(raw);
             }
 
             @Override
-            public Class<Ops> getNodeClass() {
-                return Ops.class;
+            public Class<LocalDate> getNodeClass() {
+                return LocalDate.class;
             }
 
             @Override
@@ -143,15 +148,13 @@ public class NodeRegistryTest {
         assertNotNull(ci);
 
         LocalDate now = LocalDate.now();
-        Ops ops = new Ops(now);
-//        Object raw = ci.convert(ops);
-        String raw = (String) ci.convert(ops);
+        String raw = (String) ci.convert(now);
         log.info("raw={} type={}", raw, raw.getClass());
         assertEquals(now.toString(), raw);
 
-        Ops ops2 = (Ops) ci.unconvert(raw);
-        log.info("ops2={}", ops2);
-        assertEquals(ops.localDate, ops2.localDate);
+        LocalDate now2 = (LocalDate) ci.unconvert(raw);
+        log.info("now2={}", now2);
+        assertEquals(now, now2);
     }
 
 

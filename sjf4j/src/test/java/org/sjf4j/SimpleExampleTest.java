@@ -3,6 +3,7 @@ package org.sjf4j;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeWalker.Target;
 import org.sjf4j.node.NodeWalker.Order;
 import org.sjf4j.node.NodeWalker.Control;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -244,11 +246,11 @@ public class SimpleExampleTest {
         jo = JsonObject.fromYaml(jo.toYaml());
 
         // Limited conversion to/from Properties:
-        jo.toProperties(System.getProperties());    // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd
+        Properties props = jo.toProperties();       // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd
 
         // JsonObject <==> Map
         Map<String, Object> tmpMap = jo.toMap();
-        JsonObject tmpJo = new JsonObject(map);    // Just wrap it
+        JsonObject tmpJo = new JsonObject(map);     // Just wrap it
 
         // JsonObject <==> POJO/JOJO
         User tmpUser = jo.toNode(User.class);
@@ -275,6 +277,7 @@ public class SimpleExampleTest {
 
         int allUsers = user2.findNodesByPath("$..id").size();
         // Use powerful methods from JsonObject
+
     }
 
     // Define a POJO `User`
@@ -324,6 +327,15 @@ public class SimpleExampleTest {
 
         List<String> allFriends = user2.findByPath("$.friends..name", String.class);
         // ["Bill", "Cindy", "David"]
+        // JOJO provides more JSON-oriented APIs on top of the domain model!
+
+        user2.forEach((k, v) -> {
+            System.out.println("key=" + k + " value=" + v);
+        });
+
+        NodeWalker.visitObject(user, (k, v) -> {
+            System.out.println("key=" + k + " value=" + v);
+        });
     }
 
 }

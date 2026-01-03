@@ -463,7 +463,6 @@ public class NodeUtil {
     }
 
 
-    /// Only support JsonObject/JsonArray, but not POJO/Map/List
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> T as(Object node, Class<T> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
@@ -505,8 +504,30 @@ public class NodeUtil {
 
     }
 
-    /// Basic
 
+    @SuppressWarnings("unchecked")
+    public static <T> T createContainer(Class<T> clazz) {
+        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        if (Map.class.isAssignableFrom(clazz)) {
+            return (T) Sjf4jConfig.global().mapSupplier.create();
+        } else if (List.class.isAssignableFrom(clazz)) {
+            return (T) Sjf4jConfig.global().listSupplier.create();
+        } else if (clazz == JsonObject.class) {
+            return (T) new JsonObject();
+        } else if (clazz == JsonArray.class) {
+            return (T) new JsonArray();
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
+        if (pi != null) {
+            return (T) pi.newInstance();
+        }
+
+        throw new JsonException("Cannot create container of " + clazz.getName());
+    }
+
+
+    /// Basic
 
     /**
      * Compares two objects using <b>Object-Based Node Tree</b> semantics.

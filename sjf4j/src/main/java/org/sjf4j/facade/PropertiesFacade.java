@@ -12,6 +12,6 @@ public interface PropertiesFacade {
 
     JsonObject readNode(Properties props);
 
-    void writeNode(Properties props, JsonObject node);
+    void writeNode(Properties props, Object node);
 
 }

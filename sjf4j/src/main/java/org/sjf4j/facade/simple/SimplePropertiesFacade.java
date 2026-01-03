@@ -3,6 +3,7 @@ package org.sjf4j.facade.simple;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.facade.PropertiesFacade;
+import org.sjf4j.util.NodeUtil;
 
 import java.util.Properties;
 import java.util.TreeSet;
@@ -16,13 +17,14 @@ public class SimplePropertiesFacade implements PropertiesFacade {
         TreeSet<String> sortedKeys = new TreeSet<>(properties.stringPropertyNames());
         for (String key : sortedKeys) {
             String value = properties.getProperty(key);
-            jo.ensurePutByPath(propKey2JsonPath(key), value);
+            String path = propKey2JsonPath(key);
+            jo.ensurePutByPath(path, value);
         }
         return jo;
     }
 
     @Override
-    public void writeNode(Properties properties, JsonObject node) {
+    public void writeNode(Properties properties, Object node) {
         if (properties == null) throw new IllegalArgumentException("Properties must not be null");
         NodeWalker.walk(node, NodeWalker.Target.VALUE, NodeWalker.Order.TOP_DOWN, (path, value) -> {
             if (value != null) {

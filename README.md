@@ -9,13 +9,33 @@
 **SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
 (e.g. Jackson, Gson, Fastjson2) as well as other JSON-like data parsers (e.g. SnakeYAML, Java Properties).
 
-SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
-for navigating, querying, validating, and mutating that tree. 
-Its design follows the core data model and semantics defined by published JSON RFCs 
-as well as relevant draft specifications.
+SJF4J is not another JSON library — it's a ***unified abstraction layer for structured data processing in Java***.  
+While individual libraries excel at specific tasks, 
+SJF4J solves the architectural gaps that emerge in real-world applications:
+- **Unifying Static and Dynamic Data Models**  
+  Java developers have long-faced a painful choice: use statically-typed POJOs for safety but lose flexibility, 
+  or use dynamic Maps/Lists for flexibility but sacrifice type safety. 
+  SJF4J eliminates this choice by unifying POJOs, Maps, and JSON objects in a single **Object-Based Node Tree**.
 
-> Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
-> **all nodes in SJF4J are represented as native Java objects**, allowing seamless integration with existing Java code, type systems, and frameworks.
+
+- **One API for Multiple Formats and Parsers**  
+  SJF4J avoids locking your application into a specific JSON library or data format by providing a
+  ***consistent, format-agnostic API***.
+
+
+- **A Complete JSON Toolkit Beyond Parsing**  
+  SJF4J goes beyond basic serialization and deserialization, providing a 
+  ***comprehensive set of JSON processing capabilities***, including: JSON Path (RFC 9535), JSON Pointer (RFC 6901), 
+  JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386).
+
+
+### Object-Based Node Tree
+
+SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
+for navigation, querying, validation, and mutation.
+
+Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
+**all nodes in SJF4J are represented as native Java objects**, allowing seamless integration with existing Java code, type systems, and frameworks.
 
 ```mermaid
 graph BT
@@ -34,7 +54,7 @@ graph BT
         value --> string("String")
         value --> number("Number")
         value --> boolean("Boolean")
-        value ---> converted("&lt;Object&gt; <br/> (via Convertor or <br/> @Convertible)")
+        value ---> convertible("&lt;Object&gt; <br/> (via @Convertible <br/> or Converter)")
 ```
 
 #### JSON Object (`{}`)
@@ -68,7 +88,7 @@ strongly typed representation is desired.
 - **`Null`**    Represents the JSON `null` literal.
 - **`<Object>`**  
 SJF4J allows JSON values to be **converted into arbitrary Java objects** through a pluggable conversion mechanism 
-(via `Converter` or `@Convertible`), enabling seamless integration with **domain-specific types** (e.g. `LocalDate`).
+(via `@Convertible` or `Converter`), enabling seamless integration with **domain-specific types** (e.g. `LocalDate`).
 
 ## Getting Started
 
@@ -97,10 +117,10 @@ providing the same JSON-oriented APIs.
 ### Starting from `JsonObject`
 `JsonObject` is the primary entry point for interacting with **Object-Based Node Tree**, so we start from it.  
 
-> The APIs in SJF4J are designed to align with JSON semantics.  
-> For example, `hasNonNull()` for `not null` vs `containsKey()` for missing.
+> **Note**: The APIs in SJF4J are designed to align with JSON semantics.  
+> For example, `hasNonNull()` for not null vs `containsKey()` for missing.
 
-**Basic Methods**:
+**Basic Access and mutation Methods**:
 
 | Method                                                        | Description                                                                                                      |
 |---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
@@ -111,8 +131,9 @@ providing the same JSON-oriented APIs.
 | `builder()` / `toBuilder().put(..).put(..)`                   | Provides a builder-style API that supports fluent, chained operations.                                           |
 
 
-**Examples**: (Full source code is available at
-[SimpleExample](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExample.java))
+**Examples**:
+(Full source code is available at
+[SimpleExampleTest](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExampleTest.java))
 
 ```java
     String json = "{\n" +
@@ -179,61 +200,8 @@ providing the same JSON-oriented APIs.
 
 ### Path-Based Operating with `JsonPath`/`JsonPointer`
 
-`JsonPath` provides **full support** for the [JSON Path (RFC 9535)](https://datatracker.ietf.org/doc/html/rfc9535)
+`JsonPath` provides full support for the [JSON Path (RFC 9535)](https://datatracker.ietf.org/doc/html/rfc9535)
 / [JSON Pointer (RFC 6901)](https://datatracker.ietf.org/doc/html/rfc6901) specifications.  
-
-**JSON Path Syntax**
-
-| Syntax                                   | Description                                               | Example                  |
-|------------------------------------------|-----------------------------------------------------------|--------------------------|
-| `$`                                      | Root object                                               | `$`                      |
-| `@`                                      | Current node (Filter context only)                        | `@.name`                 |
-| `.name`, `['name']`                      | Object member name                                        | `$['store'].book`        |
-| `[index]`                                | Array index (0-based; negative values index from the end) | `$.store['book'][0]`     |
-| `.*`, `[*]`                              | Wildcard (all children)                                   | `$.store[*]`             |
-| `..`                                     | Recursive descent (object or array)                       | `$..author`              |
-| `[start:end]`, `[start:end:step]`        | Array slice (end exclusive)                               | `$.*.book[1:3]`          |
-| `[index1, index2]`, `['name1', 'name2']` | Union of array indices or object members                  | `$.store.book[0, -1]`    |
-| `[?(<filter>)]`                          | Filter expression                                         | `$..book[?@.price < 10]` |
-| `func()`                                 | Function call at the end of a path or in a filter         | `$..book.size()`         |
-
-
-**Filter Expressions**
-
-| Syntax                  | Description                               | Example                                                    |
-|-------------------------|-------------------------------------------|------------------------------------------------------------|
-| `@`, `$`                | Path expression (automatically evaluated) | `$.orders[?(@.amount > $.config.minAmount)]`               |
-| `==`, `!=`              | Equality / inequality                     | `@.category == 'fiction'`                                  |
-| `<`, `<=`, `>`, `>=`    | Numeric comparison                        | `@.price >= 20`                                            |
-| `&&`, `\|\|`, `!`, `()` | Logical operators and grouping            | `@.author != null \|\| ($..book.length() < 10 && !@.isbn)` |
-| `=~`                    | Full regular expression match             | `@.author =~ /.*lice/i`                                    |
-
-**Filter Functions**
-
-| Syntax                                         | Description                                                                                                 | Example                           |
-|------------------------------------------------|-------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| `length()`                                     | Returns the length of a string, array, or object                                                            | `$[?length(@.authors) >= 5]`      |
-| `count()`                                      | Returns the number of nodes in a nodelist                                                                   | `$[?count(@.*.author) >= 5]`      |
-| `match()`                                      | Tests whether a string matches a given [I-Regexp (RFC 9485)](https://datatracker.ietf.org/doc/html/rfc9485) | `$[?match(@.date, "1974-05-..")]` |
-| `search()`                                     | Tests whether a string contains a substring that `match()`                                                  | `$[?search(@.author, "[BR]ob")]`  |
-| `value()`                                      | Convert an instance of NodesType to a value                                                                 | `$[?value(@..color) == "red"]`    |
-| `sum()`, `min()`, `max()`, `avg()`, `stddev()` | Numeric aggregation functions                                                                               | `$[?sum(@.price) < 20]`           |
-| `first()`, `last()`, `index()`                 | Returns the first, last, or indexed element of an array                                                     | `$[?first(@.title) =~ /^J/]`      |
-
-> **Extensibility**: Use `FunctionRegistry.register()` to add your own functions and extend JSON Path with custom logic.
-
-**JSON Pointer Syntax**
-
-JSON Pointer paths always start with `/`, 
-and only direct navigation is supported; no wildcards or filters.
-
-| Syntax  | Description              | Example         |
-|---------|--------------------------|-----------------|
-| `/`     | Root separator           | `/` (root)      |
-| `/name` | Object member access     | `/store/book`   |
-| `/0`    | Array index (0-based)    | `/store/book/0` |
-| `~0`    | Escape for `~` character | `/a~0b`         |
-| `~1`    | Escape for `/` character | `/a~1b`         |
 
 **Path-Based Methods** (in `JsonPath` and `JsonObject`/`JsonArray`)
 
@@ -285,6 +253,66 @@ and only direct navigation is supported; no wildcards or filters.
     JsonPointer.compile("/scores/2").remove(jo);
     // Removes the element of array using `JsonPointer`.
 ```
+
+**JSON Path Syntax**
+
+| Syntax                                   | Description                                               | Example                  |
+|------------------------------------------|-----------------------------------------------------------|--------------------------|
+| `$`                                      | Root object                                               | `$.name`                 |
+| `@`                                      | Current node (Only in Filter context)                     | `@.name`                 |
+| `.name`, `['name']`                      | Object member name                                        | `$['store'].book`        |
+| `[index]`                                | Array index (0-based; negative values index from the end) | `$.store['book'][0]`     |
+| `.*`, `[*]`                              | Wildcard (all children)                                   | `$.store[*]`             |
+| `..`                                     | Recursive descent (object or array)                       | `$..author`              |
+| `[start:end]`, `[start:end:step]`        | Array slice (end exclusive)                               | `$.*.book[1:3]`          |
+| `[index1, index2]`, `['name1', 'name2']` | Union of array indices or object members                  | `$.store.book[0, -1]`    |
+| `[?(<filter>)]`                          | Filter expression                                         | `$..book[?@.price < 10]` |
+| `func()`                                 | Function call at the end of a path or in a filter         | `$..book.size()`         |
+
+**Filter Expressions**
+
+| Syntax                  | Description                               | Example                                                    |
+|-------------------------|-------------------------------------------|------------------------------------------------------------|
+| `@`, `$`                | Path expression (automatically evaluated) | `$.orders[?(@.amount > $.config.minAmount)]`               |
+| `==`, `!=`              | Equality / inequality                     | `@.category == 'fiction'`                                  |
+| `<`, `<=`, `>`, `>=`    | Numeric comparison                        | `@.price >= 20`                                            |
+| `&&`, `\|\|`, `!`, `()` | Logical operators and grouping            | `@.author != null \|\| ($..book.length() < 10 && !@.isbn)` |
+| `=~`                    | Full regular expression match             | `@.author =~ /.*lice/i`                                    |
+
+**Filter Functions**
+
+| Syntax                                         | Description                                                                                                 | Example                           |
+|------------------------------------------------|-------------------------------------------------------------------------------------------------------------|-----------------------------------|
+| `length()`                                     | Returns the length of a string, array, or object                                                            | `$[?length(@.authors) >= 5]`      |
+| `count()`                                      | Returns the number of nodes in a nodelist                                                                   | `$[?count(@.*.author) >= 5]`      |
+| `match()`                                      | Tests whether a string matches a given [I-Regexp (RFC 9485)](https://datatracker.ietf.org/doc/html/rfc9485) | `$[?match(@.date, "1974-05-..")]` |
+| `search()`                                     | Tests whether a string contains a substring that `match()`                                                  | `$[?search(@.author, "[BR]ob")]`  |
+| `value()`                                      | Convert an instance of NodesType to a value                                                                 | `$[?value(@..color) == "red"]`    |
+| `sum()`, `min()`, `max()`, `avg()`, `stddev()` | Numeric aggregation functions                                                                               | `$[?sum(@.price) < 20]`           |
+| `first()`, `last()`, `index()`                 | Returns the first, last, or indexed element of an array                                                     | `$[?first(@.title) =~ /^J/]`      |
+
+> **Extensibility**: JSON Path can be extended with custom functions via `FunctionRegistry.register()`,
+> and it is simple:
+> ```java
+> FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("hi", args -> {
+>     return "hi, " + Arrays.toString(args);
+> }));
+> String hi = JsonObject.fromJson("{\"aa\":\"bb\"}").evalByPath("$.hi()", String.class);
+> assertEquals("hi, [J{aa=bb}]", hi);
+>```
+
+**JSON Pointer Syntax**
+
+JSON Pointer paths always start with `/`, 
+and only direct navigation is supported; no wildcards or filters.
+
+| Syntax  | Description              | Example         |
+|---------|--------------------------|-----------------|
+| `/`     | Root separator           | `/` (root)      |
+| `/name` | Object member access     | `/store/book`   |
+| `/0`    | Array index (0-based)    | `/store/book/0` |
+| `~0`    | Escape for `~` character | `/a~0b`         |
+| `~1`    | Escape for `/` character | `/a~1b`         |
 
 > **Note**: `JsonPointer` is a specialized subclass of `JsonPath`.  
 > It behaves identically to `JsonPath`, except that it only accepts JSON Pointer expressions.
@@ -386,15 +414,15 @@ and each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
 | `exist`     | SJF4J         | Asserts that the target path exists                                                     | `{ "op": "exist", "path": "/a/b/c" }`                          |
 | `ensurePut` | SJF4J         | Ensures the path exists and inserts the value, creating intermediate nodes if necessary | `{ "op": "ensurePut", "path": "/x/y", "value": "z" }`          |
 
-> **Extensibility**: Use `PatchOpRegistry.register()` to define your own patch operations.
 
-It is simple to define a custom operation:
-```java
-    // Standard RFC `add`
-    PatchOpRegistry.register("add", (target, op) -> {
-        op.getPath().add(target, op.getValue());    // Replace with your own custom logic
-    });
-```
+> **Extensibility**: JSON Patch can be extended with custom `PatchOp` via `PatchOpRegistry.register()`,
+> and it is simple:
+> ```java
+> // Standard `add`
+> PatchOpRegistry.register("add", (target, op) -> {
+>     op.getPath().add(target, op.getValue());    // Replace with custom logic
+> });
+> ```
 
 #### Supporting JSON Merge Patch
 
@@ -411,7 +439,7 @@ For native node objects, you can use `PatchUtil.merge()`/`PatchUtil.mergeRfc7386
 
 ### Validating with `JsonSchema`
 
-TODO
+(planned)
 
 ### Modeling Domain Objects with `<JOJO>`/`<JAJO>`
 
@@ -470,11 +498,11 @@ methods, and domain logic***, making them ideal for modeling application-level e
     //                      Declared fields in POJO/JOJO                      Dynamic properties in JOJO
 
     List<String> allFriends = user2.findByPath("$.friends..name", String.class);
-    // =["Bill", "Cindy", "David"]
+    // ["Bill", "Cindy", "David"]
     // JOJO provides more JSON-oriented APIs on top of the domain model!
 ```
 
-#### Practices: Starting from Scratch
+#### Recommended Practices: Starting from Scratch
 
 At an early stage, you may start with an **empty `JOJO`**:
 ```java
@@ -496,212 +524,176 @@ public class Book extends JsonObject {
 Over time, `Book` naturally evolves into a well-defined domain object,
 while still retaining the ability to carry additional properties when needed.
 
-#### Practices: Starting from an Existing Project
+#### Recommended Practices: Starting from an Existing Codebase
 
-**1.** If projects based on dynamic map-like data structures, 
-such as Java `Map` / `List`, Jackson `JsonNode`, Gson `JsonObject`, Fastjson2 `JSONObject`.
+**1. Codebases based on dynamic, map-like data structures**  
+This includes codebases built on Java `Map` / `List`,
+Jackson `JsonNode`, Gson `JsonObject`, or Fastjson2 `JSONObject`.
 
-Such projects may migrate to **SJF4J’s `JsonObject`**,
-preserving the original data model while gaining a unified, JSON-oriented API
-for traversal, querying, and mutation.
-
-**2.** If projects based on domain `POJOs`, 又分为两种情况.
-
-   - If `POJOs` **can** extend `JsonObjet`, just let the `POJOs` directly extend `JsonObject`.  
+Such codebases can migrate to **SJF4J’s `JsonObject`/`JsonArray`** directly,
+preserving the existing data model while gaining a unified,
+JSON-oriented API for traversal, querying, and mutation.
 
 
-   - If `POJOs` **cannot** extend `JsonObjet`, 
-   such as Java `Record`, `Protobuf` messages, or classes from external libraries
+**2. Projects based on domain POJOs**  
+Two common scenarios:
 
+**1) POJOs that can extend `JsonObject`**  
+  When inheritance is feasible, domain classes may directly extend
+  `JsonObject`. 
+  Existing fields and methods remain unchanged, while the class gains
+  full SJF4J capabilities.
 
+**2) POJOs that cannot extend `JsonObject`**  
+This includes Java `Record`, `Protobuf` messages, or classes from external libraries.
 
-### Converting Between JSON-like Data and Java Objects
+- **Option 1: Using low-level static APIs**  
+  SJF4J exposes a set of low-level, static APIs built on the **Object-Based Node Tree**.  
+  These APIs operate directly on arbitrary Java object graphs 
+  and are also the underlying foundation used internally by `JsonObject`/`JsonArray`.
 
-### Example with POJO / JOJO
-
+| Helper Class | Static Methods                                                                                                                           | Description                                                                  |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| `Sjf4j`      | `Sjf4j.fromXxx()`, `Sjf4j.toXxx()`, ...                                                                                                  | Entry-point helpers for parsing, serialization, and cross-format conversion. |
+| `NodeUtil`   | `NodeUtil.getXxx()`, `NodeUtil.asXxx()`, `NodeUtil.copy()`, `NodeUtil.inspect()`, `NodeUtil.nodeEquals()`, ...                           | Node-level access, conversion, inspection, and comparison utilities.         |
+| `NodeWalker` | `NodeWalker.walk()`, `NodeWalker.visitObject()`, `NodeWalker.sizeInList()`, `NodeWalker.setInObject()`, `NodeWalker.removeInList()`, ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
+| `PatchUtil`  | `PatchUtil.diff()`, `PatchUtil.merge()`, ...                                                                                             | JSON Patch–based operations.                                  |
+**Exampl**e: Low-level static APIs
 ```java
-    // POJO example
-    class User {
-        int id;
-        String name;
-        List<User> friends;
-    }
+    user2.forEach((k, v) -> {
+        System.out.println("key=" + k + " value=" + v);
+    });
 
-    // JOJO example
-    class User2 extends JsonObject {
-        int id;
-        String name;
-        List<User2> friends;
-    }
-
-    String json = "{\n" +
-            "  \"id\": 1,\n" +
-            "  \"name\": \"Alice\",\n" +
-            "  \"friends\": [\n" +
-            "    { \"id\": 2, \"name\": \"Bill\", \"active\": true },\n" +
-            "    {\n" +
-            "      \"id\": 3,\n" +
-            "      \"name\": \"Cindy\",\n" +
-            "      \"friends\": [\n" +
-            "        {\"id\": 4, \"name\": \"Dino\"},\n" +
-            "        {\"id\": 5, \"info\": \"bla bla\"}\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ],\n" +
-            "  \"age\": 18\n" +
-            "}\n";
+    NodeWalker.visitObject(user, (k, v) -> {
+        System.out.println("key=" + k + " value=" + v);
+    });
+    // Functionally equivalent to `JsonObject.forEach(...)`, but usable with any object node.
 ```
 
-Converting between data `Input` and `JsonObject` / `Map` / `POJO` / `JOJO`.
-```java
-    JsonObject jo = Sjf4j.fromJson(json);               // = JsonObject.fromJson(json), to JsonObject
-    Map<String, Object> map = Sjf4j.fromJson(json,      // to Map
-            new TypeReference<Map<String, Object>>() {});    
-    User user = Sjf4j.fromJson(json, User.class);       // to POJO
-    User2 user2 = Sjf4j.fromJson(json, User2.class);    // to JOJO
-
-    // Serialize back to JSON
-    System.out.println("jo=" + jo.toJson());            // = Sjf4j.toJson(jo)
-    System.out.println("map=" + Sjf4j.toJson(map));     // Output dynamic nodes in Map
-    System.out.println("user=" + Sjf4j.toJson(user));   // Only outputs fields defined in User
-    System.out.println("user2=" + user2.toJson());
-    // Outputs both fixed fields in User2 and dynamic nodes in super JsonObject
-
-    // YAML is handled the same way as JSON
-    jo = JsonObject.fromYaml(jo.toYaml());
-
-    // Limited conversion to/from Properties:
-    jo.toProperties(System.getProperties());    // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd                
-    
-```
-
-Converting between `JsonObject`, `Map`, `POJO`, and `JOJO`.
-```java
-    // JsonObject <==> Map
-    Map<String, Object> tmpMap = jo.toMap();
-    tmpJo = new JsonObject(map);    // Just wrap it
-
-    // JsonObject <==> POJO/JOJO
-    User tmpUser = jo.toPojo(User.class);
-    tmpJo = Sjf4j.fromPojo(user2);
-    
-    // JOJO <==> POJO
-    tmpUser = user2.toPojo(User.class);
-    User2 tmpUser2 = Sjf4j.fromPojo(user, User2.class);
-```
-`JOJO` inherits all APIs from super class `JsonObject`, and also has `Getters` / `Setters` of `POJO`.
-They are fully equivalent.
-
-> **Key point**: `JOJO` combines the **type-safe, high-performance nature** of `POJOs` with
-> the **dynamic flexibility** of `Maps`.  
-It may enable a script-like Java development experience and is highly recommended.
+- **Option 2: Projecting POJO to `JsonObject`**  
+  Alternatively, a POJO can be ***projected*** into a `JsonObject`,
+  processed using the full SJF4J JSON-oriented API,
+  and then ***materialized back*** to its original type.
 
 ```java
-    System.out.println("keys=" + user2.keySet());
-    // ["id",  "name",  "friends",  "age"]
-    //   └────────┼─────────┘         │
-    //            ↓                   ↓
-    //      Fields in POJO       Property in JsonObject
-        
-    System.out.println("name=" + user2.getName());
-    // = user2.getString("name"));
-
-    user2.put("name", "Jenny");
-    // = user2.setName("Jenny")
-
-    String bill = user2.getFriends().get(0).getName();
-    // = user2.getStringByPath("$.friends[0].name")
-
-    int allUsers = user2.findAllNodes("$..id").size();
-    // Use advanced APIs provided by JsonObject
-```
-
----
-### Starting from Scratch
-
-**1. Early Stage: Use `JsonObject` or an Empty `JOJO`**  
-At the beginning, you can simply use `JsonObject`, or define an empty `JOJO` class:
-```java
-public class Book extends JsonObject {
-    // Empty here
-}
-```
-An empty `JOJO` is equivalent to a plain `JsonObject`:
-it can store any JSON-like structure without loss and without predefined fields.
-
-**2. Scaling Up: Two Upgrade Paths**  
-As your project grows, you may want stronger structure, type safety, or better performance.
-There are two upgrade paths:
-
- - **Path A — Evolve Toward a POJO**
-
-Gradually “solidify” frequently used properties into strongly typed POJO fields.
-This improves performance and enables static type checking while keeping flexibility for other fields.
-```java
-@Getter @Setter
-public class Person extends JsonObject {
-    private String name;    // Solidified as a field for the best performance
-    private int age;
-
-    // All other properties continue to exist inside JsonObject storage
-}
-```
-This hybrid design allows you to ***transition from dynamic to static structure*** without losing compatibility.
-
- - **Path B — Use @Jojo Annotatio to codegen** (Not Yet Implemented - -! )
-
-You can annotate a class with `@Jojo` to automatically generate `Getters` / `Setters`
-(and possibly other convenience methods).
-```java
-@Jojo({
-        @Property(name = "name", type = String.class),
-        @Property(name = "age", type = int.class, comment = "by years")
-})
-public class Person extends JsonObject {
-    
-}
-```
-Internally it is still Map-based, but with compile-time validation and `IDE` support.
-
-> Code generation is not yet implemented. Contributions are very welcome! 🙏
-
----
-### From an Existing Project
-
-**1. If your project currently uses a dynamic map-like type**  
-(e.g., `Map/List`, `ObjectNode` in Jackson, `JsonObject` in Gson, `JSONObject` in Fastjson2):
-
-You may switch to **SJF4J’s** `JsonObject` if you want:
-- unified API across libraries
-- path-based and more convenient operations
-- interoperability with POJO / JOJO
-- JSON / YAML / Properties conversion
-
-**2. If your project already uses POJOs**  
-There are two scenarios:
-
- 1. Your POJO ***can*** extend `JsonObject`  
-
-If inheritance is allowed, simply let your POJO extend `JsonObject`.  
-You keep all existing fields and methods, while gaining full SJF4J capabilities.
-
- 2. Your POJO ***cannot*** extend `JsonObject`  
-(e.g., Java Record, ProtoBuf Message, classes from external libraries)
-
-Then you must use ***copy-based wrapping***:
-```java
-    JsonObject jo = new JsonObject(myPojo);     // Shallow wrapper
+    JsonObject userJo = JsonObject.fromNode(user);  // Project POJO as JsonObject
     ...
-    myPojo = jo.toPojo(Person.class);           // Copy back to POJO
+    user = userJo.toNode(User.class);               // Materialize back to POJO
 ```
+Object projection is implemented as a ***shallow copy***, introducing a small and predictable overhead.
 
-In the future, annotation-based code generation may offer POJO-style accessors like this:
+> **About JAJO (JSON Array Java Object)**  
+> Unlike `JOJO`, a `JAJO` extends `JsonArray`, but intentionally introduces no additional fields.  
+> 
+> The purpose of `JAJO` is ***modeling rather than structure***.  
+> By assigning a dedicated type to an array-based JSON structure, JAJO allows domain-specific
+> behavior to be expressed explicitly through methods, without altering the underlying data shape.
+> 
+> For example, a `JsonPatch` is fundamentally represented as a JSON array.  
+> When modeled as a `JAJO`, it can naturally expose domain operations such as `diff()`,
+> `apply()`, making it behave as a first-class domain object rather than a raw list.
+
+### Converting Between JSON-like Data and the Object-Based Node Tree
+
+**Examples**: `Sjf4j` provides a unified set of entry-point APIs for converting.
 ```java
-@Jojo(target = Person.class)
-public class PersonJo extends JsonObject {
+    JsonObject jo           = Sjf4j.fromJson(json);     // = JsonObject.fromJson(json)
+    Map<String, Object> map = Sjf4j.fromYaml(yaml, new TypeReference<Map<String, Object>>() {});    
+    User user               = Sjf4j.fromProperties(properties, User.class);
+    User2 user2             = Sjf4j.fromNode(user, User2.class);    
+    // Uses reference-based mapping whenever feasible; otherwise performs a shallow copy.
 
-}
+    String json1            = Sjf4j.toJson(map);         
+    String yaml1            = Sjf4j.toYaml(jo);         // = jo.toYaml()
+    Properties props1       = Sjf4j.toProperties(user); 
+    // {"aa":{"bb":[{"cc":"dd"}]}} => aa.bb[0].cc=dd
+
+    User user1              = Sjf4j.fromNode(user2, User.class);
+    // Conversion is symmetric: `fromNode(..)` is used for both directions.
+    // No separate `toNode(..)` API is required.
+    
+    User user3              = Sjf4j.deepNode(user2, User.class);
+    // Always performs a deep copy.
+    // The resulting object graph is fully detached from the source.
 ```
+
+#### Converting Custom Types via `@Convertible` and `Converter`
+SJF4J allows custom Java types to participate in the **Object-Based Node Tree** through a
+***pluggable, bidirectional conversion mechanism***.
+
+**Using the `@Convertible` Annotation**:
+```java
+    @Convertible    
+    public static class BigDay {
+        private final LocalDate localDate;
+        public BigDay(LocalDate localDate) {
+            this.localDate = localDate;
+        }
+
+        @Convert
+        public String convert() {
+            return localDate.toString();
+        }
+
+        @Unconvert
+        public static BigDay unconvert(String raw) {
+            return new BigDay(LocalDate.parse(raw));
+        }
+
+        @Copy
+        public BigDay copy() {
+            return new BigDay(localDate);
+        }
+    }
+```
+- `@Convert` defines how the object is converted into a ***raw type*** value (in Object-Based Node Tree).
+- `@Unconvert` defines how the raw value is unconverted back into the ***node type*** object.
+- `@Copy` defines how the object is duplicated when a shallow or deep copy is required.
+  
+Registration is explicit and validated at runtime:
+```java
+    NodeRegistry.registerConvertible(BigDay.class);
+    // Throws an exception if registration fails
+    
+    BigDay day = Sjf4j.fromJson("\"2026-01-01\"", BigDay.class);
+    assertEquals("\"2026-01-01\"", Sjf4j.toJson(day));
+    // After registration, `BigDay` participates in JSON parsing and serialization
+    // transparently via its raw representation ("2026-01-01").
+```
+
+**Using the `Converter` Interface**:
+
+The programmatic approach is preferable when annotations are not possible,
+such as with JDK classes, third-party types, or when conversion logic must be centralized.
+
+```java
+    NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
+        @Override
+        public String convert(LocalDate node) {
+            return node.toString();
+        }
+
+        @Override
+        public LocalDate unconvert(String raw) {
+            return LocalDate.parse(raw);
+        }
+
+        @Override
+        public Class<LocalDate> getNodeClass() {
+            return LocalDate.class;
+        }
+
+        @Override
+        public Class<String> getRawClass() {
+            return String.class;
+        }
+    });
+```
+Here, the `Converter` explicitly declares:
+- the ***node type*** participating in the Object-Based Node Tree
+- the ***raw type*** used for JSON serialization
+- and the ***bidirectional conversion logic*** between them
+
 
 ## Contributing
 
@@ -711,9 +703,10 @@ or simply to say hi — your interest already means a lot to this project.
 Contributions of all kinds, whether it’s code, documentation, examples, benchmarking, or simply filing an issue, 
 are truly appreciated! ❤️
 
+
 ## License
 
-SJF4J is an open-source project licensed under the [MIT License](https://opensource.org/licenses/MIT).  
+[MIT License](https://opensource.org/licenses/MIT)  
 
 
 

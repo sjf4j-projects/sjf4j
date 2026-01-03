@@ -1,8 +1,8 @@
-package org.sjf4j;
+package org.sjf4j.node;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.NodeStream;
+import org.sjf4j.JsonObject;
 
 import java.util.List;
 import java.util.Objects;
