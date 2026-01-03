@@ -10,32 +10,29 @@
 (e.g. Jackson, Gson, Fastjson2) as well as other JSON-like data parsers (e.g. SnakeYAML, Java Properties).
 
 SJF4J is not another JSON library — it's a ***unified abstraction layer for structured data processing in Java***.  
-While individual libraries excel at specific tasks, 
-SJF4J solves the architectural gaps that emerge in real-world applications:
+Instead, SJF4J focuses on the common needs that arise in real-world applications:
 - **Unifying Static and Dynamic Data Models**  
-  Java developers have long-faced a painful choice: use statically-typed POJOs for safety but lose flexibility, 
-  or use dynamic Maps/Lists for flexibility but sacrifice type safety. 
+  Java developers traditionally choose between type safety (POJOs) and flexibility (Map/List). 
   SJF4J eliminates this choice by unifying POJOs, Maps, and JSON objects in a single **Object-Based Node Tree**.
 
 
-- **One API for Multiple Formats and Parsers**  
-  SJF4J avoids locking your application into a specific JSON library or data format by providing a
-  ***consistent, format-agnostic API***.
+- **Providing One API Across Multiple Formats and Parsers**  
+  SJF4J avoids locking your application into a specific JSON library or data format by exposing a
+  consistent, format-agnostic API.
 
 
-- **A Complete JSON Toolkit Beyond Parsing**  
-  SJF4J goes beyond basic serialization and deserialization, providing a 
-  ***comprehensive set of JSON processing capabilities***, including: JSON Path (RFC 9535), JSON Pointer (RFC 6901), 
+- **Delivering a Complete JSON Processing Toolkit**  
+  Beyond basic parsing and serialization, SJF4J includes JSON Path (RFC 9535), JSON Pointer (RFC 6901), 
   JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386).
 
 
 ### Object-Based Node Tree
 
 SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
-for navigation, querying, validation, and mutation.
-
+for navigation, querying, mutation, and validation.  
 Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
-**all nodes in SJF4J are represented as native Java objects**, allowing seamless integration with existing Java code, type systems, and frameworks.
+**all nodes in SJF4J are represented as native Java objects**, 
+allowing seamless integration with existing Java codes and frameworks.
 
 ```mermaid
 graph BT
@@ -359,88 +356,6 @@ double avgScore = jo.stream()
         .collect(Collectors.averagingDouble(s -> s));
 ```
 
-### Diffing and Merging with `JsonPatch`
-
-`JsonPatch` provides a complete and extensible implementation of [JSON Patch (RFC 6902)](https://datatracker.ietf.org/doc/html/rfc6902), 
-enabling declarative, path-based modifications to the **Object-Based Node Tree**.
-
-**Example**: Applying a `JsonPatch` directly on a `JsonObject` via `apply()`
-```java
-    JsonObject before = JsonObject.fromJson("{\n" +
-        "  \"name\": \"Bob\",\n" +
-        "  \"scores\": [90, 95, 98],\n" +
-        "  \"active\": true\n" +
-        "}\n");
-    JsonPatch patch1 = JsonPatch.fromJson("[\n" +
-        "  { \"op\": \"add\", \"path\": \"/scores/-\", \"value\": 100 },\n" +   // Appends a new element
-        "  { \"op\": \"replace\", \"path\": \"/name\", \"value\": \"Alice\" },\n" +
-        "  { \"op\": \"remove\", \"path\": \"/active\" }\n" +
-        "]");
-    before.apply(patch1);
-    // Applies the `JsonPatch` directly to the `JsonObject`.
-
-    JsonObject after = JsonObject.fromJson("{\n" +
-        "  \"name\": \"Alice\",\n" +
-        "  \"scores\": [90, 95, 98, 100]\n" +
-        "}\n");
-    assertEquals(after, before);
-    // Patch operations are applied sequentially, and each operation mutates the target object in place.
-```
-
-**Example**: State restoration via `JsonPatch` using `diff()` and `apply()`
-```java
-    List<Integer> source = new ArrayList<>(Arrays.asList(1, 2, 3));
-    List<Integer> target = new ArrayList<>(Arrays.asList(1, 5, 3, 4));
-    JsonPatch patch = JsonPatch.diff(source, target);
-    patch.apply(source);
-    assertEquals(target, source);
-    // Creates a `JsonPatch` by diffing the source and target objects,
-    // then applies the patch to transform the source into the target.
-```
-
-A `JsonPatch` is essentially an ordered list of `PatchOp` operations, 
-and each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
-
-**Patch Operations**: (RFC 6902 and SJF4J extension)
-
-| Operation   | Specification | Description                                                                             | Example                                                        |
-|-------------|---------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| `add`       | RFC 6902      | Adds a value at the target path                                                         | `{ "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] }` |
-| `remove`    | RFC 6902      | Removes the value at the target path                                                    | `{ "op": "remove", "path": "/a/b/c" }`                         |
-| `replace`   | RFC 6902      | Replaces the value at the target path (must already exist)                              | `{ "op": "replace", "path": "/a/b/c", "value": 42 }`           |
-| `move`      | RFC 6902      | Moves a value from one path to another                                                  | `{ "op": "move", "from": "/a/b/c", "path": "/a/b/d" }`         |
-| `copy`      | RFC 6902      | Copies a value from one path to another                                                 | `{ "op": "copy", "from": "/a/b/c", "path": "/a/b/e" }`         |
-| `test`      | RFC 6902      | Tests whether the value at the path equals the expected value                           | `{ "op": "test", "path": "/a/b/c", "value": "foo" }`           |
-| `exist`     | SJF4J         | Asserts that the target path exists                                                     | `{ "op": "exist", "path": "/a/b/c" }`                          |
-| `ensurePut` | SJF4J         | Ensures the path exists and inserts the value, creating intermediate nodes if necessary | `{ "op": "ensurePut", "path": "/x/y", "value": "z" }`          |
-
-
-> **Extensibility**: JSON Patch can be extended with custom `PatchOp` via `PatchOpRegistry.register()`,
-> and it is simple:
-> ```java
-> // Standard `add`
-> PatchOpRegistry.register("add", (target, op) -> {
->     op.getPath().add(target, op.getValue());    // Replace with custom logic
-> });
-> ```
-
-#### Supporting JSON Merge Patch
-
-SJF4J also supports [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386), 
-allowing partial updates to JSON objects.
-
-| Method                                                          | Description                                                                                                                                                                                                                                                                                                                                                |
-|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `mergeRfc7386(Object mergePatch)`                               | Following RFC 7386 semantics: <br/>• If a field exists in both the target and the patch, the patch value replaces the target value. <br/>• If a field in the patch is `null`, the corresponding target field is removed. <br/>• Nested objects are merged recursively. <br>• Arrays are replaced as a whole, not merged.                                   |
-| `merge(Object mergePatch, boolean overwrite, boolean deepCopy)` | SJF4J provides a more flexible merge method: <br>• `overwrite` – if `true`, existing values are replaced; otherwise, only missing keys are added. <br>• `deepCopy` – if `true`, values are copied deeply instead of by reference. <br/>• If a field in the patch is `null`, no operation is performed. <br/>• Arrays are merged recursively, not replaced. |
-
-`JsonObject` / `JsonArray` provides these two merge methods.  
-For native node objects, you can use `PatchUtil.merge()`/`PatchUtil.mergeRfc7386()` directly.
-
-### Validating with `JsonSchema`
-
-(planned)
-
 ### Modeling Domain Objects with `<JOJO>`/`<JAJO>`
 
 In many real-world applications, data is neither purely dynamic JSON nor strictly static Java objects.  
@@ -502,13 +417,13 @@ methods, and domain logic***, making them ideal for modeling application-level e
     // JOJO provides more JSON-oriented APIs on top of the domain model!
 ```
 
-#### Recommended Practices: Starting from Scratch
+#### Starting from Scratch
 
 At an early stage, you may start with an **empty `JOJO`**:
 ```java
-public class Book extends JsonObject {
-    // Empty at the beginning
-}
+    public class Book extends JsonObject {
+        // Empty at the beginning
+    }
 ```
 Although the `JOJO` is initially empty, it is already a fully functional `JsonObject`.
 It can hold any JSON-like structure ***without data loss and without requiring predefined fields***.
@@ -516,15 +431,15 @@ It can hold any JSON-like structure ***without data loss and without requiring p
 As the system stabilizes, core properties can be progressively promoted to typed fields,
 gaining compile-time safety, IDE assistance, and clearer domain semantics:
 ```java
-public class Book extends JsonObject {
-    private String isbn;
-    private String title;
-}
+    public class Book extends JsonObject {
+        private String isbn;
+        private String title;
+    }
 ```
 Over time, `Book` naturally evolves into a well-defined domain object,
 while still retaining the ability to carry additional properties when needed.
 
-#### Recommended Practices: Starting from an Existing Codebase
+#### Starting from an Existing Codebase
 
 **1. Codebases based on dynamic, map-like data structures**  
 This includes codebases built on Java `Map` / `List`,
@@ -617,11 +532,10 @@ Object projection is implemented as a ***shallow copy***, introducing a small an
     // The resulting object graph is fully detached from the source.
 ```
 
-#### Converting Custom Types via `@Convertible` and `Converter`
-SJF4J allows custom Java types to participate in the **Object-Based Node Tree** through a
-***pluggable, bidirectional conversion mechanism***.
+**Extensibility**: SJF4J allows ***custom Java types*** to participate in the Object-Based Node Tree via 
+`@Convertible` annotation or `Converter` interface.
 
-**Using the `@Convertible` Annotation**:
+**Example**: Using the `@Convertible` Annotation
 ```java
     @Convertible    
     public static class BigDay {
@@ -661,13 +575,10 @@ Registration is explicit and validated at runtime:
     // transparently via its raw representation ("2026-01-01").
 ```
 
-**Using the `Converter` Interface**:
-
-The programmatic approach is preferable when annotations are not possible,
-such as with JDK classes, third-party types, or when conversion logic must be centralized.
-
+**Example**: Using the `Converter` Interface:  
+(If annotations are not possible, e.g. JDK classes, third-party types.)
 ```java
-    NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
+    NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
         @Override
         public String convert(LocalDate node) {
             return node.toString();
@@ -693,6 +604,86 @@ Here, the `Converter` explicitly declares:
 - the ***node type*** participating in the Object-Based Node Tree
 - the ***raw type*** used for JSON serialization
 - and the ***bidirectional conversion logic*** between them
+
+
+### Diffing and Merging with `JsonPatch`
+
+`JsonPatch` provides a complete and extensible implementation of [JSON Patch (RFC 6902)](https://datatracker.ietf.org/doc/html/rfc6902),
+enabling declarative, path-based modifications to the **Object-Based Node Tree**.
+
+**Example**: Applying a `JsonPatch` directly on a `JsonObject` via `apply()`
+```java
+    JsonObject before = JsonObject.fromJson("{\n" +
+        "  \"name\": \"Bob\",\n" +
+        "  \"scores\": [90, 95, 98],\n" +
+        "  \"active\": true\n" +
+        "}\n");
+    JsonPatch patch1 = JsonPatch.fromJson("[\n" +
+        "  { \"op\": \"add\", \"path\": \"/scores/-\", \"value\": 100 },\n" +   // Appends a new element
+        "  { \"op\": \"replace\", \"path\": \"/name\", \"value\": \"Alice\" },\n" +
+        "  { \"op\": \"remove\", \"path\": \"/active\" }\n" +
+        "]");
+    before.apply(patch1);
+    // Applies the `JsonPatch` directly to the `JsonObject`.
+
+    JsonObject after = JsonObject.fromJson("{\n" +
+        "  \"name\": \"Alice\",\n" +
+        "  \"scores\": [90, 95, 98, 100]\n" +
+        "}\n");
+    assertEquals(after, before);
+    // Patch operations are applied sequentially, and each operation mutates the target object in place.
+```
+
+**Example**: State restoration via `JsonPatch` using `diff()` and `apply()`
+```java
+    List<Integer> source = new ArrayList<>(Arrays.asList(1, 2, 3));
+    List<Integer> target = new ArrayList<>(Arrays.asList(1, 5, 3, 4));
+    JsonPatch patch = JsonPatch.diff(source, target);
+    patch.apply(source);
+    assertEquals(target, source);
+    // Creates a `JsonPatch` by diffing the source and target objects,
+    // then applies the patch to transform the source into the target.
+```
+
+A `JsonPatch` is essentially an ordered list of `PatchOp` operations,
+and each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
+
+**Patch Operations**: (RFC 6902 and SJF4J extension)
+
+| Operation   | Specification | Description                                                                             | Example                                                        |
+|-------------|---------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `add`       | RFC 6902      | Adds a value at the target path                                                         | `{ "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] }` |
+| `remove`    | RFC 6902      | Removes the value at the target path                                                    | `{ "op": "remove", "path": "/a/b/c" }`                         |
+| `replace`   | RFC 6902      | Replaces the value at the target path (must already exist)                              | `{ "op": "replace", "path": "/a/b/c", "value": 42 }`           |
+| `move`      | RFC 6902      | Moves a value from one path to another                                                  | `{ "op": "move", "from": "/a/b/c", "path": "/a/b/d" }`         |
+| `copy`      | RFC 6902      | Copies a value from one path to another                                                 | `{ "op": "copy", "from": "/a/b/c", "path": "/a/b/e" }`         |
+| `test`      | RFC 6902      | Tests whether the value at the path equals the expected value                           | `{ "op": "test", "path": "/a/b/c", "value": "foo" }`           |
+| `exist`     | SJF4J         | Asserts that the target path exists                                                     | `{ "op": "exist", "path": "/a/b/c" }`                          |
+| `ensurePut` | SJF4J         | Ensures the path exists and inserts the value, creating intermediate nodes if necessary | `{ "op": "ensurePut", "path": "/x/y", "value": "z" }`          |
+
+
+> **Extensibility**: JSON Patch can be extended with custom `PatchOp` via `PatchOpRegistry.register()`,
+> and it is simple:
+> ```java
+> // Standard `add`
+> PatchOpRegistry.register("add", (target, op) -> {
+>     op.getPath().add(target, op.getValue());    // Replace with custom logic
+> });
+> ```
+
+**Supporting JSON Merge Patch**
+
+SJF4J also supports [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386),
+allowing partial updates to JSON objects.
+
+| Method                                                          | Supported By                           | Description                                                                                                                                                                                                                                                                                                                                                |
+|-----------------------------------------------------------------|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `mergeRfc7386(Object mergePatch)`                               | `JsonObject`, `JsonArray`, `PatchUtil` | Following RFC 7386 semantics: <br/>• If a field exists in both the target and the patch, the patch value replaces the target value. <br/>• If a field in the patch is `null`, the corresponding target field is removed. <br/>• Nested objects are merged recursively. <br>• Arrays are replaced as a whole, not merged.                                   |
+| `merge(Object mergePatch, boolean overwrite, boolean deepCopy)` | `JsonObject`, `JsonArray`, `PatchUtil` | SJF4J provides a more flexible merge method: <br>• `overwrite` – if `true`, existing values are replaced; otherwise, only missing keys are added. <br>• `deepCopy` – if `true`, values are copied deeply instead of by reference. <br/>• If a field in the patch is `null`, no operation is performed. <br/>• Arrays are merged recursively, not replaced. |
+
+### Validating with `JsonSchema`
+
+(planned)
 
 
 ## Contributing
