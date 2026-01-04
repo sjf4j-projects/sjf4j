@@ -714,11 +714,11 @@ ReadBenchmark.json_simple_facade             avgt    5  2.756 ± 0.116  us/op
 TODO: Almost the same with Read Benchmark.
 
 ### Reflection Benchmark
-SJF4J’s **Object-Based Node Tree** relies on reflection for flexible access to POJOs, Maps, and custom objects. 
+SJF4J’s **Object-Based Node Tree** relies on reflection for flexible access to POJO/JOJO/JAJO. 
 To understand the performance impact of this approach, 
 we benchmarked different reflection pathways for ***constructors, getters, and setters*** in `Person` objects.  
+Source code: [ReflectionBenchmark](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReflectionBenchmark.java)
 
-Source code: [ReflectionBenchmark](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReflectionBenchmark.java)  
 JMH Result:
 ```
 Benchmark                                            Mode  Cnt  Score    Error  Units
