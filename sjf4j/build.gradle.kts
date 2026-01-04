@@ -61,6 +61,12 @@ tasks.test {
     )
 }
 
+tasks.withType<Javadoc> {
+    (options as? StandardJavadocDocletOptions)?.apply {
+        addStringOption("Xdoclint:none", "-quiet")
+    }
+}
+
 /////////////////////
 /// Publish
 

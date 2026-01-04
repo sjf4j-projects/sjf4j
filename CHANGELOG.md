@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-
 ### Improved
 ### Changed
 ### Fixed
 ### Removed
+
+
+## [1.0.3] - 2026.01.04
+### Improved
+- Differentiated the semantics of `equals()` and `nodeEquals()`
+- Clarified the distinction between `toNode()` and `deepNode()`
+- Improved the output format of `inspect()`
+
+### Changed
+- Minor renaming and alignment of core API method names
+
+### Fixed
+- Benchmark issues
+
 
 ## [1.0.2] - 2025.12.25
 ### Added
