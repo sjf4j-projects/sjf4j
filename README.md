@@ -7,32 +7,15 @@
 ## Overview
 
 **SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
-(e.g. Jackson, Gson, Fastjson2) and other JSON-like data formats (e.g. SnakeYAML, Java Properties).
+(e.g. Jackson, Gson, Fastjson2) and other JSON-like data formats (e.g. YAML via Snake, Java Properties),
+serving as a ***unified abstraction layer for structured data processing*** in Java. 
 
-Beyond parsing, SJF4J is a ***unified abstraction layer for structured data processing in Java***.  
-It solves several recurring needs in real-world applications:
-- **Unifying Static and Dynamic Data Models**  
-  Java developers traditionally choose between type safety (POJOs) and flexibility (Map/List). 
-  SJF4J eliminates this choice by unifying POJOs, Maps, and JSON objects in a single **Object-Based Node Tree**.
-
-
-- **Exposing One API Across Multiple Formats and Parsers**  
-  SJF4J reduces dependency on specific JSON libraries or data formats by providing a
-  consistent, format-agnostic API.
-
-
-- **Providing a Complete JSON Processing Toolkit**  
-  Beyond basic parsing and serialization, SJF4J includes JSON Path (RFC 9535), JSON Pointer (RFC 6901), 
-  JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386).
-
-## Object-Based Node Tree
+### Object-Based Node Tree
 
 SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
 for navigation, querying, mutation, and validation.  
-
 Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
-**all nodes in SJF4J are represented as native Java objects**, 
-allowing seamless integration with existing Java codes and frameworks.
+**all nodes in SJF4J are represented as native Java objects**.
 
 ```mermaid
 graph BT
@@ -54,7 +37,7 @@ graph BT
         value ---> convertible("&lt;Object&gt; <br/> (via @Convertible <br/> or Converter)")
 ```
 
-### JSON Object (`{}`)
+#### JSON Object (`{}`)
 - **`Map`**  
 A generic key-value representation using standard Java `Map`.
 - **`JsonObject`**  
@@ -66,7 +49,7 @@ A strongly typed Java object with fields, getters, and setters.
 A hybrid object that extends `JsonObject` while also behaving like a typed Java object,
 combining the flexibility of dynamic JSON access with the safety and expressiveness of `POJOs`.
 
-### JSON Array (`[]`)
+#### JSON Array (`[]`)
 - **`List`**  
 A standard Java `List` used as a direct representation of a JSON array.
 - **`JsonArray`**  
@@ -78,7 +61,7 @@ strongly typed representation is desired.
   An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
   (never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
 
-### JSON Value (`..`)
+#### JSON Value (`..`)
 - **`String`**  Represents JSON `string` values.
 - **`Number`**  Represents JSON `numeric` values, including integers and floating-point numbers.
 - **`Boolean`** Represents JSON boolean values (`true` and `false`).
@@ -114,22 +97,22 @@ providing the same JSON-oriented APIs.
 ### Starting from `JsonObject`
 `JsonObject` is the primary entry point for interacting with **Object-Based Node Tree**, so we start from it.  
 
-> **Note**: The APIs in SJF4J are designed to align with JSON semantics.  
+> **Note**: The APIs in SJF4J are designed to align with JSON semantics.
 > For example, `hasNonNull()` for not null vs `containsKey()` for missing.
 
 **Basic Access and mutation Methods**:
 
-| Method                                                        | Description                                                                                                      |
-|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| `getNode(key)`                                                | Returns the raw underlying node as an `Object`, without any type conversion or adaptation.                       |
-| `get(key, type)` / `getString(key)` / `getLong(key)` ...      | Performs type-safe access with minimal adaptation when necessary (e.g. `Double` → `Float`, `Integer` → `Long`).  |
-| `as(key, type)` / `asString(key)` / `asLong(key)` ...         | Performs cross-type conversion, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`). |
-| `put(key, value)` / `replace(key, value)` / `remove(key)` ... | Performs mutation operations such as insert, replace, and remove.                                                |
-| `builder()` / `toBuilder().put(..).put(..)`                   | Provides a builder-style API that supports fluent, chained operations.                                           |
+| Method                                                        | Description                                                                                                            |
+|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `getNode(key)`                                                | Returns the raw underlying node as an `Object`, without any type conversion or adaptation.                             |
+| `get(key, type)` / `getString(key)` / `getLong(key)` ...      | Performs ***type-safe access*** with minimal adaptation when necessary (e.g. `Double` → `Float`, `Integer` → `Long`).  |
+| `as(key, type)` / `asString(key)` / `asLong(key)` ...         | Performs ***cross-type conversion***, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`). |
+| `put(key, value)` / `replace(key, value)` / `remove(key)` ... | Performs mutation operations such as insert, replace, and remove.                                                      |
+| `builder()` / `toBuilder().put(..).put(..)`                   | Provides a builder-style API that supports fluent, chained operations.                                                 |
 
 
 **Examples**:
-(Full source code is available at
+(Full source code: 
 [SimpleExampleTest](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExampleTest.java))
 
 ```java
@@ -357,14 +340,9 @@ double avgScore = jo.stream()
 ```
 
 ### Modeling Domain Objects with `<JOJO>`/`<JAJO>`
-
-In many real-world applications, data is neither purely dynamic JSON nor strictly static Java objects.  
-SJF4J addresses this gap by introducing `JOJO` (JSON Object Java Object) and `JAJO` (JSON Array Java Object)—
-hybrid domain models that combine ***typed Java structures*** with ***JSON-style dynamic access***.
-
-A `JOJO` is a Java class that extends `JsonObject`, while a `JAJO` extends `JsonArray`.  
-They participate in the **Object-Based Node Tree** like any other node, but also expose ***strongly typed fields, 
-methods, and domain logic***, making them ideal for modeling application-level entities.
+In real applications, data is rarely purely dynamic JSON or strictly static Java objects.  
+SJF4J bridges this with `JOJO` and `JAJO` — hybrid models that extend `JsonObject`/`JsonArray`,
+combining ***typed Java fields and methods*** with ***JSON-style dynamic access*** in the **Object-Based Node Tree**.
 
 **Example**: `JOJO` vs `POJO` 
 ```java
@@ -396,7 +374,7 @@ methods, and domain logic***, making them ideal for modeling application-level e
             "  ],\n" +
             "  \"age\": 18\n" +
             "}\n";
-    User user = Sjf4j.fromJson(json, User.class);
+    User user   = Sjf4j.fromJson(json, User.class);
     User2 user2 = Sjf4j.fromJson(json, User2.class);
 
     assertEquals(user.getName(), user2.getName());
@@ -770,7 +748,5 @@ are truly appreciated! ❤️
 ## License
 
 [MIT License](https://opensource.org/licenses/MIT)  
-
-
 
 
