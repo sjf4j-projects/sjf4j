@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
-public class PojoBenchmark {
+public class ReflectionBenchmark {
 
     // --------- 模拟的 POJO ------------
     public static class Person extends JsonObject {
@@ -85,57 +85,61 @@ public class PojoBenchmark {
     private static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
     private static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
 
-    // ----- Constructor pathways -----
-    @Benchmark
-    public Object pojo_ctor_mh() {
-        return pi.newInstance2();
-    }
-
-    @Benchmark
-    public Object pojo_ctor_lambda() {
-        return pi.newInstance();
-    }
-
-    // ----- Getter pathways -----
-    @Benchmark
-    public Object pojo_getter_native() {
-        Person p = new Person();
-        return p.getName();
-    }
-
-    @Benchmark
-    public Object pojo_getter_lambda() {
-        Person p = new Person();
-        return fi.invokeGetter(p);
-    }
-
-    @Benchmark
-    public Object pojo_getter_mh() {
-        Person p = new Person();
-        return fi.invokeGetter2(p);
-    }
-
-    // ----- Setter pathways -----
-    @Benchmark
-    public Object pojo_setter_native() {
-        Person p = new Person();
-        p.setName("hahaha");
-        return p;
-    }
-
-    @Benchmark
-    public Object pojo_setter_lambda() {
-        Person p = new Person();
-        fi.invokeSetter(p, "hahaha");
-        return p;
-    }
-
-    @Benchmark
-    public Object pojo_setter_mh() {
-        Person p = new Person();
-        fi.invokeSetter2(p, "hahaha");
-        return p;
-    }
-
+//    // ----- Constructor pathways -----
+//    @Benchmark
+//    public Object reflection_ctor_native() {
+//        return new Person();
+//    }
+//
+//    @Benchmark
+//    public Object reflection_ctor_methodHandler() {
+//        return pi.newInstance2();
+//    }
+//
+//    @Benchmark
+//    public Object reflection_ctor_lambda() {
+//        return pi.newInstance();
+//    }
+//
+//    // ----- Getter pathways -----
+//    @Benchmark
+//    public Object reflection_getter_native() {
+//        Person p = new Person();
+//        return p.getName();
+//    }
+//
+//    @Benchmark
+//    public Object reflection_getter_methodHandler() {
+//        Person p = new Person();
+//        return fi.invokeGetter2(p);
+//    }
+//
+//    @Benchmark
+//    public Object reflection_getter_lambda() {
+//        Person p = new Person();
+//        return fi.invokeGetter(p);
+//    }
+//
+//    // ----- Setter pathways -----
+//    @Benchmark
+//    public Object reflection_setter_native() {
+//        Person p = new Person();
+//        p.setName("hahaha");
+//        return p;
+//    }
+//
+//    @Benchmark
+//    public Object reflection_setter_methodHandler() {
+//        Person p = new Person();
+//        fi.invokeSetter2(p, "hahaha");
+//        return p;
+//    }
+//
+//    @Benchmark
+//    public Object reflection_setter_lambda() {
+//        Person p = new Person();
+//        fi.invokeSetter(p, "hahaha");
+//        return p;
+//    }
 
 }

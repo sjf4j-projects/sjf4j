@@ -222,6 +222,8 @@ public class JacksonStreamingUtil {
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
                     fi.invokeSetter(pojo, vv);
+                } else {
+                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
                 }
             }
             parser.nextToken();

@@ -1,8 +1,11 @@
 package org.sjf4j.facade.simple;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.convertible.Convert;
@@ -17,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Slf4j
 public class SimpleJsonFacadeTest {
@@ -103,5 +107,20 @@ public class SimpleJsonFacadeTest {
         log.info("json2={}", json2);
         assertEquals(json1, json2);
     }
+
+
+    static class User {
+        String name;
+        List<User> friends;
+        Map<String, Object> ext;
+    }
+
+    @Test
+    public void testPojo1() {
+        String json = "{\"active\": true }";
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        assertThrows(JsonException.class, () -> facade.readNode(json, User.class));
+    }
+
 
 }

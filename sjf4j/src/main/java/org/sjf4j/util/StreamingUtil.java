@@ -201,6 +201,8 @@ public class StreamingUtil {
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
                     fi.invokeSetter(pojo, vv);
+                } else {
+                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
                 }
             }
             reader.endObject();

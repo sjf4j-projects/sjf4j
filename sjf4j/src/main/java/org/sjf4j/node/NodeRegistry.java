@@ -266,6 +266,10 @@ public final class NodeRegistry {
             this.fields = fields;
         }
 
+        public Class<?> getType() {
+            return clazz;
+        }
+
         /**
          * Gets the map of field names to FieldInfo objects for this POJO.
          *

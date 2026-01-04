@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -37,7 +38,9 @@ public class JacksonModule {
                                                              BeanDeserializerBuilder builder) {
                     if (JsonObject.class.isAssignableFrom(beanDesc.getBeanClass())) {
                         JavaType objType = config.constructType(Object.class);
-                        builder.setAnySetter(new JsonObjectAnySetter(objType));
+                        if (builder.getAnySetter() == null) {
+                            builder.setAnySetter(new JsonObjectAnySetter(objType));
+                        }
                     }
                     return builder;
                 }

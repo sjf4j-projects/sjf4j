@@ -2,11 +2,16 @@ package org.sjf4j;
 
 
 import com.alibaba.fastjson2.JSON;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Getter;
 import lombok.Setter;
+import org.junit.jupiter.api.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -26,19 +31,22 @@ import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 
 import java.io.IOException;
-import java.io.StringWriter;
+import java.io.StringReader;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
-public class JsonWriteBenchmark {
+public class ReadBenchmark {
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
 //    private static final String JSON_DATA = "{\"age\":25}";
@@ -48,110 +56,113 @@ public class JsonWriteBenchmark {
 //    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"}}";
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"no_way\":99,\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
-    private static final Person PERSON = Sjf4j.fromJson(JSON_DATA, Person.class);
+
+    //    private static final String JSON_DATA2 = "{\n" +
+//            "  \"name\": \"Alice\",\n" +
+//            "  \"friends\": []" +
+//            "}\n";
+    private static final String JSON_DATA2 = "{\n" +
+            "  \"name\": \"Alice\",\n" +
+            "  \"friends\": [\n" +
+            "    {\"name\": \"Bill\", \"active\": true },\n" +
+            "    {\n" +
+            "      \"name\": \"Cindy\",\n" +
+            "      \"friends\": [\n" +
+            "        {\"name\": \"David\"},\n" +
+            "        {\"id\": 5, \"info\": \"blabla\"}\n" +
+            "      ]\n" +
+            "    }\n" +
+            "  ],\n" +
+            "  \"age\": 18\n" +
+            "}\n";
 
     private static final ObjectMapper JACKSON = new ObjectMapper();
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
 
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-    private static final JacksonJsonFacade JACKSON_FACADE = new JacksonJsonFacade(JACKSON);
-    private static final GsonJsonFacade GSON_FACADE = new GsonJsonFacade(GSON_BUILDER);
+    private static final JacksonJsonFacade JACKSON_FACADE = new JacksonJsonFacade(new ObjectMapper());
+    private static final GsonJsonFacade GSON_FACADE = new GsonJsonFacade(new GsonBuilder());
     private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
 
-
-    @Param({"STREAMING_GENERAL", "STREAMING_SPECIFIC", "USE_MODULE"})
-    public String writeMode;
-
-    @Setup(Level.Trial)
-    public void setup() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.valueOf(writeMode)).build());
+    static {
+        JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
+
+//    @Param({"STREAMING_GENERAL", "STREAMING_SPECIFIC", "USE_MODULE"})
+//    public String readMode;
+//
+//    @Setup(Level.Trial)
+//    public void setup() {
+//        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.valueOf(readMode)).build());
+//    }
+
 
 
     // ----- Simple JSON baselines -----
     @Benchmark
-    public Object write_simple_jojo() throws IOException {
-        StringWriter output = new StringWriter();
-        SIMPLE_JSON_FACADE.writeNode(output, PERSON);
-        return output.toString();
+    public Object json_simple_facade() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User2.class);
     }
 
     // ----- Jackson baselines -----
     @Benchmark
-    public Object write_jackson_native() throws IOException {
-        StringWriter output = new StringWriter();
-        JACKSON.writeValue(output, PERSON);
-        return output.toString();
+    public Object json_jackson_native_has_any() throws IOException {
+        return JACKSON.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object write_jackson_jojo() throws IOException {
-        StringWriter output = new StringWriter();
-        JACKSON_FACADE.writeNode(output, PERSON);
-        return output.toString();
+    public Object json_jackson_native_no_any() throws IOException {
+        return JACKSON.readValue(JSON_DATA2, User2.class);
     }
 
-//    @Benchmark
-//    public Object write_jackson_general() throws IOException {
-//        StringWriter output = new StringWriter();
-//        JACKSON_FACADE.writeNodeWithGeneral(output, PERSON);
-//        return output.toString();
-//    }
-//
-//    @Benchmark
-//    public Object write_jackson_module() throws IOException {
-//        StringWriter output = new StringWriter();
-//        JACKSON_FACADE.writeNodeWithModule(output, PERSON);
-//        return output.toString();
-//    }
+    @Benchmark
+    public Object json_jackson_native_map() throws IOException {
+        return JACKSON.readValue(JSON_DATA2, Object.class);
+    }
+
+    @Benchmark
+    public Object json_jackson_facade() throws IOException {
+        return JACKSON_FACADE.readNode(JSON_DATA2, User2.class);
+    }
 
 
     // ----- Gson baselines -----
     @Benchmark
-    public Object write_gson_native() {
-        StringWriter output = new StringWriter();
-        GSON.toJson(PERSON);
-        return output.toString();
+    public Object json_gson_native_no_any() {
+        return GSON.fromJson(JSON_DATA2, User2.class);
     }
 
     @Benchmark
-    public Object write_gson_jojo() {
-        StringWriter output = new StringWriter();
-        GSON_FACADE.writeNode(output, PERSON);
-        return output.toString();
+    public Object json_gson_native_map() {
+        return GSON.fromJson(JSON_DATA2, Object.class);
     }
 
-//    @Benchmark
-//    public Object write_gson_spec() {
-//        StringWriter output = new StringWriter();
-//        GSON_FACADE.writeNodeWithSpecific(output, PERSON);
-//        return output.toString();
-//    }
-//
-//    @Benchmark
-//    public Object write_gson_module() {
-//        StringWriter output = new StringWriter();
-//        GSON_FACADE.writeNodeWithModule(output, PERSON);
-//        return output.toString();
-//    }
+    @Benchmark
+    public Object json_gson_facade() {
+        return GSON_FACADE.readNode(JSON_DATA2, User2.class);
+    }
 
     // ----- Fastjson2 baselines -----
     @Benchmark
-    public Object write_fastjson2_native() {
-        StringWriter output = new StringWriter();
-        JSON.toJSONString(PERSON);
-        return output.toString();
+    public Object json_fastjson2_native_has_any() {
+        return JSON.parseObject(JSON_DATA2, User.class);
     }
 
     @Benchmark
-    public Object write_fastjson2_jojo() {
-        StringWriter output = new StringWriter();
-        FASTJSON2_FACADE.writeNode(output, PERSON);
-        return output.toString();
+    public Object json_fastjson2_native_no_any() {
+        return JSON.parseObject(JSON_DATA2, User2.class);
     }
 
+    @Benchmark
+    public Object json_fastjson2_native_map() {
+        return JSON.parseObject(JSON_DATA2, Object.class);
+    }
 
+    @Benchmark
+    public Object json_fastjson2_facade() throws IOException {
+        return FASTJSON2_FACADE.readNode(JSON_DATA2, User2.class);
+    }
 
     // --------- 模拟的 POJO ------------
     // Extend JsonObject so every framework can reuse the same helper methods when populating nested structures.
@@ -216,30 +227,21 @@ public class JsonWriteBenchmark {
     }
 
 
-    ///
+    // Define a POJO `User`
+    @Getter @Setter
+    static class User {
+        String name;
+        List<User> friends;
+        @JsonAnySetter @JsonAnyGetter
+        Map<String, Object> ext = new LinkedHashMap<>();
+    }
 
-//    @Benchmark
-//    public Object fastjson2_pojo2() {
-////        return JSONReader.of(new StringReader(JSON_DATA)).read(Person.class);
-//        final JSONReader.Context context = JSONFactory.createReadContext(new JSONReader.Feature[]{});
-//        final ObjectReader<Object> objectReader = context.getObjectReader(Person.class);
-//        JSONReader reader = JSONReader.of(new StringReader(JSON_DATA));
-//        Object object = objectReader.readObject(reader, Person.class, null, 0);
-//        return object;
-//
-//    }
+    // Define a JOJO `User2`
+    @Getter @Setter
+    static class User2 extends JsonObject {
+        String name;
+        List<User2> friends;
+    }
 
-//    @Benchmark
-//    public Object fastjson2_pojo3() {
-//        final JSONReader.Context context = JSONFactory.createReadContext(new JSONReader.Feature[]{});
-//        final ObjectReader<Object> objectReader = context.getObjectReader(Person.class);
-//        try (JSONReader reader = JSONReader.of(new StringReader(JSON_DATA), context)) {
-//            if (reader.isEnd()) {
-//                return null;
-//            }
-//            Object object = objectReader.readObject(reader, Person.class, null, 0);
-//            return object;
-//        }
-//    }
 
 }

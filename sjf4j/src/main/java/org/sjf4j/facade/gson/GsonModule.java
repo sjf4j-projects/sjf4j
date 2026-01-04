@@ -14,6 +14,7 @@ import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class GsonModule {
@@ -41,32 +42,43 @@ public class GsonModule {
     public static class JsonObjectAdapter<T extends JsonObject> extends TypeAdapter<T> {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
+        private final Map<String, TypeAdapter<?>> fieldAdapters;
+        private final TypeAdapter<?> objectAdapter;
 
         public JsonObjectAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
             this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+            if (pi != null) {
+                Map<String, TypeAdapter<?>> map = new HashMap<>();
+                for (Map.Entry<String, NodeRegistry.FieldInfo> e : pi.getFields().entrySet()) {
+                    map.put(e.getKey(), gson.getAdapter(TypeUtil.getRawClass(e.getValue().getType())));
+                }
+                this.fieldAdapters = map;
+            } else {
+                this.fieldAdapters = null;
+            }
+            this.objectAdapter = gson.getAdapter(Object.class);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
-            T jo = pi == null ? (T) new JsonObject() : (T) pi.newInstance();
+            JsonObject jo = pi == null ? new JsonObject() : (JsonObject) pi.newInstance();
             in.beginObject();
             while (in.hasNext()) {
                 String name = in.nextName();
                 NodeRegistry.FieldInfo fi;
                 if (pi != null && (fi = pi.getFields().get(name)) != null) {
-                    TypeAdapter<?> adapter = gson.getAdapter(TypeUtil.getRawClass(fi.getType()));
+                    TypeAdapter<?> adapter = fieldAdapters.get(name);
                     Object value = adapter.read(in);
                     fi.invokeSetter(jo, value);
                 } else {
-                    TypeAdapter<?> adapter = gson.getAdapter(Object.class);
-                    Object value = adapter.read(in);
+                    Object value = objectAdapter.read(in);
                     jo.put(name, value);
                 }
             }
             in.endObject();
-            return jo;
+            return (T) jo;
         }
 
         @SuppressWarnings("unchecked")

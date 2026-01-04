@@ -25,22 +25,22 @@ public class WalkerBechmark {
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
     private static final JsonObject JO = JsonObject.fromJson(JSON_DATA);
 
-    @Benchmark
-    public void walk_1(Blackhole bh) {
-        // Each benchmark pre-walks 100 times to amortize JMH harness overhead; only the walker implementation differs.
-        NodeWalker.walk(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
-                (k, v) -> {
-            bh.consume(k);
-            return null;
-        });
-    }
-
-
-    @Benchmark
-    public void walk_2(Blackhole bh) {
-        NodeWalker.walk2(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
-                (k, v) -> bh.consume(k));
-    }
+//    @Benchmark
+//    public void walk_1(Blackhole bh) {
+//        // Each benchmark pre-walks 100 times to amortize JMH harness overhead; only the walker implementation differs.
+//        NodeWalker.walk(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
+//                (k, v) -> {
+//            bh.consume(k);
+//            return null;
+//        });
+//    }
+//
+//
+//    @Benchmark
+//    public void walk_2(Blackhole bh) {
+//        NodeWalker.walk2(JO, NodeWalker.Target.ANY, NodeWalker.Order.TOP_DOWN, 0,
+//                (k, v) -> bh.consume(k));
+//    }
 
 
 }

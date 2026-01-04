@@ -9,7 +9,7 @@
 **SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
 (e.g. Jackson, Gson, Fastjson2) and other JSON-like data formats (e.g. SnakeYAML, Java Properties).
 
-Beyond parsing, SJF4J is a ***unified abstraction layer for structured data processing in Java***.
+Beyond parsing, SJF4J is a ***unified abstraction layer for structured data processing in Java***.  
 It solves several recurring needs in real-world applications:
 - **Unifying Static and Dynamic Data Models**  
   Java developers traditionally choose between type safety (POJOs) and flexibility (Map/List). 
@@ -17,14 +17,13 @@ It solves several recurring needs in real-world applications:
 
 
 - **Exposing One API Across Multiple Formats and Parsers**  
-  SJF4J avoids locking your application into a specific JSON library or data format by providing a
+  SJF4J reduces dependency on specific JSON libraries or data formats by providing a
   consistent, format-agnostic API.
 
 
 - **Providing a Complete JSON Processing Toolkit**  
   Beyond basic parsing and serialization, SJF4J includes JSON Path (RFC 9535), JSON Pointer (RFC 6901), 
   JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386).
-
 
 ## Object-Based Node Tree
 
@@ -206,13 +205,13 @@ providing the same JSON-oriented APIs.
 | Type                            | Methods                                                                                                                                        | Description                                                                                                                                                                                                                                                                 |
 |---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `JsonPath`                      | `JsonPath.compile(path)`                                                                                                                       | Compiles a JSON Path or JSON Pointer expression into a ***reusable*** `JsonPath` instance.                                                                                                                                                                                  |
-| `JsonPath`                      | `getNode(container)` <br/> `get(container)` / ... <br/> `as(container)` / ...                                                                  | Returns a ***single matched node***, with `getXx()` providing type-safe access and `asXxx()` performing cross-type conversion. Returns `null` if no nodes found.                                                                                                            |
-| `JsonPath`                      | `find(container)` <br/> `findAs(container, type)`                                                                                              | Returns a ***list of matched nodes***. Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                                 |
-| `JsonPath`                      | `eval(container)` <br/> `evalAs(container, type)`                                                                                              | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
-| `JsonPath`                      | `add(container, value)` <br/> `replace(container, value)` <br/> `remove(container)`                                                            | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
-| `JsonPath`                      | `ensurePut(container, value)`                                                                                                                  | Ensures the path exists and inserts the value, ***creating intermediate nodes if necessary***; for arrays, appends the value when the target index equals the current array size.                                                                                           |
+|                                 | `getNode(container)` <br/> `get(container)` / ... <br/> `as(container)` / ...                                                                  | Returns a ***single matched node***, with `getXx()` providing type-safe access and `asXxx()` performing cross-type conversion. Returns `null` if no nodes found.                                                                                                            |
+|                                 | `find(container)` <br/> `findAs(container, type)`                                                                                              | Returns a ***list of matched nodes***. Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                                 |
+|                                 | `eval(container)` <br/> `evalAs(container, type)`                                                                                              | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
+|                                 | `add(container, value)` <br/> `replace(container, value)` <br/> `remove(container)`                                                            | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
+|                                 | `ensurePut(container, value)`                                                                                                                  | Ensures the path exists and inserts the value, ***creating intermediate nodes if necessary***; for arrays, appends the value when the target index equals the current array size.                                                                                           |
 | `JsonObject`/ <br/> `JsonArray` | `getNodeByPath(path)` <br/> `getByPath(path)` / ... <br/> `asByPath(path)` / ... <br/> `findByPath(path)` / ... <br/> `evalByPath(path)` / ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
-| `JsonObject`/ <br/> `JsonArray` | `addByPath(path, value)` <br/> `replaceByPath(path, value)` <br/> `removeByPath(path)` <br/> `ensurePut(path, vlaue)`                          | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
+|                                 | `addByPath(path, value)` <br/> `replaceByPath(path, value)` <br/> `removeByPath(path)` <br/> `ensurePut(path, vlaue)`                          | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
 
 **Examples**: Path-Based Access and mutation
 
@@ -509,9 +508,11 @@ Object projection is implemented as a ***shallow copy***, introducing a small an
 > When modeled as a `JAJO`, it can naturally expose domain operations such as `diff()`,
 > `apply()`, making it behave as a first-class domain object rather than a raw list.
 
-### Converting Between JSON-like Data and the Object-Based Node Tree
+### Converting Between Data and the Tree
+Sjf4j provides a unified set of entry-point APIs for converting between JSON-like Data and 
+the **Object-Based Node Tree**.
 
-**Examples**: `Sjf4j` provides a unified set of entry-point APIs for converting.
+**Examples**: Using `Sjf4j.fromXxx()`, `Sjf4j.toXxx()` 
 ```java
     JsonObject jo           = Sjf4j.fromJson(json);     // = JsonObject.fromJson(json)
     Map<String, Object> map = Sjf4j.fromYaml(yaml, new TypeReference<Map<String, Object>>() {});    
@@ -565,7 +566,7 @@ Object projection is implemented as a ***shallow copy***, introducing a small an
 - `@Unconvert` defines how the raw value is unconverted back into the ***node type*** object.
 - `@Copy` defines how the object is duplicated when a shallow or deep copy is required.
   
-Registration is explicit and validated at runtime:
+Then registering it:
 ```java
     NodeRegistry.registerConvertible(BigDay.class);
     // Throws an exception if registration fails
@@ -684,7 +685,40 @@ allowing partial updates to JSON objects.
 
 ### Validating with `JsonSchema`
 
-(planned)
+(Planned for future addition)
+
+
+## Benchmark
+All benchmarks are reproducible and implemented using **JMH (Java Microbenchmark Harness)**.
+
+### Read Benchmark
+The full benchmark source code is available: 
+
+Sample JSON (~1KB):
+```java
+private static final String JSON_DATA2 = "{\n" +
+        "  \"name\": \"Alice\",\n" +
+        "  \"friends\": [\n" +
+        "    {\"name\": \"Bill\", \"active\": true },\n" +
+        "    {\n" +
+        "      \"name\": \"Cindy\",\n" +
+        "      \"friends\": [\n" +
+        "        {\"name\": \"David\"},\n" +
+        "        {\"id\": 5, \"info\": \"blabla\"}\n" +
+        "      ]\n" +
+        "    }\n" +
+        "  ],\n" +
+        "  \"age\": 18\n" +
+        "}\n";
+```
+
+### Write Benchmark
+
+### Reflection Benchmark
+
+
+**1.Serialization / Deserialization Performance**
+
 
 
 ## Contributing
