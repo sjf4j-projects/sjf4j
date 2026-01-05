@@ -1,8 +1,10 @@
 
 # SJF4J - Simple JSON Facade for Java
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j.svg)]()
+![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
+![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
+![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
+![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
 ## Overview
 
@@ -669,7 +671,7 @@ allowing partial updates to JSON objects.
 ## Benchmark
 All benchmarks are reproducible and implemented using **JMH (Java Microbenchmark Harness)**.
 
-### Read Benchmark
+### Read / Write Benchmark
 The benchmark source code: [ReadBenchmark](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReadBenchmark.java)  
 Sample JSON (~1KB):
 ```java
@@ -708,10 +710,6 @@ ReadBenchmark.json_simple_facade             avgt    5  2.756 ± 0.116  us/op
 
 > **Performance Summary**: Using SJF4J adds roughly **5%–10% overhead** compared with native JSON libraries, 
 > while providing a unified API and extended functionality.
-
-
-### Write Benchmark
-TODO: Almost the same with Read Benchmark.
 
 ### Reflection Benchmark
 SJF4J’s **Object-Based Node Tree** relies on reflection for flexible access to POJO/JOJO/JAJO. 
