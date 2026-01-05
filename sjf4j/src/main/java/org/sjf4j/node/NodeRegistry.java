@@ -302,10 +302,10 @@ public final class NodeRegistry {
                 try {
                     return constructor.invoke();
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke constructor of class " + clazz, e);
+                    throw new JsonException("Failed to invoke constructor of " + clazz, e);
                 }
             }
-            throw new JsonException("Not found no-args constructor of class " + clazz);
+            throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
         }
 
         /**
@@ -324,7 +324,7 @@ public final class NodeRegistry {
                     throw new JsonException("Failed to invoke constructor for '" + clazz + "'", e);
                 }
             }
-            throw new JsonException("No-args constructor not found for POJO " + clazz);
+            throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
         }
 
     }

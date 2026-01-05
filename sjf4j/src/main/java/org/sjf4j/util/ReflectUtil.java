@@ -55,9 +55,10 @@ public class ReflectUtil {
                 clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
-        if (clazz.isAnnotationPresent(Convertible.class)) {
+        if (NodeRegistry.isConvertible(clazz)) {
             return false;
         }
+
         String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
         return !inJdkPackage(pkg);
     }
@@ -90,10 +91,10 @@ public class ReflectUtil {
             if (orElseThrow) throw new JsonException("Cannot access no-args constructor of " + clazz.getName(), e);
         }
 
-        if (constructor == null) {
-            return null;
+        Supplier<?> lambdaConstructor = null;
+        if (constructor != null) {
+            lambdaConstructor = createLambdaConstructor(lookup, clazz, constructor);
         }
-        Supplier<?> lambdaConstructor = createLambdaConstructor(lookup, clazz, constructor);
 
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = Sjf4jConfig.global().mapSupplier.create();
@@ -122,7 +123,7 @@ public class ReflectUtil {
                 }
                 BiConsumer<Object, Object> lambdaSetter = createLambdaSetter(lookup, curClazz, field);
 
-                if (getter == null && setter == null) {
+                if (getter == null && lambdaGetter == null) {
 //                    log.warn("No accessible getter or setter found for field '{}' of {}",
 //                            field.getName(), curClazz);
                 } else {
