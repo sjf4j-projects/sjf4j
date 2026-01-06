@@ -33,7 +33,7 @@ serving as a ***unified semantic layer for structured data processing grounded i
 SJF4J maps structured data into an **Object-Based Node Tree (OBNT)** and exposes a unified, expressive API
 for navigation, querying, mutation, and validation.  
 Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
-**all nodes in SJF4J are represented as native Java objects**:
+***all nodes in SJF4J are represented as native Java objects***:
 
 ```mermaid
 graph BT
@@ -126,7 +126,7 @@ To handle ***YAML*** data, simply include `SnakeYAML`.
 To handle ***Java Properties***, there is a built-in parser.
 Note that conversion from `java.util.Properties` is limited by its format restrictions. 
 
-In ***No-Data*** scenarios, SJF4J can also **be used without parsing any external data**.
+In ***No-Data*** scenarios, SJF4J can also ***be used without parsing any external data***.
 It operates directly on in-memory object graphs via the OBNT,
 providing the same JSON-semantic APIs.
 
@@ -216,7 +216,7 @@ providing the same JSON-semantic APIs.
 
 ### Path-Based Operating with `JsonPath`
 
-`JsonPath` provides full support for the [JSON Path (RFC 9535)](https://datatracker.ietf.org/doc/html/rfc9535)
+`JsonPath` fully supports the [JSON Path (RFC 9535)](https://datatracker.ietf.org/doc/html/rfc9535)
 / [JSON Pointer (RFC 6901)](https://datatracker.ietf.org/doc/html/rfc6901) specifications.  
 
 **Path-Based Methods** (in `JsonPath` and `JsonObject`/`JsonArray`)
