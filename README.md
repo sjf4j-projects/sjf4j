@@ -6,18 +6,34 @@
 ![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
-## Overview
-
 **SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
 (e.g. Jackson, Gson, Fastjson2) and other JSON-like data formats (e.g. YAML via Snake, Java Properties),
-serving as a ***unified abstraction layer for structured data processing*** in Java. 
+serving as a ***unified semantic layer for structured data processing grounded in JSON specifications***. 
+
+## Table of Contents
+- [Design Thinking](#design-thinking)
+  - [Object-Based Node Tree](#object-based-node-tree)
+  - [Why Use SJF4J](#why-use-sjf4j)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Starting from `JsonObject`](#starting-from-jsonobject)
+  - [Path-Based Operating with `JsonPath`](#path-based-operating-with-jsonpath)
+  - [Stream-Based Processing with `NodeStream`](#stream-based-processing-with-nodestream)
+  - [Modeling Domain Objects with `<JOJO>`](#modeling-domain-objects-with-jojo)
+  - [Converting through `Sjf4j`](#converting-through-sjf4j)
+  - [Transforming with `JsonPatch`](#transforming-with-jsonpatch)
+  - [Validating with `JsonSchema`](#validating-with-jsonschema)
+- [Benchmark](#benchmark)
+- [Contributing](#contributing)
+
+## Design Thinking
 
 ### Object-Based Node Tree
 
-SJF4J maps structured data into an **Object-Based Node Tree** and exposes a unified, expressive API
+SJF4J maps structured data into an **Object-Based Node Tree (OBNT)** and exposes a unified, expressive API
 for navigation, querying, mutation, and validation.  
 Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
-**all nodes in SJF4J are represented as native Java objects**.
+**all nodes in SJF4J are represented as native Java objects**:
 
 ```mermaid
 graph BT
@@ -69,8 +85,26 @@ strongly typed representation is desired.
 - **`Boolean`** Represents JSON boolean values (`true` and `false`).
 - **`Null`**    Represents the JSON `null` literal.
 - **`<Object>`**  
-SJF4J allows JSON values to be **converted into arbitrary Java objects** through a pluggable conversion mechanism 
-(via `@Convertible` or `Converter`), enabling seamless integration with **domain-specific types** (e.g. `LocalDate`).
+SJF4J allows JSON values to be ***converted into arbitrary Java objects*** through a pluggable conversion mechanism 
+(via `@Convertible` or `Converter`), enabling seamless integration with domain-specific types (e.g. `LocalDate`).
+
+### Why Use SJF4J
+SJF4J tackles common challenges in real-world Java applications:
+
+- **Unifying Static and Dynamic Data Models**  
+  Java developers are often forced to choose between type safety (POJOs) and flexibility (Map/List).
+  SJF4J eliminates this choice by unifying POJOs, Maps, and JSON objects in a single **Object-Based Node Tree**.
+
+
+- **Exposing One API Across Multiple Formats and Parsers**  
+  SJF4J reduces dependency on specific JSON libraries or data formats by providing a
+  consistent, format-agnostic API.
+
+
+- **Fully grounded in JSON specifications**  
+  Beyond basic parsing and serialization, SJF4J provides a complete JSON processing toolkit including JSON Path (RFC 9535), JSON Pointer (RFC 6901),
+  JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386) and JSON Schema.
+
 
 ## Getting Started
 
@@ -180,7 +214,7 @@ providing the same JSON-oriented APIs.
 > It follows the same API philosophy as `JsonObject`, including JSON-semantic access, mutation, and type conversion, 
 > but applies them to ordered array elements rather than object properties.
 
-### Path-Based Operating with `JsonPath`/`JsonPointer`
+### Path-Based Operating with `JsonPath`
 
 `JsonPath` provides full support for the [JSON Path (RFC 9535)](https://datatracker.ietf.org/doc/html/rfc9535)
 / [JSON Pointer (RFC 6901)](https://datatracker.ietf.org/doc/html/rfc6901) specifications.  
@@ -299,8 +333,7 @@ and only direct navigation is supported; no wildcards or filters.
 > **Note**: `JsonPointer` is a specialized subclass of `JsonPath`.  
 > It behaves identically to `JsonPath`, except that it only accepts JSON Pointer expressions.
 
-### Stream-Based Programmatic Processing
-
+### Stream-Based Processing with `NodeStream`
 Beyond path-based access and mutation with `JsonPath` / `JsonPointer`, 
 SJF4J provides a higher-level, declarative traversal and stream-based processing model.
 
@@ -341,7 +374,7 @@ double avgScore = jo.stream()
         .collect(Collectors.averagingDouble(s -> s));
 ```
 
-### Modeling Domain Objects with `<JOJO>`/`<JAJO>`
+### Modeling Domain Objects with `<JOJO>`
 In real applications, data is rarely purely dynamic JSON or strictly static Java objects.  
 SJF4J bridges this with `JOJO` and `JAJO` — hybrid models that extend `JsonObject`/`JsonArray`,
 combining ***typed Java fields and methods*** with ***JSON-style dynamic access*** in the **Object-Based Node Tree**.
@@ -433,13 +466,13 @@ JSON-oriented API for traversal, querying, and mutation.
 **2. Projects based on domain POJOs**  
 Two common scenarios:
 
-**1) POJOs that can extend `JsonObject`**  
+(1) POJOs that ***can*** extend `JsonObject`  
   When inheritance is feasible, domain classes may directly extend
   `JsonObject`. 
   Existing fields and methods remain unchanged, while the class gains
   full SJF4J capabilities.
 
-**2) POJOs that cannot extend `JsonObject`**  
+(2) POJOs that ***cannot*** extend `JsonObject`  
 This includes Java `Record`, `Protobuf` messages, or classes from external libraries.
 
 - **Option 1: Using low-level static APIs**  
@@ -488,9 +521,8 @@ Object projection is implemented as a ***shallow copy***, introducing a small an
 > When modeled as a `JAJO`, it can naturally expose domain operations such as `diff()`,
 > `apply()`, making it behave as a first-class domain object rather than a raw list.
 
-### Converting Between Data and the Tree
-Sjf4j provides a unified set of entry-point APIs for converting between JSON-like Data and 
-the **Object-Based Node Tree**.
+### Converting Through `Sjf4j`
+Sjf4j provides a unified set of entry-point APIs for converting between JSON-like Data and **Object-Based Node Tree**.
 
 **Examples**: Using `Sjf4j.fromXxx()`, `Sjf4j.toXxx()` 
 ```java
@@ -517,7 +549,7 @@ the **Object-Based Node Tree**.
 **Extensibility**: SJF4J allows ***custom Java types*** to participate in the Object-Based Node Tree via 
 `@Convertible` annotation or `Converter` interface.
 
-**Example**: Using the `@Convertible` Annotation
+- **Example: Using the `@Convertible` Annotation**
 ```java
     @Convertible    
     public static class BigDay {
@@ -557,7 +589,7 @@ Then registering it:
     // transparently via its raw representation ("2026-01-01").
 ```
 
-**Example**: Using the `Converter` Interface:  
+- **Example: Using the `Converter` Interface**:  
 (If annotations are not possible, e.g. JDK classes, third-party types.)
 ```java
     NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
@@ -588,7 +620,7 @@ Here, the `Converter` explicitly declares:
 - and the ***bidirectional conversion logic*** between them
 
 
-### Diffing and Merging with `JsonPatch`
+### Transforming with `JsonPatch`
 
 `JsonPatch` provides a complete and extensible implementation of [JSON Patch (RFC 6902)](https://datatracker.ietf.org/doc/html/rfc6902),
 enabling declarative, path-based modifications to the **Object-Based Node Tree**.
@@ -736,7 +768,7 @@ ReflectionBenchmark.reflection_setter_native         avgt    5  0.007 ±  0.001 
 
 ## Contributing
 
-SJF4J is built to *make Java Development more enjoyable :)*  
+SJF4J is built to *make JSON-oriented Java Development more enjoyable :)*  
 Feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new) for questions, bugs, ideas,
 or simply to say hi — your interest already means a lot to this project.  
 Contributions of all kinds, whether it’s code, documentation, examples, benchmarking, or simply filing an issue, 

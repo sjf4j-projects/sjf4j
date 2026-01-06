@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- JSON Schema
+
 ### Improved
+
 ### Changed
 ### Fixed
+- POJO analyze
+
 ### Removed
 
 
@@ -38,10 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
  - Optimized `JsonPath` evaluation performance
  - Improved overall conversion and traversal efficiency
-
-### Changed
-### Fixed
-### Removed
 
 ## [1.0.1] - 2025.12.15
 ### Added
