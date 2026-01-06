@@ -221,16 +221,16 @@ providing the same JSON-semantic APIs.
 
 **Path-Based Methods** (in `JsonPath` and `JsonObject`/`JsonArray`)
 
-| Type                   | Methods                                                                                                              | Description                                                                                                                                                                                                                                                                 |
-|------------------------|----------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JsonPath               | JsonPath.compile(path)                                                                                               | Compiles a JSON Path or JSON Pointer expression into a ***reusable*** `JsonPath` instance.                                                                                                                                                                                  |
-|                        | getNode(node) / get(node) / ... / as(node) / ...                                                                     | Returns a ***single matched node***, with `getXx()` providing type-safe access and `asXxx()` performing cross-type conversion. Returns `null` if no nodes found.                                                                                                            |
-|                        | find(node) / findAs(node, type)                                                                                      | Returns a ***list of matched nodes***. Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                                 |
-|                        | eval(node) / evalAs(node, type)                                                                                      | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
-|                        | add(node, value) / replace(node, value) / remove(node)                                                               | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
-|                        | ensurePut(node, value)                                                                                               | Ensures the path exists and inserts the value, ***creating intermediate nodes if necessary***; for arrays, appends the value when the target index equals the current array size.                                                                                           |
-| JsonObject / JsonArray | getNodeByPath(path) / getByPath(path) / ... / asByPath(path) / ... / findByPath(path) / ... / evalByPath(path) / ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
-|                        | addByPath(path, value) / replaceByPath(path, value) / removeByPath(path) / ensurePut(path, vlaue)                    | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
+| Type                  | Methods                                                                                                                  | Description                                                                                                                                                                                                                                                                 |
+|-----------------------|--------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JsonPath              | JsonPath.compile(path)                                                                                                   | Compiles a JSON Path or JSON Pointer expression into a ***reusable*** `JsonPath` instance.                                                                                                                                                                                  |
+|                       | getNode(node) <br> get(node) / getXxx() ... <br> as(node) / asXxx() ...                                                  | Returns a ***single matched node***, with `getXxx()` providing type-safe access and `asXxx()` performing cross-type conversion. Returns `null` if no nodes found.                                                                                                           |
+|                       | find(node) <br> findAs(node, type)                                                                                       | Returns a ***list of matched nodes***. Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                                 |
+|                       | eval(node) <br> evalAs(node, type)                                                                                       | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
+|                       | add(node, value) <br> replace(node, value) <br> remove(node)                                                             | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
+|                       | ensurePut(node, value)                                                                                                   | Ensures the path exists and inserts the value, ***creating intermediate nodes if necessary***; for arrays, appends the value when the target index equals the current array size.                                                                                           |
+| JsonObject <br> JsonArray | getNodeByPath(path) <br> getByPath(path) ... <br> asByPath(path) ... <br> findByPath(path) ... <br> evalByPath(path) ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
+|                       | addByPath(path, value) <br> replaceByPath(path, value) <br> removeByPath(path) <br> ensurePut(path, vlaue)               | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
 
 **Examples**: Path-Based Access and mutation
 
@@ -322,13 +322,13 @@ providing the same JSON-semantic APIs.
 JSON Pointer paths always start with `/`, 
 and only direct navigation is supported; no wildcards or filters.
 
-| Syntax  | Description              | Example         |
-|---------|--------------------------|-----------------|
-| `/`     | Root separator           | `/` (root)      |
-| `/name` | Object member access     | `/store/book`   |
-| `/0`    | Array index (0-based)    | `/store/book/0` |
-| `~0`    | Escape for `~` character | `/a~0b`         |
-| `~1`    | Escape for `/` character | `/a~1b`         |
+| Syntax | Description            | Example       |
+|--------|------------------------|---------------|
+| /      | Root separator         | / (root)      |
+| /name  | Object member access   | /store/book   |
+| /0     | Array index (0-based)  | /store/book/0 |
+| ~0     | Escape for ~ character | /a~0b         |
+| ~1     | Escape for / character | /a~1b         |
 
 > **Note**: `JsonPointer` is a specialized subclass of `JsonPath`.  
 > It behaves identically to `JsonPath`, except that it only accepts JSON Pointer expressions.
@@ -480,12 +480,13 @@ This includes Java `Record`, `Protobuf` messages, or classes from external libra
   These APIs operate directly on arbitrary Java object graphs 
   and are also the underlying foundation used internally by `JsonObject`/`JsonArray`.
 
-| Helper Class | Static Methods                                                                                                                           | Description                                                                  |
-|--------------|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| `Sjf4j`      | `Sjf4j.fromXxx()`, `Sjf4j.toXxx()`, ...                                                                                                  | Entry-point helpers for parsing, serialization, and cross-format conversion. |
-| `NodeUtil`   | `NodeUtil.getXxx()`, `NodeUtil.asXxx()`, `NodeUtil.copy()`, `NodeUtil.inspect()`, `NodeUtil.nodeEquals()`, ...                           | Node-level access, conversion, inspection, and comparison utilities.         |
-| `NodeWalker` | `NodeWalker.walk()`, `NodeWalker.visitObject()`, `NodeWalker.sizeInList()`, `NodeWalker.setInObject()`, `NodeWalker.removeInList()`, ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
-| `PatchUtil`  | `PatchUtil.diff()`, `PatchUtil.merge()`, ...                                                                                             | JSON Patch–based operations.                                  |
+| Helper Class | Static Methods                                                                                                                                                          | Description                                                                  |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| Sjf4j        | `Sjf4j.fromXxx()` ... <br> `Sjf4j.toXxx()` ...                                                                                                                          | Entry-point helpers for parsing, serialization, and cross-format conversion. |
+| NodeUtil     | `NodeUtil.getXxx()` ... <br> `NodeUtil.asXxx()` ... <br> `NodeUtil.copy()` / `NodeUtil.inspect()` ...                                                                   | Node-level access, conversion, inspection, and comparison utilities.         |
+| NodeWalker   | `NodeWalker.walk()` ... <br> `NodeWalker.visitObject()` ... <br> `NodeWalker.sizeInList()` ... <br> `NodeWalker.setInObject()` ... <br> `NodeWalker.removeInList()` ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
+| PatchUtil    | `PatchUtil.diff()` / `PatchUtil.merge()` ...                                                                                                                            | JSON Patch–based operations.                                                 |
+
 **Exampl**e: Low-level static APIs
 ```java
     user2.forEach((k, v) -> {
@@ -664,16 +665,16 @@ and each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
 
 **Patch Operations**: (RFC 6902 and SJF4J extension)
 
-| Operation   | Specification | Description                                                                             | Example                                                        |
-|-------------|---------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| `add`       | RFC 6902      | Adds a value at the target path                                                         | `{ "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] }` |
-| `remove`    | RFC 6902      | Removes the value at the target path                                                    | `{ "op": "remove", "path": "/a/b/c" }`                         |
-| `replace`   | RFC 6902      | Replaces the value at the target path (must already exist)                              | `{ "op": "replace", "path": "/a/b/c", "value": 42 }`           |
-| `move`      | RFC 6902      | Moves a value from one path to another                                                  | `{ "op": "move", "from": "/a/b/c", "path": "/a/b/d" }`         |
-| `copy`      | RFC 6902      | Copies a value from one path to another                                                 | `{ "op": "copy", "from": "/a/b/c", "path": "/a/b/e" }`         |
-| `test`      | RFC 6902      | Tests whether the value at the path equals the expected value                           | `{ "op": "test", "path": "/a/b/c", "value": "foo" }`           |
-| `exist`     | SJF4J         | Asserts that the target path exists                                                     | `{ "op": "exist", "path": "/a/b/c" }`                          |
-| `ensurePut` | SJF4J         | Ensures the path exists and inserts the value, creating intermediate nodes if necessary | `{ "op": "ensurePut", "path": "/x/y", "value": "z" }`          |
+| Operation   | Specification | Description                                                                             | Example                                                      |
+|-------------|---------------|-----------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| `add`       | RFC 6902      | Adds a value at the target path                                                         | { "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] } |
+| `remove`    | RFC 6902      | Removes the value at the target path                                                    | { "op": "remove", "path": "/a/b/c" }                         |
+| `replace`   | RFC 6902      | Replaces the value at the target path (must already exist)                              | { "op": "replace", "path": "/a/b/c", "value": 42 }           |
+| `move`      | RFC 6902      | Moves a value from one path to another                                                  | { "op": "move", "from": "/a/b/c", "path": "/a/b/d" }         |
+| `copy`      | RFC 6902      | Copies a value from one path to another                                                 | { "op": "copy", "from": "/a/b/c", "path": "/a/b/e" }         |
+| `test`      | RFC 6902      | Tests whether the value at the path equals the expected value                           | { "op": "test", "path": "/a/b/c", "value": "foo" }           |
+| `exist`     | SJF4J         | Asserts that the target path exists                                                     | { "op": "exist", "path": "/a/b/c" }                          |
+| `ensurePut` | SJF4J         | Ensures the path exists and inserts the value, creating intermediate nodes if necessary | { "op": "ensurePut", "path": "/x/y", "value": "z" }          |
 
 
 > **Extensibility**: JSON Patch can be extended with custom `PatchOp` via `PatchOpRegistry.register()`,
@@ -690,10 +691,10 @@ and each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
 SJF4J also supports [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386),
 allowing partial updates to JSON objects.
 
-| Method                                                          | Supported By                           | Description                                                                                                                                                                                                                                                                                                                                                |
-|-----------------------------------------------------------------|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `mergeRfc7386(Object mergePatch)`                               | `JsonObject`, `JsonArray`, `PatchUtil` | Following RFC 7386 semantics: <br/>• If a field exists in both the target and the patch, the patch value replaces the target value. <br/>• If a field in the patch is `null`, the corresponding target field is removed. <br/>• Nested objects are merged recursively. <br>• Arrays are replaced as a whole, not merged.                                   |
-| `merge(Object mergePatch, boolean overwrite, boolean deepCopy)` | `JsonObject`, `JsonArray`, `PatchUtil` | SJF4J provides a more flexible merge method: <br>• `overwrite` – if `true`, existing values are replaced; otherwise, only missing keys are added. <br>• `deepCopy` – if `true`, values are copied deeply instead of by reference. <br/>• If a field in the patch is `null`, no operation is performed. <br/>• Arrays are merged recursively, not replaced. |
+| Method                                                        | Class                                          | Description                                                                                                                                                                                                                                                                                                                                                |
+|---------------------------------------------------------------|------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mergeRfc7386(Object mergePatch)                               | `JsonObject` <br> `JsonArray` <br> `PatchUtil` | Following RFC 7386 semantics: <br/>• If a field exists in both the target and the patch, the patch value replaces the target value. <br/>• If a field in the patch is `null`, the corresponding target field is removed. <br/>• Nested objects are merged recursively. <br>• Arrays are replaced as a whole, not merged.                                   |
+| merge(Object mergePatch, boolean overwrite, boolean deepCopy) | `JsonObject` <br> `JsonArray` <br> `PatchUtil` | SJF4J provides a more flexible merge method: <br>• `overwrite` – if `true`, existing values are replaced; otherwise, only missing keys are added. <br>• `deepCopy` – if `true`, values are copied deeply instead of by reference. <br/>• If a field in the patch is `null`, no operation is performed. <br/>• Arrays are merged recursively, not replaced. |
 
 ### Validating with `JsonSchema`
 
