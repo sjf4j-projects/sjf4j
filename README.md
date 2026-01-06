@@ -7,7 +7,7 @@
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
 **SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
-(e.g. Jackson, Gson, Fastjson2) and other JSON-like data formats (e.g. YAML via Snake, Java Properties),
+(e.g. Jackson, Gson, Fastjson2) and other data formats (e.g. YAML via Snake, Java Properties),  
 serving as a ***unified semantic layer for structured data processing grounded in JSON specifications***. 
 
 ## Table of Contents
@@ -59,7 +59,7 @@ graph BT
 - **`Map`**  
 A generic key-value representation using standard Java `Map`.
 - **`JsonObject`**  
-A lightweight wrapper around a map structure that provides JSON-oriented APIs,
+A lightweight wrapper around a map structure that provides JSON-semantic APIs,
 and can also wrap POJO fields via getter/setter access when backed by a subclass.
 - **`<POJO>`(Plain Old Java Object)**  
 A strongly typed Java object with fields, getters, and setters.
@@ -71,7 +71,7 @@ combining the flexibility of dynamic JSON access with the safety and expressiven
 - **`List`**  
 A standard Java `List` used as a direct representation of a JSON array.
 - **`JsonArray`**  
-A structured wrapper around a JSON array that provides a rich, JSON-aware API.
+A structured wrapper around a JSON array that provides JSON-semantic APIs.
 - **`<Array>`**  
 A native Java array (e.g. `Object[]`, `String[]`, `int[]`) used when a fixed-size, 
 strongly typed representation is desired.
@@ -127,8 +127,8 @@ To handle ***Java Properties***, there is a built-in parser.
 Note that conversion from `java.util.Properties` is limited by its format restrictions. 
 
 In ***No-Data*** scenarios, SJF4J can also **be used without parsing any external data**.
-It operates directly on in-memory object graphs via the Object-Based Node Tree,
-providing the same JSON-oriented APIs.
+It operates directly on in-memory object graphs via the OBNT,
+providing the same JSON-semantic APIs.
 
 ### Starting from `JsonObject`
 `JsonObject` is the primary entry point for interacting with **Object-Based Node Tree**, so we start from it.  
@@ -377,7 +377,7 @@ double avgScore = jo.stream()
 ### Modeling Domain Objects with `<JOJO>`
 In real applications, data is rarely purely dynamic JSON or strictly static Java objects.  
 SJF4J bridges this with `JOJO` and `JAJO` — hybrid models that extend `JsonObject`/`JsonArray`,
-combining ***typed Java fields and methods*** with ***JSON-style dynamic access*** in the **Object-Based Node Tree**.
+combining ***typed Java fields and methods*** with ***JSON-semantic dynamic access*** in OBNT.
 
 **Example**: `JOJO` vs `POJO` 
 ```java
@@ -427,7 +427,7 @@ combining ***typed Java fields and methods*** with ***JSON-style dynamic access*
 
     List<String> allFriends = user2.findByPath("$.friends..name", String.class);
     // ["Bill", "Cindy", "David"]
-    // JOJO provides more JSON-oriented APIs on top of the domain model!
+    // JOJO provides more JSON-semantic APIs on top of the domain model!
 ```
 
 #### Starting from Scratch
@@ -460,7 +460,7 @@ Jackson `JsonNode`, Gson `JsonObject`, or Fastjson2 `JSONObject`.
 
 Such codebases can migrate to **SJF4J’s `JsonObject`/`JsonArray`** directly,
 preserving the existing data model while gaining a unified,
-JSON-oriented API for traversal, querying, and mutation.
+JSON-semantic API for traversal, querying, and mutation.
 
 
 **2. Projects based on domain POJOs**  
@@ -500,7 +500,7 @@ This includes Java `Record`, `Protobuf` messages, or classes from external libra
 
 - **Option 2: Projecting POJO to `JsonObject`**  
   Alternatively, a POJO can be ***projected*** into a `JsonObject`,
-  processed using the full SJF4J JSON-oriented API,
+  processed using the full JSON-semantic API,
   and then ***materialized back*** to its original type.
 
 ```java
@@ -768,7 +768,7 @@ ReflectionBenchmark.reflection_setter_native         avgt    5  0.007 ±  0.001 
 
 ## Contributing
 
-SJF4J is built to *make JSON-oriented Java Development more enjoyable :)*  
+SJF4J is built to *make JSON-Oriented Java Development Possible :)*  
 Feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new) for questions, bugs, ideas,
 or simply to say hi — your interest already means a lot to this project.  
 Contributions of all kinds, whether it’s code, documentation, examples, benchmarking, or simply filing an issue, 
