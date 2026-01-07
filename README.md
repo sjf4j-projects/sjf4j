@@ -235,8 +235,8 @@ providing the same JSON-semantic APIs.
 **Examples**: Path-Based Access and mutation
 
 ```java
-    JsonPath jp = JsonPath.compile("$.user.role");
-    Object role2 = jp.getNode(jo);         
+    JsonPath path = JsonPath.compile("$.user.role");
+    Object role2 = path.getNode(jo);         
     // Compiles the JSONPath expression into a reusable JsonPath instance,
     // returning the single matched node without type conversion.
     
@@ -307,8 +307,7 @@ providing the same JSON-semantic APIs.
 | `sum()`, `min()`, `max()`, `avg()`, `stddev()` | Numeric aggregation functions                                                                               | `$[?sum(@.price) < 20]`           |
 | `first()`, `last()`, `index()`                 | Returns the first, last, or indexed element of an array                                                     | `$[?first(@.title) =~ /^J/]`      |
 
-> **Extensibility**: JSON Path can be extended with custom functions via `FunctionRegistry.register()`,
-> and it is simple:
+> **Extensibility**: JSON Path can be extended with custom functions via `FunctionRegistry.register()`.
 > ```java
 > FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("hi", args -> {
 >     return "hi, " + Arrays.toString(args);
@@ -335,7 +334,7 @@ and only direct navigation is supported; no wildcards or filters.
 
 ### Stream-Based Processing with `NodeStream`
 Beyond path-based access and mutation with `JsonPath` / `JsonPointer`, 
-SJF4J provides a higher-level, declarative traversal and stream-based processing model.
+SJF4J provides a programmatic, declarative traversal and stream-based processing model.
 
 **Example**: Depth-first traversal with `walk()`
 ```java
@@ -349,7 +348,7 @@ jo.walk(
         });
 ```
 
-**Example**: Use `stream()` to begin Java Stream-style processing:
+**Example**: Use `stream()` to begin stream-style processing:
 ```java
 List<String> tags = jo.stream()
         .findByPath("$.tags[*]", String.class)      // Path-based selection

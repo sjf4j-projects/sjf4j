@@ -23,7 +23,6 @@ dependencies {
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
     compileOnly("org.yaml:snakeyaml:2.5")
 
-    compileOnly("org.slf4j:slf4j-api:2.0.17")
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
 
@@ -67,10 +66,9 @@ tasks.withType<Javadoc> {
     }
 }
 
+
 /////////////////////
 /// Publish
-
-
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
