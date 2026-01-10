@@ -1,11 +1,11 @@
 package org.sjf4j.node;
 
 
-public interface NodeConverter<N, R> {
+public interface NodeValueCodec<N, R> {
 
-    R convert(N node);
+    R encode(N node);
 
-    N unconvert(R raw);
+    N decode(R raw);
 
     Class<N> getNodeClass();
 

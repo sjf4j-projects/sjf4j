@@ -1,4 +1,4 @@
-package org.sjf4j.annotation.convertible;
+package org.sjf4j.annotation.node;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
