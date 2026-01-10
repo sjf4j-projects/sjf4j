@@ -8,9 +8,9 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.annotation.convertible.Convert;
-import org.sjf4j.annotation.convertible.Convertible;
-import org.sjf4j.annotation.convertible.Unconvert;
+import org.sjf4j.annotation.node.Encode;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.Decode;
 import org.sjf4j.util.TypeReference;
 
 import java.io.IOException;
@@ -94,30 +94,30 @@ public class JacksonFacadeTest {
     }
 
 
-    @Convertible
+    @NodeValue
     public static class Ops {
         private final LocalDate localDate;
 
         public Ops(LocalDate localDate) {
             this.localDate = localDate;
         }
-        @Convert
-        public String convert() {
+        @Encode
+        public String encode() {
             return localDate.toString();
         }
 
-        @Unconvert
-        public static Ops unconvert(String raw) {
+        @Decode
+        public static Ops decode(String raw) {
             return new Ops(LocalDate.parse(raw));
         }
     }
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testConvertible1() {
+    public void testNodeValue1() {
         JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(Ops.class);
-        facade.registerConvertible(ci);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(Ops.class);
+        facade.registerNodeValue(ci);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());

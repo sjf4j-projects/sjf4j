@@ -52,7 +52,7 @@ graph BT
         value --> string("String")
         value --> number("Number")
         value --> boolean("Boolean")
-        value ---> convertible("&lt;Object&gt; <br/> (via @Convertible <br/> or Converter)")
+        value ---> nodeValue("&lt;Object&gt; <br/> (via @NodeValue)")
 ```
 
 #### JSON Object (`{}`)

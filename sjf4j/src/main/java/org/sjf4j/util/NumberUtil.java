@@ -214,7 +214,7 @@ public class NumberUtil {
         if (value instanceof BigDecimal) {
             return ((BigDecimal) value).toBigInteger();
         } else if (value instanceof Double || value instanceof Float) {
-            BigDecimal decimal = BigDecimal.valueOf(((Number) value).doubleValue());
+            BigDecimal decimal = BigDecimal.valueOf(value.doubleValue());
             return decimal.toBigInteger();
         }
         return BigInteger.valueOf(value.longValue());
@@ -327,11 +327,42 @@ public class NumberUtil {
         return digitSeen;
     }
 
+    public static boolean isInteger(Number value) {
+        if (value instanceof Integer || value instanceof Long ||
+                value instanceof Short || value instanceof Byte) {
+            return true;
+        }
+
+        if (value instanceof BigInteger) {
+            return true;
+        }
+
+        if (value instanceof BigDecimal) {
+            return ((BigDecimal) value).scale() <= 0;
+        }
+
+        if (value instanceof Double || value instanceof Float) {
+            double d = value.doubleValue();
+            return d % 1 == 0;
+        }
+
+        return false;
+    }
+
+    public static BigDecimal normalize(Number value) {
+        if (value instanceof BigDecimal) {
+            return ((BigDecimal) value).stripTrailingZeros();
+        }
+        return new BigDecimal(value.toString()).stripTrailingZeros();
+    }
+
     public static int compare(Number source, Number target) {
         if (source == null || target == null) throw new IllegalArgumentException("Source and target must not be null");
-        if (source instanceof BigDecimal || target instanceof BigDecimal
-                || source instanceof BigInteger || target instanceof BigInteger) {
+        if (source instanceof BigDecimal || target instanceof BigDecimal) {
             return asBigDecimal(source).compareTo(asBigDecimal(target));
+        }
+        if (source instanceof BigInteger || target instanceof BigInteger) {
+            return asBigInteger(source).compareTo(asBigInteger(target));
         }
         if (isIntegralType(source) && isIntegralType(target)) {
             return Long.compare(source.longValue(), target.longValue());
@@ -339,5 +370,39 @@ public class NumberUtil {
         return Double.compare(source.doubleValue(), target.doubleValue());
     }
 
+    public static int hashCode(Number n) {
+        if (n instanceof Integer || n instanceof Long
+                || n instanceof Short || n instanceof Byte) {
+            long v = n.longValue();
+            return Long.hashCode(v);
+        }
+
+        if (n instanceof Float || n instanceof Double) {
+            double d = n.doubleValue();
+
+            // NaN / Infinity 直接走 equals 语义
+            if (Double.isNaN(d) || Double.isInfinite(d)) {
+                return Double.hashCode(d);
+            }
+
+            // 尝试整数快路径
+            long lv = (long) d;
+            if (d == lv) {
+                return Long.hashCode(lv);
+            }
+        }
+
+        if (n instanceof BigInteger) {
+            return n.hashCode();
+        }
+
+        if (n instanceof BigDecimal) {
+            BigDecimal bd = ((BigDecimal) n).stripTrailingZeros();
+            return bd.hashCode();
+        }
+
+        BigDecimal bd = new BigDecimal(n.toString()).stripTrailingZeros();
+        return bd.hashCode();
+    }
 
 }

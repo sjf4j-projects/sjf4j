@@ -218,7 +218,7 @@ public interface FilterExpr {
             for (int i = 0; i < args.size(); i++) {
                 values[i] = args.get(i).eval(rootNode, currentNode);
             }
-            return FunctionRegistry.invoke(name, values);
+            return PathFunctionRegistry.invoke(name, values);
         }
     }
 

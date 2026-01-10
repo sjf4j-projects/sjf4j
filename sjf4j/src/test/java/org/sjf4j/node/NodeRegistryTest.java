@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JojoTest;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.convertible.Convert;
-import org.sjf4j.annotation.convertible.Convertible;
-import org.sjf4j.annotation.convertible.Copy;
-import org.sjf4j.annotation.convertible.Unconvert;
+import org.sjf4j.annotation.node.Encode;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.Copy;
+import org.sjf4j.annotation.node.Decode;
 import org.sjf4j.util.TypeReference;
 
 import java.time.LocalDate;
@@ -75,24 +75,34 @@ public class NodeRegistryTest {
 
 
 
-    @Convertible
-    public static class BigDay {
-        private final LocalDate localDate;
-        public BigDay(LocalDate localDate) {
+    @NodeValue
+    public static class Day {
+        protected final LocalDate localDate;
+        public Day(LocalDate localDate) {
             this.localDate = localDate;
         }
 
-        @Convert
-        public String convert() {
+        @Encode
+        public String encode() {
             return localDate.toString();
         }
 
-        @Unconvert
-        public static BigDay unconvert(String raw) {
-            return new BigDay(LocalDate.parse(raw));
+        @Decode
+        public static Day decode(String raw) {
+            return new Day(LocalDate.parse(raw));
         }
 
         @Copy
+        public Day copy() {
+            return new Day(localDate);
+        }
+    }
+
+    public static class BigDay extends Day {
+        public BigDay(LocalDate localDate) {super(localDate);}
+
+        public static BigDay decode(String raw) { return new BigDay(LocalDate.parse(raw));}
+
         public BigDay copy() {
             return new BigDay(localDate);
         }
@@ -100,18 +110,18 @@ public class NodeRegistryTest {
 
 
     @Test
-    public void testConvertible1() {
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(BigDay.class);
+    public void testNodeValue1() {
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(BigDay.class);
         log.info("ci={}", ci);
         assertNotNull(ci);
 
         LocalDate now = LocalDate.now();
         BigDay day = new BigDay(now);
-        Object raw = ci.convert(day);
+        Object raw = ci.encode(day);
         log.info("raw={}", raw);
         assertEquals(now.toString(), raw);
 
-        BigDay day2 = (BigDay) ci.unconvert(raw);
+        BigDay day2 = (BigDay) ci.decode(raw);
         log.info("day2={}", day2);
         assertEquals(day.localDate, day2.localDate);
 
@@ -122,20 +132,20 @@ public class NodeRegistryTest {
 
 
     @Test
-    public void testConvertible2() {
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
+    public void testNodeValue2() {
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
-            public String convert(LocalDate node) {
+            public String encode(LocalDate node) {
                 return node.toString();
             }
 
             @Override
-            public LocalDate unconvert(String raw) {
+            public LocalDate decode(String raw) {
                 return LocalDate.parse(raw);
             }
 
             @Override
-            public Class<LocalDate> getNodeClass() {
+            public Class<LocalDate> getValueClass() {
                 return LocalDate.class;
             }
 
@@ -148,11 +158,11 @@ public class NodeRegistryTest {
         assertNotNull(ci);
 
         LocalDate now = LocalDate.now();
-        String raw = (String) ci.convert(now);
+        String raw = (String) ci.encode(now);
         log.info("raw={} type={}", raw, raw.getClass());
         assertEquals(now.toString(), raw);
 
-        LocalDate now2 = (LocalDate) ci.unconvert(raw);
+        LocalDate now2 = (LocalDate) ci.decode(raw);
         log.info("now2={}", now2);
         assertEquals(now, now2);
     }

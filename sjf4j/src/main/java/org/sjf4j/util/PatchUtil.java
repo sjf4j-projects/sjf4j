@@ -161,7 +161,7 @@ public class PatchUtil {
             if (sourceType.isObject() && targetType.isObject()) {
                 NodeWalker.visitObject(source, (k, v) -> {
                     JsonPointer newPath = path.copy();
-                    newPath.append(new PathToken.Name(k));
+                    newPath.push(new PathToken.Name(k));
                     Object newTarget = NodeWalker.getInObject(target, k);
                     if (newTarget != null) {
                         _diff(ops, newPath, v, newTarget);
@@ -172,7 +172,7 @@ public class PatchUtil {
                 NodeWalker.visitObject(target, (k, v) -> {
                    if (!NodeWalker.containsInObject(source, k)) {
                        JsonPointer newPath = path.copy();
-                       newPath.append(new PathToken.Name(k));
+                       newPath.push(new PathToken.Name(k));
                        ops.add(new PatchOp(PatchOp.STD_ADD, newPath, v, null));
                    }
                 });
@@ -182,12 +182,12 @@ public class PatchUtil {
                 int size = Math.min(sourceSize, targetSize);
                 for (int i = 0; i < size; i++) {
                     JsonPointer newPath = path.copy();
-                    newPath.append(new PathToken.Index(i));
+                    newPath.push(new PathToken.Index(i));
                     _diff(ops, newPath, NodeWalker.getInArray(source, i), NodeWalker.getInArray(target, i));
                 }
                 if (targetSize > sourceSize) {  // add with '/xx/-'
                     JsonPointer newPath = path.copy();
-                    newPath.append(PathToken.Append.INSTANCE);
+                    newPath.push(PathToken.Append.INSTANCE);
                     for (int i = sourceSize; i < targetSize; i++) {
                         ops.add(new PatchOp(PatchOp.STD_ADD, newPath, NodeWalker.getInArray(target, i), null));
                     }
@@ -195,7 +195,7 @@ public class PatchUtil {
                 if (targetSize < sourceSize) {  // Remove from back to front
                     for (int i = sourceSize - 1; i >= targetSize; i--) {
                         JsonPointer newPath = path.copy();
-                        newPath.append(new PathToken.Index(i));
+                        newPath.push(new PathToken.Index(i));
                         ops.add(new PatchOp(PatchOp.STD_REMOVE, newPath, null, null));
                     }
                 }

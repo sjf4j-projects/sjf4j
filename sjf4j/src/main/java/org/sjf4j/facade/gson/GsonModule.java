@@ -31,9 +31,9 @@ public class GsonModule {
                 return (TypeAdapter<T>) new JsonArrayAdapter(gson, rawClazz);
             }
 
-            NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+            NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
             if (ci != null) {
-                return new ConvertibleAdapter<>(gson, rawClazz, ci);
+                return new NodeValueAdapter<>(gson, ci);
             }
             return null;
         }
@@ -131,13 +131,13 @@ public class GsonModule {
     }
 
 
-    public static class ConvertibleAdapter<T> extends TypeAdapter<T> {
+    public static class NodeValueAdapter<T> extends TypeAdapter<T> {
         private final Gson gson;
-        private final NodeRegistry.ConvertibleInfo ci;
+        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
 
-        public ConvertibleAdapter(Gson gson, Class<?> clazz, NodeRegistry.ConvertibleInfo ci) {
+        public NodeValueAdapter(Gson gson, NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.gson = gson;
-            this.ci = ci;
+            this.valueCodecInfo = valueCodecInfo;
         }
 
         @SuppressWarnings("unchecked")
@@ -145,12 +145,12 @@ public class GsonModule {
         public T read(JsonReader in) throws IOException {
             TypeAdapter<?> adapter = gson.getAdapter(Object.class);
             Object raw = adapter.read(in);
-            return (T) ci.unconvert(raw);
+            return (T) valueCodecInfo.decode(raw);
         }
 
         @Override
         public void write(JsonWriter out, T node) throws IOException {
-            Object raw = ci.convert(node);
+            Object raw = valueCodecInfo.encode(node);
             TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
             adapter.write(out, raw);
         }

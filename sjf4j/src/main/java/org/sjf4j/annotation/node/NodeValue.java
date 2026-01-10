@@ -1,4 +1,4 @@
-package org.sjf4j.annotation.convertible;
+package org.sjf4j.annotation.node;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -10,5 +10,5 @@ import java.lang.annotation.Target;
 @Inherited
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Convertible {
+public @interface NodeValue {
 }

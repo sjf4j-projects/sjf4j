@@ -1,13 +1,13 @@
 package org.sjf4j.path;
 
 
-import org.sjf4j.annotation.convertible.Convert;
-import org.sjf4j.annotation.convertible.Copy;
-import org.sjf4j.annotation.convertible.Convertible;
-import org.sjf4j.annotation.convertible.Unconvert;
+import org.sjf4j.annotation.node.Encode;
+import org.sjf4j.annotation.node.Copy;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.Decode;
 import org.sjf4j.node.NodeRegistry;
 
-@Convertible
+@NodeValue
 public class JsonPointer extends JsonPath {
 
     public JsonPointer() {
@@ -22,7 +22,7 @@ public class JsonPointer extends JsonPath {
         super(expr);
     }
 
-    @Unconvert
+    @Decode
     public static JsonPointer compile(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expr must not be null");
         if (expr.startsWith("/")) {
@@ -33,10 +33,10 @@ public class JsonPointer extends JsonPath {
     }
 
     static {
-        NodeRegistry.registerConvertible(JsonPointer.class);
+        NodeRegistry.registerValueCodec(JsonPointer.class);
     }
 
-    @Convert
+    @Encode
     @Override
     public String toExpr() {
         return toPointerExpr();

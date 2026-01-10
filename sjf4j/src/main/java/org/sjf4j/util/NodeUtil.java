@@ -529,6 +529,8 @@ public class NodeUtil {
 
     /// Basic
 
+
+
     /**
      * Compares two objects using <b>Object-Based Node Tree</b> semantics.
      * <p>
@@ -554,7 +556,7 @@ public class NodeUtil {
      * @return {@code true} if both objects are equivalent under node semantics;
      *         {@code false} otherwise
      */
-    public static boolean nodeEquals(Object source, Object target) {
+    public static boolean equals(Object source, Object target) {
         if (target == source) return true;
         if (source == null || target == null) return false;
 
@@ -567,24 +569,55 @@ public class NodeUtil {
         } else if (ntSource.isObject() && ntTarget.isObject()) {
             if (NodeWalker.sizeInObject(source) != NodeWalker.sizeInObject(target)) return false;
             for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(source)) {
-                Object subSrouce = entry.getValue();
+                Object subSource = entry.getValue();
                 Object subTarget = NodeWalker.getInObject(target, entry.getKey());
-                if (!nodeEquals(subSrouce, subTarget)) return false;
+                if (!equals(subSource, subTarget)) return false;
             }
             return true;
         } else if (ntSource.isArray() && ntTarget.isArray()) {
             if (NodeWalker.sizeInArray(source) != NodeWalker.sizeInArray(target)) return false;
             int size = NodeWalker.sizeInArray(source);
             for (int i = 0; i < size; i++) {
-                Object subSrouce = NodeWalker.getInArray(source, i);
+                Object subSource = NodeWalker.getInArray(source, i);
                 Object subTarget = NodeWalker.getInArray(target, i);
-                if (!nodeEquals(subSrouce, subTarget)) return false;
+                if (!equals(subSource, subTarget)) return false;
             }
             return true;
         } else if (ntSource.isUnknown() && ntTarget.isUnknown()) {
             return Objects.equals(source, target);
         }
         return false;
+    }
+
+    public static int hashCode(Object node) {
+        if (node == null) return 0;
+        NodeType nt = NodeType.of(node);
+        if (nt.isNumber()) {
+            return NumberUtil.hashCode((Number) node);
+        } else if (nt.isValue()) {
+            return node.hashCode();
+        } else if (nt.isObject()) {
+            int hash = 1;
+            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(node)) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                int entryHash = 31 * key.hashCode() + hashCode(value);
+                // disorder
+                hash += entryHash;
+            }
+            return hash;
+        } else if (nt.isArray()) {
+            int hash = 1;
+            int size = NodeWalker.sizeInArray(node);
+            for (int i = 0; i < size; i++) {
+                Object item = NodeWalker.getInArray(node, i);
+                hash = 31 * hash + hashCode(item);
+            }
+            return hash;
+        } else if (nt.isUnknown()) {
+            return Objects.hashCode(node);
+        }
+        return 0;
     }
 
     /**
@@ -634,8 +667,8 @@ public class NodeUtil {
                 System.arraycopy(node, 0, arr, 0, len);
                 return (T) arr;
             }
-            case VALUE_CONVERTIBLE: {
-                NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(node.getClass());
+            case VALUE_REGISTERED: {
+                NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
                 return (T) ci.copy(node);
             }
             default:
@@ -782,9 +815,9 @@ public class NodeUtil {
                 sb.append("]");
                 return;
             }
-            case VALUE_CONVERTIBLE: {
-                NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(node.getClass());
-                Object raw = ci.convert(node);
+            case VALUE_REGISTERED: {
+                NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
+                Object raw = ci.encode(node);
                 sb.append("!").append(node.getClass().getSimpleName()).append("#");
                 _inspect(raw, sb);
                 return;

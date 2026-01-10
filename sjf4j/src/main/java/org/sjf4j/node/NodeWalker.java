@@ -187,27 +187,6 @@ public class NodeWalker {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static Set<Map.Entry<String, Object>> entrySetInObject(Object container) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
-        if (container instanceof JsonObject) {
-            return ((JsonObject) container).entrySet();
-        } else if (container instanceof Map) {
-            return ((Map<String, Object>) container).entrySet();
-        } else if (NodeRegistry.isPojo(container.getClass())) {
-            Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>();
-            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
-            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
-                Object node = fi.getValue().invokeGetter(container);
-                entrySet.add(new AbstractMap.SimpleEntry<>(fi.getKey(), node));
-            }
-            return entrySet;
-        } else {
-            throw new JsonException("Invalid object container: " + container.getClass());
-        }
-    }
-
-
     public static int sizeInObject(Object container) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (container instanceof JsonObject) {
@@ -233,6 +212,42 @@ public class NodeWalker {
             throw new JsonException("Invalid array container: " + container.getClass());
         }
     }
+
+    @SuppressWarnings("unchecked")
+    public static Set<String> keySetInObject(Object container) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (container instanceof Map) {
+            return ((Map<String, Object>) container).keySet();
+        } else if (container instanceof JsonObject) {
+            return ((JsonObject) container).keySet();
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
+            return pi.getFields().keySet();
+        } else {
+            throw new JsonException("Invalid object container: " + container.getClass());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Set<Map.Entry<String, Object>> entrySetInObject(Object container) {
+        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        if (container instanceof JsonObject) {
+            return ((JsonObject) container).entrySet();
+        } else if (container instanceof Map) {
+            return ((Map<String, Object>) container).entrySet();
+        } else if (NodeRegistry.isPojo(container.getClass())) {
+            Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>();
+            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+                Object node = fi.getValue().invokeGetter(container);
+                entrySet.add(new AbstractMap.SimpleEntry<>(fi.getKey(), node));
+            }
+            return entrySet;
+        } else {
+            throw new JsonException("Invalid object container: " + container.getClass());
+        }
+    }
+
 
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object container, String key) {
@@ -520,17 +535,16 @@ public class NodeWalker {
         if (maxDepth > 0 && path.depth() > maxDepth) return;
 
         NodeType nt = NodeType.of(container);
-
         if (nt.isObject()) {
             if (order == Order.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
                 Control control = visitor.apply(path, container);
                 if (control == Control.STOP) return;
             }
             NodeWalker.visitObject(container, (key, node) -> {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Name(key));
                 if (node != null) {
-                    _walk(node, newPath, visitor, target, order, maxDepth);
+                    path.push(new PathToken.Name(key));
+                    _walk(node, path, visitor, target, order, maxDepth);
+                    path.pop();
                 }
             });
             if (order == Order.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
@@ -543,10 +557,10 @@ public class NodeWalker {
                 if (control == Control.STOP) return;
             }
             NodeWalker.visitArray(container, (idx, node) -> {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Index(idx));
                 if (node != null) {
-                    _walk(node, newPath, visitor, target, order, maxDepth);
+                    path.push(new PathToken.Index(idx));
+                    _walk(node, path, visitor, target, order, maxDepth);
+                    path.pop();
                 }
             });
             if (order == Order.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
@@ -572,10 +586,10 @@ public class NodeWalker {
                 consumer.accept(path, container);
             }
             ((JsonObject) container).forEach((key, node) -> {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Name(key));
                 if (node != null) {
-                    _walk2(node, newPath, consumer, target, order, maxDepth);
+                    path.push(new PathToken.Name(key));
+                    _walk2(node, path, consumer, target, order, maxDepth);
+                    path.pop();
                 }
             });
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
@@ -586,11 +600,11 @@ public class NodeWalker {
                 consumer.accept(path, container);
             }
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) container).entrySet()) {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Name(entry.getKey().toString()));
                 Object node = entry.getValue();
                 if (node != null) {
-                    _walk2(node, newPath, consumer, target, order, maxDepth);
+                    path.push(new PathToken.Name(entry.getKey().toString()));
+                    _walk2(node, path, consumer, target, order, maxDepth);
+                    path.pop();
                 }
             }
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
@@ -602,11 +616,11 @@ public class NodeWalker {
             }
             JsonArray ja = (JsonArray) container;
             for (int i = 0; i < ja.size(); i++) {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Index(i));
                 Object node = ja.getNode(i);
                 if (node != null) {
-                    _walk2(node, newPath, consumer, target, order, maxDepth);
+                    path.push(new PathToken.Index(i));
+                    _walk2(node, path, consumer, target, order, maxDepth);
+                    path.pop();
                 }
             }
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
@@ -618,11 +632,11 @@ public class NodeWalker {
             }
             List<?> list = (List<?>) container;
             for (int i = 0; i < list.size(); i++) {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Index(i));
                 Object node = list.get(i);
                 if (node != null) {
-                    _walk2(node, newPath, consumer, target, order, maxDepth);
+                    path.push(new PathToken.Index(i));
+                    _walk2(node, path, consumer, target, order, maxDepth);
+                    path.pop();
                 }
             }
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
@@ -633,11 +647,11 @@ public class NodeWalker {
                 consumer.accept(path, container);
             }
             for (int i = 0; i < Array.getLength(container); i++) {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Index(i));
                 Object node = Array.get(container, i);
                 if (node != null) {
-                    _walk2(node, newPath, consumer, target, order, maxDepth);
+                    path.push(new PathToken.Index(i));
+                    _walk2(node, path, consumer, target, order, maxDepth);
+                    path.pop();
                 }
             }
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
@@ -649,11 +663,11 @@ public class NodeWalker {
             }
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-                JsonPath newPath = path.copy();
-                newPath.append(new PathToken.Name(entry.getKey()));
                 Object node = entry.getValue().invokeGetter(container);
                 if (node != null) {
-                    _walk2(node, newPath, consumer, target, order, maxDepth);
+                    path.push(new PathToken.Name(entry.getKey()));
+                    _walk2(node, path, consumer, target, order, maxDepth);
+                    path.pop();
                 }
             }
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {

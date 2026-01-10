@@ -34,7 +34,7 @@ public abstract class JsonContainer {
 
 
     public boolean nodeEquals(Object target) {
-        return NodeUtil.nodeEquals(this, target);
+        return NodeUtil.equals(this, target);
     }
 
     /**

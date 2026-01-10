@@ -54,7 +54,7 @@ public class JsonPath {
      */
     public JsonPath() {
         this.tokens = new ArrayList<>();
-        append(PathToken.Root.INSTANCE);
+        push(PathToken.Root.INSTANCE);
     }
 
     /**
@@ -137,16 +137,12 @@ public class JsonPath {
     }
 
     /**
-     * Pushes a new path token to the end of the path.
+     * Creates a copy of this JsonPath instance.
      *
-     * @param token the token to add
-     * @throws IllegalArgumentException if token is null
+     * @return a new JsonPath instance with the same tokens
      */
-    public void append(PathToken token) {
-        if (token == null) {
-            throw new IllegalArgumentException("Token must not be null");
-        }
-        tokens.add(token);
+    public JsonPath copy() {
+        return new JsonPath(this);
     }
 
     /**
@@ -168,14 +164,26 @@ public class JsonPath {
     }
 
     /**
-     * Creates a copy of this JsonPath instance.
+     * Pushes a new path token to the end of the path.
      *
-     * @return a new JsonPath instance with the same tokens
+     * @param token the token to add
+     * @throws IllegalArgumentException if token is null
      */
-    public JsonPath copy() {
-        return new JsonPath(this);
+    public void push(PathToken token) {
+        if (token == null) {
+            throw new IllegalArgumentException("Token must not be null");
+        }
+        tokens.add(token);
     }
 
+    /**
+     * Removes the last token in the path, and returns it.
+     *
+     * @return the removed path token
+     */
+    public PathToken pop() {
+        return tokens.remove(tokens.size() - 1);
+    }
 
     /// Find
 
@@ -600,7 +608,7 @@ public class JsonPath {
             for (int i = 0; i < func.args.size(); i++) {
                 args[1 + i] = resolveFunctionArg(func.args.get(i));
             }
-            return FunctionRegistry.invoke(func.name, args);
+            return PathFunctionRegistry.invoke(func.name, args);
         } else {
             if (result.size() == 1) return result.get(0);
             else return result;

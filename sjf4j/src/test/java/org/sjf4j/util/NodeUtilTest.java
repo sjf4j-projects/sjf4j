@@ -10,13 +10,14 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.node.NodeConverter;
+import org.sjf4j.node.ValueCodec;
 import org.sjf4j.node.NodeRegistry;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -265,6 +266,25 @@ public class NodeUtilTest {
         assertTrue(jo1.nodeEquals(map1));
     }
 
+    @Test
+    public void testHashCode1() {
+        JsonObject jo1 = new JsonObject(
+                "name", "Bob",
+                "yes", true,
+                "address", new JsonObject(
+                    "city", 1,
+                    "street", Arrays.asList("aa", "bb")));
+
+        JsonObject jo2 = new JsonObject(
+                "yes", true,
+                "name", "Bob",
+                "address", new JsonObject(
+                    "city", 1.0,
+                    "street", Arrays.asList("aa", "bb")));
+
+        assertNotEquals(jo1.hashCode(), jo2.hashCode());
+        assertEquals(NodeUtil.hashCode(jo1), NodeUtil.hashCode(jo2));
+    }
 
     @Test
     public void testCopy1() {
@@ -332,19 +352,19 @@ public class NodeUtilTest {
 
     @Test
     public void testInspect2() {
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
-            public String convert(LocalDate node) {
+            public String encode(LocalDate node) {
                 return node.toString();
             }
 
             @Override
-            public LocalDate unconvert(String raw) {
+            public LocalDate decode(String raw) {
                 return LocalDate.parse(raw);
             }
 
             @Override
-            public Class<LocalDate> getNodeClass() {
+            public Class<LocalDate> getValueClass() {
                 return LocalDate.class;
             }
 

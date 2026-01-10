@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -19,10 +18,8 @@ import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.util.ReflectUtil;
 
 import java.io.IOException;
 import java.util.Map;
@@ -132,17 +129,17 @@ public class JacksonModule {
         }
     }
 
-    public static class ConvertibleDeserializer<T> extends JsonDeserializer<T> {
-        private final NodeRegistry.ConvertibleInfo convertibleInfo;
-        public ConvertibleDeserializer(NodeRegistry.ConvertibleInfo convertibleInfo) {
-            this.convertibleInfo = convertibleInfo;
+    public static class NodeValueDeserializer<T> extends JsonDeserializer<T> {
+        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        public NodeValueDeserializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+            this.valueCodecInfo = valueCodecInfo;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
             Object raw = ctxt.readValue(p, Object.class);
-            return (T) convertibleInfo.unconvert(raw);
+            return (T) valueCodecInfo.decode(raw);
         }
     }
 
@@ -173,15 +170,15 @@ public class JacksonModule {
         }
     }
 
-    public static class ConvertibleSerializer<T> extends JsonSerializer<T> {
-        private final NodeRegistry.ConvertibleInfo convertibleInfo;
-        public ConvertibleSerializer(NodeRegistry.ConvertibleInfo convertibleInfo) {
-            this.convertibleInfo = convertibleInfo;
+    public static class NodeValueSerializer<T> extends JsonSerializer<T> {
+        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        public NodeValueSerializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+            this.valueCodecInfo = valueCodecInfo;
         }
 
         @Override
         public void serialize(T value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-            Object raw = convertibleInfo.convert(value);
+            Object raw = valueCodecInfo.encode(value);
             serializers.defaultSerializeValue(raw, gen);
         }
     }

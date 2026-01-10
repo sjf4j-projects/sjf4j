@@ -60,9 +60,9 @@ public class Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return new JsonArrayReader<>(rawClazz);
             }
-            NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+            NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
             if (ci != null) {
-                return new ConvertibleReader<>(ci);
+                return new NodeValueReader<>(ci);
             }
             return null;
         }
@@ -88,17 +88,17 @@ public class Fastjson2Module {
         }
     }
 
-    public static class ConvertibleReader<T> implements ObjectReader<T> {
-        private final NodeRegistry.ConvertibleInfo convertibleInfo;
-        public ConvertibleReader(NodeRegistry.ConvertibleInfo convertibleInfo) {
-            this.convertibleInfo = convertibleInfo;
+    public static class NodeValueReader<T> implements ObjectReader<T> {
+        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        public NodeValueReader(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+            this.valueCodecInfo = valueCodecInfo;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             Object raw = reader.readAny();
-            return (T) convertibleInfo.unconvert(raw);
+            return (T) valueCodecInfo.decode(raw);
         }
     }
 
@@ -113,9 +113,9 @@ public class Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(objectClass)) {
                 return new JsonArrayWriter();
             }
-            NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(objectClass);
+            NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(objectClass);
             if (ci != null) {
-                return new ConvertibleWriter<>(ci);
+                return new NodeValueWriter<>(ci);
             }
             return null;
         }
@@ -150,15 +150,15 @@ public class Fastjson2Module {
         }
     }
 
-    public static class ConvertibleWriter<T> implements ObjectWriter<T> {
-        private final NodeRegistry.ConvertibleInfo convertibleInfo;
-        public ConvertibleWriter(NodeRegistry.ConvertibleInfo convertibleInfo) {
-            this.convertibleInfo = convertibleInfo;
+    public static class NodeValueWriter<T> implements ObjectWriter<T> {
+        private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        public NodeValueWriter(NodeRegistry.ValueCodecInfo valueCodecInfo) {
+            this.valueCodecInfo = valueCodecInfo;
         }
 
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
-            Object raw = convertibleInfo.convert(object);
+            Object raw = valueCodecInfo.encode(object);
             writer.writeAny(raw);
         }
     }

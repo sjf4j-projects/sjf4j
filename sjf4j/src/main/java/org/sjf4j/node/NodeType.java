@@ -22,8 +22,8 @@ public enum NodeType {
     VALUE_NUMBER,
     /** Represents a boolean value. */
     VALUE_BOOLEAN,
-    /** Represents an atomic value with custom JSON conversion semantics. */
-    VALUE_CONVERTIBLE,
+    /** Represents a registered value with custom codec. */
+    VALUE_REGISTERED,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -77,8 +77,8 @@ public enum NodeType {
             return ARRAY_ARRAY;
         }
 
-        if (NodeRegistry.isConvertible(clazz)) {
-            return VALUE_CONVERTIBLE;
+        if (NodeRegistry.isNodeValue(clazz)) {
+            return VALUE_REGISTERED;
         } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
@@ -131,8 +131,8 @@ public enum NodeType {
             return VALUE_VOID;
         }
 
-        if (NodeRegistry.isConvertible(clazz)) {
-            return VALUE_CONVERTIBLE;
+        if (NodeRegistry.isNodeValue(clazz)) {
+            return VALUE_REGISTERED;
         } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
@@ -152,11 +152,9 @@ public enum NodeType {
 
     public boolean isVoid() {return this == VALUE_VOID;}
 
-    public boolean isConvertible() {return this == VALUE_CONVERTIBLE;}
-
     public boolean isValue() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN ||
-                this == VALUE_VOID || this == VALUE_CONVERTIBLE;
+                this == VALUE_VOID || this == VALUE_REGISTERED;
     }
 
     public boolean isObject() {

@@ -6,10 +6,10 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.annotation.convertible.Convert;
-import org.sjf4j.annotation.convertible.Copy;
-import org.sjf4j.annotation.convertible.Convertible;
-import org.sjf4j.annotation.convertible.Unconvert;
+import org.sjf4j.annotation.node.Encode;
+import org.sjf4j.annotation.node.Copy;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.Decode;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -55,7 +55,7 @@ public class ReflectUtil {
                 clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
-        if (NodeRegistry.isConvertible(clazz)) {
+        if (NodeRegistry.isNodeValue(clazz)) {
             return false;
         }
 
@@ -279,7 +279,7 @@ public class ReflectUtil {
     }
 
 
-    /// Convertible
+    /// NodeValue
 
     /**
      * A `@Convertible` class must define a non-static `@Convert` method returning a supported node value,
@@ -289,8 +289,8 @@ public class ReflectUtil {
      * @param clazz     A node class annotated with @Convertible
      * @return          NodeRegistry.ConvertibleInfo
      */
-    public static NodeRegistry.ConvertibleInfo analyzeConvertible(Class<?> clazz) {
-        if (!clazz.isAnnotationPresent(Convertible.class))
+    public static NodeRegistry.ValueCodecInfo analyzeNodeValue(Class<?> clazz) {
+        if (!clazz.isAnnotationPresent(NodeValue.class))
             throw new JsonException("Class " + clazz.getName() + " is not annotated with @Convertible");
 
         MethodHandle convertHandle = null, unconvertHandle = null, copyHandle = null;
@@ -301,40 +301,56 @@ public class ReflectUtil {
             } catch (Exception ignored) {}
         }
 
-        Method[] methods = clazz.getDeclaredMethods();
-        for (Method m : clazz.getDeclaredMethods()) {
-            if (m.isBridge()) continue;
-            if (m.isAnnotationPresent(Convert.class)) {
-                if (convertHandle != null)
-                    throw new JsonException("Multiple @Convert methods found in " + clazz.getName());
-                if (Modifier.isStatic(m.getModifiers()))
-                    throw new JsonException("Cannot use @Convert on static methods");
-                try {
-                    convertHandle = lookup.unreflect(m);
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
+        Class<?> current = clazz;
+        while (current != null && current != Object.class &&
+                (convertHandle == null || unconvertHandle == null || copyHandle == null)) {
+            for (Method m : current.getDeclaredMethods()) {
+                if (m.isBridge()) continue;
+                // Convert
+                if (convertHandle == null && m.isAnnotationPresent(Encode.class)) {
+                    if (Modifier.isStatic(m.getModifiers()))
+                        throw new JsonException("Cannot use @Convert on static methods");
+                    if (current != clazz) {
+                        Method override = findOverride(m, clazz);
+                        if (override != null) { m = override; }
+                    }
+                    try {
+                        convertHandle = lookup.unreflect(m);
+                        continue;
+                    } catch (IllegalAccessException e) {
+                        throw new JsonException(e);
+                    }
                 }
-            } else if (m.isAnnotationPresent(Unconvert.class)) {
-                if (unconvertHandle != null)
-                    throw new JsonException("Multiple @Unconvert methods found in " + clazz.getName());
-                if (!Modifier.isStatic(m.getModifiers()))
-                    throw new JsonException("Must use @Unconvert on static methods");
-                try {
-                    unconvertHandle = lookup.unreflect(m);
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
+                // Unconvert
+                if (unconvertHandle == null && m.isAnnotationPresent(Decode.class)) {
+                    if (!Modifier.isStatic(m.getModifiers()))
+                        throw new JsonException("Must use @Unconvert on static methods");
+                    if (current != clazz) {
+                        Method override = findOverride(m, clazz);
+                        if (override != null) { m = override; }
+                    }
+                    try {
+                        unconvertHandle = lookup.unreflect(m);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
-            } else if (m.isAnnotationPresent(Copy.class)) {
-                if (copyHandle != null)
-                    throw new JsonException("Multiple @Copy methods found in " + clazz.getName());
-                if (Modifier.isStatic(m.getModifiers()))
-                    throw new JsonException("Cannot use @Copy on static methods");
-                try {
-                    copyHandle = lookup.unreflect(m);
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
+                // Copy
+                if (copyHandle == null && m.isAnnotationPresent(Copy.class)) {
+                    if (Modifier.isStatic(m.getModifiers()))
+                        throw new JsonException("Cannot use @Copy on static methods");
+                    if (current != clazz) {
+                        Method override = findOverride(m, clazz);
+                        if (override != null) { m = override; }
+                    }
+                    try {
+                        copyHandle = lookup.unreflect(m);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
+            current = current.getSuperclass();
         }
 
         if (convertHandle == null)
@@ -373,8 +389,21 @@ public class ReflectUtil {
                         ", but found " + nodeClazz3.getName());
         }
 
-        return new NodeRegistry.ConvertibleInfo(clazz, rawClazz, null,
+        return new NodeRegistry.ValueCodecInfo(clazz, rawClazz, null,
                 convertHandle, unconvertHandle, copyHandle);
+    }
+
+    private static Method findOverride(Method baseMethod, Class<?> clazz) {
+        try {
+            Method m = clazz.getDeclaredMethod(
+                    baseMethod.getName(),
+                    baseMethod.getParameterTypes()
+            );
+            if (m.isBridge()) return null;
+            return m;
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
     }
 
 }

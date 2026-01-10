@@ -45,16 +45,17 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores field information for POJO mapping.
      */
-    protected transient Map<String, NodeRegistry.FieldInfo> fieldMap;
+    protected transient Map<String, NodeRegistry.FieldInfo> fieldMap = this.getClass() == JsonObject.class ? null :
+            NodeRegistry.registerPojoOrElseThrow(this.getClass()).getFields();
 
     /**
      * Creates an empty JsonObject instance.
      * If this is called from a subclass, it registers the subclass fields for POJO mapping.
      */
     public JsonObject() {
-        if (this.getClass() != JsonObject.class) {
-            fieldMap = NodeRegistry.registerPojoOrElseThrow(this.getClass()).getFields();
-        }
+//        if (this.getClass() != JsonObject.class) {
+//            fieldMap = NodeRegistry.registerPojoOrElseThrow(this.getClass()).getFields();
+//        }
     }
 
     /**

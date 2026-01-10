@@ -12,15 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
-public class FunctionRegistryTest {
+public class PathFunctionRegistryTest {
 
     @Test
     public void testRegister1() {
-        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("hi", args -> {
+        PathFunctionRegistry.register(new PathFunctionRegistry.FunctionDescriptor("hi", args -> {
             return "hi, " + Arrays.toString(args);
         }));
 
-        Set<String> functionNames = FunctionRegistry.getFunctionNames();
+        Set<String> functionNames = PathFunctionRegistry.getFunctionNames();
         log.info("Registered functions: {}", functionNames);
         assertTrue(functionNames.contains("hi"));
 

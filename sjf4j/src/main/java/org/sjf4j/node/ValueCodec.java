@@ -1,18 +1,18 @@
 package org.sjf4j.node;
 
 
-public interface NodeValueCodec<N, R> {
+public interface ValueCodec<N, R> {
 
-    R encode(N node);
+    R encode(N value);
 
     N decode(R raw);
 
-    Class<N> getNodeClass();
+    Class<N> getValueClass();
 
     Class<R> getRawClass();
 
-    default N copy(N node) {
-        return node;
+    default N copy(N value) {
+        return value;
     }
 
 }

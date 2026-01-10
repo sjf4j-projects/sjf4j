@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 
-public class FunctionRegistry {
+public class PathFunctionRegistry {
 
     @FunctionalInterface
     public interface PathFunction {
@@ -69,7 +69,7 @@ public class FunctionRegistry {
     // Pre-register build-in functions
     static {
         // length
-        FunctionRegistry.register(new FunctionDescriptor("length", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("length", args -> {
             if (args.length != 1) 
                 throw new JsonException("length(): expects exactly 1 argument, but got: " + args.length);
             Object node = args[0];
@@ -92,7 +92,7 @@ public class FunctionRegistry {
         }));
 
         // count
-        FunctionRegistry.register(new FunctionDescriptor("count", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("count", args -> {
             if (args.length != 1) 
                 throw new JsonException("count(): expects exactly 1 argument, but got: " + args.length);
             Object node = args[0];
@@ -109,7 +109,7 @@ public class FunctionRegistry {
 
         // match
         // follows RFC i-regexp semantics and does not support full regular expressions.
-        FunctionRegistry.register(new FunctionDescriptor("match", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("match", args -> {
             if (args.length != 2)
                 throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.length);
             Object node0 = args[0];
@@ -121,7 +121,7 @@ public class FunctionRegistry {
         }));
 
         // search
-        FunctionRegistry.register(new FunctionDescriptor("search", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("search", args -> {
             if (args.length != 2)
                 throw new JsonException("search(): expects exactly 2 arguments, but got: " + args.length);
             Object node0 = args[0];
@@ -133,14 +133,14 @@ public class FunctionRegistry {
         }));
 
         // value
-        FunctionRegistry.register(new FunctionDescriptor("value", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("value", args -> {
             if (args.length != 1)
                 throw new JsonException("value(): expects exactly 1 arguments, but got: " + args.length);
             return args[0];
         }));
 
         // sum
-        FunctionRegistry.register(new FunctionDescriptor("sum", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("sum", args -> {
             if (args.length != 1)
                 throw new JsonException("sum(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -160,7 +160,7 @@ public class FunctionRegistry {
         }));
 
         // min
-        FunctionRegistry.register(new FunctionDescriptor("min", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("min", args -> {
             if (args.length != 1)
                 throw new JsonException("min(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -181,7 +181,7 @@ public class FunctionRegistry {
         }));
 
         // max
-        FunctionRegistry.register(new FunctionDescriptor("max", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("max", args -> {
             if (args.length != 1)
                 throw new JsonException("max(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -202,7 +202,7 @@ public class FunctionRegistry {
         }));
 
         // avg
-        FunctionRegistry.register(new FunctionDescriptor("avg", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("avg", args -> {
             if (args.length != 1)
                 throw new JsonException("avg(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -224,7 +224,7 @@ public class FunctionRegistry {
         }));
 
         // stddev
-        FunctionRegistry.register(new FunctionDescriptor("stddev", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("stddev", args -> {
             if (args.length != 1)
                 throw new JsonException("stddev(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -261,7 +261,7 @@ public class FunctionRegistry {
         }));
 
         // first
-        FunctionRegistry.register(new FunctionDescriptor("first", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("first", args -> {
             if (args.length != 1)
                 throw new JsonException("first(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -278,7 +278,7 @@ public class FunctionRegistry {
         }));
 
         // last
-        FunctionRegistry.register(new FunctionDescriptor("last", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("last", args -> {
             if (args.length != 1)
                 throw new JsonException("last(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
@@ -296,7 +296,7 @@ public class FunctionRegistry {
         }));
 
         // index
-        FunctionRegistry.register(new FunctionDescriptor("index", args -> {
+        PathFunctionRegistry.register(new FunctionDescriptor("index", args -> {
             if (args.length != 2)
                 throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];

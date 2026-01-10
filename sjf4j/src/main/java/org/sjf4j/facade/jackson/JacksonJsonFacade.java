@@ -5,10 +5,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
-import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.util.TypeUtil;
@@ -32,20 +30,20 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
         this.objectMapper = objectMapper;
         this.module = new JacksonModule.MySimpleModule();
-        registerConvertibles();
+        registerNodeValues();
         this.objectMapper.registerModule(this.module);
     }
 
-    private void registerConvertibles() {
-        for (NodeRegistry.ConvertibleInfo ci : NodeRegistry.getAllConvertibles().values()) {
-            registerConvertible(ci);
+    private void registerNodeValues() {
+        for (NodeRegistry.ValueCodecInfo ci : NodeRegistry.getAllValueCodecInfos().values()) {
+            registerNodeValue(ci);
         }
     }
 
     @Override
-    public void registerConvertible(NodeRegistry.ConvertibleInfo ci) {
-        this.module.addDeserializer(ci.getNodeClass(), new JacksonModule.ConvertibleDeserializer<>(ci));
-        this.module.addSerializer(ci.getNodeClass(), new JacksonModule.ConvertibleSerializer<>(ci));
+    public void registerNodeValue(NodeRegistry.ValueCodecInfo ci) {
+        this.module.addDeserializer(ci.getValueClass(), new JacksonModule.NodeValueDeserializer<>(ci));
+        this.module.addSerializer(ci.getValueClass(), new JacksonModule.NodeValueSerializer<>(ci));
     }
 
 

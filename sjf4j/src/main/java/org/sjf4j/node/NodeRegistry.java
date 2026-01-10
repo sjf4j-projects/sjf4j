@@ -8,6 +8,7 @@ import org.sjf4j.util.ReflectUtil;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -17,170 +18,143 @@ import java.util.function.Supplier;
 
 public final class NodeRegistry {
 
-//    private static final Map<Class<?>, Optional<NodeInfo>> NODE_INFO_CACHE = new ConcurrentHashMap<>();
+    /// NodeValue
 
-//    public static class NodeInfo {
-//        ConvertibleInfo convertibleInfo;
-//        PojoInfo pojoInfo;
-//        public NodeInfo() {}
-//        public NodeInfo(ConvertibleInfo convertibleInfo, PojoInfo pojoInfo) {
-//            this.convertibleInfo = convertibleInfo;
-//            this.pojoInfo = pojoInfo;
-//        }
-//
-//        public boolean isConvertible() {
-//            return convertibleInfo != null;
-//        }
-//
-//        public boolean isPojo() {
-//            return convertibleInfo == null && pojoInfo != null && pojoInfo.isPojo();
-//        }
-//
-//        public ConvertibleInfo getConvertibleInfo() { return convertibleInfo; }
-//        public PojoInfo getPojoInfo() { return pojoInfo; }
-//    }
+    private static final Map<Class<?>, ValueCodecInfo> VALUE_CODEC_INFO_CACHE = new ConcurrentHashMap<>();
 
-//    public static Optional<NodeInfo> getNodeInfo(Class<?> clazz) {
-//        return NODE_INFO_CACHE.get(clazz);
-////        Optional<NodeInfo> opt = NODE_INFO_CACHE.get(clazz);
-////        if (opt != null && opt.isPresent()) {
-////            return opt.get();
-////        } else {
-////            return null;
-////        }
-//    }
-
-    /// Convertible
-
-    private static final Map<Class<?>, ConvertibleInfo> CONVERTIBLE_CACHE = new ConcurrentHashMap<>();
-
-    public static class ConvertibleInfo {
-        private final Class<?> nodeClazz;
+    public static class ValueCodecInfo {
+        private final Class<?> valueClazz;
         private final Class<?> rawClazz;
-        private final NodeConverter<Object, Object> converter;
-        private final MethodHandle convertHandle;
-        private final MethodHandle unconvertHandle;
+        private final ValueCodec<Object, Object> valueCodec;
+        private final MethodHandle encodeHandle;
+        private final MethodHandle decodeHandle;
         private final MethodHandle copyHandle;
 
         @SuppressWarnings("unchecked")
-        public ConvertibleInfo(Class<?> nodeClazz, Class<?> rawClazz, NodeConverter<?, ?> converter,
-                               MethodHandle convertHandle, MethodHandle unconvertHandle, MethodHandle copyHandle) {
-            this.nodeClazz = nodeClazz;
+        public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
+                              MethodHandle encodeHandle, MethodHandle decodeHandle, MethodHandle copyHandle) {
+            this.valueClazz = valueClazz;
             this.rawClazz = rawClazz;
-            this.converter = (NodeConverter<Object, Object>) converter;
-            this.convertHandle = convertHandle;
-            this.unconvertHandle = unconvertHandle;
+            this.valueCodec = (ValueCodec<Object, Object>) valueCodec;
+            this.encodeHandle = encodeHandle;
+            this.decodeHandle = decodeHandle;
             this.copyHandle = copyHandle;
         }
 
-        public Class<?> getNodeClass() {
-            return nodeClazz;
+        public Class<?> getValueClass() {
+            return valueClazz;
         }
 
-        public Object convert(Object node) {
-            if (converter != null) {
+        public Object encode(Object value) {
+            if (valueCodec != null) {
                 try {
-                    return converter.convert(node);
+                    return valueCodec.encode(value);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to convert using converter " + converter.getClass().getName() +
-                            " for target type " + nodeClazz.getName(), e);
+                    throw new JsonException("Failed to encode value of type " + valueClazz.getName() +
+                            " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
-            } else if (convertHandle != null) {
+            } else if (encodeHandle != null) {
                 try {
-                    return convertHandle.invoke(node);
+                    return encodeHandle.invoke(value);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to convert using @Convert method in " + nodeClazz.getName(), e);
+                    throw new JsonException("Failed to encode value of type " + valueClazz.getName() +
+                            " using @Encode method " + encodeHandle, e);
                 }
             } else {
-                throw new JsonException("No @Convert method or NodeConverter registered for " + nodeClazz.getName());
+                throw new JsonException("No value binding found for type " + valueClazz.getName() +
+                        ": missing @NodeValue annotation and no ValueCodec registered");
             }
         }
 
-        public Object unconvert(Object raw) {
+        public Object decode(Object raw) {
             if (raw != null && !rawClazz.isInstance(raw))
-                throw new JsonException("Cannot unconvert from raw type " + raw.getClass().getName() + " to " +
-                        nodeClazz.getName() + ". Expected " + rawClazz.getName());
-            if (converter != null) {
+                throw new JsonException("Cannot decode raw of type " + raw.getClass().getName() +
+                        " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
+            if (valueCodec != null) {
                 try {
-                    return converter.unconvert(raw);
+                    return valueCodec.decode(raw);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to unconvert using converter " + converter.getClass().getName() +
-                            " for target type " + nodeClazz.getName(), e);
+                    throw new JsonException("Failed to decode raw to value type " + valueClazz.getName() +
+                            " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
-            } else if (unconvertHandle != null) {
+            } else if (decodeHandle != null) {
                 try {
-                    return unconvertHandle.invoke(raw);
+                    return decodeHandle.invoke(raw);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to unconvert using @Unconvert method in " + nodeClazz.getName(), e);
+                    throw new JsonException("Failed to decode raw to value type " + valueClazz.getName() +
+                            " using @Decode method " + decodeHandle, e);
                 }
             } else {
-                throw new JsonException("No @Unconvert method or NodeConverter registered for " + nodeClazz.getName());
+                throw new JsonException("No value binding found for type " + valueClazz.getName() +
+                        ": missing @NodeValue annotation and no ValueCodec registered");
             }
         }
 
-        public Object copy(Object node) {
-            if (converter != null) {
+        public Object copy(Object value) {
+            if (valueCodec != null) {
                 try {
-                    return converter.copy(node);
+                    return valueCodec.copy(value);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to copy using converter " + converter.getClass().getName() +
-                            " for target type " + nodeClazz.getName(), e);
+                    throw new JsonException("Failed to copy value of type " + valueClazz.getName() +
+                            " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
             } else if (copyHandle != null) {
                 try {
-                    return copyHandle.invoke(node);
+                    return copyHandle.invoke(value);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to copy using @Copy method in " + nodeClazz.getName(), e);
+                    throw new JsonException("Failed to copy value of type " + valueClazz.getName() +
+                            " using @Copy method " + copyHandle, e);
                 }
             } else {
-                throw new JsonException("No @copy method or NodeConverter registered for " + nodeClazz.getName());
+                throw new JsonException("No value binding found for type " + valueClazz.getName() +
+                        ": missing @NodeValue annotation and no ValueCodec registered");
             }
         }
 
     }
 
-    public static ConvertibleInfo registerConvertible(Class<?> clazz) {
-        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        ConvertibleInfo ci = ReflectUtil.analyzeConvertible(clazz);
-        CONVERTIBLE_CACHE.put(clazz, ci);
+    public static ValueCodecInfo registerValueCodec(Class<?> clazz) {
+        Objects.requireNonNull(clazz, "clazz is null");
+        ValueCodecInfo ci = ReflectUtil.analyzeNodeValue(clazz);
+        VALUE_CODEC_INFO_CACHE.put(clazz, ci);
         notifyFacades(ci);
         return ci;
     }
 
-    public static <N, R> ConvertibleInfo registerConvertible(NodeConverter<N, R> converter) {
-        if (converter == null) throw new IllegalArgumentException("Converter must not be null");
+    public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
+        Objects.requireNonNull(valueCodec, "valueCodec is null");
+        Class<N> valueClazz = valueCodec.getValueClass();
+        Class<R> rawClazz = valueCodec.getRawClass();
+        if (!NodeType.of(rawClazz).isRaw()) {
+            throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
+                    rawClazz.getName() + ". The raw type must be one of the supported node value types: " +
+                    "String, Number, Boolean, null, Map, or List.");
+        }
 
-        Class<N> nodeClazz = converter.getNodeClass();
-        Class<R> rawClazz = converter.getRawClass();
-        if (!NodeType.of(rawClazz).isRaw())
-            throw new JsonException("Invalid @Convert return type in NodeConverter class " +
-                    converter.getClass().getName() + ": " + rawClazz.getName() +
-                    ". The return type must be a supported raw node value type (String, Number, Boolean, null, Map, or List).");
-
-        ConvertibleInfo ci = new ConvertibleInfo(nodeClazz, rawClazz, converter,
+        ValueCodecInfo ci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec,
                 null, null, null);
-        CONVERTIBLE_CACHE.put(nodeClazz, ci);
+        VALUE_CODEC_INFO_CACHE.put(valueClazz, ci);
         notifyFacades(ci);
         return ci;
     }
 
-    private static void notifyFacades(ConvertibleInfo newRegistered) {
-        Sjf4jConfig.global().getJsonFacade().registerConvertible(newRegistered);
-        Sjf4jConfig.global().getYamlFacade().registerConvertible(newRegistered);
+    private static void notifyFacades(ValueCodecInfo newRegistered) {
+        Sjf4jConfig.global().getJsonFacade().registerNodeValue(newRegistered);
+        Sjf4jConfig.global().getYamlFacade().registerNodeValue(newRegistered);
     }
 
-    public static ConvertibleInfo getConvertibleInfo(Class<?> clazz) {
+    public static ValueCodecInfo getValueCodecInfo(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return CONVERTIBLE_CACHE.get(clazz);
+        return VALUE_CODEC_INFO_CACHE.get(clazz);
     }
 
-    public static boolean isConvertible(Class<?> clazz) {
+    public static boolean isNodeValue(Class<?> clazz) {
         if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return CONVERTIBLE_CACHE.containsKey(clazz);
+        return VALUE_CODEC_INFO_CACHE.containsKey(clazz);
     }
 
-    public static Map<Class<?>, ConvertibleInfo> getAllConvertibles() {
-        return CONVERTIBLE_CACHE;
+    public static Map<Class<?>, ValueCodecInfo> getAllValueCodecInfos() {
+        return VALUE_CODEC_INFO_CACHE;
     }
 
     /// POJO

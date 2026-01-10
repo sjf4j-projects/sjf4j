@@ -60,11 +60,10 @@ public class StreamingUtil {
         Class<?> rawClazz = TypeUtil.getRawClass(type);
         reader.nextNull();
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
-            return ci.unconvert(null);
+            return ci.decode(null);
         }
-
         return null;
     }
 
@@ -74,14 +73,12 @@ public class StreamingUtil {
             return reader.nextBoolean();
         }
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
             Boolean b = reader.nextBoolean();
-            return ci.unconvert(b);
+            return ci.decode(b);
         }
-
-        throw new JsonException("Type " + rawClazz.getName()
-                + " cannot be deserialized from a Boolean value without a NodeConverter");
+        throw new JsonException("Cannot deserialize Boolean value into type " + rawClazz.getName());
     }
 
     public static Object readNumber(FacadeReader reader, Type type) throws IOException {
@@ -95,14 +92,12 @@ public class StreamingUtil {
             return NumberUtil.as(n, rawClazz);
         }
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
             Number n = reader.nextNumber();
-            return ci.unconvert(n);
+            return ci.decode(n);
         }
-
-        throw new JsonException("Type " + rawClazz.getName()
-                + " cannot be deserialized from a Number value without a NodeConverter");
+        throw new JsonException("Cannot deserialize Number value into type " + rawClazz.getName());
     }
 
     @SuppressWarnings("unchecked")
@@ -116,19 +111,17 @@ public class StreamingUtil {
             return s.charAt(0);
         }
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
             String s = reader.nextString();
-            return ci.unconvert(s);
+            return ci.decode(s);
         }
 
         if (rawClazz.isEnum()) {
             String s = reader.nextString();
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
-
-        throw new JsonException("Type " + rawClazz.getName()
-                + " cannot be deserialized from a String value without a NodeConverter");
+        throw new JsonException("Cannot deserialize String value into type " + rawClazz.getName());
     }
 
     /**
@@ -144,7 +137,7 @@ public class StreamingUtil {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
@@ -155,7 +148,7 @@ public class StreamingUtil {
                 map.put(key, value);
             }
             reader.endObject();
-            return ci != null ? ci.unconvert(map) : map;
+            return ci != null ? ci.decode(map) : map;
         }
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
@@ -208,8 +201,7 @@ public class StreamingUtil {
             reader.endObject();
             return pojo;
         }
-
-        throw new JsonException("Unsupported type: " + type);
+        throw new JsonException("Cannot deserialize Object value into type " + rawClazz.getName());
     }
 
 
@@ -217,7 +209,7 @@ public class StreamingUtil {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = TypeUtil.getRawClass(type);
 
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
             Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
@@ -227,7 +219,7 @@ public class StreamingUtil {
                 list.add(value);
             }
             reader.endArray();
-            return ci != null ? ci.unconvert(list) : list;
+            return ci != null ? ci.decode(list) : list;
         }
 
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
@@ -269,8 +261,7 @@ public class StreamingUtil {
             }
             return array;
         }
-
-        throw new JsonException("Unsupported type: " + type);
+        throw new JsonException("Cannot deserialize Array value into type " + rawClazz.getName());
     }
 
 
@@ -284,9 +275,9 @@ public class StreamingUtil {
         }
 
         Class<?> rawClazz = node.getClass();
-        NodeRegistry.ConvertibleInfo ci = NodeRegistry.getConvertibleInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
-            Object raw = ci.convert(node);
+            Object raw = ci.encode(node);
             writeNode(writer, raw);
             return;
         }
@@ -360,9 +351,7 @@ public class StreamingUtil {
                 }
                 writer.endObject();
             } else {
-                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() +
-                        "', expected one of [JsonObject, JsonArray, String, Number, Boolean] or a type registered in " +
-                        "ConverterRegistry or a valid POJO/JOJO, or a Map/List/Array of such elements.");
+                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
             }
         }
     }

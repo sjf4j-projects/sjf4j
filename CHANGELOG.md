@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `JsonPatch.applyCopy(Class<?> clazz)`
 
 ### Changed
+- Rename `FunctionRegistry` to `PathFunctionRegistry`
+
 ### Fixed
-- POJO analyze
+- @Convertible 支持父类注解子类重载的情况
+- 修复对 POJO 构造函数缺失的认定问题
 
 ### Removed
 

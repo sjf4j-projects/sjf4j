@@ -212,9 +212,9 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     }
 
 
-    /// Convertible
+    /// NodeValue
 
-    default void registerConvertible(NodeRegistry.ConvertibleInfo ci) {
+    default void registerNodeValue(NodeRegistry.ValueCodecInfo ci) {
 
     }
 
