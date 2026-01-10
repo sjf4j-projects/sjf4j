@@ -33,6 +33,8 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
         }
+        // TODO: Retrieve the original FieldNamingStrategy via reflection?
+        gsonBuilder.setFieldNamingStrategy(new GsonModule.NodeFieldNamingStrategy());
         this.gson = gsonBuilder.create();
     }
 

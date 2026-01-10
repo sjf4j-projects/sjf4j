@@ -1,6 +1,7 @@
 package org.sjf4j.facade.jackson;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -27,23 +28,12 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         if (objectMapper == null) throw new IllegalArgumentException("ObjectMapper must not be null");
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+//        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         this.objectMapper = objectMapper;
         this.module = new JacksonModule.MySimpleModule();
-        registerNodeValues();
         this.objectMapper.registerModule(this.module);
-    }
-
-    private void registerNodeValues() {
-        for (NodeRegistry.ValueCodecInfo ci : NodeRegistry.getAllValueCodecInfos().values()) {
-            registerNodeValue(ci);
-        }
-    }
-
-    @Override
-    public void registerNodeValue(NodeRegistry.ValueCodecInfo ci) {
-        this.module.addDeserializer(ci.getValueClass(), new JacksonModule.NodeValueDeserializer<>(ci));
-        this.module.addSerializer(ci.getValueClass(), new JacksonModule.NodeValueSerializer<>(ci));
+        this.objectMapper.setAnnotationIntrospector(new JacksonModule.NodeFieldAnnotationIntrospector());
     }
 
 

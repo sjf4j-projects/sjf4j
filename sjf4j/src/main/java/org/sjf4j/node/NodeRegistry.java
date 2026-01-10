@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.ReflectUtil;
 
@@ -115,32 +116,29 @@ public final class NodeRegistry {
 
     public static ValueCodecInfo registerValueCodec(Class<?> clazz) {
         Objects.requireNonNull(clazz, "clazz is null");
-        ValueCodecInfo ci = ReflectUtil.analyzeNodeValue(clazz);
-        VALUE_CODEC_INFO_CACHE.put(clazz, ci);
-        notifyFacades(ci);
-        return ci;
+        ValueCodecInfo vci = VALUE_CODEC_INFO_CACHE.get(clazz);
+        if (vci == null) {
+            if (clazz.isAnnotationPresent(NodeValue.class)) {
+                vci = ReflectUtil.analyzeNodeValue(clazz);
+                VALUE_CODEC_INFO_CACHE.put(clazz, vci);
+            }
+        }
+        return vci;
     }
 
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueCodec, "valueCodec is null");
-        Class<N> valueClazz = valueCodec.getValueClass();
         Class<R> rawClazz = valueCodec.getRawClass();
-        if (!NodeType.of(rawClazz).isRaw()) {
+        if (!NodeType.of(rawClazz).isRaw())
             throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of the supported node value types: " +
                     "String, Number, Boolean, null, Map, or List.");
-        }
 
-        ValueCodecInfo ci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec,
-                null, null, null);
-        VALUE_CODEC_INFO_CACHE.put(valueClazz, ci);
-        notifyFacades(ci);
-        return ci;
-    }
-
-    private static void notifyFacades(ValueCodecInfo newRegistered) {
-        Sjf4jConfig.global().getJsonFacade().registerNodeValue(newRegistered);
-        Sjf4jConfig.global().getYamlFacade().registerNodeValue(newRegistered);
+        Class<N> valueClazz = valueCodec.getValueClass();
+        Objects.requireNonNull(valueClazz, "clazz is null");
+        return VALUE_CODEC_INFO_CACHE.computeIfAbsent(valueClazz,
+                k -> new ValueCodecInfo(valueClazz, rawClazz, valueCodec,
+                        null, null, null));
     }
 
     public static ValueCodecInfo getValueCodecInfo(Class<?> clazz) {
@@ -149,8 +147,8 @@ public final class NodeRegistry {
     }
 
     public static boolean isNodeValue(Class<?> clazz) {
-        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
-        return VALUE_CODEC_INFO_CACHE.containsKey(clazz);
+        ValueCodecInfo vci = registerValueCodec(clazz);
+        return vci != null;
     }
 
     public static Map<Class<?>, ValueCodecInfo> getAllValueCodecInfos() {

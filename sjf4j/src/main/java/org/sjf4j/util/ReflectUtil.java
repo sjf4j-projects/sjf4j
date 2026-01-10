@@ -4,6 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.annotation.node.Encode;
@@ -128,9 +129,8 @@ public class ReflectUtil {
 //                            field.getName(), curClazz);
                 } else {
                     Type fieldType = TypeUtil.getFieldType(curType, field);
-                    fields.put(field.getName(),
-                            new NodeRegistry.FieldInfo(field.getName(), fieldType,
-                                    getter, lambdaGetter, setter, lambdaSetter));
+                    fields.put(getFieldName(field), new NodeRegistry.FieldInfo(field.getName(),
+                            fieldType, getter, lambdaGetter, setter, lambdaSetter));
                 }
             }
 
@@ -141,8 +141,14 @@ public class ReflectUtil {
         return new NodeRegistry.PojoInfo(clazz, constructor, lambdaConstructor, fields);
     }
 
-
-    /// Private
+    public static String getFieldName(Field field) {
+        NodeField nf = field.getAnnotation(NodeField.class);
+        if (nf != null && !nf.value().isEmpty()) {
+            return nf.value();
+        } else {
+            return field.getName();
+        }
+    }
 
     private static final String[] JDK_PREFIX = {
             "java.", "javax.", "jakarta.", "jdk."
@@ -281,19 +287,10 @@ public class ReflectUtil {
 
     /// NodeValue
 
-    /**
-     * A `@Convertible` class must define a non-static `@Convert` method returning a supported node value,
-     * a static `@Unconvert` method accepting that value and returning the node type itself,
-     * and an optional non-static `@Copy` method returning the same node type.
-     *
-     * @param clazz     A node class annotated with @Convertible
-     * @return          NodeRegistry.ConvertibleInfo
-     */
     public static NodeRegistry.ValueCodecInfo analyzeNodeValue(Class<?> clazz) {
-        if (!clazz.isAnnotationPresent(NodeValue.class))
-            throw new JsonException("Class " + clazz.getName() + " is not annotated with @Convertible");
+        if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
-        MethodHandle convertHandle = null, unconvertHandle = null, copyHandle = null;
+        MethodHandle encodeHandle = null, decodeHandle = null, copyHandle = null;
         MethodHandles.Lookup lookup = ROOT_LOOKUP;
         if (!IS_JDK8) {
             try {
@@ -303,34 +300,34 @@ public class ReflectUtil {
 
         Class<?> current = clazz;
         while (current != null && current != Object.class &&
-                (convertHandle == null || unconvertHandle == null || copyHandle == null)) {
+                (encodeHandle == null || decodeHandle == null || copyHandle == null)) {
             for (Method m : current.getDeclaredMethods()) {
                 if (m.isBridge()) continue;
-                // Convert
-                if (convertHandle == null && m.isAnnotationPresent(Encode.class)) {
+                // Encode
+                if (encodeHandle == null && m.isAnnotationPresent(Encode.class)) {
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Cannot use @Convert on static methods");
+                        throw new JsonException("Cannot use @Encode on static methods");
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
-                        convertHandle = lookup.unreflect(m);
+                        encodeHandle = lookup.unreflect(m);
                         continue;
                     } catch (IllegalAccessException e) {
                         throw new JsonException(e);
                     }
                 }
-                // Unconvert
-                if (unconvertHandle == null && m.isAnnotationPresent(Decode.class)) {
+                // Decode
+                if (decodeHandle == null && m.isAnnotationPresent(Decode.class)) {
                     if (!Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Must use @Unconvert on static methods");
+                        throw new JsonException("Must use @Decode on static methods");
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
-                        unconvertHandle = lookup.unreflect(m);
+                        decodeHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
@@ -353,31 +350,31 @@ public class ReflectUtil {
             current = current.getSuperclass();
         }
 
-        if (convertHandle == null)
-            throw new JsonException("Missing @Convert method in @Convertible class " + clazz.getName());
-        if (convertHandle.type().parameterCount() != 1) {
-            throw new JsonException("@Convert method must have no parameters, but found " +
-                    (convertHandle.type().parameterCount() - 1));
+        if (encodeHandle == null)
+            throw new JsonException("Missing @Encode method in class " + clazz.getName());
+        if (encodeHandle.type().parameterCount() != 1) {
+            throw new JsonException("@Encode method must have no parameters, but found " +
+                    (encodeHandle.type().parameterCount() - 1));
         }
-        Class<?> rawClazz = convertHandle.type().returnType();
+        Class<?> rawClazz = encodeHandle.type().returnType();
         if (!NodeType.of(rawClazz).isRaw())
-            throw new JsonException("Invalid @Convert return type in @Convertible class " +
-                    clazz.getName() + ": " + rawClazz.getName() +
-                    ". The return type must be a supported raw node value type (String, Number, Boolean, null, Map, or List).");
+            throw new JsonException("@Encode method return invalid type " + rawClazz.getName() +
+                    " in class " + clazz.getName() +
+                    ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
-        if (unconvertHandle == null)
-            throw new JsonException("Missing @Unconvert method in @Convertible class " + clazz.getName());
-        if (unconvertHandle.type().parameterCount() != 1)
-            throw new JsonException("@Unconvert method must have exactly one parameter, but found " +
-                    unconvertHandle.type().parameterCount());
-        Class<?> rawClazz2 = unconvertHandle.type().parameterType(0);
-        Class<?> nodeClazz2 = unconvertHandle.type().returnType();
+        if (decodeHandle == null)
+            throw new JsonException("Missing @Decode method in class " + clazz.getName());
+        if (decodeHandle.type().parameterCount() != 1)
+            throw new JsonException("@Decode method must have exactly one parameter, but found " +
+                    decodeHandle.type().parameterCount());
+        Class<?> rawClazz2 = decodeHandle.type().parameterType(0);
+        Class<?> valueClazz2 = decodeHandle.type().returnType();
         if (rawClazz2 != rawClazz)
-            throw new JsonException("@Unconvert method parameter type must match @Convert return type. " +
+            throw new JsonException("@Decode method parameter type must match @Encode return type. " +
                     "Expected: " + rawClazz.getName() + ", Found: " + rawClazz2.getName());
-        if (nodeClazz2 != clazz)
-            throw new JsonException("@Unconvert method return type must be " + clazz.getName() +
-                    ", but found " + nodeClazz2.getName());
+        if (valueClazz2 != clazz)
+            throw new JsonException("@Decode method return type must be " + clazz.getName() +
+                    ", but found " + valueClazz2.getName());
 
         if (copyHandle != null) {
             if (copyHandle.type().parameterCount() != 1)
@@ -390,7 +387,7 @@ public class ReflectUtil {
         }
 
         return new NodeRegistry.ValueCodecInfo(clazz, rawClazz, null,
-                convertHandle, unconvertHandle, copyHandle);
+                encodeHandle, decodeHandle, copyHandle);
     }
 
     private static Method findOverride(Method baseMethod, Class<?> clazz) {
@@ -405,5 +402,6 @@ public class ReflectUtil {
             return null;
         }
     }
+
 
 }

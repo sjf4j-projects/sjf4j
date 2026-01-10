@@ -212,10 +212,4 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     }
 
 
-    /// NodeValue
-
-    default void registerNodeValue(NodeRegistry.ValueCodecInfo ci) {
-
-    }
-
 }

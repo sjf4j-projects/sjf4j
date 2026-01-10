@@ -690,14 +690,14 @@ public class NodeUtil {
      *
      * <h3>Type Notation</h3>
      * <ul>
-     *   <li>{@code M{..}}  – Map</li>
+     *   <li>{@code {..}}  – Map</li>
      *   <li>{@code J{..}}  – JsonObject</li>
-     *   <li>{@code L[..]}  – List</li>
+     *   <li>{@code [..]}  – List</li>
      *   <li>{@code J[..]}  – JsonArray</li>
      *   <li>{@code A[..]}  – Java Array</li>
      *   <li>{@code @Type{..}} – POJO / JOJO</li>
      *   <li>{@code @Type[..]} – JAJO</li>
-     *   <li>{@code !Type#raw} – Convertible</li>
+     *   <li>{@code @Type#raw} – NodeValue</li>
      *   <li>{@code !Object@hash} – Unknown</li>
      * </ul>
      *
@@ -721,7 +721,7 @@ public class NodeUtil {
         switch (nt) {
             case OBJECT_MAP: {
                 Map<String, Object> map = (Map<String, Object>) node;
-                sb.append("M{");
+                sb.append("{");
                 int idx = 0;
                 for (Map.Entry<String, Object> entry : map.entrySet()) {
                     if (idx++ > 0) sb.append(", ");
@@ -774,7 +774,7 @@ public class NodeUtil {
             }
             case ARRAY_LIST: {
                 List<Object> list = (List<Object>) node;
-                sb.append("L[");
+                sb.append("[");
                 int idx = 0;
                 for (Object v : list) {
                     if (idx++ > 0) sb.append(", ");
@@ -818,7 +818,7 @@ public class NodeUtil {
             case VALUE_REGISTERED: {
                 NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
                 Object raw = ci.encode(node);
-                sb.append("!").append(node.getClass().getSimpleName()).append("#");
+                sb.append("@").append(node.getClass().getSimpleName()).append("#");
                 _inspect(raw, sb);
                 return;
             }

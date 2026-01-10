@@ -1,11 +1,15 @@
 package org.sjf4j.facade.gson;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeField;
+import org.sjf4j.facade.jackson.JacksonFacadeTest;
+import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
@@ -19,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @Slf4j
 public class GsonFacadeTest {
@@ -119,7 +124,6 @@ public class GsonFacadeTest {
     public void testNodeValue1() {
         GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(Ops.class);
-        facade.registerNodeValue(ci);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());
@@ -130,6 +134,55 @@ public class GsonFacadeTest {
         String json2 = sw.toString();
         log.info("json2={}", json2);
         assertEquals(json1, json2);
+    }
+
+    public static class BookField extends JsonObject {
+        private int id;
+        private String name;
+
+        @NodeField("user_name")
+        private String userName;
+        private double height;
+        private transient int transientHeight;
+    }
+
+    @Test
+    public void testNodeField1() {
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+
+        String json1 = "{\"id\":123,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
+        BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
+        log.info("jo1={}", jo1.inspect());
+        assertEquals("han", jo1.userName);
+        assertEquals("han", jo1.getString("user_name"));
+        assertNull(jo1.getString("userName"));
+
+        assertEquals(175.5, jo1.height);
+        assertEquals(0, jo1.transientHeight);
+
+        StringWriter sw = new StringWriter();
+        facade.writeNode(sw, jo1);
+        String json2 = sw.toString();
+        log.info("json2={}", json2);
+        assertEquals(json1, json2);
+    }
+
+    public static class Note {
+        @NodeField("user_name")
+        private String userName;
+        public String getUserName() {return userName;}
+    }
+
+    @Test
+    public void testNodeField2() {
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+
+        Note note1 = new Note();
+        note1.userName = "gua";
+        StringWriter sw = new StringWriter();
+        facade.writeNode(sw, note1);
+        String json1 = sw.toString();
+        log.info("json1={}", json1);
     }
 
 

@@ -52,7 +52,6 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         // With Module
         if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE) {
             ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
-//            provider.register(JsonArray.class, new Fastjson2Module.JsonArrayReader());
             provider.register(new Fastjson2Module.MyReaderModule());
             this.ctx.setExtraProcessor((object, key, value) -> {
                 if (object instanceof JsonObject) {

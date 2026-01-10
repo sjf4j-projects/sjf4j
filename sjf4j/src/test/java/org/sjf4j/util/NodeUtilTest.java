@@ -352,7 +352,7 @@ public class NodeUtilTest {
 
     @Test
     public void testInspect2() {
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String encode(LocalDate node) {
                 return node.toString();
@@ -380,7 +380,7 @@ public class NodeUtilTest {
         assertEquals(date1, date2);
 
         log.info("inspect={}", NodeUtil.inspect(date2));
-        assertEquals("!LocalDate#" + date1.toString(), NodeUtil.inspect(date2));
+        assertEquals("@LocalDate#" + date1.toString(), NodeUtil.inspect(date2));
     }
 
 }

@@ -10,24 +10,30 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
+import com.fasterxml.jackson.databind.introspect.Annotated;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.node.NodeRegistry;
+import org.w3c.dom.Node;
 
 import java.io.IOException;
 import java.util.Map;
 
-public class JacksonModule {
+public interface JacksonModule {
 
-    public static class MySimpleModule extends SimpleModule {
+    class MySimpleModule extends SimpleModule {
         public MySimpleModule() {
+
             setDeserializerModifier(new BeanDeserializerModifier() {
                 @Override
                 public BeanDeserializerBuilder updateBuilder(DeserializationConfig config,
@@ -50,6 +56,10 @@ public class JacksonModule {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(clazz);
                     }
+                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(clazz);
+                    if (vci != null) {
+                        return new NodeValueDeserializer<>(vci);
+                    }
                     return deserializer;
                 }
             });
@@ -59,21 +69,27 @@ public class JacksonModule {
                 public JsonSerializer<?> modifySerializer(SerializationConfig config,
                                                           BeanDescription beanDesc,
                                                           JsonSerializer<?> serializer) {
-                    if (JsonObject.class.isAssignableFrom(beanDesc.getBeanClass())) {
+                    Class<?> clazz = beanDesc.getBeanClass();
+                    if (JsonObject.class.isAssignableFrom(clazz)) {
                         return new JsonObjectSerializer();
                     }
-                    if (JsonArray.class.isAssignableFrom(beanDesc.getBeanClass())) {
+                    if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
+                    }
+                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(clazz);
+                    if (vci != null) {
+                        return new NodeValueSerializer<>(vci);
                     }
                     return serializer;
                 }
             });
         }
+
     }
 
 
     /// Extra
-    public static class JsonObjectAnySetter extends SettableAnyProperty {
+    class JsonObjectAnySetter extends SettableAnyProperty {
 
         public JsonObjectAnySetter(JavaType type) {
             super(null, null, type, null, null, null);
@@ -101,7 +117,7 @@ public class JacksonModule {
 
     }
 
-    public static class JsonArrayDeserializer<T extends JsonArray> extends JsonDeserializer<T> {
+    class JsonArrayDeserializer<T extends JsonArray> extends JsonDeserializer<T> {
         private final NodeRegistry.PojoInfo pi;
         public JsonArrayDeserializer(Class<?> clazz) {
             super();
@@ -129,7 +145,7 @@ public class JacksonModule {
         }
     }
 
-    public static class NodeValueDeserializer<T> extends JsonDeserializer<T> {
+    class NodeValueDeserializer<T> extends JsonDeserializer<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
         public NodeValueDeserializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
@@ -145,8 +161,7 @@ public class JacksonModule {
 
 
     /// Write
-
-    public static class JsonObjectSerializer extends JsonSerializer<JsonObject> {
+    class JsonObjectSerializer extends JsonSerializer<JsonObject> {
         @Override
         public void serialize(JsonObject jo, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
@@ -158,7 +173,7 @@ public class JacksonModule {
         }
     }
 
-    public static class JsonArraySerializer extends JsonSerializer<JsonArray> {
+    class JsonArraySerializer extends JsonSerializer<JsonArray> {
         @Override
         public void serialize(JsonArray ja, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
@@ -170,7 +185,7 @@ public class JacksonModule {
         }
     }
 
-    public static class NodeValueSerializer<T> extends JsonSerializer<T> {
+    class NodeValueSerializer<T> extends JsonSerializer<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
         public NodeValueSerializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
@@ -180,6 +195,26 @@ public class JacksonModule {
         public void serialize(T value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
             Object raw = valueCodecInfo.encode(value);
             serializers.defaultSerializeValue(raw, gen);
+        }
+    }
+
+    /// NodeField
+    class NodeFieldAnnotationIntrospector extends JacksonAnnotationIntrospector {
+        @Override
+        public PropertyName findNameForSerialization(Annotated a) {
+            NodeField nf = a.getAnnotation(NodeField.class);
+            if (nf != null && !nf.value().isEmpty()) {
+                return PropertyName.construct(nf.value());
+            }
+            return super.findNameForSerialization(a);
+        }
+        @Override
+        public PropertyName findNameForDeserialization(Annotated a) {
+            NodeField nf = a.getAnnotation(NodeField.class);
+            if (nf != null && !nf.value().isEmpty()) {
+                return PropertyName.construct(nf.value());
+            }
+            return super.findNameForDeserialization(a);
         }
     }
 

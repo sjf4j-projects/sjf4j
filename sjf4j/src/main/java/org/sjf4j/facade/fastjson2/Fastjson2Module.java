@@ -3,19 +3,30 @@ package org.sjf4j.facade.fastjson2;
 import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.codec.BeanInfo;
+import com.alibaba.fastjson2.codec.FieldInfo;
+import com.alibaba.fastjson2.modules.ObjectReaderAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectReaderModule;
+import com.alibaba.fastjson2.modules.ObjectWriterAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectWriterModule;
 import com.alibaba.fastjson2.reader.ObjectReader;
+import com.alibaba.fastjson2.util.BeanUtils;
+import com.alibaba.fastjson2.writer.FieldWriter;
 import com.alibaba.fastjson2.writer.ObjectWriter;
+import com.alibaba.fastjson2.writer.ObjectWriterCreator;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.util.TypeUtil;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.List;
 
 
-public class Fastjson2Module {
+public interface Fastjson2Module {
 
 //    public static class MyObjectReaderModule implements ObjectReaderModule {
 //
@@ -52,8 +63,7 @@ public class Fastjson2Module {
 //        }
 //    }
 
-    public static class MyReaderModule implements ObjectReaderModule {
-
+    class MyReaderModule implements ObjectReaderModule {
         @Override
         public ObjectReader<?> getObjectReader(Type type) {
             Class<?> rawClazz = TypeUtil.getRawClass(type);
@@ -66,9 +76,22 @@ public class Fastjson2Module {
             }
             return null;
         }
+
+        @Override
+        public void getFieldInfo(FieldInfo fieldInfo, Class objectClass, Field field) {
+            ObjectReaderAnnotationProcessor annotationProcessor = getAnnotationProcessor();
+            if (annotationProcessor != null) {
+                annotationProcessor.getFieldInfo(fieldInfo, objectClass, field);
+            }
+            NodeField nf = field.getAnnotation(NodeField.class);
+            if (nf != null && !nf.value().isEmpty()) {
+                fieldInfo.fieldName = nf.value();
+                fieldInfo.ignore = false;
+            }
+        }
     }
 
-    public static class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
+    class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
         private final NodeRegistry.PojoInfo pi;
         public JsonArrayReader(Class<?> clazz) {
             this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
@@ -88,7 +111,7 @@ public class Fastjson2Module {
         }
     }
 
-    public static class NodeValueReader<T> implements ObjectReader<T> {
+    class NodeValueReader<T> implements ObjectReader<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
         public NodeValueReader(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
@@ -102,9 +125,9 @@ public class Fastjson2Module {
         }
     }
 
-    /// Write
 
-    public static class MyWriterModule implements ObjectWriterModule {
+    /// Write
+    class MyWriterModule implements ObjectWriterModule {
         @Override
         public ObjectWriter<?> getObjectWriter(Type objectType, Class objectClass) {
             if (JsonObject.class.isAssignableFrom(objectClass)) {
@@ -119,9 +142,46 @@ public class Fastjson2Module {
             }
             return null;
         }
+
+//        @SuppressWarnings("rawtypes")
+//        @Override
+//        public boolean createFieldWriters(ObjectWriterCreator creator,
+//                                          Class objectType,
+//                                          List<FieldWriter> fieldWriters) {
+//            for (int i = 0; i < fieldWriters.size(); i++) {
+//                FieldWriter fw = fieldWriters.get(i);
+//                NodeField nf = fw.field.getAnnotation(NodeField.class);
+//                if (nf != null && !nf.value().isEmpty()) {
+//                    FieldWriter newFw = creator.createFieldWriter(nf.value(),
+//                            fw.ordinal, fw.features, fw.format, fw.field);
+//                    fieldWriters.set(i, newFw);
+//                }
+//            }
+//            return false;
+//        }
+
+        @Override
+        public ObjectWriterAnnotationProcessor getAnnotationProcessor() {
+            return new ObjectWriterAnnotationProcessor() {
+                @Override
+                public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Field field) {
+                    NodeField nf = field.getAnnotation(NodeField.class);
+                    if (nf != null && !nf.value().isEmpty()) {
+                        fieldInfo.fieldName = nf.value();
+                        fieldInfo.ignore = false;
+                        fieldInfo.features |= FieldInfo.DISABLE_SMART_MATCH;
+                    }
+                }
+                @Override
+                public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Method method) {
+                    fieldInfo.ignore = true;
+                }
+            };
+        }
+
     }
 
-    public static class JsonObjectWriter implements ObjectWriter<JsonObject> {
+    class JsonObjectWriter implements ObjectWriter<JsonObject> {
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
@@ -136,7 +196,7 @@ public class Fastjson2Module {
         }
     }
 
-    public static class JsonArrayWriter implements ObjectWriter<JsonArray> {
+    class JsonArrayWriter implements ObjectWriter<JsonArray> {
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
@@ -150,7 +210,7 @@ public class Fastjson2Module {
         }
     }
 
-    public static class NodeValueWriter<T> implements ObjectWriter<T> {
+    class NodeValueWriter<T> implements ObjectWriter<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
         public NodeValueWriter(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;

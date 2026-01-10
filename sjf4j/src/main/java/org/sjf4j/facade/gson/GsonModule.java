@@ -1,5 +1,6 @@
 package org.sjf4j.facade.gson;
 
+import com.google.gson.FieldNamingStrategy;
 import com.google.gson.Gson;
 import com.google.gson.ToNumberStrategy;
 import com.google.gson.TypeAdapter;
@@ -9,18 +10,20 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GsonModule {
+public interface GsonModule {
 
     public static class MyTypeAdapterFactory implements TypeAdapterFactory {
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
             Class<?> rawClazz = type.getRawType();
@@ -88,8 +91,12 @@ public class GsonModule {
             for (Map.Entry<String, Object> entry : jo.entrySet()) {
                 out.name(entry.getKey());
                 Object value = entry.getValue();
-                TypeAdapter<Object> adapter = (TypeAdapter<Object>) gson.getAdapter(value.getClass());
-                adapter.write(out, value);
+                if (value == null) {
+                    out.nullValue();
+                } else {
+                    TypeAdapter<Object> adapter = (TypeAdapter<Object>) gson.getAdapter(value.getClass());
+                    adapter.write(out, value);
+                }
             }
             out.endObject();
         }
@@ -156,14 +163,23 @@ public class GsonModule {
         }
     }
 
-
     /// To Number
-
     public static class MyToNumberStrategy implements ToNumberStrategy {
         @Override
         public Number readNumber(JsonReader in) throws IOException {
             return NumberUtil.toNumber(in.nextString());
         }
     }
+
+    /// NodeField
+    class NodeFieldNamingStrategy implements FieldNamingStrategy {
+        @Override
+        public String translateName(Field field) {
+            NodeField nf = field.getAnnotation(NodeField.class);
+            if (nf != null && !nf.value().isEmpty()) return nf.value();
+            return field.getName();
+        }
+    }
+
 
 }
