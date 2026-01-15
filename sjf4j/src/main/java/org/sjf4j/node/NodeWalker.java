@@ -6,7 +6,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathToken;
 import org.sjf4j.util.TypeUtil;
-import org.sjf4j.util.TypedNode;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -333,7 +332,7 @@ public class NodeWalker {
     // return null, indicates that the value is a POJO without the key, and no additional keys can be inserted.
     // return TypedNode.of(null) means the value of the key is null, and you can insert it.
     @SuppressWarnings("unchecked")
-    public static TypedNode getInObjectTyped(TypedNode container, String key) {
+    public static TypedNode getTypedInObject(TypedNode container, String key) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         if (key == null) throw new IllegalArgumentException("Key must not be null");
         Object node = container.getNode();
@@ -347,7 +346,7 @@ public class NodeWalker {
                 return null;
             }
         } else if (node instanceof Map) {
-            Type subtype = TypeUtil.resolveTypeArgument(container.getType(), Map.class, 1);
+            Type subtype = TypeUtil.resolveTypeArgument(container.getClazzType(), Map.class, 1);
             return TypedNode.of(((Map<String, Object>) node).get(key), subtype);
         } else if (node instanceof JsonObject) {
             return TypedNode.infer(((JsonObject) node).get(key));
@@ -359,7 +358,7 @@ public class NodeWalker {
     // return null, indicates that the index of JsonArray/List/Array is invalid, and you can not set it.
     // return TypedNode.of(null), means the value of the index is null, and you can insert it.
     @SuppressWarnings("unchecked")
-    public static TypedNode getInArrayTyped(TypedNode container, int idx) {
+    public static TypedNode getTypedInArray(TypedNode container, int idx) {
         if (container == null) throw new IllegalArgumentException("Container must not be null");
         Object node = container.getNode();
         if (node instanceof JsonArray) {
@@ -371,7 +370,7 @@ public class NodeWalker {
                 return null;
             }
         } else if (node instanceof List) {
-            Type subtype = TypeUtil.resolveTypeArgument(container.getType(), List.class, 0);
+            Type subtype = TypeUtil.resolveTypeArgument(container.getClazzType(), List.class, 0);
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
             if (idx >= 0 && idx < list.size()) {

@@ -1,14 +1,19 @@
 package org.sjf4j;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facade.jackson.JacksonFacadeTest;
+import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -72,6 +77,9 @@ class JsonObjectTest {
         testEntrySetKeySet();
         testRemoveByPath();
         testEdgeCases();
+        testSupplier1();
+        testNodeField1();
+        testNodeField2();
     }
 
     final String JSON = "{\n" +
@@ -111,12 +119,12 @@ class JsonObjectTest {
         assertThrows(JsonException.class, () -> jo.getString("height"));
         assertEquals("175.3", jo.asString("height"));
 
-        assertEquals("good", jo.asJsonObject("friends").getString("jack"));
-        assertEquals(false, jo.asJsonObject("friends").asJsonObject("rose").getBoolean("sex"));
-        assertEquals(20, jo.asJsonObject("friends").asJsonObject("rose").asJsonArray("age").getInteger(1));
+        assertEquals("good", jo.getJsonObject("friends").getString("jack"));
+        assertEquals(false, jo.getJsonObject("friends").getJsonObject("rose").getBoolean("sex"));
+        assertEquals(20, jo.getJsonObject("friends").getJsonObject("rose").getJsonArray("age").getInteger(1));
 
         assertNull(jo.getString("noexist1"));
-        assertNull(jo.asJsonObject("noexist2"));
+        assertNull(jo.getJsonObject("noexist2"));
 
         assertEquals(5, jo.size());
         assertFalse(jo.containsKey("noexist3"));
@@ -234,10 +242,10 @@ class JsonObjectTest {
 
         JsonObject jo4 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\"}}");
         JsonObject jo5 = jo4.deepCopy();
-        jo4.asJsonObject("attr").put("aa", "jj");
+        jo4.getJsonObject("attr").put("aa", "jj");
 //        System.out.println(jo5);
-        assertEquals("jj", jo4.asJsonObject("attr").getString("aa"));
-        assertEquals("bb", jo5.asJsonObject("attr").getString("aa"));
+        assertEquals("jj", jo4.getJsonObject("attr").getString("aa"));
+        assertEquals("bb", jo5.getJsonObject("attr").getString("aa"));
 
         JsonObject attr = jo5.as("attr");
         assertEquals("bb", attr.get("aa"));
@@ -290,7 +298,7 @@ class JsonObjectTest {
 
         jo1.ensurePutByPath("$.query['idea.fqmn']", "::bad::good");
         assertEquals("::bad::good", jo1.getStringByPath("$.query['idea.fqmn']"));
-        assertEquals("::bad::good", jo1.asJsonObject("query").getString("idea.fqmn"));
+        assertEquals("::bad::good", jo1.getJsonObject("query").getString("idea.fqmn"));
         System.out.println("jo1: " + jo1);
     }
 
@@ -393,7 +401,7 @@ class JsonObjectTest {
 //        assertEquals("bb", jo1.getStringByPath("$.attr.aa", "cc"));
 //        assertEquals("cc", jo1.getStringByPath("$.attr.aa2", "cc"));
 
-        assertEquals(new JsonObject("aa", "bb"), jo1.asJsonObject("attr", new JsonObject()));
+        assertEquals(new JsonObject("aa", "bb"), jo1.getJsonObject("attr", new JsonObject()));
         assertEquals(new JsonObject(), jo1.getJsonObject("attr2", new JsonObject()));
     }
 
@@ -617,9 +625,9 @@ class JsonObjectTest {
         
         assertTrue(jo.hasNonNullByPath("$.array[1]"));
         jo.removeByPath("$.array[1]");
-        assertEquals(2, jo.asJsonArray("array").size());
-        assertEquals(1, jo.asJsonArray("array").getInteger(0));
-        assertEquals(3, jo.asJsonArray("array").getInteger(1));
+        assertEquals(2, jo.getJsonArray("array").size());
+        assertEquals(1, jo.getJsonArray("array").getInteger(0));
+        assertEquals(3, jo.getJsonArray("array").getInteger(1));
     }
 
     public void testEdgeCases() {
@@ -662,7 +670,6 @@ class JsonObjectTest {
         assertNotNull(nested);
     }
 
-    @Test
     public void testSupplier1() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
         JsonObject jo1 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
@@ -674,6 +681,42 @@ class JsonObjectTest {
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
         assertEquals(jo1, jo2);
+    }
+
+
+    public static class BookField extends JsonObject {
+        @NodeField("no")
+        private String yes;
+        private double height;
+        private transient int transientHeight;
+    }
+
+    public void testNodeField1() {
+        String json1 = "{\"no\":\"good\",\"height\":175.5,\"transientHeight\":189.9}";
+        BookField jo1 = Sjf4j.fromJson(json1, BookField.class);
+        log.info("jo1={}", jo1.inspect());
+        assertEquals("good", jo1.yes);
+        assertEquals("good", jo1.getString("no"));
+        assertNull(jo1.getString("yes"));
+        assertEquals(175.5, jo1.height);
+        assertEquals(0, jo1.transientHeight);
+
+        String json2 = Sjf4j.toJson(jo1);
+        log.info("json2={}", json2);
+        assertEquals(json1, json2);
+    }
+
+    public static class Note {
+        @NodeField("no")
+        private String yes;
+        public String getYes() {return yes;}
+    }
+
+    public void testNodeField2() {
+        Note note1 = new Note();
+        note1.yes = "gaga";
+        String json1 = Sjf4j.toJson(note1);
+        log.info("json1={}", json1);
     }
 
 }

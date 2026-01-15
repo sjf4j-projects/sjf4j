@@ -15,15 +15,15 @@ import java.util.Map;
  */
 public enum NodeType {
     /** Represents a null or void value. */
-    VALUE_VOID,
+    VALUE_NULL,
     /** Represents a string value. */
     VALUE_STRING,
     /** Represents a numeric value. */
     VALUE_NUMBER,
     /** Represents a boolean value. */
     VALUE_BOOLEAN,
-    /** Represents a registered value with custom codec. */
-    VALUE_REGISTERED,
+    /** Represents a registered @NodeValue with custom codec. */
+    VALUE_NODE_VALUE,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -53,7 +53,7 @@ public enum NodeType {
      * @return the corresponding NodeType enum value
      */
     public static NodeType of(Object node) {
-        if (node == null) return VALUE_VOID;
+        if (node == null) return VALUE_NULL;
         Class<?> clazz = node.getClass();
         if (node instanceof CharSequence || node instanceof Character || clazz.isEnum()) {
             return VALUE_STRING;
@@ -78,7 +78,7 @@ public enum NodeType {
         }
 
         if (NodeRegistry.isNodeValue(clazz)) {
-            return VALUE_REGISTERED;
+            return VALUE_NODE_VALUE;
         } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
@@ -103,7 +103,7 @@ public enum NodeType {
             } else if (clazz == boolean.class) {
                 return VALUE_BOOLEAN;
             } else if (clazz == void.class) {
-                return VALUE_VOID;
+                return VALUE_NULL;
             } else {
                 return VALUE_NUMBER;
             }
@@ -128,11 +128,11 @@ public enum NodeType {
         } else if (clazz.isArray()) {
             return ARRAY_ARRAY;
         } else if (clazz == Void.class) {
-            return VALUE_VOID;
+            return VALUE_NULL;
         }
 
         if (NodeRegistry.isNodeValue(clazz)) {
-            return VALUE_REGISTERED;
+            return VALUE_NODE_VALUE;
         } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
@@ -150,11 +150,11 @@ public enum NodeType {
 
     public boolean isBoolean() {return this == VALUE_BOOLEAN;}
 
-    public boolean isVoid() {return this == VALUE_VOID;}
+    public boolean isNull() {return this == VALUE_NULL;}
 
     public boolean isValue() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN ||
-                this == VALUE_VOID || this == VALUE_REGISTERED;
+                this == VALUE_NULL || this == VALUE_NODE_VALUE;
     }
 
     public boolean isObject() {
@@ -174,7 +174,7 @@ public enum NodeType {
     }
 
     public boolean isRaw() {
-        return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_VOID ||
+        return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_NULL ||
                 this == OBJECT_MAP || this == ARRAY_LIST;
     }
 }

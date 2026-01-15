@@ -28,7 +28,7 @@ public class TypeUtil {
      * @param object the object to get the class name from
      * @return the fully qualified class name, or "[null]" if the object is null
      */
-    public static String typeName(Object object) {
+    public static String nameOf(Object object) {
         return (object == null) ? "[null]" : object.getClass().getName();
     }
 

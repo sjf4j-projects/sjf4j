@@ -174,7 +174,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                     GsonStreamingUtil.writeNode(writer, node);
                     writer.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -203,7 +203,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                     GsonStreamingUtil.writeNode(writer, node);
                     writer.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;

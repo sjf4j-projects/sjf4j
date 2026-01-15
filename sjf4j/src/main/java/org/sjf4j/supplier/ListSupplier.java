@@ -10,6 +10,11 @@ public interface ListSupplier {
 
     <T> List<T> create();
 
+    default <T> List<T> create(List<T> target) {
+        List<T> list = create();
+        list.addAll(target);
+        return list;
+    }
 
     /// Build-in List Suppliers
 

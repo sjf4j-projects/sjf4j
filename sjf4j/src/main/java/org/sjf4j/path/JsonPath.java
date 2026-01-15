@@ -12,7 +12,7 @@ import org.sjf4j.util.PointerUtil;
 import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.NumberUtil;
 import org.sjf4j.util.TypeUtil;
-import org.sjf4j.util.TypedNode;
+import org.sjf4j.node.TypedNode;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -75,7 +76,7 @@ public class JsonPath {
      * @throws JsonException if the path expression is invalid
      */
     protected JsonPath(String expr) {
-        if (expr == null) throw new IllegalArgumentException("Expr must not be null");
+        Objects.requireNonNull(expr, "expr is null");
         if (expr.startsWith("$") || expr.startsWith("@")) {
             this.tokens = PathUtil.compile(expr);
         } else if (expr.startsWith("/")) {
@@ -170,9 +171,7 @@ public class JsonPath {
      * @throws IllegalArgumentException if token is null
      */
     public void push(PathToken token) {
-        if (token == null) {
-            throw new IllegalArgumentException("Token must not be null");
-        }
+        Objects.requireNonNull(token, "token is null");
         tokens.add(token);
     }
 
@@ -195,7 +194,7 @@ public class JsonPath {
      * @throws IllegalArgumentException if container is null
      */
     public Object getNode(Object container) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         return _findOne(container, 0);
     }
 
@@ -217,7 +216,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find String by path '" + this + "'", e);
+            throw new JsonException("Failed to get String by path '" + this + "'", e);
         }
     }
     public String getString(Object container, String defaultValue) {
@@ -238,6 +237,32 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
+    // Number
+    public Number getNumber(Object container) {
+        try {
+            Object value = getNode(container);
+            return NodeUtil.toNumber(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Number by path '" + this + "'", e);
+        }
+    }
+    public Number getNumber(Object container, Number defaultValue) {
+        Number value = getNumber(container);
+        return value == null ? defaultValue : value;
+    }
+
+    public Number asNumber(Object container) {
+        try {
+            Object value = getNode(container);
+            return NodeUtil.asNumber(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Number", e);
+        }
+    }
+    public Number asNumber(Object container, Number defaultValue) {
+        Number value = asNumber(container);
+        return value == null ? defaultValue : value;
+    }
 
     // Long
     public Long getLong(Object container) {
@@ -245,7 +270,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Long by path '" + this + "'", e);
+            throw new JsonException("Failed to get Long by path '" + this + "'", e);
         }
     }
     public long getLong(Object container, long defaultValue) {
@@ -272,7 +297,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Integer by path '" + this + "'", e);
+            throw new JsonException("Failed to get Integer by path '" + this + "'", e);
         }
     }
     public int getInteger(Object container, int defaultValue) {
@@ -299,7 +324,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Short by path '" + this + "'", e);
+            throw new JsonException("Failed to get Short by path '" + this + "'", e);
         }
     }
     public short getShort(Object container, short defaultValue) {
@@ -326,7 +351,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Byte by path '" + this + "'", e);
+            throw new JsonException("Failed to get Byte by path '" + this + "'", e);
         }
     }
     public byte getByte(Object container, byte defaultValue) {
@@ -353,7 +378,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Double by path '" + this + "'", e);
+            throw new JsonException("Failed to get Double by path '" + this + "'", e);
         }
     }
     public double getDouble(Object container, double defaultValue) {
@@ -380,7 +405,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Float by path '" + this + "'", e);
+            throw new JsonException("Failed to get Float by path '" + this + "'", e);
         }
     }
     public float getFloat(Object container, float defaultValue) {
@@ -407,7 +432,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find BigInteger by path '" + this + "'", e);
+            throw new JsonException("Failed to get BigInteger by path '" + this + "'", e);
         }
     }
     public BigInteger getBigInteger(Object container, BigInteger defaultValue) {
@@ -434,7 +459,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find BigDecimal by path '" + this + "'", e);
+            throw new JsonException("Failed to get BigDecimal by path '" + this + "'", e);
         }
     }
     public BigDecimal getBigDecimal(Object container, BigDecimal defaultValue) {
@@ -461,7 +486,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find Boolean by path '" + this + "'", e);
+            throw new JsonException("Failed to get Boolean by path '" + this + "'", e);
         }
     }
     public boolean getBoolean(Object container, boolean defaultValue) {
@@ -486,9 +511,9 @@ public class JsonPath {
     public JsonObject getJsonObject(Object container) {
         try {
             Object value = getNode(container);
-            return NodeUtil.toJsonObject(value);
+            return NodeUtil.asJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find JsonObject by path '" + this + "'", e);
+            throw new JsonException("Failed to get JsonObject by path '" + this + "'", e);
         }
     }
     public JsonObject getJsonObject(Object container, JsonObject defaultValue) {
@@ -496,16 +521,31 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public JsonObject asJsonObject(Object container) {
+    // Map
+    public Map<String, Object> getMap(Object container) {
         try {
             Object value = getNode(container);
-            return NodeUtil.asJsonObject(value);
+            return NodeUtil.asMap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to JsonObject", e);
+            throw new JsonException("Failed to get Map<String, Object> by path '" + this + "'", e);
         }
     }
-    public JsonObject asJsonObject(Object container, JsonObject defaultValue) {
-        JsonObject value = asJsonObject(container);
+    public Map<String, Object> getMap(Object container, Map<String, Object> defaultValue) {
+        Map<String, Object> value = getMap(container);
+        return value == null ? defaultValue : value;
+    }
+
+    public <T> Map<String, T> asMap(Object container, Class<T> clazz) {
+        try {
+            Object value = getNode(container);
+            return NodeUtil.asMap(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Map<String, " +
+                    clazz.getName() + ">", e);
+        }
+    }
+    public <T> Map<String, T> asMap(Object container, Class<T> clazz, Map<String, T> defaultValue) {
+        Map<String, T> value = asMap(container, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -513,9 +553,9 @@ public class JsonPath {
     public JsonArray getJsonArray(Object container) {
         try {
             Object value = getNode(container);
-            return NodeUtil.toJsonArray(value);
+            return NodeUtil.asJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to find JsonArray by path '" + this + "'", e);
+            throw new JsonException("Failed to get JsonArray by path '" + this + "'", e);
         }
     }
     public JsonArray getJsonArray(Object container, JsonArray defaultValue) {
@@ -523,26 +563,67 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public JsonArray asJsonArray(Object container) {
+    // List
+    public List<Object> getList(Object container) {
         try {
             Object value = getNode(container);
-            return NodeUtil.asJsonArray(value);
+            return NodeUtil.asList(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to JsonArray", e);
+            throw new JsonException("Failed to get List<Object> by path '" + this + "'", e);
         }
     }
-
-    public JsonArray asJsonArray(Object container, JsonArray defaultValue) {
-        JsonArray value = asJsonArray(container);
+    public List<Object> getList(Object container, List<Object> defaultValue) {
+        List<Object> value = getList(container);
         return value == null ? defaultValue : value;
     }
 
+    public <T> List<T> asList(Object container, Class<T> clazz) {
+        try {
+            Object value = getNode(container);
+            return NodeUtil.asList(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to List<" + clazz.getName() + ">", e);
+        }
+    }
+    public <T> List<T> asList(Object container, Class<T> clazz, List<T> defaultValue) {
+        List<T> value = asList(container, clazz);
+        return value == null ? defaultValue : value;
+    }
+
+    // Array
+    public Object[] getArray(Object container) {
+        try {
+            Object value = getNode(container);
+            return NodeUtil.asArray(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Object[] by path '" + this + "'", e);
+        }
+    }
+    public Object[] getArray(Object container, Object[] defaultValue) {
+        Object[] value = getArray(container);
+        return value == null ? defaultValue : value;
+    }
+
+    public <T> T[] asArray(Object container, Class<T> clazz) {
+        try {
+            Object value = getNode(container);
+            return NodeUtil.asArray(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName() + "[]", e);
+        }
+    }
+    public <T> T[] asArray(Object container, Class<T> clazz, T[] defaultValue) {
+        T[] value = asArray(container, clazz);
+        return value == null ? defaultValue : value;
+    }
+
+    
     public <T> T get(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to find '" + clazz + "' by path '" + this + "'", e);
+            throw new JsonException("Failed to get " + clazz.getName() + " by path '" + this + "'", e);
         }
     }
 
@@ -558,7 +639,7 @@ public class JsonPath {
             Object value = getNode(container);
             return NodeUtil.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to '" + clazz + "'", e);
+            throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName(), e);
         }
     }
     @SuppressWarnings("unchecked")
@@ -571,23 +652,23 @@ public class JsonPath {
 
     /// All
     public List<Object> findNodes(Object container) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);
         return result;
     }
 
     public <T> List<T> find(Object container, Class<T> clazz) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
-        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(clazz, "clazz is null");
         List<T> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> NodeUtil.to(n, clazz));
         return result;
     }
 
     public <T> List<T> findAs(Object container, Class<T> clazz) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
-        if (clazz == null) throw new IllegalArgumentException("Clazz must not be null");
+        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(clazz, "clazz is null");
         List<T> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> NodeUtil.as(n, clazz));
         return result;
@@ -595,7 +676,7 @@ public class JsonPath {
 
     // eval() is more powerful than get() / find()
     public Object eval(Object container) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);
         if (result.isEmpty()) return null;
@@ -620,7 +701,7 @@ public class JsonPath {
             Object value = eval(container);
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to eval '" + clazz + "' by path '" + this + "'", e);
+            throw new JsonException("Failed to eval " + clazz.getName() + " by path '" + this + "'", e);
         }
     }
 
@@ -629,14 +710,14 @@ public class JsonPath {
             Object value = eval(container);
             return NodeUtil.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert eval-value at path '" + this + "' to '" + clazz + "'", e);
+            throw new JsonException("Failed to convert eval-value at path '" + this + "' to " + clazz.getName(), e);
         }
     }
 
     /// ensurePut
 
     public Object ensurePut(Object container, Object value) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         Object lastContainer = _ensureContainersInPath(container);
         PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
@@ -669,7 +750,8 @@ public class JsonPath {
 
     @SuppressWarnings("unchecked")
     public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
-        if (computer == null) throw new IllegalArgumentException("Computer must not be null");
+        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(computer, "computer is null");
         T old = get(container);
         if (old == null) {
             T newNode = computer.apply(this);
@@ -688,7 +770,7 @@ public class JsonPath {
     }
 
     public boolean contains(Object container) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
         if (penult == null) return false;
         PathToken lastToken = tail();
@@ -709,7 +791,7 @@ public class JsonPath {
     /// JSON Patch: add, replace, remove
 
     public void add(Object container, Object value) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
         if  (penult == null)
             throw new JsonException("Parent container at the penultimate path token does not exist");
@@ -730,7 +812,7 @@ public class JsonPath {
     }
 
     public Object replace(Object container, Object value) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
         if  (penult == null)
             throw new JsonException("Parent container at the penultimate path token does not exist");
@@ -749,7 +831,7 @@ public class JsonPath {
     }
 
     public Object remove(Object container) {
-        if (container == null) throw new IllegalArgumentException("Container must not be null");
+        Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
         if  (penult == null) return null;
 
@@ -923,41 +1005,41 @@ public class JsonPath {
             if (pt instanceof PathToken.Name) {
                 String key = ((PathToken.Name) pt).name;
                 if (nt.isObject()) {
-                    TypedNode tnn = NodeWalker.getInObjectTyped(tnode, key);
+                    TypedNode tnn = NodeWalker.getTypedInObject(tnode, key);
                     if (tnn == null) {
                         throw new JsonException("Cannot access or put field '" + key + "' on an object container '" +
-                                tnode.getType() + "'");
+                                tnode.getClazzType() + "'");
                     } else if (tnn.isNull()) {
                         PathToken nextPt = tokens.get(i + 1);
-                        Class<?> rawClazz = TypeUtil.getRawClass(tnn.getType());
+                        Class<?> rawClazz = TypeUtil.getRawClass(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
                         NodeWalker.putInObject(tnode.getNode(), key, nn);
-                        tnode = TypedNode.of(nn, tnn.getType());
+                        tnode = TypedNode.of(nn, tnn.getClazzType());
                     } else {
                         tnode = tnn;
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + tnode.getType() + "' with name token '" +
+                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() + "' with name token '" +
                             pt + "'. The type must be one of JsonObject/Map/POJO.");
                 }
             } else if (pt instanceof PathToken.Index) {
                 int idx = ((PathToken.Index) pt).index;
                 if (nt.isArray()) {
-                    TypedNode tnn = NodeWalker.getInArrayTyped(tnode, idx);
+                    TypedNode tnn = NodeWalker.getTypedInArray(tnode, idx);
                     if (tnn == null) {
                         throw new JsonException("Cannot get or set index " + idx + " on an array container '" +
-                                tnode.getType() + "'");
+                                tnode.getClazzType() + "'");
                     } else if (tnn.isNull()) {
                         PathToken nextPt = tokens.get(i + 1);
-                        Class<?> rawClazz = TypeUtil.getRawClass(tnn.getType());
+                        Class<?> rawClazz = TypeUtil.getRawClass(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
                         NodeWalker.setInArray(tnode.getNode(), idx, nn);
-                        tnode = TypedNode.of(nn, tnn.getType());
+                        tnode = TypedNode.of(nn, tnn.getClazzType());
                     } else {
                         tnode = tnn;
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + tnode.getType() + "' with list token " +
+                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() + "' with list token " +
                             pt + ". The type must be one of JsonArray/List/Array.");
                 }
             } else {

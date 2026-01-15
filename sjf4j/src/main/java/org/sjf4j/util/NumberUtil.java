@@ -4,6 +4,7 @@ import org.sjf4j.JsonException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 /**
  * Utility class for handling number operations, conversions, and type checking.
@@ -15,7 +16,7 @@ import java.math.BigInteger;
 public class NumberUtil {
 
     /**
-     * Maximum number of digits allowed for numeric values.
+     * Maximum number of digits allowed for numeric numbers.
      */
     private final static int MAX_NUMBER_DIGITS = 100;
     
@@ -40,127 +41,113 @@ public class NumberUtil {
     private final static BigDecimal BD_MAX_LONG = BigDecimal.valueOf(Long.MAX_VALUE);
 
     /**
-     * Checks if a BigInteger value is within the range of a Long.
+     * Checks if a BigInteger number is within the range of a Long.
      *
-     * @param value the BigInteger value to check
-     * @return true if the value is within Long range, false otherwise
-     * @throws IllegalArgumentException if value is null
+     * @param number the BigInteger number to check
+     * @return true if the number is within Long range, false otherwise
+     * @throws IllegalArgumentException if number is null
      */
-    private static boolean inLongRange(BigInteger value) {
-        if (value == null) throw new IllegalArgumentException("Value must not be null");
-        return (value.compareTo(BI_MIN_LONG) >= 0) && (value.compareTo(BI_MAX_LONG) <= 0);
+    private static boolean inLongRange(BigInteger number) {
+        Objects.requireNonNull(number, "number is null");
+        return (number.compareTo(BI_MIN_LONG) >= 0) && (number.compareTo(BI_MAX_LONG) <= 0);
     }
 
     /**
-     * Checks if a BigDecimal value is within the range of a Long.
+     * Checks if a BigDecimal number is within the range of a Long.
      *
-     * @param value the BigDecimal value to check
-     * @return true if the value is within Long range, false otherwise
-     * @throws IllegalArgumentException if value is null
+     * @param number the BigDecimal number to check
+     * @return true if the number is within Long range, false otherwise
+     * @throws IllegalArgumentException if number is null
      */
-    private static boolean inLongRange(BigDecimal value) {
-        if (value == null) throw new IllegalArgumentException("Value must not be null");
-        return (value.compareTo(BD_MIN_LONG) >= 0) && (value.compareTo(BD_MAX_LONG) <= 0);
+    private static boolean inLongRange(BigDecimal number) {
+        Objects.requireNonNull(number, "number is null");
+        return (number.compareTo(BD_MIN_LONG) >= 0) && (number.compareTo(BD_MAX_LONG) <= 0);
     }
 
     /**
-     * Checks if a double value is within the range of a Long.
+     * Checks if a double number is within the range of a Long.
      *
-     * @param value the double value to check
-     * @return true if the value is within Long range, false otherwise
+     * @param number the double number to check
+     * @return true if the number is within Long range, false otherwise
      */
-    private static boolean inLongRange(double value) {
-        return (value >= Long.MIN_VALUE) && (value <= Long.MAX_VALUE);
+    private static boolean inLongRange(double number) {
+        return (number >= Long.MIN_VALUE) && (number <= Long.MAX_VALUE);
     }
 
 
     /**
-     * Checks if a Number is an integral type (Byte, Short, Integer, or Long).
+     * Checks if a Number is an integral type (Byte, Short, Integer, Long, or BigInteger).
      *
-     * @param value the Number to check
+     * @param number the Number to check
      * @return true if the Number is an integral type, false otherwise
      */
-    public static boolean isIntegralType(Number value) {
-        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long;
+    public static boolean isIntegralType(Number number) {
+        return number instanceof Byte || number instanceof Short || number instanceof Integer ||
+                number instanceof Long || number instanceof BigInteger;
     }
 
     /**
      * Checks if a Number is a floating point type (Float or Double).
      *
-     * @param value the Number to check
+     * @param number the Number to check
      * @return true if the Number is a floating point type, false otherwise
      */
-    private static boolean isFloatingType(Number value) {
-        return value instanceof Float || value instanceof Double;
+    private static boolean isFloatingType(Number number) {
+        return number instanceof Float || number instanceof Double;
     }
 
     /**
      * Converts a Number to a Long with range checking.
      *
-     * @param value the Number to convert
+     * @param number the Number to convert
      * @return the Long representation
-     * @throws IllegalArgumentException if the value is outside the Long range
+     * @throws IllegalArgumentException if the number is outside the Long range
      */
-    public static Long asLong(Number value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof Long) {
-            return (Long) value;
-        } else if (((value instanceof Double || value instanceof Float) && !inLongRange((double) value)) ||
-                (value instanceof BigInteger && !inLongRange((BigInteger) value)) ||
-                (value instanceof BigDecimal && !inLongRange((BigDecimal) value))) {
-            throw new IllegalArgumentException("Numeric value '" + value + "' not in 64-bit `long` range");
+    public static Long asLong(Number number) {
+        if (number == null) return null;
+        if (number instanceof Long) return (Long) number;
+        if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
+            throw new JsonException("Cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
         }
-        return ((Number) value).longValue();
+        if (number instanceof BigInteger && !inLongRange((BigInteger) number)) {
+            throw new JsonException("Cannot convert BigInteger '" + number + "' to Long: out of 64-bit range");
+        }
+        if (number instanceof BigDecimal && !inLongRange((BigDecimal) number)) {
+            throw new JsonException("Cannot convert BigDecimal '" + number + "' to Long: out of 64-bit range");
+        }
+        return number.longValue();
     }
 
     /**
      * Converts a Number to an Integer with range checking.
      *
-     * @param value the Number to convert
+     * @param number the Number to convert
      * @return the Integer representation
-     * @throws IllegalArgumentException if the value is outside the Integer range
+     * @throws IllegalArgumentException if the number is outside the Integer range
      */
-    public static Integer asInteger(Number value) {
-        Long longValue = asLong(value);
-        if (longValue == null) {
-            return null;
-        } else if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("Numeric value '" + value + "'  not in 32-bit `int` range");
+    public static Integer asInteger(Number number) {
+        Long longValue = asLong(number);
+        if (longValue == null) return null;
+        if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
+            throw new JsonException("Cannot convert Number '" + number + "' to Integer: out of 32-bit range");
         }
         return longValue.intValue();
     }
 
-    /**
-     * Converts a Number to a Short with range checking.
-     *
-     * @param value the Number to convert
-     * @return the Short representation
-     * @throws IllegalArgumentException if the value is outside the Short range
-     */
-    public static Short asShort(Number value) {
-        Long longValue = asLong(value);
-        if (longValue == null) {
-            return null;
-        } else if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
-            throw new IllegalArgumentException("Numeric value '" + value + "'  not in 16-bit `short` range");
+    public static Short asShort(Number number) {
+        Long longValue = asLong(number);
+        if (longValue == null) return null;
+        if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
+            throw new JsonException("Cannot convert Number '" + number + "' to Short: out of 16-bit range");
         }
         return longValue.shortValue();
     }
 
-    /**
-     * Converts a Number to a Byte with range checking.
-     *
-     * @param value the Number to convert
-     * @return the Byte representation
-     * @throws IllegalArgumentException if the value is outside the Byte range
-     */
-    public static Byte asByte(Number value) {
-        Long longValue = asLong(value);
-        if (longValue == null) {
-            return null;
-        } else if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
-            throw new IllegalArgumentException("Numeric value '" + longValue + "' not in 8-bit `byte` range");
+    public static Byte asByte(Number number) {
+        Long longValue = asLong(number);
+        if (longValue == null) return null;
+        if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
+            throw new JsonException("Cannot convert Number '" + number + "' to Byte: out of 8-bit range");
         }
         return longValue.byteValue();
     }
@@ -168,119 +155,100 @@ public class NumberUtil {
     /**
      * Converts a Number to a Double with range checking.
      *
-     * @param value the Number to convert
+     * @param number the Number to convert
      * @return the Double representation
-     * @throws IllegalArgumentException if the value is not a finite Double
+     * @throws IllegalArgumentException if the number is not a finite Double
      */
-    public static Double asDouble(Number value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof Double) {
-            return (Double) value;
+    public static Double asDouble(Number number) {
+        if (number == null) return null;
+        if (number instanceof Double) return (Double) number;
+
+        double d = number.doubleValue();
+        if (!Double.isFinite(d)) {
+            throw new JsonException("Cannot convert Number '" + number + "' to Double: non-finite value");
         }
-        double dValue = ((Number) value).doubleValue();
-        if (!Double.isFinite(dValue)) {
-            throw new IllegalArgumentException("Numeric value '" + value + "' not in 64-bit `double` range");
-        }
-        return dValue;
+        return d;
     }
 
     /**
      * Converts a Number to a Float with range checking.
      *
-     * @param value the Number to convert
+     * @param number the Number to convert
      * @return the Float representation
-     * @throws IllegalArgumentException if the value is not a finite Float
+     * @throws IllegalArgumentException if the number is not a finite Float
      */
-    public static Float asFloat(Number value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof Float) {
-            return (Float) value;
+    public static Float asFloat(Number number) {
+        if (number == null) return null;
+        if (number instanceof Float) return (Float) number;
+
+        float f = number.floatValue();
+        if (!Float.isFinite(f)) {
+            throw new JsonException("Cannot convert Number '" + number + "' to Float: non-finite value");
         }
-        float fValue = ((Number) value).floatValue();
-        if (!Float.isFinite(fValue)) {
-            throw new IllegalArgumentException("Numeric value '" + value + "' not in 32-bit `float` range");
-        }
-        return fValue;
+        return f;
     }
 
-    public static BigInteger asBigInteger(Number value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof BigInteger) {
-            return (BigInteger) value;
+    public static BigInteger asBigInteger(Number number) {
+        if (number == null) return null;
+        if (number instanceof BigInteger) return (BigInteger) number;
+        if (number instanceof BigDecimal) return ((BigDecimal) number).toBigInteger();
+        if (number instanceof Double || number instanceof Float) {
+            double d = number.doubleValue();
+            if (!Double.isFinite(d)) {
+                throw new JsonException("Cannot convert non-finite floating-point '" + number + "' to BigInteger");
+            }
+            return BigInteger.valueOf((long) d);
         }
-        if (value instanceof BigDecimal) {
-            return ((BigDecimal) value).toBigInteger();
-        } else if (value instanceof Double || value instanceof Float) {
-            BigDecimal decimal = BigDecimal.valueOf(value.doubleValue());
-            return decimal.toBigInteger();
-        }
-        return BigInteger.valueOf(value.longValue());
+        return BigInteger.valueOf(number.longValue());
     }
 
-    public static BigDecimal asBigDecimal(Number value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof BigDecimal) {
-            return (BigDecimal) value;
-        } else if (value instanceof BigInteger) {
-            return new BigDecimal((BigInteger) value);
-        } else if (value instanceof Double || value instanceof Float) {
-            return BigDecimal.valueOf(((Number) value).doubleValue());
+    public static BigDecimal asBigDecimal(Number number) {
+        if (number == null) return null;
+        if (number instanceof BigDecimal) return (BigDecimal) number;
+        if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
+        if (number instanceof Double || number instanceof Float) {
+            return BigDecimal.valueOf(number.doubleValue());
         }
-        return BigDecimal.valueOf(((Number) value).longValue());
+        return BigDecimal.valueOf(number.longValue());
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T as(Number value, Class<T> clazz) {
-        if (clazz == null || clazz.isAssignableFrom(value.getClass())) {
-            return (T) value;
-        } else if (clazz == long.class || clazz == Long.class) {
-            return (T) NumberUtil.asLong(value);
-        } else if (clazz == int.class || clazz == Integer.class) {
-            return (T) NumberUtil.asInteger( value);
-        } else if (clazz == short.class || clazz == Short.class) {
-            return (T) NumberUtil.asShort(value);
-        } else if (clazz == byte.class || clazz == Byte.class) {
-            return (T) NumberUtil.asByte(value);
-        } else if (clazz == double.class || clazz == Double.class) {
-            return (T) NumberUtil.asDouble(value);
-        } else if (clazz == float.class || clazz == Float.class) {
-            return (T) NumberUtil.asFloat(value);
-        } else if (clazz == BigInteger.class) {
-            return (T) NumberUtil.asBigInteger(value);
-        } else if (clazz == BigDecimal.class) {
-            return (T) NumberUtil.asBigDecimal(value);
-        } else {
-            throw new JsonException("Cannot convert numeric value '" + value + "' to type " + clazz);
-        }
+    public static <T> T as(Number number, Class<T> clazz) {
+        if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
+        if (clazz == long.class || clazz == Long.class) return (T) NumberUtil.asLong(number);
+        if (clazz == int.class || clazz == Integer.class) return (T) NumberUtil.asInteger( number);
+        if (clazz == short.class || clazz == Short.class) return (T) NumberUtil.asShort(number);
+        if (clazz == byte.class || clazz == Byte.class) return (T) NumberUtil.asByte(number);
+        if (clazz == double.class || clazz == Double.class) return (T) NumberUtil.asDouble(number);
+        if (clazz == float.class || clazz == Float.class) return (T) NumberUtil.asFloat(number);
+        if (clazz == BigInteger.class) return (T) NumberUtil.asBigInteger(number);
+        if (clazz == BigDecimal.class) return (T) NumberUtil.asBigDecimal(number);
+        throw new JsonException("Cannot convert " + TypeUtil.nameOf(number) + " '" + number + "' to " + clazz.getName());
     }
 
 
-    public static Number toNumber(String num) {
-        if (num == null || num.isEmpty()) {
-            throw new IllegalArgumentException("Input number string is null or empty");
+    public static Number toNumber(String text) {
+        if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
+
+        if (text.length() > MAX_NUMBER_DIGITS) {
+            throw new IllegalArgumentException("Number too large (" + text.length() + " digits): '" +
+                    text.substring(0, 20) + "'");
         }
-        if (num.length() > MAX_NUMBER_DIGITS) {throw new IllegalArgumentException("Number too large ("
-                + num.length() + " digits): '" + num.substring(0, 20) + "'");
-        }
-        if (num.contains(".") || num.contains("e") || num.contains("E")) {
+        if (text.contains(".") || text.contains("e") || text.contains("E")) {
             try {
                 // `parseDouble` is faster than `parseFloat`
-                return Double.parseDouble(num);
+                return Double.parseDouble(text);
             } catch (NumberFormatException e) {
-                return new BigDecimal(num);
+                return new BigDecimal(text);
             }
         } else {
             try {
-                return Integer.parseInt(num);
+                return Integer.parseInt(text);
             } catch (NumberFormatException e) {
                 try {
-                    return Long.parseLong(num);
+                    return Long.parseLong(text);
                 } catch (NumberFormatException ex) {
-                    return new BigInteger(num);
+                    return new BigInteger(text);
                 }
             }
         }
@@ -288,13 +256,13 @@ public class NumberUtil {
 
 
     /**
-     * Checks if a given string represents a numeric value.
+     * Checks if a given string represents a numeric number.
      * <p>
      * This method supports:
      * - Integers (e.g., "42", "-7", "+8")
      * - Floating-point numbers (e.g., "3.14", "-0.5", ".5")
      * - Scientific notation (e.g., "1e3", "-2.5E-4")
-     * - Special floating-point values: ".nan", ".inf", "-.inf"
+     * - Special floating-point numbers: ".nan", ".inf", "-.inf"
      * - Underscore separators in numbers (YAML style, e.g., "1_000_000")
      * <p>
      * Rules:
@@ -327,69 +295,51 @@ public class NumberUtil {
         return digitSeen;
     }
 
-    public static boolean isInteger(Number value) {
-        if (value instanceof Integer || value instanceof Long ||
-                value instanceof Short || value instanceof Byte) {
-            return true;
+    public static boolean isSemanticInteger(Number number) {
+        if (number == null) return false;
+        if (isIntegralType(number)) return true;
+        if (number instanceof BigDecimal) {
+            return ((BigDecimal) number).stripTrailingZeros().scale() <= 0;
         }
-
-        if (value instanceof BigInteger) {
-            return true;
+        if (number instanceof Double || number instanceof Float) {
+            double d = number.doubleValue();
+            return d % 1 == 0 && Double.isFinite(d);
         }
-
-        if (value instanceof BigDecimal) {
-            return ((BigDecimal) value).scale() <= 0;
-        }
-
-        if (value instanceof Double || value instanceof Float) {
-            double d = value.doubleValue();
-            return d % 1 == 0;
-        }
-
         return false;
     }
 
-    public static BigDecimal normalize(Number value) {
-        if (value instanceof BigDecimal) {
-            return ((BigDecimal) value).stripTrailingZeros();
+    public static BigDecimal normalizeDecimal(Number number) {
+        if (number instanceof BigDecimal) {
+            return ((BigDecimal) number).stripTrailingZeros();
         }
-        return new BigDecimal(value.toString()).stripTrailingZeros();
+        return new BigDecimal(number.toString()).stripTrailingZeros();
     }
 
     public static int compare(Number source, Number target) {
-        if (source == null || target == null) throw new IllegalArgumentException("Source and target must not be null");
-        if (source instanceof BigDecimal || target instanceof BigDecimal) {
-            return asBigDecimal(source).compareTo(asBigDecimal(target));
-        }
+        Objects.requireNonNull(source, "source is null");
+        Objects.requireNonNull(target, "target is null");
         if (source instanceof BigInteger || target instanceof BigInteger) {
             return asBigInteger(source).compareTo(asBigInteger(target));
         }
         if (isIntegralType(source) && isIntegralType(target)) {
             return Long.compare(source.longValue(), target.longValue());
         }
-        return Double.compare(source.doubleValue(), target.doubleValue());
+        return asBigDecimal(source).compareTo(asBigDecimal(target));
     }
 
     public static int hashCode(Number n) {
-        if (n instanceof Integer || n instanceof Long
-                || n instanceof Short || n instanceof Byte) {
+        if (n instanceof Integer || n instanceof Long || n instanceof Short || n instanceof Byte) {
             long v = n.longValue();
             return Long.hashCode(v);
         }
 
         if (n instanceof Float || n instanceof Double) {
             double d = n.doubleValue();
-
-            // NaN / Infinity 直接走 equals 语义
             if (Double.isNaN(d) || Double.isInfinite(d)) {
                 return Double.hashCode(d);
             }
-
-            // 尝试整数快路径
             long lv = (long) d;
-            if (d == lv) {
-                return Long.hashCode(lv);
-            }
+            if (d == lv) return Long.hashCode(lv);
         }
 
         if (n instanceof BigInteger) {

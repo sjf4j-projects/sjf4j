@@ -65,7 +65,7 @@ public class SimpleNodeFacadeTest {
         assertEquals(JsonObject.class, value.getClass());
         assertEquals(25, ((JsonObject) value).getInteger("age"));
         assertEquals("Baby",
-                ((JsonObject) value).asJsonArray("friends").asJsonObject(0).getString("name"));
+                ((JsonObject) value).getJsonArray("friends").getJsonObject(0).getString("name"));
         assertEquals(90f, ((JsonObject) value).getFloatByPath("$.roles.kk.percentage"));
 
         // value2Object
@@ -225,7 +225,7 @@ public class SimpleNodeFacadeTest {
 //        assertEquals("Alice", holder.nested.get("s1").name);
 
         JsonObject back = (JsonObject) nodeFacade.readNode(holder, JsonObject.class, false);
-        assertEquals(2, (back.asJsonObject("map")).size());
+        assertEquals(2, (back.getJsonObject("map")).size());
     }
 
     // ========== Enum ==========

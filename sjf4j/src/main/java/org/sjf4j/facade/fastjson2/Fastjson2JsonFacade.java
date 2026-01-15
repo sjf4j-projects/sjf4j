@@ -227,7 +227,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     Fastjson2StreamingUtil.writeNode(writer, node);
                     writer.flushTo(output);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -237,7 +237,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     String json = JSON.toJSONString(node, writerFeatures);
                     output.write(json);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -262,7 +262,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     Fastjson2StreamingUtil.writeNode(writer, node);
                     writer.flushTo(output);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -272,7 +272,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     byte[] bs = JSON.toJSONBytes(node, writerFeatures);
                     output.write(bs);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;

@@ -134,11 +134,11 @@ public class NodeUtilTest {
     @Test
     public void testToJsonObject() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, NodeUtil.toJsonObject(jo));
-        assertNull(NodeUtil.toJsonObject(null));
+        assertEquals(jo, NodeUtil.asJsonObject(jo));
+        assertNull(NodeUtil.asJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toJsonObject("not an object");
+            NodeUtil.asJsonObject("not an object");
         });
     }
 
@@ -162,11 +162,11 @@ public class NodeUtilTest {
     @Test
     public void testToJsonArray() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, NodeUtil.toJsonArray(ja));
-        assertNull(NodeUtil.toJsonArray(null));
+        assertEquals(ja, NodeUtil.asJsonArray(ja));
+        assertNull(NodeUtil.asJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toJsonArray("not an array");
+            NodeUtil.asJsonArray("not an array");
         });
     }
 
@@ -189,6 +189,14 @@ public class NodeUtilTest {
         });
     }
 
+    @Test
+    public void testAsArray1() {
+        String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
+        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        log.info("person={}", person);
+        Baby[] babies = person.asArray("babies", Baby.class);
+        log.info("babies={}", NodeUtil.inspect(babies));
+    }
 
     enum TestEnum { A, B }
 
@@ -254,6 +262,7 @@ public class NodeUtilTest {
                 "street", "5th Ave"));
         Person p1 = jo.toNode(Person.class);
         JsonObject jo1 = new JsonObject(p1);
+        jo1.toString();
         assertNotEquals(p1, jo1);
         assertNotEquals(jo1, p1);
 

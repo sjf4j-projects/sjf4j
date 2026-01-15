@@ -153,6 +153,50 @@ public abstract class JsonContainer {
         return JsonPath.compile(path).asString(this, defaultValue);
     }
 
+    // Number
+
+    /**
+     * Gets the value at the specified JSON path as a Number.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path as a Number, or null if it doesn't exist or can't be converted
+     */
+    public Number getNumberByPath(String path) {
+        return JsonPath.compile(path).getNumber(this);
+    }
+
+    /**
+     * Gets the value at the specified JSON path as a Number, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist or can't be converted
+     * @return the value at the path as a Number, or the default value if it doesn't exist or can't be converted
+     */
+    public Number getNumberByPath(String path, Number defaultValue) {
+        return JsonPath.compile(path).getNumber(this, defaultValue);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a Number.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path converted to a Number, or null if it doesn't exist
+     */
+    public Number asNumberByPath(String path) {
+        return JsonPath.compile(path).asNumber(this);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a Number, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist
+     * @return the value at the path converted to a Number, or the default value if it doesn't exist
+     */
+    public Number asNumberByPath(String path, Number defaultValue) {
+        return JsonPath.compile(path).asNumber(this, defaultValue);
+    }
+
     // Long
 
     /**
@@ -549,8 +593,51 @@ public abstract class JsonContainer {
         return JsonPath.compile(path).asBoolean(this, defaultValue);
     }
 
-    // JsonObject
+    // Map
 
+    /**
+     * Gets the value at the specified JSON path as a Map.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path as a Map, or null if it doesn't exist or can't be converted
+     */
+    public Map<String, Object> getMapByPath(String path) {
+        return JsonPath.compile(path).getMap(this);
+    }
+
+    /**
+     * Gets the value at the specified JSON path as a Map, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist or can't be converted
+     * @return the value at the path as a Map, or the default value if it doesn't exist or can't be converted
+     */
+    public Map<String, Object> getMapByPath(String path, Map<String, Object> defaultValue) {
+        return JsonPath.compile(path).getMap(this, defaultValue);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a Map.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path converted to a Map, or null if it doesn't exist
+     */
+    public <T> Map<String, T> asMapByPath(String path, Class<T> clazz) {
+        return JsonPath.compile(path).asMap(this, clazz);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a Map, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist
+     * @return the value at the path converted to a Map, or the default value if it doesn't exist
+     */
+    public <T> Map<String, T> asMapByPath(String path, Class<T> clazz, Map<String, T> defaultValue) {
+        return JsonPath.compile(path).asMap(this, clazz, defaultValue);
+    }
+
+    // JsonObject
     /**
      * Gets the value at the specified JSON path as a JsonObject.
      *
@@ -571,30 +658,8 @@ public abstract class JsonContainer {
     public JsonObject getJsonObjectByPath(String path, JsonObject defaultValue) {
         return JsonPath.compile(path).getJsonObject(this, defaultValue);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to a JsonObject.
-     *
-     * @param path the JSON path to get the value from
-     * @return the value at the path converted to a JsonObject, or null if it doesn't exist
-     */
-    public JsonObject asJsonObjectByPath(String path) {
-        return JsonPath.compile(path).asJsonObject(this);
-    }
-    
-    /**
-     * Converts the value at the specified JSON path to a JsonObject, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a JsonObject, or the default value if it doesn't exist
-     */
-    public JsonObject asJsonObjectByPath(String path, JsonObject defaultValue) {
-        return JsonPath.compile(path).asJsonObject(this, defaultValue);
-    }
 
     // JsonArray
-
     /**
      * Gets the value at the specified JSON path as a JsonArray.
      *
@@ -615,28 +680,94 @@ public abstract class JsonContainer {
     public JsonArray getJsonArrayByPath(String path, JsonArray defaultValue) {
         return JsonPath.compile(path).getJsonArray(this, defaultValue);
     }
-    
+
+    // List
     /**
-     * Converts the value at the specified JSON path to a JsonArray.
+     * Gets the value at the specified JSON path as a List.
      *
      * @param path the JSON path to get the value from
-     * @return the value at the path converted to a JsonArray, or null if it doesn't exist
+     * @return the value at the path as a List, or null if it doesn't exist or can't be converted
      */
-    public JsonArray asJsonArrayByPath(String path) {
-        return JsonPath.compile(path).asJsonArray(this);
+    public List<Object> getListByPath(String path) {
+        return JsonPath.compile(path).getList(this);
     }
-    
+
     /**
-     * Converts the value at the specified JSON path to a JsonArray, with a default value.
+     * Gets the value at the specified JSON path as a List, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist or can't be converted
+     * @return the value at the path as a List, or the default value if it doesn't exist or can't be converted
+     */
+    public List<Object> getListByPath(String path, List<Object> defaultValue) {
+        return JsonPath.compile(path).getList(this, defaultValue);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a List.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path converted to a List, or null if it doesn't exist
+     */
+    public <T> List<T> asListByPath(String path, Class<T> clazz) {
+        return JsonPath.compile(path).asList(this, clazz);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a List, with a default value.
      *
      * @param path the JSON path to get the value from
      * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a JsonArray, or the default value if it doesn't exist
+     * @return the value at the path converted to a List, or the default value if it doesn't exist
      */
-    public JsonArray asJsonArrayByPath(String path, JsonArray defaultValue) {
-        return JsonPath.compile(path).asJsonArray(this, defaultValue);
+    public <T> List<T> asListByPath(String path, Class<T> clazz, List<T> defaultValue) {
+        return JsonPath.compile(path).asList(this, clazz, defaultValue);
     }
 
+    // Array
+    /**
+     * Gets the value at the specified JSON path as a Array.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path as an Array, or null if it doesn't exist or can't be converted
+     */
+    public Object[] getArrayByPath(String path) {
+        return JsonPath.compile(path).getArray(this);
+    }
+
+    /**
+     * Gets the value at the specified JSON path as a Array, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist or can't be converted
+     * @return the value at the path as an Array, or the default value if it doesn't exist or can't be converted
+     */
+    public Object[] getArrayByPath(String path, Object[] defaultValue) {
+        return JsonPath.compile(path).getArray(this, defaultValue);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to a Array.
+     *
+     * @param path the JSON path to get the value from
+     * @return the value at the path converted to an Array, or null if it doesn't exist
+     */
+    public <T> T[] asArrayByPath(String path, Class<T> clazz) {
+        return JsonPath.compile(path).asArray(this, clazz);
+    }
+
+    /**
+     * Converts the value at the specified JSON path to an Array, with a default value.
+     *
+     * @param path the JSON path to get the value from
+     * @param defaultValue the value to return if the path doesn't exist
+     * @return the value at the path converted to an Array, or the default value if it doesn't exist
+     */
+    public <T> T[] asArrayByPath(String path, Class<T> clazz, T[] defaultValue) {
+        return JsonPath.compile(path).asArray(this, clazz, defaultValue);
+    }
+
+    
     // Clazz
 
     /**

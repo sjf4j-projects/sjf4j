@@ -10,6 +10,7 @@ import java.math.BigInteger;
 import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -68,26 +69,25 @@ public class JsonObject extends JsonContainer {
     @SuppressWarnings("unchecked")
     public JsonObject(Object node) {
         this();
-        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        if (node == null) return;
+
         if (node instanceof JsonObject) {
             JsonObject jo = (JsonObject) node;
             if (jo.fieldMap != null) {
+//                this.fieldMap = jo.fieldMap;
                 for (Map.Entry<String, NodeRegistry.FieldInfo> fi : jo.fieldMap.entrySet()) {
                     Object v = fi.getValue().invokeGetter(node);
                     put(fi.getKey(), v);
                 }
             }
             if (jo.nodeMap != null) {
-                if (this.nodeMap == null) {
-                    this.nodeMap = jo.nodeMap;
-                } else {
-                    putAll(jo.nodeMap);
-                }
+                this.nodeMap = jo.nodeMap;
             }
         } else if (node instanceof Map) {
             this.nodeMap = (Map<String, Object>) node;
         } else if (NodeRegistry.isPojo(node.getClass())) {
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+//            this.fieldMap = pi.getFields();
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 put(fi.getKey(), v);
@@ -372,7 +372,7 @@ public class JsonObject extends JsonContainer {
      * @return true if the key exists, false otherwise
      */
     public boolean containsKey(String key) {
-        if (key == null) throw new IllegalArgumentException("Key must not be null");
+        if (key == null) return false;
         return (fieldMap != null && fieldMap.containsKey(key)) || (nodeMap != null && nodeMap.containsKey(key));
     }
 
@@ -383,7 +383,7 @@ public class JsonObject extends JsonContainer {
      * @return true if the key exists and has a non-null value, false otherwise
      */
     public boolean hasNonNull(String key) {
-        if (key == null) throw new IllegalArgumentException("Key must not be null");
+        if (key == null) return false;
         return getNode(key) != null;
     }
 
@@ -394,7 +394,7 @@ public class JsonObject extends JsonContainer {
      * @param action the action to be performed for each entry
      */
     public void forEach(BiConsumer<String, Object> action) {
-        if (action == null) throw new IllegalArgumentException("Action must not be null");
+        Objects.requireNonNull(action, "action is null");
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 action.accept(entry.getKey(), entry.getValue().invokeGetter(this));
@@ -415,18 +415,26 @@ public class JsonObject extends JsonContainer {
      * @return a Map containing all entries from this JsonObject
      */
     public Map<String, Object> toMap() {
-        if (fieldMap == null) {
-            return nodeMap == null ? Collections.emptyMap() : nodeMap;
-        } else {
-            Map<String, Object> merged = Sjf4jConfig.global().mapSupplier.create();
+        Map<String, Object> merged = Sjf4jConfig.global().mapSupplier.create();
+        if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
-            if (nodeMap != null) {
-                merged.putAll(nodeMap);
-            }
-            return merged;
         }
+        if (nodeMap != null) {
+            merged.putAll(nodeMap);
+        }
+        return merged;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> Map<String, T> toMap(Class<T> clazz) {
+        Map<String, Object> map = toMap();
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            T v = NodeUtil.as(e.getValue(), clazz);
+            e.setValue(v);
+        }
+        return (Map<String, T>) map;
     }
 
     /**
@@ -567,7 +575,7 @@ public class JsonObject extends JsonContainer {
      * @throws IllegalArgumentException if key is null
      */
     public Object getNode(String key) {
-        if (key == null) throw new IllegalArgumentException("Key must not be null");
+        if (key == null) return null;
         if (fieldMap != null) {
             NodeRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
@@ -605,7 +613,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return NodeUtil.toString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get String for key '" + key + "'", e);
         }
     }
     
@@ -661,7 +669,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Number of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Number for key '" + key + "'", e);
         }
     }
     
@@ -691,7 +699,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Number: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Number", e);
         }
     }
     
@@ -721,7 +729,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Long for key '" + key + "'", e);
         }
     }
     
@@ -751,7 +759,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Long: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Long", e);
         }
     }
     
@@ -781,7 +789,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Integer for key '" + key + "'", e);
         }
     }
     
@@ -811,7 +819,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Integer: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Integer", e);
         }
     }
     
@@ -841,7 +849,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Short for key '" + key + "'", e);
         }
     }
     
@@ -871,7 +879,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Short: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Short", e);
         }
     }
     
@@ -901,7 +909,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Byte for key '" + key + "'", e);
         }
     }
     
@@ -931,7 +939,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Byte: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Byte", e);
         }
     }
     
@@ -961,7 +969,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Double for key '" + key + "'", e);
         }
     }
     
@@ -991,7 +999,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Double: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Double", e);
         }
     }
     
@@ -1021,7 +1029,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Float for key '" + key + "'", e);
         }
     }
     
@@ -1051,7 +1059,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Float: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Float", e);
         }
     }
     
@@ -1081,7 +1089,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigInteger for key '" + key + "'", e);
         }
     }
     
@@ -1111,7 +1119,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to BigInteger: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to BigInteger", e);
         }
     }
     
@@ -1141,7 +1149,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get BigDecimal for key '" + key + "'", e);
         }
     }
     
@@ -1171,7 +1179,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to BigDecimal: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to BigDecimal", e);
         }
     }
     
@@ -1201,7 +1209,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get Boolean for key '" + key + "'", e);
         }
     }
     
@@ -1231,7 +1239,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.asBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Boolean: " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to Boolean", e);
         }
     }
     
@@ -1259,9 +1267,9 @@ public class JsonObject extends JsonContainer {
     public JsonObject getJsonObject(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toJsonObject(value);
+            return NodeUtil.asJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonObject for key '" + key + "'", e);
         }
     }
     
@@ -1279,33 +1287,29 @@ public class JsonObject extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    /**
-     * Converts and gets the value associated with the specified key as a JsonObject.
-     *
-     * @param key the key to retrieve
-     * @return the converted JsonObject value, or null if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a JsonObject
-     */
-    public JsonObject asJsonObject(String key) {
+    public Map<String, Object> getMap(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asJsonObject(value);
+            return NodeUtil.asMap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to JsonObject: " + e.getMessage(), e);
+            throw new JsonException("Failed to get Map<String, Object> for key '" + key + "'", e);
         }
     }
-    
-    /**
-     * Converts and gets the value associated with the specified key as a JsonObject, returning the default value
-     * if the key does not exist or the value is null.
-     *
-     * @param key the key to retrieve
-     * @param defaultValue the value to return if the key doesn't exist or is null
-     * @return the converted JsonObject value, or defaultValue if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a JsonObject
-     */
-    public JsonObject asJsonObject(String key, JsonObject defaultValue) {
-        JsonObject value = asJsonObject(key);
+    public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
+        Map<String, Object> value = getMap(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public <T> Map<String, T> asMap(String key, Class<T> clazz) {
+        Object value = getNode(key);
+        try {
+            return NodeUtil.asMap(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to Map<String, " + clazz.getName() + ">", e);
+        }
+    }
+    public <T> Map<String, T> asMap(String key, Class<T> clazz, Map<String, T> defaultValue) {
+        Map<String, T> value = asMap(key, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -1319,9 +1323,9 @@ public class JsonObject extends JsonContainer {
     public JsonArray getJsonArray(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toJsonArray(value);
+            return NodeUtil.asJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get JsonArray for key '" + key + "'", e);
         }
     }
     
@@ -1339,33 +1343,55 @@ public class JsonObject extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    /**
-     * Converts and gets the value associated with the specified key as a JsonArray.
-     *
-     * @param key the key to retrieve
-     * @return the converted JsonArray value, or null if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a JsonArray
-     */
-    public JsonArray asJsonArray(String key) {
-        Object value = getNode(key);
+    public List<Object> getList(String key) {
         try {
-            return NodeUtil.asJsonArray(value);
+            Object value = getNode(key);
+            return NodeUtil.asList(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to JsonArray: " + e.getMessage(), e);
+            throw new JsonException("Failed to get List<Object> for key '" + key + "'", e);
         }
     }
-    
-    /**
-     * Converts and gets the value associated with the specified key as a JsonArray, returning the default value
-     * if the key does not exist or the value is null.
-     *
-     * @param key the key to retrieve
-     * @param defaultValue the value to return if the key doesn't exist or is null
-     * @return the converted JsonArray value, or defaultValue if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a JsonArray
-     */
-    public JsonArray asJsonArray(String key, JsonArray defaultValue) {
-        JsonArray value = asJsonArray(key);
+    public List<Object> getList(String key, List<Object> defaultValue) {
+        List<Object> value = getList(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public <T> List<T> asList(String key, Class<T> clazz) {
+        try {
+            Object value = getNode(key);
+            return NodeUtil.asList(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to List<" + clazz.getName() + ">", e);
+        }
+    }
+    public <T> List<T> asList(String key, Class<T> clazz, List<T> defaultValue) {
+        List<T> value = asList(key, clazz);
+        return value == null ? defaultValue : value;
+    }
+
+    public Object[] getArray(String key) {
+        try {
+            Object value = getNode(key);
+            return NodeUtil.asArray(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Object[] for key '" + key + "'", e);
+        }
+    }
+    public Object[] getArray(String key, Object[] defaultValue) {
+        Object[] value = getArray(key);
+        return value == null ? defaultValue : value;
+    }
+
+    public <T> T[] asArray(String key, Class<T> clazz) {
+        try {
+            Object value = getNode(key);
+            return NodeUtil.asArray(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName() + "[]", e);
+        }
+    }
+    public <T> T[] asArray(String key, Class<T> clazz, T[] defaultValue) {
+        T[] value = asArray(key, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -1383,7 +1409,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to get " + clazz.getName() + " of key '" + key + "': " + e.getMessage(), e);
+            throw new JsonException("Failed to get " + clazz.getName() + " for key '" + key + "'", e);
         }
     }
     
@@ -1419,8 +1445,7 @@ public class JsonObject extends JsonContainer {
         try {
             return NodeUtil.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName() +
-                    ": " + e.getMessage(), e);
+            throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName(), e);
         }
     }
     
@@ -1446,7 +1471,7 @@ public class JsonObject extends JsonContainer {
     /// Putter
 
     public Object put(String key, Object object) {
-        if (key == null) throw new IllegalArgumentException("Key must not be null");
+        Objects.requireNonNull(key, "key is null");
         if (fieldMap != null) {
             NodeRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
@@ -1488,7 +1513,7 @@ public class JsonObject extends JsonContainer {
     // Try generic
     @SuppressWarnings("unchecked")
     public <T> T computeIfAbsent(String key, Function<String, T> computer) {
-        if (computer == null) throw new IllegalArgumentException("Computer must not be null");
+        Objects.requireNonNull(computer, "computer is null");
         T old = get(key);
         if (old == null) {
             T newNode = computer.apply(key);
@@ -1501,17 +1526,19 @@ public class JsonObject extends JsonContainer {
     }
 
     public void putAll(JsonObject jsonObject) {
-        if (jsonObject == null) throw new IllegalArgumentException("JsonObject must not be null");
+        if (jsonObject == null) return;
         jsonObject.forEach(this::put);
     }
 
     public void putAll(Map<?, ?> map) {
+        if (map == null) return;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             put(entry.getKey().toString(), entry.getValue());
         }
     }
 
     public void putAll(Object pojo) {
+        if (pojo == null) return;
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(pojo.getClass());
         for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
             put(entry.getKey(), entry.getValue().invokeGetter(pojo));
@@ -1519,7 +1546,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Object remove(String key) {
-        if (key == null) throw new IllegalArgumentException("Key must not be null");
+        Objects.requireNonNull(key, "key is null");
         if (fieldMap != null && fieldMap.containsKey(key)) {
             throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass() +
                     "'. Only dynamic properties in JsonObject are removable.");

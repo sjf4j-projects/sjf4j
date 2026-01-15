@@ -70,8 +70,8 @@ class JsonArrayTest {
 
         assertEquals(5, ja.size());
         assertEquals((short)12, ja.getShort(0));
-        assertEquals(78f, ja.asJsonArray(2).getFloat(1));
-        assertEquals(0, ja.asJsonObject(4).getFloat("a"));
+        assertEquals(78f, ja.getJsonArray(2).getFloat(1));
+        assertEquals(0, ja.getJsonObject(4).getFloat("a"));
 
         System.out.println(ja.toJson());
     }
@@ -184,10 +184,10 @@ class JsonArrayTest {
         JsonArray a1 = JsonArray.fromJson("[2,3,[4,[5,6]]]");
         JsonArray a2 = a1.deepCopy();
 
-        assertEquals(6, a2.asJsonArray(2).asJsonArray(1).getInteger(1));
-        a1.asJsonArray(2).asJsonArray(1).set(1, 7);
-        assertEquals(7, a1.asJsonArray(2).asJsonArray(1).getInteger(1));
-        assertEquals(6, a2.asJsonArray(2).asJsonArray(1).getInteger(1));
+        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
+        a1.getJsonArray(2).getJsonArray(1).set(1, 7);
+        assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInteger(1));
+        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
     }
 
     public void testByPath1() {
@@ -348,8 +348,8 @@ class JsonArrayTest {
         assertEquals(3, ja1.size());
         assertEquals(3, ja1.getInteger(0));
         assertEquals(4, ja1.getInteger(1));
-        assertEquals("c", ja1.asJsonObject(2).getString("a"));
-        assertEquals("e", ja1.asJsonObject(2).getString("d"));
+        assertEquals("c", ja1.getJsonObject(2).getString("a"));
+        assertEquals("e", ja1.getJsonObject(2).getString("d"));
         
         // 测试merge with copy
         JsonArray ja3 = JsonArray.fromJson("[{\"x\":1}]");
@@ -357,8 +357,8 @@ class JsonArrayTest {
         ja3.mergeWithCopy(ja4);
         assertEquals(1, ja3.size());
         log.info("ja3={}", ja3.inspect());
-        assertEquals(1, ja3.asJsonObject(0).getInteger("x"));
-        assertEquals(2, ja3.asJsonObject(0).getInteger("y"));
+        assertEquals(1, ja3.getJsonObject(0).getInteger("x"));
+        assertEquals(2, ja3.getJsonObject(0).getInteger("y"));
     }
 
     public void testToList1() {

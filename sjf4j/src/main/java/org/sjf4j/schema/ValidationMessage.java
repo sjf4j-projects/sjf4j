@@ -1,20 +1,24 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.JsonPointer;
+public class ValidationMessage {
 
-public class ValidationError {
+    public enum Severity { ERROR, WARN, INFO, DEBUG }
+
+    private final Severity severity;
     private final String path;
     private final String keyword;
     private final String message;
-    private final Object node;
 
-    public ValidationError(String path, String keyword, String message, Object node) {
+    public ValidationMessage(Severity severity, String path, String keyword, String message) {
+        this.severity = severity;
         this.path = path;
         this.keyword = keyword;
         this.message = message;
-        this.node = node;
     }
 
+    public Severity getSeverity() {
+        return severity;
+    }
     public String getPath() {
         return path;
     }
@@ -24,14 +28,10 @@ public class ValidationError {
     public String getMessage() {
         return message;
     }
-    public Object getNode() {
-        return node;
-    }
 
     @Override
     public String toString() {
-        return "ValidationError at " + path + " [" + keyword + "]: " + message +
-                " (found: " + node + ")";
+        return "ValidationMessage [" + severity + "] at " + path + " : (" + keyword + ") " + message;
     }
 
 }

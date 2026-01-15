@@ -1,7 +1,6 @@
 package org.sjf4j.facade;
 
 import org.sjf4j.JsonException;
-import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.fastjson2.Fastjson2Writer;
 import org.sjf4j.util.StreamingUtil;
 import org.sjf4j.util.TypeUtil;
@@ -190,7 +189,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
                 ((Fastjson2Writer) writer).flushTo(output);
             }
         } catch (Exception e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) + "' to streaming", e);
         }
     }
 
@@ -207,7 +206,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
                 ((Fastjson2Writer) writer).flushTo(output);
             }
         } catch (Exception e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) + "' to streaming", e);
         }
     }
 

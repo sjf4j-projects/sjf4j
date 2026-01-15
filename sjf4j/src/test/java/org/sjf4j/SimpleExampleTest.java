@@ -95,7 +95,7 @@ public class SimpleExampleTest {
 
         /// By path
 
-        String role = jo.asJsonObject("user").get("role");
+        String role = jo.getJsonObject("user").get("role");
         // Chain operations for nested nodes.
         // First converts "user" node to JsonObject, then retrieves "role".
 

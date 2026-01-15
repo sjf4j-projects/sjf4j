@@ -1,4 +1,6 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
+
+import org.sjf4j.util.TypeUtil;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -7,25 +9,27 @@ import java.lang.reflect.Type;
 public final class TypedNode {
 
     private final Object node;
-    private final Type type;
+    private final Type clazzType;
 
-    public TypedNode(Object node, Type type) {
+    private TypedNode(Object node, Type clazzType) {
         this.node = node;
-        this.type = type;
+        this.clazzType = clazzType;
     }
 
     public Object getNode() {
         return node;
     }
 
-    public Type getType() {
-        return type;
+    public Type getClazzType() {
+        return clazzType;
     }
 
 
     // ----------- Factory Methods -----------
 
     public static TypedNode of(Object node, Type type) {
+        NodeType nt = NodeType.of(node);
+
         return new TypedNode(node, type);
     }
 
@@ -44,17 +48,11 @@ public final class TypedNode {
     }
 
     public boolean isParameterized() {
-        return type instanceof ParameterizedType;
+        return clazzType instanceof ParameterizedType;
     }
 
     public Class<?> getRawClass() {
-        return TypeUtil.getRawClass(type);
+        return TypeUtil.getRawClass(clazzType);
     }
-
-    @Override
-    public String toString() {
-        return "TypedObject{node=" + node + ", type=" + type.getTypeName() + '}';
-    }
-
 
 }

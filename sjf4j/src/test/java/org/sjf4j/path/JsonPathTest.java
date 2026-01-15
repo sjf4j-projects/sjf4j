@@ -148,16 +148,16 @@ public class JsonPathTest {
         JsonObject jo1 = JsonObject.fromJson(json1);
 
         JsonPath.compile("$.book[0].box[0].gg").ensurePut(jo1, "mm");
-        JsonObject container1 = JsonPath.compile("$.book[0].box[0]").asJsonObject(jo1);
+        JsonObject container1 = JsonPath.compile("$.book[0].box[0]").getJsonObject(jo1);
         log.info("container1={} jo1={}", container1, jo1);
         assertEquals(JsonObject.class, container1.getClass());
-        assertEquals(1, jo1.asJsonArrayByPath("$.book[0].box").size());
+        assertEquals(1, jo1.getJsonArrayByPath("$.book[0].box").size());
 
         JsonPath.compile("$.book[2].tags['gg mm'][0]").ensurePut(jo1, "mm");
-        JsonArray container2 = JsonPath.compile("$.book[2].tags['gg mm']").asJsonArray(jo1);
+        JsonArray container2 = JsonPath.compile("$.book[2].tags['gg mm']").getJsonArray(jo1);
         log.info("container2={} jo1={}", container2, jo1);
         assertEquals(JsonArray.class, container2.getClass());
-        assertEquals(1, jo1.asJsonArrayByPath("$.book[2].tags['gg mm']").size());
+        assertEquals(1, jo1.getJsonArrayByPath("$.book[2].tags['gg mm']").size());
     }
 
     @Test
@@ -338,15 +338,15 @@ public class JsonPathTest {
 
         JsonPath.compile("$.babies[0].age").ensurePut(jo1, 33);
         log.info("jo1={}", jo1);
-        assertEquals(33, jo1.asJsonArray("babies").asJsonObject(0).getInteger("age"));
+        assertEquals(33, jo1.getJsonArray("babies").getJsonObject(0).getInteger("age"));
 
         JsonPath.compile("$.babies[1].name").ensurePut(jo1, "Grace");
         log.info("jo1={}", jo1);
-        assertEquals("Grace", jo1.asJsonArray("babies").asJsonObject(1).getString("name"));
+        assertEquals("Grace", jo1.getJsonArray("babies").getJsonObject(1).getString("name"));
 
         JsonPath.compile("$.babies[3].name").ensurePut(jo1, "Zack");
         log.info("jo1={}", jo1);
-        assertEquals("Zack", jo1.asJsonArray("babies").asJsonObject(3).getString("name"));
+        assertEquals("Zack", jo1.getJsonArray("babies").getJsonObject(3).getString("name"));
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.babies[9].name").ensurePut(jo1, "Error"));
     }

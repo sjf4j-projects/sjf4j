@@ -1,14 +1,12 @@
 package org.sjf4j.facade.jackson;
 
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
-import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.util.TypeUtil;
 
@@ -190,7 +188,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JacksonStreamingUtil.writeNode(gen, node);
                     gen.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -199,7 +197,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -223,7 +221,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JacksonStreamingUtil.writeNode(gen, node);
                     gen.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -232,7 +230,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) +
+                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
