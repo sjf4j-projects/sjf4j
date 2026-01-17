@@ -9,7 +9,8 @@ public enum JsonType {
     NUMBER,
     INTEGER, // Defined in JSON-Schema
     BOOLEAN,
-    NULL;
+    NULL,
+    UNKNOWN;
 
     public static JsonType of(NodeType nodeType) {
         switch (nodeType) {
@@ -29,10 +30,11 @@ public enum JsonType {
                 return NUMBER;
             case VALUE_BOOLEAN:
                 return BOOLEAN;
+            case VALUE_NULL:
+                return NULL;
             default:
-                throw new IllegalArgumentException("Cannot resolve JsonType from NodeType: " + nodeType +
-                        ". This NodeType does not represent a valid JSON value or container."
-            );
+                return UNKNOWN;
+//                throw new IllegalArgumentException("Cannot resolve JsonType from NodeType '" + nodeType + "'");
         }
     }
 

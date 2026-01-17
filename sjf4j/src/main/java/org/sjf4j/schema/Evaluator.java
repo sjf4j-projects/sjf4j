@@ -10,6 +10,7 @@ import org.sjf4j.util.NumberUtil;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -30,10 +31,13 @@ public interface Evaluator {
 
     default boolean evaluate(Object subSchema, InstancedNode instance,
                              JsonPointer path, ValidationContext ctx) {
-        if (subSchema == null) return false;
+        if (subSchema == null) {
+            ctx.addError(path.toExpr(), "schema", "Not found schema");
+            return false;
+        }
         if (subSchema instanceof Boolean) {
             if (!(Boolean) subSchema) {
-                ctx.addError(path.toExpr(), "booleanSchema", "Schema is false, validation always fails");
+                ctx.addError(path.toExpr(), "schema", "False schema always fails");
                 return false;
             } else {
                 return true;
@@ -42,6 +46,7 @@ public interface Evaluator {
         if (subSchema instanceof JsonSchema) {
             return ((JsonSchema) subSchema).validate(instance, path, ctx);
         }
+        ctx.addError(path.toExpr(), "schema", "Not a valid schema type " + subSchema.getClass().getName());
         return false;
     }
 
@@ -61,12 +66,78 @@ public interface Evaluator {
         path.push(new PathToken.Index(idx));
         boolean result = evaluate(subSchema, subInstance, path, ctx);
         path.pop();
-        if (!ctx.isProbe() && result) instance.setEvaluatedItems(idx);
+        if (!ctx.isProbe() && result) instance.setEvaluatedItems(idx + 1);
         return result;
     }
 
 
     /// Build-in evaluators
+
+    // $ref
+    class RefEvaluator implements Evaluator {
+        private final URI uri;
+        private final JsonPointer refPath;
+        private final String anchor;
+        public RefEvaluator(URI uri, JsonPointer refPath, String anchor) {
+            this.uri = uri;
+            this.refPath = refPath;
+            this.anchor = anchor;
+        }
+        @Override
+        public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
+            if (refPath != null) {
+                Object schema = ctx.getSchemaByPath(uri, refPath);
+                if (schema != null) {
+                    if (schema instanceof Boolean) {
+                        return evaluate(schema, instance, path, ctx);
+                    } else if (schema instanceof JsonSchema) {
+                        if (instance.isRecursiveRef(schema)) return true;
+                        return evaluate(schema, instance, path, ctx);
+                    } else {
+                        ctx.addError(path.toExpr(), "$ref",
+                                "Not a valid schema by path '" + refPath + "' in " + uri);
+                        return false;
+                    }
+                }
+                ctx.addWarn(path.toExpr(), "$ref",
+                        "Not found schema by path '" + refPath + "' in " + uri);
+            }
+            if (anchor != null) { // Always true
+                JsonSchema schema = ctx.getSchemaByAnchor(uri, anchor);
+                if (schema == null) {
+                    ctx.addError(path.toExpr(), "$ref",
+                            "Not found anchor '" + anchor + "' in " + uri);
+                    return false;
+                }
+                if (instance.isRecursiveRef(schema)) return true;
+                return evaluate(schema, instance, path, ctx);
+            }
+            throw new AssertionError(RefEvaluator.class);
+        }
+    }
+
+    // $dynamicRef
+    class DynamicRefEvaluator implements Evaluator {
+        private final String dynamicAnchor;
+        public DynamicRefEvaluator(String dynamicAnchor) {
+            this.dynamicAnchor = dynamicAnchor;
+        }
+        @Override
+        public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
+            JsonSchema schema = ctx.getSchemaByDynamicAnchor(dynamicAnchor);
+            if (schema == null) {
+                schema = ctx.getSchemaByAnchor(null, dynamicAnchor);
+                if (schema == null) {
+                    ctx.addError(path.toExpr(), "$dynamicRef",
+                            "Not found schema by $dynamicRef '" + dynamicAnchor + "'");
+                    return false;
+                }
+            }
+            if (instance.isRecursiveRef(schema)) return true;
+            return evaluate(schema, instance, path, ctx);
+        }
+    }
+
     // type
     class TypeEvaluator implements Evaluator {
         private final String type;
@@ -93,14 +164,12 @@ public interface Evaluator {
                         type.getClass().getSimpleName());
             }
         }
-
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            JsonType actual = instance.getJsonType();
             if (jsonType != null) {
                 if (!matches(jsonType, instance)) {
                     ctx.addError(path.toExpr(), "type", "Expected type " + type +
-                            ", but found " + actual);
+                            ", but found " + instance.getJsonType());
                     return false;
                 }
                 return true;
@@ -111,7 +180,7 @@ public interface Evaluator {
                     }
                 }
                 ctx.addError(path.toExpr(), "type", "Expected one of " + Arrays.toString(types) +
-                        ", but found " + actual);
+                        ", but found " + instance.getJsonType());
                 return false;
             }
             return true;
@@ -125,6 +194,7 @@ public interface Evaluator {
                     Object actual = instance.getNode();
                     return actual instanceof Number && NumberUtil.isSemanticInteger((Number) actual);
                 }
+                return false;
             }
             return true;
         }
@@ -583,8 +653,15 @@ public interface Evaluator {
             int matches = 0;
             int size = NodeWalker.sizeInArray(actual);
             for (int i = 0; i < size; i++) {
-                if (evaluateItem(containsSchema, instance, path, i, ctx))
+//                if (evaluateItem(containsSchema, instance, path, i, ctx)) matches++;
+                InstancedNode subInstance = instance.getSubByIndex(i);
+                path.push(new PathToken.Index(i));
+                boolean result = probeToEvaluate(containsSchema, subInstance, path, ctx);
+                path.pop();
+                if (result) {
+                    instance.setEvaluatedItems(i + 1);
                     matches++;
+                }
             }
             if (matches < minContains) {
                 ctx.addError(path.toExpr(), "minContains", "Array must contain at least " +

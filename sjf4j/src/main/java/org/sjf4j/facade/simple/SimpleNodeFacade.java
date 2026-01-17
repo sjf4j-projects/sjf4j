@@ -28,12 +28,12 @@ public class SimpleNodeFacade implements NodeFacade {
             }
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             if (rawClazz.isInstance(node)) {
-                return deepCopy ? ci.copy(node) : node;
+                return deepCopy ? vci.copy(node) : node;
             } else {
-                return ci.decode(node);
+                return vci.decode(node);
             }
         }
 

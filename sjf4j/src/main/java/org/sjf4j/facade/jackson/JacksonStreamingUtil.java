@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A Jackson-specific, fully static implementation of the streaming JSON parser utilities.
@@ -381,7 +382,7 @@ public class JacksonStreamingUtil {
     /// Write
 
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
-        if (gen == null) throw new IllegalArgumentException("Gen must not be null");
+        Objects.requireNonNull(gen, "gen is null");
         if (node == null) {
             gen.writeNull();
             return;
@@ -401,6 +402,13 @@ public class JacksonStreamingUtil {
             writeValue(gen, (Number) node);
         } else if (node instanceof Boolean) {
             writeValue(gen, (Boolean) node);
+        } else if (node instanceof Map) {
+            gen.writeStartObject();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                gen.writeFieldName(entry.getKey().toString());
+                writeNode(gen, entry.getValue());
+            }
+            gen.writeEndObject();
         } else if (node instanceof JsonObject) {
             gen.writeStartObject();
             ((JsonObject) node).forEach((k, v) -> {
@@ -412,24 +420,17 @@ public class JacksonStreamingUtil {
                 }
             });
             gen.writeEndObject();
-        } else if (node instanceof Map) {
-            gen.writeStartObject();
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                gen.writeFieldName(entry.getKey().toString());
-                writeNode(gen, entry.getValue());
-            }
-            gen.writeEndObject();
-        } else if (node instanceof JsonArray) {
-            gen.writeStartArray();
-            JsonArray ja = (JsonArray) node;
-            for (Object v : ja) {
-                writeNode(gen, v);
-            }
-            gen.writeEndArray();
         } else if (node instanceof List) {
             gen.writeStartArray();
             List<?> list = (List<?>) node;
             for (Object v : list) {
+                writeNode(gen, v);
+            }
+            gen.writeEndArray();
+        } else if (node instanceof JsonArray) {
+            gen.writeStartArray();
+            JsonArray ja = (JsonArray) node;
+            for (Object v : ja) {
                 writeNode(gen, v);
             }
             gen.writeEndArray();
@@ -439,17 +440,19 @@ public class JacksonStreamingUtil {
                 writeNode(gen, Array.get(node, i));
             }
             gen.writeEndArray();
-        } else if (NodeRegistry.isPojo(node.getClass())) {
-            gen.writeStartObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
-                    NodeRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
-                gen.writeFieldName(entry.getKey());
-                Object vv = entry.getValue().invokeGetter(node);
-                writeNode(gen, vv);
-            }
-            gen.writeEndObject();
         } else {
-            throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+            if (pi != null) {
+                gen.writeStartObject();
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                    gen.writeFieldName(entry.getKey());
+                    Object vv = entry.getValue().invokeGetter(node);
+                    writeNode(gen, vv);
+                }
+                gen.writeEndObject();
+            } else {
+                throw new IllegalStateException("Unsupported node type " + node.getClass().getName());
+            }
         }
     }
 

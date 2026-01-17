@@ -77,13 +77,14 @@ public class JsonPath {
      */
     protected JsonPath(String expr) {
         Objects.requireNonNull(expr, "expr is null");
-        if (expr.startsWith("$") || expr.startsWith("@")) {
-            this.tokens = PathUtil.compile(expr);
-        } else if (expr.startsWith("/")) {
+        if (expr.startsWith("/")) {
             this.tokens = PointerUtil.compile(expr);
+        } else if (expr.startsWith("$") || expr.startsWith("@")) {
+            this.tokens = PathUtil.compile(expr);
         } else {
-            throw new JsonException("Invalid path expression '" + expr + "'. " +
-                    "Must start with '$' or '@' for JSON Path, or '/' for JSON Pointer.");
+            this.tokens = PathUtil.compile(expr);
+//            throw new JsonException("Invalid path expression '" + expr + "'. " +
+//                    "Must start with '$' or '@' for JSON Path, or '/' for JSON Pointer.");
         }
         this.raw = expr;
     }
@@ -687,7 +688,7 @@ public class JsonPath {
             Object[] args = new Object[1 + func.args.size()];
             args[0] = (result.size() == 1 ? result.get(0) : result);
             for (int i = 0; i < func.args.size(); i++) {
-                args[1 + i] = resolveFunctionArg(func.args.get(i));
+                args[1 + i] = _resolveFunctionArg(func.args.get(i));
             }
             return PathFunctionRegistry.invoke(func.name, args);
         } else {
@@ -1019,8 +1020,8 @@ public class JsonPath {
                         tnode = tnn;
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() + "' with name token '" +
-                            pt + "'. The type must be one of JsonObject/Map/POJO.");
+                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() +
+                            "' with name token '" + pt + "'. The type must be one of JsonObject/Map/POJO.");
                 }
             } else if (pt instanceof PathToken.Index) {
                 int idx = ((PathToken.Index) pt).index;
@@ -1039,8 +1040,8 @@ public class JsonPath {
                         tnode = tnn;
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() + "' with list token " +
-                            pt + ". The type must be one of JsonArray/List/Array.");
+                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() +
+                            "' with list token " + pt + ". The type must be one of JsonArray/List/Array.");
                 }
             } else {
                 throw new JsonException("Unexpected path token '" + pt + "'");
@@ -1092,7 +1093,7 @@ public class JsonPath {
         return true;
     }
 
-    private Object resolveFunctionArg(String raw) {
+    private Object _resolveFunctionArg(String raw) {
         if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
             return raw.substring(1, raw.length() - 1);
         } else if ("true".equals(raw)) {

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - `JsonPatch.applyCopy(Class<?> clazz)`
+- `asMap`/`asList`/`asArray` for NodeUtil/JsonObject/JsonPath/...
 
 ### Changed
 - Renamed `FunctionRegistry` to `PathFunctionRegistry`

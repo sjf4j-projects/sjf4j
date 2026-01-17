@@ -5,6 +5,8 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeWalker;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,6 +22,9 @@ public final class InstancedNode {
     private Set<String> evaluatedProperties;
     private int evaluatedItems = 0;
     private Map<String, InstancedNode> subInstanceCache;
+    private int refSchemaTimes = 0;
+    private Deque<Object> refSchemaStack;
+
 
     private InstancedNode(Object node, JsonType jsonType, NodeType nodeType, boolean encoded) {
         this.node = node;
@@ -28,11 +33,20 @@ public final class InstancedNode {
         this.encoded = encoded;
     }
 
+    public InstancedNode reset() {
+        this.evaluatedProperties = null;
+        this.evaluatedItems = 0;
+        this.subInstanceCache = null;
+        this.refSchemaTimes = 0;
+        this.refSchemaStack = null;
+        return this;
+    }
+
     // NULL
     public static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, null, false);
 
     public static InstancedNode infer(Object node) {
-        if (node == null) return NULL;
+        if (node == null) return NULL.reset();
         NodeType nodeType = NodeType.of(node);
         boolean encoded = false;
         if (nodeType == NodeType.VALUE_NODE_VALUE) {
@@ -61,7 +75,7 @@ public final class InstancedNode {
     public int getEvaluatedItems() {return evaluatedItems;}
 
     public InstancedNode getSubByKey(String key) {
-        if (jsonType != JsonType.OBJECT) return NULL;
+        if (jsonType != JsonType.OBJECT) return NULL.reset();
         InstancedNode subInstance = null;
         if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
         if (subInstance == null) {
@@ -74,11 +88,11 @@ public final class InstancedNode {
                 }
             }
         }
-        return subInstance == null ? NULL : subInstance;
+        return subInstance == null ? NULL.reset() : subInstance.reset();
     }
 
     public InstancedNode getSubByIndex(int idx) {
-        if (jsonType != JsonType.ARRAY) return NULL;
+        if (jsonType != JsonType.ARRAY) return NULL.reset();
         InstancedNode subInstance = null;
         String key = String.valueOf(idx);
         if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
@@ -92,8 +106,17 @@ public final class InstancedNode {
                 }
             }
         }
-        return subInstance  == null ? NULL : subInstance;
+        return subInstance  == null ? NULL.reset() : subInstance.reset();
     }
 
+    // refSchema
+    public boolean isRecursiveRef(Object schema) {
+        if (refSchemaTimes++ > 0) {
+            if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();
+            if (refSchemaStack.contains(schema)) return true;
+            else refSchemaStack.push(schema);
+        }
+        return false;
+    }
 
 }

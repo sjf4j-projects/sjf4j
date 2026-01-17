@@ -304,7 +304,7 @@ public class NodeUtilTest {
         assertEquals(jo1, jo3);
 
         jo1.put("num", "7");
-        assertEquals(jo1, jo2);
+        assertNotEquals(jo1, jo2);
         assertNotEquals(jo1, jo3);
     }
 

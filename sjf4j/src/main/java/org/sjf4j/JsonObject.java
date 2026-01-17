@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.AbstractMap;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,32 +71,25 @@ public class JsonObject extends JsonContainer {
     public JsonObject(Object node) {
         this();
         if (node == null) return;
-
+        if (node instanceof Map) {
+            this.nodeMap = (Map<String, Object>) node;
+            return;
+        }
         if (node instanceof JsonObject) {
             JsonObject jo = (JsonObject) node;
-            if (jo.fieldMap != null) {
-//                this.fieldMap = jo.fieldMap;
-                for (Map.Entry<String, NodeRegistry.FieldInfo> fi : jo.fieldMap.entrySet()) {
-                    Object v = fi.getValue().invokeGetter(node);
-                    put(fi.getKey(), v);
-                }
-            }
-            if (jo.nodeMap != null) {
-                this.nodeMap = jo.nodeMap;
-            }
-        } else if (node instanceof Map) {
-            this.nodeMap = (Map<String, Object>) node;
-        } else if (NodeRegistry.isPojo(node.getClass())) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
-//            this.fieldMap = pi.getFields();
+            putAll(jo);
+            return;
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        if (pi != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 put(fi.getKey(), v);
             }
-        } else {
-            throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
-                        "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");
+            return;
         }
+        throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
+                "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");
     }
 
     /**
@@ -358,7 +352,7 @@ public class JsonObject extends JsonContainer {
         } else if (nodeMap == null) {
             return fieldMap.keySet();
         } else {
-            Set<String> merged = fieldMap.keySet();
+            Set<String> merged = new HashSet<>(fieldMap.keySet());
             merged.addAll(nodeMap.keySet());
             return merged;
         }

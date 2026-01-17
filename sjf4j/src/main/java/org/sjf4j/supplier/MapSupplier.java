@@ -11,6 +11,11 @@ public interface MapSupplier {
 
     <T> Map<String, T> create();
 
+    default <T> Map<String, T> create(Map<String, T> map) {
+        Map<String, T> newMap = create();
+        newMap.putAll(map);
+        return newMap;
+    }
 
     /// Build-in Map Suppliers
 

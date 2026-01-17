@@ -30,7 +30,7 @@ public class PathUtil {
     }
 
     public static List<PathToken> compile(String expr) {
-        if (expr == null) throw new IllegalArgumentException("Expr must not be null");
+        if (expr == null || expr.isEmpty()) throw new JsonException("expr is empty");
 
         List<PathToken> tokens = new ArrayList<>();
         int i = 0;
@@ -42,7 +42,8 @@ public class PathUtil {
             tokens.add(PathToken.Current.INSTANCE);
             i++;
         } else {
-            throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
+//            throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
+            tokens.add(PathToken.Root.INSTANCE);
         }
 
         while (i < expr.length()) {
@@ -61,41 +62,7 @@ public class PathUtil {
                 c = expr.charAt(i);
             }
 
-            if (c == '.') {
-                i++;
-                if (i >= expr.length())
-                    throw new JsonException("Unexpected EOF after '.' in path '" + expr + "' at position " + i);
-
-                // Wildcard
-                if (expr.charAt(i) == '*') {
-                    tokens.add(PathToken.Wildcard.INSTANCE);
-                    i++;
-                    continue;
-                }
-
-                int start = i;
-                while (i < expr.length() && isNextTokenChar(expr.charAt(i))) i++;
-                if (start == i)
-                    throw new JsonException("Empty field name after '.' in path '" + expr + "' at position " + i);
-
-                // Function
-                if (i < expr.length() && expr.charAt(i) == '(') {
-                    int end = findMatchingParen(expr, i);
-                    if (end < 0) {
-                        throw new JsonException("Unclosed '(' in function at position " + i + " in path '" + expr + "'");
-                    }
-                    String funcName = expr.substring(start, i);
-                    String args = expr.substring(i + 1, end); // inside (...)
-                    tokens.add(new PathToken.Function(funcName, parseFunctionArgs(args)));
-                    i = end + 1;
-                    continue;
-                }
-
-                // Name
-                String name = expr.substring(start, i);
-                tokens.add(new PathToken.Name(name));
-            }
-            else if (c == '[') {
+            if (c == '[') {
                 i++;
                 if (i >= expr.length())
                     throw new JsonException("Unexpected EOF after '[' in path '" + expr + "' at position " + i);
@@ -188,6 +155,40 @@ public class PathUtil {
                     }
                 }
 
+            }
+            else if (c == '.' || i == 0) {
+                if (c == '.') i++;
+                if (i >= expr.length())
+                    throw new JsonException("Unexpected EOF after '.' in path '" + expr + "' at position " + i);
+
+                // Wildcard
+                if (expr.charAt(i) == '*') {
+                    tokens.add(PathToken.Wildcard.INSTANCE);
+                    i++;
+                    continue;
+                }
+
+                int start = i;
+                while (i < expr.length() && isNextTokenChar(expr.charAt(i))) i++;
+                if (start == i)
+                    throw new JsonException("Empty field name after '.' in path '" + expr + "' at position " + i);
+
+                // Function
+                if (i < expr.length() && expr.charAt(i) == '(') {
+                    int end = findMatchingParen(expr, i);
+                    if (end < 0) {
+                        throw new JsonException("Unclosed '(' in function at position " + i + " in path '" + expr + "'");
+                    }
+                    String funcName = expr.substring(start, i);
+                    String args = expr.substring(i + 1, end); // inside (...)
+                    tokens.add(new PathToken.Function(funcName, parseFunctionArgs(args)));
+                    i = end + 1;
+                    continue;
+                }
+
+                // Name
+                String name = expr.substring(start, i);
+                tokens.add(new PathToken.Name(name));
             }
             else {
                 throw new JsonException("Unexpected char '" + c + "' in path '" + expr + "' at position " + i);

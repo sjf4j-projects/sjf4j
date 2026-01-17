@@ -351,9 +351,9 @@ public class GsonStreamingUtil {
         }
 
         Class<?> rawClazz = node.getClass();
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            Object raw = ci.encode(node);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            Object raw = vci.encode(node);
             writeNode(writer, raw);
             return;
         }
@@ -366,6 +366,13 @@ public class GsonStreamingUtil {
             writer.value((Number) node);
         } else if (node instanceof Boolean) {
             writer.value((Boolean) node);
+        } else if (node instanceof Map) {
+            writer.beginObject();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                writer.name(entry.getKey().toString());
+                writeNode(writer, entry.getValue());
+            }
+            writer.endObject();
         } else if (node instanceof JsonObject) {
             writer.beginObject();
             ((JsonObject) node).forEach((k, v) -> {
@@ -376,13 +383,6 @@ public class GsonStreamingUtil {
                     throw new RuntimeException(e);
                 }
             });
-            writer.endObject();
-        } else if (node instanceof Map) {
-            writer.beginObject();
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                writer.name(entry.getKey().toString());
-                writeNode(writer, entry.getValue());
-            }
             writer.endObject();
         } else if (node instanceof JsonArray) {
             writer.beginArray();
@@ -404,17 +404,19 @@ public class GsonStreamingUtil {
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();
-        } else if (NodeRegistry.isPojo(node.getClass())) {
-            writer.beginObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry :
-                    NodeRegistry.getPojoInfo(node.getClass()).getFields().entrySet()) {
-                writer.name(entry.getKey());
-                Object vv = entry.getValue().invokeGetter(node);
-                writeNode(writer, vv);
-            }
-            writer.endObject();
         } else {
-            throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+            if (pi != null) {
+                writer.beginObject();
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                    writer.name(entry.getKey());
+                    Object vv = entry.getValue().invokeGetter(node);
+                    writeNode(writer, vv);
+                }
+                writer.endObject();
+            } else {
+                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
+            }
         }
     }
 

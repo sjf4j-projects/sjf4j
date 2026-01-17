@@ -31,7 +31,7 @@ public class ValidationMessage {
 
     @Override
     public String toString() {
-        return "ValidationMessage [" + severity + "] at " + path + " : (" + keyword + ") " + message;
+        return "[" + severity + "] keyword '" + keyword + "' failed at '" + path + "': " + message;
     }
 
 }
