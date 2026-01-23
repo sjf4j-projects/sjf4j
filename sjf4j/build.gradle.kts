@@ -22,6 +22,7 @@ dependencies {
     compileOnly("com.google.code.gson:gson:2.13.1")
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
     compileOnly("org.yaml:snakeyaml:2.5")
+    compileOnly("com.ibm.icu:icu4j:77.1")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")

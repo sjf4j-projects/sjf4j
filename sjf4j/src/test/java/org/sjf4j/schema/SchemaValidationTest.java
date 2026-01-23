@@ -7,7 +7,6 @@ import org.sjf4j.Sjf4j;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,7 +23,7 @@ public class SchemaValidationTest {
                 "  \"const\": \"a\"\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid("a"));
         assertFalse(schema.isValid("b"));
@@ -41,7 +40,7 @@ public class SchemaValidationTest {
                 "  \"multipleOf\": 2\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(2));
         assertTrue(schema.isValid(8));
@@ -59,7 +58,7 @@ public class SchemaValidationTest {
                     "  \"pattern\": \"^[a-z]+$\"\n" +
                     "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid("ab"));
         assertTrue(schema.isValid("abcd"));
@@ -79,7 +78,7 @@ public class SchemaValidationTest {
                         "  \"items\": { \"type\": \"integer\" }\n" +
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(Arrays.asList(1, 2)));
         assertFalse(schema.isValid(Collections.emptyList()));
@@ -99,7 +98,7 @@ public class SchemaValidationTest {
                 "  \"items\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(Arrays.asList("a", 1)));
         assertFalse(schema.isValid(Arrays.asList("a", 1, 2)));
@@ -117,7 +116,7 @@ public class SchemaValidationTest {
                         "  }\n" +
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         Map<String, Object> ok = new HashMap<String, Object>();
         ok.put("a", 1);
@@ -141,7 +140,7 @@ public class SchemaValidationTest {
                 "  \"additionalProperties\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         Map<String, Object> ok = new HashMap<String, Object>();
         ok.put("x-a", 1);
@@ -163,7 +162,7 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         Map<String, Object> ok = new HashMap<>();
         ok.put("a", 1);
@@ -186,7 +185,7 @@ public class SchemaValidationTest {
                 "  ]\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid("a"));
         assertTrue(schema.isValid(1));
@@ -202,7 +201,7 @@ public class SchemaValidationTest {
                 "  \"else\": { \"required\": [\"c\"] }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         Map<String, Object> ok1 = new HashMap<>();
         ok1.put("a", 1);
@@ -238,7 +237,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":\"x\"}")));
         assertFalse(schema.isValid(Sjf4j.fromJson("{\"a\":1}")));
@@ -256,7 +255,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(Sjf4j.fromJson("{\"abc\":1}")));
         assertFalse(schema.isValid(Sjf4j.fromJson("{\"Abc\":1}")));
@@ -271,7 +270,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(JsonArray.fromJson("[\"a\",1]")));
         assertFalse(schema.isValid(JsonArray.fromJson("[\"a\",\"b\"]")));
@@ -287,7 +286,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(JsonArray.fromJson("[1,2]")));
         assertFalse(schema.isValid(JsonArray.fromJson("[1,\"a\"]")));
@@ -305,7 +304,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(Sjf4j.fromJson("{\"a\":1}")));
         assertFalse(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":2}")));
@@ -323,7 +322,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":\"x\"}")));
         assertFalse(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":\"x\",\"c\":3}")));
@@ -340,7 +339,7 @@ public class SchemaValidationTest {
                 "  \"unevaluatedItems\": false\n" +
                 "}";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(JsonArray.fromJson("[1]")));
         assertFalse(schema.isValid(JsonArray.fromJson("[1,2]")));
@@ -350,15 +349,18 @@ public class SchemaValidationTest {
     public void testFormatEmail() {
         String json =
                 "{\n" +
-                        "  \"type\": \"string\",\n" +
-                        "  \"format\": \"email\"\n" +
-                        "}";
+                "  \"type\": \"string\",\n" +
+                "  \"format\": \"email\"\n" +
+                "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid("a@b.com"));
-        assertFalse(schema.isValid("not-email"));
+        assertTrue(schema.isValid("not-email"));
+
+        ValidationResult result = schema.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build());
+        assertFalse(result.isValid());
     }
 
     @Test
@@ -370,7 +372,7 @@ public class SchemaValidationTest {
                 "  \"unevaluatedItems\": false\n" +
                 "}";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
 
         assertTrue(schema.isValid(JsonArray.fromJson("[1]")));
         assertFalse(schema.isValid(JsonArray.fromJson("[1,\"x\"]")));

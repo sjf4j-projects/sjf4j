@@ -9,7 +9,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -401,5 +400,23 @@ public class Sjf4j {
         return props;
     }
 
+//    public static ValidationResult validate(Object schemaNode, Object targetNode) {
+//        Objects.requireNonNull(schemaNode, "schemaNode is null");
+//        NodeType nt = NodeType.of(schemaNode);
+//        if (nt.isBoolean()) {
+//            Boolean b = (Boolean) schemaNode;
+//            if (b) return new ValidationResult(true, null);
+//            else return new ValidationResult(false, null);
+//        } else if (nt.isObject()) {
+//            JsonSchema schema = NodeUtil.as(schemaNode, JsonSchema.class);
+//            if (schema == null)
+//                throw new IllegalArgumentException("Cannot convert node of type " +
+//                        schemaNode.getClass().getName() + " to JsonSchema");
+//            schema.compileOrThrow();
+//            return schema.validate(targetNode);
+//        }
+//        throw new IllegalArgumentException("Unsupported schema node type: " +
+//                schemaNode.getClass().getName() + ". Expected boolean or object.");
+//    }
 
 }

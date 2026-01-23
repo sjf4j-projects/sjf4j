@@ -6,6 +6,7 @@ import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeWalker;
 
 import java.util.ArrayDeque;
+import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,11 +18,10 @@ public final class InstancedNode {
     private final JsonType jsonType;
     private final NodeType nodeType;
     private final boolean encoded;
-
-    // runtime evaluation state
-    private Set<String> evaluatedProperties;
-    private int evaluatedItems = 0;
     private Map<String, InstancedNode> subInstanceCache;
+
+    // runtime state
+    private Deque<BitSet> evaluatedStack;
     private int refSchemaTimes = 0;
     private Deque<Object> refSchemaStack;
 
@@ -34,9 +34,7 @@ public final class InstancedNode {
     }
 
     public InstancedNode reset() {
-        this.evaluatedProperties = null;
-        this.evaluatedItems = 0;
-        this.subInstanceCache = null;
+        this.evaluatedStack = null;
         this.refSchemaTimes = 0;
         this.refSchemaStack = null;
         return this;
@@ -62,17 +60,66 @@ public final class InstancedNode {
     public NodeType getNodeType() {return nodeType;}
     public boolean isEncoded() {return encoded;}
 
-    public void addEvaluatedProperty(String key) {
-        if (evaluatedProperties == null)
-            evaluatedProperties = new HashSet<>();
-        evaluatedProperties.add(key);
+    public void markEvaluated(int propIdx) {
+        if (evaluatedStack == null) return;
+        BitSet evaluated = evaluatedStack.peek();
+        if (evaluated == null) return;
+        evaluated.set(propIdx);
     }
-    public Set<String> getEvaluatedProperties() {return evaluatedProperties;}
+    public void markEvaluated(int fromIdx, int toIdx) {
+        if (evaluatedStack == null) return;
+        BitSet evaluated = evaluatedStack.peek();
+        if (evaluated == null) return;
+        evaluated.set(fromIdx, toIdx);
+    }
+    public void createEvaluated() {
+        if (evaluatedStack == null) evaluatedStack = new ArrayDeque<>();
+        evaluatedStack.push(new BitSet());
+    }
+    public void pushEvaluated() {
+        if (evaluatedStack == null) return;
+        evaluatedStack.push(new BitSet());
+    }
+    public void pushEvaluated(BitSet evaluated) {
+        if (evaluatedStack == null) return;
+        evaluatedStack.push(evaluated);
+    }
+    public BitSet popEvaluated() {
+        if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
+        return evaluatedStack.pop();
+    }
+    public BitSet peekEvaluated() {
+        if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
+        return evaluatedStack.peek();
+    }
+    public BitSet mergedEvaluated() {
+        BitSet merged = new BitSet();
+        if (evaluatedStack != null) {
+            for (BitSet bs : evaluatedStack) merged.or(bs);
+        }
+        return merged;
+    }
 
-    public void setEvaluatedItems(int evaluatedItems) {
-        this.evaluatedItems = evaluatedItems;
-    }
-    public int getEvaluatedItems() {return evaluatedItems;}
+//    public void addEvaluatedProperty(String key) {
+//        if (evaluatedProperties == null)
+//            evaluatedProperties = new HashSet<>();
+//        evaluatedProperties.add(key);
+//    }
+//    public Set<String> getEvaluatedProperties() {return evaluatedProperties;}
+//
+//    public void addEvaluatedItem(int idx) {
+//        if (evaluatedItems == null) {
+//            evaluatedItems = new BitSet();
+//        }
+//        evaluatedItems.set(idx);
+//    }
+//    public void addEvaluatedItems(int fromIdx, int toIdx) {
+//        if (evaluatedItems == null) {
+//            evaluatedItems = new BitSet();
+//        }
+//        evaluatedItems.set(fromIdx, toIdx);
+//    }
+//    public BitSet getEvaluatedItems() {return evaluatedItems;}
 
     public InstancedNode getSubByKey(String key) {
         if (jsonType != JsonType.OBJECT) return NULL.reset();

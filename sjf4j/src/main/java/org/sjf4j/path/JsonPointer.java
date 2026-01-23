@@ -25,7 +25,7 @@ public class JsonPointer extends JsonPath {
     @Decode
     public static JsonPointer compile(String expr) {
         if (expr == null) throw new IllegalArgumentException("Expr must not be null");
-        if (expr.startsWith("/")) {
+        if (expr.isEmpty() || expr.startsWith("/")) {
             return new JsonPointer(expr);
         } else {
             throw new IllegalArgumentException("JSON Pointer expr must start with '/'");

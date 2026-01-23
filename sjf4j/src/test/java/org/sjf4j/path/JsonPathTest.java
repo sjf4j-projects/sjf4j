@@ -232,9 +232,7 @@ public class JsonPathTest {
 
         assertDoesNotThrow(() -> JsonPath.compile("no.invalid"));
 
-        assertThrows(JsonException.class, () -> {
-            JsonPath.compile("");
-        });
+        assertDoesNotThrow(() -> JsonPath.compile("")); // "" is valid in JSON Pointer
 
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
         assertNull(JsonPath.compile("$[10]").getNode(ja));

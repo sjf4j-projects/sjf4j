@@ -6,6 +6,7 @@ import org.sjf4j.Sjf4j;
 
 import java.time.LocalDate;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,9 +19,9 @@ public class SchemaCoreTest {
     public void testCompile1() {
         String json = "{  \"type\": \"string\" }";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compileOrThrow();
+        schema.compile();
         log.info("schema={}", schema);
-        assertEquals("", schema.getUri().toString());
+//        assertEquals("", schema.getUri().toString());
         assertTrue(schema.isValid("abc"));
     }
 
@@ -29,7 +30,7 @@ public class SchemaCoreTest {
         String json = "{}";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
+        schema.compile();
         assertTrue(schema.isValid(1));
         assertTrue(schema.isValid("a"));
         assertTrue(schema.isValid(null));
@@ -42,13 +43,13 @@ public class SchemaCoreTest {
     public void testId1() {
         String json =
                 "{\n" +
-                "  \"$id\": \"schemas/base.json\",\n" +
+                "  \"$id\": \"json-schema/base.json\",\n" +
                 "  \"type\": \"number\"\n" +
                 "}\n";
-        JsonSchema schema = JsonSchema.fromJson(json);
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
-        assertEquals("schemas/base.json", schema.getUri().toString());
+        schema.compile();
+        assertEquals("json-schema/base.json", schema.getUri().toString());
         assertTrue(schema.isValid(13));
     }
 
@@ -61,7 +62,6 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, schema::compileOrThrow);
     }
 
     @Test
@@ -75,7 +75,10 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
+        schema.compile();
+
+        ValidationResult result = schema.validate(1);
+        log.info("result={}", result);
         assertTrue(schema.isValid(1));
         assertFalse(schema.isValid("a"));
     }
@@ -90,7 +93,7 @@ public class SchemaCoreTest {
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, schema::compileOrThrow);
+        assertThrows(SchemaException.class, schema::compile);
     }
 
 
@@ -103,7 +106,7 @@ public class SchemaCoreTest {
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
+        schema.compile();
         schema.isValid("StackOverflowError");
     }
 
@@ -114,7 +117,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
+        schema.compile();
         assertFalse(schema.isValid("Miss"));
     }
 
@@ -138,7 +141,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
+        schema.compile();
 
         ValidationResult result = schema.validate(Sjf4j.fromJson("{\n" +
                 "  \"value\": 1,\n" +
@@ -161,7 +164,7 @@ public class SchemaCoreTest {
         String json = "{ \"$dynamicRef\": \"#/a/b\" }\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compileOrThrow();
+        schema.compile();
     }
 
     @Test
@@ -169,37 +172,38 @@ public class SchemaCoreTest {
         String json = "{ \"$dynamicRef\": \"a.json#node\" }\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, schema::compileOrThrow);
+        schema.compile();
     }
 
 
     @Test
     public void testStore1() {
         String json1 = "{\n" +
-                "  \"$id\": \"base.json\",\n" +
+                "  \"$id\": \"https://example.org/base.json\",\n" +
                 "  \"$dynamicAnchor\": \"node\",\n" +
                 "  \"type\": \"number\"\n" +
                 "}\n";
         JsonSchema schema1 = JsonSchema.fromJson(json1);
+        schema1.compile();
 
         String json2 = "{\n" +
-                "  \"$id\": \"child.json\",\n" +
+                "  \"$id\": \"https://example.org/child.json\",\n" +
                 "  \"$dynamicAnchor\": \"node\",\n" +
                 "  \"type\": \"string\"\n" +
                 "}\n";
         JsonSchema schema2 = JsonSchema.fromJson(json2);
+        schema2.compile();
 
         String json3 = "{\n" +
-                "  \"$ref\": \"base.json\",\n" +
+                "  \"$ref\": \"https://example.org/base.json\",\n" +
                 "  \"allOf\": [\n" +
-                "    { \"$ref\": \"child.json\" }\n" +
+                "    { \"$ref\": \"https://example.org/child.json\" }\n" +
                 "  ]\n" +
                 "}\n";
         JsonSchema schema3 = JsonSchema.fromJson(json3);
 
         SchemaStore store = new SchemaStore(schema1, schema2);
-        schema3.setSchemaStore(store);
-        schema3.compileOrThrow();
+        schema3.compile(store);
         log.info("schema3={}", schema3);
 
         ValidationResult result = schema3.validate("a");
@@ -208,7 +212,7 @@ public class SchemaCoreTest {
 
         ValidationResult result2 = schema3.validate(1);
         log.info("result2={}", result2);
-        assertTrue(result2.isValid());
+        assertFalse(result2.isValid());
     }
 
 

@@ -77,7 +77,10 @@ public class JsonPath {
      */
     protected JsonPath(String expr) {
         Objects.requireNonNull(expr, "expr is null");
-        if (expr.startsWith("/")) {
+        if (expr.isEmpty()) {
+            this.tokens = new ArrayList<>();
+            this.tokens.add(PathToken.Root.INSTANCE);
+        } else if (expr.startsWith("/")) {
             this.tokens = PointerUtil.compile(expr);
         } else if (expr.startsWith("$") || expr.startsWith("@")) {
             this.tokens = PathUtil.compile(expr);

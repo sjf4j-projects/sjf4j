@@ -65,10 +65,10 @@ public class PointerUtilTest {
     @Test
     void testConsecutiveSlashes() {
         List<PathToken> tokens = PointerUtil.compile("/a//b///c");
-        assertEquals(4, tokens.size());
+        assertEquals(7, tokens.size());
         assertEquals("a", ((PathToken.Name) tokens.get(1)).name);
-        assertEquals("b", ((PathToken.Name) tokens.get(2)).name);
-        assertEquals("c", ((PathToken.Name) tokens.get(3)).name);
+        assertEquals("b", ((PathToken.Name) tokens.get(3)).name);
+        assertEquals("c", ((PathToken.Name) tokens.get(6)).name);
     }
 
     @Test
@@ -94,9 +94,19 @@ public class PointerUtilTest {
     @Test
     void testEmptySegments() {
         List<PathToken> tokens = PointerUtil.compile("/a//b");
-        assertEquals(3, tokens.size());
+        assertEquals(4, tokens.size());
+        assertEquals("a", ((PathToken.Name) tokens.get(1)).name);
+        assertEquals("", ((PathToken.Name) tokens.get(2)).name);
+        assertEquals("b", ((PathToken.Name) tokens.get(3)).name);
+    }
+
+    @Test
+    void testEmptyEnds() {
+        List<PathToken> tokens = PointerUtil.compile("/a/b/");
+        assertEquals(4, tokens.size());
         assertEquals("a", ((PathToken.Name) tokens.get(1)).name);
         assertEquals("b", ((PathToken.Name) tokens.get(2)).name);
+        assertEquals("", ((PathToken.Name) tokens.get(3)).name);
     }
 
     @Test

@@ -7,12 +7,16 @@ import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
 import org.sjf4j.util.NodeUtil;
 import org.sjf4j.util.NumberUtil;
+import org.sjf4j.util.StringUtil;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -22,51 +26,49 @@ public interface Evaluator {
 
     boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx);
 
-    default boolean probeToEvaluate(Object subSchema, InstancedNode instance,
-                                    JsonPointer path, ValidationContext ctx) {
-        ValidationContext probeCtx = ctx.createProbe();
-        evaluate(subSchema, instance, path, probeCtx);
-        return probeCtx.isValid();
-    }
+//    default boolean probeToEvaluate(Object subSchema, InstancedNode instance,
+//                                    JsonPointer path, ValidationContext ctx) {
+//        ValidationContext probeCtx = ctx.createProbe();
+//        evaluate(subSchema, instance, path, probeCtx);
+//        return probeCtx.isValid();
+//    }
 
-    default boolean evaluate(Object subSchema, InstancedNode instance,
+    default boolean evaluate(Object subSchema, String keyword, InstancedNode instance,
                              JsonPointer path, ValidationContext ctx) {
         if (subSchema == null) {
-            ctx.addError(path.toExpr(), "schema", "Not found schema");
+            ctx.addError(path.toExpr(), keyword, "Not found schema");
             return false;
         }
         if (subSchema instanceof Boolean) {
             if (!(Boolean) subSchema) {
-                ctx.addError(path.toExpr(), "schema", "False schema always fails");
+                ctx.addError(path.toExpr(), keyword, "Schema 'false' always fails");
                 return false;
             } else {
                 return true;
             }
         }
-        if (subSchema instanceof JsonSchema) {
-            return ((JsonSchema) subSchema).validate(instance, path, ctx);
+        if (subSchema instanceof ObjectSchema) {
+            return ((ObjectSchema) subSchema)._validate(instance, path, ctx);
         }
-        ctx.addError(path.toExpr(), "schema", "Not a valid schema type " + subSchema.getClass().getName());
+        ctx.addError(path.toExpr(), keyword, "Not a valid schema type " + subSchema.getClass().getName());
         return false;
     }
 
-    default boolean evaluateProperty(Object subSchema, InstancedNode instance,
+    default boolean evaluateProperty(Object subSchema, String keyword, InstancedNode instance,
                                      JsonPointer path, String key, ValidationContext ctx) {
         InstancedNode subInstance = instance.getSubByKey(key);
         path.push(new PathToken.Name(key));
-        boolean result = evaluate(subSchema, subInstance, path, ctx);
+        boolean result = evaluate(subSchema, keyword, subInstance, path, ctx);
         path.pop();
-        if (!ctx.isProbe() && result) instance.addEvaluatedProperty(key);
         return result;
     }
 
-    default boolean evaluateItem(Object subSchema, InstancedNode instance,
+    default boolean evaluateItem(Object subSchema, String keyword, InstancedNode instance,
                                  JsonPointer path, int idx, ValidationContext ctx) {
         InstancedNode subInstance = instance.getSubByIndex(idx);
         path.push(new PathToken.Index(idx));
-        boolean result = evaluate(subSchema, subInstance, path, ctx);
+        boolean result = evaluate(subSchema, keyword, subInstance, path, ctx);
         path.pop();
-        if (!ctx.isProbe() && result) instance.setEvaluatedItems(idx + 1);
         return result;
     }
 
@@ -89,10 +91,10 @@ public interface Evaluator {
                 Object schema = ctx.getSchemaByPath(uri, refPath);
                 if (schema != null) {
                     if (schema instanceof Boolean) {
-                        return evaluate(schema, instance, path, ctx);
-                    } else if (schema instanceof JsonSchema) {
+                        return evaluate(schema, "$ref", instance, path, ctx);
+                    } else if (schema instanceof ObjectSchema) {
                         if (instance.isRecursiveRef(schema)) return true;
-                        return evaluate(schema, instance, path, ctx);
+                        return evaluate(schema, "$ref", instance, path, ctx);
                     } else {
                         ctx.addError(path.toExpr(), "$ref",
                                 "Not a valid schema by path '" + refPath + "' in " + uri);
@@ -100,17 +102,22 @@ public interface Evaluator {
                     }
                 }
                 ctx.addWarn(path.toExpr(), "$ref",
-                        "Not found schema by path '" + refPath + "' in " + uri);
+                        "Not found schema by path '" + refPath + "' in URI " + uri);
             }
             if (anchor != null) { // Always true
-                JsonSchema schema = ctx.getSchemaByAnchor(uri, anchor);
+                ObjectSchema schema = ctx.getSchemaByAnchor(uri, anchor);
                 if (schema == null) {
-                    ctx.addError(path.toExpr(), "$ref",
-                            "Not found anchor '" + anchor + "' in " + uri);
+                    if (anchor.isEmpty()) {
+                        ctx.addError(path.toExpr(), "$ref",
+                                "Not found schema at URI " + uri);
+                    } else {
+                        ctx.addError(path.toExpr(), "$ref",
+                                "Not found anchor '" + anchor + "' in URI " + uri);
+                    }
                     return false;
                 }
                 if (instance.isRecursiveRef(schema)) return true;
-                return evaluate(schema, instance, path, ctx);
+                return evaluate(schema, "$ref", instance, path, ctx);
             }
             throw new AssertionError(RefEvaluator.class);
         }
@@ -118,23 +125,49 @@ public interface Evaluator {
 
     // $dynamicRef
     class DynamicRefEvaluator implements Evaluator {
+        private final URI uri;
+        private final JsonPointer refPath;
         private final String dynamicAnchor;
-        public DynamicRefEvaluator(String dynamicAnchor) {
+        public DynamicRefEvaluator(URI uri, JsonPointer refPath, String dynamicAnchor) {
+            this.uri = uri;
+            this.refPath = refPath;
             this.dynamicAnchor = dynamicAnchor;
         }
+
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            JsonSchema schema = ctx.getSchemaByDynamicAnchor(dynamicAnchor);
+            ObjectSchema schema = ctx.getSchemaByDynamicAnchor(uri, dynamicAnchor);
             if (schema == null) {
-                schema = ctx.getSchemaByAnchor(null, dynamicAnchor);
+                if (refPath != null) {
+                    Object schemaNode = ctx.getSchemaByPath(uri, refPath);
+                    if (schemaNode != null) {
+                        if (schemaNode instanceof Boolean) {
+                            return evaluate(schemaNode, "$dynamicRef", instance, path, ctx);
+                        } else if (schemaNode instanceof ObjectSchema) {
+                            if (instance.isRecursiveRef(schemaNode)) return true;
+                            return evaluate(schemaNode, "$dynamicRef", instance, path, ctx);
+                        } else {
+                            ctx.addError(path.toExpr(), "$dynamicRef",
+                                    "Not a valid schema by path '" + refPath + "' in " + uri);
+                            return false;
+                        }
+                    }
+                    ctx.addWarn(path.toExpr(), "$dynamicRef",
+                            "Not found schema by path '" + refPath + "' in URI " + uri);
+                }
+                schema = ctx.getSchemaByAnchor(uri, dynamicAnchor);
                 if (schema == null) {
-                    ctx.addError(path.toExpr(), "$dynamicRef",
-                            "Not found schema by $dynamicRef '" + dynamicAnchor + "'");
+                    if (dynamicAnchor.isEmpty()) {
+                        ctx.addError(path.toExpr(), "$dynamicRef", "Not found schema at URI " + uri);
+                    } else {
+                        ctx.addError(path.toExpr(), "$dynamicRef",
+                                "Not found anchor '" + dynamicAnchor + "' in URI " + uri);
+                    }
                     return false;
                 }
             }
             if (instance.isRecursiveRef(schema)) return true;
-            return evaluate(schema, instance, path, ctx);
+            return evaluate(schema, "$dynamicRef", instance, path, ctx);
         }
     }
 
@@ -253,7 +286,7 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.NUMBER && instance.getJsonType() != JsonType.INTEGER) {
-                return false;
+                return true;
             }
             Number actual = (Number) instance.getNode();
             if (minimum != null && NumberUtil.compare(actual, minimum) < 0) {
@@ -293,7 +326,7 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.NUMBER && instance.getJsonType() != JsonType.INTEGER) {
-                return false;
+                return true;
             }
             Number actual = (Number) instance.getNode();
             if (isIntegerDivisor && NumberUtil.isSemanticInteger(actual)) {
@@ -331,9 +364,9 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.STRING) return false;
+            if (instance.getJsonType() != JsonType.STRING) return true;
             String actual = (String) instance.getNode();
-            int length = actual.length();
+            int length = StringUtil.length(actual);
             if (minLength != null && length < minLength) {
                 ctx.addError(path.toExpr(), "minLength", "String length must >= " + minLength);
                 return false;
@@ -357,7 +390,7 @@ public interface Evaluator {
 
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.STRING) return false;
+            if (instance.getJsonType() != JsonType.STRING) return true;
             String actual = (String) instance.getNode();
             if (!pn.matcher(actual).find()) {
                 ctx.addError(path.toExpr(), "pattern", "String must match pattern: " + pattern);
@@ -377,11 +410,14 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.STRING) return false;
+            if (instance.getJsonType() != JsonType.STRING) return true;
             String actual = (String) instance.getNode();
-            if (!formatValidator.validate(actual)) {
-                ctx.addError(path.toExpr(), "format", "String must match format: " + format);
-                return false;
+            if (ctx.getOptions().isStrictFormats()) {
+                if (!formatValidator.validate(actual)) {
+                    ctx.addError(path.toExpr(), "format",
+                            "Value '" + actual + "' does not match format " + format);
+                    return false;
+                }
             }
             return true;
         }
@@ -398,7 +434,7 @@ public interface Evaluator {
 
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.OBJECT) return false;
+            if (instance.getJsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.getNode();
             int size = NodeWalker.sizeInObject(actual);
@@ -447,7 +483,7 @@ public interface Evaluator {
 
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.OBJECT) return false;
+            if (instance.getJsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.getNode();
             boolean result = true;
@@ -462,13 +498,17 @@ public interface Evaluator {
             if (ctx.shouldAbort()) return result;
 
             // properties
+            int propIdx = 0;
             for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(actual)) {
                 String key = entry.getKey();
                 boolean matched = false;
                 if (properties != null) {
                     Object subSchema = properties.get(key);
                     if (subSchema != null) {
-                        result = result && evaluateProperty(subSchema, instance, path, key, ctx);
+                        boolean subResult = evaluateProperty(subSchema,
+                                "properties", instance, path, key, ctx);
+                        if (subResult) instance.markEvaluated(propIdx);
+                        result = result && subResult;
                         matched = true;
                     }
                 }
@@ -477,16 +517,23 @@ public interface Evaluator {
                         if (patternPns[i].matcher(key).find()) {
                             Object subSchema = patternSchemas[i];
                             if (subSchema != null) {
-                                result = result && evaluateProperty(subSchema, instance, path, key, ctx);
+                                boolean subResult = evaluateProperty(subSchema,
+                                        "patternProperties", instance, path, key, ctx);
+                                if (subResult) instance.markEvaluated(propIdx);
+                                result = result && subResult;
                                 matched = true;
                             }
                         }
                     }
                 }
                 if (additionalPropertiesSchema != null && !matched) {
-                    result = result && evaluateProperty(additionalPropertiesSchema, instance, path, key, ctx);
+                    boolean subResult = evaluateProperty(additionalPropertiesSchema,
+                            "additionalProperties", instance, path, key, ctx);
+                    if (subResult) instance.markEvaluated(propIdx);
+                    result = result && subResult;
                 }
                 if (ctx.shouldAbort()) return result;
+                propIdx++;
             }
             return result;
         }
@@ -500,7 +547,7 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.OBJECT) return false;
+            if (instance.getJsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.getNode();
             boolean result = true;
@@ -530,7 +577,7 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.OBJECT) return false;
+            if (instance.getJsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.getNode();
             boolean result = true;
@@ -538,7 +585,8 @@ public interface Evaluator {
                 String key = entry.getKey();
                 if (NodeWalker.containsInObject(actual, key)) {
                     Object subSchema = dependentSchemas.get(key);
-                    result = result && evaluate(subSchema, instance, path, ctx);
+                    boolean subResult = evaluate(subSchema, "dependentSchemas", instance, path, ctx);
+                    result = result && subResult;
                     if (ctx.shouldAbort()) return result;
                 }
             }
@@ -554,12 +602,15 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.OBJECT) return false;
+            if (instance.getJsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.getNode();
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(actual)) {
-                if (!probeToEvaluate(propertyNamesSchema, InstancedNode.infer(key), path, ctx)) {
+                ctx.pushIgnoreError();
+                boolean probed = evaluate(propertyNamesSchema, "propertyNames", InstancedNode.infer(key), path, ctx);
+                ctx.popIgnoreError();
+                if (!probed) {
                     ctx.addError(path.toExpr(), "propertyNames",
                             "Property name '" + key + "' is invalid");
                     result = false;
@@ -581,7 +632,7 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.ARRAY) return false;
+            if (instance.getJsonType() != JsonType.ARRAY) return true;
 
             Object actual = instance.getNode();
             boolean result = true;
@@ -616,18 +667,27 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.ARRAY) return false;
+            if (instance.getJsonType() != JsonType.ARRAY) return true;
 
             Object actual = instance.getNode();
             boolean result = true;
             int size = NodeWalker.sizeInArray(actual);
-            for (int i = 0; i < size; i++) {
-                if (prefixItemsSchemas != null && i < prefixItemsSchemas.length) {
-                    result = result && evaluateItem(prefixItemsSchemas[i], instance, path, i, ctx);
-                } else if (itemsSchema != null) {
-                    result = result && evaluateItem(itemsSchema, instance, path, i, ctx);
+            int i = 0;
+            if (prefixItemsSchemas != null) {
+                for (; i < size && i < prefixItemsSchemas.length; i++) {
+                    boolean subResult = evaluateItem(prefixItemsSchemas[i], "prefixItems", instance, path, i, ctx);
+                    result = result && subResult;
+                    if (ctx.shouldAbort()) return result;
                 }
-                if (ctx.shouldAbort()) return result;
+                if (result) instance.markEvaluated(0, i);
+            }
+            if (itemsSchema != null) {
+                for (; i < size; i++) {
+                    boolean subResult = evaluateItem(itemsSchema, "items", instance, path, i, ctx);
+                    result = result && subResult;
+                    if (ctx.shouldAbort()) return result;
+                }
+                if (result) instance.markEvaluated(0, i);
             }
             return result;
         }
@@ -646,20 +706,18 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (instance.getJsonType() != JsonType.ARRAY) return false;
+            if (instance.getJsonType() != JsonType.ARRAY) return true;
             if (containsSchema == null) return true;
 
             Object actual = instance.getNode();
             int matches = 0;
             int size = NodeWalker.sizeInArray(actual);
             for (int i = 0; i < size; i++) {
-//                if (evaluateItem(containsSchema, instance, path, i, ctx)) matches++;
-                InstancedNode subInstance = instance.getSubByIndex(i);
-                path.push(new PathToken.Index(i));
-                boolean result = probeToEvaluate(containsSchema, subInstance, path, ctx);
-                path.pop();
+                ctx.pushIgnoreError();
+                boolean result = evaluateItem(containsSchema, "contains", instance, path, i, ctx);
+                ctx.popIgnoreError();
                 if (result) {
-                    instance.setEvaluatedItems(i + 1);
+                    instance.markEvaluated(i);
                     matches++;
                 }
             }
@@ -692,12 +750,31 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             if (ifSchema == null) return true;
 
-            if (probeToEvaluate(ifSchema, instance, path, ctx)) {
-                if (thenSchema != null) return evaluate(thenSchema, instance, path, ctx);
+            boolean result = true;
+            BitSet cousinEvaluated = instance.popEvaluated();
+            instance.pushEvaluated();
+            ctx.pushIgnoreError();
+            boolean tested = evaluate(ifSchema, "if", instance, path, ctx);
+            ctx.popIgnoreError();
+            if (tested) {
+                if (thenSchema != null) {
+                    result = evaluate(thenSchema, "then", instance, path, ctx);
+                }
+                BitSet ifThenEvaluated = instance.popEvaluated();
+                if (result && cousinEvaluated != null && ifThenEvaluated != null)
+                    cousinEvaluated.or(ifThenEvaluated);
             } else {
-                if (elseSchema != null) return evaluate(elseSchema, instance, path, ctx);
+                BitSet dropedEvaluated = instance.popEvaluated();
+                if (elseSchema != null) {
+                    instance.pushEvaluated();
+                    result = evaluate(elseSchema, "else", instance, path, ctx);
+                    BitSet elseEvaluated = instance.popEvaluated();
+                    if (result && cousinEvaluated != null && elseEvaluated != null)
+                        cousinEvaluated.or(elseEvaluated);
+                }
             }
-            return true;
+            if (cousinEvaluated != null) instance.pushEvaluated(cousinEvaluated);
+            return result;
         }
     }
 
@@ -710,9 +787,23 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             boolean result = true;
+            List<BitSet> evaluatedList = null;
+            BitSet cousinEvaluated = instance.popEvaluated();
+            if (cousinEvaluated != null) evaluatedList = new ArrayList<>(allOfSchemas.length);
             for (Object schema : allOfSchemas) {
-                result = result && evaluate(schema, instance, path, ctx);
+                instance.pushEvaluated();
+                boolean subResult = evaluate(schema, "allOf", instance, path, ctx);
+                BitSet childEvaluated = instance.popEvaluated();
+                if (subResult && evaluatedList != null && childEvaluated != null) evaluatedList.add(childEvaluated);
+                result = result && subResult;
                 if (ctx.shouldAbort()) return result;
+            }
+            if (cousinEvaluated != null)
+                instance.pushEvaluated(cousinEvaluated);
+            if (result && evaluatedList != null) {
+                for (BitSet evaluated : evaluatedList) {
+                    cousinEvaluated.or(evaluated);
+                }
             }
             return result;
         }
@@ -726,13 +817,30 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
+            boolean result = false;
+            List<BitSet> evaluatedList = null;
+            BitSet cousinEvaluated = instance.popEvaluated();
+            if (cousinEvaluated != null) evaluatedList = new ArrayList<>(anyOfSchemas.length);
             for (Object schema : anyOfSchemas) {
-                if (probeToEvaluate(schema, instance, path, ctx)) {
-                    return true;
+                instance.pushEvaluated();
+                ctx.pushIgnoreError();
+                boolean subResult = evaluate(schema, "anyOf", instance, path, ctx);
+                ctx.popIgnoreError();
+                BitSet childEvaluated = instance.popEvaluated();
+                if (subResult && evaluatedList != null && childEvaluated != null) evaluatedList.add(childEvaluated);
+                result = result || subResult;
+            }
+            if (cousinEvaluated != null)
+                instance.pushEvaluated(cousinEvaluated);
+            if (result && evaluatedList != null) {
+                for (BitSet evaluated : evaluatedList) {
+                    cousinEvaluated.or(evaluated);
                 }
             }
-            ctx.addError(path.toExpr(), "anyOf", "No schemas in anyOf matched");
-            return false;
+            if (!result) {
+                ctx.addError(path.toExpr(), "anyOf", "No schemas in anyOf matched");
+            }
+            return result;
         }
     }
 
@@ -745,9 +853,23 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             int matches = 0;
+            List<BitSet> evaluatedList = null;
+            BitSet cousinEvaluated = instance.popEvaluated();
+            if (cousinEvaluated != null) evaluatedList = new ArrayList<>(oneOfSchemas.length);
             for (Object schema : oneOfSchemas) {
-                if (probeToEvaluate(schema, instance, path, ctx)) {
-                    matches++;
+                instance.pushEvaluated();
+                ctx.pushIgnoreError();
+                boolean subResult = evaluate(schema, "oneOf", instance, path, ctx);
+                ctx.popIgnoreError();
+                BitSet childEvaluated = instance.popEvaluated();
+                if (subResult && evaluatedList != null && childEvaluated != null) evaluatedList.add(childEvaluated);
+                if (subResult) matches++;
+            }
+            if (cousinEvaluated != null)
+                instance.pushEvaluated(cousinEvaluated);
+            if (matches == 1 && evaluatedList != null) {
+                for (BitSet evaluated : evaluatedList) {
+                    cousinEvaluated.or(evaluated);
                 }
             }
             if (matches != 1) {
@@ -766,7 +888,13 @@ public interface Evaluator {
         }
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
-            if (probeToEvaluate(notSchema, instance, path, ctx)) {
+            instance.pushEvaluated();
+            ctx.pushIgnoreError();
+            boolean result = evaluate(notSchema, "not", instance, path, ctx);
+            ctx.popIgnoreError();
+            instance.popEvaluated();
+
+            if (result) {
                 ctx.addError(path.toExpr(), "not", "Must not match schema in not");
                 return false;
             }
@@ -786,24 +914,38 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             boolean result = true;
-            if (instance.getJsonType() == JsonType.OBJECT && unevaluatedPropertiesSchema != null) {
-                Set<String> evaluated = instance.getEvaluatedProperties();
+            BitSet merged = instance.mergedEvaluated();
+            if (unevaluatedPropertiesSchema != null) {
+                if (instance.getJsonType() != JsonType.OBJECT) return true;
+                int propIdx = 0;
                 for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(instance.getNode())) {
                     String key = entry.getKey();
-                    if (evaluated == null || !evaluated.contains(key)) {
-                        result = result && evaluateProperty(unevaluatedPropertiesSchema, instance, path, key, ctx);
+                    if (!merged.get(propIdx)) {
+                        boolean subResult = evaluateProperty(unevaluatedPropertiesSchema,
+                                "unevaluatedProperties", instance, path, key, ctx);
+                        if (subResult) instance.markEvaluated(propIdx);
+                        result = result && subResult;
+                        if (ctx.shouldAbort()) return result;
+                    }
+                    propIdx++;
+                }
+            }
+            if (unevaluatedItemsSchema != null) {
+                if (instance.getJsonType() != JsonType.ARRAY) return true;
+                int size = NodeWalker.sizeInArray(instance.getNode());
+                for (int i = 0; i < size; i++) {
+                    if (!merged.get(i)) {
+                        boolean subResult = evaluateItem(unevaluatedItemsSchema,
+                                "unevaluatedItems", instance, path, i, ctx);
+                        if (subResult) instance.markEvaluated(i);
+                        result = result && subResult;
                         if (ctx.shouldAbort()) return result;
                     }
                 }
             }
-            if (instance.getJsonType() == JsonType.ARRAY && unevaluatedItemsSchema != null) {
-                int evaluated = instance.getEvaluatedItems();
-                int size = NodeWalker.sizeInArray(instance.getNode());
-                for (int i = evaluated; i < size; i++) {
-                    result = result && evaluateItem(unevaluatedItemsSchema, instance, path, i, ctx);
-                    if (ctx.shouldAbort()) return result;
-                }
-            }
+            BitSet curEvaluated = instance.popEvaluated();
+            BitSet parentEvaluated = instance.peekEvaluated();
+            if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
             return result;
         }
     }

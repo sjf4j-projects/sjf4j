@@ -6,8 +6,8 @@
 ![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
-**SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers
-(e.g. Jackson, Gson, Fastjson2) and other data formats (e.g. YAML via Snake, Java Properties),  
+**SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers and 
+other data formats (e.g. YAML, Properties), 
 serving as a ***unified semantic layer for structured data processing grounded in JSON specifications***. 
 
 ## Table of Contents
@@ -103,7 +103,7 @@ SJF4J tackles common challenges in real-world Java applications:
 
 - **Fully grounded in JSON specifications**  
   Beyond basic parsing and serialization, SJF4J provides a complete JSON processing toolkit including JSON Path (RFC 9535), JSON Pointer (RFC 6901),
-  JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386) and JSON Schema.
+  JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386) and JSON Schema (Draft-2020-12).
 
 
 ## Getting Started
@@ -336,18 +336,6 @@ and only direct navigation is supported; no wildcards or filters.
 Beyond path-based access and mutation with `JsonPath` / `JsonPointer`, 
 SJF4J provides a programmatic, declarative traversal and stream-based processing model.
 
-**Example**: Depth-first traversal with `walk()`
-```java
-jo.walk(
-        Target.CONTAINER,       // Target: CONTAINER or VALUE 
-        Order.BOTTOM_UP,        // Order:  BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf) 
-        (path, node) -> {
-            System.out.println("path=" + path + ", node=" + node);
-            return Control.CONTINUE;    
-            // CONTINUE to proceed, or STOP to terminate traversal
-        });
-```
-
 **Example**: Use `stream()` to begin stream-style processing:
 ```java
 List<String> tags = jo.stream()
@@ -373,25 +361,37 @@ double avgScore = jo.stream()
         .collect(Collectors.averagingDouble(s -> s));
 ```
 
+**Example**: Depth-first traversal with `walk()`
+```java
+jo.walk(
+        Target.CONTAINER,       // Target: CONTAINER or VALUE 
+        Order.BOTTOM_UP,        // Order:  BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf) 
+        (path, node) -> {
+            System.out.println("path=" + path + ", node=" + node);
+            return Control.CONTINUE;    
+            // CONTINUE to proceed, or STOP to terminate traversal
+        });
+```
+
 ### Modeling Domain Objects with `<JOJO>`
 In real applications, data is rarely purely dynamic JSON or strictly static Java objects.  
-SJF4J bridges this with `JOJO` and `JAJO` — hybrid models that extend `JsonObject`/`JsonArray`,
+SJF4J bridges this with `JOJO` and `JAJO` — hybrid models between `POJO` and `Map`/`List`,
 combining ***typed Java fields and methods*** with ***JSON-semantic dynamic access*** in OBNT.
 
 **Example**: `JOJO` vs `POJO` 
 ```java
     // Define a POJO `User`
-    @Getter @Setter
     static class User {
         String name;
         List<User> friends;
+        // Getter and setter
     }
     
     // Define a JOJO `User2`
-    @Getter @Setter
     static class User2 extends JsonObject {
       String name;
       List<User2> friends;
+      // Getter and setter
     }
 
     String json = "{\n" +
@@ -419,9 +419,9 @@ combining ***typed Java fields and methods*** with ***JSON-semantic dynamic acce
     // JOJO can still retain and access undeclared properties.
     
     System.out.println("user2=" + user2);
-    // user2=@User2{*name=Alice, *friends=L[@User2{*name=Bill, *friends=null, active=true}, @User2{..}], age=18}
-    //                └─────────────┴─────┬──────────┴─────────────┘             └───────────┬───────────┘
-    //                                    ↓                                                  ↓
+    // user2=@User2{*name=Alice, *friends=[@User2{*name=Bill, *friends=null, active=true}, @User2{..}], age=18}
+    //                └─────────────┴─────┬─────────┴─────────────┘             └───────────┬───────────┘
+    //                                    ↓                                                 ↓
     //                      Declared fields in POJO/JOJO                      Dynamic properties in JOJO
 
     List<String> allFriends = user2.findByPath("$.friends..name", String.class);
@@ -479,12 +479,12 @@ This includes Java `Record`, `Protobuf` messages, or classes from external libra
   These APIs operate directly on arbitrary Java object graphs 
   and are also the underlying foundation used internally by `JsonObject`/`JsonArray`.
 
-| Helper Class | Static Methods                                                                                                                                                          | Description                                                                  |
-|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| Sjf4j        | `Sjf4j.fromXxx()` ... <br> `Sjf4j.toXxx()` ...                                                                                                                          | Entry-point helpers for parsing, serialization, and cross-format conversion. |
-| NodeUtil     | `NodeUtil.getXxx()` ... <br> `NodeUtil.asXxx()` ... <br> `NodeUtil.copy()` / `NodeUtil.inspect()` ...                                                                   | Node-level access, conversion, inspection, and comparison utilities.         |
-| NodeWalker   | `NodeWalker.walk()` ... <br> `NodeWalker.visitObject()` ... <br> `NodeWalker.sizeInList()` ... <br> `NodeWalker.setInObject()` ... <br> `NodeWalker.removeInList()` ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
-| PatchUtil    | `PatchUtil.diff()` / `PatchUtil.merge()` ...                                                                                                                            | JSON Patch–based operations.                                                 |
+| Helper Class | Static Methods                                                                                                   | Description                                                                  |
+|--------------|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| Sjf4j        | `fromXxx()` ... <br> `toXxx()` ...                                                                               | Entry-point helpers for parsing, serialization, and cross-format conversion. |
+| NodeUtil     | `getXxx()` ... <br> `asXxx()` ... <br> `copy()` / `inspect()` ...                                                | Node-level access, conversion, inspection, and comparison utilities.         |
+| NodeWalker   | `walk()` ... <br> `visitObject()` ... <br> `sizeInList()` ... <br> `setInObject()` ... <br> `removeInList()` ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
+| PatchUtil    | `diff()` / `merge()` ...                                                                                         | JSON Patch–based operations.                                                 |
 
 **Exampl**e: Low-level static APIs
 ```java
