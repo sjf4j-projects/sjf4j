@@ -3,9 +3,9 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
-import org.sjf4j.util.NodeUtil;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -15,20 +15,22 @@ import java.util.Map;
 import java.util.Objects;
 
 
-public class SchemaUtil {
+public class CompileUtil {
 
 
     static void checkVocabulary(JsonPointer path, ObjectSchema schema, Map<String, Boolean> vocabulary) {
         for (String property : schema.keySet()) {
             String vocabUri = VocabularyRegistry.getVocabUri(property);
-            if (vocabUri == null)
+            if (vocabUri != null) {
+                if (vocabulary != null) {
+                    Boolean allow = vocabulary.get(vocabUri);
+                    if (allow != null && !allow)
+                        throw new SchemaException("Keyword '" + property + "' at " + path +
+                                " is disallowed by declared vocabulary " + vocabUri);
+                }
+            } else {
                 throw new SchemaException("Unrecognized schema keyword '" + property + "' at " + path +
                         " . No registered vocabulary claims support for it.\n");
-            if (vocabulary != null) {
-                Boolean allow = vocabulary.get(vocabUri);
-                if (allow != null && !allow)
-                    throw new SchemaException("Keyword '" + property + "' at " + path +
-                            " is disallowed by declared vocabulary " + vocabUri);
             }
         }
     }
@@ -287,7 +289,7 @@ public class SchemaUtil {
             if (subSchema != subNode) entry.setValue(subSchema);
         }
         path.pop();
-        return NodeUtil.asMap(schemaMapNode);
+        return Nodes.asMap(schemaMapNode);
     }
 
     static Object[] compileSchemaArrayByKey(String key, JsonPointer path,
@@ -307,7 +309,7 @@ public class SchemaUtil {
             path.pop();
             if (subSchema != subNode) NodeWalker.setInArray(schemaArrayNode, i, subSchema);
         }
-        return NodeUtil.asArray(schemaArrayNode);
+        return Nodes.asArray(schemaArrayNode);
     }
 
     static Object compileSchemaByKey(String key, JsonPointer path,

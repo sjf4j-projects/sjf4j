@@ -7,8 +7,8 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.NodeFacade;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Numbers;
+import org.sjf4j.node.Types;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -21,7 +21,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
     @Override
     public Object readNode(Object node, Type type, boolean deepCopy) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (!deepCopy) {
             if (rawClazz == Object.class || (type instanceof Class && rawClazz.isInstance(node))) {
                 return node;
@@ -78,7 +78,7 @@ public class SimpleNodeFacade implements NodeFacade {
             return n;
         } else if (Number.class.isAssignableFrom(rawClazz) ||
                 (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
-            return NumberUtil.as(n, rawClazz);
+            return Numbers.as(n, rawClazz);
         }
         throw new JsonException("Cannot deserialize Number value '" + n + "' (" + n.getClass().getName() +
                 ") to target type '" + rawClazz.getName() + "'. Expected Number type or a registered Converter.");
@@ -94,10 +94,10 @@ public class SimpleNodeFacade implements NodeFacade {
 
 
     private Object readObject(Object container, Type type, boolean deepCopy) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) ) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             NodeWalker.visitObject(container, (k, v) -> {
                 Object vv = readNode(v, valueType, deepCopy);
@@ -152,10 +152,10 @@ public class SimpleNodeFacade implements NodeFacade {
 
 
     private Object readArray(Object container, Type type, boolean deepCopy) {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz)) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             NodeWalker.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, valueType, deepCopy);

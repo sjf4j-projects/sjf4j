@@ -2,7 +2,7 @@ package org.sjf4j.facade.snake;
 
 import org.sjf4j.JsonException;
 import org.sjf4j.facade.FacadeReader;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.node.Numbers;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
 import org.yaml.snakeyaml.events.DocumentStartEvent;
@@ -69,7 +69,7 @@ public class SnakeReader implements FacadeReader {
             if (low.equals("false") || low.equals("no") || low.equals("off")) {
                 return Token.BOOLEAN;
             }
-            if (NumberUtil.isNumeric(value)) {
+            if (Numbers.isNumeric(value)) {
                 return Token.NUMBER;
             } else {
                 return Token.STRING;
@@ -110,7 +110,7 @@ public class SnakeReader implements FacadeReader {
     @Override
     public Number nextNumber() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
-        return NumberUtil.toNumber(se.getValue());
+        return Numbers.toNumber(se.getValue());
     }
 
     @Override

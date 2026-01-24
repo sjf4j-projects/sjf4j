@@ -1,12 +1,10 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeField;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.NodeType;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.Copy;
 import org.sjf4j.annotation.node.NodeValue;
@@ -128,7 +126,7 @@ public class ReflectUtil {
 //                    log.warn("No accessible getter or setter found for field '{}' of {}",
 //                            field.getName(), curClazz);
                 } else {
-                    Type fieldType = TypeUtil.getFieldType(curType, field);
+                    Type fieldType = Types.getFieldType(curType, field);
                     fields.put(getFieldName(field), new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter));
                 }

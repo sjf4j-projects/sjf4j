@@ -1,12 +1,12 @@
-package org.sjf4j.util;
+package org.sjf4j.facade;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.facade.FacadeReader;
-import org.sjf4j.facade.FacadeWriter;
+import org.sjf4j.node.Numbers;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * a {@link FacadeReader} and writing JSON nodes to a {@link FacadeWriter}, with support
  * for type conversion and POJO handling.
  */
-public class StreamingUtil {
+public class StreamingIO {
 
     /// Read
 
@@ -57,7 +57,7 @@ public class StreamingUtil {
     }
 
     public static Object readNull(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         reader.nextNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -68,7 +68,7 @@ public class StreamingUtil {
     }
 
     public static Object readBoolean(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.nextBoolean();
         }
@@ -82,14 +82,14 @@ public class StreamingUtil {
     }
 
     public static Object readNumber(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             return reader.nextNumber();
         }
         if (Number.class.isAssignableFrom(rawClazz) ||
                 (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
             Number n = reader.nextNumber();
-            return NumberUtil.as(n, rawClazz);
+            return Numbers.as(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -102,7 +102,7 @@ public class StreamingUtil {
 
     @SuppressWarnings("unchecked")
     public static Object readString(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
         }
@@ -135,11 +135,11 @@ public class StreamingUtil {
      */
     public static Object readObject(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.startObject();
             while (reader.hasNext()) {
@@ -207,11 +207,11 @@ public class StreamingUtil {
 
     public static Object readArray(FacadeReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.startArray();
             while (reader.hasNext()) {

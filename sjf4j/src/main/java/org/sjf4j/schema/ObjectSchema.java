@@ -36,7 +36,7 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
     void setUri(URI uri) {this.uri = uri;}
     URI getResolvedUri() {
         if (uri == null) {
-            return SchemaUtil.resolveUri(getId(), null);
+            return CompileUtil.resolveUri(getId(), null);
         }
         return uri;
     }
@@ -150,19 +150,19 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
 
     void compile(JsonPointer path, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
-            if (uri == null) uri = SchemaUtil.resolveUri(getId(), idSchema.getUri());
+            if (uri == null) uri = CompileUtil.resolveUri(getId(), idSchema.getUri());
             if (uri == null && this == idSchema) uri = URI.create("");
             if (uri != null) {
                 idSchema = this;
                 rootSchema.innerStore.put(uri, this);
             }
             this.idSchema = idSchema;
-            evaluators = SchemaUtil.compile(path, this, idSchema, rootSchema);
+            evaluators = CompileUtil.compile(path, this, idSchema, rootSchema);
         }
     }
 
     void compileMeta() {
-        URI metaUri = SchemaUtil.resolveUri(getString("$schema"), null);
+        URI metaUri = CompileUtil.resolveUri(getString("$schema"), null);
         if (metaUri != null) {
             ObjectSchema metaSchema = importAndCompile(metaUri);
             if (metaSchema != null) {

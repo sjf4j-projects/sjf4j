@@ -1,7 +1,5 @@
 package org.sjf4j.node;
 
-import org.sjf4j.util.TypeUtil;
-
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
@@ -52,7 +50,7 @@ public final class TypedNode {
     }
 
     public Class<?> getRawClass() {
-        return TypeUtil.getRawClass(clazzType);
+        return Types.getRawClass(clazzType);
     }
 
 }

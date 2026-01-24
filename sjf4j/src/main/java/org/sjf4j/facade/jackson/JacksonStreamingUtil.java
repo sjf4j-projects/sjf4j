@@ -10,9 +10,9 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.StreamingUtil;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Numbers;
+import org.sjf4j.facade.StreamingIO;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -27,7 +27,7 @@ import java.util.Objects;
 /**
  * A Jackson-specific, fully static implementation of the streaming JSON parser utilities.
  * <p>
- * This class is a specialized and performance-optimized version of {@link StreamingUtil},
+ * This class is a specialized and performance-optimized version of {@link StreamingIO},
  * designed to maximize JIT inlining and reduce dynamic dispatch overhead.
  * <p>
  * Unlike {@code StreamingUtil}, this implementation:
@@ -67,7 +67,7 @@ public class JacksonStreamingUtil {
     }
 
     public static Object readNull(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         parser.nextToken();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -79,7 +79,7 @@ public class JacksonStreamingUtil {
     }
 
     public static Object readBoolean(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
             Boolean b = parser.getBooleanValue();
             parser.nextToken();
@@ -96,7 +96,7 @@ public class JacksonStreamingUtil {
     }
 
     public static Object readNumber(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             Number n = parser.getNumberValue();
             parser.nextToken();
@@ -111,7 +111,7 @@ public class JacksonStreamingUtil {
                 (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
             Number n = parser.getNumberValue();
             parser.nextToken();
-            return NumberUtil.as(n, rawClazz);
+            return Numbers.as(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -125,7 +125,7 @@ public class JacksonStreamingUtil {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             String s = parser.getText();
             parser.nextToken();
@@ -154,11 +154,11 @@ public class JacksonStreamingUtil {
 
     public static Object readObject(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
@@ -230,11 +230,11 @@ public class JacksonStreamingUtil {
 
     public static Object readArray(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {

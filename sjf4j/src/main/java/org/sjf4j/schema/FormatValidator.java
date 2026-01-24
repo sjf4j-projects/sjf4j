@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.JsonPointer;
-import org.sjf4j.util.PointerUtil;
+import org.sjf4j.path.PathUtil;
 
 import java.net.IDN;
 import java.net.URI;
@@ -318,7 +317,7 @@ public interface FormatValidator {
         public boolean validate(String value) {
             try {
                 if (value == null) return false;
-                PointerUtil.compile(value);
+                PathUtil.tokenizePointer(value);
                 return true;
             } catch (Exception e) {
                 return false;
@@ -334,7 +333,7 @@ public interface FormatValidator {
                 if (value == null) return false;
                 String[] ss = value.split("/", 2);
                 if (Integer.parseInt(ss[0]) < 0) return false;
-                if (ss.length > 1) PointerUtil.compile(ss[1]);
+                if (ss.length > 1) PathUtil.tokenizePointer(ss[1]);
                 return true;
             } catch (Exception e) {
                 return false;

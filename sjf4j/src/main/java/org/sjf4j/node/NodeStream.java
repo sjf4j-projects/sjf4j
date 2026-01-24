@@ -3,7 +3,6 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.path.JsonPath;
-import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -139,11 +138,11 @@ public class NodeStream<T> {
                 List<?> raw = (List<?>) result;
                 List<R> list = new ArrayList<>(raw.size());
                 for (Object o : raw) {
-                    list.add(NodeUtil.to(o, clazz));
+                    list.add(Nodes.to(o, clazz));
                 }
                 return list.stream();
             } else {
-                return Stream.of(NodeUtil.to(result, clazz));
+                return Stream.of(Nodes.to(result, clazz));
             }
         });
         return new NodeStream<>(ns);
@@ -159,11 +158,11 @@ public class NodeStream<T> {
                 List<?> raw = (List<?>) result;
                 List<R> list = new ArrayList<>(raw.size());
                 for (Object o : raw) {
-                    list.add(NodeUtil.as(o, clazz));
+                    list.add(Nodes.as(o, clazz));
                 }
                 return list.stream();
             } else {
-                return Stream.of(NodeUtil.as(result, clazz));
+                return Stream.of(Nodes.as(result, clazz));
             }
         });
         return new NodeStream<>(ns);

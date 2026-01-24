@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
 
 
 import java.lang.reflect.ParameterizedType;

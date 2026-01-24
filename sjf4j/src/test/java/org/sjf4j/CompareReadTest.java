@@ -18,7 +18,7 @@ import org.sjf4j.facade.gson.GsonReader;
 import org.sjf4j.facade.gson.GsonStreamingUtil;
 import org.sjf4j.facade.gson.GsonWalker;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
-import org.sjf4j.util.StreamingUtil;
+import org.sjf4j.facade.StreamingIO;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -228,7 +228,7 @@ public class CompareReadTest {
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
             JSONReader reader = JSONReader.of(new StringReader(JSON_DATA));
-            StreamingUtil.readNode(new Fastjson2Reader(reader), Object.class);
+            StreamingIO.readNode(new Fastjson2Reader(reader), Object.class);
         }
         end = System.nanoTime();
         log.info("Fastjson2-Uni-jojo1: {}", (end - start) / 1000_000);
@@ -336,7 +336,7 @@ public class CompareReadTest {
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
             JsonReader reader = gson.newJsonReader(new StringReader(JSON_DATA));
-            StreamingUtil.readNode(new GsonReader(reader), Object.class);
+            StreamingIO.readNode(new GsonReader(reader), Object.class);
         }
         end = System.nanoTime();
         log.info("Gson-Uni-jojo1: {}", (end - start) / 1000_000);

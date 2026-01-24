@@ -1,6 +1,5 @@
 package org.sjf4j.facade.gson;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -8,13 +7,11 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeField;
-import org.sjf4j.facade.jackson.JacksonFacadeTest;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Decode;
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
 import java.io.StringReader;

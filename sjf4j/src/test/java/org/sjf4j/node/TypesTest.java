@@ -1,7 +1,5 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
 
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class TypeUtilTest {
+public class TypesTest {
 
     static class Wrapper<T> {
         T value;
@@ -36,13 +34,13 @@ public class TypeUtilTest {
 
     @Test
     public void testGetRawClass1() throws NoSuchFieldException {
-        Class<?> raw1 = TypeUtil.getRawClass(int[].class);
+        Class<?> raw1 = Types.getRawClass(int[].class);
         log.info("raw1={}", raw1);
 
-        Class<?> raw2 = TypeUtil.getRawClass(String[].class);
+        Class<?> raw2 = Types.getRawClass(String[].class);
         log.info("raw2={}", raw2);
 
-        Class<?> raw3 = TypeUtil.getRawClass(Wrapper.class.getDeclaredField("listArray").getGenericType());
+        Class<?> raw3 = Types.getRawClass(Wrapper.class.getDeclaredField("listArray").getGenericType());
         log.info("raw3={}, isArray={}", raw3, raw3.isArray());
     }
 
@@ -51,10 +49,10 @@ public class TypeUtilTest {
         Field value = Wrapper.class.getDeclaredField("value");
         Field map = Pair.class.getDeclaredField("map");
 
-        Type t1 = TypeUtil.getFieldType(new TypeReference<Wrapper<String>>(){}.getType(), value);
+        Type t1 = Types.getFieldType(new TypeReference<Wrapper<String>>(){}.getType(), value);
         log.info("t1={}", t1);
 
-        Type t2 = TypeUtil.getFieldType(new TypeReference<Pair<Integer, String>>(){}.getType(), map);
+        Type t2 = Types.getFieldType(new TypeReference<Pair<Integer, String>>(){}.getType(), map);
         log.info("t2={}", t2);
     }
 
@@ -66,27 +64,27 @@ public class TypeUtilTest {
 
         Type t1 = new TypeReference<Wrapper<String>>(){}.getType();
 
-        System.out.println("value → " + TypeUtil.getFieldType(t1, f1)); // String
-        System.out.println("list → " + TypeUtil.getFieldType(t1, f2));  // List<String>
-        System.out.println("array → " + TypeUtil.getFieldType(t1, f3)); // String[]
+        System.out.println("value → " + Types.getFieldType(t1, f1)); // String
+        System.out.println("list → " + Types.getFieldType(t1, f2));  // List<String>
+        System.out.println("array → " + Types.getFieldType(t1, f3)); // String[]
 
         // 嵌套泛型
         Field nf1 = Nested.class.getSuperclass().getDeclaredField("value");
         Type t2 = Nested.class.getGenericSuperclass();
-        System.out.println("Nested.value → " + TypeUtil.getFieldType(t2, nf1));
+        System.out.println("Nested.value → " + Types.getFieldType(t2, nf1));
 
         // WrapperTwo 测试
         Field wf1 = WrapperTwo.class.getDeclaredField("value1");
         Field wf2 = WrapperTwo.class.getDeclaredField("value2");
         Type t3 = new TypeReference<WrapperTwo<Long, Number>>(){}.getType();
-        System.out.println("WrapperTwo.value1 → " + TypeUtil.getFieldType(t3, wf1)); // Long
-        System.out.println("WrapperTwo.value2 → " + TypeUtil.getFieldType(t3, wf2)); // List<? extends Number>
+        System.out.println("WrapperTwo.value1 → " + Types.getFieldType(t3, wf1)); // Long
+        System.out.println("WrapperTwo.value2 → " + Types.getFieldType(t3, wf2)); // List<? extends Number>
     }
 
     @Test
     public void testTypeArgument1() {
         Type type = new TypeReference<List<Float>>() {}.getType();
-        Type argtype = TypeUtil.resolveTypeArgument(type, List.class, 0);
+        Type argtype = Types.resolveTypeArgument(type, List.class, 0);
         log.info("argtype={}", argtype);
     }
 

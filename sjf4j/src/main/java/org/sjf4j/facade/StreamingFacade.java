@@ -2,8 +2,7 @@ package org.sjf4j.facade;
 
 import org.sjf4j.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2Writer;
-import org.sjf4j.util.StreamingUtil;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -108,7 +107,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
         try (FacadeReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingUtil.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -131,7 +130,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
         try (FacadeReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingUtil.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -154,7 +153,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
         try (FacadeReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingUtil.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -167,7 +166,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
         try (FacadeReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingUtil.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -181,7 +180,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         try {
             FacadeWriter writer = createWriter(output);
             writer.startDocument();
-            StreamingUtil.writeNode(writer, node);
+            StreamingIO.writeNode(writer, node);
             writer.endDocument();
             writer.flush();
 
@@ -189,7 +188,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
                 ((Fastjson2Writer) writer).flushTo(output);
             }
         } catch (Exception e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + Types.nameOf(node) + "' to streaming", e);
         }
     }
 
@@ -198,7 +197,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         try {
             FacadeWriter writer = createWriter(output);
             writer.startDocument();
-            StreamingUtil.writeNode(writer, node);
+            StreamingIO.writeNode(writer, node);
             writer.endDocument();
             writer.flush();
 
@@ -206,7 +205,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
                 ((Fastjson2Writer) writer).flushTo(output);
             }
         } catch (Exception e) {
-            throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node of type '" + Types.nameOf(node) + "' to streaming", e);
         }
     }
 

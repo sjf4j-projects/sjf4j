@@ -1,6 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.util.NodeUtil;
+import org.sjf4j.node.Nodes;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +30,6 @@ public class ValidationResult {
 
     @Override
     public String toString() {
-        return NodeUtil.inspect(messages);
+        return Nodes.inspect(messages);
     }
 }

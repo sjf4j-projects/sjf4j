@@ -3,11 +3,10 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
-import org.sjf4j.util.NodeUtil;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.StringUtil;
+import org.sjf4j.node.Numbers;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -189,7 +188,7 @@ public interface Evaluator {
             } else if (nt.isArray()) {
                 this.type = null;
                 this.jsonType = null;
-                this.types = NodeUtil.asArray(type, String.class);
+                this.types = Nodes.asArray(type, String.class);
                 this.jsonTypes = (JsonType[]) Array.newInstance(JsonType.class, types.length);
                 for (int i = 0; i < types.length; i++) this.jsonTypes[i] = JsonType.from(types[i]);
             } else {
@@ -225,7 +224,7 @@ public interface Evaluator {
                 // JSON Schema compatibility: integer ⊂ number
                 if (expected == JsonType.INTEGER && jt == JsonType.NUMBER) {
                     Object actual = instance.getNode();
-                    return actual instanceof Number && NumberUtil.isSemanticInteger((Number) actual);
+                    return actual instanceof Number && Numbers.isSemanticInteger((Number) actual);
                 }
                 return false;
             }
@@ -242,9 +241,9 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             Object actual = instance.getNode();
-            if (!NodeUtil.equals(constValue, actual)) {
+            if (!Nodes.equals(constValue, actual)) {
                 ctx.addError(path.toExpr(), "const", "Value does not match constant. Expected: " +
-                        NodeUtil.inspect(constValue) + ", actual: " + NodeUtil.inspect(actual));
+                        Nodes.inspect(constValue) + ", actual: " + Nodes.inspect(actual));
                 return false;
             }
             return true;
@@ -261,9 +260,9 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
             Object actual = instance.getNode();
             for (Object allowed : enumValues) {
-                if (NodeUtil.equals(allowed, actual)) return true;
+                if (Nodes.equals(allowed, actual)) return true;
             }
-            ctx.addError(path.toExpr(), "enum", "Value not in enum: " + NodeUtil.inspect(enumValues));
+            ctx.addError(path.toExpr(), "enum", "Value not in enum: " + Nodes.inspect(enumValues));
             return false;
         }
     }
@@ -289,16 +288,16 @@ public interface Evaluator {
                 return true;
             }
             Number actual = (Number) instance.getNode();
-            if (minimum != null && NumberUtil.compare(actual, minimum) < 0) {
+            if (minimum != null && Numbers.compare(actual, minimum) < 0) {
                 ctx.addError(path.toExpr(), "minimum", "Number must >= " + minimum);
                 return false;
-            } else if (maximum != null && NumberUtil.compare(actual, maximum) > 0) {
+            } else if (maximum != null && Numbers.compare(actual, maximum) > 0) {
                 ctx.addError(path.toExpr(), "maximum", "Number must <= " + maximum);
                 return false;
-            } else if (exclusiveMinimum != null && NumberUtil.compare(actual, exclusiveMinimum) <= 0) {
+            } else if (exclusiveMinimum != null && Numbers.compare(actual, exclusiveMinimum) <= 0) {
                 ctx.addError(path.toExpr(), "exclusiveMinimum", "Number must > " + exclusiveMinimum);
                 return false;
-            } else if (exclusiveMaximum != null && NumberUtil.compare(actual, exclusiveMaximum) >= 0) {
+            } else if (exclusiveMaximum != null && Numbers.compare(actual, exclusiveMaximum) >= 0) {
                 ctx.addError(path.toExpr(), "exclusiveMaximum", "Number must < " + exclusiveMaximum);
                 return false;
             }
@@ -315,7 +314,7 @@ public interface Evaluator {
         private final double divisorDouble;
         public MultipleOfEvaluator(Number multipleOf) {
             this.multipleOf = multipleOf;
-            this.divisor = NumberUtil.normalizeDecimal(multipleOf);
+            this.divisor = Numbers.normalizeDecimal(multipleOf);
             if (divisor.signum() <= 0)
                 throw new IllegalArgumentException("multipleOf must > 0");
             this.isIntegerDivisor = divisor.scale() <= 0;
@@ -329,7 +328,7 @@ public interface Evaluator {
                 return true;
             }
             Number actual = (Number) instance.getNode();
-            if (isIntegerDivisor && NumberUtil.isSemanticInteger(actual)) {
+            if (isIntegerDivisor && Numbers.isSemanticInteger(actual)) {
                 long v = actual.longValue();
                 if (v % divisorLong != 0) {
                     ctx.addError(path.toExpr(),"multipleOf", "Number not a multiple of " + multipleOf);
@@ -343,7 +342,7 @@ public interface Evaluator {
                     return false;
                 }
             } else {
-                BigDecimal v = NumberUtil.normalizeDecimal(actual);
+                BigDecimal v = Numbers.normalizeDecimal(actual);
                 BigDecimal[] dr = v.divideAndRemainder(divisor);
                 if (dr[1].signum() != 0) {
                     ctx.addError(path.toExpr(), "multipleOf", "Number not a multiple of " + multipleOf);

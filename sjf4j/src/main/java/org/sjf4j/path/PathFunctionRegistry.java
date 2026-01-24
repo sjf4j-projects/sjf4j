@@ -3,7 +3,6 @@ package org.sjf4j.path;
 import org.sjf4j.JsonException;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.util.IRegexpUtil;
 
 import java.util.Map;
 import java.util.Set;

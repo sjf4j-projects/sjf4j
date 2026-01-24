@@ -1,7 +1,7 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.facade.FacadeReader;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.node.Numbers;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -241,7 +241,7 @@ public class SimpleJsonReader implements FacadeReader {
             } else break;
         }
         String s = sb.toString();
-        return NumberUtil.toNumber(s);
+        return Numbers.toNumber(s);
     }
 
     private Boolean readBoolean() throws IOException {

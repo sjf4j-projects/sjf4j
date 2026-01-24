@@ -1,10 +1,10 @@
 package org.sjf4j;
 
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
-import org.sjf4j.util.NodeUtil;
-import org.sjf4j.util.PatchUtil;
+import org.sjf4j.patch.PatchUtil;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -34,17 +34,17 @@ public abstract class JsonContainer {
 
 
     public boolean nodeEquals(Object target) {
-        return NodeUtil.equals(this, target);
+        return Nodes.equals(this, target);
     }
 
     /**
      * Returns a string representation of this container for debugging purposes.
-     * Uses {@link NodeUtil#inspect(Object)} to generate the string.
+     * Uses {@link Nodes#inspect(Object)} to generate the string.
      *
      * @return a debug string representation of the container
      */
     public String inspect() {
-        return NodeUtil.inspect(this);
+        return Nodes.inspect(this);
     }
 
     /**

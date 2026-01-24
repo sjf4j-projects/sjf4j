@@ -1,10 +1,7 @@
 package org.sjf4j.node;
 
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.ReflectUtil;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
@@ -422,7 +419,7 @@ public final class NodeRegistry {
                 Class<?> clazz = (Class<?>) type;
                 if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
                         Number.class.isAssignableFrom(clazz)) {
-                    value = NumberUtil.as((Number) value, clazz);
+                    value = Numbers.as((Number) value, clazz);
                 }
             }
 
@@ -457,7 +454,7 @@ public final class NodeRegistry {
                 Class<?> clazz = (Class<?>) type;
                 if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
                         Number.class.isAssignableFrom(clazz)) {
-                    value = NumberUtil.as((Number) value, clazz);
+                    value = Numbers.as((Number) value, clazz);
                 }
             }
             try {

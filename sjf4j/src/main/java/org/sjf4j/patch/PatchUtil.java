@@ -1,8 +1,8 @@
-package org.sjf4j.util;
+package org.sjf4j.patch;
 
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.patch.PatchOp;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
 
@@ -51,7 +51,7 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.putInObject(target, key, NodeUtil.deepCopy(subPatch));
+                            NodeWalker.putInObject(target, key, Nodes.deepCopy(subPatch));
                         } else {
                             NodeWalker.putInObject(target, key, subPatch);
                         }
@@ -61,7 +61,7 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.putInObject(target, key, NodeUtil.deepCopy(subPatch));
+                            NodeWalker.putInObject(target, key, Nodes.deepCopy(subPatch));
                         } else {
                             NodeWalker.putInObject(target, key, subPatch);
                         }
@@ -80,7 +80,7 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.setInArray(target, i, NodeUtil.deepCopy(subPatch));
+                            NodeWalker.setInArray(target, i, Nodes.deepCopy(subPatch));
                         } else {
                             NodeWalker.setInArray(target, i, subPatch);
                         }
@@ -90,7 +90,7 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.setInArray(target, i, NodeUtil.deepCopy(subPatch));
+                            NodeWalker.setInArray(target, i, Nodes.deepCopy(subPatch));
                         } else {
                             NodeWalker.setInArray(target, i, subPatch);
                         }

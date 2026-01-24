@@ -4,7 +4,7 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.util.NodeUtil;
+import org.sjf4j.node.Nodes;
 
 
 public interface JsonSchema {
@@ -22,7 +22,7 @@ public interface JsonSchema {
         if (node == null) return null;
         NodeType nt = NodeType.of(node);
         if (nt.isBoolean()) return ((Boolean) node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
-        if (nt.isObject()) return NodeUtil.as(node, ObjectSchema.class);
+        if (nt.isObject()) return Nodes.as(node, ObjectSchema.class);
         throw new SchemaException("Invalid JSON Schema: expected object or boolean, but got " + nt);
     }
 

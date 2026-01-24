@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
 

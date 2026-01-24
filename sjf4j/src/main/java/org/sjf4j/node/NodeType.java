@@ -2,7 +2,6 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.util.TypeUtil;
 
 import java.lang.reflect.Type;
 import java.util.List;
@@ -93,7 +92,7 @@ public enum NodeType {
      * @return the corresponding NodeType enum value
      */
     public static NodeType of(Type type) {
-        Class<?> clazz = TypeUtil.getRawClass(type);
+        Class<?> clazz = Types.getRawClass(type);
 
         if (clazz == Object.class) {
             return UNKNOWN;

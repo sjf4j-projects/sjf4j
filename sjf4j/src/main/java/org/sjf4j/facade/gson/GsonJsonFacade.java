@@ -7,7 +7,7 @@ import com.google.gson.stream.JsonWriter;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -174,7 +174,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                     GsonStreamingUtil.writeNode(writer, node);
                     writer.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -203,7 +203,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                     GsonStreamingUtil.writeNode(writer, node);
                     writer.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;

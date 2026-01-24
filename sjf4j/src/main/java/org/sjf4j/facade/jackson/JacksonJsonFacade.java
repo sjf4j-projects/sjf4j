@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -188,7 +188,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JacksonStreamingUtil.writeNode(gen, node);
                     gen.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -197,7 +197,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -221,7 +221,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JacksonStreamingUtil.writeNode(gen, node);
                     gen.flush();
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -230,7 +230,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;

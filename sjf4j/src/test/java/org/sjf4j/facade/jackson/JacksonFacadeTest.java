@@ -8,13 +8,11 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeField;
-import org.sjf4j.facade.fastjson2.Fastjson2FacadeTest;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Decode;
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
 import java.io.StringReader;

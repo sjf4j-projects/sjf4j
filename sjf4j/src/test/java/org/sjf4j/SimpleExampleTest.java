@@ -8,7 +8,7 @@ import org.sjf4j.node.NodeWalker.Target;
 import org.sjf4j.node.NodeWalker.Order;
 import org.sjf4j.node.NodeWalker.Control;
 import org.sjf4j.patch.JsonPatch;
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.node.TypeReference;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -2,8 +2,8 @@ package org.sjf4j;
 
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.util.TypeReference;
-import org.sjf4j.util.NodeUtil;
+import org.sjf4j.node.Nodes;
+import org.sjf4j.node.TypeReference;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -425,7 +425,7 @@ public class JsonObject extends JsonContainer {
     public <T> Map<String, T> toMap(Class<T> clazz) {
         Map<String, Object> map = toMap();
         for (Map.Entry<String, Object> e : map.entrySet()) {
-            T v = NodeUtil.as(e.getValue(), clazz);
+            T v = Nodes.as(e.getValue(), clazz);
             e.setValue(v);
         }
         return (Map<String, T>) map;
@@ -605,7 +605,7 @@ public class JsonObject extends JsonContainer {
     public String getString(String key) {
         try {
             Object value = getNode(key);
-            return NodeUtil.toString(value);
+            return Nodes.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String for key '" + key + "'", e);
         }
@@ -634,7 +634,7 @@ public class JsonObject extends JsonContainer {
      */
     public String asString(String key) {
         Object value = getNode(key);
-        return NodeUtil.asString(value);
+        return Nodes.asString(value);
     }
     
     /**
@@ -661,7 +661,7 @@ public class JsonObject extends JsonContainer {
     public Number getNumber(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toNumber(value);
+            return Nodes.toNumber(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Number for key '" + key + "'", e);
         }
@@ -691,7 +691,7 @@ public class JsonObject extends JsonContainer {
     public Number asNumber(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asNumber(value);
+            return Nodes.asNumber(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Number", e);
         }
@@ -721,7 +721,7 @@ public class JsonObject extends JsonContainer {
     public Long getLong(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toLong(value);
+            return Nodes.toLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Long for key '" + key + "'", e);
         }
@@ -751,7 +751,7 @@ public class JsonObject extends JsonContainer {
     public Long asLong(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asLong(value);
+            return Nodes.asLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Long", e);
         }
@@ -781,7 +781,7 @@ public class JsonObject extends JsonContainer {
     public Integer getInteger(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toInteger(value);
+            return Nodes.toInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Integer for key '" + key + "'", e);
         }
@@ -811,7 +811,7 @@ public class JsonObject extends JsonContainer {
     public Integer asInteger(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asInteger(value);
+            return Nodes.asInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Integer", e);
         }
@@ -841,7 +841,7 @@ public class JsonObject extends JsonContainer {
     public Short getShort(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toShort(value);
+            return Nodes.toShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Short for key '" + key + "'", e);
         }
@@ -871,7 +871,7 @@ public class JsonObject extends JsonContainer {
     public Short asShort(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asShort(value);
+            return Nodes.asShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Short", e);
         }
@@ -901,7 +901,7 @@ public class JsonObject extends JsonContainer {
     public Byte getByte(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toByte(value);
+            return Nodes.toByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Byte for key '" + key + "'", e);
         }
@@ -931,7 +931,7 @@ public class JsonObject extends JsonContainer {
     public Byte asByte(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asByte(value);
+            return Nodes.asByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Byte", e);
         }
@@ -961,7 +961,7 @@ public class JsonObject extends JsonContainer {
     public Double getDouble(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toDouble(value);
+            return Nodes.toDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Double for key '" + key + "'", e);
         }
@@ -991,7 +991,7 @@ public class JsonObject extends JsonContainer {
     public Double asDouble(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asDouble(value);
+            return Nodes.asDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Double", e);
         }
@@ -1021,7 +1021,7 @@ public class JsonObject extends JsonContainer {
     public Float getFloat(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toFloat(value);
+            return Nodes.toFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Float for key '" + key + "'", e);
         }
@@ -1051,7 +1051,7 @@ public class JsonObject extends JsonContainer {
     public Float asFloat(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asFloat(value);
+            return Nodes.asFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Float", e);
         }
@@ -1081,7 +1081,7 @@ public class JsonObject extends JsonContainer {
     public BigInteger getBigInteger(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toBigInteger(value);
+            return Nodes.toBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigInteger for key '" + key + "'", e);
         }
@@ -1111,7 +1111,7 @@ public class JsonObject extends JsonContainer {
     public BigInteger asBigInteger(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asBigInteger(value);
+            return Nodes.asBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to BigInteger", e);
         }
@@ -1141,7 +1141,7 @@ public class JsonObject extends JsonContainer {
     public BigDecimal getBigDecimal(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toBigDecimal(value);
+            return Nodes.toBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigDecimal for key '" + key + "'", e);
         }
@@ -1171,7 +1171,7 @@ public class JsonObject extends JsonContainer {
     public BigDecimal asBigDecimal(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asBigDecimal(value);
+            return Nodes.asBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to BigDecimal", e);
         }
@@ -1201,7 +1201,7 @@ public class JsonObject extends JsonContainer {
     public Boolean getBoolean(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.toBoolean(value);
+            return Nodes.toBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Boolean for key '" + key + "'", e);
         }
@@ -1231,7 +1231,7 @@ public class JsonObject extends JsonContainer {
     public Boolean asBoolean(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asBoolean(value);
+            return Nodes.asBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Boolean", e);
         }
@@ -1261,7 +1261,7 @@ public class JsonObject extends JsonContainer {
     public JsonObject getJsonObject(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asJsonObject(value);
+            return Nodes.asJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject for key '" + key + "'", e);
         }
@@ -1284,7 +1284,7 @@ public class JsonObject extends JsonContainer {
     public Map<String, Object> getMap(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asMap(value);
+            return Nodes.asMap(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Map<String, Object> for key '" + key + "'", e);
         }
@@ -1297,7 +1297,7 @@ public class JsonObject extends JsonContainer {
     public <T> Map<String, T> asMap(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asMap(value, clazz);
+            return Nodes.asMap(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Map<String, " + clazz.getName() + ">", e);
         }
@@ -1317,7 +1317,7 @@ public class JsonObject extends JsonContainer {
     public JsonArray getJsonArray(String key) {
         Object value = getNode(key);
         try {
-            return NodeUtil.asJsonArray(value);
+            return Nodes.asJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray for key '" + key + "'", e);
         }
@@ -1340,7 +1340,7 @@ public class JsonObject extends JsonContainer {
     public List<Object> getList(String key) {
         try {
             Object value = getNode(key);
-            return NodeUtil.asList(value);
+            return Nodes.asList(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get List<Object> for key '" + key + "'", e);
         }
@@ -1353,7 +1353,7 @@ public class JsonObject extends JsonContainer {
     public <T> List<T> asList(String key, Class<T> clazz) {
         try {
             Object value = getNode(key);
-            return NodeUtil.asList(value, clazz);
+            return Nodes.asList(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to List<" + clazz.getName() + ">", e);
         }
@@ -1366,7 +1366,7 @@ public class JsonObject extends JsonContainer {
     public Object[] getArray(String key) {
         try {
             Object value = getNode(key);
-            return NodeUtil.asArray(value);
+            return Nodes.asArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Object[] for key '" + key + "'", e);
         }
@@ -1379,7 +1379,7 @@ public class JsonObject extends JsonContainer {
     public <T> T[] asArray(String key, Class<T> clazz) {
         try {
             Object value = getNode(key);
-            return NodeUtil.asArray(value, clazz);
+            return Nodes.asArray(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName() + "[]", e);
         }
@@ -1401,7 +1401,7 @@ public class JsonObject extends JsonContainer {
     public <T> T get(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
-            return NodeUtil.to(value, clazz);
+            return Nodes.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to get " + clazz.getName() + " for key '" + key + "'", e);
         }
@@ -1437,7 +1437,7 @@ public class JsonObject extends JsonContainer {
     public <T> T as(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
-            return NodeUtil.as(value, clazz);
+            return Nodes.as(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName(), e);
         }
@@ -1585,7 +1585,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T copy() {
-        return (T) NodeUtil.copy(this);
+        return (T) Nodes.copy(this);
     }
 
     /**
@@ -1600,7 +1600,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T deepCopy() {
-        return (T) NodeUtil.deepCopy(this);
+        return (T) Nodes.deepCopy(this);
     }
 
     /// Stream

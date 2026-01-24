@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
-import org.sjf4j.util.NodeUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -257,7 +257,7 @@ public class JsonPatchTest {
         List<Integer> b = Arrays.asList(1, 20, 3, 4);
 
         JsonPatch patch = JsonPatch.diff(a, b);
-        List<Integer> c = NodeUtil.deepCopy(a);
+        List<Integer> c = Nodes.deepCopy(a);
         patch.apply(c);
 
         assertEquals(b, c);

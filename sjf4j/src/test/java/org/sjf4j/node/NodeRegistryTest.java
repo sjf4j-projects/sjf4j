@@ -14,7 +14,6 @@ import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Copy;
 import org.sjf4j.annotation.node.Decode;
-import org.sjf4j.util.TypeReference;
 
 import java.time.LocalDate;
 import java.util.List;

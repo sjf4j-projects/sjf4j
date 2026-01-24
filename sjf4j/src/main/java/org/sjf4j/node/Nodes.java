@@ -1,13 +1,11 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
+
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.Sjf4j;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.NodeType;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.Sjf4j;
+import org.sjf4j.Sjf4jConfig;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -17,16 +15,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
+public class Nodes {
 
-/**
- * Utility class for handling JSON node operations and type conversions.
- * 
- * <p>This class provides a set of static methods for safely converting between different
- * JSON node types, with strict type checking and appropriate exception handling. It
- * distinguishes between "toXxx" methods (which perform strict type checking) and "asXxx"
- * methods (which perform more flexible conversions).
- */
-public class NodeUtil {
 
     /// Type-safe access and cross-type conversion
 
@@ -43,7 +33,7 @@ public class NodeUtil {
             return Enum.valueOf(enumClazz, s);
         }
         throw new JsonException("Expected String or Enum for " + enumClazz.getName() + ", but got " +
-                TypeUtil.nameOf(node));
+                Types.nameOf(node));
     }
 
     @SuppressWarnings("unchecked")
@@ -73,7 +63,7 @@ public class NodeUtil {
         } else if (node.getClass().isEnum()) {
             return ((Enum<?>) node).name();
         }
-        throw new JsonException("Expected String or Character or Enum, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected String or Character or Enum, but got " + Types.nameOf(node));
     }
 
     /**
@@ -103,7 +93,7 @@ public class NodeUtil {
             String s = ((Enum<?>) node).name();
             if (s.length() == 1) return s.charAt(0);
         }
-        throw new JsonException("Expected Character or single-character String, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Character or single-character String, but got " + Types.nameOf(node));
     }
 
     public static Character asCharacter(Object node) {
@@ -115,7 +105,7 @@ public class NodeUtil {
             String s = asString(node);
             if (s.length() > 0) return s.charAt(0);
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to Character"
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Character"
         );
     }
 
@@ -132,7 +122,7 @@ public class NodeUtil {
         } else if (node instanceof Number) {
             return (Number) node;
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     /**
@@ -149,14 +139,14 @@ public class NodeUtil {
             return (Number) node;
         } else if (node instanceof CharSequence || node instanceof Character) {
             String str = node.toString();
-            if (NumberUtil.isNumeric(str)) {
-                return NumberUtil.toNumber(node.toString());
+            if (Numbers.isNumeric(str)) {
+                return Numbers.toNumber(node.toString());
             }
             throw new JsonException("Cannot convert String to Number: not a numeric value");
         } else if (node.getClass().isEnum()) {
             return ((Enum<?>) node).ordinal();
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to Number");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Number");
     }
 
 
@@ -171,9 +161,9 @@ public class NodeUtil {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asLong((Number) node);
+            return Numbers.asLong((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     /**
@@ -183,7 +173,7 @@ public class NodeUtil {
      * @return the Long representation
      */
     public static Long asLong(Object node) {
-        return NumberUtil.asLong(asNumber(node));
+        return Numbers.asLong(asNumber(node));
     }
 
     /**
@@ -197,9 +187,9 @@ public class NodeUtil {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asInteger((Number) node);
+            return Numbers.asInteger((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     /**
@@ -209,7 +199,7 @@ public class NodeUtil {
      * @return the Integer representation
      */
     public static Integer asInteger(Object node) {
-        return NumberUtil.asInteger(asNumber(node));
+        return Numbers.asInteger(asNumber(node));
     }
 
     /**
@@ -223,9 +213,9 @@ public class NodeUtil {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asShort((Number) node);
+            return Numbers.asShort((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     /**
@@ -235,72 +225,72 @@ public class NodeUtil {
      * @return the Short representation
      */
     public static Short asShort(Object node) {
-        return NumberUtil.asShort(asNumber(node));
+        return Numbers.asShort(asNumber(node));
     }
 
     public static Byte toByte(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asByte((Number) node);
+            return Numbers.asByte((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     public static Byte asByte(Object node) {
-        return NumberUtil.asByte(asNumber(node));
+        return Numbers.asByte(asNumber(node));
     }
 
     public static Double toDouble(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asDouble((Number) node);
+            return Numbers.asDouble((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     public static Double asDouble(Object node) {
-        return NumberUtil.asDouble(asNumber(node));
+        return Numbers.asDouble(asNumber(node));
     }
 
     public static Float toFloat(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asFloat((Number) node);
+            return Numbers.asFloat((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     public static Float asFloat(Object node) {
-        return NumberUtil.asFloat(asNumber(node));
+        return Numbers.asFloat(asNumber(node));
     }
 
     public static BigInteger toBigInteger(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asBigInteger((Number) node);
+            return Numbers.asBigInteger((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     public static BigInteger asBigInteger(Object node) {
-        return NumberUtil.asBigInteger(asNumber(node));
+        return Numbers.asBigInteger(asNumber(node));
     }
 
     public static BigDecimal toBigDecimal(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return NumberUtil.asBigDecimal((Number) node);
+            return Numbers.asBigDecimal((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
     }
 
     public static BigDecimal asBigDecimal(Object node) {
-        return NumberUtil.asBigDecimal(asNumber(node));
+        return Numbers.asBigDecimal(asNumber(node));
     }
 
     public static Boolean toBoolean(Object node) {
@@ -309,7 +299,7 @@ public class NodeUtil {
         } else if (node instanceof Boolean) {
             return (Boolean) node;
         }
-        throw new JsonException("Expected Boolean, but got " + TypeUtil.nameOf(node));
+        throw new JsonException("Expected Boolean, but got " + Types.nameOf(node));
     }
 
     public static Boolean asBoolean(Object node) {
@@ -328,7 +318,7 @@ public class NodeUtil {
             if (i == 0) return false;
             throw new JsonException("Cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to Boolean");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Boolean");
     }
 
     public static JsonObject asJsonObject(Object node) {
@@ -357,7 +347,7 @@ public class NodeUtil {
             }
             return map;
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to Map<String, Object>");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Map<String, Object>");
     }
 
     @SuppressWarnings("unchecked")
@@ -382,7 +372,7 @@ public class NodeUtil {
             }
             return map;
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to Map<String, " + clazz.getName() + ">");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Map<String, " + clazz.getName() + ">");
     }
 
     public static JsonArray asJsonArray(Object node) {
@@ -412,7 +402,7 @@ public class NodeUtil {
             }
             return list;
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to List<Object>");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to List<Object>");
     }
 
     @SuppressWarnings("unchecked")
@@ -428,7 +418,7 @@ public class NodeUtil {
                 if (clazz.isInstance(first)) return (List<T>) list;
                 List<T> newlist = Sjf4jConfig.global().listSupplier.create();
                 for (Object v : list) {
-                    newlist.add(NodeUtil.as(v, clazz));
+                    newlist.add(as(v, clazz));
                 }
                 return newlist;
             }
@@ -439,12 +429,12 @@ public class NodeUtil {
             int len = Array.getLength(node);
             if (len > 0) {
                 for (int i = 0; i < len; i++) {
-                    list.add(NodeUtil.as(Array.get(node, i), clazz));
+                    list.add(as(Array.get(node, i), clazz));
                 }
             }
             return list;
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to List<" + clazz.getName() + ">");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to List<" + clazz.getName() + ">");
     }
 
     @SuppressWarnings("unchecked")
@@ -467,7 +457,7 @@ public class NodeUtil {
         } else if (node instanceof JsonArray) {
             return ((JsonArray) node).toArray();
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to Object[]");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Object[]");
     }
 
     @SuppressWarnings("unchecked")
@@ -479,7 +469,7 @@ public class NodeUtil {
                 int length = Array.getLength(node);
                 T[] arr = (T[]) Array.newInstance(clazz, length);
                 for (int i = 0; i < length; i++) {
-                    arr[i] = NodeUtil.as(Array.get(node, i), clazz);
+                    arr[i] = as(Array.get(node, i), clazz);
                 }
                 return arr;
             }
@@ -497,7 +487,7 @@ public class NodeUtil {
         } else if (node instanceof JsonArray) {
             return ((JsonArray) node).toArray(clazz);
         }
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(node) + " to " + clazz.getName() + "[]");
+        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to " + clazz.getName() + "[]");
     }
 
     @SuppressWarnings({"unchecked"})
@@ -507,7 +497,7 @@ public class NodeUtil {
 
         Class<?> boxed = box(clazz);
         if (boxed.isInstance(node)) return (T) node;
-        if (Number.class.isAssignableFrom(boxed)) return (T) NumberUtil.as(toNumber(node), boxed);
+        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.as(toNumber(node), boxed);
         if (boxed == String.class) return (T) toString(node);
         if (boxed == Character.class) return (T) toCharacter(node);
         throw new JsonException("Type mismatch: expected " + boxed.getName());
@@ -523,7 +513,7 @@ public class NodeUtil {
         if (boxed.isInstance(node)) return (T) node;
         if (boxed == String.class) return (T) asString(node);
         if (boxed == Character.class) return (T) asCharacter(node);
-        if (Number.class.isAssignableFrom(boxed)) return (T) NumberUtil.as(asNumber(node), boxed);
+        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.as(asNumber(node), boxed);
         if (boxed == Boolean.class) return (T) asBoolean(node);
         if (boxed == Map.class) return (T) asMap(node);
         if (boxed == JsonObject.class) return (T) asJsonObject(node);
@@ -552,29 +542,8 @@ public class NodeUtil {
         throw new AssertionError(clazz);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T createContainer(Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz is null");
-        if (Map.class.isAssignableFrom(clazz)) {
-            return (T) Sjf4jConfig.global().mapSupplier.create();
-        } else if (List.class.isAssignableFrom(clazz)) {
-            return (T) Sjf4jConfig.global().listSupplier.create();
-        } else if (clazz == JsonObject.class) {
-            return (T) new JsonObject();
-        } else if (clazz == JsonArray.class) {
-            return (T) new JsonArray();
-        }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
-        if (pi != null) {
-            return (T) pi.newInstance();
-        }
-        throw new JsonException("Cannot create container of " + clazz.getName());
-    }
-
 
     /// Basic
-
-
 
     /**
      * Compares two objects using <b>Object-Based Node Tree</b> semantics.
@@ -608,7 +577,7 @@ public class NodeUtil {
         NodeType ntSource = NodeType.of(source);
         NodeType ntTarget = NodeType.of(target);
         if (ntSource.isNumber() && ntTarget.isNumber()) {
-            return NumberUtil.compare((Number) source, (Number) target) == 0;
+            return Numbers.compare((Number) source, (Number) target) == 0;
         } else if (ntSource.isValue() && ntTarget.isValue()) {
             return source.equals(target);
         } else if (ntSource.isObject() && ntTarget.isObject()) {
@@ -634,11 +603,11 @@ public class NodeUtil {
         return false;
     }
 
-    public static int hashCode(Object node) {
+    public static int hash(Object node) {
         if (node == null) return 0;
         NodeType nt = NodeType.of(node);
         if (nt.isNumber()) {
-            return NumberUtil.hashCode((Number) node);
+            return Numbers.hash((Number) node);
         } else if (nt.isValue()) {
             return node.hashCode();
         } else if (nt.isObject()) {
@@ -646,7 +615,7 @@ public class NodeUtil {
             for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(node)) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                int entryHash = 31 * key.hashCode() + hashCode(value);
+                int entryHash = 31 * key.hashCode() + hash(value);
                 // disorder
                 hash += entryHash;
             }
@@ -656,7 +625,7 @@ public class NodeUtil {
             int size = NodeWalker.sizeInArray(node);
             for (int i = 0; i < size; i++) {
                 Object item = NodeWalker.getInArray(node, i);
-                hash = 31 * hash + hashCode(item);
+                hash = 31 * hash + hash(item);
             }
             return hash;
         } else if (nt.isUnknown()) {
@@ -877,6 +846,7 @@ public class NodeUtil {
             }
         }
     }
+
 
 
 }

@@ -1,11 +1,11 @@
-package org.sjf4j.util;
+package org.sjf4j.path;
 
 import org.sjf4j.JsonException;
 
 
 /**
- * Implement of I-Regexp
- * See: https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-iregexp-08
+ * Implement of <a href="https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-iregexp-08">I-Regexp</a>
+ *
  */
 public class IRegexpUtil {
 

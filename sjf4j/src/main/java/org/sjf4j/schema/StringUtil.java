@@ -1,4 +1,8 @@
-package org.sjf4j.util;
+package org.sjf4j.schema;
+
+import com.ibm.icu.text.BreakIterator;
+
+import java.util.Locale;
 
 public class StringUtil {
 
@@ -31,4 +35,31 @@ public class StringUtil {
             return s -> s.codePointCount(0, s.length());
         }
     }
+
+
+    /// ICU
+
+    private static final class IcuCounter {
+
+        private static final ThreadLocal<BreakIterator> TL =
+                ThreadLocal.withInitial(() -> BreakIterator.getCharacterInstance(Locale.ROOT));
+
+        static int count(String s) {
+            BreakIterator it = TL.get();
+            it.setText(s);
+
+            int count = 0;
+            int i = it.first();
+            for (int j = it.next();
+                 j != BreakIterator.DONE;
+                 i = j, j = it.next()) {
+                count++;
+            }
+            return count;
+        }
+
+        private IcuCounter() {}
+    }
+
+
 }

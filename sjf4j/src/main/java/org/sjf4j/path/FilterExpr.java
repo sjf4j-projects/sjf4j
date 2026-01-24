@@ -2,8 +2,8 @@ package org.sjf4j.path;
 
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeWalker;
-import org.sjf4j.util.NodeUtil;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.node.Nodes;
+import org.sjf4j.node.Numbers;
 
 import java.util.List;
 import java.util.Objects;
@@ -286,7 +286,7 @@ public interface FilterExpr {
         NodeType aNt = NodeType.of(a);
         NodeType bNt = NodeType.of(b);
         if (aNt.isNumber() && bNt.isNumber()) {
-            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) > 0;
+            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) > 0;
         }
         if (aNt.isString() && bNt.isString()) {
             return a.toString().compareTo(b.toString()) > 0;
@@ -307,7 +307,7 @@ public interface FilterExpr {
         NodeType aNt = NodeType.of(a);
         NodeType bNt = NodeType.of(b);
         if (aNt.isNumber() && bNt.isNumber()) {
-            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) >= 0;
+            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) >= 0;
         }
         if (aNt.isString() && bNt.isString()) {
             return a.toString().compareTo(b.toString()) >= 0;
@@ -328,10 +328,10 @@ public interface FilterExpr {
         NodeType aNt = NodeType.of(a);
         NodeType bNt = NodeType.of(b);
         if (aNt.isNumber() && bNt.isNumber()) {
-            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) < 0;
+            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) < 0;
         }
         if (aNt.isString() && bNt.isString()) {
-            return NodeUtil.toString(a).compareTo(NodeUtil.toString(b)) < 0;
+            return Nodes.toString(a).compareTo(Nodes.toString(b)) < 0;
         }
         return false;
     }
@@ -349,10 +349,10 @@ public interface FilterExpr {
         NodeType aNt = NodeType.of(a);
         NodeType bNt = NodeType.of(b);
         if (aNt.isNumber() && bNt.isNumber()) {
-            return NumberUtil.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) <= 0;
+            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) <= 0;
         }
         if (aNt.isString() && bNt.isString()) {
-            return NodeUtil.toString(a).compareTo(NodeUtil.toString(b)) <= 0;
+            return Nodes.toString(a).compareTo(Nodes.toString(b)) <= 0;
         }
         return false;
     }
@@ -364,13 +364,13 @@ public interface FilterExpr {
 
         NodeType aNt = NodeType.of(a);
         if (aNt.isString()) {
-            return p.matcher(NodeUtil.toString(a)).find();
+            return p.matcher(Nodes.toString(a)).find();
         }
 
         // Matches if at least one element in the array matches
         if (aNt.isArray()) {
             return NodeWalker.anyMatchInArray(a,
-                    (i, v) -> NodeType.of(v).isString() && p.matcher(NodeUtil.toString(v)).find());
+                    (i, v) -> NodeType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
         }
 
         return false;
@@ -403,7 +403,7 @@ public interface FilterExpr {
         NodeType xNt = NodeType.of(x);
         if (xNt.isBoolean()) return (Boolean) x;
         if (xNt.isNumber()) return ((Number) x).doubleValue() != 0;
-        if (xNt.isString()) return !NodeUtil.toString(x).isEmpty();
+        if (xNt.isString()) return !Nodes.toString(x).isEmpty();
         if (xNt.isArray()) return NodeWalker.sizeInArray(x) > 0;
         return true;
     }

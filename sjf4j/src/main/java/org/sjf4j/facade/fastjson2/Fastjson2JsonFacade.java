@@ -10,7 +10,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -227,7 +227,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     Fastjson2StreamingUtil.writeNode(writer, node);
                     writer.flushTo(output);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -237,7 +237,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     String json = JSON.toJSONString(node, writerFeatures);
                     output.write(json);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -262,7 +262,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     Fastjson2StreamingUtil.writeNode(writer, node);
                     writer.flushTo(output);
                 } catch (IOException e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;
@@ -272,7 +272,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     byte[] bs = JSON.toJSONBytes(node, writerFeatures);
                     output.write(bs);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to write node of type '" + TypeUtil.nameOf(node) +
+                    throw new JsonException("Failed to write node of type '" + Types.nameOf(node) +
                             "' to JSON streaming", e);
                 }
                 break;

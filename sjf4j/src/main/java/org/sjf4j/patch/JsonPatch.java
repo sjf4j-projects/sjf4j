@@ -1,7 +1,7 @@
 package org.sjf4j.patch;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.util.PatchUtil;
+
 import java.util.List;
 import java.util.Objects;
 

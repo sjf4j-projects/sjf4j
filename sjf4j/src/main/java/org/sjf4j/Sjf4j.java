@@ -1,7 +1,7 @@
 package org.sjf4j;
 
 
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.node.TypeReference;
 
 import java.io.InputStream;
 import java.io.OutputStream;

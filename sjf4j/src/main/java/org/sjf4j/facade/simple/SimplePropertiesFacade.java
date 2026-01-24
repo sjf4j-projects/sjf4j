@@ -3,7 +3,6 @@ package org.sjf4j.facade.simple;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.facade.PropertiesFacade;
-import org.sjf4j.util.NodeUtil;
 
 import java.util.Properties;
 import java.util.TreeSet;

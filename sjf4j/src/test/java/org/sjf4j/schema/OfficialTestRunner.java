@@ -16,7 +16,7 @@ public final class OfficialTestRunner {
 
     public static void main(String[] args) throws Exception {
         _store = loadRemotesToStore(locatePath("json-schema/remotes"));
-        Path root = locatePath("json-schema/tests/draft2020-12");
+        Path root = locatePath("json-schema/tests/draft2020-12/optional");
 
         runTestDir(root);
 //        runTestFile(root.resolve("ref.json"), "remote ref, containing refs itself", "");

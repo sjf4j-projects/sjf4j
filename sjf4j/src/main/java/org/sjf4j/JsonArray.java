@@ -1,8 +1,8 @@
 package org.sjf4j;
 
 import org.sjf4j.node.NodeStream;
-import org.sjf4j.util.NodeUtil;
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.node.Nodes;
+import org.sjf4j.node.TypeReference;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -197,7 +197,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         } else {
             List<T> list = Sjf4jConfig.global().listSupplier.create();
             for (Object node : nodeList) {
-                list.add(NodeUtil.as(node, clazz));
+                list.add(Nodes.as(node, clazz));
             }
             return list;
         }
@@ -359,7 +359,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public String getString(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toString(value);
+            return Nodes.toString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get String at index " + idx, e);
         }
@@ -372,7 +372,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public String asString(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asString(value);
+            return Nodes.asString(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to String", e);
         }
@@ -385,7 +385,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Number getNumber(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toNumber(value);
+            return Nodes.toNumber(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Number at index " + idx, e);
         }
@@ -398,7 +398,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Number asNumber(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asNumber(value);
+            return Nodes.asNumber(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Number", e);
         }
@@ -411,7 +411,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Long getLong(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toLong(value);
+            return Nodes.toLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Long at index " + idx, e);
         }
@@ -424,7 +424,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Long asLong(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asLong(value);
+            return Nodes.asLong(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Long", e);
         }
@@ -437,7 +437,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Integer getInteger(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toInteger(value);
+            return Nodes.toInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Integer at index " + idx, e);
         }
@@ -450,7 +450,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Integer asInteger(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asInteger(value);
+            return Nodes.asInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Integer", e);
         }
@@ -463,7 +463,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Short getShort(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toShort(value);
+            return Nodes.toShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Short at index " + idx, e);
         }
@@ -476,7 +476,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Short asShort(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asShort(value);
+            return Nodes.asShort(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Short", e);
         }
@@ -489,7 +489,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Byte getByte(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toByte(value);
+            return Nodes.toByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Byte at index " + idx, e);
         }
@@ -502,7 +502,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Byte asByte(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asByte(value);
+            return Nodes.asByte(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Byte", e);
         }
@@ -515,7 +515,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Double getDouble(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toDouble(value);
+            return Nodes.toDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Double at index " + idx, e);
         }
@@ -528,7 +528,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Double asDouble(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asDouble(value);
+            return Nodes.asDouble(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Double", e);
         }
@@ -541,7 +541,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Float getFloat(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toFloat(value);
+            return Nodes.toFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Float at index " + idx, e);
         }
@@ -554,7 +554,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Float asFloat(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asFloat(value);
+            return Nodes.asFloat(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Float", e);
         }
@@ -567,7 +567,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public BigInteger getBigInteger(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toBigInteger(value);
+            return Nodes.toBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigInteger at index " + idx, e);
         }
@@ -580,7 +580,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public BigInteger asBigInteger(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asBigInteger(value);
+            return Nodes.asBigInteger(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to BigInteger", e);
         }
@@ -593,7 +593,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public BigDecimal getBigDecimal(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toBigDecimal(value);
+            return Nodes.toBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get BigDecimal at index " + idx, e);
         }
@@ -606,7 +606,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public BigDecimal asBigDecimal(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asBigDecimal(value);
+            return Nodes.asBigDecimal(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to BigDecimal", e);
         }
@@ -619,7 +619,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Boolean getBoolean(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.toBoolean(value);
+            return Nodes.toBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Boolean at index " + idx, e);
         }
@@ -632,7 +632,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Boolean asBoolean(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asBoolean(value);
+            return Nodes.asBoolean(value);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Boolean", e);
         }
@@ -645,7 +645,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public JsonObject getJsonObject(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asJsonObject(value);
+            return Nodes.asJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject at index " + idx, e);
         }
@@ -658,7 +658,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Map<String, Object> getMap(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asMap(value);
+            return Nodes.asMap(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Map<String, Object> at index " + idx, e);
         }
@@ -671,7 +671,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public <T> Map<String, T> asMap(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asMap(value, clazz);
+            return Nodes.asMap(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Map<String, " +
                     clazz.getName() + ">", e);
@@ -685,7 +685,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public JsonArray getJsonArray(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asJsonArray(value);
+            return Nodes.asJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray at index " + idx, e);
         }
@@ -698,7 +698,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public List<Object> getList(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asList(value);
+            return Nodes.asList(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get List<Object> at index " + idx, e);
         }
@@ -711,7 +711,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public <T> List<T> asList(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asList(value, clazz);
+            return Nodes.asList(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to List<" + clazz.getName() + ">", e);
         }
@@ -724,7 +724,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public Object[] getArray(int idx) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asArray(value);
+            return Nodes.asArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Object[] at index " + idx, e);
         }
@@ -737,7 +737,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
     public <T> T[] asArray(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
-            return NodeUtil.asArray(value, clazz);
+            return Nodes.asArray(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName() + "[]", e);
         }
@@ -751,7 +751,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         Objects.requireNonNull(clazz, "clazz is null");
         Object value = getNode(idx);
         try {
-            return NodeUtil.to(value, clazz);
+            return Nodes.to(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to get " + clazz.getName() + " at index " + idx, e);
         }
@@ -767,7 +767,7 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         Objects.requireNonNull(clazz, "clazz is null");
         Object value = getNode(idx);
         try {
-            return NodeUtil.as(value, clazz);
+            return Nodes.as(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName(), e);
         }
@@ -901,11 +901,11 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
 
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T copy() {
-        return (T) NodeUtil.copy(this);
+        return (T) Nodes.copy(this);
     }
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T deepCopy() {
-        return (T) NodeUtil.deepCopy(this);
+        return (T) Nodes.deepCopy(this);
     }
 
 }

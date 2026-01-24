@@ -10,20 +10,16 @@ import com.alibaba.fastjson2.modules.ObjectReaderModule;
 import com.alibaba.fastjson2.modules.ObjectWriterAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectWriterModule;
 import com.alibaba.fastjson2.reader.ObjectReader;
-import com.alibaba.fastjson2.util.BeanUtils;
-import com.alibaba.fastjson2.writer.FieldWriter;
 import com.alibaba.fastjson2.writer.ObjectWriter;
-import com.alibaba.fastjson2.writer.ObjectWriterCreator;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Types;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.List;
 
 
 public interface Fastjson2Module {
@@ -66,7 +62,7 @@ public interface Fastjson2Module {
     class MyReaderModule implements ObjectReaderModule {
         @Override
         public ObjectReader<?> getObjectReader(Type type) {
-            Class<?> rawClazz = TypeUtil.getRawClass(type);
+            Class<?> rawClazz = Types.getRawClass(type);
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return new JsonArrayReader<>(rawClazz);
             }

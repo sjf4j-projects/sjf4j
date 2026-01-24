@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,8 +10,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.node.ValueCodec;
-import org.sjf4j.node.NodeRegistry;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -25,167 +23,167 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
-public class NodeUtilTest {
+public class NodesTest {
 
     @Test
     public void testToString() {
-        assertEquals("test", NodeUtil.toString("test"));
-        assertEquals("a", NodeUtil.toString('a'));
-        assertNull(NodeUtil.toString(null));
+        assertEquals("test", Nodes.toString("test"));
+        assertEquals("a", Nodes.toString('a'));
+        assertNull(Nodes.toString(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toString(123);
+            Nodes.toString(123);
         });
     }
 
     @Test
     public void testAsString() {
-        assertEquals("test", NodeUtil.asString("test"));
-        assertEquals("a", NodeUtil.asString('a'));
-        assertEquals("123", NodeUtil.asString(123));
-        assertEquals("true", NodeUtil.asString(true));
-        assertNull(NodeUtil.asString(null));
+        assertEquals("test", Nodes.asString("test"));
+        assertEquals("a", Nodes.asString('a'));
+        assertEquals("123", Nodes.asString(123));
+        assertEquals("true", Nodes.asString(true));
+        assertNull(Nodes.asString(null));
     }
 
     @Test
     public void testToNumber() {
-        assertEquals(123, NodeUtil.toNumber(123));
-        assertEquals(123L, NodeUtil.asNumber(123L));
-        assertEquals(123.45, NodeUtil.toNumber(123.45));
-        assertNull(NodeUtil.toNumber(null));
+        assertEquals(123, Nodes.toNumber(123));
+        assertEquals(123L, Nodes.asNumber(123L));
+        assertEquals(123.45, Nodes.toNumber(123.45));
+        assertNull(Nodes.toNumber(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toNumber("123");
+            Nodes.toNumber("123");
         });
     }
 
     @Test
     public void testValueAsLong() {
-        assertEquals(123L, NodeUtil.toLong(123));
-        assertEquals(123L, NodeUtil.asLong("123"));
-        assertEquals(123L, NodeUtil.asLong(123.45));
-        assertNull(NodeUtil.asLong(null));
+        assertEquals(123L, Nodes.toLong(123));
+        assertEquals(123L, Nodes.asLong("123"));
+        assertEquals(123L, Nodes.asLong(123.45));
+        assertNull(Nodes.asLong(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toLong("123");
+            Nodes.toLong("123");
         });
     }
 
     @Test
     public void testAsInteger() {
-        assertEquals(123, NodeUtil.toInteger(123));
-        assertEquals(123, NodeUtil.asInteger("123"));
-        assertEquals(123, NodeUtil.asInteger(123.45));
-        assertNull(NodeUtil.asInteger(null));
+        assertEquals(123, Nodes.toInteger(123));
+        assertEquals(123, Nodes.asInteger("123"));
+        assertEquals(123, Nodes.asInteger(123.45));
+        assertNull(Nodes.asInteger(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toInteger("123");
+            Nodes.toInteger("123");
         });
     }
 
     @Test
     public void testAsDouble() {
-        assertEquals(123.45, NodeUtil.toDouble(123.45));
-        assertEquals(123.0, NodeUtil.asDouble(123));
-        assertNull(NodeUtil.asDouble(null));
+        assertEquals(123.45, Nodes.toDouble(123.45));
+        assertEquals(123.0, Nodes.asDouble(123));
+        assertNull(Nodes.asDouble(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toDouble("123.45");
+            Nodes.toDouble("123.45");
         });
     }
 
     @Test
     public void testAsBigInteger() {
-        assertEquals(BigInteger.valueOf(123), NodeUtil.asBigInteger(123));
-        assertEquals(BigInteger.valueOf(123L), NodeUtil.toBigInteger(123L));
-        assertNull(NodeUtil.asBigInteger(null));
+        assertEquals(BigInteger.valueOf(123), Nodes.asBigInteger(123));
+        assertEquals(BigInteger.valueOf(123L), Nodes.toBigInteger(123L));
+        assertNull(Nodes.asBigInteger(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toBigInteger("123");
+            Nodes.toBigInteger("123");
         });
     }
 
     @Test
     public void testAsBigDecimal() {
-        assertEquals(new BigDecimal("123.45"), NodeUtil.asBigDecimal(new BigDecimal("123.45")));
-        assertEquals(new BigDecimal("123"), NodeUtil.asBigDecimal(123));
-        assertNull(NodeUtil.asBigDecimal(null));
+        assertEquals(new BigDecimal("123.45"), Nodes.asBigDecimal(new BigDecimal("123.45")));
+        assertEquals(new BigDecimal("123"), Nodes.asBigDecimal(123));
+        assertNull(Nodes.asBigDecimal(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toBigDecimal("123.45");
+            Nodes.toBigDecimal("123.45");
         });
         assertDoesNotThrow(() -> {
-            NodeUtil.asBigDecimal("123.45");
+            Nodes.asBigDecimal("123.45");
         });
     }
 
     @Test
     public void testToBoolean() {
-        assertTrue(NodeUtil.toBoolean(true));
-        assertTrue(NodeUtil.asBoolean("true"));
-        assertFalse(NodeUtil.toBoolean(false));
-        assertNull(NodeUtil.toBoolean(null));
+        assertTrue(Nodes.toBoolean(true));
+        assertTrue(Nodes.asBoolean("true"));
+        assertFalse(Nodes.toBoolean(false));
+        assertNull(Nodes.toBoolean(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.toBoolean("true");
+            Nodes.toBoolean("true");
         });
     }
 
     @Test
     public void testToJsonObject() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, NodeUtil.asJsonObject(jo));
-        assertNull(NodeUtil.asJsonObject(null));
+        assertEquals(jo, Nodes.asJsonObject(jo));
+        assertNull(Nodes.asJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asJsonObject("not an object");
+            Nodes.asJsonObject("not an object");
         });
     }
 
     @Test
     public void testAsJsonObject() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, NodeUtil.asJsonObject(jo));
+        assertEquals(jo, Nodes.asJsonObject(jo));
         
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
-        JsonObject fromMap = NodeUtil.asJsonObject(map);
+        JsonObject fromMap = Nodes.asJsonObject(map);
         assertEquals("value", fromMap.getString("key"));
         
-        assertNull(NodeUtil.asJsonObject(null));
+        assertNull(Nodes.asJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asJsonObject("not an object");
+            Nodes.asJsonObject("not an object");
         });
     }
 
     @Test
     public void testToJsonArray() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, NodeUtil.asJsonArray(ja));
-        assertNull(NodeUtil.asJsonArray(null));
+        assertEquals(ja, Nodes.asJsonArray(ja));
+        assertNull(Nodes.asJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asJsonArray("not an array");
+            Nodes.asJsonArray("not an array");
         });
     }
 
     @Test
     public void testAsJsonArray() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, NodeUtil.asJsonArray(ja));
+        assertEquals(ja, Nodes.asJsonArray(ja));
         
         List<Object> list = new ArrayList<>();
         list.add(1);
         list.add(2);
-        JsonArray fromList = NodeUtil.asJsonArray(list);
+        JsonArray fromList = Nodes.asJsonArray(list);
         assertEquals(2, fromList.size());
         assertEquals(1, fromList.getInteger(0));
         
-        assertNull(NodeUtil.asJsonArray(null));
+        assertNull(Nodes.asJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            NodeUtil.asJsonArray("not an array");
+            Nodes.asJsonArray("not an array");
         });
     }
 
@@ -195,7 +193,7 @@ public class NodeUtilTest {
         Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
         Baby[] babies = person.asArray("babies", Baby.class);
-        log.info("babies={}", NodeUtil.inspect(babies));
+        log.info("babies={}", Nodes.inspect(babies));
     }
 
     enum TestEnum { A, B }
@@ -203,24 +201,24 @@ public class NodeUtilTest {
     @Test
     public void testTo() {
         // 测试基本类型
-        assertEquals(123, NodeUtil.to(123, Integer.class));
-        assertEquals(123L, NodeUtil.to(123L, Long.class));
-        assertEquals("test", NodeUtil.to("test", String.class));
+        assertEquals(123, Nodes.to(123, Integer.class));
+        assertEquals(123L, Nodes.to(123L, Long.class));
+        assertEquals("test", Nodes.to("test", String.class));
         
         // 测试类型转换
-        assertEquals(123, NodeUtil.to(123.45, Integer.class));
-        assertEquals(123L, NodeUtil.to(123.45, Long.class));
+        assertEquals(123, Nodes.to(123.45, Integer.class));
+        assertEquals(123L, Nodes.to(123.45, Long.class));
         
         // 测试null
-        assertNull(NodeUtil.to(null, String.class));
+        assertNull(Nodes.to(null, String.class));
         
         // 测试enum
-        assertEquals(TestEnum.A, NodeUtil.to(TestEnum.A, TestEnum.class));
-        assertEquals(TestEnum.A, NodeUtil.as("A", TestEnum.class));
+        assertEquals(TestEnum.A, Nodes.to(TestEnum.A, TestEnum.class));
+        assertEquals(TestEnum.A, Nodes.as("A", TestEnum.class));
         
         // 测试不匹配的类型
         assertThrows(JsonException.class, () -> {
-            NodeUtil.to("not a number", Integer.class);
+            Nodes.to("not a number", Integer.class);
         });
     }
 
@@ -276,7 +274,7 @@ public class NodeUtilTest {
     }
 
     @Test
-    public void testHashCode1() {
+    public void testHash1() {
         JsonObject jo1 = new JsonObject(
                 "name", "Bob",
                 "yes", true,
@@ -292,14 +290,14 @@ public class NodeUtilTest {
                     "street", Arrays.asList("aa", "bb")));
 
         assertNotEquals(jo1.hashCode(), jo2.hashCode());
-        assertEquals(NodeUtil.hashCode(jo1), NodeUtil.hashCode(jo2));
+        assertEquals(Nodes.hash(jo1), Nodes.hash(jo2));
     }
 
     @Test
     public void testCopy1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
-        JsonObject jo2 = NodeUtil.copy(jo1);
-        JsonObject jo3 = NodeUtil.deepCopy(jo1);
+        JsonObject jo2 = Nodes.copy(jo1);
+        JsonObject jo3 = Nodes.deepCopy(jo1);
         assertEquals(jo1, jo2);
         assertEquals(jo1, jo3);
 
@@ -316,8 +314,8 @@ public class NodeUtilTest {
                 "city", "New York",
                 "street", "5th Ave"));
         Person p1 = jo.toNode(Person.class);
-        Person p2 = NodeUtil.copy(p1);
-        Person p3 = NodeUtil.deepCopy(p1);
+        Person p2 = Nodes.copy(p1);
+        Person p3 = Nodes.deepCopy(p1);
         assertEquals(p1, p2);
         assertEquals(p1, p3);
 
@@ -335,8 +333,8 @@ public class NodeUtilTest {
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
         Baby b1 = jo.toNode(Baby.class);
-        Baby b2 = NodeUtil.copy(b1);
-        Baby b3 = NodeUtil.deepCopy(b1);
+        Baby b2 = Nodes.copy(b1);
+        Baby b3 = Nodes.deepCopy(b1);
         log.info("b1={}, b3={}", b1, b3);
         log.info("b2={}, b3={}", b2, b3);
         assertEquals(b1, b2);
@@ -388,8 +386,8 @@ public class NodeUtilTest {
         log.info("date2={}", date2);
         assertEquals(date1, date2);
 
-        log.info("inspect={}", NodeUtil.inspect(date2));
-        assertEquals("@LocalDate#" + date1.toString(), NodeUtil.inspect(date2));
+        log.info("inspect={}", Nodes.inspect(date2));
+        assertEquals("@LocalDate#" + date1.toString(), Nodes.inspect(date2));
     }
 
 }

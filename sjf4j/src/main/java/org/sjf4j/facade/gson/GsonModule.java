@@ -12,8 +12,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Numbers;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -54,7 +54,7 @@ public interface GsonModule {
             if (pi != null) {
                 Map<String, TypeAdapter<?>> map = new HashMap<>();
                 for (Map.Entry<String, NodeRegistry.FieldInfo> e : pi.getFields().entrySet()) {
-                    map.put(e.getKey(), gson.getAdapter(TypeUtil.getRawClass(e.getValue().getType())));
+                    map.put(e.getKey(), gson.getAdapter(Types.getRawClass(e.getValue().getType())));
                 }
                 this.fieldAdapters = map;
             } else {
@@ -167,7 +167,7 @@ public interface GsonModule {
     public static class MyToNumberStrategy implements ToNumberStrategy {
         @Override
         public Number readNumber(JsonReader in) throws IOException {
-            return NumberUtil.toNumber(in.nextString());
+            return Numbers.toNumber(in.nextString());
         }
     }
 

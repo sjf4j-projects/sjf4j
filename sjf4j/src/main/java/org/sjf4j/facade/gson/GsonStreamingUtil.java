@@ -9,9 +9,9 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.FacadeReader;
-import org.sjf4j.util.NumberUtil;
-import org.sjf4j.util.StreamingUtil;
-import org.sjf4j.util.TypeUtil;
+import org.sjf4j.node.Numbers;
+import org.sjf4j.facade.StreamingIO;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * A Gson-specific, fully static implementation of the streaming JSON reader utilities.
  * <p>
- * This class is a specialized and performance-optimized version of {@link StreamingUtil},
+ * This class is a specialized and performance-optimized version of {@link StreamingIO},
  * designed to maximize JIT inlining and reduce dynamic dispatch overhead.
  * <p>
  * Unlike {@code StreamingUtil}, this implementation:
@@ -64,7 +64,7 @@ public class GsonStreamingUtil {
     }
 
     public static Object readNull(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         reader.nextNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -76,7 +76,7 @@ public class GsonStreamingUtil {
     }
 
     public static Object readBoolean(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.nextBoolean();
         }
@@ -90,19 +90,19 @@ public class GsonStreamingUtil {
     }
 
     public static Object readNumber(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
-            return NumberUtil.toNumber(reader.nextString());
+            return Numbers.toNumber(reader.nextString());
         }
         if (Number.class.isAssignableFrom(rawClazz) ||
                 (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
-            Number n = NumberUtil.toNumber(reader.nextString());
-            return NumberUtil.as(n, rawClazz);
+            Number n = Numbers.toNumber(reader.nextString());
+            return Numbers.as(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
-            Number n = NumberUtil.toNumber(reader.nextString());
+            Number n = Numbers.toNumber(reader.nextString());
             return ci.decode(n);
         }
         throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
@@ -110,7 +110,7 @@ public class GsonStreamingUtil {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
         }
@@ -135,11 +135,11 @@ public class GsonStreamingUtil {
 
     public static Object readObject(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, Map.class, 1);
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.beginObject();
             while (reader.peek() != JsonToken.END_OBJECT) {
@@ -207,11 +207,11 @@ public class GsonStreamingUtil {
 
     public static Object readArray(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("reader must not be null");
-        Class<?> rawClazz = TypeUtil.getRawClass(type);
+        Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
-            Type valueType = TypeUtil.resolveTypeArgument(type, List.class, 0);
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {

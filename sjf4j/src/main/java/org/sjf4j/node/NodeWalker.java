@@ -5,7 +5,6 @@ import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathToken;
-import org.sjf4j.util.TypeUtil;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -353,7 +352,7 @@ public class NodeWalker {
         Objects.requireNonNull(key, "key is null");
         Object node = typedNode.getNode();
         if (node instanceof Map) {
-            Type subtype = TypeUtil.resolveTypeArgument(typedNode.getClazzType(), Map.class, 1);
+            Type subtype = Types.resolveTypeArgument(typedNode.getClazzType(), Map.class, 1);
             return TypedNode.of(((Map<String, Object>) node).get(key), subtype);
         }
         if (node.getClass() == JsonObject.class) {
@@ -380,7 +379,7 @@ public class NodeWalker {
         Objects.requireNonNull(typedNode, "typedNode is null");
         Object node = typedNode.getNode();
         if (node instanceof List) {
-            Type subtype = TypeUtil.resolveTypeArgument(typedNode.getClazzType(), List.class, 0);
+            Type subtype = Types.resolveTypeArgument(typedNode.getClazzType(), List.class, 0);
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
             if (idx >= 0 && idx < list.size()) {

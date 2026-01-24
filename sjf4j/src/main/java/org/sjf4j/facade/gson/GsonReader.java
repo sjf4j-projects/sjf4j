@@ -3,7 +3,7 @@ package org.sjf4j.facade.gson;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import org.sjf4j.facade.FacadeReader;
-import org.sjf4j.util.NumberUtil;
+import org.sjf4j.node.Numbers;
 
 import java.io.IOException;
 
@@ -99,7 +99,7 @@ public class GsonReader implements FacadeReader {
     @Override
     public Number nextNumber() throws IOException {
 //        return reader.nextDouble();
-        return NumberUtil.toNumber(reader.nextString());
+        return Numbers.toNumber(reader.nextString());
     }
 
     @Override

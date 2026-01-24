@@ -9,7 +9,7 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Decode;
-import org.sjf4j.util.TypeReference;
+import org.sjf4j.node.TypeReference;
 
 import java.io.StringReader;
 import java.io.StringWriter;

@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
 
 import org.sjf4j.JsonException;
 
@@ -13,7 +13,7 @@ import java.util.Objects;
  * different Java number types, with range checking and appropriate exception handling.
  * It also includes utility methods for checking numeric types and string representations.
  */
-public class NumberUtil {
+public class Numbers {
 
     /**
      * Maximum number of digits allowed for numeric numbers.
@@ -215,15 +215,15 @@ public class NumberUtil {
     @SuppressWarnings("unchecked")
     public static <T> T as(Number number, Class<T> clazz) {
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
-        if (clazz == long.class || clazz == Long.class) return (T) NumberUtil.asLong(number);
-        if (clazz == int.class || clazz == Integer.class) return (T) NumberUtil.asInteger( number);
-        if (clazz == short.class || clazz == Short.class) return (T) NumberUtil.asShort(number);
-        if (clazz == byte.class || clazz == Byte.class) return (T) NumberUtil.asByte(number);
-        if (clazz == double.class || clazz == Double.class) return (T) NumberUtil.asDouble(number);
-        if (clazz == float.class || clazz == Float.class) return (T) NumberUtil.asFloat(number);
-        if (clazz == BigInteger.class) return (T) NumberUtil.asBigInteger(number);
-        if (clazz == BigDecimal.class) return (T) NumberUtil.asBigDecimal(number);
-        throw new JsonException("Cannot convert " + TypeUtil.nameOf(number) + " '" + number + "' to " + clazz.getName());
+        if (clazz == long.class || clazz == Long.class) return (T) Numbers.asLong(number);
+        if (clazz == int.class || clazz == Integer.class) return (T) Numbers.asInteger( number);
+        if (clazz == short.class || clazz == Short.class) return (T) Numbers.asShort(number);
+        if (clazz == byte.class || clazz == Byte.class) return (T) Numbers.asByte(number);
+        if (clazz == double.class || clazz == Double.class) return (T) Numbers.asDouble(number);
+        if (clazz == float.class || clazz == Float.class) return (T) Numbers.asFloat(number);
+        if (clazz == BigInteger.class) return (T) Numbers.asBigInteger(number);
+        if (clazz == BigDecimal.class) return (T) Numbers.asBigDecimal(number);
+        throw new JsonException("Cannot convert " + Types.nameOf(number) + " '" + number + "' to " + clazz.getName());
     }
 
 
@@ -327,7 +327,7 @@ public class NumberUtil {
         return asBigDecimal(source).compareTo(asBigDecimal(target));
     }
 
-    public static int hashCode(Number n) {
+    public static int hash(Number n) {
         if (n instanceof Integer || n instanceof Long || n instanceof Short || n instanceof Byte) {
             long v = n.longValue();
             return Long.hashCode(v);

@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.node;
 
 
 import java.lang.reflect.Array;
@@ -20,7 +20,7 @@ import java.util.Objects;
  * <p>
  * A core principle of this class is that it should not return null for any of its methods.
  */
-public class TypeUtil {
+public class Types {
 
     /**
      * Gets the fully qualified class name of an object.

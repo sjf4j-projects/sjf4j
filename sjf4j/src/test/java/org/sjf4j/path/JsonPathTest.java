@@ -7,7 +7,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.util.NodeUtil;
+import org.sjf4j.node.Nodes;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -262,8 +262,8 @@ public class JsonPathTest {
 
         List<Object> prices = JsonPath.compile("$.store.book[*].price").findNodes(jo);
         assertEquals(2, prices.size());
-        assertEquals(8.95, NodeUtil.toDouble(prices.get(0)));
-        assertEquals(12.99, NodeUtil.toDouble(prices.get(1)));
+        assertEquals(8.95, Nodes.toDouble(prices.get(0)));
+        assertEquals(12.99, Nodes.toDouble(prices.get(1)));
     }
 
     @Test
