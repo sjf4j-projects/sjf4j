@@ -4,7 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
@@ -99,7 +99,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) ) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            NodeWalker.visitObject(container, (k, v) -> {
+            Nodes.visitObject(container, (k, v) -> {
                 Object vv = readNode(v, valueType, deepCopy);
                 map.put(k, vv);
             });
@@ -108,7 +108,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
-            NodeWalker.visitObject(container, (k, v) -> {
+            Nodes.visitObject(container, (k, v) -> {
                 Object vv = readNode(v, Object.class, deepCopy);
                 jo.put(k, vv);
             });
@@ -119,7 +119,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             JsonObject jojo = (JsonObject) pi.newInstance();
-            NodeWalker.visitObject(container, (k, v) -> {
+            Nodes.visitObject(container, (k, v) -> {
                 NodeRegistry.FieldInfo fi = fields.get(k);
                 if (fi != null) {
                     Object vv = readNode(v, fi.getType(), deepCopy);
@@ -136,7 +136,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (pi != null) {
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Object pojo = pi.newInstance();
-            NodeWalker.visitObject(container, (k, v) -> {
+            Nodes.visitObject(container, (k, v) -> {
                 NodeRegistry.FieldInfo fi = fields.get(k);
                 if (fi != null) {
                     Object vv = readNode(v, fi.getType(), deepCopy);
@@ -157,7 +157,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
-            NodeWalker.visitArray(container, (i, v) -> {
+            Nodes.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, valueType, deepCopy);
                 list.add(vv);
             });
@@ -166,7 +166,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
-            NodeWalker.visitArray(container, (i, v) -> {
+            Nodes.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, Object.class, deepCopy);
                 ja.add(vv);
             });
@@ -176,7 +176,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray ja = (JsonArray) pi.newInstance();
-            NodeWalker.visitArray(container, (i, v) -> {
+            Nodes.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, ja.elementType(), deepCopy);
                 ja.add(vv);
             });
@@ -186,7 +186,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz.isArray()) {
             Class<?> valueClazz = rawClazz.getComponentType();
             List<Object> list = new ArrayList<>();
-            NodeWalker.visitArray(container, (i, v) -> {
+            Nodes.visitArray(container, (i, v) -> {
                 Object vv = readNode(v, valueClazz, deepCopy);
                 list.add(vv);
             });

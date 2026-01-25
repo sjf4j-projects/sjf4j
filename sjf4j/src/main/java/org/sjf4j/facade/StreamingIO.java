@@ -256,7 +256,7 @@ public class StreamingIO {
             reader.endArray();
 
             Object array = Array.newInstance(valueClazz, list.size());
-            for (int i = 0; i < list.size(); i++) {
+            for (int i = 0, len = list.size(); i < len; i++) {
                 Array.set(array, i, list.get(i));
             }
             return array;
@@ -332,7 +332,8 @@ public class StreamingIO {
             writer.endArray();
         } else if (node.getClass().isArray()) {
             writer.startArray();
-            for (int i = 0; i < Array.getLength(node); i++) {
+            int len = Array.getLength(node);
+            for (int i = 0; i < len; i++) {
                 if (i > 0) writer.writeArrayComma();
                 writeNode(writer, Array.get(node, i));
             }

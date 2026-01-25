@@ -2,7 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
@@ -436,7 +436,7 @@ public interface Evaluator {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.getNode();
-            int size = NodeWalker.sizeInObject(actual);
+            int size = Nodes.sizeInObject(actual);
             if (minProperties != null && size < minProperties) {
                 ctx.addError(path.toExpr(), "minProperties",
                         "Object must have >= " + minProperties + " properties");
@@ -488,7 +488,7 @@ public interface Evaluator {
             boolean result = true;
             if (required != null) {
                 for (String key : required) {
-                    if (!NodeWalker.containsInObject(actual, key)) {
+                    if (!Nodes.containsInObject(actual, key)) {
                         ctx.addError(path.toExpr(), "required", "Missing required property '" + key + "'");
                         result = false;
                     }
@@ -498,7 +498,7 @@ public interface Evaluator {
 
             // properties
             int propIdx = 0;
-            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(actual)) {
+            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
                 String key = entry.getKey();
                 boolean matched = false;
                 if (properties != null) {
@@ -552,10 +552,10 @@ public interface Evaluator {
             boolean result = true;
             for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
                 String key = entry.getKey();
-                if (NodeWalker.containsInObject(actual, key)) {
+                if (Nodes.containsInObject(actual, key)) {
                     String[] required = entry.getValue();
                     for (String property : required) {
-                        if (!NodeWalker.containsInObject(actual, property)) {
+                        if (!Nodes.containsInObject(actual, property)) {
                             ctx.addError(path.toExpr(), "dependentRequired", "Property '" + property +
                                     "' is required when property '" + key + "' is present");
                             result = false;
@@ -582,7 +582,7 @@ public interface Evaluator {
             boolean result = true;
             for (Map.Entry<String, Object> entry : dependentSchemas.entrySet()) {
                 String key = entry.getKey();
-                if (NodeWalker.containsInObject(actual, key)) {
+                if (Nodes.containsInObject(actual, key)) {
                     Object subSchema = dependentSchemas.get(key);
                     boolean subResult = evaluate(subSchema, "dependentSchemas", instance, path, ctx);
                     result = result && subResult;
@@ -605,7 +605,7 @@ public interface Evaluator {
 
             Object actual = instance.getNode();
             boolean result = true;
-            for (String key : NodeWalker.keySetInObject(actual)) {
+            for (String key : Nodes.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
                 boolean probed = evaluate(propertyNamesSchema, "propertyNames", InstancedNode.infer(key), path, ctx);
                 ctx.popIgnoreError();
@@ -635,7 +635,7 @@ public interface Evaluator {
 
             Object actual = instance.getNode();
             boolean result = true;
-            int size = NodeWalker.sizeInArray(actual);
+            int size = Nodes.sizeInArray(actual);
             if (minItems != null && size < minItems) {
                 ctx.addError(path.toExpr(), "minItems", "Array size must >= " + minItems);
                 result = false;
@@ -646,7 +646,7 @@ public interface Evaluator {
             }
             if (Boolean.TRUE.equals(uniqueItems)) {
                 Set<Object> set = new HashSet<>();
-                NodeWalker.visitArray(actual, (i, v) -> set.add(v));
+                Nodes.visitArray(actual, (i, v) -> set.add(v));
                 if (set.size() != size) {
                     ctx.addError(path.toExpr(), "uniqueItems", "Array items must be unique");
                     result = false;
@@ -670,7 +670,7 @@ public interface Evaluator {
 
             Object actual = instance.getNode();
             boolean result = true;
-            int size = NodeWalker.sizeInArray(actual);
+            int size = Nodes.sizeInArray(actual);
             int i = 0;
             if (prefixItemsSchemas != null) {
                 for (; i < size && i < prefixItemsSchemas.length; i++) {
@@ -710,7 +710,7 @@ public interface Evaluator {
 
             Object actual = instance.getNode();
             int matches = 0;
-            int size = NodeWalker.sizeInArray(actual);
+            int size = Nodes.sizeInArray(actual);
             for (int i = 0; i < size; i++) {
                 ctx.pushIgnoreError();
                 boolean result = evaluateItem(containsSchema, "contains", instance, path, i, ctx);
@@ -917,7 +917,7 @@ public interface Evaluator {
             if (unevaluatedPropertiesSchema != null) {
                 if (instance.getJsonType() != JsonType.OBJECT) return true;
                 int propIdx = 0;
-                for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(instance.getNode())) {
+                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(instance.getNode())) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
                         boolean subResult = evaluateProperty(unevaluatedPropertiesSchema,
@@ -931,7 +931,7 @@ public interface Evaluator {
             }
             if (unevaluatedItemsSchema != null) {
                 if (instance.getJsonType() != JsonType.ARRAY) return true;
-                int size = NodeWalker.sizeInArray(instance.getNode());
+                int size = Nodes.sizeInArray(instance.getNode());
                 for (int i = 0; i < size; i++) {
                     if (!merged.get(i)) {
                         boolean subResult = evaluateItem(unevaluatedItemsSchema,

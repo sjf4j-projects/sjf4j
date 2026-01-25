@@ -1,7 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonException;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeType;
 
 import java.util.Map;
@@ -79,12 +79,12 @@ public class PathFunctionRegistry {
                 case OBJECT_JSON_OBJECT:
                 case OBJECT_JOJO:
                 case OBJECT_POJO:
-                    return NodeWalker.sizeInObject(node);
+                    return Nodes.sizeInObject(node);
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    return NodeWalker.sizeInArray(node);
+                    return Nodes.sizeInArray(node);
                 default:
                     return null;
             }
@@ -100,7 +100,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    return NodeWalker.sizeInArray(node);
+                    return Nodes.sizeInArray(node);
                 default:
                     return null;
             }
@@ -149,7 +149,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    NodeWalker.visitArray(node, (i, n) -> {
+                    Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
                         }
@@ -169,7 +169,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    NodeWalker.visitArray(node, (i, n) -> {
+                    Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
                             if (min.get() == null || min.get() > d) min.set(d);
@@ -190,7 +190,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    NodeWalker.visitArray(node, (i, n) -> {
+                    Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
                             if (max.get() == null || max.get() < d) max.set(d);
@@ -212,7 +212,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    NodeWalker.visitArray(node, (i, n) -> {
+                    Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
                             cnt.getAndIncrement();
@@ -234,7 +234,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    NodeWalker.visitArray(node, (i, n) -> {
+                    Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             sum.set(sum.get() + ((Number) n).doubleValue());
                             cnt.getAndIncrement();
@@ -249,7 +249,7 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    NodeWalker.visitArray(node, (i, n) -> {
+                    Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
                             qe.updateAndGet(v -> v + (d - avg) * (d - avg));
@@ -269,8 +269,8 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    if (NodeWalker.sizeInArray(node) > 0) {
-                        return NodeWalker.getInArray(node, 0);
+                    if (Nodes.sizeInArray(node) > 0) {
+                        return Nodes.getInArray(node, 0);
                     }
             }
             return null;
@@ -286,9 +286,9 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    int size = NodeWalker.sizeInArray(node);
+                    int size = Nodes.sizeInArray(node);
                     if (size > 0) {
-                        return NodeWalker.getInArray(node, size - 1);
+                        return Nodes.getInArray(node, size - 1);
                     }
             }
             return null;
@@ -304,11 +304,11 @@ public class PathFunctionRegistry {
                 case ARRAY_JSON_ARRAY:
                 case ARRAY_JAJO:
                 case ARRAY_ARRAY:
-                    int size = NodeWalker.sizeInArray(node);
+                    int size = Nodes.sizeInArray(node);
                     if (size > 0) {
                         int index = ((Number) args[1]).intValue();
                         index = index >= 0 ? index : size + index;
-                        if (index >= 0 && index < size) return NodeWalker.getInArray(node, index);
+                        if (index >= 0 && index < size) return Nodes.getInArray(node, index);
                     }
             }
             return null;

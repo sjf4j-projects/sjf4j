@@ -3,7 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
@@ -126,7 +126,7 @@ public final class InstancedNode {
         InstancedNode subInstance = null;
         if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
         if (subInstance == null) {
-            Object subNode = NodeWalker.getInObject(node, key);
+            Object subNode = Nodes.getInObject(node, key);
             if (subNode != null) {
                 subInstance = InstancedNode.infer(subNode);
                 if (subInstance.isEncoded()) {
@@ -144,7 +144,7 @@ public final class InstancedNode {
         String key = String.valueOf(idx);
         if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
         if (subInstance == null) {
-            Object subNode = NodeWalker.getInArray(node, idx);
+            Object subNode = Nodes.getInArray(node, idx);
             if (subNode != null) {
                 subInstance = InstancedNode.infer(subNode);
                 if (subInstance.isEncoded()) {

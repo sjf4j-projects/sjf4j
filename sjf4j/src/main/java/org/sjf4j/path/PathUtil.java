@@ -31,7 +31,7 @@ public class PathUtil {
             // decode ~0/~1
             if (seg.indexOf('~') >= 0) {
                 StringBuilder sb = new StringBuilder(seg.length());
-                for (int i = 0; i < seg.length(); i++) {
+                for (int i = 0, len2 = seg.length(); i < len2; i++) {
                     char c = seg.charAt(i);
                     if (c == '~' && i + 1 < seg.length()) {
                         char next = seg.charAt(i + 1);
@@ -47,7 +47,7 @@ public class PathUtil {
 
             // detect numeric index
             boolean isNumber = !name.isEmpty();
-            for (int i = 0; i < name.length() && isNumber; i++) {
+            for (int i = 0, len2 = name.length(); i < len2 && isNumber; i++) {
                 char c = name.charAt(i);
                 if (c < '0' || c > '9') isNumber = false;
             }
@@ -70,7 +70,7 @@ public class PathUtil {
         if (tokens == null) throw new IllegalArgumentException("Tokens must not be null");
         StringBuilder sb = new StringBuilder();
 
-        for (int i = 0; i < tokens.size(); i++) {
+        for (int i = 0, len = tokens.size(); i < len; i++) {
             PathToken token = tokens.get(i);
 
             if (token instanceof PathToken.Root) {
@@ -86,8 +86,8 @@ public class PathUtil {
             } else if (token instanceof PathToken.Name) {
                 sb.append('/');
                 String name = ((PathToken.Name) token).name;
-                // 单次遍历转义 ~0/~1
-                for (int j = 0; j < name.length(); j++) {
+                // ~0/~1
+                for (int j = 0, len2 = name.length(); j < len2; j++) {
                     char c = name.charAt(j);
                     if (c == '~') {
                         sb.append("~0");

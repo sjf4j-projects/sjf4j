@@ -369,7 +369,7 @@ public interface FilterExpr {
 
         // Matches if at least one element in the array matches
         if (aNt.isArray()) {
-            return NodeWalker.anyMatchInArray(a,
+            return Nodes.anyMatchInArray(a,
                     (i, v) -> NodeType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
         }
 
@@ -399,12 +399,11 @@ public interface FilterExpr {
      */
     static boolean truth(Object x) {
         if (x == null) return false;
-
         NodeType xNt = NodeType.of(x);
         if (xNt.isBoolean()) return (Boolean) x;
         if (xNt.isNumber()) return ((Number) x).doubleValue() != 0;
         if (xNt.isString()) return !Nodes.toString(x).isEmpty();
-        if (xNt.isArray()) return NodeWalker.sizeInArray(x) > 0;
+        if (xNt.isArray()) return Nodes.sizeInArray(x) > 0;
         return true;
     }
 

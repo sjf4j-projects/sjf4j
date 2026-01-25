@@ -130,7 +130,8 @@ public interface GsonModule {
         public void write(JsonWriter out, JsonArray ja) throws IOException {
             out.beginArray();
             TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
-            for (Object v : ja) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
+                Object v =  ja.getNode(i);
                 adapter.write(out, v);
             }
             out.endArray();

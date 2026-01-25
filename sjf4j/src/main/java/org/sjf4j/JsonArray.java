@@ -32,7 +32,7 @@ import java.util.function.Consumer;
  * <p>This class implements list-like operations while maintaining JSON type safety and
  * providing convenient methods for type conversion and iteration.
  */
-public class JsonArray extends JsonContainer implements Iterable<Object> {
+public class JsonArray extends JsonContainer {
 
     /**
      * Stores JSON elements as a list.
@@ -237,8 +237,6 @@ public class JsonArray extends JsonContainer implements Iterable<Object> {
         }
     }
 
-    @SuppressWarnings("NullableProblems")
-    @Override
     public Iterator<Object> iterator() {
         return toList().iterator();
     }

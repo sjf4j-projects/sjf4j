@@ -387,7 +387,8 @@ public class GsonStreamingUtil {
         } else if (node instanceof JsonArray) {
             writer.beginArray();
             JsonArray ja = (JsonArray) node;
-            for (Object v : ja) {
+            for (int i = 0; i < ja.size(); i++) {
+                Object v = ja.getNode(i);
                 writeNode(writer, v);
             }
             writer.endArray();
@@ -400,7 +401,8 @@ public class GsonStreamingUtil {
             writer.endArray();
         } else if (node.getClass().isArray()) {
             writer.beginArray();
-            for (int i = 0; i < Array.getLength(node); i++) {
+            int len = Array.getLength(node);
+            for (int i = 0; i < len; i++) {
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();

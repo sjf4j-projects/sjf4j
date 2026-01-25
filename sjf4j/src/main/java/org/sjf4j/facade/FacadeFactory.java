@@ -1,6 +1,8 @@
 package org.sjf4j.facade;
 
 
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.GsonBuilder;
 import org.sjf4j.JsonException;
@@ -11,6 +13,8 @@ import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.facade.simple.SimplePropertiesFacade;
 import org.sjf4j.facade.snake.SnakeYamlFacade;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
 
 
 /**
@@ -100,7 +104,7 @@ public class FacadeFactory {
             return createFastjson2Facade();
         } else {
             System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson, Gson, Fastjson2).");
-            System.err.println("SJF4J: Falling back to build-in (Simple and Slow) JSON implementation.");
+            System.err.println("SJF4J: Falling back to build-in slower JSON implementation.");
             return createSimpleJsonFacade();
         }
     }
@@ -111,7 +115,11 @@ public class FacadeFactory {
      * @return A new Jackson JSON facade instance
      */
     public static JsonFacade<?, ?> createJacksonFacade() {
-        return new JacksonJsonFacade(new ObjectMapper());
+        return createJacksonFacade(new ObjectMapper());
+    }
+
+    public static JsonFacade<?, ?> createJacksonFacade(ObjectMapper objectMapper) {
+        return new JacksonJsonFacade(objectMapper);
     }
 
     /**
@@ -120,7 +128,11 @@ public class FacadeFactory {
      * @return A new Gson JSON facade instance
      */
     public static JsonFacade<?, ?> createGsonFacade() {
-        return new GsonJsonFacade(new GsonBuilder());
+        return createGsonFacade(new GsonBuilder());
+    }
+
+    public static JsonFacade<?, ?> createGsonFacade(GsonBuilder gsonBuilder) {
+        return new GsonJsonFacade(gsonBuilder);
     }
 
     /**
@@ -130,6 +142,12 @@ public class FacadeFactory {
      */
     public static JsonFacade<?, ?> createFastjson2Facade() {
         return new Fastjson2JsonFacade();
+    }
+
+    public static JsonFacade<?, ?> createFastjson2Facade(
+            JSONReader.Feature[] readerFeatures,
+            JSONWriter.Feature[] writerFeatures) {
+        return new Fastjson2JsonFacade(readerFeatures, writerFeatures);
     }
 
     /**
@@ -166,6 +184,12 @@ public class FacadeFactory {
      */
     public static YamlFacade<?, ?> createSnakeFacade() {
         return new SnakeYamlFacade();
+    }
+
+    public static YamlFacade<?, ?> createSnakeFacade(
+            LoaderOptions loaderOptions,
+            DumperOptions dumperOptions) {
+        return new SnakeYamlFacade(loaderOptions, dumperOptions);
     }
 
 

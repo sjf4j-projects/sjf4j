@@ -178,7 +178,8 @@ public interface JacksonModule {
         public void serialize(JsonArray ja, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
             gen.writeStartArray();
-            for (Object v : ja) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
+                Object v = ja.getNode(i);
                 serializers.defaultSerializeValue(v, gen);
             }
             gen.writeEndArray();

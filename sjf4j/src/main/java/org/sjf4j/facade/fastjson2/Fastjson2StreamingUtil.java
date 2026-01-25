@@ -396,7 +396,8 @@ public class Fastjson2StreamingUtil {
             writer.endArray();
         } else if (node.getClass().isArray()) {
             writer.startArray();
-            for (int i = 0; i < Array.getLength(node); i++) {
+            int len = Array.getLength(node);
+            for (int i = 0; i < len; i++) {
                 if (i > 0) writer.writeComma();
                 writeNode(writer, Array.get(node, i));
             }

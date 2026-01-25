@@ -4,10 +4,9 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.TypedNode;
@@ -724,10 +723,10 @@ public class JsonPath {
         PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
-            return NodeWalker.putInObject(lastContainer, name, value);
+            return Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathToken.Index) {
             int idx = ((PathToken.Index) lastToken).index;
-            NodeWalker.setInArray(lastContainer, idx, value);
+            Nodes.setInArray(lastContainer, idx, value);
             return null; // No need return old value in List/JsonArray
         } else {
             throw new JsonException("ensurePut() not supported for last path token '" + lastToken +
@@ -778,10 +777,10 @@ public class JsonPath {
         PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
-            return NodeWalker.containsInObject(penult, name);
+            return Nodes.containsInObject(penult, name);
         } else if (lastToken instanceof PathToken.Index) {
             int index = ((PathToken.Index) lastToken).index;
-            return NodeWalker.containsInArray(penult, index);
+            return Nodes.containsInArray(penult, index);
         } else if (lastToken instanceof PathToken.Append) {
             return false;
         } else {
@@ -801,12 +800,12 @@ public class JsonPath {
         PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
-            NodeWalker.putInObject(penult, name, value);
+            Nodes.putInObject(penult, name, value);
         } else if (lastToken instanceof PathToken.Index) {
             int idx = ((PathToken.Index) lastToken).index;
-            NodeWalker.addInArray(penult, idx, value);
+            Nodes.addInArray(penult, idx, value);
         } else if (lastToken instanceof PathToken.Append) {
-            NodeWalker.addInArray(penult, value);
+            Nodes.addInArray(penult, value);
         } else {
             throw new JsonException("add() not supported for last path token '" + lastToken +
                     "'; expected Name, Index, or Append token");
@@ -822,10 +821,10 @@ public class JsonPath {
         PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
-            return NodeWalker.putInObject(penult, name, value);
+            return Nodes.putInObject(penult, name, value);
         } else if (lastToken instanceof PathToken.Index) {
             int idx = ((PathToken.Index) lastToken).index;
-            return NodeWalker.setInArray(penult, idx, value);
+            return Nodes.setInArray(penult, idx, value);
         } else {
             throw new JsonException("add() not supported for last path token '" + lastToken +
                     "'; expected Name or Index token");
@@ -840,10 +839,10 @@ public class JsonPath {
         PathToken lastToken = tail();
         if (lastToken instanceof PathToken.Name) {
             String name = ((PathToken.Name) lastToken).name;
-            return NodeWalker.removeInObject(penult, name);
+            return Nodes.removeInObject(penult, name);
         } else if (lastToken instanceof PathToken.Index) {
             int index = ((PathToken.Index) lastToken).index;
-            return NodeWalker.removeInArray(penult, index);
+            return Nodes.removeInArray(penult, index);
         } else if (lastToken instanceof PathToken.Append) {
             return null;
         } else {
@@ -863,13 +862,13 @@ public class JsonPath {
             NodeType nt = NodeType.of(node);
             if (pt instanceof PathToken.Name) {
                 if (nt.isObject()) {
-                    node = NodeWalker.getInObject(node, ((PathToken.Name) pt).name);
+                    node = Nodes.getInObject(node, ((PathToken.Name) pt).name);
                 } else {
                     return null;
                 }
             } else if (pt instanceof PathToken.Index) {
                 if (nt.isArray()) {
-                    node = NodeWalker.getInArray(node, ((PathToken.Index) pt).index);
+                    node = Nodes.getInArray(node, ((PathToken.Index) pt).index);
                 } else {
                     return null;
                 }
@@ -906,21 +905,21 @@ public class JsonPath {
             if (pt instanceof PathToken.Name) {
                 if (nt.isObject()) {
                     String name = ((PathToken.Name) pt).name;
-                    if (NodeWalker.containsInObject(node, name)) {
-                        node = NodeWalker.getInObject(node, name);
+                    if (Nodes.containsInObject(node, name)) {
+                        node = Nodes.getInObject(node, name);
                         continue;
                     }
                 }
             } else if (pt instanceof PathToken.Index) {
                 if (nt.isArray()) {
-                    node = NodeWalker.getInArray(node, ((PathToken.Index) pt).index);
+                    node = Nodes.getInArray(node, ((PathToken.Index) pt).index);
                     continue;
                 }
             } else if (pt instanceof PathToken.Wildcard) {
                 if (nt.isObject()) {
-                    NodeWalker.visitObject(node, (k, v) -> _findAll(root, v, nextI, result, converter));
+                    Nodes.visitObject(node, (k, v) -> _findAll(root, v, nextI, result, converter));
                 } else if (nt.isArray()) {
-                    NodeWalker.visitArray(node, (j, v) -> _findAll(root, v, nextI, result, converter));
+                    Nodes.visitArray(node, (j, v) -> _findAll(root, v, nextI, result, converter));
                 }
             } else if (pt instanceof PathToken.Descendant) {
                 if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
@@ -928,31 +927,31 @@ public class JsonPath {
             } else if (pt instanceof PathToken.Slice) {
                 PathToken.Slice slicePt = (PathToken.Slice) pt;
                 if (nt.isArray()) {
-                    NodeWalker.visitArray(node, (j, v) -> {
+                    Nodes.visitArray(node, (j, v) -> {
                         if (slicePt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathToken.Union) {
                 PathToken.Union unionPt = (PathToken.Union) pt;
                 if (nt.isObject()) {
-                    NodeWalker.visitObject(node, (k, v) -> {
+                    Nodes.visitObject(node, (k, v) -> {
                         if (unionPt.matchKey(k)) _findAll(root, v, nextI, result, converter);
                     });
                 } else if (nt.isArray()) {
-                    NodeWalker.visitArray(node, (j, v) -> {
+                    Nodes.visitArray(node, (j, v) -> {
                         if (unionPt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathToken.Filter) {
                 PathToken.Filter filterPt = (PathToken.Filter) pt;
                 if (nt.isArray()) {
-                    NodeWalker.visitArray(node, (j, v) -> {
+                    Nodes.visitArray(node, (j, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
                             _findAll(root, v, nextI, result, converter);
                         }
                     });
                 } else if (nt.isObject()) {
-                    NodeWalker.visitObject(node, (k, v) -> {
+                    Nodes.visitObject(node, (k, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
                             _findAll(root, v, nextI, result, converter);
                         }
@@ -975,14 +974,14 @@ public class JsonPath {
         PathToken pt = tokens.get(tokenIdx);
         NodeType nt = NodeType.of(current);
         if (nt.isObject()) {
-            NodeWalker.visitObject(current, (k, v) -> {
+            Nodes.visitObject(current, (k, v) -> {
                 if (pt.matchKey(k)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
                 }
                 _findMatch(root, v, tokenIdx, result, converter);
             });
         } else if (nt.isArray()) {
-            NodeWalker.visitArray(current, (j, v) -> {
+            Nodes.visitArray(current, (j, v) -> {
                 if (pt.matchIndex(j)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
                 }
@@ -1007,7 +1006,7 @@ public class JsonPath {
             if (pt instanceof PathToken.Name) {
                 String key = ((PathToken.Name) pt).name;
                 if (nt.isObject()) {
-                    TypedNode tnn = NodeWalker.getTypedInObject(tnode, key);
+                    TypedNode tnn = Nodes.getTypedInObject(tnode, key);
                     if (tnn == null) {
                         throw new JsonException("Cannot access or put field '" + key + "' on an object container '" +
                                 tnode.getClazzType() + "'");
@@ -1015,7 +1014,7 @@ public class JsonPath {
                         PathToken nextPt = tokens.get(i + 1);
                         Class<?> rawClazz = Types.getRawClass(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
-                        NodeWalker.putInObject(tnode.getNode(), key, nn);
+                        Nodes.putInObject(tnode.getNode(), key, nn);
                         tnode = TypedNode.of(nn, tnn.getClazzType());
                     } else {
                         tnode = tnn;
@@ -1027,7 +1026,7 @@ public class JsonPath {
             } else if (pt instanceof PathToken.Index) {
                 int idx = ((PathToken.Index) pt).index;
                 if (nt.isArray()) {
-                    TypedNode tnn = NodeWalker.getTypedInArray(tnode, idx);
+                    TypedNode tnn = Nodes.getTypedInArray(tnode, idx);
                     if (tnn == null) {
                         throw new JsonException("Cannot get or set index " + idx + " on an array container '" +
                                 tnode.getClazzType() + "'");
@@ -1035,7 +1034,7 @@ public class JsonPath {
                         PathToken nextPt = tokens.get(i + 1);
                         Class<?> rawClazz = Types.getRawClass(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
-                        NodeWalker.setInArray(tnode.getNode(), idx, nn);
+                        Nodes.setInArray(tnode.getNode(), idx, nn);
                         tnode = TypedNode.of(nn, tnn.getClazzType());
                     } else {
                         tnode = tnn;

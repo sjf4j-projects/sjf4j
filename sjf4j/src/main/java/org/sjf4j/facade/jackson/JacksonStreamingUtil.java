@@ -279,7 +279,7 @@ public class JacksonStreamingUtil {
             parser.nextToken();
 
             Object array = Array.newInstance(valueClazz, list.size());
-            for (int i = 0; i < list.size(); i++) {
+            for (int i = 0, len = list.size(); i < len; i++) {
                 Array.set(array, i, list.get(i));
             }
             return array;
@@ -430,13 +430,15 @@ public class JacksonStreamingUtil {
         } else if (node instanceof JsonArray) {
             gen.writeStartArray();
             JsonArray ja = (JsonArray) node;
-            for (Object v : ja) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
+                Object v = ja.getNode(i);
                 writeNode(gen, v);
             }
             gen.writeEndArray();
         } else if (node.getClass().isArray()) {
             gen.writeStartArray();
-            for (int i = 0; i < Array.getLength(node); i++) {
+            int len = Array.getLength(node);
+            for (int i = 0; i < len; i++) {
                 writeNode(gen, Array.get(node, i));
             }
             gen.writeEndArray();

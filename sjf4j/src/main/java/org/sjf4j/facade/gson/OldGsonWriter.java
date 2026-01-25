@@ -43,19 +43,23 @@ public class OldGsonWriter {
             writer.endObject();
         } else if (value instanceof JsonArray) {
             writer.beginArray();
-            for (Object v : (JsonArray) value) {
+            JsonArray ja = (JsonArray) value;
+            for (int i = 0, len = ja.size(); i < len; i++) {
+                Object v = ja.getNode(i);
                 writeAny(writer, v);
             }
             writer.endArray();
         } else if (value instanceof List) {
             writer.beginArray();
-            for (Object v : (List<?>) value) {
+            List<?> list = (List<?>) value;
+            for (int i = 0, len = list.size(); i < len; i++) {
+                Object v = list.get(i);
                 writeAny(writer, v);
             }
             writer.endArray();
         } else if (value.getClass().isArray()) {
             writer.beginArray();
-            for (int i = 0; i < Array.getLength(value); i++) {
+            for (int i = 0, len = Array.getLength(value); i < len; i++) {
                 writeAny(writer, Array.get(value, i));
             }
             writer.endArray();

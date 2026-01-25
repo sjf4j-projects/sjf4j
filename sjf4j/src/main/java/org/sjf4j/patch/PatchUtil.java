@@ -1,6 +1,6 @@
 package org.sjf4j.patch;
 
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
@@ -42,8 +42,8 @@ public class PatchUtil {
         NodeType ntTarget = NodeType.of(target);
         NodeType ntPatch = NodeType.of(mergePatch);
         if (ntTarget.isObject() && ntPatch.isObject()) {
-            NodeWalker.visitObject(mergePatch, (key, subPatch) -> {
-                Object subTarget = NodeWalker.getInObject(target, key);
+            Nodes.visitObject(mergePatch, (key, subPatch) -> {
+                Object subTarget = Nodes.getInObject(target, key);
                 NodeType ntSubTarget = NodeType.of(subTarget);
                 NodeType ntSubPatch = NodeType.of(subPatch);
                 if (ntSubPatch.isObject()) {
@@ -51,9 +51,9 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.putInObject(target, key, Nodes.deepCopy(subPatch));
+                            Nodes.putInObject(target, key, Nodes.deepCopy(subPatch));
                         } else {
-                            NodeWalker.putInObject(target, key, subPatch);
+                            Nodes.putInObject(target, key, subPatch);
                         }
                     }
                 } else if (ntSubPatch.isArray()) {
@@ -61,18 +61,18 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.putInObject(target, key, Nodes.deepCopy(subPatch));
+                            Nodes.putInObject(target, key, Nodes.deepCopy(subPatch));
                         } else {
-                            NodeWalker.putInObject(target, key, subPatch);
+                            Nodes.putInObject(target, key, subPatch);
                         }
                     }
                 } else if (overwrite || subTarget == null) {
-                    NodeWalker.putInObject(target, key, subPatch);
+                    Nodes.putInObject(target, key, subPatch);
                 }
             });
         } else if (ntTarget.isArray() && ntPatch.isArray()) {
-            NodeWalker.visitArray(mergePatch, (i, subPatch) -> {
-                Object subTarget = NodeWalker.getInArray(target, i);
+            Nodes.visitArray(mergePatch, (i, subPatch) -> {
+                Object subTarget = Nodes.getInArray(target, i);
                 NodeType ntSubTarget = NodeType.of(subTarget);
                 NodeType ntSubPatch = NodeType.of(subPatch);
                 if (ntSubPatch.isObject()) {
@@ -80,9 +80,9 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.setInArray(target, i, Nodes.deepCopy(subPatch));
+                            Nodes.setInArray(target, i, Nodes.deepCopy(subPatch));
                         } else {
-                            NodeWalker.setInArray(target, i, subPatch);
+                            Nodes.setInArray(target, i, subPatch);
                         }
                     }
                 } else if (ntSubPatch.isArray()) {
@@ -90,13 +90,13 @@ public class PatchUtil {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            NodeWalker.setInArray(target, i, Nodes.deepCopy(subPatch));
+                            Nodes.setInArray(target, i, Nodes.deepCopy(subPatch));
                         } else {
-                            NodeWalker.setInArray(target, i, subPatch);
+                            Nodes.setInArray(target, i, subPatch);
                         }
                     }
                 } else if (overwrite || subTarget == null) {
-                    NodeWalker.setInArray(target, i, subPatch);
+                    Nodes.setInArray(target, i, subPatch);
                 }
             });
         }
@@ -121,22 +121,22 @@ public class PatchUtil {
         NodeType ntTarget = NodeType.of(target);
         NodeType ntPatch = NodeType.of(mergePatch);
         if (ntTarget.isObject() && ntPatch.isObject()) {
-            NodeWalker.visitObject(mergePatch, (key, subPatch) -> {
-                Object subTarget = NodeWalker.getInObject(target, key);
+            Nodes.visitObject(mergePatch, (key, subPatch) -> {
+                Object subTarget = Nodes.getInObject(target, key);
                 NodeType ntSubTarget = NodeType.of(subTarget);
                 NodeType ntSubPatch = NodeType.of(subPatch);
                 if (subPatch == null) {
                     if (subTarget != null) {
-                        NodeWalker.removeInObject(target, key);
+                        Nodes.removeInObject(target, key);
                     }
                 } else if (ntSubPatch.isObject()) {
                     if (ntSubTarget.isObject()) {
                         mergeRfc7386(subTarget, subPatch);
                     } else {
-                        NodeWalker.putInObject(target, key, subPatch);
+                        Nodes.putInObject(target, key, subPatch);
                     }
                 } else {
-                    NodeWalker.putInObject(target, key, subPatch);
+                    Nodes.putInObject(target, key, subPatch);
                 }
             });
         }
@@ -159,37 +159,37 @@ public class PatchUtil {
             NodeType sourceType = NodeType.of(source);
             NodeType targetType = NodeType.of(target);
             if (sourceType.isObject() && targetType.isObject()) {
-                NodeWalker.visitObject(source, (k, v) -> {
+                Nodes.visitObject(source, (k, v) -> {
                     JsonPointer newPath = path.copy();
                     newPath.push(new PathToken.Name(k));
-                    Object newTarget = NodeWalker.getInObject(target, k);
+                    Object newTarget = Nodes.getInObject(target, k);
                     if (newTarget != null) {
                         _diff(ops, newPath, v, newTarget);
                     } else {
                         ops.add(new PatchOp(PatchOp.STD_REMOVE, newPath, null, null));
                     }
                 });
-                NodeWalker.visitObject(target, (k, v) -> {
-                   if (!NodeWalker.containsInObject(source, k)) {
+                Nodes.visitObject(target, (k, v) -> {
+                   if (!Nodes.containsInObject(source, k)) {
                        JsonPointer newPath = path.copy();
                        newPath.push(new PathToken.Name(k));
                        ops.add(new PatchOp(PatchOp.STD_ADD, newPath, v, null));
                    }
                 });
             } else if (sourceType.isArray() && targetType.isArray()) {
-                int sourceSize = NodeWalker.sizeInArray(source);
-                int targetSize = NodeWalker.sizeInArray(target);
+                int sourceSize = Nodes.sizeInArray(source);
+                int targetSize = Nodes.sizeInArray(target);
                 int size = Math.min(sourceSize, targetSize);
                 for (int i = 0; i < size; i++) {
                     JsonPointer newPath = path.copy();
                     newPath.push(new PathToken.Index(i));
-                    _diff(ops, newPath, NodeWalker.getInArray(source, i), NodeWalker.getInArray(target, i));
+                    _diff(ops, newPath, Nodes.getInArray(source, i), Nodes.getInArray(target, i));
                 }
                 if (targetSize > sourceSize) {  // add with '/xx/-'
                     JsonPointer newPath = path.copy();
                     newPath.push(PathToken.Append.INSTANCE);
                     for (int i = sourceSize; i < targetSize; i++) {
-                        ops.add(new PatchOp(PatchOp.STD_ADD, newPath, NodeWalker.getInArray(target, i), null));
+                        ops.add(new PatchOp(PatchOp.STD_ADD, newPath, Nodes.getInArray(target, i), null));
                     }
                 }
                 if (targetSize < sourceSize) {  // Remove from back to front

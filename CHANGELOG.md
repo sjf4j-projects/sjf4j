@@ -5,25 +5,34 @@ All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 ## [Unreleased]
 ### Added
-- `JsonSchema` for generating and validating JSON Schema
-- `@NodeField` annotation to customize field names
+### Improved
+### Changed
+### Fixed
+### Removed
+
+
+## [1.1.0] - 2026.01.25
+### Added
+- Introduced `JsonSchema` module for ***JSON Schema validation*** (see: [json-schema.org](https://json-schema.org/)).
+  Fully implements **JSON Schema Draft 2020-12**, with all official test cases passing.
+- Added `@NodeField` annotation to allow ***custom mapping between POJO fields and node/property names***.
 
 ### Improved
-- `JsonPatch.applyCopy(Class<?> clazz)`
-- `asMap`/`asList`/`asArray` for NodeUtil/JsonObject/JsonPath/...
+- Unified and optimized `asMap`, `asList`, and `asArray` APIs across `Node`, 
+  `JsonObject`, and `JsonPath` for more consistent structural access.
 
 ### Changed
-- Renamed `FunctionRegistry` to `PathFunctionRegistry`
-- Renamed `@Convertible` to `@NodeValue`
+- Renamed: `NodeUtil` to `Nodes`
+- Renamed: `FunctionRegistry` to `PathFunctionRegistry`
+- Renamed: `@Convertible` to `@NodeValue`
 
 ### Fixed
-- `@NodeValue` now supports subclass overrides of annotations on parent classes
-- Fixed incorrect detection of missing POJO constructors
-- 
-
-### Removed
+- `@NodeValue` now correctly supports ***annotation overrides in subclasses***, 
+  even when the annotation is declared on a superclass.
+- Fixed incorrect detection logic for ***missing no-argument constructors in POJO binding*** scenarios.
 
 
 ## [1.0.3] - 2026.01.04

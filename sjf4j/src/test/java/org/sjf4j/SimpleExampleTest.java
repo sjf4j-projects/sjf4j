@@ -7,6 +7,7 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeWalker.Target;
 import org.sjf4j.node.NodeWalker.Order;
 import org.sjf4j.node.NodeWalker.Control;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.node.TypeReference;
 
@@ -333,7 +334,7 @@ public class SimpleExampleTest {
             System.out.println("key=" + k + " value=" + v);
         });
 
-        NodeWalker.visitObject(user, (k, v) -> {
+        Nodes.visitObject(user, (k, v) -> {
             System.out.println("key=" + k + " value=" + v);
         });
     }

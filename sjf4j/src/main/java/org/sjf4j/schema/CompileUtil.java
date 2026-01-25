@@ -2,7 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.node.NodeWalker;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
@@ -281,7 +281,7 @@ public class CompileUtil {
         path.push(new PathToken.Name(key));
         if (!NodeType.of(schemaMapNode).isObject())
             throw new SchemaException("Schema node at " + path + " must be a JSON Object");
-        for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(schemaMapNode)) {
+        for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(schemaMapNode)) {
             Object subNode = entry.getValue();
             path.push(new PathToken.Name(entry.getKey()));
             Object subSchema = compileSchema(subNode, path, idSchema, rootSchema);
@@ -300,14 +300,14 @@ public class CompileUtil {
         path.push(new PathToken.Name(key));
         if (!NodeType.of(schemaArrayNode).isArray())
             throw new SchemaException("Node at " + path + " must be a JSON Array");
-        int size = NodeWalker.sizeInArray(schemaArrayNode);
+        int size = Nodes.sizeInArray(schemaArrayNode);
         for (int i = 0; i < size; i++) {
-            Object subNode = NodeWalker.getInArray(schemaArrayNode, i);
+            Object subNode = Nodes.getInArray(schemaArrayNode, i);
             if (subNode == null) continue;
             path.push(new PathToken.Index(i));
             Object subSchema = compileSchema(subNode, path, idSchema, rootSchema);
             path.pop();
-            if (subSchema != subNode) NodeWalker.setInArray(schemaArrayNode, i, subSchema);
+            if (subSchema != subNode) Nodes.setInArray(schemaArrayNode, i, subSchema);
         }
         return Nodes.asArray(schemaArrayNode);
     }
