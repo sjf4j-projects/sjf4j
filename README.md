@@ -625,7 +625,7 @@ Here, the `Converter` explicitly declares:
 `JsonPatch` provides a complete and extensible implementation of [JSON Patch (RFC 6902)](https://datatracker.ietf.org/doc/html/rfc6902),
 enabling declarative, path-based modifications to the **Object-Based Node Tree**.
 
-**Example**: Applying a `JsonPatch` directly on a `JsonObject` via `apply()`
+**Example: Applying a `JsonPatch` directly on a `JsonObject` via `apply()`**
 ```java
     JsonObject before = JsonObject.fromJson("{\n" +
         "  \"name\": \"Bob\",\n" +
@@ -648,7 +648,7 @@ enabling declarative, path-based modifications to the **Object-Based Node Tree**
     // Patch operations are applied sequentially, and each operation mutates the target object in place.
 ```
 
-**Example**: State restoration via `JsonPatch` using `diff()` and `apply()`
+**Example: State restoration via `JsonPatch` using `diff()` and `apply()`**
 ```java
     List<Integer> source = new ArrayList<>(Arrays.asList(1, 2, 3));
     List<Integer> target = new ArrayList<>(Arrays.asList(1, 5, 3, 4));
@@ -697,7 +697,42 @@ allowing partial updates to JSON objects.
 
 ### Validating with `JsonSchema`
 
-(Planned for future addition)
+SJF4J provides full support for [JSON Schema Draft 2020-12](https://json-schema.org/), 
+and it can directly validate not only JSON / YAML data ***but also POJOs, JOJOs, Maps, Lists, 
+and plain Java objects.***
+
+**Example: Creating a `JsonSchema` and validating data**
+```java
+String json = "{ \"type\": \"number\" }";
+JsonSchema schema = JsonSchema.fromJson(tupleSchema);
+schema.compile();
+// Prepares the schema for validation
+
+ValidationResult result = schema.validate(1);
+assertTrue(result.isValid());                       // Passes validation
+
+assertFalse(schema.isValid("a"));                   // Fails validation
+```
+
+**Example: Object validation with `properties`**
+```java
+JsonSchema schema = JsonSchema.fromJson("{\n" +
+        "  \"type\": \"object\",\n" +
+        "  \"properties\": {\n" +
+        "    \"name\": {\"type\": \"string\"}\n" +
+        "  },\n" +
+        "}");
+
+Map<String, Object> map = Map.of("name", "Alice");
+assertTrue(schema.isValid(map));                    // Map can be validated directly
+
+MyPojo pojo = new MyPojo();
+pojo.setName("Alice");
+assertTrue(schema.isValid(pojo));                   // POJO validated directly
+```
+
+TBD:
+
 
 
 ## Benchmark
