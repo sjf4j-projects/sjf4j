@@ -11,11 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2Reader;
-import org.sjf4j.facade.fastjson2.Fastjson2StreamingUtil;
+import org.sjf4j.facade.fastjson2.Fastjson2StreamingIO;
 import org.sjf4j.facade.fastjson2.Fastjson2Walker;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.gson.GsonReader;
-import org.sjf4j.facade.gson.GsonStreamingUtil;
+import org.sjf4j.facade.gson.GsonStreamingIO;
 import org.sjf4j.facade.gson.GsonWalker;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.StreamingIO;
@@ -205,7 +205,7 @@ public class CompareReadTest {
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
             JSONReader reader = JSONReader.of(new StringReader(JSON_DATA));
-            Fastjson2StreamingUtil.readNode(reader, Object.class);
+            Fastjson2StreamingIO.readNode(reader, Object.class);
         }
         end = System.nanoTime();
         log.info("Fastjson2-Only-jojo1: {}", (end - start) / 1000_000);
@@ -220,7 +220,7 @@ public class CompareReadTest {
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
             JSONReader reader = JSONReader.of(new StringReader(JSON_DATA));
-            Fastjson2StreamingUtil.readNode(reader, Person.class);
+            Fastjson2StreamingIO.readNode(reader, Person.class);
         }
         end = System.nanoTime();
         log.info("Fastjson2-Only-pojo1: {}", (end - start) / 1000_000);
@@ -301,7 +301,7 @@ public class CompareReadTest {
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
             JsonReader reader = gson.newJsonReader(new StringReader(JSON_DATA));
-            GsonStreamingUtil.readNode(reader, Object.class);
+            GsonStreamingIO.readNode(reader, Object.class);
         }
         end = System.nanoTime();
         log.info("Gson-Only-jojo1: {}", (end - start) / 1000_000);
@@ -315,13 +315,13 @@ public class CompareReadTest {
 
         for (long i = 0; i < 1000; i++) {
             JsonReader reader = gson.newJsonReader(new StringReader(JSON_DATA));
-            GsonStreamingUtil.readNode(reader, Person.class);
+            GsonStreamingIO.readNode(reader, Person.class);
         }
 
         start = System.nanoTime();
         for (long i = 0; i < 1000; i++) {
             JsonReader reader = gson.newJsonReader(new StringReader(JSON_DATA));
-            GsonStreamingUtil.readNode(reader, Person.class);
+            GsonStreamingIO.readNode(reader, Person.class);
         }
         end = System.nanoTime();
         log.info("Gson-Only-pojo1: {}", (end - start) / 1000_000);

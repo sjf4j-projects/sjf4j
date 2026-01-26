@@ -223,7 +223,7 @@ public class Numbers {
         if (clazz == float.class || clazz == Float.class) return (T) Numbers.asFloat(number);
         if (clazz == BigInteger.class) return (T) Numbers.asBigInteger(number);
         if (clazz == BigDecimal.class) return (T) Numbers.asBigDecimal(number);
-        throw new JsonException("Cannot convert " + Types.nameOf(number) + " '" + number + "' to " + clazz.getName());
+        throw new JsonException("Cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
     }
 
 

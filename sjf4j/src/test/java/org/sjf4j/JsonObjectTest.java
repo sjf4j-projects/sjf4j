@@ -1,19 +1,15 @@
 package org.sjf4j;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeField;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.facade.jackson.JacksonFacadeTest;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -701,7 +697,7 @@ class JsonObjectTest {
         assertEquals(175.5, jo1.height);
         assertEquals(0, jo1.transientHeight);
 
-        String json2 = Sjf4j.toJson(jo1);
+        String json2 = Sjf4j.toJsonString(jo1);
         log.info("json2={}", json2);
         assertEquals(json1, json2);
     }
@@ -715,7 +711,7 @@ class JsonObjectTest {
     public void testNodeField2() {
         Note note1 = new Note();
         note1.yes = "gaga";
-        String json1 = Sjf4j.toJson(note1);
+        String json1 = Sjf4j.toJsonString(note1);
         log.info("json1={}", json1);
     }
 

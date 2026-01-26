@@ -483,7 +483,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public String toJson() {
-        return Sjf4j.toJson(this);
+        return Sjf4j.toJsonString(this);
     }
 
     ///  YAML Facade
@@ -501,7 +501,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public String toYaml() {
-        return Sjf4j.toYaml(this);
+        return Sjf4j.toYamlString(this);
     }
 
     /// Node Facade

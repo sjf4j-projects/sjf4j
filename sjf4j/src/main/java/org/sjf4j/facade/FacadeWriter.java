@@ -1,12 +1,14 @@
 package org.sjf4j.facade;
 
+import java.io.Closeable;
 import java.io.IOException;
+import java.io.Writer;
 
 /**
  * Interface for writing JSON data in a streaming manner. This interface defines methods
  * for generating JSON tokens, constructing JSON structures, and writing values.
  */
-public interface FacadeWriter {
+public interface FacadeWriter extends Closeable {
 
     /**
      * Marks the start of a JSON document.
@@ -100,4 +102,8 @@ public interface FacadeWriter {
      * @throws IOException if an I/O error occurs
      */
     void flush() throws IOException;
+
+    default void flushTo(Writer output) throws IOException {
+        // Only for Fastjson2
+    }
 }

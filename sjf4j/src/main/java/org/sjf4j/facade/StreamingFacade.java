@@ -1,10 +1,10 @@
 package org.sjf4j.facade;
 
 import org.sjf4j.JsonException;
-import org.sjf4j.facade.fastjson2.Fastjson2Writer;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,9 +12,11 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /**
  * Interface for streaming that provides methods for reading and writing
@@ -26,7 +28,7 @@ import java.nio.charset.StandardCharsets;
  */
 public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter> {
 
-    /// Reader and Writer
+    /// Reader
 
     /**
      * Creates a new FacadeReader from the provided Reader.
@@ -45,6 +47,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
      * @throws IOException if an I/O error occurs
      */
     default R createReader(InputStream input) throws IOException {
+        Objects.requireNonNull(input, "input is null");
         return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
@@ -56,6 +59,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
      * @throws IOException if an I/O error occurs
      */
     default R createReader(String input) throws IOException {
+        Objects.requireNonNull(input, "input is null");
         return createReader(new StringReader(input));
     }
 
@@ -67,8 +71,67 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
      * @throws IOException if an I/O error occurs
      */
     default R createReader(byte[] input) throws IOException {
+        Objects.requireNonNull(input, "input is null");
         return createReader(new ByteArrayInputStream(input));
     }
+
+    /**
+     * Reads a JSON node of the specified type from the provided Reader.
+     *
+     * @param input the Reader to read from
+     * @param type the target type of the node
+     * @return the read JSON node
+     * @throws IllegalArgumentException if input is null
+     * @throws JsonException if reading fails
+     */
+    default Object readNode(Reader input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        try {
+            FacadeReader reader = createReader(input);
+            reader.startDocument();
+            Object node = StreamingIO.readNode(reader, type);
+            reader.endDocument();
+            return node;
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node type '" + Types.name(type) + "'", e);
+        }
+    }
+
+    /**
+     * Reads a JSON node of the specified type from the provided InputStream.
+     *
+     * @param input the InputStream to read from
+     * @param type the target type of the node
+     * @return the read JSON node
+     * @throws IllegalArgumentException if input is null
+     * @throws JsonException if reading fails
+     */
+    default Object readNode(InputStream input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        return readNode(new InputStreamReader(input, StandardCharsets.UTF_8), type);
+    }
+
+    /**
+     * Reads a JSON node of the specified type from the provided String.
+     *
+     * @param input the String to read from
+     * @param type the target type of the node
+     * @return the read JSON node
+     * @throws IllegalArgumentException if input is null
+     * @throws JsonException if reading fails
+     */
+    default Object readNode(String input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        return readNode(new StringReader(input), type);
+    }
+
+    default Object readNode(byte[] input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        return readNode(new ByteArrayInputStream(input), type);
+    }
+
+
+    /// Writer
 
     /**
      * Creates a new FacadeWriter from the provided Writer.
@@ -90,123 +153,36 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
         return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
-    /// Default read and write
-
-    /**
-     * Reads a JSON node of the specified type from the provided Reader.
-     *
-     * @param input the Reader to read from
-     * @param type the target type of the node
-     * @return the read JSON node
-     * @throws IllegalArgumentException if input is null
-     * @throws JsonException if reading fails
-     */
-    default Object readNode(Reader input, Type type) {
-        if (input == null) throw new IllegalArgumentException("Input must not be null");
-        // Always use try-with-resources here.
-        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
-        try (FacadeReader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
-            reader.endDocument();
-            return node;
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    /**
-     * Reads a JSON node of the specified type from the provided InputStream.
-     *
-     * @param input the InputStream to read from
-     * @param type the target type of the node
-     * @return the read JSON node
-     * @throws IllegalArgumentException if input is null
-     * @throws JsonException if reading fails
-     */
-    default Object readNode(InputStream input, Type type) {
-        if (input == null) throw new IllegalArgumentException("Input must not be null");
-        // Always use try-with-resources here.
-        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
-        try (FacadeReader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
-            reader.endDocument();
-            return node;
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    /**
-     * Reads a JSON node of the specified type from the provided String.
-     *
-     * @param input the String to read from
-     * @param type the target type of the node
-     * @return the read JSON node
-     * @throws IllegalArgumentException if input is null
-     * @throws JsonException if reading fails
-     */
-    default Object readNode(String input, Type type) {
-        if (input == null) throw new IllegalArgumentException("Input must not be null");
-        // Always use try-with-resources here.
-        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
-        try (FacadeReader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
-            reader.endDocument();
-            return node;
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
-    default Object readNode(byte[] input, Type type) {
-        // Always use try-with-resources here.
-        // It enables JVM optimizations (escape analysis, inlining) that significantly improve performance.
-        try (FacadeReader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
-            reader.endDocument();
-            return node;
-        } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of type '" + type + "'", e);
-        }
-    }
-
 
     default void writeNode(Writer output, Object node) {
-        if (output == null) throw new IllegalArgumentException("Output must not be null");
+        Objects.requireNonNull(output, "output is null");
         try {
             FacadeWriter writer = createWriter(output);
             writer.startDocument();
             StreamingIO.writeNode(writer, node);
             writer.endDocument();
             writer.flush();
-
-            if (writer instanceof Fastjson2Writer) {
-                ((Fastjson2Writer) writer).flushTo(output);
-            }
+            writer.flushTo(output);
         } catch (Exception e) {
-            throw new JsonException("Failed to write node of type '" + Types.nameOf(node) + "' to streaming", e);
+            throw new JsonException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
     }
 
     default void writeNode(OutputStream output, Object node) {
-        if (output == null) throw new IllegalArgumentException("Output must not be null");
-        try {
-            FacadeWriter writer = createWriter(output);
-            writer.startDocument();
-            StreamingIO.writeNode(writer, node);
-            writer.endDocument();
-            writer.flush();
+        Objects.requireNonNull(output, "output is null");
+        writeNode(new OutputStreamWriter(output, StandardCharsets.UTF_8), node);
+    }
 
-            if (writer instanceof Fastjson2Writer) {
-                ((Fastjson2Writer) writer).flushTo(output);
-            }
-        } catch (Exception e) {
-            throw new JsonException("Failed to write node of type '" + Types.nameOf(node) + "' to streaming", e);
-        }
+    default String writeNodeAsString(Object node) {
+        StringWriter output = new StringWriter();
+        writeNode(output, node);
+        return output.toString();
+    }
+
+    default byte[] writeNodeAsBytes(Object node) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        writeNode(output, node);
+        return output.toByteArray();
     }
 
 

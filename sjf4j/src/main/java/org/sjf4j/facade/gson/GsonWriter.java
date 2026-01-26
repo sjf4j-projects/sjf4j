@@ -63,4 +63,8 @@ public class GsonWriter implements FacadeWriter {
         writer.flush();
     }
 
+    @Override
+    public void close() throws IOException {
+        writer.close();
+    }
 }

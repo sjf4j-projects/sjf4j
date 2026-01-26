@@ -38,7 +38,7 @@ import java.util.Map;
  * perform constant folding, and optimize the reader loops specifically for the original API,
  * achieving lower per-call latency compared to the generic {@code StreamingUtil}.
  */
-public class GsonStreamingUtil {
+public class GsonStreamingIO {
 
     /// Read
 

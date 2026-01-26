@@ -41,7 +41,7 @@ public class Nodes {
             return Enum.valueOf(enumClazz, s);
         }
         throw new JsonException("Expected String or Enum for " + enumClazz.getName() + ", but got " +
-                Types.nameOf(node));
+                Types.name(node));
     }
 
     @SuppressWarnings("unchecked")
@@ -71,7 +71,7 @@ public class Nodes {
         } else if (node.getClass().isEnum()) {
             return ((Enum<?>) node).name();
         }
-        throw new JsonException("Expected String or Character or Enum, but got " + Types.nameOf(node));
+        throw new JsonException("Expected String or Character or Enum, but got " + Types.name(node));
     }
 
     /**
@@ -101,7 +101,7 @@ public class Nodes {
             String s = ((Enum<?>) node).name();
             if (s.length() == 1) return s.charAt(0);
         }
-        throw new JsonException("Expected Character or single-character String, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Character or single-character String, but got " + Types.name(node));
     }
 
     public static Character asCharacter(Object node) {
@@ -113,7 +113,7 @@ public class Nodes {
             String s = asString(node);
             if (s.length() > 0) return s.charAt(0);
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Character"
+        throw new JsonException("Cannot convert " + Types.name(node) + " to Character"
         );
     }
 
@@ -130,7 +130,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return (Number) node;
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     /**
@@ -154,7 +154,7 @@ public class Nodes {
         } else if (node.getClass().isEnum()) {
             return ((Enum<?>) node).ordinal();
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Number");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to Number");
     }
 
 
@@ -171,7 +171,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asLong((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     /**
@@ -197,7 +197,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asInteger((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     /**
@@ -223,7 +223,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asShort((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     /**
@@ -242,7 +242,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asByte((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static Byte asByte(Object node) {
@@ -255,7 +255,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asDouble((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static Double asDouble(Object node) {
@@ -268,7 +268,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asFloat((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static Float asFloat(Object node) {
@@ -281,7 +281,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asBigInteger((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static BigInteger asBigInteger(Object node) {
@@ -294,7 +294,7 @@ public class Nodes {
         } else if (node instanceof Number) {
             return Numbers.asBigDecimal((Number) node);
         }
-        throw new JsonException("Expected Number, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static BigDecimal asBigDecimal(Object node) {
@@ -307,7 +307,7 @@ public class Nodes {
         } else if (node instanceof Boolean) {
             return (Boolean) node;
         }
-        throw new JsonException("Expected Boolean, but got " + Types.nameOf(node));
+        throw new JsonException("Expected Boolean, but got " + Types.name(node));
     }
 
     public static Boolean asBoolean(Object node) {
@@ -326,7 +326,7 @@ public class Nodes {
             if (i == 0) return false;
             throw new JsonException("Cannot convert Number to Boolean: numeric values other than 0-false or 1-true");
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Boolean");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to Boolean");
     }
 
     public static JsonObject asJsonObject(Object node) {
@@ -355,7 +355,7 @@ public class Nodes {
             }
             return map;
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Map<String, Object>");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to Map<String, Object>");
     }
 
     @SuppressWarnings("unchecked")
@@ -380,7 +380,7 @@ public class Nodes {
             }
             return map;
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Map<String, " + clazz.getName() + ">");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to Map<String, " + clazz.getName() + ">");
     }
 
     public static JsonArray asJsonArray(Object node) {
@@ -410,7 +410,7 @@ public class Nodes {
             }
             return list;
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to List<Object>");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to List<Object>");
     }
 
     @SuppressWarnings("unchecked")
@@ -442,7 +442,7 @@ public class Nodes {
             }
             return list;
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to List<" + clazz.getName() + ">");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to List<" + clazz.getName() + ">");
     }
 
     @SuppressWarnings("unchecked")
@@ -465,7 +465,7 @@ public class Nodes {
         } else if (node instanceof JsonArray) {
             return ((JsonArray) node).toArray();
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to Object[]");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to Object[]");
     }
 
     @SuppressWarnings("unchecked")
@@ -495,7 +495,7 @@ public class Nodes {
         } else if (node instanceof JsonArray) {
             return ((JsonArray) node).toArray(clazz);
         }
-        throw new JsonException("Cannot convert " + Types.nameOf(node) + " to " + clazz.getName() + "[]");
+        throw new JsonException("Cannot convert " + Types.name(node) + " to " + clazz.getName() + "[]");
     }
 
     @SuppressWarnings({"unchecked"})

@@ -6,7 +6,7 @@
 ![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
-**SJF4J (Simple JSON Facade for Java)** is a lightweight facade over multiple JSON parsers and 
+**SJF4J (Simple JSON Facade for Java)** is a simple facade over multiple JSON parsers and 
 other data formats (e.g. YAML, Properties), 
 serving as a ***unified semantic layer for structured data processing grounded in JSON specifications***. 
 
@@ -55,7 +55,7 @@ graph BT
         value ---> nodeValue("&lt;Object&gt; <br/> (via @NodeValue)")
 ```
 
-#### JSON Object (`{}`)
+**JSON Object (`{}`)**
 - **`Map`**  
 A generic key-value representation using standard Java `Map`.
 - **`JsonObject`**  
@@ -67,7 +67,7 @@ A strongly typed Java object with fields, getters, and setters.
 A hybrid object that extends `JsonObject` while also behaving like a typed Java object,
 combining the flexibility of dynamic JSON access with the safety and expressiveness of `POJOs`.
 
-#### JSON Array (`[]`)
+**JSON Array (`[]`)**
 - **`List`**  
 A standard Java `List` used as a direct representation of a JSON array.
 - **`JsonArray`**  
@@ -79,7 +79,7 @@ strongly typed representation is desired.
   An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
   (never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
 
-#### JSON Value (`..`)
+**JSON Value (`..`)**
 - **`String`**  Represents JSON `string` values.
 - **`Number`**  Represents JSON `numeric` values, including integers and floating-point numbers.
 - **`Boolean`** Represents JSON boolean values (`true` and `false`).
@@ -87,23 +87,6 @@ strongly typed representation is desired.
 - **`<Object>`**  
 SJF4J allows JSON values to be ***converted into arbitrary Java objects*** through a pluggable conversion mechanism 
 (via `@Convertible` or `Converter`), enabling seamless integration with domain-specific types (e.g. `LocalDate`).
-
-### Why Use SJF4J
-SJF4J tackles common challenges in real-world Java applications:
-
-- **Unifying Static and Dynamic Data Models**  
-  Java developers are often forced to choose between type safety (POJOs) and flexibility (Map/List).
-  SJF4J eliminates this choice by unifying POJOs, Maps, and JSON objects in a single **Object-Based Node Tree**.
-
-
-- **Exposing One API Across Multiple Formats and Parsers**  
-  SJF4J reduces dependency on specific JSON libraries or data formats by providing a
-  consistent, format-agnostic API.
-
-
-- **Fully grounded in JSON specifications**  
-  Beyond basic parsing and serialization, SJF4J provides a complete JSON processing toolkit including JSON Path (RFC 9535), JSON Pointer (RFC 6901),
-  JSON Patch (RFC 6902), JSON Merge Patch (RFC 7386) and JSON Schema (Draft-2020-12).
 
 
 ## Getting Started

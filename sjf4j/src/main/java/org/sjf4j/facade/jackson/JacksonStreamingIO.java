@@ -41,7 +41,7 @@ import java.util.Objects;
  * perform constant folding, and optimize the parser loops specifically for the original API,
  * achieving lower per-call latency compared to the generic {@code StreamingUtil}.
  */
-public class JacksonStreamingUtil {
+public class JacksonStreamingIO {
 
     /// Read
 

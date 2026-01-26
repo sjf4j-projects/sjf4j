@@ -280,7 +280,7 @@ public class JsonArray extends JsonContainer {
     }
 
     public String toJson() {
-        return Sjf4j.toJson(this);
+        return Sjf4j.toJsonString(this);
     }
 
     /// YAML Facade
@@ -293,7 +293,7 @@ public class JsonArray extends JsonContainer {
         return Sjf4j.fromYaml(input, clazz);
     }
     public String toYaml() {
-        return Sjf4j.toYaml(this);
+        return Sjf4j.toYamlString(this);
     }
 
     /// Node Facade

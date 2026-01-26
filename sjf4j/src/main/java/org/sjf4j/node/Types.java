@@ -28,7 +28,7 @@ public class Types {
      * @param object the object to get the class name from
      * @return the fully qualified class name, or "[null]" if the object is null
      */
-    public static String nameOf(Object object) {
+    public static String name(Object object) {
         return (object == null) ? "[null]" : object.getClass().getName();
     }
 

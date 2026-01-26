@@ -3,7 +3,6 @@ package org.sjf4j;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.NodeWalker.Target;
 import org.sjf4j.node.NodeWalker.Order;
 import org.sjf4j.node.NodeWalker.Control;
@@ -238,8 +237,8 @@ public class SimpleExampleTest {
 
         // Serialize back to JSON
         System.out.println("jo=" + jo.toJson());            // = Sjf4j.toJson(jo)
-        System.out.println("map=" + Sjf4j.toJson(map));     // Output dynamic nodes in Map
-        System.out.println("user=" + Sjf4j.toJson(user));   // Only outputs fields defined in User
+        System.out.println("map=" + Sjf4j.toJsonString(map));     // Output dynamic nodes in Map
+        System.out.println("user=" + Sjf4j.toJsonString(user));   // Only outputs fields defined in User
         System.out.println("user2=" + user2.toJson());
         // Outputs both fixed fields in User2 and dynamic nodes in super JsonObject
 

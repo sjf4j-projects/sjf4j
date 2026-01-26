@@ -126,7 +126,7 @@ public class NodeRegistryTest {
 
         BigDay big = Sjf4j.fromJson("\"2026-01-01\"", BigDay.class);
         log.info("big={}", big);
-        assertEquals("\"2026-01-01\"", Sjf4j.toJson(big));
+        assertEquals("\"2026-01-01\"", Sjf4j.toJsonString(big));
     }
 
 

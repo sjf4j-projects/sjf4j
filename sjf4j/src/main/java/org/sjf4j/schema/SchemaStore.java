@@ -37,7 +37,7 @@ public class SchemaStore {
         }
     }
 
-    protected void register(URI uri, ObjectSchema schema) {
+    public void register(URI uri, ObjectSchema schema) {
         Objects.requireNonNull(uri);
         Objects.requireNonNull(schema);
         if (uri.toString().isEmpty())

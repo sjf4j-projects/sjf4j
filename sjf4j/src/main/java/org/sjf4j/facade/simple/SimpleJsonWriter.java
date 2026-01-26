@@ -113,5 +113,8 @@ public class SimpleJsonWriter implements FacadeWriter {
     }
 
 
-
+    @Override
+    public void close() throws IOException {
+        writer.close();
+    }
 }

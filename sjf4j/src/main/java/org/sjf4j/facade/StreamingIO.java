@@ -14,7 +14,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
 
 /**
  * Utility class for streaming JSON processing. Provides methods for reading JSON nodes from
@@ -134,7 +134,7 @@ public class StreamingIO {
      * @throws IOException if an I/O error occurs during reading
      */
     public static Object readObject(FacadeReader reader, Type type) throws IOException {
-        if (reader == null) throw new IllegalArgumentException("Reader must not be null");
+        Objects.requireNonNull(reader, "reader is null");
         Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -206,7 +206,7 @@ public class StreamingIO {
 
 
     public static Object readArray(FacadeReader reader, Type type) throws IOException {
-        if (reader == null) throw new IllegalArgumentException("Reader must not be null");
+        Objects.requireNonNull(reader, "reader is null");
         Class<?> rawClazz = Types.getRawClass(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -310,10 +310,10 @@ public class StreamingIO {
             writer.endArray();
         } else if (node instanceof JsonObject) {
             writer.startObject();
-            AtomicBoolean veryStart = new AtomicBoolean(true);
+            final boolean[] veryStart = { true };
             ((JsonObject) node).forEach((k, v) -> {
                 try {
-                    if (veryStart.get()) veryStart.set(false);
+                    if (veryStart[0]) veryStart[0] = false;
                     else writer.writeObjectComma();
                     writer.writeName(k);
                     writeNode(writer, v);
@@ -325,7 +325,7 @@ public class StreamingIO {
         } else if (node instanceof JsonArray) {
             writer.startArray();
             JsonArray ja = (JsonArray) node;
-            for (int i = 0; i < ja.size(); i++) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
                 if (i > 0) writer.writeArrayComma();
                 writeNode(writer, ja.getNode(i));
             }

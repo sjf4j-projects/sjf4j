@@ -7,8 +7,6 @@ import org.sjf4j.node.NodeType;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 
 public class PathFunctionRegistry {
@@ -143,7 +141,7 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("sum(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            AtomicReference<Double> sum = new AtomicReference<>((double) 0);
+            double[] sum = new double[1];
             switch (NodeType.of(node)) {
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
@@ -151,11 +149,11 @@ public class PathFunctionRegistry {
                 case ARRAY_ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
-                            sum.set(sum.get() + ((Number) n).doubleValue());
+                            sum[0] += ((Number) n).doubleValue();
                         }
                     });
             }
-            return sum.get();
+            return sum[0];
         }));
 
         // min
@@ -163,7 +161,7 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("min(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            AtomicReference<Double> min = new AtomicReference<>();
+            Double[] min = new Double[1];
             switch (NodeType.of(node)) {
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
@@ -172,11 +170,11 @@ public class PathFunctionRegistry {
                     Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
-                            if (min.get() == null || min.get() > d) min.set(d);
+                            if (min[0] == null || min[0] > d) min[0] = d;
                         }
                     });
             }
-            return min.get();
+            return min[0];
         }));
 
         // max
@@ -184,7 +182,7 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("max(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            AtomicReference<Double> max = new AtomicReference<>();
+            Double[] max = new Double[1];
             switch (NodeType.of(node)) {
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
@@ -193,11 +191,11 @@ public class PathFunctionRegistry {
                     Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
-                            if (max.get() == null || max.get() < d) max.set(d);
+                            if (max[0] == null || max[0] < d) max[0] = d;
                         }
                     });
             }
-            return max.get();
+            return max[0];
         }));
 
         // avg
@@ -205,8 +203,8 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("avg(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            AtomicReference<Double> sum = new AtomicReference<>((double) 0);
-            AtomicInteger cnt = new AtomicInteger();
+            double[] sum = new double[1];
+            int[] cnt = new int[1];
             switch (NodeType.of(node)) {
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
@@ -214,12 +212,12 @@ public class PathFunctionRegistry {
                 case ARRAY_ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
-                            sum.set(sum.get() + ((Number) n).doubleValue());
-                            cnt.getAndIncrement();
+                            sum[0] += ((Number) n).doubleValue();
+                            cnt[0]++;
                         }
                     });
             }
-            return sum.get() / cnt.get();
+            return sum[0] / cnt[0];
         }));
 
         // stddev
@@ -227,8 +225,8 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("stddev(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            AtomicReference<Double> sum = new AtomicReference<>((double) 0);
-            AtomicInteger cnt = new AtomicInteger();
+            double[] sum = new double[1];
+            int[] cnt = new int[1];
             switch (NodeType.of(node)) {
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
@@ -236,14 +234,14 @@ public class PathFunctionRegistry {
                 case ARRAY_ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
-                            sum.set(sum.get() + ((Number) n).doubleValue());
-                            cnt.getAndIncrement();
+                            sum[0] += ((Number) n).doubleValue();
+                            cnt[0]++;
                         }
                     });
             }
 
-            double avg = sum.get() / cnt.get();
-            AtomicReference<Double> qe = new AtomicReference<>((double) 0);
+            double avg = sum[0] / cnt[0];
+            double[] qe = new double[1];
             switch (NodeType.of(node)) {
                 case ARRAY_LIST:
                 case ARRAY_JSON_ARRAY:
@@ -252,11 +250,11 @@ public class PathFunctionRegistry {
                     Nodes.visitArray(node, (i, n) -> {
                         if (n instanceof Number) {
                             double d = ((Number) n).doubleValue();
-                            qe.updateAndGet(v -> v + (d - avg) * (d - avg));
+                            qe[0] += (d - avg) * (d - avg);
                         }
                     });
             }
-            return qe.get() / cnt.get();
+            return qe[0] / cnt[0];
         }));
 
         // first

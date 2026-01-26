@@ -268,7 +268,7 @@ public class NodesTest {
         assertNotEquals(jo1, map1);
         assertNotEquals(map1, jo1);
 
-        assertEquals(jo1.toJson(), Sjf4j.toJson(map1));
+        assertEquals(jo1.toJson(), Sjf4j.toJsonString(map1));
         assertEquals(jo1.toJson(), p1.toJson());
         assertTrue(jo1.nodeEquals(map1));
     }
@@ -338,15 +338,15 @@ public class NodesTest {
         log.info("b1={}, b3={}", b1, b3);
         log.info("b2={}, b3={}", b2, b3);
         assertEquals(b1, b2);
-        assertEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b2));
-        assertEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b3));
+        assertEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
+        assertEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b3));
 
         b1.friends.set(0, "Jim");
-        assertEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b2));
-        assertNotEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b3));
+        assertEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
+        assertNotEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b3));
 
         b1.name = "Bro";
-        assertNotEquals(Sjf4j.toJson(b1), Sjf4j.toJson(b2));
+        assertNotEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
     }
 
     @Test
