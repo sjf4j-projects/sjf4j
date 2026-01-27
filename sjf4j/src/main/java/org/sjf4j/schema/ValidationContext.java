@@ -15,9 +15,8 @@ public class ValidationContext {
     private final List<ValidationMessage> messages;
     private final ObjectSchema rootSchema;
 
-    private int ignoreErrorAdding = 0;                          // For add error
-//    private int ignoreEvaluatedTracking = 0;                    // For evaluated tracking
-    private Deque<ObjectSchema> idSchemaStack = new ArrayDeque<>();
+    private int ignoreErrorAdding = 0;
+    private final Deque<ObjectSchema> idSchemaStack = new ArrayDeque<>();
 
     ValidationContext(ObjectSchema rootSchema, ValidationOptions options) {
         this.rootSchema = rootSchema;
@@ -83,6 +82,8 @@ public class ValidationContext {
         if (ignoreErrorAdding < 1) {
             valid = false;
             addMessage(ValidationMessage.Severity.ERROR, path, keyword, message);
+        } else {
+            addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
         }
     }
     void addWarn(String path, String keyword, String message) {

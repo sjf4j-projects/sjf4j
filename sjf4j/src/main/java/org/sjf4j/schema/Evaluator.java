@@ -837,7 +837,7 @@ public interface Evaluator {
                 }
             }
             if (!result) {
-                ctx.addError(path.toExpr(), "anyOf", "No schemas in anyOf matched");
+                ctx.addError(path.toExpr(), "anyOf", "No schemas matched");
             }
             return result;
         }
@@ -872,7 +872,7 @@ public interface Evaluator {
                 }
             }
             if (matches != 1) {
-                ctx.addError(path.toExpr(), "oneOf", "Must match exactly one schema in oneOf");
+                ctx.addError(path.toExpr(), "oneOf", "Must match exactly 1 schema, but found " + matches);
                 return false;
             }
             return true;

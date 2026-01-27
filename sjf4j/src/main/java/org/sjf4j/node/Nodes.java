@@ -586,6 +586,8 @@ public class Nodes {
         NodeType ntTarget = NodeType.of(target);
         if (ntSource.isNumber() && ntTarget.isNumber()) {
             return Numbers.compare((Number) source, (Number) target) == 0;
+        } else if (ntSource.isString() && ntTarget.isString()) {
+            return toString(source).equals(toString(target));
         } else if (ntSource.isValue() && ntTarget.isValue()) {
             return source.equals(target);
         } else if (ntSource.isObject() && ntTarget.isObject()) {

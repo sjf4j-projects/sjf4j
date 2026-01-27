@@ -4,6 +4,8 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.facade.FacadeFactory;
+import org.sjf4j.facade.JsonFacade;
 
 import java.net.URI;
 import java.net.URL;
@@ -13,6 +15,7 @@ import java.util.*;
 public final class OfficialTestRunner {
 
     private static SchemaStore _store;
+    private static JsonFacade<?, ?> facade = FacadeFactory.createFastjson2Facade();
 
     public static void main(String[] args) throws Exception {
         _store = loadRemotesToStore(locatePath("json-schema/remotes"));
@@ -55,7 +58,8 @@ public final class OfficialTestRunner {
         String groupDesc;
 
         try {
-            JsonArray cases = Sjf4j.fromJson(Files.readAllBytes(file), JsonArray.class);
+//            JsonArray cases = Sjf4j.fromJson(Files.readAllBytes(file), JsonArray.class);
+            JsonArray cases = (JsonArray) facade.readNode(Files.readAllBytes(file), JsonArray.class);
 
             for (int i = 0; i < cases.size(); i++) {
                 JsonObject caseObj = cases.getJsonObject(i);

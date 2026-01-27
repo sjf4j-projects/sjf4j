@@ -25,26 +25,24 @@ public class SchemaStore {
     }
 
     public void register(JsonSchema schema) {
-        if (schema instanceof ObjectSchema) {
-            ObjectSchema os = (ObjectSchema) schema;
-            URI uri = os.getResolvedUri();
-            if (uri == null)
-                throw new SchemaException("Schema has no effective URI and cannot be registered. " +
-                        "Only schemas with an explicit or inherited absolute $id may be stored. ");
-            register(uri, os);
-        } else {
-            throw new SchemaException("Unsupported schema type for registration: " + schema.getClass().getName());
-        }
+        ObjectSchema os = (ObjectSchema) schema;
+        URI uri = os.getResolvedUri();
+        if (uri == null)
+            throw new SchemaException("Schema has no effective URI and cannot be registered. " +
+                    "Only schemas with an explicit or inherited absolute $id may be stored. ");
+        register(uri, os);
     }
 
-    public void register(URI uri, ObjectSchema schema) {
+    public void register(URI uri, JsonSchema schema) {
         Objects.requireNonNull(uri);
         Objects.requireNonNull(schema);
         if (uri.toString().isEmpty())
             throw new SchemaException("Invalid schema: uri should not be empty");
         if (!uri.isAbsolute())
             throw new SchemaException("Invalid schema: uri must be absolute (not relative)");
-        schemas.put(uri, schema);
+        if (!(schema instanceof ObjectSchema))
+            throw new SchemaException("Invalid schema: schema must be object (not true/false)");
+        schemas.put(uri, (ObjectSchema) schema);
     }
 
     public void importFrom(SchemaStore other) {

@@ -254,7 +254,8 @@ public final class NodeRegistry {
          * @return true if it's a valid POJO, false otherwise
          */
         public boolean isPojo() {
-            return constructor != null || lambdaConstructor != null;
+//            return constructor != null || lambdaConstructor != null;
+            return true;
         }
 
 
