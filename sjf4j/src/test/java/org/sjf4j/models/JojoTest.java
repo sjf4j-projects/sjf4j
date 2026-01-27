@@ -1,4 +1,4 @@
-package org.sjf4j;
+package org.sjf4j.models;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -6,6 +6,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonException;
+import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -273,12 +276,29 @@ public class JojoTest {
         baby.setMonth(12);
         parent.setBabies(Collections.singletonList(baby));
 
-        JsonObject jo2 = Sjf4j.fromNode(parent);
+        JsonObject jo2 = JsonObject.fromNode(parent);
         log.info("jo2={}", jo2);
 
         Baby baby2 = jo2.asByPath("/babies/0", Baby.class);
         log.info("baby2={}", baby2);
         assertEquals("Child1", baby2.getName());
+    }
+
+
+
+    @Getter @Setter
+    @AllArgsConstructor
+    public static final class FinalDog extends JsonObject {
+        private final String name;
+        private final int month;
+    }
+
+    @Test
+    public void testFinalDog1() {
+        FinalDog dog = new FinalDog("Nico", 5);
+        log.info("dog={}", dog);
+        JsonObject jo = JsonObject.fromNode(dog);
+        log.info("jo={}", jo);
     }
 
 }

@@ -229,7 +229,7 @@ public class SimpleExampleTest {
                 "  \"age\": 18\n" +
                 "}\n";
 
-        JsonObject jo = Sjf4j.fromJson(json);               // = JsonObject.fromJson(json), to JsonObject
+        JsonObject jo = JsonObject.fromJson(json);               // = JsonObject.fromJson(json), to JsonObject
         Map<String, Object> map = Sjf4j.fromJson(json,      // to Map
                 new TypeReference<Map<String, Object>>() {});
         User user = Sjf4j.fromJson(json, User.class);       // to POJO
@@ -254,7 +254,7 @@ public class SimpleExampleTest {
 
         // JsonObject <==> POJO/JOJO
         User tmpUser = jo.toNode(User.class);
-        tmpJo = Sjf4j.fromNode(user2);
+        tmpJo = JsonObject.fromNode(user2);
 
         // JOJO <==> POJO
         tmpUser = user2.toNode(User.class);

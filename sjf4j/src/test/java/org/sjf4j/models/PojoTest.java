@@ -1,13 +1,10 @@
-package org.sjf4j;
+package org.sjf4j.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.sjf4j.annotation.node.NodeField;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 public class PojoTest {

@@ -14,8 +14,8 @@ public interface JsonSchema {
 
     /// Static
     static JsonSchema fromJson(String json) {
-        JsonObject jo = Sjf4j.fromJson(json);
-        return fromNode(jo);
+        Object node = Sjf4j.fromJson(json) ;
+        return fromNode(node);
     }
 
     static JsonSchema fromNode(Object node) {

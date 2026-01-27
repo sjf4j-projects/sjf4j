@@ -62,8 +62,8 @@ public class Sjf4j {
      * @param input The Reader containing the JSON input
      * @return The parsed JsonObject
      */
-    public static JsonObject fromJson(Reader input) {
-        return fromJson(input, JsonObject.class);
+    public static Object fromJson(Reader input) {
+        return fromJson(input, Object.class);
     }
 
     /**
@@ -101,8 +101,8 @@ public class Sjf4j {
      * @param input The String containing the JSON input
      * @return The parsed JsonObject
      */
-    public static JsonObject fromJson(String input) {
-        return fromJson(input, JsonObject.class);
+    public static Object fromJson(String input) {
+        return fromJson(input, Object.class);
     }
 
     /**
@@ -140,8 +140,8 @@ public class Sjf4j {
      * @param input The InputStream containing the JSON input
      * @return The parsed JsonObject
      */
-    public static JsonObject fromJson(InputStream input) {
-        return fromJson(input, JsonObject.class);
+    public static Object fromJson(InputStream input) {
+        return fromJson(input, Object.class);
     }
 
     /**
@@ -179,8 +179,8 @@ public class Sjf4j {
      * @param input The byte[] containing the JSON input
      * @return The parsed JsonObject
      */
-    public static JsonObject fromJson(byte[] input) {
-        return fromJson(input, JsonObject.class);
+    public static Object fromJson(byte[] input) {
+        return fromJson(input, Object.class);
     }
 
     /**
@@ -257,8 +257,8 @@ public class Sjf4j {
      * @param input The reader containing the YAML input
      * @return The parsed JsonObject
      */
-    public static JsonObject fromYaml(Reader input) {
-        return fromYaml(input, JsonObject.class);
+    public static Object fromYaml(Reader input) {
+        return fromYaml(input, Object.class);
     }
 
     /**
@@ -296,8 +296,8 @@ public class Sjf4j {
      * @param input The string containing the YAML input
      * @return The parsed JsonObject
      */
-    public static JsonObject fromYaml(String input) {
-        return fromYaml(input, JsonObject.class);
+    public static Object fromYaml(String input) {
+        return fromYaml(input, Object.class);
     }
 
     /**
@@ -338,8 +338,8 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), false);
     }
 
-    public static JsonObject fromNode(Object node) {
-        return fromNode(node, JsonObject.class);
+    public static Object fromNode(Object node) {
+        return fromNode(node, Object.class);
     }
 
     @SuppressWarnings("unchecked")
@@ -353,8 +353,8 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), true);
     }
 
-    public static JsonObject deepNode(Object node) {
-        return deepNode(node, JsonObject.class);
+    public static Object deepNode(Object node) {
+        return deepNode(node, Object.class);
     }
 
 
@@ -366,7 +366,7 @@ public class Sjf4j {
      * @param props The Properties object to convert from
      * @return The converted JsonObject
      */
-    public static JsonObject fromProperties(Properties props) {
+    public static Object fromProperties(Properties props) {
         Objects.requireNonNull(props, "props is null");
         return Sjf4jConfig.global().getPropertiesFacade().readNode(props);
     }

@@ -471,7 +471,7 @@ public class JsonObject extends JsonContainer {
     /// JSON Facade
 
     public static JsonObject fromJson(String input) {
-        return Sjf4j.fromJson(input);
+        return Sjf4j.fromJson(input, JsonObject.class);
     }
 
     public static <T extends JsonObject> T fromJson(String input, Class<T> clazz) {
@@ -489,7 +489,7 @@ public class JsonObject extends JsonContainer {
     ///  YAML Facade
 
     public static JsonObject fromYaml(String input) {
-        return Sjf4j.fromYaml(input);
+        return Sjf4j.fromYaml(input, JsonObject.class);
     }
 
     public static <T extends JsonObject> T fromYaml(String input, Class<T> clazz) {
@@ -507,7 +507,7 @@ public class JsonObject extends JsonContainer {
     /// Node Facade
 
     public static JsonObject fromNode(Object node) {
-        return Sjf4j.fromNode(node);
+        return Sjf4j.fromNode(node, JsonObject.class);
     }
 
     public static <T extends JsonObject> T fromNode(Object node, Class<T> clazz) {
@@ -527,7 +527,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public static JsonObject deepNode(Object node) {
-        return Sjf4j.deepNode(node);
+        return Sjf4j.deepNode(node, JsonObject.class);
     }
 
     public static <T extends JsonObject> T deepNode(Object node, Class<T> clazz) {
@@ -550,7 +550,7 @@ public class JsonObject extends JsonContainer {
     /// Properties Facade
 
     public static JsonObject fromProperties(Properties props) {
-        return Sjf4j.fromProperties(props);
+        return Sjf4j.fromProperties(props, JsonObject.class);
     }
 
     public Properties toProperties() {
