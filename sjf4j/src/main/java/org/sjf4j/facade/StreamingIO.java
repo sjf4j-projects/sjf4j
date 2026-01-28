@@ -12,9 +12,11 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Utility class for streaming JSON processing. Provides methods for reading JSON nodes from
@@ -261,6 +263,19 @@ public class StreamingIO {
             }
             return array;
         }
+
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            reader.startArray();
+            while (reader.hasNext()) {
+                Object value = readNode(reader, valueType);
+                set.add(value);
+            }
+            reader.endArray();
+            return set;
+        }
+
         throw new JsonException("Cannot deserialize Array value into type " + rawClazz.getName());
     }
 
@@ -284,13 +299,24 @@ public class StreamingIO {
 
         if (node instanceof CharSequence || node instanceof Character) {
             writer.writeString(node.toString());
-        } else if (node instanceof Enum) {
+            return;
+        }
+        if (node instanceof Enum) {
             writer.writeString(((Enum<?>) node).name());
-        } else if (node instanceof Number) {
+            return;
+        }
+
+        if (node instanceof Number) {
             writer.writeNumber((Number) node);
-        } else if (node instanceof Boolean) {
+            return;
+        }
+
+        if (node instanceof Boolean) {
             writer.writeBoolean((Boolean) node);
-        } else if (node instanceof Map) {
+            return;
+        }
+
+        if (node instanceof Map) {
             writer.startObject();
             boolean veryStart = true;
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
@@ -300,7 +326,10 @@ public class StreamingIO {
                 writeNode(writer, entry.getValue());
             }
             writer.endObject();
-        } else if (node instanceof List) {
+            return;
+        }
+
+        if (node instanceof List) {
             writer.startArray();
             List<?> list = (List<?>) node;
             for (int i = 0; i < list.size(); i++) {
@@ -308,7 +337,10 @@ public class StreamingIO {
                 writeNode(writer, list.get(i));
             }
             writer.endArray();
-        } else if (node instanceof JsonObject) {
+            return;
+        }
+
+        if (node instanceof JsonObject) {
             writer.startObject();
             final boolean[] veryStart = { true };
             ((JsonObject) node).forEach((k, v) -> {
@@ -322,7 +354,10 @@ public class StreamingIO {
                 }
             });
             writer.endObject();
-        } else if (node instanceof JsonArray) {
+            return;
+        }
+
+        if (node instanceof JsonArray) {
             writer.startArray();
             JsonArray ja = (JsonArray) node;
             for (int i = 0, len = ja.size(); i < len; i++) {
@@ -330,30 +365,45 @@ public class StreamingIO {
                 writeNode(writer, ja.getNode(i));
             }
             writer.endArray();
-        } else if (node.getClass().isArray()) {
+            return;
+        }
+
+        if (node.getClass().isArray()) {
             writer.startArray();
-            int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) {
+            for (int i = 0, len = Array.getLength(node); i < len; i++) {
                 if (i > 0) writer.writeArrayComma();
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();
-        } else {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-            if (pi != null) {
-                writer.startObject();
-                boolean veryStart = true;
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-                    if (veryStart) veryStart = false;
-                    else writer.writeObjectComma();
-                    writer.writeName(entry.getKey());
-                    Object vv = entry.getValue().invokeGetter(node);
-                    writeNode(writer, vv);
-                }
-                writer.endObject();
-            } else {
-                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
+            return;
+        }
+
+        if (node instanceof Set) {
+            writer.startArray();
+            boolean veryStart = true;
+            for (Object v : (Set<?>) node) {
+                if (veryStart) veryStart = false;
+                else writer.writeArrayComma();
+                writeNode(writer, v);
             }
+            writer.endArray();
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null) {
+            writer.startObject();
+            boolean veryStart = true;
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                if (veryStart) veryStart = false;
+                else writer.writeObjectComma();
+                writer.writeName(entry.getKey());
+                Object vv = entry.getValue().invokeGetter(node);
+                writeNode(writer, vv);
+            }
+            writer.endObject();
+        } else {
+            throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
         }
     }
 

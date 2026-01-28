@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * A Jackson-specific, fully static implementation of the streaming JSON parser utilities.
@@ -385,6 +386,15 @@ public class JacksonStreamingIO {
         Objects.requireNonNull(gen, "gen is null");
         if (node == null) {
             gen.writeNull();
+            return;
+        }
+
+        if (node instanceof Set) {
+            gen.writeStartArray();
+            for (Object v : (Set<?>) node) {
+                writeNode(gen, v);
+            }
+            gen.writeEndArray();
             return;
         }
 

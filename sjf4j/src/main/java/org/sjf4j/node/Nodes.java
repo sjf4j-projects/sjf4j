@@ -651,6 +651,9 @@ public class Nodes {
     public static <T> T copy(T node) {
         NodeType nt = NodeType.of(node);
         switch (nt) {
+            case VALUE_SET: {
+                return node;
+            }
             case OBJECT_MAP: {
                 Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
                 map.putAll((Map<String, ?>) node);
@@ -691,7 +694,7 @@ public class Nodes {
                 System.arraycopy(node, 0, arr, 0, len);
                 return (T) arr;
             }
-            case VALUE_NODE_VALUE: {
+            case VALUE_REGISTERED: {
                 NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
                 return (T) ci.copy(node);
             }
@@ -743,6 +746,11 @@ public class Nodes {
     private static void _inspect(Object node, StringBuilder sb) {
         NodeType nt = NodeType.of(node);
         switch (nt) {
+            case VALUE_SET: {
+                sb.append("@Set#");
+                sb.append(node);
+                return;
+            }
             case OBJECT_MAP: {
                 Map<String, Object> map = (Map<String, Object>) node;
                 sb.append("{");
@@ -839,7 +847,7 @@ public class Nodes {
                 sb.append("]");
                 return;
             }
-            case VALUE_NODE_VALUE: {
+            case VALUE_REGISTERED: {
                 NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
                 Object raw = ci.encode(node);
                 sb.append("@").append(node.getClass().getSimpleName()).append("#");
@@ -889,6 +897,9 @@ public class Nodes {
     public static void visitArray(Object container, BiConsumer<Integer, Object> visitor) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(visitor, "visitor is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -914,6 +925,9 @@ public class Nodes {
     public static boolean anyMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(predicate, "predicate is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -943,6 +957,9 @@ public class Nodes {
     public static boolean allMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(predicate, "predicate is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -971,6 +988,9 @@ public class Nodes {
     public static boolean noneMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(predicate, "predicate is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -1012,6 +1032,9 @@ public class Nodes {
 
     public static int sizeInArray(Object container) {
         Objects.requireNonNull(container, "container is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             return ((List<?>) container).size();
         }
@@ -1111,6 +1134,9 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     public static boolean containsInArray(Object container, int idx) {
         Objects.requireNonNull(container, "container is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1148,6 +1174,9 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object container, int idx) {
         Objects.requireNonNull(container, "container is null");
+        if (container instanceof java.util.Set) {
+            throw new JsonException("Invalid array container: Set");
+        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             idx = idx < 0 ? list.size() + idx : idx;

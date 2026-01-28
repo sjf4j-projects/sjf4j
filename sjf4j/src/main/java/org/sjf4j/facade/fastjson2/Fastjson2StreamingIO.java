@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A Fastjson2-specific, fully static implementation of the streaming JSON reader utilities.
@@ -339,6 +340,17 @@ public class Fastjson2StreamingIO {
         if (writer == null) throw new IllegalArgumentException("Writer must not be null");
         if (node == null) {
             writer.writeNull();
+            return;
+        }
+
+        if (node instanceof Set) {
+            writer.startArray();
+            int i = 0;
+            for (Object v : (Set<?>) node) {
+                if (i++ > 0) writer.writeComma();
+                writeNode(writer, v);
+            }
+            writer.endArray();
             return;
         }
 

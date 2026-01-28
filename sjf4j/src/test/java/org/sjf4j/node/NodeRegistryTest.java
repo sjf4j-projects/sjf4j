@@ -17,6 +17,7 @@ import org.sjf4j.annotation.node.Decode;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -165,6 +166,5 @@ public class NodeRegistryTest {
         log.info("now2={}", now2);
         assertEquals(now, now2);
     }
-
 
 }

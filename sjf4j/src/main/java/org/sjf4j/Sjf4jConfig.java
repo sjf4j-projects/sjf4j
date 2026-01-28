@@ -5,6 +5,7 @@ import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
 
@@ -53,6 +54,11 @@ public final class Sjf4jConfig {
     public final WriteMode writeMode;
 
     /**
+     * The format used when encoding/decoding {@link java.time.Instant}.
+     */
+    public final InstantFormat instantFormat;
+
+    /**
      * The supplier used to create map instances.
      */
     public final MapSupplier mapSupplier;
@@ -76,6 +82,7 @@ public final class Sjf4jConfig {
         this.listSupplier = builder.listSupplier;
         this.readMode = builder.readMode;
         this.writeMode = builder.writeMode;
+        this.instantFormat = builder.instantFormat;
     }
 
     private static volatile Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
@@ -83,6 +90,8 @@ public final class Sjf4jConfig {
     public static void global(Sjf4jConfig sjf4jConfig) {
         if (sjf4jConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
         GLOBAL = sjf4jConfig;
+
+        NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
     }
     public static Sjf4jConfig global() {
         return GLOBAL;
@@ -103,6 +112,16 @@ public final class Sjf4jConfig {
     public static void useSimpleJsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
+    }
+
+    public static void useInstantEpochMillisAsGlobal() {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .instantFormat(InstantFormat.EPOCH_MILLIS).build());
+    }
+
+    public static void useInstantIsoAsGlobal() {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .instantFormat(InstantFormat.ISO_STRING).build());
     }
 
     public JsonFacade<?, ?> getJsonFacade() {
@@ -148,6 +167,11 @@ public final class Sjf4jConfig {
         USE_MODULE,
     }
 
+    public enum InstantFormat {
+        ISO_STRING,
+        EPOCH_MILLIS,
+    }
+
 
     /// Builder
 
@@ -163,6 +187,7 @@ public final class Sjf4jConfig {
 
         private ReadMode readMode = ReadMode.USE_MODULE;
         private WriteMode writeMode = WriteMode.USE_MODULE;
+        private InstantFormat instantFormat = InstantFormat.ISO_STRING;
 
         /**
          * Creates a new Builder with default settings.
@@ -180,6 +205,7 @@ public final class Sjf4jConfig {
             this.listSupplier = config.listSupplier;
             this.readMode = config.readMode;
             this.writeMode = config.writeMode;
+            this.instantFormat = config.instantFormat;
         }
 
         public Sjf4jConfig build() {
@@ -224,6 +250,12 @@ public final class Sjf4jConfig {
         public Builder writeMode(Sjf4jConfig.WriteMode writeMode) {
             if (writeMode == null) throw new IllegalArgumentException("writeMode must not be null");
             this.writeMode = writeMode;
+            return this;
+        }
+
+        public Builder instantFormat(InstantFormat instantFormat) {
+            if (instantFormat == null) throw new IllegalArgumentException("instantFormat must not be null");
+            this.instantFormat = instantFormat;
             return this;
         }
 

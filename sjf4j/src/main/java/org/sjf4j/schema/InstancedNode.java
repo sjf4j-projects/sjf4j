@@ -9,9 +9,7 @@ import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public final class InstancedNode {
     private final Object node;
@@ -47,7 +45,7 @@ public final class InstancedNode {
         if (node == null) return NULL.reset();
         NodeType nodeType = NodeType.of(node);
         boolean encoded = false;
-        if (nodeType == NodeType.VALUE_NODE_VALUE) {
+        if (nodeType == NodeType.VALUE_REGISTERED) {
             node = NodeRegistry.getValueCodecInfo(node.getClass()).encode(node);
             nodeType = NodeType.of(node);
             encoded = true;

@@ -19,6 +19,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 /**
@@ -347,6 +348,15 @@ public class GsonStreamingIO {
         if (writer == null) throw new IllegalArgumentException("Write must not be null");
         if (node == null) {
             writer.nullValue();
+            return;
+        }
+
+        if (node instanceof Set) {
+            writer.beginArray();
+            for (Object v : (Set<?>) node) {
+                writeNode(writer, v);
+            }
+            writer.endArray();
             return;
         }
 

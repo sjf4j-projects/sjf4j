@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonException;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeValue;
 
 import java.lang.invoke.MethodHandle;
@@ -19,6 +20,32 @@ public final class NodeRegistry {
     /// NodeValue
 
     private static final Map<Class<?>, ValueCodecInfo> VALUE_CODEC_INFO_CACHE = new ConcurrentHashMap<>();
+
+    static {
+        registerValueCodec(new ValueCodec.UriValueCodec());
+        registerValueCodec(new ValueCodec.UrlValueCodec());
+        registerValueCodec(new ValueCodec.UuidValueCodec());
+        registerValueCodec(new ValueCodec.LocaleValueCodec());
+        registerValueCodec(new ValueCodec.CurrencyValueCodec());
+        registerValueCodec(new ValueCodec.ZoneIdValueCodec());
+        if (Sjf4jConfig.global().instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
+            registerValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
+        } else {
+            registerValueCodec(new ValueCodec.InstantStringValueCodec());
+        }
+        registerValueCodec(new ValueCodec.LocalDateValueCodec());
+        registerValueCodec(new ValueCodec.LocalDateTimeValueCodec());
+        registerValueCodec(new ValueCodec.OffsetDateTimeValueCodec());
+        registerValueCodec(new ValueCodec.ZonedDateTimeValueCodec());
+        registerValueCodec(new ValueCodec.DurationValueCodec());
+        registerValueCodec(new ValueCodec.PeriodValueCodec());
+        registerValueCodec(new ValueCodec.PathValueCodec());
+        registerValueCodec(new ValueCodec.FileValueCodec());
+        registerValueCodec(new ValueCodec.PatternValueCodec());
+        registerValueCodec(new ValueCodec.InetAddressValueCodec());
+        registerValueCodec(new ValueCodec.DateValueCodec());
+        registerValueCodec(new ValueCodec.CalendarValueCodec());
+    }
 
     public static class ValueCodecInfo {
         private final Class<?> valueClazz;
@@ -123,6 +150,15 @@ public final class NodeRegistry {
         return vci;
     }
 
+    public static void refreshInstantValueCodec(Sjf4jConfig.InstantFormat instantFormat) {
+        VALUE_CODEC_INFO_CACHE.remove(java.time.Instant.class);
+        if (instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
+            registerValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
+        } else {
+            registerValueCodec(new ValueCodec.InstantStringValueCodec());
+        }
+    }
+
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueCodec, "valueCodec is null");
         Class<R> rawClazz = valueCodec.getRawClass();
@@ -133,9 +169,9 @@ public final class NodeRegistry {
 
         Class<N> valueClazz = valueCodec.getValueClass();
         Objects.requireNonNull(valueClazz, "clazz is null");
-        return VALUE_CODEC_INFO_CACHE.computeIfAbsent(valueClazz,
-                k -> new ValueCodecInfo(valueClazz, rawClazz, valueCodec,
-                        null, null, null));
+        VALUE_CODEC_INFO_CACHE.put(valueClazz, new ValueCodecInfo(valueClazz, rawClazz, valueCodec,
+                null, null, null));
+        return VALUE_CODEC_INFO_CACHE.get(valueClazz);
     }
 
     public static ValueCodecInfo getValueCodecInfo(Class<?> clazz) {

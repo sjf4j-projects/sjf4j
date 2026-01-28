@@ -6,6 +6,7 @@ import org.sjf4j.JsonObject;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Enumeration representing the different types of JSON nodes in the sjf4j library.
@@ -21,8 +22,10 @@ public enum NodeType {
     VALUE_NUMBER,
     /** Represents a boolean value. */
     VALUE_BOOLEAN,
+    /** Represents a {@link Set}. */
+    VALUE_SET,
     /** Represents a registered @NodeValue with custom codec. */
-    VALUE_NODE_VALUE,
+    VALUE_REGISTERED,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -74,10 +77,12 @@ public enum NodeType {
             return ARRAY_JAJO;
         } else if (clazz.isArray()) {
             return ARRAY_ARRAY;
+        } else if (node instanceof Set) {
+            return VALUE_SET;
         }
 
         if (NodeRegistry.isNodeValue(clazz)) {
-            return VALUE_NODE_VALUE;
+            return VALUE_REGISTERED;
         } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
@@ -126,12 +131,14 @@ public enum NodeType {
             return ARRAY_JAJO;
         } else if (clazz.isArray()) {
             return ARRAY_ARRAY;
+        } else if (Set.class.isAssignableFrom(clazz)) {
+            return VALUE_SET;
         } else if (clazz == Void.class) {
             return VALUE_NULL;
         }
 
         if (NodeRegistry.isNodeValue(clazz)) {
-            return VALUE_NODE_VALUE;
+            return VALUE_REGISTERED;
         } else if (NodeRegistry.isPojo(clazz)) {
             return OBJECT_POJO;
         }
@@ -153,7 +160,7 @@ public enum NodeType {
 
     public boolean isValue() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN ||
-                this == VALUE_NULL || this == VALUE_NODE_VALUE;
+                this == VALUE_NULL || this == VALUE_REGISTERED || this == VALUE_SET;
     }
 
     public boolean isObject() {
