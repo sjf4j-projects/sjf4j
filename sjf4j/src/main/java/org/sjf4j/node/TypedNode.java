@@ -50,7 +50,7 @@ public final class TypedNode {
     }
 
     public Class<?> getRawClass() {
-        return Types.getRawClass(clazzType);
+        return Types.rawClazz(clazzType);
     }
 
 }

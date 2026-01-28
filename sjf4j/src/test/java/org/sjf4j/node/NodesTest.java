@@ -132,95 +132,97 @@ public class NodesTest {
     @Test
     public void testToJsonObject() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, Nodes.asJsonObject(jo));
-        assertNull(Nodes.asJsonObject(null));
+        assertEquals(jo, Nodes.toJsonObject(jo));
+        assertNull(Nodes.toJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            Nodes.asJsonObject("not an object");
+            Nodes.toJsonObject("not an object");
         });
     }
 
     @Test
-    public void testAsJsonObject() {
+    public void testToJsonObject2() {
         JsonObject jo = new JsonObject("key", "value");
-        assertEquals(jo, Nodes.asJsonObject(jo));
+        assertEquals(jo, Nodes.toJsonObject(jo));
         
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
-        JsonObject fromMap = Nodes.asJsonObject(map);
+        JsonObject fromMap = Nodes.toJsonObject(map);
         assertEquals("value", fromMap.getString("key"));
         
-        assertNull(Nodes.asJsonObject(null));
+        assertNull(Nodes.toJsonObject(null));
         
         assertThrows(JsonException.class, () -> {
-            Nodes.asJsonObject("not an object");
+            Nodes.toJsonObject("not an object");
         });
     }
 
     @Test
     public void testToJsonArray() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, Nodes.asJsonArray(ja));
-        assertNull(Nodes.asJsonArray(null));
+        assertEquals(ja, Nodes.toJsonArray(ja));
+        assertNull(Nodes.toJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            Nodes.asJsonArray("not an array");
+            Nodes.toJsonArray("not an array");
         });
     }
 
     @Test
-    public void testAsJsonArray() {
+    public void testToJsonArray2() {
         JsonArray ja = new JsonArray(new int[]{1, 2, 3});
-        assertEquals(ja, Nodes.asJsonArray(ja));
+        assertEquals(ja, Nodes.toJsonArray(ja));
         
         List<Object> list = new ArrayList<>();
         list.add(1);
         list.add(2);
-        JsonArray fromList = Nodes.asJsonArray(list);
+        JsonArray fromList = Nodes.toJsonArray(list);
         assertEquals(2, fromList.size());
         assertEquals(1, fromList.getInteger(0));
         
-        assertNull(Nodes.asJsonArray(null));
+        assertNull(Nodes.toJsonArray(null));
         
         assertThrows(JsonException.class, () -> {
-            Nodes.asJsonArray("not an array");
+            Nodes.toJsonArray("not an array");
         });
     }
 
     @Test
-    public void testAsArray1() {
+    public void testToArray1() {
         String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
         Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
-        Baby[] babies = person.asArray("babies", Baby.class);
+        Baby[] babies = person.getArray("babies", Baby.class);
         log.info("babies={}", Nodes.inspect(babies));
     }
 
     enum TestEnum { A, B }
 
     @Test
-    public void testTo() {
-        // 测试基本类型
+    public void testTo1() {
         assertEquals(123, Nodes.to(123, Integer.class));
         assertEquals(123L, Nodes.to(123L, Long.class));
         assertEquals("test", Nodes.to("test", String.class));
-        
-        // 测试类型转换
+
         assertEquals(123, Nodes.to(123.45, Integer.class));
         assertEquals(123L, Nodes.to(123.45, Long.class));
-        
-        // 测试null
+
         assertNull(Nodes.to(null, String.class));
-        
-        // 测试enum
+
         assertEquals(TestEnum.A, Nodes.to(TestEnum.A, TestEnum.class));
         assertEquals(TestEnum.A, Nodes.as("A", TestEnum.class));
-        
-        // 测试不匹配的类型
+
         assertThrows(JsonException.class, () -> {
             Nodes.to("not a number", Integer.class);
         });
     }
+
+    @Test
+    public void testTo2() {
+        assertEquals(123, Nodes.to(123, int.class));
+        assertEquals(123L, Nodes.to(123L, long.class));
+    }
+
 
 
 
@@ -256,16 +258,15 @@ public class NodesTest {
         JsonObject jo = new JsonObject(
                 "name", "Bob",
                 "address", new JsonObject(
-                "city", "New York",
-                "street", "5th Ave"));
+                        "city", "New York",
+                        "street", "5th Ave"));
         Person p1 = jo.toNode(Person.class);
         JsonObject jo1 = new JsonObject(p1);
-        jo1.toString();
-        assertNotEquals(p1, jo1);
-        assertNotEquals(jo1, p1);
+        assertEquals(p1, jo1);
+        assertEquals(jo1, p1);
 
         Map<String, Object> map1 = jo1.toMap();
-        assertNotEquals(jo1, map1);
+        assertEquals(jo1, map1);
         assertNotEquals(map1, jo1);
 
         assertEquals(jo1.toJson(), Sjf4j.toJsonString(map1));

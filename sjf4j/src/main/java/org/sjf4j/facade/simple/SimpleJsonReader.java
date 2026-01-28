@@ -241,7 +241,7 @@ public class SimpleJsonReader implements FacadeReader {
             } else break;
         }
         String s = sb.toString();
-        return Numbers.toNumber(s);
+        return Numbers.asNumber(s);
     }
 
     private Boolean readBoolean() throws IOException {

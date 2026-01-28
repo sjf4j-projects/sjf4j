@@ -44,7 +44,7 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
     // Getter / Setter
     String getId() {return getString("$id");}
     String getDynamicAnchor() {return getString("$dynamicAnchor");}
-    Map<String, Boolean> getVocabulary() {return asMap("$vocabulary", Boolean.class);}
+    Map<String, Boolean> getVocabulary() {return getMap("$vocabulary", Boolean.class);}
 
     // schemaStore
     public SchemaStore toStore() {

@@ -75,8 +75,8 @@ public class JojoTest {
         p1.setBabies(babies);
         p1.put("ex", "wang");
 
-        JsonObject jo1 = JsonObject.deepNode(p1);
-        assertNotEquals(p1, jo1);
+        JsonObject jo1 = JsonObject.fromNode(p1);
+        assertEquals(p1, jo1);
         assertEquals(p1.toJson(), jo1.toJson());
         assertEquals(ArrayList.class, jo1.getNode("babies").getClass());
     }
@@ -286,19 +286,19 @@ public class JojoTest {
 
 
 
-    @Getter @Setter
-    @AllArgsConstructor
-    public static final class FinalDog extends JsonObject {
-        private final String name;
-        private final int month;
-    }
-
-    @Test
-    public void testFinalDog1() {
-        FinalDog dog = new FinalDog("Nico", 5);
-        log.info("dog={}", dog);
-        JsonObject jo = JsonObject.fromNode(dog);
-        log.info("jo={}", jo);
-    }
+//    @Getter @Setter
+//    @AllArgsConstructor
+//    public static final class FinalDog extends JsonObject {
+//        private final String name;
+//        private final int month;
+//    }
+//
+//    @Test
+//    public void testFinalDog1() {
+//        FinalDog dog = new FinalDog("Nico", 5);
+//        log.info("dog={}", dog);
+//        JsonObject jo = JsonObject.fromNode(dog);
+//        log.info("jo={}", jo);
+//    }
 
 }

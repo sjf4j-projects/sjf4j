@@ -3,7 +3,6 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
 
@@ -161,7 +160,7 @@ public class CompileUtil {
         }
 
         // required / properties / patternProperties / additionalProperties
-        String[] required = schema.asArray("required", String.class);
+        String[] required = schema.getArray("required", String.class);
         Map<String, Object> properties =
                 compileSchemaMapByKey("properties", path, schema, idSchema, rootSchema);
         Map<String, Object> patternProperties =
@@ -175,7 +174,7 @@ public class CompileUtil {
         }
 
         // dependentRequired
-        Map<String, String[]> dependentRequired = schema.asMap("dependentRequired", String[].class);
+        Map<String, String[]> dependentRequired = schema.getMap("dependentRequired", String[].class);
         if (dependentRequired != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
             evaluators.add(new Evaluator.DependentRequiredEvaluator(dependentRequired));
@@ -289,7 +288,7 @@ public class CompileUtil {
             if (subSchema != subNode) entry.setValue(subSchema);
         }
         path.pop();
-        return Nodes.asMap(schemaMapNode);
+        return Nodes.toMap(schemaMapNode);
     }
 
     static Object[] compileSchemaArrayByKey(String key, JsonPointer path,
@@ -309,7 +308,7 @@ public class CompileUtil {
             path.pop();
             if (subSchema != subNode) Nodes.setInArray(schemaArrayNode, i, subSchema);
         }
-        return Nodes.asArray(schemaArrayNode);
+        return Nodes.toArray(schemaArrayNode);
     }
 
     static Object compileSchemaByKey(String key, JsonPointer path,

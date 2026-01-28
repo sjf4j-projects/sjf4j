@@ -97,7 +97,7 @@ public enum NodeType {
      * @return the corresponding NodeType enum value
      */
     public static NodeType of(Type type) {
-        Class<?> clazz = Types.getRawClass(type);
+        Class<?> clazz = Types.rawClazz(type);
 
         if (clazz == Object.class) {
             return UNKNOWN;
@@ -117,13 +117,13 @@ public enum NodeType {
             return VALUE_NUMBER;
         } else if (clazz == Boolean.class) {
             return VALUE_BOOLEAN;
-        } else if (clazz == Map.class) {
+        } else if (Map.class.isAssignableFrom(clazz)) {
             return OBJECT_MAP;
         } else if (clazz == JsonObject.class) {
             return OBJECT_JSON_OBJECT;
         } else if (JsonObject.class.isAssignableFrom(clazz)) {
             return OBJECT_JOJO;
-        } else if (clazz == List.class) {
+        } else if (List.class.isAssignableFrom(clazz)) {
             return ARRAY_LIST;
         } else if (clazz == JsonArray.class) {
             return ARRAY_JSON_ARRAY;

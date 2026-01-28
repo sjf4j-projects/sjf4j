@@ -456,7 +456,7 @@ public final class NodeRegistry {
                 Class<?> clazz = (Class<?>) type;
                 if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
                         Number.class.isAssignableFrom(clazz)) {
-                    value = Numbers.as((Number) value, clazz);
+                    value = Numbers.to((Number) value, clazz);
                 }
             }
 
@@ -491,7 +491,7 @@ public final class NodeRegistry {
                 Class<?> clazz = (Class<?>) type;
                 if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
                         Number.class.isAssignableFrom(clazz)) {
-                    value = Numbers.as((Number) value, clazz);
+                    value = Numbers.to((Number) value, clazz);
                 }
             }
             try {

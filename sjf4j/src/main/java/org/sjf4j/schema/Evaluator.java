@@ -3,7 +3,6 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
 import org.sjf4j.node.Numbers;
@@ -188,7 +187,7 @@ public interface Evaluator {
             } else if (nt.isArray()) {
                 this.type = null;
                 this.jsonType = null;
-                this.types = Nodes.asArray(type, String.class);
+                this.types = Nodes.toArray(type, String.class);
                 this.jsonTypes = (JsonType[]) Array.newInstance(JsonType.class, types.length);
                 for (int i = 0; i < types.length; i++) this.jsonTypes[i] = JsonType.from(types[i]);
             } else {

@@ -59,7 +59,7 @@ public class StreamingIO {
     }
 
     public static Object readNull(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         reader.nextNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -70,8 +70,8 @@ public class StreamingIO {
     }
 
     public static Object readBoolean(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
-        if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
+        Class<?> rawClazz = Types.rawClazz(type);
+        if (rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.nextBoolean();
         }
 
@@ -84,14 +84,13 @@ public class StreamingIO {
     }
 
     public static Object readNumber(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             return reader.nextNumber();
         }
-        if (Number.class.isAssignableFrom(rawClazz) ||
-                (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
+        if (Number.class.isAssignableFrom(rawClazz)) {
             Number n = reader.nextNumber();
-            return Numbers.as(n, rawClazz);
+            return Numbers.to(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -102,15 +101,15 @@ public class StreamingIO {
         throw new JsonException("Cannot deserialize Number value into type " + rawClazz.getName());
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
         }
-        if (rawClazz == Character.class || rawClazz == char.class) {
+        if (rawClazz == Character.class) {
             String s = reader.nextString();
-            return s.charAt(0);
+            return s.length() > 0 ? s.charAt(0) : null;
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -137,10 +136,10 @@ public class StreamingIO {
      */
     public static Object readObject(FacadeReader reader, Type type) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.startObject();
@@ -209,10 +208,10 @@ public class StreamingIO {
 
     public static Object readArray(FacadeReader reader, Type type) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.startArray();
@@ -290,9 +289,9 @@ public class StreamingIO {
         }
 
         Class<?> rawClazz = node.getClass();
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            Object raw = ci.encode(node);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            Object raw = vci.encode(node);
             writeNode(writer, raw);
             return;
         }
@@ -402,9 +401,10 @@ public class StreamingIO {
                 writeNode(writer, vv);
             }
             writer.endObject();
-        } else {
-            throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
+            return;
         }
+
+        throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
     }
 
 

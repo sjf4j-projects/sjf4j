@@ -54,7 +54,7 @@ public interface GsonModule {
             if (pi != null) {
                 Map<String, TypeAdapter<?>> map = new HashMap<>();
                 for (Map.Entry<String, NodeRegistry.FieldInfo> e : pi.getFields().entrySet()) {
-                    map.put(e.getKey(), gson.getAdapter(Types.getRawClass(e.getValue().getType())));
+                    map.put(e.getKey(), gson.getAdapter(Types.rawClazz(e.getValue().getType())));
                 }
                 this.fieldAdapters = map;
             } else {
@@ -168,7 +168,7 @@ public interface GsonModule {
     public static class MyToNumberStrategy implements ToNumberStrategy {
         @Override
         public Number readNumber(JsonReader in) throws IOException {
-            return Numbers.toNumber(in.nextString());
+            return Numbers.asNumber(in.nextString());
         }
     }
 

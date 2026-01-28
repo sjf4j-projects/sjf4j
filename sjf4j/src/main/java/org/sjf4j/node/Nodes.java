@@ -148,7 +148,7 @@ public class Nodes {
         } else if (node instanceof CharSequence || node instanceof Character) {
             String str = node.toString();
             if (Numbers.isNumeric(str)) {
-                return Numbers.toNumber(node.toString());
+                return Numbers.asNumber(node.toString());
             }
             throw new JsonException("Cannot convert String to Number: not a numeric value");
         } else if (node.getClass().isEnum()) {
@@ -169,7 +169,7 @@ public class Nodes {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asLong((Number) node);
+            return Numbers.toLong((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
@@ -181,7 +181,7 @@ public class Nodes {
      * @return the Long representation
      */
     public static Long asLong(Object node) {
-        return Numbers.asLong(asNumber(node));
+        return Numbers.toLong(asNumber(node));
     }
 
     /**
@@ -195,7 +195,7 @@ public class Nodes {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asInteger((Number) node);
+            return Numbers.toInteger((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
@@ -207,7 +207,7 @@ public class Nodes {
      * @return the Integer representation
      */
     public static Integer asInteger(Object node) {
-        return Numbers.asInteger(asNumber(node));
+        return Numbers.toInteger(asNumber(node));
     }
 
     /**
@@ -221,7 +221,7 @@ public class Nodes {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asShort((Number) node);
+            return Numbers.toShort((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
@@ -233,72 +233,72 @@ public class Nodes {
      * @return the Short representation
      */
     public static Short asShort(Object node) {
-        return Numbers.asShort(asNumber(node));
+        return Numbers.toShort(asNumber(node));
     }
 
     public static Byte toByte(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asByte((Number) node);
+            return Numbers.toByte((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static Byte asByte(Object node) {
-        return Numbers.asByte(asNumber(node));
+        return Numbers.toByte(asNumber(node));
     }
 
     public static Double toDouble(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asDouble((Number) node);
+            return Numbers.toDouble((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static Double asDouble(Object node) {
-        return Numbers.asDouble(asNumber(node));
+        return Numbers.toDouble(asNumber(node));
     }
 
     public static Float toFloat(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asFloat((Number) node);
+            return Numbers.toFloat((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static Float asFloat(Object node) {
-        return Numbers.asFloat(asNumber(node));
+        return Numbers.toFloat(asNumber(node));
     }
 
     public static BigInteger toBigInteger(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asBigInteger((Number) node);
+            return Numbers.toBigInteger((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static BigInteger asBigInteger(Object node) {
-        return Numbers.asBigInteger(asNumber(node));
+        return Numbers.toBigInteger(asNumber(node));
     }
 
     public static BigDecimal toBigDecimal(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Number) {
-            return Numbers.asBigDecimal((Number) node);
+            return Numbers.toBigDecimal((Number) node);
         }
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
     public static BigDecimal asBigDecimal(Object node) {
-        return Numbers.asBigDecimal(asNumber(node));
+        return Numbers.toBigDecimal(asNumber(node));
     }
 
     public static Boolean toBoolean(Object node) {
@@ -329,7 +329,7 @@ public class Nodes {
         throw new JsonException("Cannot convert " + Types.name(node) + " to Boolean");
     }
 
-    public static JsonObject asJsonObject(Object node) {
+    public static JsonObject toJsonObject(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof JsonObject) {
@@ -339,7 +339,7 @@ public class Nodes {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> asMap(Object node) {
+    public static Map<String, Object> toMap(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof Map) {
@@ -359,7 +359,7 @@ public class Nodes {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> asMap(Object node, Class<T> clazz) {
+    public static <T> Map<String, T> toMap(Object node, Class<T> clazz) {
         if (node == null) {
             return null;
         } else if (node instanceof Map) {
@@ -383,7 +383,7 @@ public class Nodes {
         throw new JsonException("Cannot convert " + Types.name(node) + " to Map<String, " + clazz.getName() + ">");
     }
 
-    public static JsonArray asJsonArray(Object node) {
+    public static JsonArray toJsonArray(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof JsonArray) {
@@ -393,7 +393,7 @@ public class Nodes {
     }
 
     @SuppressWarnings("unchecked")
-    public static List<Object> asList(Object node) {
+    public static List<Object> toList(Object node) {
         if (node == null) {
             return null;
         } else if (node instanceof List) {
@@ -414,7 +414,7 @@ public class Nodes {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> List<T> asList(Object node, Class<T> clazz) {
+    public static <T> List<T> toList(Object node, Class<T> clazz) {
         if (node == null) {
             return null;
         } else if (node instanceof List) {
@@ -446,7 +446,7 @@ public class Nodes {
     }
 
     @SuppressWarnings("unchecked")
-    public static Object[] asArray(Object node) {
+    public static Object[] toArray(Object node) {
         if (node == null) {
             return null;
         } else if (node.getClass().isArray()) {
@@ -469,7 +469,7 @@ public class Nodes {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T[] asArray(Object node, Class<T> clazz) {
+    public static <T> T[] toArray(Object node, Class<T> clazz) {
         if (node == null) {
             return null;
         } else if (node.getClass().isArray()) {
@@ -503,11 +503,12 @@ public class Nodes {
         Objects.requireNonNull(clazz, "clazz is null");
         if (node == null) return null;
 
-        Class<?> boxed = box(clazz);
+        Class<?> boxed = Types.box(clazz);
         if (boxed.isInstance(node)) return (T) node;
-        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.as(toNumber(node), boxed);
         if (boxed == String.class) return (T) toString(node);
         if (boxed == Character.class) return (T) toCharacter(node);
+        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(toNumber(node), boxed);
+        if (boxed == Boolean.class) return (T) toBoolean(node);
         throw new JsonException("Type mismatch: expected " + boxed.getName());
     }
 
@@ -517,17 +518,17 @@ public class Nodes {
         Objects.requireNonNull(clazz, "clazz is null");
         if (node == null) return null;
 
-        Class<?> boxed = box(clazz);
+        Class<?> boxed = Types.box(clazz);
         if (boxed.isInstance(node)) return (T) node;
         if (boxed == String.class) return (T) asString(node);
         if (boxed == Character.class) return (T) asCharacter(node);
-        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.as(asNumber(node), boxed);
+        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(asNumber(node), boxed);
         if (boxed == Boolean.class) return (T) asBoolean(node);
-        if (boxed == Map.class) return (T) asMap(node);
-        if (boxed == JsonObject.class) return (T) asJsonObject(node);
-        if (boxed == JsonArray.class) return (T) asJsonArray(node);
-        if (boxed == List.class) return (T) asList(node);
-        if (boxed.isArray()) return (T) asArray(node, boxed.getComponentType());
+        if (Map.class.isAssignableFrom(boxed)) return (T) toMap(node);
+        if (boxed == JsonObject.class) return (T) toJsonObject(node);
+        if (List.class.isAssignableFrom(boxed)) return (T) toList(node);
+        if (boxed == JsonArray.class) return (T) toJsonArray(node);
+        if (boxed.isArray()) return (T) toArray(node, boxed.getComponentType());
         if (boxed.isEnum()) return (T) asEnum(node, (Class<Enum>) boxed);
 
         try {
@@ -535,19 +536,6 @@ public class Nodes {
         } catch (Exception e) {
             throw new JsonException("Failed to convert node to " + clazz.getName(), e);
         }
-    }
-
-    private static Class<?> box(Class<?> clazz) {
-        if (!clazz.isPrimitive()) return clazz;
-        if (clazz == int.class) return Integer.class;
-        if (clazz == long.class) return Long.class;
-        if (clazz == double.class) return Double.class;
-        if (clazz == float.class) return Float.class;
-        if (clazz == boolean.class) return Boolean.class;
-        if (clazz == char.class) return Character.class;
-        if (clazz == byte.class) return Byte.class;
-        if (clazz == short.class) return Short.class;
-        throw new AssertionError(clazz);
     }
 
 
@@ -705,7 +693,7 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static <T> T deepCopy(T node) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, node.getClass(), true);
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, node.getClass());
     }
 
     /**
@@ -717,15 +705,16 @@ public class Nodes {
      *
      * <h3>Type Notation</h3>
      * <ul>
-     *   <li>{@code {..}}  – Map</li>
-     *   <li>{@code J{..}}  – JsonObject</li>
-     *   <li>{@code [..]}  – List</li>
-     *   <li>{@code J[..]}  – JsonArray</li>
-     *   <li>{@code A[..]}  – Array</li>
-     *   <li>{@code @Type{..}} – POJO / JOJO</li>
-     *   <li>{@code @Type[..]} – JAJO</li>
-     *   <li>{@code @Type#raw} – NodeValue</li>
-     *   <li>{@code !Object@hash} – Unknown</li>
+     *   <li>{@code {..}}       – Map</li>
+     *   <li>{@code J{..}}      – JsonObject</li>
+     *   <li>{@code @Type{..}}  – POJO / JOJO</li>
+     *   <li>{@code [..]}       – List</li>
+     *   <li>{@code J[..]}      – JsonArray</li>
+     *   <li>{@code @Type[..]}  – JAJO</li>
+     *   <li>{@code A[..]}      – Array</li>
+     *   <li>{@code S[..]}      – Set</li>
+     *   <li>{@code @Type#raw}  – NodeValue</li>
+     *   <li>{@code !Type@hash} – Unknown</li>
      * </ul>
      *
      * <h3>Example</h3>
@@ -746,11 +735,6 @@ public class Nodes {
     private static void _inspect(Object node, StringBuilder sb) {
         NodeType nt = NodeType.of(node);
         switch (nt) {
-            case VALUE_SET: {
-                sb.append("@Set#");
-                sb.append(node);
-                return;
-            }
             case OBJECT_MAP: {
                 Map<String, Object> map = (Map<String, Object>) node;
                 sb.append("{");
@@ -847,6 +831,17 @@ public class Nodes {
                 sb.append("]");
                 return;
             }
+            case VALUE_SET: {
+                Set<Object> set = (Set<Object>) node;
+                sb.append("S[");
+                int i = 0;
+                for (Object v : set) {
+                    if (i++ > 0) sb.append(", ");
+                    _inspect(v, sb);
+                }
+                sb.append("]");
+                return;
+            }
             case VALUE_REGISTERED: {
                 NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
                 Object raw = ci.encode(node);
@@ -897,9 +892,6 @@ public class Nodes {
     public static void visitArray(Object container, BiConsumer<Integer, Object> visitor) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(visitor, "visitor is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -925,9 +917,6 @@ public class Nodes {
     public static boolean anyMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(predicate, "predicate is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -950,16 +939,12 @@ public class Nodes {
             return false;
         }
         throw new JsonException("Invalid array container: " + container.getClass().getName());
-
     }
 
     @SuppressWarnings("unchecked")
     public static boolean allMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(predicate, "predicate is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -988,9 +973,6 @@ public class Nodes {
     public static boolean noneMatchInArray(Object container, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(predicate, "predicate is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             for (int i = 0; i < list.size(); i++) {
@@ -1032,9 +1014,6 @@ public class Nodes {
 
     public static int sizeInArray(Object container) {
         Objects.requireNonNull(container, "container is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             return ((List<?>) container).size();
         }
@@ -1134,9 +1113,6 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     public static boolean containsInArray(Object container, int idx) {
         Objects.requireNonNull(container, "container is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1174,9 +1150,6 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object container, int idx) {
         Objects.requireNonNull(container, "container is null");
-        if (container instanceof java.util.Set) {
-            throw new JsonException("Invalid array container: Set");
-        }
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
             idx = idx < 0 ? list.size() + idx : idx;

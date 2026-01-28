@@ -99,7 +99,7 @@ public class GsonReader implements FacadeReader {
     @Override
     public Number nextNumber() throws IOException {
 //        return reader.nextDouble();
-        return Numbers.toNumber(reader.nextString());
+        return Numbers.asNumber(reader.nextString());
     }
 
     @Override

@@ -20,6 +20,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,7 +69,7 @@ public class JacksonStreamingIO {
     }
 
     public static Object readNull(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         parser.nextToken();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -80,8 +81,8 @@ public class JacksonStreamingIO {
     }
 
     public static Object readBoolean(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
-        if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
+        Class<?> rawClazz = Types.rawClazz(type);
+        if (rawClazz.isAssignableFrom(Boolean.class)) {
             Boolean b = parser.getBooleanValue();
             parser.nextToken();
             return b;
@@ -97,22 +98,14 @@ public class JacksonStreamingIO {
     }
 
     public static Object readNumber(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
-            Number n = parser.getNumberValue();
-            parser.nextToken();
-            // Double is more popular and common usage
-            if (n instanceof BigDecimal) {
-                double f = n.doubleValue();
-                if (Double.isFinite(f)) return f;
-            }
-            return n;
+            return parser.getNumberValue();
         }
-        if (Number.class.isAssignableFrom(rawClazz) ||
-                (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
+        if (Number.class.isAssignableFrom(rawClazz)) {
             Number n = parser.getNumberValue();
             parser.nextToken();
-            return Numbers.as(n, rawClazz);
+            return Numbers.to(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -126,16 +119,16 @@ public class JacksonStreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             String s = parser.getText();
             parser.nextToken();
             return s;
         }
-        if (rawClazz == Character.class || rawClazz == char.class) {
+        if (rawClazz == Character.class) {
             String s = parser.getText();
             parser.nextToken();
-            return s.charAt(0);
+            return s.length() > 0 ? s.charAt(0) : null;
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -155,10 +148,10 @@ public class JacksonStreamingIO {
 
     public static Object readObject(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
@@ -231,10 +224,10 @@ public class JacksonStreamingIO {
 
     public static Object readArray(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             parser.nextToken();
@@ -285,6 +278,19 @@ public class JacksonStreamingIO {
             }
             return array;
         }
+
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            parser.nextToken();
+            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+                Object value = readNode(parser, valueType);
+                set.add(value);
+            }
+            parser.nextToken();
+            return set;
+        }
+
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
     }
 
@@ -389,15 +395,6 @@ public class JacksonStreamingIO {
             return;
         }
 
-        if (node instanceof Set) {
-            gen.writeStartArray();
-            for (Object v : (Set<?>) node) {
-                writeNode(gen, v);
-            }
-            gen.writeEndArray();
-            return;
-        }
-
         Class<?> rawClazz = node.getClass();
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
@@ -407,19 +404,45 @@ public class JacksonStreamingIO {
         }
 
         if (node instanceof CharSequence || node instanceof Character) {
-            writeValue(gen, node.toString());
-        } else if (node instanceof Number) {
+            gen.writeString(node.toString());
+            return;
+        }
+        if (node instanceof Enum) {
+            gen.writeString(((Enum<?>) node).name());
+            return;
+        }
+
+        if (node instanceof Number) {
             writeValue(gen, (Number) node);
-        } else if (node instanceof Boolean) {
-            writeValue(gen, (Boolean) node);
-        } else if (node instanceof Map) {
+            return;
+        }
+
+        if (node instanceof Boolean) {
+            gen.writeBoolean((Boolean) node);
+            return;
+        }
+
+        if (node instanceof Map) {
             gen.writeStartObject();
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
                 gen.writeFieldName(entry.getKey().toString());
                 writeNode(gen, entry.getValue());
             }
             gen.writeEndObject();
-        } else if (node instanceof JsonObject) {
+            return;
+        }
+
+        if (node instanceof List) {
+            gen.writeStartArray();
+            List<?> list = (List<?>) node;
+            for (Object v : list) {
+                writeNode(gen, v);
+            }
+            gen.writeEndArray();
+            return;
+        }
+
+        if (node instanceof JsonObject) {
             gen.writeStartObject();
             ((JsonObject) node).forEach((k, v) -> {
                 try {
@@ -430,14 +453,10 @@ public class JacksonStreamingIO {
                 }
             });
             gen.writeEndObject();
-        } else if (node instanceof List) {
-            gen.writeStartArray();
-            List<?> list = (List<?>) node;
-            for (Object v : list) {
-                writeNode(gen, v);
-            }
-            gen.writeEndArray();
-        } else if (node instanceof JsonArray) {
+            return;
+        }
+
+        if (node instanceof JsonArray) {
             gen.writeStartArray();
             JsonArray ja = (JsonArray) node;
             for (int i = 0, len = ja.size(); i < len; i++) {
@@ -445,27 +464,41 @@ public class JacksonStreamingIO {
                 writeNode(gen, v);
             }
             gen.writeEndArray();
-        } else if (node.getClass().isArray()) {
+            return;
+        }
+
+        if (node.getClass().isArray()) {
             gen.writeStartArray();
             int len = Array.getLength(node);
             for (int i = 0; i < len; i++) {
                 writeNode(gen, Array.get(node, i));
             }
             gen.writeEndArray();
-        } else {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-            if (pi != null) {
-                gen.writeStartObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-                    gen.writeFieldName(entry.getKey());
-                    Object vv = entry.getValue().invokeGetter(node);
-                    writeNode(gen, vv);
-                }
-                gen.writeEndObject();
-            } else {
-                throw new IllegalStateException("Unsupported node type " + node.getClass().getName());
-            }
+            return;
         }
+
+        if (node instanceof Set) {
+            gen.writeStartArray();
+            for (Object v : (Set<?>) node) {
+                writeNode(gen, v);
+            }
+            gen.writeEndArray();
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        if (pi != null) {
+            gen.writeStartObject();
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                gen.writeFieldName(entry.getKey());
+                Object vv = entry.getValue().invokeGetter(node);
+                writeNode(gen, vv);
+            }
+            gen.writeEndObject();
+            return;
+        }
+
+        throw new IllegalStateException("Unsupported node type " + node.getClass().getName());
     }
 
     /// Writer
@@ -498,10 +531,6 @@ public class JacksonStreamingIO {
 //        gen.writeFieldName(name);
 //    }
 
-    public static void writeValue(JsonGenerator gen, String value) throws IOException {
-        gen.writeString(value);
-    }
-
     public static void writeValue(JsonGenerator gen, Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer) {
             gen.writeNumber(value.longValue());
@@ -515,13 +544,5 @@ public class JacksonStreamingIO {
             gen.writeNumber(value.longValue());
         }
     }
-
-    public static void writeValue(JsonGenerator gen, Boolean value) throws IOException {
-        gen.writeBoolean(value);
-    }
-
-//    public static void writeNull(JsonGenerator gen) throws IOException {
-//        gen.writeNull();
-//    }
 
 }

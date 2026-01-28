@@ -29,23 +29,20 @@ public class Types {
      * @return the fully qualified class name, or "[null]" if the object is null
      */
     public static String name(Object object) {
-        return (object == null) ? "[null]" : object.getClass().getName();
+        return (object == null) ? "null" : object.getClass().getName();
     }
 
-    /**
-     * Determines if a given type is an array type.
-     *
-     * @param type the type to check
-     * @return true if the type is an array type, false otherwise
-     */
-    public static boolean isArray(Type type) {
-        if (type == null) {
-            return false;
-        }
-        if (type instanceof Class) {
-            return ((Class<?>) type).isArray();
-        }
-        return type instanceof GenericArrayType;
+    public static Class<?> box(Class<?> clazz) {
+        if (!clazz.isPrimitive()) return clazz;
+        if (clazz == int.class) return Integer.class;
+        if (clazz == long.class) return Long.class;
+        if (clazz == double.class) return Double.class;
+        if (clazz == float.class) return Float.class;
+        if (clazz == boolean.class) return Boolean.class;
+        if (clazz == char.class) return Character.class;
+        if (clazz == byte.class) return Byte.class;
+        if (clazz == short.class) return Short.class;
+        throw new AssertionError(clazz);
     }
 
     /**
@@ -55,33 +52,32 @@ public class Types {
      * @return the raw Class object for the given type
      * @throws IllegalArgumentException if the raw class cannot be determined
      */
-    public static Class<?> getRawClass(Type type) {
-        if (type == null) {
-            return Object.class;
-        }
-        if (type instanceof Class) {
-            return (Class<?>) type;
-        }
-        if (type instanceof ParameterizedType) {
-            return (Class<?>) ((ParameterizedType) type).getRawType();
-        }
+    public static Class<?> rawClazz(Type type) {
+        if (type == null) return Object.class;
+
+        if (type instanceof Class) return box((Class<?>) type);
+
+        if (type instanceof ParameterizedType) return (Class<?>) ((ParameterizedType) type).getRawType();
+
         if (type instanceof GenericArrayType) {
             Type componentType = ((GenericArrayType) type).getGenericComponentType();
-            Class<?> rawComponent = getRawClass(componentType);
+            Class<?> rawComponent = rawClazz(componentType);
             return Array.newInstance(rawComponent, 0).getClass();
         }
+
         if (type instanceof TypeVariable<?>) {
             TypeVariable<?> typeVar = (TypeVariable<?>) type;
             Type[] bounds = typeVar.getBounds();
-            return getRawClass(bounds.length > 0 ? bounds[0] : Object.class);
+            return rawClazz(bounds.length > 0 ? bounds[0] : Object.class);
         }
+
         if (type instanceof WildcardType) {
             WildcardType w = (WildcardType) type;
             Type[] upperBounds = w.getUpperBounds();
-            return getRawClass(upperBounds.length > 0 ? upperBounds[0] : Object.class);
+            return rawClazz(upperBounds.length > 0 ? upperBounds[0] : Object.class);
         }
-        throw new IllegalArgumentException("Cannot get raw class from type: " + type);
 
+        throw new IllegalArgumentException("Cannot get raw class from type: " + type);
     }
 
 
@@ -221,7 +217,7 @@ public class Types {
     }
 
 
-    public static Type getFieldType(Type type, Field field) {
+    public static Type fieldType(Type type, Field field) {
         if (type == null || field == null) return Object.class;
 
         if (type instanceof ParameterizedType) {

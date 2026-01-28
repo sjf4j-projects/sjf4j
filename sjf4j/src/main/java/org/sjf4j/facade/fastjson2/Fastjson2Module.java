@@ -62,7 +62,7 @@ public interface Fastjson2Module {
     class MyReaderModule implements ObjectReaderModule {
         @Override
         public ObjectReader<?> getObjectReader(Type type) {
-            Class<?> rawClazz = Types.getRawClass(type);
+            Class<?> rawClazz = Types.rawClazz(type);
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return new JsonArrayReader<>(rawClazz);
             }

@@ -103,7 +103,7 @@ public class Numbers {
      * @return the Long representation
      * @throws IllegalArgumentException if the number is outside the Long range
      */
-    public static Long asLong(Number number) {
+    public static Long toLong(Number number) {
         if (number == null) return null;
         if (number instanceof Long) return (Long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
@@ -125,8 +125,8 @@ public class Numbers {
      * @return the Integer representation
      * @throws IllegalArgumentException if the number is outside the Integer range
      */
-    public static Integer asInteger(Number number) {
-        Long longValue = asLong(number);
+    public static Integer toInteger(Number number) {
+        Long longValue = toLong(number);
         if (longValue == null) return null;
         if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
             throw new JsonException("Cannot convert Number '" + number + "' to Integer: out of 32-bit range");
@@ -134,8 +134,8 @@ public class Numbers {
         return longValue.intValue();
     }
 
-    public static Short asShort(Number number) {
-        Long longValue = asLong(number);
+    public static Short toShort(Number number) {
+        Long longValue = toLong(number);
         if (longValue == null) return null;
         if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
             throw new JsonException("Cannot convert Number '" + number + "' to Short: out of 16-bit range");
@@ -143,8 +143,8 @@ public class Numbers {
         return longValue.shortValue();
     }
 
-    public static Byte asByte(Number number) {
-        Long longValue = asLong(number);
+    public static Byte toByte(Number number) {
+        Long longValue = toLong(number);
         if (longValue == null) return null;
         if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
             throw new JsonException("Cannot convert Number '" + number + "' to Byte: out of 8-bit range");
@@ -159,7 +159,7 @@ public class Numbers {
      * @return the Double representation
      * @throws IllegalArgumentException if the number is not a finite Double
      */
-    public static Double asDouble(Number number) {
+    public static Double toDouble(Number number) {
         if (number == null) return null;
         if (number instanceof Double) return (Double) number;
 
@@ -177,7 +177,7 @@ public class Numbers {
      * @return the Float representation
      * @throws IllegalArgumentException if the number is not a finite Float
      */
-    public static Float asFloat(Number number) {
+    public static Float toFloat(Number number) {
         if (number == null) return null;
         if (number instanceof Float) return (Float) number;
 
@@ -188,7 +188,7 @@ public class Numbers {
         return f;
     }
 
-    public static BigInteger asBigInteger(Number number) {
+    public static BigInteger toBigInteger(Number number) {
         if (number == null) return null;
         if (number instanceof BigInteger) return (BigInteger) number;
         if (number instanceof BigDecimal) return ((BigDecimal) number).toBigInteger();
@@ -202,7 +202,7 @@ public class Numbers {
         return BigInteger.valueOf(number.longValue());
     }
 
-    public static BigDecimal asBigDecimal(Number number) {
+    public static BigDecimal toBigDecimal(Number number) {
         if (number == null) return null;
         if (number instanceof BigDecimal) return (BigDecimal) number;
         if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
@@ -213,21 +213,22 @@ public class Numbers {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T as(Number number, Class<T> clazz) {
+    public static <T> T to(Number number, Class<T> clazz) {
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
-        if (clazz == long.class || clazz == Long.class) return (T) Numbers.asLong(number);
-        if (clazz == int.class || clazz == Integer.class) return (T) Numbers.asInteger( number);
-        if (clazz == short.class || clazz == Short.class) return (T) Numbers.asShort(number);
-        if (clazz == byte.class || clazz == Byte.class) return (T) Numbers.asByte(number);
-        if (clazz == double.class || clazz == Double.class) return (T) Numbers.asDouble(number);
-        if (clazz == float.class || clazz == Float.class) return (T) Numbers.asFloat(number);
-        if (clazz == BigInteger.class) return (T) Numbers.asBigInteger(number);
-        if (clazz == BigDecimal.class) return (T) Numbers.asBigDecimal(number);
+        Class<?> boxed = Types.box(clazz);
+        if (boxed == Long.class) return (T) Numbers.toLong(number);
+        if (boxed == Integer.class) return (T) Numbers.toInteger( number);
+        if (boxed == Short.class) return (T) Numbers.toShort(number);
+        if (boxed == Byte.class) return (T) Numbers.toByte(number);
+        if (boxed == Double.class) return (T) Numbers.toDouble(number);
+        if (boxed == Float.class) return (T) Numbers.toFloat(number);
+        if (boxed == BigInteger.class) return (T) Numbers.toBigInteger(number);
+        if (boxed == BigDecimal.class) return (T) Numbers.toBigDecimal(number);
         throw new JsonException("Cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
     }
 
 
-    public static Number toNumber(String text) {
+    public static Number asNumber(String text) {
         if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
 
         if (text.length() > MAX_NUMBER_DIGITS) {
@@ -319,12 +320,12 @@ public class Numbers {
         Objects.requireNonNull(source, "source is null");
         Objects.requireNonNull(target, "target is null");
         if (source instanceof BigInteger || target instanceof BigInteger) {
-            return asBigInteger(source).compareTo(asBigInteger(target));
+            return toBigInteger(source).compareTo(toBigInteger(target));
         }
         if (isIntegralType(source) && isIntegralType(target)) {
             return Long.compare(source.longValue(), target.longValue());
         }
-        return asBigDecimal(source).compareTo(asBigDecimal(target));
+        return toBigDecimal(source).compareTo(toBigDecimal(target));
     }
 
     public static int hash(Number n) {

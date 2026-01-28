@@ -18,6 +18,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +66,7 @@ public class Fastjson2StreamingIO {
     }
 
     public static Object readNull(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         reader.nextIfNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -76,8 +77,8 @@ public class Fastjson2StreamingIO {
     }
 
     public static Object readBoolean(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
-        if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
+        Class<?> rawClazz = Types.rawClazz(type);
+        if (rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.readBoolValue();
         }
 
@@ -90,20 +91,13 @@ public class Fastjson2StreamingIO {
     }
 
     public static Object readNumber(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
-            Number n = reader.readNumber();
-            // Double is more popular and common usage
-            if (n instanceof BigDecimal) {
-                double f = n.doubleValue();
-                if (Double.isFinite(f)) return f;
-            }
-            return n;
+            return reader.readNumber();
         }
-        if (Number.class.isAssignableFrom(rawClazz) ||
-                (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
+        if (Number.class.isAssignableFrom(rawClazz)) {
             Number n = reader.readNumber();
-            return Numbers.as(n, rawClazz);
+            return Numbers.to(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -116,13 +110,13 @@ public class Fastjson2StreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.readString();
         }
-        if (rawClazz == Character.class || rawClazz == char.class) {
+        if (rawClazz == Character.class) {
             String s = reader.readString();
-            return s.charAt(0);
+            return s.length() > 0 ? s.charAt(0) : null;
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -141,10 +135,10 @@ public class Fastjson2StreamingIO {
 
     public static Object readObject(JSONReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
@@ -209,10 +203,10 @@ public class Fastjson2StreamingIO {
 
     public static Object readArray(JSONReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.nextIfArrayStart();
@@ -258,6 +252,17 @@ public class Fastjson2StreamingIO {
                 Array.set(array, i, list.get(i));
             }
             return array;
+        }
+
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            reader.nextIfArrayStart();
+            while (!reader.nextIfArrayEnd()) {
+                Object value = readNode(reader, valueType);
+                set.add(value);
+            }
+            return set;
         }
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
     }
@@ -343,17 +348,6 @@ public class Fastjson2StreamingIO {
             return;
         }
 
-        if (node instanceof Set) {
-            writer.startArray();
-            int i = 0;
-            for (Object v : (Set<?>) node) {
-                if (i++ > 0) writer.writeComma();
-                writeNode(writer, v);
-            }
-            writer.endArray();
-            return;
-        }
-
         Class<?> rawClazz = node.getClass();
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
@@ -364,13 +358,46 @@ public class Fastjson2StreamingIO {
 
         if (node instanceof CharSequence || node instanceof Character) {
             writer.writeString(node.toString());
-        } else if (node instanceof Enum) {
+            return;
+        }
+        if (node instanceof Enum) {
             writer.writeString(((Enum<?>) node).name());
-        } else if (node instanceof Number) {
+            return;
+        }
+
+        if (node instanceof Number) {
             writeNumber(writer, (Number) node);
-        } else if (node instanceof Boolean) {
+            return;
+        }
+
+        if (node instanceof Boolean) {
             writer.writeBool((Boolean) node);
-        } else if (node instanceof JsonObject) {
+            return;
+        }
+
+        if (node instanceof Map) {
+            writer.startObject();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                writer.writeName(entry.getKey().toString());
+                writer.writeColon();
+                writeNode(writer, entry.getValue());
+            }
+            writer.endObject();
+            return;
+        }
+
+        if (node instanceof List) {
+            writer.startArray();
+            List<?> list = (List<?>) node;
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) writer.writeComma();
+                writeNode(writer, list.get(i));
+            }
+            writer.endArray();
+            return;
+        }
+
+        if (node instanceof JsonObject) {
             writer.startObject();
             ((JsonObject) node).forEach((k, v) -> {
                 try {
@@ -382,15 +409,10 @@ public class Fastjson2StreamingIO {
                 }
             });
             writer.endObject();
-        } else if (node instanceof Map) {
-            writer.startObject();
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                writer.writeName(entry.getKey().toString());
-                writer.writeColon();
-                writeNode(writer, entry.getValue());
-            }
-            writer.endObject();
-        } else if (node instanceof JsonArray) {
+            return;
+        }
+
+        if (node instanceof JsonArray) {
             writer.startArray();
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
@@ -398,15 +420,10 @@ public class Fastjson2StreamingIO {
                 writeNode(writer, ja.getNode(i));
             }
             writer.endArray();
-        } else if (node instanceof List) {
-            writer.startArray();
-            List<?> list = (List<?>) node;
-            for (int i = 0; i < list.size(); i++) {
-                if (i > 0) writer.writeComma();
-                writeNode(writer, list.get(i));
-            }
-            writer.endArray();
-        } else if (node.getClass().isArray()) {
+            return;
+        }
+
+        if (node.getClass().isArray()) {
             writer.startArray();
             int len = Array.getLength(node);
             for (int i = 0; i < len; i++) {
@@ -414,57 +431,36 @@ public class Fastjson2StreamingIO {
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();
-        } else {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-            if (pi != null) {
-                writer.startObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-                    writer.writeName(entry.getKey());
-                    writer.writeColon();
-                    Object vv = entry.getValue().invokeGetter(node);
-                    writeNode(writer, vv);
-                }
-                writer.endObject();
-            } else {
-                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
-            }
+            return;
         }
+
+        if (node instanceof Set) {
+            writer.startArray();
+            int i = 0;
+            for (Object v : (Set<?>) node) {
+                if (i++ > 0) writer.writeComma();
+                writeNode(writer, v);
+            }
+            writer.endArray();
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null) {
+            writer.startObject();
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                writer.writeName(entry.getKey());
+                writer.writeColon();
+                Object vv = entry.getValue().invokeGetter(node);
+                writeNode(writer, vv);
+            }
+            writer.endObject();
+            return;
+        }
+
+        throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
     }
 
-    /// Writer
-
-//    public static void startDocument(JSONWriter writer) throws IOException {
-//        // Nothing
-//    }
-//
-//    public static void endDocument(JSONWriter writer) throws IOException {
-//        // Nothing
-//    }
-
-//    public static void startObject(JSONWriter writer) throws IOException {
-//        writer.startObject();
-//    }
-
-//    public static void endObject(JSONWriter writer) throws IOException {
-//        writer.endObject();
-//    }
-
-//    public static void startArray(JSONWriter writer) throws IOException {
-//        writer.startArray();
-//    }
-
-//    public static void endArray(JSONWriter writer) throws IOException {
-//        writer.endArray();
-//    }
-
-//    public static void writeName(JSONWriter writer, String name) throws IOException {
-//        writer.writeName(name);
-//        writer.writeColon();
-//    }
-
-//    public static void writeValue(JSONWriter writer, String value) throws IOException {
-//        writer.writeString(value);
-//    }
 
     public static void writeNumber(JSONWriter writer, Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer) {
@@ -480,16 +476,5 @@ public class Fastjson2StreamingIO {
         }
     }
 
-//    public static void writeValue(JSONWriter writer, Boolean value) throws IOException {
-//        writer.writeBool(value);
-//    }
-
-//    public static void writeNull(JSONWriter writer) throws IOException {
-//        writer.writeNull();
-//    }
-
-//    public static void writeComma(JSONWriter writer) {
-//        writer.writeComma();
-//    }
 
 }

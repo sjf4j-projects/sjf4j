@@ -20,6 +20,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -50,7 +51,7 @@ public class ReflectUtil {
         if (clazz == JsonObject.class || clazz == JsonArray.class) {
             return false;
         }
-        if (Map.class.isAssignableFrom(clazz) || List.class.isAssignableFrom(clazz) ||
+        if (Map.class.isAssignableFrom(clazz) || Collection.class.isAssignableFrom(clazz) ||
                 clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
@@ -126,7 +127,7 @@ public class ReflectUtil {
 //                    log.warn("No accessible getter or setter found for field '{}' of {}",
 //                            field.getName(), curClazz);
                 } else {
-                    Type fieldType = Types.getFieldType(curType, field);
+                    Type fieldType = Types.fieldType(curType, field);
                     fields.put(getFieldName(field), new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter));
                 }

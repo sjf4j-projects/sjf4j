@@ -623,7 +623,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Map, or null if it doesn't exist
      */
     public <T> Map<String, T> asMapByPath(String path, Class<T> clazz) {
-        return JsonPath.compile(path).asMap(this, clazz);
+        return JsonPath.compile(path).getMap(this, clazz);
     }
 
     /**
@@ -634,7 +634,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a Map, or the default value if it doesn't exist
      */
     public <T> Map<String, T> asMapByPath(String path, Class<T> clazz, Map<String, T> defaultValue) {
-        return JsonPath.compile(path).asMap(this, clazz, defaultValue);
+        return JsonPath.compile(path).getMap(this, clazz, defaultValue);
     }
 
     // JsonObject
@@ -710,7 +710,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a List, or null if it doesn't exist
      */
     public <T> List<T> asListByPath(String path, Class<T> clazz) {
-        return JsonPath.compile(path).asList(this, clazz);
+        return JsonPath.compile(path).getList(this, clazz);
     }
 
     /**
@@ -721,7 +721,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to a List, or the default value if it doesn't exist
      */
     public <T> List<T> asListByPath(String path, Class<T> clazz, List<T> defaultValue) {
-        return JsonPath.compile(path).asList(this, clazz, defaultValue);
+        return JsonPath.compile(path).getList(this, clazz, defaultValue);
     }
 
     // Array
@@ -753,7 +753,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to an Array, or null if it doesn't exist
      */
     public <T> T[] asArrayByPath(String path, Class<T> clazz) {
-        return JsonPath.compile(path).asArray(this, clazz);
+        return JsonPath.compile(path).getArray(this, clazz);
     }
 
     /**
@@ -764,7 +764,7 @@ public abstract class JsonContainer {
      * @return the value at the path converted to an Array, or the default value if it doesn't exist
      */
     public <T> T[] asArrayByPath(String path, Class<T> clazz, T[] defaultValue) {
-        return JsonPath.compile(path).asArray(this, clazz, defaultValue);
+        return JsonPath.compile(path).getArray(this, clazz, defaultValue);
     }
 
     

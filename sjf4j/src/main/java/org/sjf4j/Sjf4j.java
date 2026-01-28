@@ -6,8 +6,6 @@ import org.sjf4j.node.TypeReference;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Objects;
 import java.util.Properties;
@@ -329,34 +327,22 @@ public class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, false);
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, TypeReference<T> type) {
         Objects.requireNonNull(type, "type is null");
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), false);
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType());
     }
 
     public static Object fromNode(Object node) {
         return fromNode(node, Object.class);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T deepNode(Object node, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, true);
+    public static Object toRaw(Object node) {
+        return Sjf4jConfig.global().getNodeFacade().writeNode(node);
     }
-
-    @SuppressWarnings("unchecked")
-    public static <T> T deepNode(Object node, TypeReference<T> type) {
-        Objects.requireNonNull(type, "type is null");
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), true);
-    }
-
-    public static Object deepNode(Object node) {
-        return deepNode(node, Object.class);
-    }
-
 
     /// Properties
 

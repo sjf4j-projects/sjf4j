@@ -512,7 +512,7 @@ public class JsonPath {
     public JsonObject getJsonObject(Object container) {
         try {
             Object value = getNode(container);
-            return Nodes.asJsonObject(value);
+            return Nodes.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject by path '" + this + "'", e);
         }
@@ -526,7 +526,7 @@ public class JsonPath {
     public Map<String, Object> getMap(Object container) {
         try {
             Object value = getNode(container);
-            return Nodes.asMap(value);
+            return Nodes.toMap(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Map<String, Object> by path '" + this + "'", e);
         }
@@ -536,17 +536,17 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public <T> Map<String, T> asMap(Object container, Class<T> clazz) {
+    public <T> Map<String, T> getMap(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
-            return Nodes.asMap(value, clazz);
+            return Nodes.toMap(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to Map<String, " +
                     clazz.getName() + ">", e);
         }
     }
-    public <T> Map<String, T> asMap(Object container, Class<T> clazz, Map<String, T> defaultValue) {
-        Map<String, T> value = asMap(container, clazz);
+    public <T> Map<String, T> getMap(Object container, Class<T> clazz, Map<String, T> defaultValue) {
+        Map<String, T> value = getMap(container, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -554,7 +554,7 @@ public class JsonPath {
     public JsonArray getJsonArray(Object container) {
         try {
             Object value = getNode(container);
-            return Nodes.asJsonArray(value);
+            return Nodes.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray by path '" + this + "'", e);
         }
@@ -568,7 +568,7 @@ public class JsonPath {
     public List<Object> getList(Object container) {
         try {
             Object value = getNode(container);
-            return Nodes.asList(value);
+            return Nodes.toList(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get List<Object> by path '" + this + "'", e);
         }
@@ -578,16 +578,16 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public <T> List<T> asList(Object container, Class<T> clazz) {
+    public <T> List<T> getList(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
-            return Nodes.asList(value, clazz);
+            return Nodes.toList(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to List<" + clazz.getName() + ">", e);
         }
     }
-    public <T> List<T> asList(Object container, Class<T> clazz, List<T> defaultValue) {
-        List<T> value = asList(container, clazz);
+    public <T> List<T> getList(Object container, Class<T> clazz, List<T> defaultValue) {
+        List<T> value = getList(container, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -595,7 +595,7 @@ public class JsonPath {
     public Object[] getArray(Object container) {
         try {
             Object value = getNode(container);
-            return Nodes.asArray(value);
+            return Nodes.toArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Object[] by path '" + this + "'", e);
         }
@@ -605,16 +605,16 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public <T> T[] asArray(Object container, Class<T> clazz) {
+    public <T> T[] getArray(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
-            return Nodes.asArray(value, clazz);
+            return Nodes.toArray(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName() + "[]", e);
         }
     }
-    public <T> T[] asArray(Object container, Class<T> clazz, T[] defaultValue) {
-        T[] value = asArray(container, clazz);
+    public <T> T[] getArray(Object container, Class<T> clazz, T[] defaultValue) {
+        T[] value = getArray(container, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -1012,7 +1012,7 @@ public class JsonPath {
                                 tnode.getClazzType() + "'");
                     } else if (tnn.isNull()) {
                         PathToken nextPt = tokens.get(i + 1);
-                        Class<?> rawClazz = Types.getRawClass(tnn.getClazzType());
+                        Class<?> rawClazz = Types.rawClazz(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
                         Nodes.putInObject(tnode.getNode(), key, nn);
                         tnode = TypedNode.of(nn, tnn.getClazzType());
@@ -1032,7 +1032,7 @@ public class JsonPath {
                                 tnode.getClazzType() + "'");
                     } else if (tnn.isNull()) {
                         PathToken nextPt = tokens.get(i + 1);
-                        Class<?> rawClazz = Types.getRawClass(tnn.getClazzType());
+                        Class<?> rawClazz = Types.rawClazz(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
                         Nodes.setInArray(tnode.getNode(), idx, nn);
                         tnode = TypedNode.of(nn, tnn.getClazzType());
@@ -1053,7 +1053,7 @@ public class JsonPath {
 
     private Object _createContainer(PathToken pt, Class<?> clazz) {
         if (pt instanceof PathToken.Name) {
-            if (clazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(clazz)) {
+            if (clazz.isAssignableFrom(Map.class)) {
                 return Sjf4jConfig.global().mapSupplier.create();
             } else if (clazz.isAssignableFrom(JsonObject.class)) {
                 return new JsonObject();
@@ -1065,7 +1065,7 @@ public class JsonPath {
                         pt + "'. The type must be one of JsonObject/Map/POJO.");
             }
         } else if (pt instanceof PathToken.Index) {
-            if (clazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(clazz)) {
+            if (clazz.isAssignableFrom(List.class)) {
                 return Sjf4jConfig.global().listSupplier.create();
             } else if (clazz.isAssignableFrom(JsonArray.class)) {
                 return new JsonArray();
@@ -1103,7 +1103,7 @@ public class JsonPath {
         } else if ("null".equals(raw)) {
             return null;
         } else if (Numbers.isNumeric(raw)) {
-            return Numbers.toNumber(raw);
+            return Numbers.asNumber(raw);
         } else {
             throw new JsonException("Invalid raw argument '" + raw + "'");
         }

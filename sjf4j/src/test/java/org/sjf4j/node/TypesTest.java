@@ -33,52 +33,52 @@ public class TypesTest {
 
 
     @Test
-    public void testGetRawClass1() throws NoSuchFieldException {
-        Class<?> raw1 = Types.getRawClass(int[].class);
+    public void testRawClazz1() throws NoSuchFieldException {
+        Class<?> raw1 = Types.rawClazz(int[].class);
         log.info("raw1={}", raw1);
 
-        Class<?> raw2 = Types.getRawClass(String[].class);
+        Class<?> raw2 = Types.rawClazz(String[].class);
         log.info("raw2={}", raw2);
 
-        Class<?> raw3 = Types.getRawClass(Wrapper.class.getDeclaredField("listArray").getGenericType());
+        Class<?> raw3 = Types.rawClazz(Wrapper.class.getDeclaredField("listArray").getGenericType());
         log.info("raw3={}, isArray={}", raw3, raw3.isArray());
     }
 
     @Test
-    public void testGetFieldType1() throws NoSuchFieldException {
+    public void testFieldType1() throws NoSuchFieldException {
         Field value = Wrapper.class.getDeclaredField("value");
         Field map = Pair.class.getDeclaredField("map");
 
-        Type t1 = Types.getFieldType(new TypeReference<Wrapper<String>>(){}.getType(), value);
+        Type t1 = Types.fieldType(new TypeReference<Wrapper<String>>(){}.getType(), value);
         log.info("t1={}", t1);
 
-        Type t2 = Types.getFieldType(new TypeReference<Pair<Integer, String>>(){}.getType(), map);
+        Type t2 = Types.fieldType(new TypeReference<Pair<Integer, String>>(){}.getType(), map);
         log.info("t2={}", t2);
     }
 
     @Test
-    public void testGetFieldType2() throws NoSuchFieldException {
+    public void testFieldType2() throws NoSuchFieldException {
         Field f1 = Wrapper.class.getDeclaredField("value");
         Field f2 = Wrapper.class.getDeclaredField("list");
         Field f3 = Wrapper.class.getDeclaredField("array");
 
         Type t1 = new TypeReference<Wrapper<String>>(){}.getType();
 
-        System.out.println("value → " + Types.getFieldType(t1, f1)); // String
-        System.out.println("list → " + Types.getFieldType(t1, f2));  // List<String>
-        System.out.println("array → " + Types.getFieldType(t1, f3)); // String[]
+        System.out.println("value → " + Types.fieldType(t1, f1)); // String
+        System.out.println("list → " + Types.fieldType(t1, f2));  // List<String>
+        System.out.println("array → " + Types.fieldType(t1, f3)); // String[]
 
         // 嵌套泛型
         Field nf1 = Nested.class.getSuperclass().getDeclaredField("value");
         Type t2 = Nested.class.getGenericSuperclass();
-        System.out.println("Nested.value → " + Types.getFieldType(t2, nf1));
+        System.out.println("Nested.value → " + Types.fieldType(t2, nf1));
 
         // WrapperTwo 测试
         Field wf1 = WrapperTwo.class.getDeclaredField("value1");
         Field wf2 = WrapperTwo.class.getDeclaredField("value2");
         Type t3 = new TypeReference<WrapperTwo<Long, Number>>(){}.getType();
-        System.out.println("WrapperTwo.value1 → " + Types.getFieldType(t3, wf1)); // Long
-        System.out.println("WrapperTwo.value2 → " + Types.getFieldType(t3, wf2)); // List<? extends Number>
+        System.out.println("WrapperTwo.value1 → " + Types.fieldType(t3, wf1)); // Long
+        System.out.println("WrapperTwo.value2 → " + Types.fieldType(t3, wf2)); // List<? extends Number>
     }
 
     @Test

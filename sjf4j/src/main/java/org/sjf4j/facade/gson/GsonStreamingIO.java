@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +66,7 @@ public class GsonStreamingIO {
     }
 
     public static Object readNull(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         reader.nextNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -77,8 +78,8 @@ public class GsonStreamingIO {
     }
 
     public static Object readBoolean(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
-        if (rawClazz == boolean.class || rawClazz.isAssignableFrom(Boolean.class)) {
+        Class<?> rawClazz = Types.rawClazz(type);
+        if (rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.nextBoolean();
         }
 
@@ -91,19 +92,18 @@ public class GsonStreamingIO {
     }
 
     public static Object readNumber(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
-            return Numbers.toNumber(reader.nextString());
+            return Numbers.asNumber(reader.nextString());
         }
-        if (Number.class.isAssignableFrom(rawClazz) ||
-                (rawClazz.isPrimitive() && rawClazz != boolean.class && rawClazz != char.class)) {
-            Number n = Numbers.toNumber(reader.nextString());
-            return Numbers.as(n, rawClazz);
+        if (Number.class.isAssignableFrom(rawClazz)) {
+            Number n = Numbers.asNumber(reader.nextString());
+            return Numbers.to(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
-            Number n = Numbers.toNumber(reader.nextString());
+            Number n = Numbers.asNumber(reader.nextString());
             return ci.decode(n);
         }
         throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
@@ -111,13 +111,13 @@ public class GsonStreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
         }
-        if (rawClazz == Character.class || rawClazz == char.class) {
+        if (rawClazz == Character.class) {
             String s = reader.nextString();
-            return s.charAt(0);
+            return s.length() > 0 ? s.charAt(0) : null;
         }
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -136,10 +136,10 @@ public class GsonStreamingIO {
 
     public static Object readObject(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || Map.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.beginObject();
@@ -208,10 +208,10 @@ public class GsonStreamingIO {
 
     public static Object readArray(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("reader must not be null");
-        Class<?> rawClazz = Types.getRawClass(type);
+        Class<?> rawClazz = Types.rawClazz(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || List.class.isAssignableFrom(rawClazz) || ci != null) {
+        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.beginArray();
@@ -262,6 +262,19 @@ public class GsonStreamingIO {
             }
             return array;
         }
+
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            reader.beginArray();
+            while (reader.peek() != JsonToken.END_ARRAY) {
+                Object value = readNode(reader, valueType);
+                set.add(value);
+            }
+            reader.endArray();
+            return set;
+        }
+
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
     }
 
@@ -351,15 +364,6 @@ public class GsonStreamingIO {
             return;
         }
 
-        if (node instanceof Set) {
-            writer.beginArray();
-            for (Object v : (Set<?>) node) {
-                writeNode(writer, v);
-            }
-            writer.endArray();
-            return;
-        }
-
         Class<?> rawClazz = node.getClass();
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
@@ -370,20 +374,45 @@ public class GsonStreamingIO {
 
         if (node instanceof CharSequence || node instanceof Character) {
             writer.value(node.toString());
-        } else if (node instanceof Enum) {
+            return;
+        }
+
+        if (node instanceof Enum) {
             writer.value(((Enum<?>) node).name());
-        } else if (node instanceof Number) {
+            return;
+        }
+
+        if (node instanceof Number) {
             writer.value((Number) node);
-        } else if (node instanceof Boolean) {
+            return;
+        }
+
+        if (node instanceof Boolean) {
             writer.value((Boolean) node);
-        } else if (node instanceof Map) {
+            return;
+        }
+
+        if (node instanceof Map) {
             writer.beginObject();
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
                 writer.name(entry.getKey().toString());
                 writeNode(writer, entry.getValue());
             }
             writer.endObject();
-        } else if (node instanceof JsonObject) {
+            return;
+        }
+
+        if (node instanceof List) {
+            writer.beginArray();
+            List<?> list = (List<?>) node;
+            for (Object v : list) {
+                writeNode(writer, v);
+            }
+            writer.endArray();
+            return;
+        }
+
+        if (node instanceof JsonObject) {
             writer.beginObject();
             ((JsonObject) node).forEach((k, v) -> {
                 try {
@@ -394,7 +423,10 @@ public class GsonStreamingIO {
                 }
             });
             writer.endObject();
-        } else if (node instanceof JsonArray) {
+            return;
+        }
+
+        if (node instanceof JsonArray) {
             writer.beginArray();
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
@@ -402,34 +434,41 @@ public class GsonStreamingIO {
                 writeNode(writer, v);
             }
             writer.endArray();
-        } else if (node instanceof List) {
-            writer.beginArray();
-            List<?> list = (List<?>) node;
-            for (Object v : list) {
-                writeNode(writer, v);
-            }
-            writer.endArray();
-        } else if (node.getClass().isArray()) {
+            return;
+        }
+
+        if (node.getClass().isArray()) {
             writer.beginArray();
             int len = Array.getLength(node);
             for (int i = 0; i < len; i++) {
                 writeNode(writer, Array.get(node, i));
             }
             writer.endArray();
-        } else {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-            if (pi != null) {
-                writer.beginObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-                    writer.name(entry.getKey());
-                    Object vv = entry.getValue().invokeGetter(node);
-                    writeNode(writer, vv);
-                }
-                writer.endObject();
-            } else {
-                throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
-            }
+            return;
         }
+
+        if (node instanceof Set) {
+            writer.beginArray();
+            for (Object v : (Set<?>) node) {
+                writeNode(writer, v);
+            }
+            writer.endArray();
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        if (pi != null) {
+            writer.beginObject();
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                writer.name(entry.getKey());
+                Object vv = entry.getValue().invokeGetter(node);
+                writeNode(writer, vv);
+            }
+            writer.endObject();
+            return;
+        }
+
+        throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
     }
 
     /// Writer

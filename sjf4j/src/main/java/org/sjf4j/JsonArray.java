@@ -318,24 +318,8 @@ public class JsonArray extends JsonContainer {
         return Sjf4j.fromNode(this, type);
     }
 
-    public static JsonArray deepNode(Object node) {
-        return Sjf4j.deepNode(node, JsonArray.class);
-    }
-
-    public static <T extends JsonArray> T deepNode(Object node, Class<T> clazz) {
-        return Sjf4j.deepNode(node, clazz);
-    }
-
-    public static <T extends JsonArray> T deepNode(Object node, TypeReference<T> type) {
-        return Sjf4j.deepNode(node, type);
-    }
-
-    public <T> T deepNode(Class<T> clazz) {
-        return Sjf4j.deepNode(this, clazz);
-    }
-
-    public <T> T deepNode(TypeReference<T> type) {
-        return Sjf4j.deepNode(this, type);
+    public Object toRaw() {
+        return Sjf4j.toRaw(this);
     }
 
 
@@ -643,7 +627,7 @@ public class JsonArray extends JsonContainer {
     public JsonObject getJsonObject(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.asJsonObject(value);
+            return Nodes.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject at index " + idx, e);
         }
@@ -656,7 +640,7 @@ public class JsonArray extends JsonContainer {
     public Map<String, Object> getMap(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.asMap(value);
+            return Nodes.toMap(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Map<String, Object> at index " + idx, e);
         }
@@ -666,24 +650,24 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public <T> Map<String, T> asMap(int idx, Class<T> clazz) {
+    public <T> Map<String, T> getMap(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
-            return Nodes.asMap(value, clazz);
+            return Nodes.toMap(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to Map<String, " +
                     clazz.getName() + ">", e);
         }
     }
-    public <T> Map<String, T> asMap(int idx, Class<T> clazz, Map<String, T> defaultValue) {
-        Map<String, T> value = asMap(idx, clazz);
+    public <T> Map<String, T> getMap(int idx, Class<T> clazz, Map<String, T> defaultValue) {
+        Map<String, T> value = getMap(idx, clazz);
         return value == null ? defaultValue : value;
     }
 
     public JsonArray getJsonArray(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.asJsonArray(value);
+            return Nodes.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray at index " + idx, e);
         }
@@ -696,7 +680,7 @@ public class JsonArray extends JsonContainer {
     public List<Object> getList(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.asList(value);
+            return Nodes.toList(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get List<Object> at index " + idx, e);
         }
@@ -706,23 +690,23 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public <T> List<T> asList(int idx, Class<T> clazz) {
+    public <T> List<T> getList(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
-            return Nodes.asList(value, clazz);
+            return Nodes.toList(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to List<" + clazz.getName() + ">", e);
         }
     }
-    public <T> List<T> asList(int idx, Class<T> clazz, List<T> defaultValue) {
-        List<T> value = asList(idx, clazz);
+    public <T> List<T> getList(int idx, Class<T> clazz, List<T> defaultValue) {
+        List<T> value = getList(idx, clazz);
         return value == null ? defaultValue : value;
     }
 
     public Object[] getArray(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.asArray(value);
+            return Nodes.toArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Object[] at index " + idx, e);
         }
@@ -732,16 +716,16 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public <T> T[] asArray(int idx, Class<T> clazz) {
+    public <T> T[] getArray(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
-            return Nodes.asArray(value, clazz);
+            return Nodes.toArray(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName() + "[]", e);
         }
     }
-    public <T> T[] asArray(int idx, Class<T> clazz, T[] defaultValue) {
-        T[] value = asArray(idx, clazz);
+    public <T> T[] getArray(int idx, Class<T> clazz, T[] defaultValue) {
+        T[] value = getArray(idx, clazz);
         return value == null ? defaultValue : value;
     }
 

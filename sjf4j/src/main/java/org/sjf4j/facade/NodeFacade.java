@@ -4,6 +4,8 @@ import java.lang.reflect.Type;
 
 public interface NodeFacade {
 
-    Object readNode(Object node, Type type, boolean deepCopy);
+    Object readNode(Object node, Type type);
+
+    Object writeNode(Object node);
 
 }

@@ -309,15 +309,16 @@ public class JsonObject extends JsonContainer {
 
     @Override
     public boolean equals(Object target) {
-        if (target == this) return true;
-        if (target == null || target.getClass() != this.getClass()) return false;
-        JsonObject targetJo = (JsonObject) target;
-        if (targetJo.size() != this.size()) return false;
-        for (Map.Entry<String, Object> entry : entrySet()) {
-            Object targetValue = targetJo.get(entry.getKey());
-            if (!Objects.equals(targetValue, entry.getValue())) return false;
-        }
-        return true;
+        return Nodes.equals(this, target);
+//        if (target == this) return true;
+//        if (target == null || target.getClass() != this.getClass()) return false;
+//        JsonObject targetJo = (JsonObject) target;
+//        if (targetJo.size() != this.size()) return false;
+//        for (Map.Entry<String, Object> entry : entrySet()) {
+//            Object targetValue = targetJo.get(entry.getKey());
+//            if (!Objects.equals(targetValue, entry.getValue())) return false;
+//        }
+//        return true;
     }
 
     /**
@@ -526,24 +527,8 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromNode(this, type);
     }
 
-    public static JsonObject deepNode(Object node) {
-        return Sjf4j.deepNode(node, JsonObject.class);
-    }
-
-    public static <T extends JsonObject> T deepNode(Object node, Class<T> clazz) {
-        return Sjf4j.deepNode(node, clazz);
-    }
-
-    public static <T extends JsonObject> T deepNode(Object node, TypeReference<T> type) {
-        return Sjf4j.deepNode(node, type);
-    }
-
-    public <T> T deepNode(Class<T> clazz) {
-        return Sjf4j.deepNode(this, clazz);
-    }
-
-    public <T> T deepNode(TypeReference<T> type) {
-        return Sjf4j.deepNode(this, type);
+    public Object toRaw() {
+        return Sjf4j.toRaw(this);
     }
 
 
@@ -1261,7 +1246,7 @@ public class JsonObject extends JsonContainer {
     public JsonObject getJsonObject(String key) {
         Object value = getNode(key);
         try {
-            return Nodes.asJsonObject(value);
+            return Nodes.toJsonObject(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonObject for key '" + key + "'", e);
         }
@@ -1284,7 +1269,7 @@ public class JsonObject extends JsonContainer {
     public Map<String, Object> getMap(String key) {
         Object value = getNode(key);
         try {
-            return Nodes.asMap(value);
+            return Nodes.toMap(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Map<String, Object> for key '" + key + "'", e);
         }
@@ -1294,16 +1279,16 @@ public class JsonObject extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public <T> Map<String, T> asMap(String key, Class<T> clazz) {
+    public <T> Map<String, T> getMap(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
-            return Nodes.asMap(value, clazz);
+            return Nodes.toMap(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to Map<String, " + clazz.getName() + ">", e);
         }
     }
-    public <T> Map<String, T> asMap(String key, Class<T> clazz, Map<String, T> defaultValue) {
-        Map<String, T> value = asMap(key, clazz);
+    public <T> Map<String, T> getMap(String key, Class<T> clazz, Map<String, T> defaultValue) {
+        Map<String, T> value = getMap(key, clazz);
         return value == null ? defaultValue : value;
     }
 
@@ -1317,7 +1302,7 @@ public class JsonObject extends JsonContainer {
     public JsonArray getJsonArray(String key) {
         Object value = getNode(key);
         try {
-            return Nodes.asJsonArray(value);
+            return Nodes.toJsonArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get JsonArray for key '" + key + "'", e);
         }
@@ -1340,7 +1325,7 @@ public class JsonObject extends JsonContainer {
     public List<Object> getList(String key) {
         try {
             Object value = getNode(key);
-            return Nodes.asList(value);
+            return Nodes.toList(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get List<Object> for key '" + key + "'", e);
         }
@@ -1350,23 +1335,23 @@ public class JsonObject extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public <T> List<T> asList(String key, Class<T> clazz) {
+    public <T> List<T> getList(String key, Class<T> clazz) {
         try {
             Object value = getNode(key);
-            return Nodes.asList(value, clazz);
+            return Nodes.toList(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to List<" + clazz.getName() + ">", e);
         }
     }
-    public <T> List<T> asList(String key, Class<T> clazz, List<T> defaultValue) {
-        List<T> value = asList(key, clazz);
+    public <T> List<T> getList(String key, Class<T> clazz, List<T> defaultValue) {
+        List<T> value = getList(key, clazz);
         return value == null ? defaultValue : value;
     }
 
     public Object[] getArray(String key) {
         try {
             Object value = getNode(key);
-            return Nodes.asArray(value);
+            return Nodes.toArray(value);
         } catch (Exception e) {
             throw new JsonException("Failed to get Object[] for key '" + key + "'", e);
         }
@@ -1376,16 +1361,16 @@ public class JsonObject extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public <T> T[] asArray(String key, Class<T> clazz) {
+    public <T> T[] getArray(String key, Class<T> clazz) {
         try {
             Object value = getNode(key);
-            return Nodes.asArray(value, clazz);
+            return Nodes.toArray(value, clazz);
         } catch (Exception e) {
             throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName() + "[]", e);
         }
     }
-    public <T> T[] asArray(String key, Class<T> clazz, T[] defaultValue) {
-        T[] value = asArray(key, clazz);
+    public <T> T[] getArray(String key, Class<T> clazz, T[] defaultValue) {
+        T[] value = getArray(key, clazz);
         return value == null ? defaultValue : value;
     }
 
