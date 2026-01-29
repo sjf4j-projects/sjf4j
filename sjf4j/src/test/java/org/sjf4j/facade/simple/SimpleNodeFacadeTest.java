@@ -7,9 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonException;
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.patch.JsonPatch;
+import org.sjf4j.patch.PatchOp;
+import org.sjf4j.path.JsonPointer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +25,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +33,38 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SuppressWarnings("unchecked")
 @Slf4j
 public class SimpleNodeFacadeTest {
+
+    private NodeFacade nodeFacade = new SimpleNodeFacade();
+
+    @Test
+    void objectClassPreservesShape() {
+        Object[] samples = {
+                1,
+                "x",
+                Arrays.asList(1,2),
+                Collections.singletonMap("a",1),
+                new JsonObject("x",1),
+                new Student()
+        };
+
+        Object r0 = nodeFacade.readNode(samples[0], Object.class);
+        assertEquals(Integer.class, r0.getClass());
+
+        Object r1 = nodeFacade.readNode(samples[1], Object.class);
+        assertEquals(String.class, r1.getClass());
+
+        Object r2 = nodeFacade.readNode(samples[2], Object.class);
+        assertInstanceOf(List.class, r2);
+
+        Object r3 = nodeFacade.readNode(samples[3], Object.class);
+        assertInstanceOf(Map.class, r3);
+
+        Object r4 = nodeFacade.readNode(samples[4], Object.class);
+        assertInstanceOf(JsonObject.class, r4);
+
+        Object r5 = nodeFacade.readNode(samples[5], Object.class);
+        assertInstanceOf(Student.class, r5);
+    }
 
     @Data
     @NoArgsConstructor
@@ -45,8 +82,6 @@ public class SimpleNodeFacadeTest {
         private List<User> friends;
         private Map<String, Role> roles;
     }
-
-    private NodeFacade nodeFacade = new SimpleNodeFacade();
 
     @Test
     public void testObject2Value1() {
@@ -317,6 +352,51 @@ public class SimpleNodeFacadeTest {
         assertEquals(false, nodeFacade.readNode(false, boolean.class));
     }
 
+    @Test
+    public void testObjectArrayPreserveType() {
+        int[] ints = new int[]{1, 2, 3};
+        Object outInts = nodeFacade.readNode(ints, Object.class);
+        assertTrue(outInts.getClass().isArray());
+        assertEquals(int.class, outInts.getClass().getComponentType());
+        assertArrayEquals(ints, (int[]) outInts);
+
+        Integer[] boxed = new Integer[]{1, 2, 3};
+        Object outBoxed = nodeFacade.readNode(boxed, Object.class);
+        assertTrue(outBoxed instanceof Integer[]);
+        assertArrayEquals(boxed, (Integer[]) outBoxed);
+    }
+
+    @Test
+    public void testObjectJsonArrayPreserveType() {
+        JsonArray input = new JsonArray(new Object[]{1, "a", true});
+        Object out = nodeFacade.readNode(input, Object.class);
+        assertEquals(JsonArray.class, out.getClass());
+        JsonArray outJa = (JsonArray) out;
+        assertEquals(3, outJa.size());
+        assertEquals(1, outJa.getNode(0));
+        assertEquals("a", outJa.getNode(1));
+        assertEquals(true, outJa.getNode(2));
+    }
+
+    @Test
+    public void testObjectJsonArraySubclassPreserveType() {
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOp("add", JsonPointer.compile("/a"), 1, null));
+
+        Object out = nodeFacade.readNode(patch, Object.class);
+        assertEquals(JsonPatch.class, out.getClass());
+        JsonPatch outPatch = (JsonPatch) out;
+        assertEquals(1, outPatch.size());
+        PatchOp op = (PatchOp) outPatch.getNode(0);
+        assertEquals("add", op.getOp());
+    }
+
+    @Test
+    public void testObject1() {
+        Map<String, Object> m = Collections.singletonMap("a", 1);
+        Object o = nodeFacade.readNode(m, Object.class);
+        assertInstanceOf(Map.class, o);
+    }
 
 
 }

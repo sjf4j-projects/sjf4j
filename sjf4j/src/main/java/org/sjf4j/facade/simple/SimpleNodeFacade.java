@@ -11,7 +11,7 @@ import org.sjf4j.node.Types;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,21 +20,21 @@ import java.util.Set;
 
 public class SimpleNodeFacade implements NodeFacade {
 
-
     @SuppressWarnings("unchecked")
     @Override
     public Object readNode(Object node, Type type) {
+        if (node == null) return null;
+
         Class<?> rawClazz = Types.rawClazz(type);
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            if (rawClazz.isInstance(node)) {
-                return vci.copy(node);
-            } else {
-                return vci.decode(node);
-            }
+            return rawClazz.isInstance(node) ? vci.copy(node) : vci.decode(node);
         }
 
-        if (node == null) return null;
+        // Object.class means deep copy
+        if (rawClazz == Object.class) {
+            return readAsDeepCopy(node);
+        }
 
         if (node instanceof CharSequence || node instanceof Character) {
             return readString(node.toString(), rawClazz);
@@ -44,9 +44,6 @@ public class SimpleNodeFacade implements NodeFacade {
         }
 
         if (node instanceof Number) {
-            if (rawClazz.isAssignableFrom(Number.class)) {
-                return node;
-            }
             if (Number.class.isAssignableFrom(rawClazz)) {
                 return Numbers.to((Number) node, rawClazz);
             }
@@ -55,389 +52,107 @@ public class SimpleNodeFacade implements NodeFacade {
         }
 
         if (node instanceof Boolean) {
-            if (rawClazz.isAssignableFrom(Boolean.class)) {
+            if (rawClazz == Boolean.class) {
                 return node;
             }
             throw new JsonException("Cannot deserialize Boolean value '" + node + "' to target type " + rawClazz.getName());
         }
 
-        // Map -> Map/JsonObject/JOJO/POJO
         if (node instanceof Map) {
-            Map<String, Object> oldMap = (Map<String, Object>) node;
-            if (Map.class.isAssignableFrom(rawClazz) || rawClazz == Object.class) {
-                Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldMap.size());
-                Type vType = Types.resolveTypeArgument(type, Map.class, 1);
-                for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                    Object vv = readNode(entry.getValue(), vType);
-                    map.put(entry.getKey(), vv);
-                }
-                return map;
-            }
-            if (rawClazz == JsonObject.class) {
-                JsonObject jo = new JsonObject();
-                for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                    Object vv = readNode(entry.getValue(), Object.class);
-                    jo.put(entry.getKey(), vv);
-                }
-                return jo;
-            }
-            if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-                JsonObject jojo = (JsonObject) pi.newInstance();
-                for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                    NodeRegistry.FieldInfo fi = fields.get(entry.getKey());
-                    if (fi != null) {
-                        Object vv = readNode(entry.getValue(), fi.getType());
-                        fi.invokeSetter(jojo, vv);
-                    } else {
-                        Object vv = readNode(entry.getValue(), Object.class);
-                        jojo.put(entry.getKey(), vv);
-                    }
-                }
-                return jojo;
-            }
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-            if (pi != null) {
-                Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-                Object pojo = pi.newInstance();
-                for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                    NodeRegistry.FieldInfo fi = fields.get(entry.getKey());
-                    if (fi != null) {
-                        Object vv = readNode(entry.getValue(), fi.getType());
-                        fi.invokeSetter(pojo, vv);
-                    }
-                }
-                return pojo;
-            }
-            throw new JsonException("Cannot deserialize Map value to target type " + rawClazz.getName());
+            return readFromMap((Map<String, Object>) node, rawClazz, type);
         }
 
-        // JsonObject -> Map/JsonObject/JOJO/POJO
         if (node instanceof JsonObject) {
-            JsonObject oldJo = (JsonObject) node;
-            if (Map.class.isAssignableFrom(rawClazz)) {
-                Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldJo.size());
-                Type vType = Types.resolveTypeArgument(type, Map.class, 1);
-                oldJo.forEach((k, v) -> {
-                    Object vv = readNode(v, vType);
-                    map.put(k, vv);
-                });
-                return map;
-            }
-            if (rawClazz == JsonObject.class || (rawClazz == Object.class && node.getClass() == JsonObject.class)) {
-                JsonObject jo = new JsonObject();
-                oldJo.forEach((k, v) -> {
-                    Object vv = readNode(v, Object.class);
-                    jo.put(k, vv);
-                });
-                return jo;
-            }
-            if (JsonObject.class.isAssignableFrom(rawClazz) || rawClazz == Object.class) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(
-                        rawClazz == Object.class ? node.getClass() : rawClazz);
-                Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-                JsonObject jojo = (JsonObject) pi.newInstance();
-                oldJo.forEach((k, v) -> {
-                    NodeRegistry.FieldInfo fi = fields.get(k);
-                    if (fi != null) {
-                        Object vv = readNode(v, fi.getType());
-                        fi.invokeSetter(jojo, vv);
-                    } else {
-                        Object vv = readNode(v, Object.class);
-                        jojo.put(k, vv);
-                    }
-                });
-                return jojo;
-            }
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-            if (pi != null) {
-                Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-                Object pojo = pi.newInstance();
-                oldJo.forEach((k, v) -> {
-                    NodeRegistry.FieldInfo fi = fields.get(k);
-                    if (fi != null) {
-                        Object vv = readNode(v, fi.getType());
-                        fi.invokeSetter(pojo, vv);
-                    }
-                });
-                return pojo;
-            }
-            throw new JsonException("Cannot deserialize JsonObject value to target type " + rawClazz.getName());
+            return readFromJsonObject((JsonObject) node, rawClazz, type);
         }
 
-        // POJO -> Map/JsonObject/JOJO/POJO
+        if (node instanceof List) {
+            return readFromList((List<Object>) node, rawClazz, type);
+        }
+
+        if (node instanceof JsonArray) {
+            return readFromJsonArray((JsonArray) node, rawClazz, type);
+        }
+
+        if (node.getClass().isArray()) {
+            return readFromArray(node, rawClazz, type);
+        }
+
+        if (node instanceof Set) {
+            return readFromSet((Set<Object>) node, rawClazz, type);
+        }
+
         NodeRegistry.PojoInfo oldPi = NodeRegistry.registerPojo(node.getClass());
         if (oldPi != null) {
-            Map<String, NodeRegistry.FieldInfo> oldFields = oldPi.getFields();
-            if (Map.class.isAssignableFrom(rawClazz)) {
-                Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldFields.size());
-                Type vType = Types.resolveTypeArgument(type, Map.class, 1);
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                    NodeRegistry.FieldInfo fi = entry.getValue();
-                    Object v = fi.invokeGetter(node);
-                    Object vv = readNode(v, vType);
-                    map.put(entry.getKey(), vv);
-                }
-                return map;
-            }
-            if (rawClazz == JsonObject.class) {
-                JsonObject jo = new JsonObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                    NodeRegistry.FieldInfo fi = entry.getValue();
-                    Object v = fi.invokeGetter(node);
-                    Object vv = readNode(v, Object.class);
-                    jo.put(entry.getKey(), vv);
-                }
-                return jo;
-            }
-            if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                NodeRegistry.PojoInfo newPi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                Map<String, NodeRegistry.FieldInfo> newFields = newPi.getFields();
-                JsonObject jojo = (JsonObject) newPi.newInstance();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                    NodeRegistry.FieldInfo oldFi = entry.getValue();
-                    Object v = oldFi.invokeGetter(node);
-                    NodeRegistry.FieldInfo newFi = newFields.get(entry.getKey());
-                    if (newFi != null) {
-                        Object vv = readNode(v, newFi.getType());
-                        newFi.invokeSetter(jojo, vv);
-                    } else {
-                        Object vv = readNode(v, Object.class);
-                        jojo.put(entry.getKey(), vv);
-                    }
-                }
-                return jojo;
-            }
-            NodeRegistry.PojoInfo newPi = NodeRegistry.registerPojo(rawClazz);
-            if (newPi != null || rawClazz == Object.class) {
-                newPi = oldPi;
-                Map<String, NodeRegistry.FieldInfo> newFields = newPi.getFields();
-                Object pojo = newPi.newInstance();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                    NodeRegistry.FieldInfo newFi = newFields.get(entry.getKey());
-                    if (newFi != null) {
-                        NodeRegistry.FieldInfo oldFi = entry.getValue();
-                        Object v = oldFi.invokeGetter(node);
-                        Object vv = readNode(v, newFi.getType());
-                        newFi.invokeSetter(pojo, vv);
-                    }
-                }
-                return pojo;
-            }
-            throw new JsonException("Cannot deserialize POJO value to target type " + rawClazz.getName());
-        }
-
-        // List -> List/JsonArray/JAJO/Array/Set
-        if (node instanceof List) {
-            List<Object> oldList = (List<Object>) node;
-            if (List.class.isAssignableFrom(rawClazz) || rawClazz == Object.class) {
-                Type vType = Types.resolveTypeArgument(type, List.class, 0);
-                List<Object> list = Sjf4jConfig.global().listSupplier.create(oldList.size());
-                for (Object v : oldList) {
-                    Object vv = readNode(v, vType);
-                    list.add(vv);
-                }
-                return list;
-            }
-            if (rawClazz == JsonArray.class) {
-                JsonArray ja = new JsonArray();
-                for (Object v : oldList) {
-                    Object vv = readNode(v, Object.class);
-                    ja.add(vv);
-                }
-                return ja;
-            }
-            if (JsonArray.class.isAssignableFrom(rawClazz)) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                JsonArray jajo = (JsonArray) pi.newInstance();
-                for (Object v : oldList) {
-                    Object vv = readNode(v, Object.class);
-                    jajo.add(vv);
-                }
-                return jajo;
-            }
-            if (rawClazz.isArray()) {
-                Class<?> vType = rawClazz.getComponentType();
-                Object array = Array.newInstance(vType, oldList.size());
-                int i = 0;
-                for (Object v : oldList) {
-                    Object vv = readNode(v, vType);
-                    Array.set(array, i++, vv);
-                }
-                return array;
-            }
-            if (Set.class.isAssignableFrom(rawClazz)) {
-                Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-                Set<Object> set = new LinkedHashSet<>();
-                for (Object v : oldList) {
-                    Object vv = readNode(v, vType);
-                    set.add(vv);
-                }
-                return set;
-            }
-            throw new JsonException("Cannot deserialize List value to target type " + rawClazz.getName());
-        }
-
-        // JsonArray -> List/JsonArray/JAJO/Array/Set
-        if (node instanceof JsonArray) {
-            JsonArray oldJa = (JsonArray) node;
-            if (List.class.isAssignableFrom(rawClazz)) {
-                Type vType = Types.resolveTypeArgument(type, List.class, 0);
-                List<Object> list = Sjf4jConfig.global().listSupplier.create(oldJa.size());
-                oldJa.forEach(v -> {
-                    Object vv = readNode(v, vType);
-                    list.add(vv);
-                });
-                return list;
-            }
-            if (rawClazz == JsonArray.class || (rawClazz == Object.class && node.getClass() == JsonArray.class)) {
-                JsonArray ja = new JsonArray();
-                oldJa.forEach(v -> {
-                    Object vv = readNode(v, Object.class);
-                    ja.add(vv);
-                });
-                return ja;
-            }
-            if (JsonArray.class.isAssignableFrom(rawClazz) || rawClazz == Object.class) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                JsonArray jajo = (JsonArray) pi.newInstance();
-                oldJa.forEach(v -> {
-                    Object vv = readNode(v, Object.class);
-                    jajo.add(vv);
-                });
-                return jajo;
-            }
-            if (rawClazz.isArray()) {
-                Class<?> vType = rawClazz.getComponentType();
-                Object array = Array.newInstance(vType, oldJa.size());
-                oldJa.forEach((i, v) -> {
-                    Object vv = readNode(v, vType);
-                    Array.set(array, i, vv);
-                });
-                return array;
-            }
-            if (Set.class.isAssignableFrom(rawClazz)) {
-                Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-                Set<Object> set = new LinkedHashSet<>();
-                oldJa.forEach(v -> {
-                    Object vv = readNode(v, vType);
-                    set.add(vv);
-                });
-                return set;
-            }
-            throw new JsonException("Cannot deserialize JsonArray value to target type " + rawClazz.getName());
-        }
-
-        // Array -> List/JsonArray/JAJO/Array/Set
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            if (List.class.isAssignableFrom(rawClazz)) {
-                Type vType = Types.resolveTypeArgument(type, List.class, 0);
-                List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
-                for (int i = 0; i < len; i++) {
-                    Object v = Array.get(node, i);
-                    Object vv = readNode(v, vType);
-                    list.add(vv);
-                }
-                return list;
-            }
-            if (rawClazz == JsonArray.class) {
-                JsonArray ja = new JsonArray();
-                for (int i = 0; i < len; i++) {
-                    Object v = Array.get(node, i);
-                    Object vv = readNode(v, Object.class);
-                    ja.add(vv);
-                }
-                return ja;
-            }
-            if (JsonArray.class.isAssignableFrom(rawClazz)) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                JsonArray jajo = (JsonArray) pi.newInstance();
-                for (int i = 0; i < len; i++) {
-                    Object v = Array.get(node, i);
-                    Object vv = readNode(v, Object.class);
-                    jajo.add(vv);
-                }
-                return jajo;
-            }
-            if (rawClazz.isArray() || rawClazz == Object.class) {
-                Class<?> vType = rawClazz.getComponentType();
-                Object array = Array.newInstance(vType, len);
-                for (int i = 0; i < len; i++) {
-                    Object v = Array.get(node, i);
-                    Object vv = readNode(v, vType);
-                    Array.set(array, i, vv);
-                }
-                return array;
-            }
-            if (Set.class.isAssignableFrom(rawClazz)) {
-                Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-                Set<Object> set = new LinkedHashSet<>();
-                for (int i = 0; i < len; i++) {
-                    Object v = Array.get(node, i);
-                    Object vv = readNode(v, vType);
-                    set.add(vv);
-                }
-                return set;
-            }
-            throw new JsonException("Cannot deserialize Array value to target type " + rawClazz.getName());
-        }
-
-        // Set -> List/JsonArray/JAJO/Array/Set
-        if (node instanceof Set) {
-            Set<Object> oldSet = (Set<Object>) node;
-            if (List.class.isAssignableFrom(rawClazz)) {
-                Type vType = Types.resolveTypeArgument(type, List.class, 0);
-                List<Object> list = Sjf4jConfig.global().listSupplier.create(oldSet.size());
-                for (Object v : oldSet) {
-                    Object vv = readNode(v, vType);
-                    list.add(vv);
-                }
-                return list;
-            }
-            if (rawClazz == JsonArray.class) {
-                JsonArray ja = new JsonArray();
-                for (Object v : oldSet) {
-                    Object vv = readNode(v, Object.class);
-                    ja.add(vv);
-                }
-                return ja;
-            }
-            if (JsonArray.class.isAssignableFrom(rawClazz)) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                JsonArray jajo = (JsonArray) pi.newInstance();
-                for (Object v : oldSet) {
-                    Object vv = readNode(v, Object.class);
-                    jajo.add(vv);
-                }
-                return jajo;
-            }
-            if (rawClazz.isArray()) {
-                Class<?> vType = rawClazz.getComponentType();
-                Object array = Array.newInstance(vType, oldSet.size());
-                int i = 0;
-                for (Object v : oldSet) {
-                    Object vv = readNode(v, vType);
-                    Array.set(array, i++, vv);
-                }
-                return array;
-            }
-            if (Set.class.isAssignableFrom(rawClazz) || rawClazz == Object.class) {
-                Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-                Set<Object> set = new LinkedHashSet<>(oldSet.size());
-                for (Object v : oldSet) {
-                    Object vv = readNode(v, vType);
-                    set.add(vv);
-                }
-                return set;
-            }
-            throw new JsonException("Cannot deserialize Set value to target type " + rawClazz.getName());
+            return readFromPojo(node, oldPi, rawClazz, type);
         }
 
         throw new JsonException("Cannot deserialize value of type '" + node.getClass().getName() +
                 "' to target type " + type);
     }
+
+    // Object -> deep copied Object
+    @SuppressWarnings("unchecked")
+    private Object readAsDeepCopy(Object node) {
+        if (node == null) return null;
+
+        Class<?> nodeClazz = node.getClass();
+        if (node instanceof Map) {
+            Map<String, Object> srcMap = (Map<String, Object>) node;
+            Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(srcMap.size());
+            srcMap.forEach((k, v) -> newMap.put(k, readNode(v, Object.class)));
+            return newMap;
+        }
+        if (node instanceof JsonObject) {
+            JsonObject srcJo = (JsonObject) node;
+            JsonObject newJo = nodeClazz == JsonObject.class ? new JsonObject()
+                    : (JsonObject) NodeRegistry.registerPojoOrElseThrow(nodeClazz).newInstance();
+            srcJo.forEach((k, v) -> newJo.put(k, readNode(v, Object.class)));
+            return newJo;
+        }
+        if (node instanceof List) {
+            List<Object> srcList = (List<Object>) node;
+            List<Object> newList = Sjf4jConfig.global().listSupplier.create(srcList.size());
+            srcList.forEach(v -> newList.add(readNode(v, Object.class)));
+            return newList;
+        }
+        if (node instanceof JsonArray) {
+            JsonArray srcJa = (JsonArray) node;
+            JsonArray newJa = nodeClazz == JsonArray.class ? new JsonArray()
+                    : (JsonArray) NodeRegistry.registerPojoOrElseThrow(nodeClazz).newInstance();
+            srcJa.forEach(v -> newJa.add(readNode(v, Object.class)));
+            return newJa;
+        }
+        if (nodeClazz.isArray()) {
+            int len = Array.getLength(node);
+            Object newArr = Array.newInstance(nodeClazz.getComponentType(), len);
+            for (int i = 0; i < len; i++) {
+                Object vv = readNode(Array.get(node, i), Object.class);
+                Array.set(newArr, i, vv);
+            }
+            return newArr;
+        }
+        if (node instanceof Set) {
+            Set<Object> srcSet = (Set<Object>) node;
+            Set<Object> newSet = new LinkedHashSet<>(srcSet.size());
+            srcSet.forEach(v -> newSet.add(readNode(v, Object.class)));
+            return newSet;
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(nodeClazz);
+        if (pi != null) {
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+            Object pojo = pi.newInstance();
+            fields.forEach((k, fi) -> {
+                Object v = fi.invokeGetter(node);
+                Object vv = readNode(v, Object.class);
+                fi.invokeSetter(pojo, vv);
+            });
+            return pojo;
+        }
+        return node;
+    }
+
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Object readString(String s, Class<?> rawClazz) {
@@ -451,76 +166,316 @@ public class SimpleNodeFacade implements NodeFacade {
         throw new JsonException("Cannot deserialize String value '" + s + "' to target type " + rawClazz.getName());
     }
 
-//    private Object readNumber(Number n, Class<?> rawClazz) {
-//        if (Number.class.isAssignableFrom(rawClazz)) {
-//            return Numbers.to(n, rawClazz);
-//        }
-//        throw new JsonException("Cannot deserialize Number value '" + n + "' (" + n.getClass().getName() +
-//                ") to target type " + rawClazz.getName());
-//    }
-//
-//    private Object readBoolean(Boolean b, Class<?> rawClazz) {
-//        if (rawClazz == Boolean.class) {
-//            return b;
-//        }
-//        throw new JsonException("Cannot deserialize Boolean value '" + b + "' to target type " + rawClazz.getName());
-//    }
+    // Map -> Map/JsonObject/JOJO/POJO
+    private Object readFromMap(Map<String, Object> oldMap, Class<?> rawClazz, Type type) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldMap.size());
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
+            for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
+                Object vv = readNode(entry.getValue(), vt);
+                map.put(entry.getKey(), vv);
+            }
+            return map;
+        }
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = new JsonObject();
+            for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
+                Object vv = readNode(entry.getValue(), Object.class);
+                jo.put(entry.getKey(), vv);
+            }
+            return jo;
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+            Object pojo = pi.newInstance();
+            JsonObject jojo = pojo instanceof JsonObject ? (JsonObject) pojo : null;
+            for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
+                NodeRegistry.FieldInfo fi = fields.get(entry.getKey());
+                if (fi != null) {
+                    Object vv = readNode(entry.getValue(), fi.getType());
+                    fi.invokeSetter(pojo, vv);
+                } else if (jojo != null) {
+                    jojo.put(entry.getKey(), readNode(entry.getValue(), Object.class));
+                }
+            }
+            return pojo;
+        }
+        throw new JsonException("Cannot deserialize Map value to target type " + rawClazz.getName());
+    }
 
+    // JsonObject -> Map/JsonObject/JOJO/POJO
+    private Object readFromJsonObject(JsonObject oldJo, Class<?> rawClazz, Type type) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldJo.size());
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
+            oldJo.forEach((k, v) -> {
+                Object vv = readNode(v, vt);
+                map.put(k, vv);
+            });
+            return map;
+        }
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = new JsonObject();
+            oldJo.forEach((k, v) -> {
+                Object vv = readNode(v, Object.class);
+                jo.put(k, vv);
+            });
+            return jo;
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+            Object pojo = pi.newInstance();
+            JsonObject jojo = pojo instanceof JsonObject ? (JsonObject) pojo : null;
+            oldJo.forEach((k, v) -> {
+                NodeRegistry.FieldInfo fi = fields.get(k);
+                if (fi != null) {
+                    Object vv = readNode(v, fi.getType());
+                    fi.invokeSetter(pojo, vv);
+                } else if (jojo != null) {
+                    jojo.put(k, readNode(v, Object.class));
+                }
+            });
+            return pojo;
+        }
+        throw new JsonException("Cannot deserialize JsonObject value to target type " + rawClazz.getName());
+    }
 
-//    private Object readObject(Object container, Class<?> rawClazz, Type type, boolean deepCopy) {
-//        if (rawClazz == Map.class || (rawClazz == Object.class && container instanceof Map)) {
-//            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
-//            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-//            Nodes.visitObject(container, (k, v) -> {
-//                Object vv = readNode(v, valueType);
-//                map.put(k, vv);
-//            });
-//            return map;
-//        }
-//
-//        if (rawClazz == JsonObject.class) {
-//            JsonObject jo = new JsonObject();
-//            Nodes.visitObject(container, (k, v) -> {
-//                Object vv = readNode(v, Object.class);
-//                jo.put(k, vv);
-//            });
-//            return jo;
-//        }
-//
-//        if (JsonObject.class.isAssignableFrom(rawClazz)) {
-//            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-//            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-//            JsonObject jojo = (JsonObject) pi.newInstance();
-//            Nodes.visitObject(container, (k, v) -> {
-//                NodeRegistry.FieldInfo fi = fields.get(k);
-//                if (fi != null) {
-//                    Object vv = readNode(v, fi.getType());
-//                    fi.invokeSetter(jojo, vv);
-//                } else {
-//                    Object vv = readNode(v, Object.class);
-//                    jojo.put(k, vv);
-//                }
-//            });
-//            return jojo;
-//        }
-//
-//        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-//        if (pi != null) {
-//            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-//            Object pojo = pi.newInstance();
-//            Nodes.visitObject(container, (k, v) -> {
-//                NodeRegistry.FieldInfo fi = fields.get(k);
-//                if (fi != null) {
-//                    Object vv = readNode(v, fi.getType());
-//                    fi.invokeSetter(pojo, vv);
-//                }
-//            });
-//            return pojo;
-//        }
-//
-//        throw new JsonException("Cannot deserialize Object value to target type " + rawClazz.getName());
-//    }
+    // List -> List/JsonArray/JAJO/Array/Set
+    private Object readFromList(List<?> oldList, Class<?> rawClazz, Type type) {
+        if (List.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(oldList.size());
+            for (Object v : oldList) {
+                Object vv = readNode(v, vt);
+                list.add(vv);
+            }
+            return list;
+        }
+        if (rawClazz == JsonArray.class) {
+            JsonArray ja = new JsonArray();
+            for (Object v : oldList) {
+                Object vv = readNode(v, Object.class);
+                ja.add(vv);
+            }
+            return ja;
+        }
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray jajo = (JsonArray) pi.newInstance();
+            for (Object v : oldList) {
+                Object vv = readNode(v, Object.class);
+                jajo.add(vv);
+            }
+            return jajo;
+        }
+        if (rawClazz.isArray()) {
+            Class<?> vType = rawClazz.getComponentType();
+            Object array = Array.newInstance(vType, oldList.size());
+            int i = 0;
+            for (Object v : oldList) {
+                Object vv = readNode(v, vType);
+                Array.set(array, i++, vv);
+            }
+            return array;
+        }
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type vType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            for (Object v : oldList) {
+                Object vv = readNode(v, vType);
+                set.add(vv);
+            }
+            return set;
+        }
+        throw new JsonException("Cannot deserialize List value to target type " + rawClazz.getName());
+    }
 
+    // JsonArray -> List/JsonArray/JAJO/Array/Set
+    private Object readFromJsonArray(JsonArray oldJa, Class<?> rawClazz, Type type) {
+        if (List.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(oldJa.size());
+            oldJa.forEach(v -> list.add(readNode(v, vt)));
+            return list;
+        }
+        if (rawClazz == JsonArray.class) {
+            JsonArray ja = new JsonArray();
+            oldJa.forEach(v -> ja.add(readNode(v, Object.class)));
+            return ja;
+        }
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray jajo = (JsonArray) pi.newInstance();
+            oldJa.forEach(v -> jajo.add(readNode(v, Object.class)));
+            return jajo;
+        }
+        if (rawClazz.isArray()) {
+            Class<?> vt = rawClazz.getComponentType();
+            Object array = Array.newInstance(vt, oldJa.size());
+            oldJa.forEach((i, v) -> Array.set(array, i, readNode(v, vt)));
+            return array;
+        }
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            oldJa.forEach(v -> set.add(readNode(v, vt)));
+            return set;
+        }
+        throw new JsonException("Cannot deserialize JsonArray value to target type " + rawClazz.getName());
+    }
+
+    // Array -> List/JsonArray/JAJO/Array/Set
+    private Object readFromArray(Object node, Class<?> rawClazz, Type type) {
+        int len = Array.getLength(node);
+        if (List.class.isAssignableFrom(rawClazz)) {
+            Type vType = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
+            for (int i = 0; i < len; i++) {
+                Object v = Array.get(node, i);
+                Object vv = readNode(v, vType);
+                list.add(vv);
+            }
+            return list;
+        }
+        if (rawClazz == JsonArray.class) {
+            JsonArray ja = new JsonArray();
+            for (int i = 0; i < len; i++) {
+                Object v = Array.get(node, i);
+                Object vv = readNode(v, Object.class);
+                ja.add(vv);
+            }
+            return ja;
+        }
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray jajo = (JsonArray) pi.newInstance();
+            for (int i = 0; i < len; i++) {
+                Object v = Array.get(node, i);
+                Object vv = readNode(v, Object.class);
+                jajo.add(vv);
+            }
+            return jajo;
+        }
+        if (rawClazz.isArray()) {
+            Class<?> vType = rawClazz == Object.class
+                    ? node.getClass().getComponentType()
+                    : rawClazz.getComponentType();
+            Object array = Array.newInstance(vType, len);
+            for (int i = 0; i < len; i++) {
+                Object v = Array.get(node, i);
+                Object vv = readNode(v, vType);
+                Array.set(array, i, vv);
+            }
+            return array;
+        }
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type vType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>();
+            for (int i = 0; i < len; i++) {
+                Object v = Array.get(node, i);
+                Object vv = readNode(v, vType);
+                set.add(vv);
+            }
+            return set;
+        }
+        throw new JsonException("Cannot deserialize Array value to target type " + rawClazz.getName());
+    }
+
+    // Set -> List/JsonArray/JAJO/Array/Set
+    private Object readFromSet(Set<Object> oldSet, Class<?> rawClazz, Type type) {
+        if (List.class.isAssignableFrom(rawClazz)) {
+            Type vType = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(oldSet.size());
+            for (Object v : oldSet) {
+                Object vv = readNode(v, vType);
+                list.add(vv);
+            }
+            return list;
+        }
+        if (rawClazz == JsonArray.class) {
+            JsonArray ja = new JsonArray();
+            for (Object v : oldSet) {
+                Object vv = readNode(v, Object.class);
+                ja.add(vv);
+            }
+            return ja;
+        }
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+            JsonArray jajo = (JsonArray) pi.newInstance();
+            for (Object v : oldSet) {
+                Object vv = readNode(v, Object.class);
+                jajo.add(vv);
+            }
+            return jajo;
+        }
+        if (rawClazz.isArray()) {
+            Class<?> vType = rawClazz.getComponentType();
+            Object array = Array.newInstance(vType, oldSet.size());
+            int i = 0;
+            for (Object v : oldSet) {
+                Object vv = readNode(v, vType);
+                Array.set(array, i++, vv);
+            }
+            return array;
+        }
+        if (Set.class.isAssignableFrom(rawClazz)) {
+            Type vType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = new LinkedHashSet<>(oldSet.size());
+            for (Object v : oldSet) {
+                Object vv = readNode(v, vType);
+                set.add(vv);
+            }
+            return set;
+        }
+        throw new JsonException("Cannot deserialize Set value to target type " + rawClazz.getName());
+    }
+
+    // POJO -> Map/JsonObject/JOJO/POJO
+    private Object readFromPojo(Object node, NodeRegistry.PojoInfo oldPi, Class<?> rawClazz, Type type) {
+        Map<String, NodeRegistry.FieldInfo> oldFields = oldPi.getFields();
+        if (Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldFields.size());
+            Type vType = Types.resolveTypeArgument(type, Map.class, 1);
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                Object v = fi.invokeGetter(node);
+                Object vv = readNode(v, vType);
+                map.put(entry.getKey(), vv);
+            }
+            return map;
+        }
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = new JsonObject();
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                Object v = fi.invokeGetter(node);
+                Object vv = readNode(v, Object.class);
+                jo.put(entry.getKey(), vv);
+            }
+            return jo;
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+            Object pojo = pi.newInstance();
+            JsonObject jojo = pojo instanceof JsonObject ? (JsonObject) pojo : null;
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
+                Object v = entry.getValue().invokeGetter(node);
+                NodeRegistry.FieldInfo fi = fields.get(entry.getKey());
+                if (fi != null) {
+                    Object vv = readNode(v, fi.getType());
+                    fi.invokeSetter(pojo, vv);
+                } else if (jojo != null) {
+                    jojo.put(entry.getKey(), readNode(v, Object.class));
+                }
+            }
+            return pojo;
+        }
+        throw new JsonException("Cannot deserialize POJO value to target type " + rawClazz.getName());
+    }
 
     /// Write
 
