@@ -104,10 +104,17 @@ public class JojoTest {
     }
 
     @Test
+    public void testBadField() {
+        Person p = new Person();
+        p.setName("Alice");
+        assertThrows(JsonException.class, () -> p.put("age", 18.99));
+    }
+
+    @Test
     public void testBasicFields() {
         Person p = new Person();
         p.setName("Alice");
-        p.put("age", 18.99);
+        p.put("age", 18);
 
         assertEquals("Alice", p.getString("name"));
         assertEquals(18, p.getInteger("age"));

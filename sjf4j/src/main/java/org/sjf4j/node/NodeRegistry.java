@@ -452,12 +452,12 @@ public final class NodeRegistry {
             if (setter == null) {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             }
-            if (value instanceof Number && type instanceof Class) {
-                Class<?> boxed = Types.box((Class<?>) type);
-                if (Number.class.isAssignableFrom(boxed)) {
-                    value = Numbers.to((Number) value, boxed);
-                }
-            }
+//            if (value instanceof Number && type instanceof Class) {
+//                Class<?> boxed = Types.box((Class<?>) type);
+//                if (Number.class.isAssignableFrom(boxed)) {
+//                    value = Numbers.to((Number) value, boxed);
+//                }
+//            }
 
             if (lambdaSetter != null) {
                 lambdaSetter.accept(receiver, value);
@@ -467,7 +467,7 @@ public final class NodeRegistry {
                 setter.invoke(receiver, value);
             } catch (Throwable e) {
                 throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +
-                        "' with value " + (value == null ? "null" : value.getClass()), e);
+                        "' with value '" + Types.name(value) + "' (node type: " + Types.name(receiver)+ ")", e);
             }
         }
 

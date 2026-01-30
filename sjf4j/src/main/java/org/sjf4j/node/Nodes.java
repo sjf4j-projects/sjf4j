@@ -318,8 +318,10 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Map");
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> Map<String, T> toMap(Object node, Class<T> clazz) {
         if (node == null) return null;
+        if (clazz == Object.class && node instanceof Map) return (Map<String, T>) node;
         Map<String, T> map = Sjf4jConfig.global().mapSupplier.create();
         visitObject(node, (k, v) -> map.put(k, to(v, clazz)));
         return map;
@@ -354,8 +356,10 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to List");
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> List<T> toList(Object node, Class<T> clazz) {
         if (node == null) return null;
+        if (clazz == Object.class && node instanceof List) return (List<T>) node;
         List<T> list = Sjf4jConfig.global().listSupplier.create();
         visitArray(node, (i, v) -> list.add(to(v, clazz)));
         return list;
@@ -405,8 +409,10 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Set");
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> Set<T> toSet(Object node, Class<T> clazz) {
         if (node == null) return null;
+        if (clazz == Object.class && node instanceof Set) return (Set<T>) node;
         Set<T> set = Sjf4jConfig.global().setSupplier.create();
         visitArray(node, (i, v) -> set.add(to(v, clazz)));
         return set;
@@ -444,71 +450,80 @@ public class Nodes {
         Object pojo = pi.newInstance();
         visitObject(node, (k, v) -> {
             NodeRegistry.FieldInfo fi = fields.get(k);
-            if (fi != null) fi.invokeSetter(pojo, v);
+            if (fi != null) {
+                Object vv = _to(v, fi.getType(), false);
+                fi.invokeSetter(pojo, vv);
+            }
         });
         return (T) pojo;
     }
 
-
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static <T> T to(Object node, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz is null");
+    private static Object _to(Object node, Type type, boolean cross) {
         if (node == null) return null;
 
-        Class<?> boxed = Types.box(clazz);
-        if (boxed.isInstance(node)) return (T) node;
+        Class<?> clazz = Types.rawClazz(type);
+        if (clazz.isInstance(node)) return node;
 
-        if (boxed == String.class) return (T) toString(node);
-        if (boxed == Character.class) return (T) toCharacter(node);
-        if (boxed.isEnum()) return (T) toEnum(node, (Class<Enum>) boxed);
-        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(toNumber(node), boxed);
-        if (boxed == Boolean.class) return (T) toBoolean(node);
+        if (clazz == String.class) {
+            if (cross) return asString(node);
+            else return toString(node);
+        }
+        if (clazz == Character.class) {
+            if (cross) return asCharacter(node);
+            else return toCharacter(node);
+        }
+        if (clazz.isEnum()) {
+            if (cross) return asEnum(node, (Class<Enum>) clazz);
+            return toEnum(node, (Class<Enum>) clazz);
+        }
+        if (Number.class.isAssignableFrom(clazz)) {
+            if (cross) return Numbers.to(asNumber(node), clazz);
+            else return Numbers.to(toNumber(node), clazz);
+        }
+        if (clazz == Boolean.class) {
+            if (cross) return asBoolean(node);
+            else return toBoolean(node);
+        }
 
-        if (Map.class.isAssignableFrom(boxed)) return (T) toMap(node);
-        if (boxed == JsonObject.class) return (T) toJsonObject(node);
-        if (JsonObject.class.isAssignableFrom(boxed)) return (T) toJojo(node, boxed);
+        if (Map.class.isAssignableFrom(clazz)) {
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
+            Class<?> vc = Types.rawClazz(vt);
+            return toMap(node, vc);
+        }
+        if (clazz == JsonObject.class) return toJsonObject(node);
+        if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
 
-        if (List.class.isAssignableFrom(boxed)) return (T) toList(node);
-        if (boxed == JsonArray.class) return (T) toJsonArray(node);
-        if (JsonArray.class.isAssignableFrom(boxed)) return (T) toJajo(node, boxed);
-        if (boxed.isArray()) return (T) toArray(node, boxed.getComponentType());
-        if (Set.class.isAssignableFrom(boxed)) return (T) toSet(node);
+        if (List.class.isAssignableFrom(clazz)) {
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            Class<?> vc = Types.rawClazz(vt);
+            return toList(node, vc);
+        }
+        if (clazz == JsonArray.class) return toJsonArray(node);
+        if (JsonArray.class.isAssignableFrom(clazz)) return toJajo(node, clazz);
+        if (clazz.isArray()) return toArray(node, clazz.getComponentType());
+        if (Set.class.isAssignableFrom(clazz)) {
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Class<?> vc = Types.rawClazz(vt);
+            return toSet(node, vc);
+        }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(boxed);
-        if (pi != null) return (T) toPojo(node, boxed);
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
+        if (pi != null) return toPojo(node, clazz);
 
-        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + boxed.getName());
+        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + clazz.getName());
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T to(Object node, Class<T> clazz) {
+        Objects.requireNonNull(clazz, "clazz is null");
+        return (T) _to(node, clazz, false);
+    }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     public static <T> T as(Object node, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz is null");
-        if (node == null) return null;
-
-        Class<?> boxed = Types.box(clazz);
-        if (boxed.isInstance(node)) return (T) node;
-
-        if (boxed == String.class) return (T) asString(node);
-        if (boxed == Character.class) return (T) asCharacter(node);
-        if (boxed.isEnum()) return (T) toEnum(node, (Class<Enum>) boxed);
-        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(toNumber(node), boxed);
-        if (boxed == Boolean.class) return (T) asBoolean(node);
-
-        if (Map.class.isAssignableFrom(boxed)) return (T) toMap(node);
-        if (boxed == JsonObject.class) return (T) toJsonObject(node);
-        if (JsonObject.class.isAssignableFrom(boxed)) return (T) toJojo(node, boxed);
-
-        if (List.class.isAssignableFrom(boxed)) return (T) toList(node);
-        if (boxed == JsonArray.class) return (T) toJsonArray(node);
-        if (JsonArray.class.isAssignableFrom(boxed)) return (T) toJajo(node, boxed);
-        if (boxed.isArray()) return (T) toArray(node, boxed.getComponentType());
-        if (Set.class.isAssignableFrom(boxed)) return (T) toSet(node);
-
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(boxed);
-        if (pi != null) return (T) toPojo(node, boxed);
-
-        throw new JsonException("Type mismatch: as(" + boxed.getName() + ") not supported for " + Types.name(node));
+        return (T) _to(node, clazz, true);
     }
 
 
@@ -1073,7 +1088,7 @@ public class Nodes {
             return ((JsonArray) container).iterator();
         }
         if (container.getClass().isArray()) {
-            return arrayIterator(container);
+            return _arrayIterator(container);
         }
         if (container instanceof Set) {
             return ((Set<Object>) container).iterator();
@@ -1081,7 +1096,7 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
-    private static Iterator<Object> arrayIterator(Object array) {
+    private static Iterator<Object> _arrayIterator(Object array) {
         int len = Array.getLength(array);
         return new Iterator<Object>() {
             int i = 0;
