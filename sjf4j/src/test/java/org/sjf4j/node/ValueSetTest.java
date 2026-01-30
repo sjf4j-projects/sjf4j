@@ -22,17 +22,32 @@ public class ValueSetTest {
         set.add("a");
         set.add("b");
 
-        assertEquals(NodeType.VALUE_SET, NodeType.of(set));
+        assertEquals(NodeType.ARRAY_SET, NodeType.of(set));
     }
 
     @Test
-    public void testSetIsNotArrayContainer() {
+    public void testSetIsArrayContainer1() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
 
-        assertThrows(JsonException.class, () -> Nodes.sizeInArray(set));
-        assertThrows(JsonException.class, () -> Nodes.visitArray(set, (i, v) -> {}));
-        assertThrows(JsonException.class, () -> Nodes.getInArray(set, 0));
+        assertEquals(1, Nodes.sizeInArray(set));
+        Nodes.visitArray(set, (i, v) -> {
+            assertEquals("a", v);
+        });
+        assertEquals("a", Nodes.getInArray(set, 0));
+    }
+
+    @Test
+    public void testSetIsArrayContainer2() {
+        Set<String> set = new LinkedHashSet<>();
+        set.add("a");
+
+        Nodes.addInArray(set, "b");
+        assertEquals(2, Nodes.sizeInArray(set));
+        assertEquals("[\"a\",\"b\"]", Sjf4j.toJsonString(set));
+
+        Nodes.removeInArray(set, 0);
+        assertEquals("S[b]", Nodes.inspect(set));
     }
 
     @Test

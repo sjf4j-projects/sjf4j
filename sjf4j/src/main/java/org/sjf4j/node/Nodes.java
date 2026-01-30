@@ -650,7 +650,7 @@ public class Nodes {
                 System.arraycopy(node, 0, arr, 0, len);
                 return (T) arr;
             }
-            case VALUE_SET: {
+            case ARRAY_SET: {
                 return (T) Sjf4jConfig.global().setSupplier.create((Set<Object>) node);
             }
             case VALUE_REGISTERED: {
@@ -802,7 +802,7 @@ public class Nodes {
                 sb.append("]");
                 return;
             }
-            case VALUE_SET: {
+            case ARRAY_SET: {
                 Set<Object> set = (Set<Object>) node;
                 sb.append("S[");
                 int i = 0;
@@ -865,9 +865,7 @@ public class Nodes {
         Objects.requireNonNull(visitor, "visitor is null");
         if (container instanceof List) {
             List<Object> list = (List<Object>) container;
-            for (int i = 0; i < list.size(); i++) {
-                visitor.accept(i, list.get(i));
-            }
+            for (int i = 0; i < list.size(); i++) visitor.accept(i, list.get(i));
             return;
         }
         if (container instanceof JsonArray) {
@@ -876,9 +874,13 @@ public class Nodes {
         }
         if (container.getClass().isArray()) {
             int len = Array.getLength(container);
-            for (int i = 0; i < len; i++) {
-                visitor.accept(i, Array.get(container, i));
-            }
+            for (int i = 0; i < len; i++) visitor.accept(i, Array.get(container, i));
+            return;
+        }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            int i = 0;
+            for (Object v : set) visitor.accept(i++, v);
             return;
         }
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
@@ -906,6 +908,14 @@ public class Nodes {
             int len = Array.getLength(container);
             for (int i = 0; i < len; i++) {
                 if (predicate.test(i, Array.get(container, i))) return true;
+            }
+            return false;
+        }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            int i = 0;
+            for (Object v : set) {
+                if (predicate.test(i++, v)) return true;
             }
             return false;
         }
@@ -937,6 +947,14 @@ public class Nodes {
             }
             return true;
         }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            int i = 0;
+            for (Object v : set) {
+                if (!predicate.test(i++, v)) return false;
+            }
+            return true;
+        }
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
@@ -962,6 +980,14 @@ public class Nodes {
             int len = Array.getLength(container);
             for (int i = 0; i < len; i++) {
                 if (predicate.test(i, Array.get(container, i))) return false;
+            }
+            return true;
+        }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            int i = 0;
+            for (Object v : set) {
+                if (predicate.test(i++, v)) return false;
             }
             return true;
         }
@@ -993,6 +1019,9 @@ public class Nodes {
         }
         if (container.getClass().isArray()) {
             return Array.getLength(container);
+        }
+        if (container instanceof Set) {
+            return ((Set<?>) container).size();
         }
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
@@ -1046,6 +1075,9 @@ public class Nodes {
         if (container.getClass().isArray()) {
             return arrayIterator(container);
         }
+        if (container instanceof Set) {
+            return ((Set<Object>) container).iterator();
+        }
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
@@ -1081,23 +1113,22 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
-    @SuppressWarnings("unchecked")
     public static boolean containsInArray(Object container, int idx) {
         Objects.requireNonNull(container, "container is null");
+        int len = 0;
         if (container instanceof List) {
-            List<Object> list = (List<Object>) container;
-            idx = idx < 0 ? list.size() + idx : idx;
-            return idx >= 0 && idx < list.size();
+            len = ((List<?>) container).size();
+        } else if (container instanceof JsonArray) {
+            len = ((JsonArray) container).size();
+        } else if (container.getClass().isArray()) {
+            len = Array.getLength(container);
+        } else if (container instanceof Set) {
+            len = ((Set<?>) container).size();
+        } else {
+            throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
         }
-        if (container instanceof JsonArray) {
-            return ((JsonArray) container).containsIndex(idx);
-        }
-        if (container.getClass().isArray()) {
-            int len = Array.getLength(container);
-            idx = idx < 0 ? len + idx : idx;
-            return idx >= 0 && idx < len;
-        }
-        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
+        idx = idx < 0 ? len + idx : idx;
+        return idx >= 0 && idx < len;
     }
 
     public static Object getInObject(Object container, String key) {
@@ -1142,6 +1173,19 @@ public class Nodes {
                 return Array.get(container, idx);
             }
         }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            idx = idx < 0 ? set.size() + idx : idx;
+            if (idx < 0 || idx >= set.size()) {
+                return null;
+            } else {
+                int i = 0;
+                for (Object v : set) {
+                    if (i++ == idx) return v;
+                }
+                return null;
+            }
+        }
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
@@ -1173,6 +1217,7 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object container");
     }
 
+    // TODO: Refactor TypedNode
     // return null, indicates that the index of JsonArray/List/Array is invalid, and you can not set it.
     // return TypedNode.of(null), means the value of the index is null, and you can insert it.
     @SuppressWarnings("unchecked")
@@ -1206,6 +1251,22 @@ public class Nodes {
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 || idx < len) {
                 return TypedNode.of(Array.get(node, idx), subtype);
+            } else {
+                return null;
+            }
+        }
+        if (node instanceof Set) {
+            Type subtype = Types.resolveTypeArgument(typedNode.getClazzType(), Set.class, 0);
+            Set<Object> set = (Set<Object>) node;
+            idx = idx < 0 ? set.size() + idx : idx;
+            if (idx >= 0 && idx < set.size()) {
+                int i = 0;
+                for (Object v : set) {
+                    if (i++ == idx) TypedNode.of(v, subtype);
+                }
+                return null;
+            } else if (idx == set.size()){
+                return TypedNode.nullOf(subtype);
             } else {
                 return null;
             }
@@ -1278,6 +1339,26 @@ public class Nodes {
                         len + " (index < size: modify)");
             }
         }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            idx = idx < 0 ? set.size() + idx : idx;
+            if (idx == set.size()) {
+                set.add(node);
+                return null;
+            } else if (idx >= 0 && idx < set.size()) {
+                int i = 0;
+                Object replaced = null;
+                for (Object v : set) {
+                    if (i++ == idx) { replaced = v; break; }
+                }
+                set.remove(replaced);
+                set.add(node);
+                return replaced;
+            } else {
+                throw new JsonException("Cannot set/add index " + idx + " in Set of size " +
+                        set.size() + " (index < size: modify; index == size: append)");
+            }
+        }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
 
@@ -1293,7 +1374,11 @@ public class Nodes {
             return;
         }
         if (container.getClass().isArray()) {
-            throw new JsonException("Array do not support append operation");
+            throw new JsonException("Cannot add element to a Java array");
+        }
+        if (container instanceof Set) {
+            ((Set<Object>) container).add(node);
+            return;
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
@@ -1310,7 +1395,10 @@ public class Nodes {
             return;
         }
         if (container.getClass().isArray()) {
-            throw new JsonException("Java Array do not support add operation");
+            throw new JsonException("Cannot add element to a Java array");
+        }
+        if (container instanceof Set) {
+            throw new JsonException("Cannot add element at a given index in a Java Set");
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
@@ -1350,6 +1438,21 @@ public class Nodes {
         if (container.getClass().isArray()) {
             throw new JsonException("Cannot remove index " + idx + " in Array container '" +
                     container.getClass().getComponentType() + "'");
+        }
+        if (container instanceof Set) {
+            Set<Object> set = (Set<Object>) container;
+            idx = idx < 0 ? set.size() + idx : idx;
+            if (idx < 0 || idx >= set.size()) {
+                return null;
+            } else {
+                int i = 0;
+                Object removed = null;
+                for (Object v : set) {
+                    if (i++ == idx) { removed = v; break; }
+                }
+                set.remove(removed);
+                return removed;
+            }
         }
         throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }

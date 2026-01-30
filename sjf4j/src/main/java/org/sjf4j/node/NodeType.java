@@ -22,8 +22,6 @@ public enum NodeType {
     VALUE_NUMBER,
     /** Represents a boolean value. */
     VALUE_BOOLEAN,
-    /** Represents a {@link Set}. */
-    VALUE_SET,
     /** Represents a registered @NodeValue with custom codec. */
     VALUE_REGISTERED,
 
@@ -44,6 +42,8 @@ public enum NodeType {
     ARRAY_JAJO,
     /** Represents a Java array. */
     ARRAY_ARRAY,
+    /** Represents a {@link Set}. */
+    ARRAY_SET,
 
     /** Represents an unknown node type. */
     UNKNOWN;
@@ -78,7 +78,7 @@ public enum NodeType {
         } else if (clazz.isArray()) {
             return ARRAY_ARRAY;
         } else if (node instanceof Set) {
-            return VALUE_SET;
+            return ARRAY_SET;
         }
 
         if (NodeRegistry.isNodeValue(clazz)) {
@@ -132,7 +132,7 @@ public enum NodeType {
         } else if (clazz.isArray()) {
             return ARRAY_ARRAY;
         } else if (Set.class.isAssignableFrom(clazz)) {
-            return VALUE_SET;
+            return ARRAY_SET;
         } else if (clazz == Void.class) {
             return VALUE_NULL;
         }
@@ -159,8 +159,8 @@ public enum NodeType {
     public boolean isNull() {return this == VALUE_NULL;}
 
     public boolean isValue() {
-        return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN ||
-                this == VALUE_NULL || this == VALUE_REGISTERED || this == VALUE_SET;
+        return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN
+                || this == VALUE_NULL || this == VALUE_REGISTERED;
     }
 
     public boolean isObject() {
@@ -168,7 +168,8 @@ public enum NodeType {
     }
 
     public boolean isArray() {
-        return this == ARRAY_LIST || this == ARRAY_JSON_ARRAY || this == ARRAY_JAJO || this == ARRAY_ARRAY;
+        return this == ARRAY_LIST || this == ARRAY_JSON_ARRAY || this == ARRAY_JAJO || this == ARRAY_ARRAY
+                || this == ARRAY_SET;
     }
 
     public boolean isContainer() {
