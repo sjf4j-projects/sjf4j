@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -92,6 +93,16 @@ public class JsonArray extends JsonContainer {
                 this.nodeList = Sjf4jConfig.global().listSupplier.create();
                 for (int i = 0; i < len; i++) {
                     this.nodeList.add(Array.get(node, i));
+                }
+            }
+        } else if (node instanceof Set) {
+            Set<Object> set = (Set<Object>) node;
+            this.nodeList = Sjf4jConfig.global().listSupplier.create(set);
+            if (elemClazz != Object.class) {
+                for (Object v : this.nodeList) {
+                    if (v != null && !elemClazz.isInstance(v))
+                        throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
+                                ", but got " + v.getClass().getName());
                 }
             }
         } else {
@@ -187,40 +198,16 @@ public class JsonArray extends JsonContainer {
      * @return a List containing the converted elements
      * @throws IllegalArgumentException if clazz is null
      */
-    @SuppressWarnings("unchecked")
     public <T> List<T> toList(Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz is null");
-        if (nodeList == null) {
-            return Collections.emptyList();
-        } else if (elementType() != Object.class && clazz.isAssignableFrom(elementType())) {
-            return Sjf4jConfig.global().listSupplier.create((List<T>) nodeList);
-        } else {
-            List<T> list = Sjf4jConfig.global().listSupplier.create();
-            for (Object node : nodeList) {
-                list.add(Nodes.as(node, clazz));
-            }
-            return list;
-        }
+        return Nodes.toList(toList(), clazz);
     }
 
     public Object[] toArray() {
         return nodeList == null ? new Object[0] : nodeList.toArray();
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T[] toArray(Class<T> clazz) {
-        if (nodeList == null) {
-            return (T[]) Array.newInstance(clazz, 0);
-        } else if (elementType() != Object.class && clazz.isAssignableFrom(elementType())) {
-            T[] arr = (T[]) Array.newInstance(clazz, nodeList.size());
-            return nodeList.toArray(arr);
-        } else {
-            T[] arr = (T[]) Array.newInstance(clazz, size());
-            for (int i = 0; i < size(); i++) {
-                arr[i] = as(i, clazz);
-            }
-            return arr;
-        }
+        return Nodes.toArray(toArray(), clazz);
     }
 
     public void forEach(Consumer<Object> action) {
@@ -241,12 +228,12 @@ public class JsonArray extends JsonContainer {
         return toList().iterator();
     }
 
-    private int posIndex(int idx) {
+    private int pos(int idx) {
         return idx < 0 ? size() + idx : idx;
     }
 
     public boolean containsIndex(int idx) {
-        idx = posIndex(idx);
+        idx = pos(idx);
         return idx >= 0 && idx < size();
     }
 
@@ -326,7 +313,7 @@ public class JsonArray extends JsonContainer {
     /// Getter
 
     public Object getNode(int idx) {
-        int pidx = posIndex(idx);
+        int pidx = pos(idx);
         if (pidx >= 0 && pidx < size()) {
             return nodeList.get(pidx);
         } else {
@@ -782,7 +769,7 @@ public class JsonArray extends JsonContainer {
             throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
-        int pidx = posIndex(idx);
+        int pidx = pos(idx);
         if (pidx < 0 || pidx > size()) {
             throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
         }
@@ -796,7 +783,7 @@ public class JsonArray extends JsonContainer {
             throw new IllegalArgumentException("Cannot set element of type " + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
-        int pidx = posIndex(idx);
+        int pidx = pos(idx);
         if (pidx < 0 || pidx >= size()) {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
         }
@@ -865,7 +852,7 @@ public class JsonArray extends JsonContainer {
 
     public Object remove(int idx) {
         if (nodeList == null) return null;
-        return nodeList.remove(posIndex(idx));
+        return nodeList.remove(pos(idx));
     }
 
     public void clear() {

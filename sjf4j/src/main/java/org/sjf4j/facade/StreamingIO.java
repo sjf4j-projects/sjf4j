@@ -265,7 +265,7 @@ public class StreamingIO {
 
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>();
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
             reader.startArray();
             while (reader.hasNext()) {
                 Object value = readNode(reader, valueType);

@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.AbstractMap;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -76,8 +75,7 @@ public class JsonObject extends JsonContainer {
             return;
         }
         if (node instanceof JsonObject) {
-            JsonObject jo = (JsonObject) node;
-            putAll(jo);
+            putAll((JsonObject) node);
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
@@ -353,7 +351,7 @@ public class JsonObject extends JsonContainer {
         } else if (nodeMap == null) {
             return fieldMap.keySet();
         } else {
-            Set<String> merged = new HashSet<>(fieldMap.keySet());
+            Set<String> merged = new LinkedHashSet<>(fieldMap.keySet());
             merged.addAll(nodeMap.keySet());
             return merged;
         }
@@ -422,14 +420,8 @@ public class JsonObject extends JsonContainer {
         return merged;
     }
 
-    @SuppressWarnings("unchecked")
     public <T> Map<String, T> toMap(Class<T> clazz) {
-        Map<String, Object> map = toMap();
-        for (Map.Entry<String, Object> e : map.entrySet()) {
-            T v = Nodes.as(e.getValue(), clazz);
-            e.setValue(v);
-        }
-        return (Map<String, T>) map;
+        return Nodes.toMap(toMap(), clazz);
     }
 
     /**
@@ -440,7 +432,7 @@ public class JsonObject extends JsonContainer {
      * @return a Set view of the mappings in this JsonObject
      */
     public Set<Map.Entry<String, Object>> entrySet() {
-        Set<Map.Entry<String, Object>> set = new LinkedHashSet<>();
+        Set<Map.Entry<String, Object>> set = new LinkedHashSet<>(size());
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()) {
                 String key = entry.getKey();

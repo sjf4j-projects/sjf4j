@@ -453,10 +453,9 @@ public final class NodeRegistry {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             }
             if (value instanceof Number && type instanceof Class) {
-                Class<?> clazz = (Class<?>) type;
-                if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
-                        Number.class.isAssignableFrom(clazz)) {
-                    value = Numbers.to((Number) value, clazz);
+                Class<?> boxed = Types.box((Class<?>) type);
+                if (Number.class.isAssignableFrom(boxed)) {
+                    value = Numbers.to((Number) value, boxed);
                 }
             }
 

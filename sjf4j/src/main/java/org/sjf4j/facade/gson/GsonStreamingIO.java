@@ -265,7 +265,7 @@ public class GsonStreamingIO {
 
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>();
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {
                 Object value = readNode(reader, valueType);

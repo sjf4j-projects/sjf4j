@@ -4,7 +4,6 @@ package org.sjf4j.node;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 
 import java.lang.reflect.Array;
@@ -30,30 +29,18 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
-        if (node == null) {
-            return null;
-        } else if (enumClazz.isInstance(node)) {
-            return (E) node;
-        } else if (node instanceof String) {
-            return Enum.valueOf(enumClazz, (String) node);
-        } else if (node.getClass().isEnum()) {
-            String s = ((Enum<?>) node).name();
-            return Enum.valueOf(enumClazz, s);
-        }
-        throw new JsonException("Expected String or Enum for " + enumClazz.getName() + ", but got " +
-                Types.name(node));
+        if (node == null) return null;
+        if (enumClazz.isInstance(node)) return (E) node;
+        String s = toString(node);
+        return Enum.valueOf(enumClazz, s);
     }
 
     @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
-        if (node == null) {
-            return null;
-        } else if (enumClazz.isInstance(node)) {
-            return (E) node;
-        } else {
-            String s = asString(node);
-            return Enum.valueOf(enumClazz, s);
-        }
+        if (node == null) return null;
+        if (enumClazz.isInstance(node)) return (E) node;
+        String s = asString(node);
+        return Enum.valueOf(enumClazz, s);
     }
 
     /**
@@ -64,14 +51,10 @@ public class Nodes {
      * @throws JsonException if the node is not a String, Character, or Enum
      */
     public static String toString(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof String || node instanceof Character) {
-            return node.toString();
-        } else if (node.getClass().isEnum()) {
-            return ((Enum<?>) node).name();
-        }
-        throw new JsonException("Expected String or Character or Enum, but got " + Types.name(node));
+        if (node == null) return null;
+        if (node instanceof String || node instanceof Character) return node.toString();
+        if (node.getClass().isEnum()) return ((Enum<?>) node).name();
+        throw new JsonException("Expected String/Character/Enum, but got " + Types.name(node));
     }
 
     /**
@@ -81,40 +64,23 @@ public class Nodes {
      * @return the string representation
      */
     public static String asString(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node.getClass().isEnum()) {
-            return ((Enum<?>) node).name();
-        }
+        if (node == null) return null;
+        if (node.getClass().isEnum()) return ((Enum<?>) node).name();
         return node.toString();
     }
 
     public static Character toCharacter(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Character) {
-            return (Character) node;
-        } else if (node instanceof String) {
-            String s = (String) node;
-            if (s.length() == 1) return s.charAt(0);
-        } else if (node.getClass().isEnum()) {
-            String s = ((Enum<?>) node).name();
-            if (s.length() == 1) return s.charAt(0);
-        }
-        throw new JsonException("Expected Character or single-character String, but got " + Types.name(node));
+        if (node == null) return null;
+        if (node instanceof Character) return (Character) node;
+        String s = toString(node);
+        return s.length() > 0 ? s.charAt(0) : null;
     }
 
     public static Character asCharacter(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Character) {
-            return (Character) node;
-        } else {
-            String s = asString(node);
-            if (s.length() > 0) return s.charAt(0);
-        }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to Character"
-        );
+        if (node == null) return null;
+        if (node instanceof Character) return (Character) node;
+        String s = asString(node);
+        return s.length() > 0 ? s.charAt(0) : null;
     }
 
     /**
@@ -125,11 +91,8 @@ public class Nodes {
      * @throws JsonException if the node is not a Number
      */
     public static Number toNumber(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Number) {
-            return (Number) node;
-        }
+        if (node == null) return null;
+        if (node instanceof Number) return (Number) node;
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
@@ -141,20 +104,15 @@ public class Nodes {
      * @throws JsonException if the node cannot be converted to a Number
      */
     public static Number asNumber(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Number) {
-            return (Number) node;
-        } else if (node instanceof CharSequence || node instanceof Character) {
-            String str = node.toString();
-            if (Numbers.isNumeric(str)) {
-                return Numbers.asNumber(node.toString());
-            }
-            throw new JsonException("Cannot convert String to Number: not a numeric value");
-        } else if (node.getClass().isEnum()) {
-            return ((Enum<?>) node).ordinal();
+        if (node == null) return null;
+        if (node instanceof Number) return (Number) node;
+        if (node.getClass().isEnum()) return ((Enum<?>) node).ordinal();
+        try {
+            String s = toString(node);
+            return Numbers.asNumber(s);
+        } catch (Exception e) {
+            throw new JsonException("Cannot convert " + Types.name(node) + " to Number");
         }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to Number");
     }
 
 
@@ -166,11 +124,8 @@ public class Nodes {
      * @throws JsonException if the node is not a Number
      */
     public static Long toLong(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Number) {
-            return Numbers.toLong((Number) node);
-        }
+        if (node == null) return null;
+        if (node instanceof Number) return Numbers.toLong((Number) node);
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
@@ -192,11 +147,8 @@ public class Nodes {
      * @throws JsonException if the node is not a Number
      */
     public static Integer toInteger(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Number) {
-            return Numbers.toInteger((Number) node);
-        }
+        if (node == null) return null;
+        if (node instanceof Number) return Numbers.toInteger((Number) node);
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
@@ -340,47 +292,37 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Map) {
+        if (node == null) return null;
+        if (node instanceof Map) {
+//            Map<?, ?> m = (Map<?, ?>) node;
+//            for (Object k : m.keySet()) {
+//                if (k == null) throw new JsonException("Map key must not be null");
+//                if (!(k instanceof String))
+//                    throw new JsonException("Map key type mismatch: expected String but was " +
+//                            k.getClass().getSimpleName());
+//            }
+//            return (Map<String, Object>) m;
             return (Map<String, Object>) node;
-        } else if (node instanceof JsonObject) {
+        }
+        if (node instanceof JsonObject) {
             return ((JsonObject) node).toMap();
         } else if (NodeRegistry.isPojo(node.getClass())) {
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 map.put(fi.getKey(), v);
             }
             return map;
         }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to Map<String, Object>");
+        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Map");
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> Map<String, T> toMap(Object node, Class<T> clazz) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) node;
-            for (Map.Entry<String, Object> e : map.entrySet()) {
-                T v = as(e.getValue(), clazz);
-                e.setValue(v);
-            }
-            return (Map<String, T>) map;
-        } else if (node instanceof JsonObject) {
-            return ((JsonObject) node).toMap(clazz);
-        } else if (NodeRegistry.isPojo(node.getClass())) {
-            Map<String, T> map = Sjf4jConfig.global().mapSupplier.create();
-            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
-            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
-                Object v = fi.getValue().invokeGetter(node);
-                map.put(fi.getKey(), as(v, clazz));
-            }
-            return map;
-        }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to Map<String, " + clazz.getName() + ">");
+        if (node == null) return null;
+        Map<String, T> map = Sjf4jConfig.global().mapSupplier.create();
+        visitObject(node, (k, v) -> map.put(k, to(v, clazz)));
+        return map;
     }
 
     public static JsonArray toJsonArray(Object node) {
@@ -394,62 +336,37 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static List<Object> toList(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof List) {
-            return (List<Object>) node;
-        } else if (node instanceof JsonArray) {
-            return ((JsonArray) node).toList();
-        } else if (node.getClass().isArray()) {
-            List<Object> list = Sjf4jConfig.global().listSupplier.create();
+        if (node == null) return null;
+        if (node instanceof List) return (List<Object>) node;
+        if (node instanceof JsonArray) return ((JsonArray) node).toList();
+        if (node.getClass().isArray()) {
             int len = Array.getLength(node);
-            if (len > 0) {
-                for (int i = 0; i < len; i++) {
-                    list.add(Array.get(node, i));
-                }
-            }
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
+            for (int i = 0; i < len; i++) list.add(Array.get(node, i));
             return list;
         }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to List<Object>");
+        if (node instanceof Set) {
+            Set<Object> set = (Set<Object>) node;
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(set.size());
+            list.addAll(set);
+            return list;
+        }
+        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to List");
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> List<T> toList(Object node, Class<T> clazz) {
-        if (node == null) {
-            return null;
-        } else if (node instanceof List) {
-            List<?> list = (List<?>) node;
-            if (list.isEmpty()) {
-                return (List<T>) node;
-            } else {
-                Object first = list.get(0);
-                if (clazz.isInstance(first)) return (List<T>) list;
-                List<T> newlist = Sjf4jConfig.global().listSupplier.create();
-                for (Object v : list) {
-                    newlist.add(as(v, clazz));
-                }
-                return newlist;
-            }
-        } else if (node instanceof JsonArray) {
-            return ((JsonArray) node).toList(clazz);
-        } else if (node.getClass().isArray()) {
-            List<T> list = Sjf4jConfig.global().listSupplier.create();
-            int len = Array.getLength(node);
-            if (len > 0) {
-                for (int i = 0; i < len; i++) {
-                    list.add(as(Array.get(node, i), clazz));
-                }
-            }
-            return list;
-        }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to List<" + clazz.getName() + ">");
+        if (node == null) return null;
+        List<T> list = Sjf4jConfig.global().listSupplier.create();
+        visitArray(node, (i, v) -> list.add(to(v, clazz)));
+        return list;
     }
 
     @SuppressWarnings("unchecked")
     public static Object[] toArray(Object node) {
-        if (node == null) {
-            return null;
-        } else if (node.getClass().isArray()) {
+        if (node == null) return null;
+        if (node instanceof List) return ((List<Object>) node).toArray();
+        if (node instanceof JsonArray) return ((JsonArray) node).toArray();
+        if (node.getClass().isArray()) {
             if (node.getClass().getComponentType().isPrimitive()) {
                 int length = Array.getLength(node);
                 Object[] arr = new Object[length];
@@ -460,56 +377,107 @@ public class Nodes {
             } else {
                 return (Object[]) node;
             }
-        } else if (node instanceof List) {
-            return ((List<Object>) node).toArray();
-        } else if (node instanceof JsonArray) {
-            return ((JsonArray) node).toArray();
         }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to Object[]");
+        if (node instanceof Set) return ((Set<Object>) node).toArray();
+        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Array");
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T[] toArray(Object node, Class<T> clazz) {
-        if (node == null) {
-            return null;
-        } else if (node.getClass().isArray()) {
-            if (!clazz.isAssignableFrom(node.getClass())) {
-                int length = Array.getLength(node);
-                T[] arr = (T[]) Array.newInstance(clazz, length);
-                for (int i = 0; i < length; i++) {
-                    arr[i] = as(Array.get(node, i), clazz);
-                }
-                return arr;
-            }
-        } else if (node instanceof List) {
-            List<?> list = (List<?>) node;
-            if (list.isEmpty()) {
-                return (T[]) Array.newInstance(clazz, 0);
-            } else {
-                T[] arr = (T[]) Array.newInstance(clazz, list.size());
-                for (int i = 0; i < list.size(); i++) {
-                    arr[i] = as(list.get(i), clazz);
-                }
-                return arr;
-            }
-        } else if (node instanceof JsonArray) {
-            return ((JsonArray) node).toArray(clazz);
-        }
-        throw new JsonException("Cannot convert " + Types.name(node) + " to " + clazz.getName() + "[]");
+        if (node == null) return null;
+        T[] arr = (T[]) Array.newInstance(clazz, sizeInArray(node));
+        visitArray(node, (i, v) -> Array.set(arr, i, to(v, clazz)));
+        return arr;
     }
 
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings("unchecked")
+    public static Set<Object> toSet(Object node) {
+        if (node == null) return null;
+        if (node instanceof List) return Sjf4jConfig.global().setSupplier.create((List<Object>) node);
+        if (node instanceof JsonArray) return Sjf4jConfig.global().setSupplier.create(((JsonArray) node).toList());
+        if (node.getClass().isArray()) {
+            int len = Array.getLength(node);
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create(len);
+            for (int i = 0; i < len; i++) set.add(Array.get(node, i));
+            return set;
+        }
+        if (node instanceof Set) return (Set<Object>) node;
+        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Set");
+    }
+
+    public static <T> Set<T> toSet(Object node, Class<T> clazz) {
+        if (node == null) return null;
+        Set<T> set = Sjf4jConfig.global().setSupplier.create();
+        visitArray(node, (i, v) -> set.add(to(v, clazz)));
+        return set;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T toJojo(Object node, Class<T> clazz) {
+        if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
+            throw new JsonException("Type mismatch: expected <JOJO>, but was " + clazz.getName());
+        if (node == null) return null;
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
+        JsonObject jojo = (JsonObject) pi.newInstance();
+        visitObject(node, jojo::put);
+        return (T) jojo;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T toJajo(Object node, Class<T> clazz) {
+        if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
+            throw new JsonException("Type mismatch: expected <JAJO>, but was " + clazz.getName());
+        if (node == null) return null;
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
+        JsonArray jajo = (JsonArray) pi.newInstance();
+        visitArray(node, jajo::add);
+        return (T) jajo;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T toPojo(Object node, Class<T> clazz) {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
+        if (node == null) return null;
+        if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
+        if (JsonArray.class.isAssignableFrom(clazz)) return toJajo(node, clazz);
+        Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+        Object pojo = pi.newInstance();
+        visitObject(node, (k, v) -> {
+            NodeRegistry.FieldInfo fi = fields.get(k);
+            if (fi != null) fi.invokeSetter(pojo, v);
+        });
+        return (T) pojo;
+    }
+
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> T to(Object node, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz is null");
         if (node == null) return null;
 
         Class<?> boxed = Types.box(clazz);
         if (boxed.isInstance(node)) return (T) node;
+
         if (boxed == String.class) return (T) toString(node);
         if (boxed == Character.class) return (T) toCharacter(node);
+        if (boxed.isEnum()) return (T) toEnum(node, (Class<Enum>) boxed);
         if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(toNumber(node), boxed);
         if (boxed == Boolean.class) return (T) toBoolean(node);
-        throw new JsonException("Type mismatch: expected " + boxed.getName());
+
+        if (Map.class.isAssignableFrom(boxed)) return (T) toMap(node);
+        if (boxed == JsonObject.class) return (T) toJsonObject(node);
+        if (JsonObject.class.isAssignableFrom(boxed)) return (T) toJojo(node, boxed);
+
+        if (List.class.isAssignableFrom(boxed)) return (T) toList(node);
+        if (boxed == JsonArray.class) return (T) toJsonArray(node);
+        if (JsonArray.class.isAssignableFrom(boxed)) return (T) toJajo(node, boxed);
+        if (boxed.isArray()) return (T) toArray(node, boxed.getComponentType());
+        if (Set.class.isAssignableFrom(boxed)) return (T) toSet(node);
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(boxed);
+        if (pi != null) return (T) toPojo(node, boxed);
+
+        throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + boxed.getName());
     }
 
 
@@ -520,22 +488,27 @@ public class Nodes {
 
         Class<?> boxed = Types.box(clazz);
         if (boxed.isInstance(node)) return (T) node;
+
         if (boxed == String.class) return (T) asString(node);
         if (boxed == Character.class) return (T) asCharacter(node);
-        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(asNumber(node), boxed);
+        if (boxed.isEnum()) return (T) toEnum(node, (Class<Enum>) boxed);
+        if (Number.class.isAssignableFrom(boxed)) return (T) Numbers.to(toNumber(node), boxed);
         if (boxed == Boolean.class) return (T) asBoolean(node);
+
         if (Map.class.isAssignableFrom(boxed)) return (T) toMap(node);
         if (boxed == JsonObject.class) return (T) toJsonObject(node);
+        if (JsonObject.class.isAssignableFrom(boxed)) return (T) toJojo(node, boxed);
+
         if (List.class.isAssignableFrom(boxed)) return (T) toList(node);
         if (boxed == JsonArray.class) return (T) toJsonArray(node);
+        if (JsonArray.class.isAssignableFrom(boxed)) return (T) toJajo(node, boxed);
         if (boxed.isArray()) return (T) toArray(node, boxed.getComponentType());
-        if (boxed.isEnum()) return (T) asEnum(node, (Class<Enum>) boxed);
+        if (Set.class.isAssignableFrom(boxed)) return (T) toSet(node);
 
-        try {
-            return Sjf4j.fromNode(node, clazz);
-        } catch (Exception e) {
-            throw new JsonException("Failed to convert node to " + clazz.getName(), e);
-        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(boxed);
+        if (pi != null) return (T) toPojo(node, boxed);
+
+        throw new JsonException("Type mismatch: as(" + boxed.getName() + ") not supported for " + Types.name(node));
     }
 
 
@@ -639,9 +612,6 @@ public class Nodes {
     public static <T> T copy(T node) {
         NodeType nt = NodeType.of(node);
         switch (nt) {
-            case VALUE_SET: {
-                return node;
-            }
             case OBJECT_MAP: {
                 Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
                 map.putAll((Map<String, ?>) node);
@@ -663,9 +633,7 @@ public class Nodes {
                 return (T) pojo;
             }
             case ARRAY_LIST: {
-                List<Object> list = Sjf4jConfig.global().listSupplier.create();
-                list.addAll((List<?>) node);
-                return (T) list;
+                return (T) Sjf4jConfig.global().listSupplier.create((List<Object>) node);
             }
             case ARRAY_JSON_ARRAY: {
                 return (T) new JsonArray(node);
@@ -682,6 +650,9 @@ public class Nodes {
                 System.arraycopy(node, 0, arr, 0, len);
                 return (T) arr;
             }
+            case VALUE_SET: {
+                return (T) Sjf4jConfig.global().setSupplier.create((Set<Object>) node);
+            }
             case VALUE_REGISTERED: {
                 NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(node.getClass());
                 return (T) ci.copy(node);
@@ -693,7 +664,7 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static <T> T deepCopy(T node) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, node.getClass());
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, Object.class);
     }
 
     /**
@@ -884,7 +855,7 @@ public class Nodes {
             }
             return;
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
 
@@ -910,7 +881,7 @@ public class Nodes {
             }
             return;
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -938,7 +909,7 @@ public class Nodes {
             }
             return false;
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -966,7 +937,7 @@ public class Nodes {
             }
             return true;
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -994,7 +965,7 @@ public class Nodes {
             }
             return true;
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     public static int sizeInObject(Object container) {
@@ -1009,7 +980,7 @@ public class Nodes {
         if (pi != null) {
             return pi.getFields().size();
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
     public static int sizeInArray(Object container) {
@@ -1023,7 +994,7 @@ public class Nodes {
         if (container.getClass().isArray()) {
             return Array.getLength(container);
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1039,7 +1010,7 @@ public class Nodes {
         if (pi != null) {
             return pi.getFields().keySet();
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1053,14 +1024,14 @@ public class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(container.getClass());
         if (pi != null) {
-            Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>();
+            Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>(pi.getFields().size());
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object node = fi.getValue().invokeGetter(container);
                 entrySet.add(new AbstractMap.SimpleEntry<>(fi.getKey(), node));
             }
             return entrySet;
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1075,7 +1046,7 @@ public class Nodes {
         if (container.getClass().isArray()) {
             return arrayIterator(container);
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     private static Iterator<Object> arrayIterator(Object array) {
@@ -1107,7 +1078,7 @@ public class Nodes {
         if (pi != null) {
             return pi.getFields().containsKey(key);
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1126,7 +1097,7 @@ public class Nodes {
             idx = idx < 0 ? len + idx : idx;
             return idx >= 0 && idx < len;
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     public static Object getInObject(Object container, String key) {
@@ -1143,7 +1114,7 @@ public class Nodes {
             NodeRegistry.FieldInfo fi = pi.getFields().get(key);
             return fi != null ? fi.invokeGetter(container) : null;
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
 
@@ -1171,7 +1142,7 @@ public class Nodes {
                 return Array.get(container, idx);
             }
         }
-        throw new JsonException("Invalid array container: " + container.getClass());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
     // return null, indicates that the value is a POJO without the key, and no additional keys can be inserted.
@@ -1199,7 +1170,7 @@ public class Nodes {
                 return null;
             }
         }
-        throw new JsonException("Invalid object typedNode: " + typedNode.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object container");
     }
 
     // return null, indicates that the index of JsonArray/List/Array is invalid, and you can not set it.
@@ -1229,17 +1200,17 @@ public class Nodes {
                 return null;
             }
         }
-        if (typedNode.getClass().isArray()) {
-            Type subtype = typedNode.getClass().getComponentType();
-            int len = Array.getLength(typedNode);
+        if (node.getClass().isArray()) {
+            Type subtype = node.getClass().getComponentType();
+            int len = Array.getLength(node);
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 || idx < len) {
-                return TypedNode.of(Array.get(typedNode, idx), subtype);
+                return TypedNode.of(Array.get(node, idx), subtype);
             } else {
                 return null;
             }
         }
-        throw new JsonException("Invalid array typedNode: " + typedNode.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1264,7 +1235,7 @@ public class Nodes {
                         container.getClass().getName());
             }
         }
-        throw new JsonException("Invalid object container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1307,7 +1278,7 @@ public class Nodes {
                         len + " (index < size: modify)");
             }
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1324,7 +1295,7 @@ public class Nodes {
         if (container.getClass().isArray()) {
             throw new JsonException("Array do not support append operation");
         }
-        throw new JsonException("Invalid array container: " + container.getClass().getName());
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1341,7 +1312,7 @@ public class Nodes {
         if (container.getClass().isArray()) {
             throw new JsonException("Java Array do not support add operation");
         }
-        throw new JsonException("Invalid array container: " + container.getClass());
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1358,7 +1329,7 @@ public class Nodes {
             throw new JsonException("Cannot remove field '" + key + "' in POJO container '" +
                     container.getClass() + "'");
         }
-        throw new JsonException("Invalid object container: " + container.getClass());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an object container");
     }
 
     @SuppressWarnings("unchecked")
@@ -1380,7 +1351,7 @@ public class Nodes {
             throw new JsonException("Cannot remove index " + idx + " in Array container '" +
                     container.getClass().getComponentType() + "'");
         }
-        throw new JsonException("Invalid array container: " + container.getClass());
+        throw new JsonException("Type mismatch: " + Types.name(container) + " is not an array container");
     }
 
 

@@ -20,7 +20,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -281,7 +280,7 @@ public class JacksonStreamingIO {
 
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>();
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
                 Object value = readNode(parser, valueType);

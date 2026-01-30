@@ -1,6 +1,7 @@
 package org.sjf4j.supplier;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -12,7 +13,7 @@ public interface ListSupplier {
 
     <T> List<T> create(int initialCapacity);
 
-    <T> List<T> create(List<T> target);
+    <T> List<T> create(Collection<T> target);
 
 
     /// Build-in List Suppliers
@@ -27,7 +28,7 @@ public interface ListSupplier {
             return new ArrayList<>(initialCapacity);
         }
         @Override
-        public <T> List<T> create(List<T> target) {
+        public <T> List<T> create(Collection<T> target) {
             return new ArrayList<>(target);
         }
     };
@@ -42,7 +43,7 @@ public interface ListSupplier {
             return new LinkedList<>();
         }
         @Override
-        public <T> List<T> create(List<T> target) {
+        public <T> List<T> create(Collection<T> target) {
             return new LinkedList<>(target);
         }
     };
@@ -57,7 +58,7 @@ public interface ListSupplier {
             return new CopyOnWriteArrayList<>();
         }
         @Override
-        public <T> List<T> create(List<T> target) {
+        public <T> List<T> create(Collection<T> target) {
             return new CopyOnWriteArrayList<>(target);
         }
     };

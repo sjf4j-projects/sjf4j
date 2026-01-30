@@ -48,8 +48,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         this.readerContext = JSONFactory.createReadContext(readerFeatures);
         this.writerContext = JSONFactory.createWriteContext(writerFeatures);
 
-        // Use Double but BigDecimal
-        this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
+        this.readerContext.config(
+                JSONReader.Feature.UseDoubleForDecimals
+        );
 
         // With Module
         if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE) {

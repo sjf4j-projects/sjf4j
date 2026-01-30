@@ -8,6 +8,7 @@ import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
+import org.sjf4j.supplier.SetSupplier;
 
 /**
  * Configuration class for SJF4J (Simple JSON Facade for Java).
@@ -69,6 +70,11 @@ public final class Sjf4jConfig {
     public final ListSupplier listSupplier;
 
     /**
+     * The supplier used to create list instances.
+     */
+    public final SetSupplier setSupplier;
+
+    /**
      * Private constructor for JsonConfig. Use the Builder to create instances.
      *
      * @param builder The builder containing the configuration settings
@@ -80,6 +86,7 @@ public final class Sjf4jConfig {
         this.nodeFacade = builder.nodeFacade;
         this.mapSupplier = builder.mapSupplier;
         this.listSupplier = builder.listSupplier;
+        this.setSupplier = builder.setSupplier;
         this.readMode = builder.readMode;
         this.writeMode = builder.writeMode;
         this.instantFormat = builder.instantFormat;
@@ -184,6 +191,7 @@ public final class Sjf4jConfig {
 
         private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
+        private SetSupplier setSupplier = SetSupplier.LinkedHashSetSupplier;
 
         private ReadMode readMode = ReadMode.USE_MODULE;
         private WriteMode writeMode = WriteMode.USE_MODULE;
@@ -240,6 +248,11 @@ public final class Sjf4jConfig {
         public Builder listSupplier(ListSupplier listSupplier) {
             if (listSupplier == null) throw new IllegalArgumentException("listSupplier must not be null");
             this.listSupplier = listSupplier;
+            return this;
+        }
+        public Builder setSupplier(SetSupplier setSupplier) {
+            if (setSupplier == null) throw new IllegalArgumentException("setSupplier must not be null");
+            this.setSupplier = setSupplier;
             return this;
         }
         public Builder readMode(Sjf4jConfig.ReadMode readMode) {

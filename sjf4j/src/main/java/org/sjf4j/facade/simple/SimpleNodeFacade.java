@@ -11,8 +11,6 @@ import org.sjf4j.node.Types;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -134,7 +132,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
         if (node instanceof Set) {
             Set<Object> srcSet = (Set<Object>) node;
-            Set<Object> newSet = new LinkedHashSet<>(srcSet.size());
+            Set<Object> newSet = Sjf4jConfig.global().setSupplier.create(srcSet.size());
             srcSet.forEach(v -> newSet.add(readNode(v, Object.class)));
             return newSet;
         }
@@ -271,20 +269,20 @@ public class SimpleNodeFacade implements NodeFacade {
             return jajo;
         }
         if (rawClazz.isArray()) {
-            Class<?> vType = rawClazz.getComponentType();
-            Object array = Array.newInstance(vType, oldList.size());
+            Class<?> vt = rawClazz.getComponentType();
+            Object array = Array.newInstance(vt, oldList.size());
             int i = 0;
             for (Object v : oldList) {
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 Array.set(array, i++, vv);
             }
             return array;
         }
         if (Set.class.isAssignableFrom(rawClazz)) {
-            Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>();
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create(oldList.size());
             for (Object v : oldList) {
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 set.add(vv);
             }
             return set;
@@ -319,7 +317,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>();
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create(oldJa.size());
             oldJa.forEach(v -> set.add(readNode(v, vt)));
             return set;
         }
@@ -330,11 +328,11 @@ public class SimpleNodeFacade implements NodeFacade {
     private Object readFromArray(Object node, Class<?> rawClazz, Type type) {
         int len = Array.getLength(node);
         if (List.class.isAssignableFrom(rawClazz)) {
-            Type vType = Types.resolveTypeArgument(type, List.class, 0);
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
             for (int i = 0; i < len; i++) {
                 Object v = Array.get(node, i);
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 list.add(vv);
             }
             return list;
@@ -359,23 +357,23 @@ public class SimpleNodeFacade implements NodeFacade {
             return jajo;
         }
         if (rawClazz.isArray()) {
-            Class<?> vType = rawClazz == Object.class
+            Class<?> vt = rawClazz == Object.class
                     ? node.getClass().getComponentType()
                     : rawClazz.getComponentType();
-            Object array = Array.newInstance(vType, len);
+            Object array = Array.newInstance(vt, len);
             for (int i = 0; i < len; i++) {
                 Object v = Array.get(node, i);
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 Array.set(array, i, vv);
             }
             return array;
         }
         if (Set.class.isAssignableFrom(rawClazz)) {
-            Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>();
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create(len);
             for (int i = 0; i < len; i++) {
                 Object v = Array.get(node, i);
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 set.add(vv);
             }
             return set;
@@ -386,10 +384,10 @@ public class SimpleNodeFacade implements NodeFacade {
     // Set -> List/JsonArray/JAJO/Array/Set
     private Object readFromSet(Set<Object> oldSet, Class<?> rawClazz, Type type) {
         if (List.class.isAssignableFrom(rawClazz)) {
-            Type vType = Types.resolveTypeArgument(type, List.class, 0);
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = Sjf4jConfig.global().listSupplier.create(oldSet.size());
             for (Object v : oldSet) {
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 list.add(vv);
             }
             return list;
@@ -412,20 +410,20 @@ public class SimpleNodeFacade implements NodeFacade {
             return jajo;
         }
         if (rawClazz.isArray()) {
-            Class<?> vType = rawClazz.getComponentType();
-            Object array = Array.newInstance(vType, oldSet.size());
+            Class<?> vt = rawClazz.getComponentType();
+            Object array = Array.newInstance(vt, oldSet.size());
             int i = 0;
             for (Object v : oldSet) {
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 Array.set(array, i++, vv);
             }
             return array;
         }
         if (Set.class.isAssignableFrom(rawClazz)) {
-            Type vType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = new LinkedHashSet<>(oldSet.size());
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create(oldSet.size());
             for (Object v : oldSet) {
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 set.add(vv);
             }
             return set;
@@ -438,11 +436,11 @@ public class SimpleNodeFacade implements NodeFacade {
         Map<String, NodeRegistry.FieldInfo> oldFields = oldPi.getFields();
         if (Map.class.isAssignableFrom(rawClazz)) {
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldFields.size());
-            Type vType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
                 NodeRegistry.FieldInfo fi = entry.getValue();
                 Object v = fi.invokeGetter(node);
-                Object vv = readNode(v, vType);
+                Object vv = readNode(v, vt);
                 map.put(entry.getKey(), vv);
             }
             return map;
