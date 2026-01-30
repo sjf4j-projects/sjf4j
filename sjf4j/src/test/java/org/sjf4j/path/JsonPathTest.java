@@ -128,7 +128,7 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        List<Object> result1 = JsonPath.compile("$.book[*].title").findNodes(jo1);
+        List<Object> result1 = JsonPath.compile("$.book[*].title").find(jo1);
         log.info("result1: {}", result1);
         assertEquals(3, result1.size());
         assertEquals("B", result1.get(1));
@@ -255,12 +255,12 @@ public class JsonPathTest {
         assertEquals(12.99, JsonPath.compile("$.store.book[1].price").getDouble(jo));
         assertEquals("red", JsonPath.compile("$.store.bicycle.color").getNode(jo));
 
-        List<Object> authors = JsonPath.compile("$.store.book[*].author").findNodes(jo);
+        List<Object> authors = JsonPath.compile("$.store.book[*].author").find(jo);
         assertEquals(2, authors.size());
         assertEquals("Nigel Rees", authors.get(0));
         assertEquals("Evelyn Waugh", authors.get(1));
 
-        List<Object> prices = JsonPath.compile("$.store.book[*].price").findNodes(jo);
+        List<Object> prices = JsonPath.compile("$.store.book[*].price").find(jo);
         assertEquals(2, prices.size());
         assertEquals(8.95, Nodes.toDouble(prices.get(0)));
         assertEquals(12.99, Nodes.toDouble(prices.get(1)));
@@ -374,19 +374,19 @@ public class JsonPathTest {
         assertEquals(2, JsonPath.compile("$.numbers[2]").getNode(jo));
         assertEquals(7, JsonPath.compile("$.numbers[-3]").getNode(jo)); // 倒数第三个
 
-        List<Object> slice1 = JsonPath.compile("$.numbers[1:5]").findNodes(jo);
+        List<Object> slice1 = JsonPath.compile("$.numbers[1:5]").find(jo);
         assertEquals(4, slice1.size());
         assertEquals(Arrays.asList(1, 2, 3, 4), slice1);
 
-        List<Object> slice2 = JsonPath.compile("$.numbers[::2]").findNodes(jo); // 步长为2
+        List<Object> slice2 = JsonPath.compile("$.numbers[::2]").find(jo); // 步长为2
         assertEquals(5, slice2.size());
         assertEquals(Arrays.asList(0, 2, 4, 6, 8), slice2);
 
-        List<Object> slice3 = JsonPath.compile("$.numbers[5:]").findNodes(jo); // 从5开始到结束
+        List<Object> slice3 = JsonPath.compile("$.numbers[5:]").find(jo); // 从5开始到结束
         assertEquals(5, slice3.size());
         assertEquals(Arrays.asList(5, 6, 7, 8, 9), slice3);
 
-        List<Object> slice4 = JsonPath.compile("$.numbers[:3]").findNodes(jo); // 前3个
+        List<Object> slice4 = JsonPath.compile("$.numbers[:3]").find(jo); // 前3个
         assertEquals(3, slice4.size());
         assertEquals(Arrays.asList(0, 1, 2), slice4);
 
@@ -396,7 +396,7 @@ public class JsonPathTest {
         assertEquals("C", bookSlice.get(1).getString("title"));
         assertEquals("D", bookSlice.get(2).getString("title"));
 
-        List<Object> prices = JsonPath.compile("$.books[1:4].price").findNodes(jo);
+        List<Object> prices = JsonPath.compile("$.books[1:4].price").find(jo);
         assertEquals(3, prices.size());
         assertEquals(Arrays.asList(20, 30, 40), prices);
     }
@@ -421,23 +421,23 @@ public class JsonPathTest {
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.numbers[1,3,5]").getNode(jo));
 
-        List<Object> multiIndex = JsonPath.compile("$.numbers[1,3,5]").findNodes(jo);
+        List<Object> multiIndex = JsonPath.compile("$.numbers[1,3,5]").find(jo);
         assertEquals(3, multiIndex.size());
         assertEquals(Arrays.asList(1, 3, 5), multiIndex);
 
-        List<Object> multiName = JsonPath.compile("$.metadata['version','author']").findNodes(jo);
+        List<Object> multiName = JsonPath.compile("$.metadata['version','author']").find(jo);
         assertEquals(2, multiName.size());
         assertTrue(multiName.contains("1.0"));
         assertTrue(multiName.contains("test"));
 
-        List<Object> usersUnion = JsonPath.compile("$.users[0,2]['name','age']").findNodes(jo);
+        List<Object> usersUnion = JsonPath.compile("$.users[0,2]['name','age']").find(jo);
         assertEquals(4, usersUnion.size()); // [Alice, 25, Charlie, 35]
         assertTrue(usersUnion.contains("Alice"));
         assertTrue(usersUnion.contains("Charlie"));
         assertTrue(usersUnion.contains(25));
         assertTrue(usersUnion.contains(35));
 
-        List<Object> mixedUnion = JsonPath.compile("$.numbers[0,2,3:6]").findNodes(jo);
+        List<Object> mixedUnion = JsonPath.compile("$.numbers[0,2,3:6]").find(jo);
         assertEquals(5, mixedUnion.size()); // [0, 2, 3, 4, 5]
     }
 
@@ -471,7 +471,7 @@ public class JsonPathTest {
                 "}";
         JsonObject jo = JsonObject.fromJson(json);
 
-        List<Object> allNames = JsonPath.compile("$..name").findNodes(jo);
+        List<Object> allNames = JsonPath.compile("$..name").find(jo);
         assertEquals(7, allNames.size());
         assertTrue(allNames.contains("root"));
         assertTrue(allNames.contains("child1"));
@@ -485,25 +485,25 @@ public class JsonPathTest {
         assertEquals(1, JsonPath.compile("$..only").getNode(jo));
         assertEquals(30, JsonPath.compile("$..nested..values[2]").getNode(jo));
 
-        List<Object> allValues = JsonPath.compile("$..value").findNodes(jo);
+        List<Object> allValues = JsonPath.compile("$..value").find(jo);
         assertEquals(4, allValues.size());
         assertTrue(allValues.contains(100));
         assertTrue(allValues.contains(200));
         assertTrue(allValues.contains(50));
         assertTrue(allValues.contains(300));
 
-        List<Object> descendantArray = JsonPath.compile("$..values[1]").findNodes(jo);
+        List<Object> descendantArray = JsonPath.compile("$..values[1]").find(jo);
         assertEquals(1, descendantArray.size());
         assertEquals(20, descendantArray.get(0));
 
-        List<Object> descendantChildren = JsonPath.compile("$..children[0].name").findNodes(jo);
+        List<Object> descendantChildren = JsonPath.compile("$..children[0].name").find(jo);
         log.info("descendantChildren={}", descendantChildren);
         assertEquals(3, descendantChildren.size());
         assertTrue(descendantChildren.contains("child1"));
         assertTrue(descendantChildren.contains("grandchild1"));
         assertTrue(descendantChildren.contains("grandchild3"));
 
-        List<Object> deeps = JsonPath.compile("$..deep..*").findNodes(jo);
+        List<Object> deeps = JsonPath.compile("$..deep..*").find(jo);
         log.info("deeps={}", deeps);
         assertEquals(5, deeps.size());
     }
@@ -530,20 +530,20 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(json);
 
         // 递归 + 切片 + 属性访问
-        List<Object> firstSkills = JsonPath.compile("$..employees[0].skills[0]").findNodes(jo);
+        List<Object> firstSkills = JsonPath.compile("$..employees[0].skills[0]").find(jo);
         assertEquals(2, firstSkills.size());
         assertTrue(firstSkills.contains("Java"));
         assertTrue(firstSkills.contains("SEO"));
 
-        List<Object> selectedNames = JsonPath.compile("$..employees[0,1]['name','skills']").findNodes(jo);
+        List<Object> selectedNames = JsonPath.compile("$..employees[0,1]['name','skills']").find(jo);
         // Contains: Alice, ["Java","Python"], Bob, ["JavaScript","React"], Charlie, ["SEO","Content"]
         assertTrue(selectedNames.size() >= 6);
 
-        List<Object> slicedProjects = JsonPath.compile("$..projects[0:2]").findNodes(jo);
+        List<Object> slicedProjects = JsonPath.compile("$..projects[0:2]").find(jo);
         // Contains: ["A","B"], ["C"], ["D","E"]
         assertTrue(slicedProjects.size() >= 3);
 
-        List<Object> complexPath = JsonPath.compile("$.departments[*].employees[0].skills[1]").findNodes(jo);
+        List<Object> complexPath = JsonPath.compile("$.departments[*].employees[0].skills[1]").find(jo);
         assertEquals(2, complexPath.size());
         assertTrue(complexPath.contains("Python"));
         assertTrue(complexPath.contains("Content"));
@@ -565,13 +565,13 @@ public class JsonPathTest {
                 "}";
         JsonObject jo = JsonObject.fromJson(json);
 
-        List<Object> emptySlice = JsonPath.compile("$.emptyArray[0:5]").findNodes(jo);
+        List<Object> emptySlice = JsonPath.compile("$.emptyArray[0:5]").find(jo);
         assertTrue(emptySlice.isEmpty());
 
-        List<Object> emptyUnion = JsonPath.compile("$.emptyArray[0,1,2]").findNodes(jo);
+        List<Object> emptyUnion = JsonPath.compile("$.emptyArray[0,1,2]").find(jo);
         assertTrue(emptyUnion.isEmpty());
 
-        List<Object> descendantNulls = JsonPath.compile("$..nullValue").findNodes(jo);
+        List<Object> descendantNulls = JsonPath.compile("$..nullValue").find(jo);
         assertEquals(1, descendantNulls.size());
         assertNull(descendantNulls.get(0));
 
@@ -579,7 +579,7 @@ public class JsonPathTest {
         assertEquals(1, descendantEmptyArrays.size());
         assertTrue(descendantEmptyArrays.get(0).isEmpty());
 
-        List<Object> singleSlice = JsonPath.compile("$.singleElement[0:1]").findNodes(jo);
+        List<Object> singleSlice = JsonPath.compile("$.singleElement[0:1]").find(jo);
         assertEquals(1, singleSlice.size());
         assertEquals(42, singleSlice.get(0));
     }
@@ -588,7 +588,7 @@ public class JsonPathTest {
     public void testPojoWithNewFeatures() {
         Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
 
-        List<Object> allAges = JsonPath.compile("$..age").findNodes(person);
+        List<Object> allAges = JsonPath.compile("$..age").find(person);
         log.info("allAges={}", allAges);
         assertEquals(4, allAges.size()); // Alice(30) + 3 babies
         assertTrue(allAges.contains(30));
@@ -596,13 +596,13 @@ public class JsonPathTest {
         assertTrue(allAges.contains(2));
         assertTrue(allAges.contains(3));
 
-        List<Object> babySlice = JsonPath.compile("$.babies[0:2]").findNodes(person);
+        List<Object> babySlice = JsonPath.compile("$.babies[0:2]").find(person);
         log.info("babySlice={}", babySlice);
         assertEquals(2, babySlice.size());
         assertEquals("Baby-0", ((Baby) babySlice.get(0)).name);
         assertEquals("Baby-1", ((Baby) babySlice.get(1)).name);
 
-        List<Object> selectedBabies = JsonPath.compile("$.babies[0,2]['name','age']").findNodes(person);
+        List<Object> selectedBabies = JsonPath.compile("$.babies[0,2]['name','age']").find(person);
         log.info("selectedBabies={}", selectedBabies);
         assertEquals(4, selectedBabies.size());
         assertTrue(selectedBabies.contains("Baby-0"));
@@ -610,7 +610,7 @@ public class JsonPathTest {
         assertTrue(selectedBabies.contains(1));
         assertTrue(selectedBabies.contains(3));
 
-        List<Object> descendantNames = JsonPath.compile("$..name").findNodes(person);
+        List<Object> descendantNames = JsonPath.compile("$..name").find(person);
         assertEquals(4, descendantNames.size()); // Alice + 3 babies
         assertTrue(descendantNames.contains("Alice"));
         assertTrue(descendantNames.contains("Baby-0"));
@@ -632,13 +632,13 @@ public class JsonPathTest {
         largeData.put("items", largeArray);
         largeData.put("metadata", new JsonObject("count", 100));
 
-        List<Object> slice = JsonPath.compile("$.items[10:20]").findNodes(largeData);
+        List<Object> slice = JsonPath.compile("$.items[10:20]").find(largeData);
         assertEquals(10, slice.size());
 
-        List<Object> union = JsonPath.compile("$.items[5,15,25,35]['id','value']").findNodes(largeData);
+        List<Object> union = JsonPath.compile("$.items[5,15,25,35]['id','value']").find(largeData);
         assertEquals(8, union.size());
 
-        List<Object> descendant = JsonPath.compile("$..deepValue").findNodes(largeData);
+        List<Object> descendant = JsonPath.compile("$..deepValue").find(largeData);
         assertEquals(100, descendant.size());
     }
 
@@ -775,7 +775,7 @@ public class JsonPathTest {
         array.add("Andrew");
 
         // Regex matches any string starting with 'A'
-        List<Object> result = JsonPath.compile("$[?(@ =~ /^A/)]").findNodes(array);
+        List<Object> result = JsonPath.compile("$[?(@ =~ /^A/)]").find(array);
         assertEquals(2, result.size());
         assertTrue(result.contains("Alice"));
         assertTrue(result.contains("Andrew"));

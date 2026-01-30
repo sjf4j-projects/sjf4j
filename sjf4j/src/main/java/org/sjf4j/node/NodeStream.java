@@ -95,7 +95,7 @@ public class NodeStream<T> {
      */
     public <R> NodeStream<R> asByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);
-        Stream<R> ns = stream.map(node -> jp.as(node, clazz));
+        Stream<R> ns = stream.map(node -> jp.getAs(node, clazz));
         return new NodeStream<>(ns);
     }
 

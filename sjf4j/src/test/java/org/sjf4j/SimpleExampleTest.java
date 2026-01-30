@@ -65,11 +65,11 @@ public class SimpleExampleTest {
         // Dynamic type inference version of `get()`.
         // Type is inferred based on the context, convenient for shorthand usage.
 
-        String active = jo.asString("active");
+        String active = jo.getAsString("active");
         // Retrieve and convert the node value across types using `asXxx(key)`.
         // Supports cross-type casting (e.g., Number → String).
 
-        String active2 = jo.as("active");
+        String active2 = jo.getAs("active");
         // Dynamic type conversion, short form of `asXxx()`.
 
     }
@@ -114,7 +114,7 @@ public class SimpleExampleTest {
         String role3 = jo.getByPath("/user/role");
         // And JSON Pointer as an alternative
 
-        String role4 = jo.asByPath("$..role");
+        String role4 = jo.getAsByPath("$..role");
         // Supports descendant operator for deep traversal
 
         jo.ensurePutByPath("/aa/bb", "cc");
@@ -129,7 +129,7 @@ public class SimpleExampleTest {
         List<Short> scores = jo.findAsByPath("$.scores[0:3]", Short.class);
         // Supports Slice '[from:to:step]'
 
-        List<Object> unions = jo.findNodesByPath("$.user['role','profile']");
+        List<Object> unions = jo.findByPath("$.user['role','profile']");
         // Supports Union '[A,B,..]' of multiple fields
 
         /// Walk and stream
@@ -275,7 +275,7 @@ public class SimpleExampleTest {
         String bill = user2.friends.get(0).name;
         // = user2.getStringByPath("$.friends[0].name")
 
-        int allUsers = user2.findNodesByPath("$..id").size();
+        int allUsers = user2.findByPath("$..id").size();
         // Use powerful methods from JsonObject
 
     }

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -225,7 +226,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public String asString(Object container) {
+    public String getAsString(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asString(value);
@@ -233,8 +234,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to String", e);
         }
     }
-    public String asString(Object container, String defaultValue) {
-        String value = asString(container);
+    public String getAsString(Object container, String defaultValue) {
+        String value = getAsString(container);
         return value == null ? defaultValue : value;
     }
 
@@ -252,7 +253,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Number asNumber(Object container) {
+    public Number getAsNumber(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asNumber(value);
@@ -260,8 +261,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Number", e);
         }
     }
-    public Number asNumber(Object container, Number defaultValue) {
-        Number value = asNumber(container);
+    public Number getAsNumber(Object container, Number defaultValue) {
+        Number value = getAsNumber(container);
         return value == null ? defaultValue : value;
     }
 
@@ -279,7 +280,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Long asLong(Object container) {
+    public Long getAsLong(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asLong(value);
@@ -287,8 +288,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Long", e);
         }
     }
-    public long asLong(Object container, long defaultValue) {
-        Long value = asLong(container);
+    public long getAsLong(Object container, long defaultValue) {
+        Long value = getAsLong(container);
         return value == null ? defaultValue : value;
     }
 
@@ -306,7 +307,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Integer asInteger(Object container) {
+    public Integer getAsInteger(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asInteger(value);
@@ -314,8 +315,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Integer", e);
         }
     }
-    public int asInteger(Object container, int defaultValue) {
-        Integer value = asInteger(container);
+    public int getAsInteger(Object container, int defaultValue) {
+        Integer value = getAsInteger(container);
         return value == null ? defaultValue : value;
     }
 
@@ -333,7 +334,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Short asShort(Object container) {
+    public Short getAsShort(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asShort(value);
@@ -341,8 +342,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Short", e);
         }
     }
-    public short asShort(Object container, short defaultValue) {
-        Short value = asShort(container);
+    public short getAsShort(Object container, short defaultValue) {
+        Short value = getAsShort(container);
         return value == null ? defaultValue : value;
     }
 
@@ -360,7 +361,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Byte asByte(Object container) {
+    public Byte getAsByte(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asByte(value);
@@ -368,8 +369,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Byte", e);
         }
     }
-    public byte asByte(Object container, byte defaultValue) {
-        Byte value = asByte(container);
+    public byte getAsByte(Object container, byte defaultValue) {
+        Byte value = getAsByte(container);
         return value == null ? defaultValue : value;
     }
 
@@ -387,7 +388,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Double asDouble(Object container) {
+    public Double getAsDouble(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asDouble(value);
@@ -395,8 +396,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Double", e);
         }
     }
-    public double asDouble(Object container, double defaultValue) {
-        Double value = asDouble(container);
+    public double getAsDouble(Object container, double defaultValue) {
+        Double value = getAsDouble(container);
         return value == null ? defaultValue : value;
     }
 
@@ -414,7 +415,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Float asFloat(Object container) {
+    public Float getAsFloat(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asFloat(value);
@@ -422,8 +423,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Float", e);
         }
     }
-    public float asFloat(Object container, float defaultValue) {
-        Float value = asFloat(container);
+    public float getAsFloat(Object container, float defaultValue) {
+        Float value = getAsFloat(container);
         return value == null ? defaultValue : value;
     }
 
@@ -441,7 +442,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public BigInteger asBigInteger(Object container) {
+    public BigInteger getAsBigInteger(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asBigInteger(value);
@@ -449,8 +450,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigInteger", e);
         }
     }
-    public BigInteger asBigInteger(Object container, BigInteger defaultValue) {
-        BigInteger value = asBigInteger(container);
+    public BigInteger getAsBigInteger(Object container, BigInteger defaultValue) {
+        BigInteger value = getAsBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
@@ -468,7 +469,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public BigDecimal asBigDecimal(Object container) {
+    public BigDecimal getAsBigDecimal(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asBigDecimal(value);
@@ -476,8 +477,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigDecimal", e);
         }
     }
-    public BigDecimal asBigDecimal(Object container, BigDecimal defaultValue) {
-        BigDecimal value = asBigDecimal(container);
+    public BigDecimal getAsBigDecimal(Object container, BigDecimal defaultValue) {
+        BigDecimal value = getAsBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
@@ -495,7 +496,7 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
-    public Boolean asBoolean(Object container) {
+    public Boolean getAsBoolean(Object container) {
         try {
             Object value = getNode(container);
             return Nodes.asBoolean(value);
@@ -503,8 +504,8 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Boolean", e);
         }
     }
-    public boolean asBoolean(Object container, boolean defaultValue) {
-        Boolean value = asBoolean(container);
+    public boolean getAsBoolean(Object container, boolean defaultValue) {
+        Boolean value = getAsBoolean(container);
         return value == null ? defaultValue : value;
     }
 
@@ -618,6 +619,33 @@ public class JsonPath {
         return value == null ? defaultValue : value;
     }
 
+    // Set
+    public Set<Object> getSet(Object container) {
+        try {
+            Object value = getNode(container);
+            return Nodes.toSet(value);
+        } catch (Exception e) {
+            throw new JsonException("Failed to get Set<Object> by path '" + this + "'", e);
+        }
+    }
+    public Set<Object> getSet(Object container, Set<Object> defaultValue) {
+        Set<Object> value = getSet(container);
+        return value == null ? defaultValue : value;
+    }
+
+    public <T> Set<T> getSet(Object container, Class<T> clazz) {
+        try {
+            Object value = getNode(container);
+            return Nodes.toSet(value, clazz);
+        } catch (Exception e) {
+            throw new JsonException("Failed to convert value at path '" + this + "' to Set<" + clazz.getName() + ">", e);
+        }
+    }
+    public <T> Set<T> getSet(Object container, Class<T> clazz, Set<T> defaultValue) {
+        Set<T> value = getSet(container, clazz);
+        return value == null ? defaultValue : value;
+    }
+
     
     public <T> T get(Object container, Class<T> clazz) {
         try {
@@ -635,7 +663,7 @@ public class JsonPath {
         return get(container, clazz);
     }
 
-    public <T> T as(Object container, Class<T> clazz) {
+    public <T> T getAs(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
             return Nodes.as(value, clazz);
@@ -644,15 +672,15 @@ public class JsonPath {
         }
     }
     @SuppressWarnings("unchecked")
-    public <T> T as(Object container, T... reified) {
+    public <T> T getAs(Object container, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-        return as(container, clazz);
+        return getAs(container, clazz);
     }
 
 
     /// All
-    public List<Object> findNodes(Object container) {
+    public List<Object> find(Object container) {
         Objects.requireNonNull(container, "container is null");
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);

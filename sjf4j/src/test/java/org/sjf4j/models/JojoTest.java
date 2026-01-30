@@ -279,7 +279,7 @@ public class JojoTest {
         JsonObject jo2 = JsonObject.fromNode(parent);
         log.info("jo2={}", jo2);
 
-        Baby baby2 = jo2.asByPath("/babies/0", Baby.class);
+        Baby baby2 = jo2.getAsByPath("/babies/0", Baby.class);
         log.info("baby2={}", baby2);
         assertEquals("Child1", baby2.getName());
     }

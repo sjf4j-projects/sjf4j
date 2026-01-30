@@ -210,6 +210,14 @@ public class JsonArray extends JsonContainer {
         return Nodes.toArray(toArray(), clazz);
     }
 
+    public Set<Object> toSet() {
+        return nodeList == null ? Collections.emptySet() : Sjf4jConfig.global().setSupplier.create(nodeList);
+    }
+
+    public <T> Set<T> toSet(Class<T> clazz) {
+        return Nodes.toSet(toList(), clazz);
+    }
+
     public void forEach(Consumer<Object> action) {
         if (nodeList == null) return;
         for (Object object : nodeList) {

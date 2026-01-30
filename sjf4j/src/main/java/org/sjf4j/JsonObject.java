@@ -609,7 +609,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted String value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a String
      */
-    public String asString(String key) {
+    public String getAsString(String key) {
         Object value = getNode(key);
         return Nodes.asString(value);
     }
@@ -623,8 +623,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted String value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a String
      */
-    public String asString(String key, String defaultValue) {
-        String value = asString(key);
+    public String getAsString(String key, String defaultValue) {
+        String value = getAsString(key);
         return value == null ? defaultValue : value;
     }
 
@@ -665,7 +665,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Number value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Number
      */
-    public Number asNumber(String key) {
+    public Number getAsNumber(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asNumber(value);
@@ -683,8 +683,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted Number value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Number
      */
-    public Number asNumber(String key, Number defaultValue) {
-        Number value = asNumber(key);
+    public Number getAsNumber(String key, Number defaultValue) {
+        Number value = getAsNumber(key);
         return value == null ? defaultValue : value;
     }
 
@@ -725,7 +725,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Long value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Long
      */
-    public Long asLong(String key) {
+    public Long getAsLong(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asLong(value);
@@ -743,8 +743,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted long value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a long
      */
-    public long asLong(String key, long defaultValue) {
-        Long value = asLong(key);
+    public long getAsLong(String key, long defaultValue) {
+        Long value = getAsLong(key);
         return value == null ? defaultValue : value;
     }
 
@@ -785,7 +785,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Integer value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to an Integer
      */
-    public Integer asInteger(String key) {
+    public Integer getAsInteger(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asInteger(value);
@@ -803,8 +803,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted int value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to an int
      */
-    public int asInteger(String key, int defaultValue) {
-        Integer value = asInteger(key);
+    public int getAsInteger(String key, int defaultValue) {
+        Integer value = getAsInteger(key);
         return value == null ? defaultValue : value;
     }
 
@@ -845,7 +845,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Short value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Short
      */
-    public Short asShort(String key) {
+    public Short getAsShort(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asShort(value);
@@ -863,8 +863,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted short value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a short
      */
-    public short asShort(String key, short defaultValue) {
-        Short value = asShort(key);
+    public short getAsShort(String key, short defaultValue) {
+        Short value = getAsShort(key);
         return value == null ? defaultValue : value;
     }
 
@@ -905,7 +905,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Byte value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Byte
      */
-    public Byte asByte(String key) {
+    public Byte getAsByte(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asByte(value);
@@ -923,8 +923,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted byte value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a byte
      */
-    public byte asByte(String key, byte defaultValue) {
-        Byte value = asByte(key);
+    public byte getAsByte(String key, byte defaultValue) {
+        Byte value = getAsByte(key);
         return value == null ? defaultValue : value;
     }
 
@@ -965,7 +965,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Double value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Double
      */
-    public Double asDouble(String key) {
+    public Double getAsDouble(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asDouble(value);
@@ -983,8 +983,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted double value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a double
      */
-    public double asDouble(String key, double defaultValue) {
-        Double value = asDouble(key);
+    public double getAsDouble(String key, double defaultValue) {
+        Double value = getAsDouble(key);
         return value == null ? defaultValue : value;
     }
 
@@ -1025,7 +1025,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Float value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Float
      */
-    public Float asFloat(String key) {
+    public Float getAsFloat(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asFloat(value);
@@ -1043,8 +1043,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted float value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a float
      */
-    public float asFloat(String key, float defaultValue) {
-        Float value = asFloat(key);
+    public float getAsFloat(String key, float defaultValue) {
+        Float value = getAsFloat(key);
         return value == null ? defaultValue : value;
     }
 
@@ -1085,7 +1085,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted BigInteger value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a BigInteger
      */
-    public BigInteger asBigInteger(String key) {
+    public BigInteger getAsBigInteger(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asBigInteger(value);
@@ -1103,8 +1103,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted BigInteger value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a BigInteger
      */
-    public BigInteger asBigInteger(String key, BigInteger defaultValue) {
-        BigInteger value = asBigInteger(key);
+    public BigInteger getAsBigInteger(String key, BigInteger defaultValue) {
+        BigInteger value = getAsBigInteger(key);
         return value == null ? defaultValue : value;
     }
 
@@ -1145,7 +1145,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted BigDecimal value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a BigDecimal
      */
-    public BigDecimal asBigDecimal(String key) {
+    public BigDecimal getAsBigDecimal(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asBigDecimal(value);
@@ -1163,8 +1163,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted BigDecimal value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a BigDecimal
      */
-    public BigDecimal asBigDecimal(String key, BigDecimal defaultValue) {
-        BigDecimal value = asBigDecimal(key);
+    public BigDecimal getAsBigDecimal(String key, BigDecimal defaultValue) {
+        BigDecimal value = getAsBigDecimal(key);
         return value == null ? defaultValue : value;
     }
 
@@ -1205,7 +1205,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted Boolean value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a Boolean
      */
-    public Boolean asBoolean(String key) {
+    public Boolean getAsBoolean(String key) {
         Object value = getNode(key);
         try {
             return Nodes.asBoolean(value);
@@ -1223,8 +1223,8 @@ public class JsonObject extends JsonContainer {
      * @return the converted boolean value, or defaultValue if the key doesn't exist
      * @throws JsonException if the value cannot be converted to a boolean
      */
-    public boolean asBoolean(String key, boolean defaultValue) {
-        Boolean value = asBoolean(key);
+    public boolean getAsBoolean(String key, boolean defaultValue) {
+        Boolean value = getAsBoolean(key);
         return value == null ? defaultValue : value;
     }
 
@@ -1411,7 +1411,7 @@ public class JsonObject extends JsonContainer {
      * @return the converted value, or null if the key doesn't exist
      * @throws JsonException if the value cannot be converted to the specified type
      */
-    public <T> T as(String key, Class<T> clazz) {
+    public <T> T getAs(String key, Class<T> clazz) {
         Object value = getNode(key);
         try {
             return Nodes.as(value, clazz);
@@ -1432,10 +1432,10 @@ public class JsonObject extends JsonContainer {
      * @throws IllegalArgumentException if reified is not empty
      */
     @SuppressWarnings("unchecked")
-    public <T> T as(String key, T... reified) {
+    public <T> T getAs(String key, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-        return as(key, clazz);
+        return getAs(key, clazz);
     }
 
 
@@ -1544,7 +1544,7 @@ public class JsonObject extends JsonContainer {
      * leaving only the statically defined POJO fields in fieldMap.
      * Can help reduce memory usage if the dynamic map is no longer needed.</p>
      */
-    public void clean() {
+    public void prune() {
         nodeMap = null;
     }
 
