@@ -2,6 +2,7 @@
 rootProject.name = "sjf4j"
 
 include("sjf4j")
+include("sjf4j-jdk17-test")
 
 
 
