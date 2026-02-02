@@ -10,7 +10,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.NodeField;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
@@ -176,7 +176,7 @@ public interface GsonModule {
     class NodeFieldNamingStrategy implements FieldNamingStrategy {
         @Override
         public String translateName(Field field) {
-            NodeField nf = field.getAnnotation(NodeField.class);
+            NodeProperty nf = field.getAnnotation(NodeProperty.class);
             if (nf != null && !nf.value().isEmpty()) return nf.value();
             return field.getName();
         }

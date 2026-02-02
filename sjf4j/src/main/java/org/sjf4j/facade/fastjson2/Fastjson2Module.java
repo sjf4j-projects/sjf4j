@@ -13,7 +13,7 @@ import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.writer.ObjectWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.NodeField;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 
@@ -79,7 +79,7 @@ public interface Fastjson2Module {
             if (annotationProcessor != null) {
                 annotationProcessor.getFieldInfo(fieldInfo, objectClass, field);
             }
-            NodeField nf = field.getAnnotation(NodeField.class);
+            NodeProperty nf = field.getAnnotation(NodeProperty.class);
             if (nf != null && !nf.value().isEmpty()) {
                 fieldInfo.fieldName = nf.value();
                 fieldInfo.ignore = false;
@@ -161,7 +161,7 @@ public interface Fastjson2Module {
             return new ObjectWriterAnnotationProcessor() {
                 @Override
                 public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Field field) {
-                    NodeField nf = field.getAnnotation(NodeField.class);
+                    NodeProperty nf = field.getAnnotation(NodeProperty.class);
                     if (nf != null && !nf.value().isEmpty()) {
                         fieldInfo.fieldName = nf.value();
                         fieldInfo.ignore = false;

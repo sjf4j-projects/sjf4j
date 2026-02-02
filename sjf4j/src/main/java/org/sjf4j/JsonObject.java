@@ -41,7 +41,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores dynamic JSON nodes as key-value pairs.
      */
-    protected transient Map<String, Object> nodeMap;
+    protected transient Map<String, Object> dynamicMap;
     
     /**
      * Stores field information for POJO mapping.
@@ -71,7 +71,7 @@ public class JsonObject extends JsonContainer {
         this();
         if (node == null) return;
         if (node instanceof Map) {
-            this.nodeMap = (Map<String, Object>) node;
+            this.dynamicMap = (Map<String, Object>) node;
             return;
         }
         if (node instanceof JsonObject) {
@@ -262,18 +262,9 @@ public class JsonObject extends JsonContainer {
         put(key8, value8);
     }
 
-    /// Subclass
-
-//    @Deprecated
-//    public <T extends JsonObject> T cast(Class<T> clazz) {
-//        //TODO
-//        try {
-//            Constructor<T> constructor = clazz.getConstructor(JsonObject.class);
-//            return constructor.newInstance(this);
-//        } catch (Throwable e) {
-//            throw new JsonException("Failed to cast JsonObject to '" + clazz.getName() + "'", e);
-//        }
-//    }
+    void setDynamicNodes(Map<String, Object> map) {
+        this.dynamicMap = map;
+    }
 
     /// Map
 
@@ -295,7 +286,7 @@ public class JsonObject extends JsonContainer {
      */
     @Override
     public int hashCode() {
-        int hash = nodeMap == null ? 0 : nodeMap.hashCode();
+        int hash = dynamicMap == null ? 0 : dynamicMap.hashCode();
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 hash += Objects.hashCode(entry.getKey()) ^
@@ -305,6 +296,7 @@ public class JsonObject extends JsonContainer {
         return hash;
     }
 
+    @SuppressWarnings("EqualsDoesntCheckParameterClass")
     @Override
     public boolean equals(Object target) {
         return Nodes.equals(this, target);
@@ -327,7 +319,7 @@ public class JsonObject extends JsonContainer {
      */
     @Override
     public int size() {
-        return (fieldMap == null ? 0 : fieldMap.size()) + (nodeMap == null ? 0 : nodeMap.size());
+        return (fieldMap == null ? 0 : fieldMap.size()) + (dynamicMap == null ? 0 : dynamicMap.size());
     }
 
     /**
@@ -347,12 +339,12 @@ public class JsonObject extends JsonContainer {
      */
     public Set<String> keySet() {
         if (fieldMap == null) {
-            return nodeMap == null ? Collections.emptySet() : nodeMap.keySet();
-        } else if (nodeMap == null) {
+            return dynamicMap == null ? Collections.emptySet() : dynamicMap.keySet();
+        } else if (dynamicMap == null) {
             return fieldMap.keySet();
         } else {
             Set<String> merged = new LinkedHashSet<>(fieldMap.keySet());
-            merged.addAll(nodeMap.keySet());
+            merged.addAll(dynamicMap.keySet());
             return merged;
         }
     }
@@ -366,7 +358,7 @@ public class JsonObject extends JsonContainer {
      */
     public boolean containsKey(String key) {
         if (key == null) return false;
-        return (fieldMap != null && fieldMap.containsKey(key)) || (nodeMap != null && nodeMap.containsKey(key));
+        return (fieldMap != null && fieldMap.containsKey(key)) || (dynamicMap != null && dynamicMap.containsKey(key));
     }
 
     /**
@@ -393,8 +385,8 @@ public class JsonObject extends JsonContainer {
                 action.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
-        if (nodeMap != null) {
-            for (Map.Entry<String, Object> entry : nodeMap.entrySet()){
+        if (dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
                 action.accept(entry.getKey(), entry.getValue());
             }
         }
@@ -414,8 +406,8 @@ public class JsonObject extends JsonContainer {
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
-        if (nodeMap != null) {
-            merged.putAll(nodeMap);
+        if (dynamicMap != null) {
+            merged.putAll(dynamicMap);
         }
         return merged;
     }
@@ -440,8 +432,8 @@ public class JsonObject extends JsonContainer {
                 set.add(new AbstractMap.SimpleEntry<>(key, value));
             }
         }
-        if (nodeMap != null) {
-            set.addAll(nodeMap.entrySet());
+        if (dynamicMap != null) {
+            set.addAll(dynamicMap.entrySet());
         }
         return set;
     }
@@ -454,8 +446,8 @@ public class JsonObject extends JsonContainer {
      * @return true if any entries were removed, false otherwise
      */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
-        if (nodeMap != null) {
-            return  nodeMap.entrySet().removeIf(filter);
+        if (dynamicMap != null) {
+            return  dynamicMap.entrySet().removeIf(filter);
         }
         return false;
     }
@@ -553,8 +545,8 @@ public class JsonObject extends JsonContainer {
                 return fi.invokeGetter(this);
             }
         }
-        if (nodeMap != null) {
-            return nodeMap.get(key);
+        if (dynamicMap != null) {
+            return dynamicMap.get(key);
         }
         return null;
     }
@@ -1451,10 +1443,10 @@ public class JsonObject extends JsonContainer {
                 return old;
             }
         }
-        if (nodeMap == null) {
-            nodeMap = Sjf4jConfig.global().mapSupplier.create();
+        if (dynamicMap == null) {
+            dynamicMap = Sjf4jConfig.global().mapSupplier.create();
         }
-        return nodeMap.put(key, object);
+        return dynamicMap.put(key, object);
     }
 
     public Object putNonNull(String key, Object node) {
@@ -1522,8 +1514,8 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }
-        if (nodeMap != null) {
-            return nodeMap.remove(key);
+        if (dynamicMap != null) {
+            return dynamicMap.remove(key);
         }
         return null;
     }
@@ -1532,8 +1524,8 @@ public class JsonObject extends JsonContainer {
      * Clear all dynamic nodes while keeping the nodeMap container.
      */
     public void clear() {
-        if (nodeMap != null) {
-            nodeMap.clear();
+        if (dynamicMap != null) {
+            dynamicMap.clear();
         }
     }
 
@@ -1545,7 +1537,7 @@ public class JsonObject extends JsonContainer {
      * Can help reduce memory usage if the dynamic map is no longer needed.</p>
      */
     public void prune() {
-        nodeMap = null;
+        dynamicMap = null;
     }
 
 

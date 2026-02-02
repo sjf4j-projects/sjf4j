@@ -22,9 +22,8 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.NodeField;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
-import org.w3c.dom.Node;
 
 import java.io.IOException;
 import java.util.Map;
@@ -203,7 +202,7 @@ public interface JacksonModule {
     class NodeFieldAnnotationIntrospector extends JacksonAnnotationIntrospector {
         @Override
         public PropertyName findNameForSerialization(Annotated a) {
-            NodeField nf = a.getAnnotation(NodeField.class);
+            NodeProperty nf = a.getAnnotation(NodeProperty.class);
             if (nf != null && !nf.value().isEmpty()) {
                 return PropertyName.construct(nf.value());
             }
@@ -211,7 +210,7 @@ public interface JacksonModule {
         }
         @Override
         public PropertyName findNameForDeserialization(Annotated a) {
-            NodeField nf = a.getAnnotation(NodeField.class);
+            NodeProperty nf = a.getAnnotation(NodeProperty.class);
             if (nf != null && !nf.value().isEmpty()) {
                 return PropertyName.construct(nf.value());
             }

@@ -446,6 +446,7 @@ public class Nodes {
         if (node == null) return null;
         if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
         if (JsonArray.class.isAssignableFrom(clazz)) return toJajo(node, clazz);
+
         Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
         Object pojo = pi.newInstance();
         visitObject(node, (k, v) -> {

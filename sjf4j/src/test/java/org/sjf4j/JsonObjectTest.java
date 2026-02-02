@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.sjf4j.annotation.node.NodeField;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.supplier.MapSupplier;
@@ -681,7 +681,7 @@ class JsonObjectTest {
 
 
     public static class BookField extends JsonObject {
-        @NodeField("no")
+        @NodeProperty("no")
         private String yes;
         private double height;
         private transient int transientHeight;
@@ -703,7 +703,7 @@ class JsonObjectTest {
     }
 
     public static class Note {
-        @NodeField("no")
+        @NodeProperty("no")
         private String yes;
         public String getYes() {return yes;}
     }

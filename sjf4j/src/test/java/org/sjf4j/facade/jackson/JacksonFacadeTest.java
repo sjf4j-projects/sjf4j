@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.NodeField;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
@@ -136,7 +136,7 @@ public class JacksonFacadeTest {
         private int id;
         private String name;
 
-        @NodeField("user_name")
+        @NodeProperty("user_name")
         private String userName;
         private double height;
         private transient int transientHeight;
@@ -164,7 +164,7 @@ public class JacksonFacadeTest {
     }
 
     public static class Note {
-        @NodeField("user_name")
+        @NodeProperty("user_name")
         private String userName;
         public String getUserName() {return userName;}
     }

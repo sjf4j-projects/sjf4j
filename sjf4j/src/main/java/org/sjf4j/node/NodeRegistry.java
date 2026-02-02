@@ -3,8 +3,11 @@ package org.sjf4j.node;
 import org.sjf4j.JsonException;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeValue;
+import sun.management.MethodInfo;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
@@ -251,62 +254,127 @@ public final class NodeRegistry {
      */
     public static class PojoInfo {
         private final Class<?> clazz;
-        private final MethodHandle constructor;
-        private final Supplier<?> lambdaConstructor;
+        private final CreatorInfo creatorInfo;
         private final Map<String, FieldInfo> fields;
+        private final Map<String, String> aliasMap;
 
-        /**
-         * Constructs a PojoInfo with the specified type, constructor, supplier, and fields.
-         *
-         * @param clazz the POJO class type
-         * @param constructor the method handle for the no-args constructor
-         * @param lambdaConstructor a lambda that creates new instances of the POJO
-         * @param fields a map of field names to FieldInfo objects
-         */
-        public PojoInfo(Class<?> clazz, MethodHandle constructor, Supplier<?> lambdaConstructor,
-                        Map<String, FieldInfo> fields) {
+
+        public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
+                        Map<String, FieldInfo> fields, Map<String, String> aliasMap) {
             this.clazz = clazz;
-            this.constructor = constructor;
-            this.lambdaConstructor = lambdaConstructor;
+            this.creatorInfo = creatorInfo;
             this.fields = fields;
+            this.aliasMap = aliasMap;
         }
 
         public Class<?> getType() {
             return clazz;
         }
 
-        /**
-         * Gets the map of field names to FieldInfo objects for this POJO.
-         *
-         * @return the map of field information
-         */
+        public CreatorInfo getCreatorInfo() {
+            return creatorInfo;
+        }
+
+        public boolean isPojo() {
+            return creatorInfo != null && creatorInfo.hasCreator();
+        }
+
         public Map<String, FieldInfo> getFields() {
             return fields;
         }
 
-        /**
-         * Checks if this object represents a valid POJO (has a constructor).
-         *
-         * @return true if it's a valid POJO, false otherwise
-         */
-        public boolean isPojo() {
-//            return constructor != null || lambdaConstructor != null;
-            return true;
+        public Map<String, String> getAliasMap() {
+            return aliasMap;
         }
 
+        public boolean hasNoArgsCtor() {
+            return creatorInfo != null && creatorInfo.noArgsCtor != null;
+        }
 
-        /**
-         * Creates a new instance of the POJO using either the lambda constructor or the method handle.
-         *
-         * @return a new instance of the POJO
-         * @throws JsonException if no constructor is available or if instantiation fails
-         */
         public Object newInstance() {
-            if (lambdaConstructor != null) {
-                return lambdaConstructor.get();
-            } else if (constructor != null) {
+            if (creatorInfo == null)
+                throw new JsonException("Failed to create instance of " + clazz + ": Not found creator info");
+            return creatorInfo.newInstance();
+        }
+    }
+
+
+    public static class CreatorInfo {
+        private final Class<?> clazz;
+        private final MethodHandle noArgsCtor;
+        private final Supplier<?> noArgsLambdaCtor;
+        private final Executable creator;
+        private final MethodHandle creatorHandle;
+        private final String[] argNames;
+        private final Type[] argTypes;
+        private final Map<String, Integer> argIndexes;
+        private final Map<String, String> aliasMap;
+
+        public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtor, Supplier<?> noArgsLambdaCtor,
+                           Executable creator, MethodHandle creatorHandle,
+                           String[] argNames, Type[] argTypes, Map<String, Integer> argIndexes,
+                           Map<String, String> aliasMap) {
+            this.clazz = clazz;
+            this.noArgsCtor = noArgsCtor;
+            this.noArgsLambdaCtor = noArgsLambdaCtor;
+            this.creator = creator;
+            this.creatorHandle = creatorHandle;
+            this.argNames = argNames;
+            this.argTypes = argTypes;
+            this.argIndexes = argIndexes;
+            this.aliasMap = aliasMap;
+        }
+
+        public boolean hasCreator() {
+            return creator != null || noArgsCtor != null;
+        }
+
+        public MethodHandle getNoArgsCtor() {
+            return noArgsCtor;
+        }
+
+        public Supplier<?> getNoArgsLambdaCtor() {
+            return noArgsLambdaCtor;
+        }
+
+        public Executable getCreator() {
+            return creator;
+        }
+
+        public MethodHandle getCreatorHandle() {
+            return creatorHandle;
+        }
+
+        public String[] getArgNames() {
+            return argNames;
+        }
+
+        public Type[] getArgTypes() {
+            return argTypes;
+        }
+
+        public Map<String, Integer> getArgIndexes() {
+            return argIndexes;
+        }
+
+        public int getArgIndex(String name) {
+            if (argIndexes != null) {
+                Integer idx = argIndexes.get(name);
+                if (idx != null) return idx;
+            }
+            return -1;
+        }
+
+        public Map<String, String> getAliasMap() {
+            return aliasMap;
+        }
+
+        public Object newInstance() {
+            if (noArgsLambdaCtor != null) {
+                return noArgsLambdaCtor.get();
+            } else if (noArgsCtor != null) {
                 try {
-                    return constructor.invoke();
+                    return noArgsCtor.invoke();
                 } catch (Throwable e) {
                     throw new JsonException("Failed to invoke constructor of " + clazz, e);
                 }
@@ -314,23 +382,99 @@ public final class NodeRegistry {
             throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
         }
 
-        /**
-         * Creates a new instance of the POJO using the method handle constructor.
-         * <p>
-         * FIXME: This method appears to be a test version.
-         *
-         * @return a new instance of the POJO
-         * @throws JsonException if no constructor is available or if instantiation fails
-         */
+        public Object newInstance(Object[] args) {
+            Objects.requireNonNull(args, "args is null");
+            if (creatorHandle == null) {
+                throw new JsonException("Failed to create instance of " + clazz + ": No creator constructor");
+            }
+            try {
+                Type[] argTypes = getArgTypes();
+                for (int i = 0; i < args.length; i++) {
+                    if (args[i] == null) {
+                        Class<?> argClazz = Types.rawClazz(argTypes[i]);
+                        if (argClazz.isPrimitive()) {
+                            args[i] = defaultPrimitiveValue(argClazz);
+                        }
+                    }
+                }
+                return creatorHandle.invokeWithArguments(args);
+            } catch (Throwable e) {
+                throw new JsonException("Failed to invoke creator constructor of " + clazz, e);
+            }
+        }
+
         public Object newInstance2() {
-            if (constructor != null) {
+            if (noArgsCtor != null) {
                 try {
-                    return constructor.invoke();
+                    return noArgsCtor.invoke();
                 } catch (Throwable e) {
                     throw new JsonException("Failed to invoke constructor for '" + clazz + "'", e);
                 }
             }
             throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
+        }
+
+
+        private static Object defaultPrimitiveValue(Class<?> primitiveType) {
+            if (primitiveType == boolean.class) return false;
+            if (primitiveType == byte.class) return (byte) 0;
+            if (primitiveType == short.class) return (short) 0;
+            if (primitiveType == int.class) return 0;
+            if (primitiveType == long.class) return 0L;
+            if (primitiveType == float.class) return 0f;
+            if (primitiveType == double.class) return 0d;
+            if (primitiveType == char.class) return '\0';
+            return null;
+        }
+
+    }
+
+    public static class RecordInfo {
+        private final Class<?> clazz;
+        private final Constructor<?> compCtor;
+        private final MethodHandle compCtorHandle;
+        private final int compCount;
+        private final String[] compNames;
+        private final Class<?>[] compClasses;
+        private final Type[] compTypes;
+
+        public RecordInfo(Class<?> clazz, Constructor<?> compCtor, MethodHandle compCtorHandle,
+                          int compCount, String[] compNames, Class<?>[] compClasses, Type[] compTypes) {
+            this.clazz = clazz;
+            this.compCtor = compCtor;
+            this.compCtorHandle = compCtorHandle;
+            this.compCount = compCount;
+            this.compNames = compNames;
+            this.compClasses = compClasses;
+            this.compTypes = compTypes;
+        }
+
+        public Class<?> getClazz() {
+            return clazz;
+        }
+
+        public Constructor<?> getCompCtor() {
+            return compCtor;
+        }
+
+        public MethodHandle getCompCtorHandle() {
+            return compCtorHandle;
+        }
+
+        public int getCompCount() {
+            return compCount;
+        }
+
+        public String[] getCompNames() {
+            return compNames;
+        }
+
+        public Class<?>[] getCompClasses() {
+            return compClasses;
+        }
+
+        public Type[] getCompTypes() {
+            return compTypes;
         }
 
     }
