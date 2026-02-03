@@ -1,6 +1,6 @@
 package org.sjf4j.facade.snake;
 
-import org.sjf4j.facade.FacadeWriter;
+import org.sjf4j.facade.StreamingWriter;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
@@ -16,7 +16,7 @@ import org.yaml.snakeyaml.events.StreamStartEvent;
 
 import java.io.IOException;
 
-public class SnakeWriter implements FacadeWriter {
+public class SnakeWriter implements StreamingWriter {
 
     private final Emitter emitter;
 

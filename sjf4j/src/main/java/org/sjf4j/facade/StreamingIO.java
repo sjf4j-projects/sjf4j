@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +19,7 @@ import java.util.Set;
 
 /**
  * Utility class for streaming JSON processing. Provides methods for reading JSON nodes from
- * a {@link FacadeReader} and writing JSON nodes to a {@link FacadeWriter}, with support
+ * a {@link StreamingReader} and writing JSON nodes to a {@link StreamingWriter}, with support
  * for type conversion and POJO handling.
  */
 public class StreamingIO {
@@ -28,7 +27,7 @@ public class StreamingIO {
     /// Read
 
     /**
-     * Reads a JSON node from the provided {@link FacadeReader} and converts it to the appropriate
+     * Reads a JSON node from the provided {@link StreamingReader} and converts it to the appropriate
      * Java object based on the token type and optional target type.
      *
      * @param reader the FacadeReader to read from
@@ -37,9 +36,8 @@ public class StreamingIO {
      * @throws IOException if an I/O error occurs during reading
      * @throws JsonException if an unexpected token is encountered
      */
-    public static Object readNode(FacadeReader reader, Type type) throws IOException {
-        if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        FacadeReader.Token token = reader.peekToken();
+    public static Object readNode(StreamingReader reader, Type type) throws IOException {
+        StreamingReader.Token token = reader.peekToken();
         switch (token) {
             case START_OBJECT:
                 return readObject(reader, type);
@@ -58,7 +56,7 @@ public class StreamingIO {
         }
     }
 
-    public static Object readNull(FacadeReader reader, Type type) throws IOException {
+    public static Object readNull(StreamingReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawClazz(type);
         reader.nextNull();
 
@@ -69,7 +67,7 @@ public class StreamingIO {
         return null;
     }
 
-    public static Object readBoolean(FacadeReader reader, Type type) throws IOException {
+    public static Object readBoolean(StreamingReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawClazz(type);
         if (rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.nextBoolean();
@@ -83,7 +81,7 @@ public class StreamingIO {
         throw new JsonException("Cannot deserialize Boolean value into type " + rawClazz.getName());
     }
 
-    public static Object readNumber(FacadeReader reader, Type type) throws IOException {
+    public static Object readNumber(StreamingReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             return reader.nextNumber();
@@ -102,7 +100,7 @@ public class StreamingIO {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Object readString(FacadeReader reader, Type type) throws IOException {
+    public static Object readString(StreamingReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
@@ -126,7 +124,7 @@ public class StreamingIO {
     }
 
     /**
-     * Reads a JSON object from the provided {@link FacadeReader} and converts it to the appropriate
+     * Reads a JSON object from the provided {@link StreamingReader} and converts it to the appropriate
      * Java object based on the target type.
      *
      * @param reader the FacadeReader to read from
@@ -134,7 +132,7 @@ public class StreamingIO {
      * @return the parsed and converted JSON object
      * @throws IOException if an I/O error occurs during reading
      */
-    public static Object readObject(FacadeReader reader, Type type) throws IOException {
+    public static Object readObject(StreamingReader reader, Type type) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
         Class<?> rawClazz = Types.rawBox(type);
 
@@ -163,46 +161,6 @@ public class StreamingIO {
             reader.endObject();
             return jo;
         }
-
-//        if (JsonObject.class.isAssignableFrom(rawClazz)) {
-//            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-//            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-//            JsonObject jojo = (JsonObject) pi.newInstance();
-//            reader.startObject();
-//            while (reader.hasNext()) {
-//                String key = reader.nextName();
-//                NodeRegistry.FieldInfo fi = fields.get(key);
-//                if (fi != null) {
-//                    Object vv = readNode(reader, fi.getType());
-//                    fi.invokeSetter(jojo, vv);
-//                } else {
-//                    Object vv = readNode(reader, Object.class);
-//                    jojo.put(key, vv);
-//                }
-//            }
-//            reader.endObject();
-//            return jojo;
-//        }
-
-//        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-//        if (pi != null) {
-//            Object pojo = pi.newInstance();
-//            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-//            reader.startObject();
-//            while (reader.hasNext()) {
-//                String key = reader.nextName();
-//                NodeRegistry.FieldInfo fi = fields.get(key);
-//                if (fi != null) {
-//                    Object vv = readNode(reader, fi.getType());
-//                    fi.invokeSetter(pojo, vv);
-//                } else {
-//                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
-//                }
-//            }
-//            reader.endObject();
-//            return pojo;
-//        }
-
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null) {
@@ -272,7 +230,7 @@ public class StreamingIO {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     dynamicMap.put(key, readNode(reader, Object.class));
                 } else {
-                    readNode(reader, Object.class); // TODO: Skip value
+                    reader.skipNode();
                 }
             }
             reader.endObject();
@@ -291,7 +249,7 @@ public class StreamingIO {
     }
 
 
-    public static Object readArray(FacadeReader reader, Type type) throws IOException {
+    public static Object readArray(StreamingReader reader, Type type) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
         Class<?> rawClazz = Types.rawBox(type);
 
@@ -366,7 +324,7 @@ public class StreamingIO {
 
     /// Write
 
-    public static void writeNode(FacadeWriter writer, Object node) throws IOException {
+    public static void writeNode(StreamingWriter writer, Object node) throws IOException {
         if (writer == null) throw new IllegalArgumentException("Writer must not be null");
         if (node == null) {
             writer.writeNull();

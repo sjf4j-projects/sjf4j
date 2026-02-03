@@ -13,6 +13,8 @@ package org.sjf4j.facade;
  * @param <R> the type of FacadeReader associated with this facade
  * @param <W> the type of FacadeWriter associated with this facade
  */
-public interface JsonFacade<R extends FacadeReader, W extends FacadeWriter> extends StreamingFacade<R, W> {
+public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter> extends StreamingFacade<R, W> {
     // Marker interface extending StreamingFacade
+
+
 }

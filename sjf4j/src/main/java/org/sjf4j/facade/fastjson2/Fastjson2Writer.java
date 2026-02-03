@@ -1,14 +1,14 @@
 package org.sjf4j.facade.fastjson2;
 
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.facade.FacadeWriter;
+import org.sjf4j.facade.StreamingWriter;
 
 import java.io.IOException;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public class Fastjson2Writer implements FacadeWriter {
+public class Fastjson2Writer implements StreamingWriter {
 
     private final JSONWriter writer;
 

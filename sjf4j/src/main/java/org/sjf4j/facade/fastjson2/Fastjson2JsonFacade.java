@@ -21,6 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
+    private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
+            ? Sjf4jConfig.global().streamingMode : StreamingMode.PLUGIN_MODULE;
 
 //    private final JSONReader.Feature[] readerFeatures;
 //    private final JSONWriter.Feature[] writerFeatures;
@@ -53,20 +55,19 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         );
 
         // With Module
-        if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE) {
-            ObjectReaderProvider provider = JSONFactory.getDefaultObjectReaderProvider();
-            provider.register(new Fastjson2Module.MyReaderModule());
+        if (streamingMode == StreamingMode.PLUGIN_MODULE) {
+            ObjectReaderProvider readProvider = JSONFactory.getDefaultObjectReaderProvider();
+            readProvider.register(new Fastjson2Module.MyReaderModule());
             this.readerContext.setExtraProcessor((object, key, value) -> {
                 if (object instanceof JsonObject) {
                     ((JsonObject) object).put(key, value);
                 }
             });
-        }
-        if (Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
-            ObjectWriterProvider provider = JSONFactory.getDefaultObjectWriterProvider();
-            provider.register(new Fastjson2Module.MyWriterModule());
+            ObjectWriterProvider writeProvider = JSONFactory.getDefaultObjectWriterProvider();
+            writeProvider.register(new Fastjson2Module.MyWriterModule());
         }
     }
+
 
     @Override
     public Fastjson2Reader createReader(Reader input) {
@@ -99,11 +100,11 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        switch (Sjf4jConfig.global().readMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try {
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
@@ -111,7 +112,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to read JSON streaming into node type '" + type.getTypeName() + "'", e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try {
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return reader.read(type);
@@ -120,18 +121,18 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
         }
     }
 
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        switch (Sjf4jConfig.global().readMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try {
                     JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
@@ -139,7 +140,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try {
                     JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return reader.read(type);
@@ -148,18 +149,18 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
         }
     }
 
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        switch (Sjf4jConfig.global().readMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try {
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
@@ -167,7 +168,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
@@ -175,18 +176,18 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
         }
     }
 
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        switch (Sjf4jConfig.global().readMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try {
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
@@ -194,7 +195,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to read JSON bytes into node type '" + type + "'", e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
@@ -202,7 +203,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
         }
     }
 
@@ -227,12 +228,12 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
-        switch (Sjf4jConfig.global().writeMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try (JSONWriter writer = JSONWriter.of(writerContext)) {
                     Fastjson2StreamingIO.writeNode(writer, node);
                     writer.flushTo(output);
@@ -241,7 +242,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
                 break;
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try (JSONWriter writer = JSONWriter.of(writerContext)) {
                     writer.writeAny(node);
                     writer.flushTo(output);
@@ -252,7 +253,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
     }
 
@@ -260,12 +261,12 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output is null");
-        switch (Sjf4jConfig.global().writeMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     Fastjson2StreamingIO.writeNode(writer, node);
                     writer.flushTo(output);
@@ -274,7 +275,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
                 break;
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     writer.flushTo(output);
@@ -285,17 +286,17 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
     }
 
     @Override
     public String writeNodeAsString(Object node) {
-        switch (Sjf4jConfig.global().writeMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsString(node);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try (JSONWriter writer = JSONWriter.of(writerContext)) {
                     Fastjson2StreamingIO.writeNode(writer, node);
                     return writer.toString();
@@ -303,7 +304,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to write node type " + Types.name(node) + " to JSON string", e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     return writer.toString();
@@ -312,17 +313,17 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
     }
 
     @Override
     public byte[] writeNodeAsBytes(Object node) {
-        switch (Sjf4jConfig.global().writeMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsBytes(node);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     Fastjson2StreamingIO.writeNode(writer, node);
                     return writer.getBytes();
@@ -330,7 +331,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to write node type " + Types.name(node) + " to JSON bytes", e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     return writer.getBytes();
@@ -339,7 +340,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             default:
-                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
     }
 

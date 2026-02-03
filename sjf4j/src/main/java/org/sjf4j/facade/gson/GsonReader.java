@@ -2,12 +2,12 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 
 import java.io.IOException;
 
-public class GsonReader implements FacadeReader {
+public class GsonReader implements StreamingReader {
 
     private final JsonReader reader;
 
@@ -122,4 +122,10 @@ public class GsonReader implements FacadeReader {
     public void close() throws IOException {
         reader.close();
     }
+
+    @Override
+    public void skipNode() throws IOException {
+        reader.skipValue();
+    }
+
 }

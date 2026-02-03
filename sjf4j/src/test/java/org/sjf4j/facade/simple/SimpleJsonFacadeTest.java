@@ -226,4 +226,25 @@ public class SimpleJsonFacadeTest {
         assertEquals(0, pojo.age);
     }
 
+    @Test
+    void testSkipNode1() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        String json = "{\n" +
+                "  \"id\": 7,\n" +
+                "  \"skipObj\": {\n" +
+                "    \"x\": [true, false, null, {\"deep\": \"v, }\"}],\n" +
+                "    \"y\": 2\n" +
+                "  },\n" +
+                "  \"skipArr\": [1,2,{\"a\":[3,4]}],\n" +
+                "  \"skipStr\": \"wa,w[]{}a\",\n" +
+                "  \"skipNumber\": -334455,\n" +
+                "  \"skipBoolean\": false,\n" +
+                "  \"skipNull\": null,\n" +
+                "  \"name\": \"Jack\"\n" +
+                "}";
+        User pojo = (User) facade.readNode(json, User.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("Jack", pojo.name);
+    }
+
 }

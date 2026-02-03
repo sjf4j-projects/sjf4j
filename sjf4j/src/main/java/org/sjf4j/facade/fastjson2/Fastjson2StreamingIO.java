@@ -7,7 +7,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.Types;
@@ -18,7 +18,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,8 +44,7 @@ public class Fastjson2StreamingIO {
     /// Read
 
     public static Object readNode(JSONReader reader, Type type) throws IOException {
-        if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        FacadeReader.Token token = peekToken(reader);
+        StreamingReader.Token token = peekToken(reader);
         switch (token) {
             case START_OBJECT:
                 return readObject(reader, type);
@@ -119,10 +117,10 @@ public class Fastjson2StreamingIO {
             return s.length() > 0 ? s.charAt(0) : null;
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             String s = reader.readString();
-            return ci.decode(s);
+            return vci.decode(s);
         }
 
         if (rawClazz.isEnum()) {
@@ -137,8 +135,8 @@ public class Fastjson2StreamingIO {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
@@ -147,7 +145,7 @@ public class Fastjson2StreamingIO {
                 Object value = readNode(reader, valueType);
                 map.put(key, value);
             }
-            return ci != null ? ci.decode(map) : map;
+            return vci != null ? vci.decode(map) : map;
         }
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
@@ -161,43 +159,89 @@ public class Fastjson2StreamingIO {
             return jo;
         }
 
-        if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            JsonObject jojo = (JsonObject) pi.newInstance();
-            reader.nextIfObjectStart();
-            while (!reader.nextIfObjectEnd()) {
-                String key = reader.readFieldName();
-                NodeRegistry.FieldInfo fi = fields.get(key);
-                if (fi != null) {
-                    Object vv = readNode(reader, fi.getType());
-                    fi.invokeSetter(jojo, vv);
-                } else {
-                    Object vv = readNode(reader, Object.class);
-                    jojo.put(key, vv);
-                }
-            }
-            return jojo;
-        }
-
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+
+            boolean useArgsCreator = ci.getArgsCreator() != null;
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            Object pojo = !useArgsCreator ? ci.newInstance() : null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+
             reader.nextIfObjectStart();
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-                NodeRegistry.FieldInfo fi = fields.get(key);
+
+                int argIdx = -1;
+                if (useArgsCreator) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+
+                if (argIdx >= 0) {
+                    Type argType = ci.getArgTypes()[argIdx];
+                    args[argIdx] = readNode(reader, argType);
+                    remainingArgs--;
+                    if (pojo == null && remainingArgs == 0) {
+                        pojo = ci.newInstance(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            if (pendingFields[i].hasSetter())
+                                pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
-                    fi.invokeSetter(pojo, vv);
+                    if (pojo != null) {
+                        fi.invokeSetter(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    dynamicMap.put(key, readNode(reader, Object.class));
                 } else {
-                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
+                    reader.skipValue();
                 }
             }
+
+            if (pojo == null) {
+                pojo = ci.newInstance(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
-        throw new JsonException("Cannot deserialize JSON Object into type " + rawClazz.getName());
+
+        throw new JsonException("Cannot deserialize Object value into type " + rawClazz.getName());
     }
 
 
@@ -269,25 +313,25 @@ public class Fastjson2StreamingIO {
 
     /// Reader
 
-    public static FacadeReader.Token peekToken(JSONReader reader) throws IOException {
+    public static StreamingReader.Token peekToken(JSONReader reader) throws IOException {
         if (reader.isObject()) {
-            return FacadeReader.Token.START_OBJECT;
+            return StreamingReader.Token.START_OBJECT;
         } else if (reader.current() == '}') {
-            return FacadeReader.Token.END_OBJECT;
+            return StreamingReader.Token.END_OBJECT;
         } else if (reader.isArray()) {
-            return FacadeReader.Token.START_ARRAY;
+            return StreamingReader.Token.START_ARRAY;
         } else if (reader.current() == ']') {
-            return FacadeReader.Token.END_ARRAY;
+            return StreamingReader.Token.END_ARRAY;
         } else if (reader.isString()) {
-            return FacadeReader.Token.STRING;
+            return StreamingReader.Token.STRING;
         } else if (reader.isNumber()) {
-            return FacadeReader.Token.NUMBER;
+            return StreamingReader.Token.NUMBER;
         } else if (reader.current() == 't' || reader.current() == 'f') {    // Yeah~I got it!
-            return FacadeReader.Token.BOOLEAN;
+            return StreamingReader.Token.BOOLEAN;
         } else if (reader.isNull()) {
-            return FacadeReader.Token.NULL;
+            return StreamingReader.Token.NULL;
         } else {
-            return FacadeReader.Token.UNKNOWN;
+            return StreamingReader.Token.UNKNOWN;
         }
     }
 

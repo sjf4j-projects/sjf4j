@@ -1,12 +1,12 @@
 package org.sjf4j.facade.jackson;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonTokenId;
-import org.sjf4j.facade.FacadeReader;
+import com.fasterxml.jackson.core.JsonToken;
+import org.sjf4j.facade.StreamingReader;
 
 import java.io.IOException;
 
-public class JacksonReader implements FacadeReader {
+public class JacksonReader implements StreamingReader {
 
     private final JsonParser parser;
 
@@ -15,62 +15,28 @@ public class JacksonReader implements FacadeReader {
         this.parser = parser;
     }
 
-//    @Override
-//    public int peekTokenId() throws IOException {
-//        int tokenId = parser.currentTokenId();
-//        if (tokenId == JsonTokenId.ID_NO_TOKEN) {
-//            parser.nextToken();
-//            tokenId = parser.currentTokenId();
-//        }
-//        switch (tokenId) {
-//            case JsonTokenId.ID_START_OBJECT:
-//                return ID_START_OBJECT;
-//            case JsonTokenId.ID_END_OBJECT:
-//                return ID_END_OBJECT;
-//            case JsonTokenId.ID_START_ARRAY:
-//                return ID_START_ARRAY;
-//            case JsonTokenId.ID_END_ARRAY:
-//                return ID_END_ARRAY;
-//            case JsonTokenId.ID_STRING:
-//                return ID_STRING;
-//            case JsonTokenId.ID_NUMBER_INT:
-//            case JsonTokenId.ID_NUMBER_FLOAT:
-//                return ID_NUMBER;
-//            case JsonTokenId.ID_TRUE:
-//            case JsonTokenId.ID_FALSE:
-//                return ID_BOOLEAN;
-//            case JsonTokenId.ID_NULL:
-//                return ID_NULL;
-//            default:
-//                return ID_UNKNOWN;
-//        }
-//    }
-
     @Override
     public Token peekToken() throws IOException {
-        int tokenId = parser.currentTokenId();
-        if (tokenId == JsonTokenId.ID_NO_TOKEN) {
-            parser.nextToken();
-            tokenId = parser.currentTokenId();
-        }
-        switch (tokenId) {
-            case JsonTokenId.ID_START_OBJECT:
+        JsonToken tk = parser.currentToken();
+        if (tk == null) tk = parser.nextToken();
+        switch (tk) {
+            case START_OBJECT:
                 return Token.START_OBJECT;
-            case JsonTokenId.ID_END_OBJECT:
+            case END_OBJECT:
                 return Token.END_OBJECT;
-            case JsonTokenId.ID_START_ARRAY:
+            case START_ARRAY:
                 return Token.START_ARRAY;
-            case JsonTokenId.ID_END_ARRAY:
+            case END_ARRAY:
                 return Token.END_ARRAY;
-            case JsonTokenId.ID_STRING:
+            case VALUE_STRING:
                 return Token.STRING;
-            case JsonTokenId.ID_NUMBER_INT:
-            case JsonTokenId.ID_NUMBER_FLOAT:
+            case VALUE_NUMBER_INT:
+            case VALUE_NUMBER_FLOAT:
                 return Token.NUMBER;
-            case JsonTokenId.ID_TRUE:
-            case JsonTokenId.ID_FALSE:
+            case VALUE_TRUE:
+            case VALUE_FALSE:
                 return Token.BOOLEAN;
-            case JsonTokenId.ID_NULL:
+            case VALUE_NULL:
                 return Token.NULL;
             default:
                 return Token.UNKNOWN;
@@ -140,5 +106,15 @@ public class JacksonReader implements FacadeReader {
     public void close() throws IOException {
         parser.close();
     }
+
+    /// Skip
+
+    @Override
+    public void skipNode() throws IOException {
+        JsonToken tk = parser.currentToken();
+        if (tk.isScalarValue()) parser.nextToken();
+        else parser.skipChildren();
+    }
+
 
 }

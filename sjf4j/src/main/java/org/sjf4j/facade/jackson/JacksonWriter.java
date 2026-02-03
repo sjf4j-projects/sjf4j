@@ -1,13 +1,13 @@
 package org.sjf4j.facade.jackson;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import org.sjf4j.facade.FacadeWriter;
+import org.sjf4j.facade.StreamingWriter;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public class JacksonWriter implements FacadeWriter {
+public class JacksonWriter implements StreamingWriter {
 
     private final JsonGenerator gen;
 

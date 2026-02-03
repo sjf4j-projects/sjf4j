@@ -1,11 +1,11 @@
 package org.sjf4j.facade.gson;
 
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.facade.FacadeWriter;
+import org.sjf4j.facade.StreamingWriter;
 
 import java.io.IOException;
 
-public class GsonWriter implements FacadeWriter {
+public class GsonWriter implements StreamingWriter {
 
     private final JsonWriter writer;
 

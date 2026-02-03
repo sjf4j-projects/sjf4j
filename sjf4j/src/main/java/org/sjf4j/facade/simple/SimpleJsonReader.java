@@ -1,13 +1,19 @@
 package org.sjf4j.facade.simple;
 
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
+import org.yaml.snakeyaml.events.Event;
+import org.yaml.snakeyaml.events.MappingEndEvent;
+import org.yaml.snakeyaml.events.MappingStartEvent;
+import org.yaml.snakeyaml.events.ScalarEvent;
+import org.yaml.snakeyaml.events.SequenceEndEvent;
+import org.yaml.snakeyaml.events.SequenceStartEvent;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 
-public class SimpleJsonReader implements FacadeReader {
+public class SimpleJsonReader implements StreamingReader {
 
     private final Reader reader;
 
@@ -16,7 +22,6 @@ public class SimpleJsonReader implements FacadeReader {
     private Token bufferedToken = null;
 
     public SimpleJsonReader(Reader input) {
-        if (input == null) throw new IllegalArgumentException("Input reader must not be null");
         if (!(input instanceof BufferedReader)) {
             input = new BufferedReader(input);
         }
@@ -53,11 +58,10 @@ public class SimpleJsonReader implements FacadeReader {
     @Override
     public Token peekToken() throws IOException {
         if (bufferedToken != null) return bufferedToken;
-        skipWhitespace();
 
+        skipWhitespace();
         int c = peek();
         if (c == -1) return bufferedToken = Token.UNKNOWN;
-
         switch (c) {
             case '{': return bufferedToken = Token.START_OBJECT;
             case '}': return bufferedToken = Token.END_OBJECT;
@@ -278,4 +282,126 @@ public class SimpleJsonReader implements FacadeReader {
         return new IOException(msg + ", but got " + c + " at position " + pos);
     }
 
+    /// Skip
+    @Override
+    public void skipNode() throws IOException {
+        bufferedToken = null;
+        skipWhitespace();
+        int c = peek();
+        if (c == -1) return;
+        switch (c) {
+            case '"':
+                skipString();
+                return;
+            case '{':
+                skipObject();
+                return;
+            case '[':
+                skipArray();
+                return;
+            case 't':
+                skipLiteral("true");
+                return;
+            case 'f':
+                skipLiteral("false");
+                return;
+            case 'n':
+                skipLiteral("null");
+                return;
+            default:
+                if (c == '-' || (c >= '0' && c <= '9')) {
+                    skipNumber();
+                    return;
+                }
+                throw error("Unexpected token", c);
+        }
+    }
+
+    private void skipString() throws IOException {
+        int c = read(); // consume opening "
+        if (c != '"') throw error("Expected '\"'", c);
+        while ((c = read()) != -1) {
+            if (c == '"') return; // end string
+            if (c == '\\') { // escape
+                int e = read();
+                if (e == -1) throw error("Unexpected EOF in escape", e);
+                if (e == 'u') {
+                    for (int i = 0; i < 4; i++) {
+                        int h = read();
+                        if (h == -1) throw error("Unexpected EOF in unicode escape", h);
+                        if (!isHexDigit(h)) throw error("Invalid hex digit in \\u escape", h);
+                    }
+                }
+            }
+        }
+        throw error("Unexpected EOF in string", -1);
+    }
+
+    private void skipNumber() throws IOException {
+        int c = read();
+        while (true) {
+            c = read();
+            if (c == -1) return;
+            if (c >= '0' && c <= '9') continue;
+            if (c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E') continue;
+            lastChar = c;
+            return;
+        }
+    }
+
+    private void skipLiteral(String literal) throws IOException {
+        for (int i = 0; i < literal.length(); i++) {
+            read();
+        }
+    }
+
+    private void skipObject() throws IOException {
+        int c = read();
+        if (c != '{') throw error("Expected '{'", c);
+        skipWhitespace();
+        if (peek() == '}') { // empty object
+            read();
+            return;
+        }
+        while (true) {
+            skipWhitespace();
+            if (peek() != '"') throw error("Expected '\"' for object key", peek());
+            skipString(); // key
+            skipWhitespace();
+            c = read();
+            if (c != ':') throw error("Expected ':'", c);
+            skipNode();   // value
+            skipWhitespace();
+            c = read();
+            if (c == ',') {
+                continue;
+            } else if (c == '}') {
+                return;
+            } else {
+                throw error("Expected ',' or '}'", c);
+            }
+        }
+    }
+
+    private void skipArray() throws IOException {
+        int c = read();
+        if (c != '[') throw error("Expected '['", c);
+        skipWhitespace();
+        if (peek() == ']') { // empty array
+            read();
+            return;
+        }
+        while (true) {
+            skipNode();   // element
+            skipWhitespace();
+            c = read();
+            if (c == ',') {
+                continue;
+            } else if (c == ']') {
+                return;
+            } else {
+                throw error("Expected ',' or ']'", c);
+            }
+        }
+    }
 }

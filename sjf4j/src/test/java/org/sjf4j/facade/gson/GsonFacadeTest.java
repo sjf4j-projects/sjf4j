@@ -7,10 +7,14 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.fastjson2.Fastjson2FacadeTest;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Decode;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
@@ -18,6 +22,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -29,7 +34,7 @@ public class GsonFacadeTest {
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.STREAMING_GENERAL).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
         GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         StringWriter sw = new StringWriter();
@@ -49,7 +54,7 @@ public class GsonFacadeTest {
     public void testWithModule1() throws IOException {
         GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.USE_MODULE).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         log.info("jo1={}", jo1.inspect());
@@ -77,20 +82,20 @@ public class GsonFacadeTest {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.STREAMING_GENERAL).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
         StringWriter output;
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json2 = output.toString();
         assertEquals(json1, json2);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.STREAMING_SPECIFIC).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json3 = output.toString();
         assertEquals(json1, json3);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.USE_MODULE).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json4 = output.toString();
@@ -182,5 +187,33 @@ public class GsonFacadeTest {
         log.info("json1={}", json1);
     }
 
+
+    static class User {
+        String name;
+        List<User> friends;
+        Map<String, Object> ext;
+    }
+
+    @Test
+    void testSkipNode1() {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+        String json = "{\n" +
+                "  \"id\": 7,\n" +
+                "  \"skipObj\": {\n" +
+                "    \"x\": [true, false, null, {\"deep\": \"v, }\"}],\n" +
+                "    \"y\": 2\n" +
+                "  },\n" +
+                "  \"skipArr\": [1,2,{\"a\":[3,4]}],\n" +
+                "  \"skipStr\": \"wa,w[]{}a\",\n" +
+                "  \"skipNumber\": -334455,\n" +
+                "  \"skipBoolean\": false,\n" +
+                "  \"skipNull\": null,\n" +
+                "  \"name\": \"Jack\"\n" +
+                "}";
+        User pojo = (User) facade.readNode(json, User.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("Jack", pojo.name);
+    }
 
 }

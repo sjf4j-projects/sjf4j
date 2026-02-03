@@ -26,7 +26,13 @@ import java.util.Objects;
  * @param <R> the type of FacadeReader associated with this facade
  * @param <W> the type of FacadeWriter associated with this facade
  */
-public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter> {
+public interface StreamingFacade<R extends StreamingReader, W extends StreamingWriter> {
+
+    enum StreamingMode {
+        SHARED_IO,
+        EXCLUSIVE_IO,
+        PLUGIN_MODULE
+    }
 
     /// Reader
 
@@ -87,7 +93,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     default Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
         try {
-            FacadeReader reader = createReader(input);
+            StreamingReader reader = createReader(input);
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
@@ -157,7 +163,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
     default void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
         try {
-            FacadeWriter writer = createWriter(output);
+            StreamingWriter writer = createWriter(output);
             writer.startDocument();
             StreamingIO.writeNode(writer, node);
             writer.endDocument();

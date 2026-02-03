@@ -4,6 +4,7 @@ import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.supplier.ListSupplier;
@@ -44,15 +45,7 @@ public final class Sjf4jConfig {
      */
     private NodeFacade nodeFacade;
 
-    /**
-     * The read mode for data processing.
-     */
-    public final ReadMode readMode;
-
-    /**
-     * The write mode for data processing.
-     */
-    public final WriteMode writeMode;
+    public final StreamingFacade.StreamingMode streamingMode;
 
     /**
      * The format used when encoding/decoding {@link java.time.Instant}.
@@ -87,8 +80,7 @@ public final class Sjf4jConfig {
         this.mapSupplier = builder.mapSupplier;
         this.listSupplier = builder.listSupplier;
         this.setSupplier = builder.setSupplier;
-        this.readMode = builder.readMode;
-        this.writeMode = builder.writeMode;
+        this.streamingMode = builder.streamingMode;
         this.instantFormat = builder.instantFormat;
     }
 
@@ -159,21 +151,6 @@ public final class Sjf4jConfig {
         return nodeFacade;
     }
 
-    /// Mode
-
-    public enum ReadMode {
-        STREAMING_GENERAL,
-        STREAMING_SPECIFIC,
-        USE_MODULE,
-        FAST_UNSAFE,
-    }
-
-    public enum WriteMode {
-        STREAMING_GENERAL,
-        STREAMING_SPECIFIC,
-        USE_MODULE,
-    }
-
     public enum InstantFormat {
         ISO_STRING,
         EPOCH_MILLIS,
@@ -193,8 +170,7 @@ public final class Sjf4jConfig {
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
         private SetSupplier setSupplier = SetSupplier.LinkedHashSetSupplier;
 
-        private ReadMode readMode = ReadMode.USE_MODULE;
-        private WriteMode writeMode = WriteMode.USE_MODULE;
+        private StreamingFacade.StreamingMode streamingMode = null;
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
 
         /**
@@ -211,8 +187,6 @@ public final class Sjf4jConfig {
             if (config == null) throw new IllegalArgumentException("JsonConfig must not be null");
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
-            this.readMode = config.readMode;
-            this.writeMode = config.writeMode;
             this.instantFormat = config.instantFormat;
         }
 
@@ -255,17 +229,10 @@ public final class Sjf4jConfig {
             this.setSupplier = setSupplier;
             return this;
         }
-        public Builder readMode(Sjf4jConfig.ReadMode readMode) {
-            if (readMode == null) throw new IllegalArgumentException("readMode must not be null");
-            this.readMode = readMode;
+        public Builder streamingMode(StreamingFacade.StreamingMode streamingMode) {
+            this.streamingMode = streamingMode;
             return this;
         }
-        public Builder writeMode(Sjf4jConfig.WriteMode writeMode) {
-            if (writeMode == null) throw new IllegalArgumentException("writeMode must not be null");
-            this.writeMode = writeMode;
-            return this;
-        }
-
         public Builder instantFormat(InstantFormat instantFormat) {
             if (instantFormat == null) throw new IllegalArgumentException("instantFormat must not be null");
             this.instantFormat = instantFormat;

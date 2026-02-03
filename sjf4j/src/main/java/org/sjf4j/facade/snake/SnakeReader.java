@@ -1,7 +1,7 @@
 package org.sjf4j.facade.snake;
 
 import org.sjf4j.JsonException;
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.yaml.snakeyaml.events.AliasEvent;
 import org.yaml.snakeyaml.events.DocumentEndEvent;
@@ -18,7 +18,7 @@ import org.yaml.snakeyaml.parser.Parser;
 
 import java.io.IOException;
 
-public class SnakeReader implements FacadeReader {
+public class SnakeReader implements StreamingReader {
 
     private final Parser parser;
 //    private Object cachedValue;
@@ -147,13 +147,31 @@ public class SnakeReader implements FacadeReader {
 
     @Override
     public boolean hasNext() throws IOException {
-        Token token = peekToken();
-        return token != Token.END_OBJECT && token != Token.END_ARRAY;
+        Event event = parser.peekEvent();
+        return !(event instanceof MappingEndEvent) && !(event instanceof SequenceEndEvent);
     }
 
     @Override
     public void close() throws IOException {
         // Nothing
+    }
+
+    @Override
+    public void skipNode() throws IOException {
+        Event event = parser.peekEvent();
+        if (event instanceof ScalarEvent) {
+            parser.getEvent();
+        } else if (event instanceof MappingStartEvent || event instanceof SequenceStartEvent) {
+            int depth = 0;
+            do {
+                event = parser.getEvent();
+                if (event instanceof MappingStartEvent || event instanceof SequenceStartEvent) {
+                    depth++;
+                } else if (event instanceof MappingEndEvent || event instanceof SequenceEndEvent) {
+                    depth--;
+                }
+            } while (depth > 0);
+        }
     }
 
 }

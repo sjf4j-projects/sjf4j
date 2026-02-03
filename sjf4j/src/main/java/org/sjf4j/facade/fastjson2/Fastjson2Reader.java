@@ -2,12 +2,12 @@ package org.sjf4j.facade.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
 import org.sjf4j.JsonException;
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 
-public class Fastjson2Reader implements FacadeReader {
+public class Fastjson2Reader implements StreamingReader {
 
     private final JSONReader reader;
 
@@ -15,29 +15,6 @@ public class Fastjson2Reader implements FacadeReader {
         if (reader == null) throw new IllegalArgumentException("JSONReader must not be null");
         this.reader = reader;
     }
-
-//    @Override
-//    public int peekTokenId() throws IOException {
-//        if (reader.isObject()) {
-//            return ID_START_OBJECT;
-//        } else if (reader.current() == '}') {
-//            return ID_END_OBJECT;
-//        } else if (reader.isArray()) {
-//            return ID_START_ARRAY;
-//        } else if (reader.current() == ']') {
-//            return ID_END_ARRAY;
-//        } else if (reader.isString()) {
-//            return ID_STRING;
-//        } else if (reader.isNumber()) {
-//            return ID_NUMBER;
-//        } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
-//            return ID_BOOLEAN;
-//        } else if (reader.isNull()) {
-//            return ID_NULL;
-//        } else {
-//            return ID_UNKNOWN;
-//        }
-//    }
 
     @Override
     public Token peekToken() throws IOException {
@@ -130,6 +107,11 @@ public class Fastjson2Reader implements FacadeReader {
     @Override
     public void close() {
         reader.close();
+    }
+
+    @Override
+    public void skipNode() throws IOException {
+        reader.skipValue();
     }
 
 }

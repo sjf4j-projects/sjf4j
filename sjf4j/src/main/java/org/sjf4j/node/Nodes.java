@@ -293,20 +293,9 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
         if (node == null) return null;
-        if (node instanceof Map) {
-//            Map<?, ?> m = (Map<?, ?>) node;
-//            for (Object k : m.keySet()) {
-//                if (k == null) throw new JsonException("Map key must not be null");
-//                if (!(k instanceof String))
-//                    throw new JsonException("Map key type mismatch: expected String but was " +
-//                            k.getClass().getSimpleName());
-//            }
-//            return (Map<String, Object>) m;
-            return (Map<String, Object>) node;
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).toMap();
-        } else if (NodeRegistry.isPojo(node.getClass())) {
+        if (node instanceof Map) return (Map<String, Object>) node;
+        if (node instanceof JsonObject) return ((JsonObject) node).toMap();
+        if (NodeRegistry.isPojo(node.getClass())) {
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {

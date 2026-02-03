@@ -9,7 +9,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.Types;
@@ -20,7 +20,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,9 +46,17 @@ public class JacksonStreamingIO {
 
     /// Read
 
+    public static void skipNode(JsonParser parser) throws IOException {
+        JsonToken tk = parser.currentToken();
+        if (tk.isScalarValue()) parser.nextToken();
+        else {
+            parser.skipChildren();
+            parser.nextToken();
+        }
+    }
+
     public static Object readNode(JsonParser parser, Type type) throws IOException {
-        if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        FacadeReader.Token token = peekToken(parser);
+        StreamingReader.Token token = peekToken(parser);
         switch (token) {
             case START_OBJECT:
                 return readObject(parser, type);
@@ -150,30 +157,27 @@ public class JacksonStreamingIO {
 
 
     public static Object readObject(JsonParser parser, Type type) throws IOException {
-        if (parser == null) throw new IllegalArgumentException("Parser must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
-                String key = parser.currentName();
-                parser.nextToken();
+                String key = parser.currentName();parser.nextToken();
                 Object value = readNode(parser, valueType);
                 map.put(key, value);
             }
             parser.nextToken();
-            return ci != null ? ci.decode(map) : map;
+            return vci != null ? vci.decode(map) : map;
         }
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
-                String key = parser.currentName();
-                parser.nextToken();
+                String key = parser.currentName();parser.nextToken();
                 Object value = readNode(parser, Object.class);
                 jo.put(key, value);
             }
@@ -181,52 +185,94 @@ public class JacksonStreamingIO {
             return jo;
         }
 
-        if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            JsonObject jojo = (JsonObject) pi.newInstance();
-            parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
-                String key = parser.currentName();
-                parser.nextToken();
-                NodeRegistry.FieldInfo fi = fields.get(key);
-                if (fi != null) {
-                    Object vv = readNode(parser, fi.getType());
-                    fi.invokeSetter(jojo, vv);
-                } else {
-                    Object vv = readNode(parser, Object.class);
-                    jojo.put(key, vv);
-                }
-            }
-            parser.nextToken();
-            return jojo;
-        }
-
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+
+            boolean useArgsCreator = ci.getArgsCreator() != null;
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            Object pojo = !useArgsCreator ? ci.newInstance() : null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+
             parser.nextToken();
             while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
-                String key = parser.currentName();
-                parser.nextToken();
-                NodeRegistry.FieldInfo fi = fields.get(key);
+                String key = parser.currentName();parser.nextToken();
+
+                int argIdx = -1;
+                if (useArgsCreator) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+
+                if (argIdx >= 0) {
+                    Type argType = ci.getArgTypes()[argIdx];
+                    args[argIdx] = readNode(parser, argType);
+                    remainingArgs--;
+                    if (pojo == null && remainingArgs == 0) {
+                        pojo = ci.newInstance(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            if (pendingFields[i].hasSetter())
+                                pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
-                    fi.invokeSetter(pojo, vv);
+                    if (pojo != null) {
+                        fi.invokeSetter(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    dynamicMap.put(key, readNode(parser, Object.class));
                 } else {
-                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
+                    skipNode(parser);
                 }
             }
             parser.nextToken();
+
+            if (pojo == null) {
+                pojo = ci.newInstance(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
+
         throw new JsonException("Cannot deserialize JSON Object into type " + rawClazz.getName());
     }
 
 
     public static Object readArray(JsonParser parser, Type type) throws IOException {
-        if (parser == null) throw new IllegalArgumentException("Parser must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -300,7 +346,7 @@ public class JacksonStreamingIO {
 
     /// Reader
 
-    public static FacadeReader.Token peekToken(JsonParser parser) throws IOException {
+    public static StreamingReader.Token peekToken(JsonParser parser) throws IOException {
         int tokenId = parser.currentTokenId();
         if (tokenId == JsonTokenId.ID_NO_TOKEN) {
             JsonToken tk = parser.nextToken();
@@ -308,25 +354,25 @@ public class JacksonStreamingIO {
         }
         switch (tokenId) {
             case JsonTokenId.ID_START_OBJECT:
-                return FacadeReader.Token.START_OBJECT;
+                return StreamingReader.Token.START_OBJECT;
             case JsonTokenId.ID_END_OBJECT:
-                return FacadeReader.Token.END_OBJECT;
+                return StreamingReader.Token.END_OBJECT;
             case JsonTokenId.ID_START_ARRAY:
-                return FacadeReader.Token.START_ARRAY;
+                return StreamingReader.Token.START_ARRAY;
             case JsonTokenId.ID_END_ARRAY:
-                return FacadeReader.Token.END_ARRAY;
+                return StreamingReader.Token.END_ARRAY;
             case JsonTokenId.ID_STRING:
-                return FacadeReader.Token.STRING;
+                return StreamingReader.Token.STRING;
             case JsonTokenId.ID_NUMBER_INT:
             case JsonTokenId.ID_NUMBER_FLOAT:
-                return FacadeReader.Token.NUMBER;
+                return StreamingReader.Token.NUMBER;
             case JsonTokenId.ID_TRUE:
             case JsonTokenId.ID_FALSE:
-                return FacadeReader.Token.BOOLEAN;
+                return StreamingReader.Token.BOOLEAN;
             case JsonTokenId.ID_NULL:
-                return FacadeReader.Token.NULL;
+                return StreamingReader.Token.NULL;
             default:
-                return FacadeReader.Token.UNKNOWN;
+                return StreamingReader.Token.UNKNOWN;
         }
     }
 

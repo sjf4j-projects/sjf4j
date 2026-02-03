@@ -8,7 +8,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.facade.FacadeReader;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.Types;
@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,8 +44,7 @@ public class GsonStreamingIO {
     /// Read
 
     public static Object readNode(JsonReader reader, Type type) throws IOException {
-        if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        FacadeReader.Token token = peekToken(reader);
+        StreamingReader.Token token = peekToken(reader);
         switch (token) {
             case START_OBJECT:
                 return readObject(reader, type);
@@ -138,8 +136,8 @@ public class GsonStreamingIO {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.beginObject();
@@ -149,7 +147,7 @@ public class GsonStreamingIO {
                 map.put(key, value);
             }
             reader.endObject();
-            return ci != null ? ci.decode(map) : map;
+            return vci != null ? vci.decode(map) : map;
         }
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
@@ -164,45 +162,90 @@ public class GsonStreamingIO {
             return jo;
         }
 
-        if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            JsonObject jojo = (JsonObject) pi.newInstance();
-            reader.beginObject();
-            while (reader.peek() != JsonToken.END_OBJECT) {
-                String key = reader.nextName();
-                NodeRegistry.FieldInfo fi = fields.get(key);
-                if (fi != null) {
-                    Object vv = readNode(reader, fi.getType());
-                    fi.invokeSetter(jojo, vv);
-                } else {
-                    Object vv = readNode(reader, Object.class);
-                    jojo.put(key, vv);
-                }
-            }
-            reader.endObject();
-            return jojo;
-        }
-
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+
+            boolean useArgsCreator = ci.getArgsCreator() != null;
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            Object pojo = !useArgsCreator ? ci.newInstance() : null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+
             reader.beginObject();
             while (reader.peek() != JsonToken.END_OBJECT) {
                 String key = reader.nextName();
-                NodeRegistry.FieldInfo fi = fields.get(key);
+
+                int argIdx = -1;
+                if (useArgsCreator) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+
+                if (argIdx >= 0) {
+                    Type argType = ci.getArgTypes()[argIdx];
+                    args[argIdx] = readNode(reader, argType);
+                    remainingArgs--;
+                    if (pojo == null && remainingArgs == 0) {
+                        pojo = ci.newInstance(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            if (pendingFields[i].hasSetter())
+                                pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
-                    fi.invokeSetter(pojo, vv);
+                    if (pojo != null) {
+                        fi.invokeSetter(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    dynamicMap.put(key, readNode(reader, Object.class));
                 } else {
-                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
+                    reader.skipValue();
                 }
             }
             reader.endObject();
+
+            if (pojo == null) {
+                pojo = ci.newInstance(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
-        throw new JsonException("Cannot deserialize JSON Object into type " + rawClazz.getName());
+
+        throw new JsonException("Cannot deserialize Object value into type " + rawClazz.getName());
     }
 
 
@@ -281,27 +324,27 @@ public class GsonStreamingIO {
 
     /// Reader
 
-    public static FacadeReader.Token peekToken(JsonReader reader) throws IOException {
+    public static StreamingReader.Token peekToken(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
             case BEGIN_OBJECT:
-                return FacadeReader.Token.START_OBJECT;
+                return StreamingReader.Token.START_OBJECT;
             case END_OBJECT:
-                return FacadeReader.Token.END_OBJECT;
+                return StreamingReader.Token.END_OBJECT;
             case BEGIN_ARRAY:
-                return FacadeReader.Token.START_ARRAY;
+                return StreamingReader.Token.START_ARRAY;
             case END_ARRAY:
-                return FacadeReader.Token.END_ARRAY;
+                return StreamingReader.Token.END_ARRAY;
             case STRING:
-                return FacadeReader.Token.STRING;
+                return StreamingReader.Token.STRING;
             case NUMBER:
-                return FacadeReader.Token.NUMBER;
+                return StreamingReader.Token.NUMBER;
             case BOOLEAN:
-                return FacadeReader.Token.BOOLEAN;
+                return StreamingReader.Token.BOOLEAN;
             case NULL:
-                return FacadeReader.Token.NULL;
+                return StreamingReader.Token.NULL;
             default:
-                return FacadeReader.Token.UNKNOWN;
+                return StreamingReader.Token.UNKNOWN;
         }
     }
 

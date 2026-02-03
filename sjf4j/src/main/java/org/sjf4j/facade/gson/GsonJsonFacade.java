@@ -16,6 +16,8 @@ import java.lang.reflect.Type;
 import java.util.Objects;
 
 public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
+    private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
+            ? Sjf4jConfig.global().streamingMode : StreamingMode.SHARED_IO;
 
     private final Gson gson;
 
@@ -23,8 +25,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         if (gsonBuilder == null) throw new IllegalArgumentException("GsonBuilder must not be null");
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        if (Sjf4jConfig.global().readMode == Sjf4jConfig.ReadMode.USE_MODULE ||
-                Sjf4jConfig.global().writeMode == Sjf4jConfig.WriteMode.USE_MODULE) {
+        if (streamingMode == StreamingMode.PLUGIN_MODULE) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
         }
         // TODO: Retrieve the original FieldNamingStrategy via reflection?
@@ -43,11 +44,11 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        switch (Sjf4jConfig.global().readMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try {
                     JsonReader reader = gson.newJsonReader(input);
                     return GsonStreamingIO.readNode(reader, type);
@@ -55,7 +56,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                     throw new JsonException("Failed to read JSON streaming into node type " + type, e);
                 }
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 try {
                     return gson.fromJson(input, type);
                 } catch (Exception e) {
@@ -63,7 +64,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
             }
             default:
-                throw new JsonException("Unsupported read mode '" + Sjf4jConfig.global().readMode + "'");
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
         }
     }
 
@@ -78,12 +79,12 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
-        switch (Sjf4jConfig.global().writeMode) {
-            case STREAMING_GENERAL: {
+        switch (streamingMode) {
+            case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
             }
-            case STREAMING_SPECIFIC: {
+            case EXCLUSIVE_IO: {
                 try {
                     JsonWriter writer = gson.newJsonWriter(output);
                     GsonStreamingIO.writeNode(writer, node);
@@ -93,12 +94,12 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 }
                 break;
             }
-            case USE_MODULE: {
+            case PLUGIN_MODULE: {
                 gson.toJson(node, output);
                 break;
             }
             default:
-                throw new JsonException("Unsupported write mode '" + Sjf4jConfig.global().writeMode + "'");
+                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
     }
 

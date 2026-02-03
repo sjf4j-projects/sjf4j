@@ -1,12 +1,12 @@
 package org.sjf4j.facade.simple;
 
-import org.sjf4j.facade.FacadeWriter;
+import org.sjf4j.facade.StreamingWriter;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
 
-public class SimpleJsonWriter implements FacadeWriter {
+public class SimpleJsonWriter implements StreamingWriter {
 
     private final Writer writer;
 

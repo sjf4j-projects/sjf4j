@@ -9,7 +9,7 @@ import java.io.IOException;
  * for parsing JSON tokens, navigating through JSON structures, and extracting values.
  * It extends Closeable to ensure proper resource management.
  */
-public interface FacadeReader extends Closeable {
+public interface StreamingReader extends Closeable {
 
     /**
      * Enum representing JSON token types.
@@ -65,9 +65,6 @@ public interface FacadeReader extends Closeable {
 
     boolean hasNext() throws IOException;
 
-//    default boolean hasNext() throws IOException {
-//        int tid = peekTokenId();
-//        return tid != ID_END_OBJECT && tid != ID_END_ARRAY;
-//    }
+    void skipNode() throws IOException;
 
 }

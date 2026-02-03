@@ -76,6 +76,7 @@ class JsonObjectTest {
         testSupplier1();
         testNodeField1();
         testNodeField2();
+        testSkipNode1();
     }
 
     final String JSON = "{\n" +
@@ -713,6 +714,26 @@ class JsonObjectTest {
         note1.yes = "gaga";
         String json1 = Sjf4j.toJsonString(note1);
         log.info("json1={}", json1);
+    }
+
+    public void testSkipNode1() {
+        String json =
+                "{\n" +
+                "  \"id\": 7,\n" +
+                "  \"skipObj\": {\n" +
+                "    \"x\": [true, false, null, {\"deep\": \"v, }\"}],\n" +
+                "    \"y\": 2\n" +
+                "  },\n" +
+                "  \"skipArr\": [1,2,{\"a\":[3,4]}],\n" +
+                "  \"skipStr\": \"wa,w[]{}a\",\n" +
+                "  \"skipNumber\": -334455,\n" +
+                "  \"skipBoolean\": false,\n" +
+                "  \"skipNull\": null,\n" +
+                "  \"name\": \"Jack\"\n" +
+                "}";
+        Person pojo = Sjf4j.fromJson(json, Person.class);
+        log.info("pojo={}", pojo);
+        assertEquals("Jack", pojo.name);
     }
 
 }

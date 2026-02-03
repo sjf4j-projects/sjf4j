@@ -1,9 +1,9 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonException;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.facade.StreamingFacade;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ValueSetTest {
+public class ObjectSetTest {
 
     @Test
     public void testSetIsValueNode() {
@@ -55,8 +55,7 @@ public class ValueSetTest {
         Sjf4jConfig old = Sjf4jConfig.global();
         try {
             Sjf4jConfig.global(new Sjf4jConfig.Builder(old)
-                    .readMode(Sjf4jConfig.ReadMode.STREAMING_GENERAL)
-                    .writeMode(Sjf4jConfig.WriteMode.STREAMING_GENERAL)
+                    .streamingMode(StreamingFacade.StreamingMode.SHARED_IO)
                     .build());
 
             Set<String> set = new LinkedHashSet<>();
