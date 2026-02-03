@@ -66,7 +66,7 @@ public class GsonStreamingIO {
     }
 
     public static Object readNull(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         reader.nextNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -78,7 +78,7 @@ public class GsonStreamingIO {
     }
 
     public static Object readBoolean(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.nextBoolean();
         }
@@ -92,7 +92,7 @@ public class GsonStreamingIO {
     }
 
     public static Object readNumber(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             return Numbers.asNumber(reader.nextString());
         }
@@ -111,7 +111,7 @@ public class GsonStreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
         }
@@ -136,7 +136,7 @@ public class GsonStreamingIO {
 
     public static Object readObject(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
@@ -208,7 +208,7 @@ public class GsonStreamingIO {
 
     public static Object readArray(JsonReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("reader must not be null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || ci != null) {

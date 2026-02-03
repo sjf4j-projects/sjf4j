@@ -1,7 +1,6 @@
 package org.sjf4j.node;
 
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonException;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -11,7 +10,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -140,12 +138,12 @@ class ReflectUtilTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
 
-        assertNull(ci.getCreator());
-        assertNull(ci.getCreatorHandle());
-        assertNotNull(ci.getNoArgsCtor());
-        assertNotNull(ci.getNoArgsLambdaCtor());
+        assertNull(ci.getArgsCreator());
+        assertNull(ci.getArgsCreatorHandle());
+        assertNotNull(ci.getNoArgsCtorHandle());
+        assertNotNull(ci.getNoArgsCtorLambda());
 
-        Object obj = ci.getNoArgsLambdaCtor().get();
+        Object obj = ci.getNoArgsCtorLambda().get();
         assertTrue(obj instanceof NoArgsPojo);
     }
 

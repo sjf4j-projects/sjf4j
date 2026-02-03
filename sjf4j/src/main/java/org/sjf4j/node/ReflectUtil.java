@@ -92,7 +92,7 @@ public class ReflectUtil {
 
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = Sjf4jConfig.global().mapSupplier.create();
-        Map<String, String> aliasMap = null;
+        Map<String, String> aliasMap = creatorInfo.getAliasMap();
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
@@ -111,12 +111,16 @@ public class ReflectUtil {
                 Function<Object, Object> lambdaGetter = createLambdaGetter(lookup, curClazz, field);
 
                 MethodHandle setter = null;
-                try {
-                    setter = lookup.unreflectSetter(field);
-                } catch (Exception e) {
-                    // log.warn("Failed to get setter for '{}' of {}", field.getName(), curClazz, e);
+                BiConsumer<Object, Object> lambdaSetter = null;
+                if (!Modifier.isFinal(mod)) {
+                    try {
+                        setter = lookup.unreflectSetter(field);
+                    } catch (Exception e) {
+                        // log.warn("Failed to get setter for '{}' of {}", field.getName(), curClazz, e);
+                    }
+                    lambdaSetter = createLambdaSetter(lookup, curClazz, field);
+
                 }
-                BiConsumer<Object, Object> lambdaSetter = createLambdaSetter(lookup, curClazz, field);
 
                 if (getter == null && lambdaGetter == null) {
                     // log.warn("No accessible getter or setter found for field '{}' of {}", field.getName(), curClazz);
@@ -144,7 +148,17 @@ public class ReflectUtil {
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, fields, aliasMap);
+        // Make aliasFields
+        Map<String, NodeRegistry.FieldInfo> aliasFields = null;
+        if (aliasMap != null ) {
+            aliasFields = new HashMap<>(fields);
+            for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
+                NodeRegistry.FieldInfo fi = fields.get(alias.getValue());
+                if (fi != null) aliasFields.put(alias.getKey(), fi);
+            }
+        }
+
+        return new NodeRegistry.PojoInfo(clazz, creatorInfo, fields, aliasFields);
     }
 
     public static String getFieldName(Field field) {
@@ -278,10 +292,11 @@ public class ReflectUtil {
         if (recordInfo != null && (creator == null || creator == recordInfo.getCompCtor())) {
             if (creator == null) creator = recordInfo.getCompCtor();
             if (creatorHandle == null) creatorHandle = recordInfo.getCompCtorHandle();
-            argNames = recordInfo.getCompNames();
-            argTypes = recordInfo.getCompTypes();
-            argIndexes = createArgIndexes(argNames);
-        } else if (creator != null && creator.getParameterCount() > 0) {
+//            argNames = recordInfo.getCompNames();
+//            argTypes = recordInfo.getCompTypes();
+//            argIndexes = createArgIndexes(argNames);
+        }
+        if (creator != null && creator.getParameterCount() > 0) {
             Parameter[] params = creator.getParameters();
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
@@ -308,7 +323,6 @@ public class ReflectUtil {
                     }
                 }
             }
-
         }
 
         // 3. Find no-args Constructor

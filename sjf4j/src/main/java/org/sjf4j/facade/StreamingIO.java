@@ -84,7 +84,7 @@ public class StreamingIO {
     }
 
     public static Object readNumber(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             return reader.nextNumber();
         }
@@ -103,7 +103,7 @@ public class StreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(FacadeReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.nextString();
         }
@@ -136,10 +136,10 @@ public class StreamingIO {
      */
     public static Object readObject(FacadeReader reader, Type type) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.startObject();
@@ -149,7 +149,7 @@ public class StreamingIO {
                 map.put(key, value);
             }
             reader.endObject();
-            return ci != null ? ci.decode(map) : map;
+            return vci != null ? vci.decode(map) : map;
         }
 
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
@@ -164,51 +164,136 @@ public class StreamingIO {
             return jo;
         }
 
-        if (JsonObject.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            JsonObject jojo = (JsonObject) pi.newInstance();
-            reader.startObject();
-            while (reader.hasNext()) {
-                String key = reader.nextName();
-                NodeRegistry.FieldInfo fi = fields.get(key);
-                if (fi != null) {
-                    Object vv = readNode(reader, fi.getType());
-                    fi.invokeSetter(jojo, vv);
-                } else {
-                    Object vv = readNode(reader, Object.class);
-                    jojo.put(key, vv);
-                }
-            }
-            reader.endObject();
-            return jojo;
-        }
+//        if (JsonObject.class.isAssignableFrom(rawClazz)) {
+//            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+//            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+//            JsonObject jojo = (JsonObject) pi.newInstance();
+//            reader.startObject();
+//            while (reader.hasNext()) {
+//                String key = reader.nextName();
+//                NodeRegistry.FieldInfo fi = fields.get(key);
+//                if (fi != null) {
+//                    Object vv = readNode(reader, fi.getType());
+//                    fi.invokeSetter(jojo, vv);
+//                } else {
+//                    Object vv = readNode(reader, Object.class);
+//                    jojo.put(key, vv);
+//                }
+//            }
+//            reader.endObject();
+//            return jojo;
+//        }
+
+//        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+//        if (pi != null) {
+//            Object pojo = pi.newInstance();
+//            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+//            reader.startObject();
+//            while (reader.hasNext()) {
+//                String key = reader.nextName();
+//                NodeRegistry.FieldInfo fi = fields.get(key);
+//                if (fi != null) {
+//                    Object vv = readNode(reader, fi.getType());
+//                    fi.invokeSetter(pojo, vv);
+//                } else {
+//                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
+//                }
+//            }
+//            reader.endObject();
+//            return pojo;
+//        }
+
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+
+            boolean useArgsCreator = ci.getArgsCreator() != null;
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            Object pojo = !useArgsCreator ? ci.newInstance() : null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+
             reader.startObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();
-                NodeRegistry.FieldInfo fi = fields.get(key);
+
+                int argIdx = -1;
+                if (useArgsCreator) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+
+                if (argIdx >= 0) {
+                    Type argType = ci.getArgTypes()[argIdx];
+                    args[argIdx] = readNode(reader, argType);
+                    remainingArgs--;
+                    if (pojo == null && remainingArgs == 0) {
+                        pojo = ci.newInstance(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            if (pendingFields[i].hasSetter())
+                                pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
-                    fi.invokeSetter(pojo, vv);
+                    if (pojo != null) {
+                        fi.invokeSetter(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    dynamicMap.put(key, readNode(reader, Object.class));
                 } else {
-                    throw new JsonException("Undefined field '" + key + "' in POJO '" + pi.getType().getName() + "'");
+                    readNode(reader, Object.class); // TODO: Skip value
                 }
             }
             reader.endObject();
+
+            if (pojo == null) {
+                pojo = ci.newInstance(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
+
         throw new JsonException("Cannot deserialize Object value into type " + rawClazz.getName());
     }
 
 
     public static Object readArray(FacadeReader reader, Type type) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || ci != null) {

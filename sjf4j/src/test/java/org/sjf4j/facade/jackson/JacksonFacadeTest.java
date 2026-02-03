@@ -1,17 +1,25 @@
 package org.sjf4j.facade.jackson;
 
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.facade.simple.SimpleJsonFacadeTest;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Decode;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
@@ -181,6 +189,55 @@ public class JacksonFacadeTest {
         log.info("json1={}", json1);
     }
 
+    /// Creator
 
+    static class Ctor2PlusField {
+        final String name;
+        final int age;
+        String city;
+
+        @NodeCreator
+        public Ctor2PlusField(@NodeProperty("name") String name,
+                              @JsonProperty("age") int age) {
+            this.name = name;
+            this.age = age;
+        }
+        public void setCity(String city) { this.city = city; }
+    }
+
+    @Test
+    void ctor_with_extra_field_should_fill_by_setter() {
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
+        String json = "{\"name\":\"a\",\"age\":1,\"city\":\"sh\"}";
+        Ctor2PlusField pojo = (Ctor2PlusField) facade.readNode(json, Ctor2PlusField.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("a", pojo.name);
+    }
+
+    @Data
+    static class CtorAlias {
+        final String name;
+        final int age;
+
+        @JsonCreator
+        public CtorAlias(@NodeProperty(value = "name", aliases = {"n"}) String name,
+                         @NodeProperty("age") @JsonAlias("old") int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    @Test
+    void ctor_with_alias_param_should_bind() {
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
+        String json = "{\"n\":\"a\",\"age\":2}";
+        CtorAlias pojo = (CtorAlias) facade.readNode(json, CtorAlias.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("a", pojo.name);
+
+        String json2 = facade.writeNodeAsString(pojo);
+        log.info("json2={}", json2);
+        assertEquals("{\"name\":\"a\",\"age\":2}", json2);
+    }
 
 }

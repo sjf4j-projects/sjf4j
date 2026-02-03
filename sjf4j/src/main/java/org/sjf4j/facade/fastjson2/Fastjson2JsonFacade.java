@@ -108,7 +108,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type.getTypeName() + "'", e);
                 }
             }
             case USE_MODULE: {
@@ -116,7 +116,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return reader.read(type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             default:
@@ -136,7 +136,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
@@ -144,7 +144,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return reader.read(type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             default:
@@ -164,14 +164,14 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
             default:
@@ -191,14 +191,14 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON bytes into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON bytes into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON bytes into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON bytes into node type '" + type + "'", e);
                 }
             }
             default:

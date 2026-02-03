@@ -69,7 +69,7 @@ public class JacksonStreamingIO {
     }
 
     public static Object readNull(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         parser.nextToken();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -81,7 +81,7 @@ public class JacksonStreamingIO {
     }
 
     public static Object readBoolean(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Boolean.class)) {
             Boolean b = parser.getBooleanValue();
             parser.nextToken();
@@ -98,9 +98,11 @@ public class JacksonStreamingIO {
     }
 
     public static Object readNumber(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
-            return parser.getNumberValue();
+            Number n = parser.getNumberValue();
+            parser.nextToken();
+            return n;
         }
         if (Number.class.isAssignableFrom(rawClazz)) {
             Number n = parser.getNumberValue();
@@ -119,7 +121,7 @@ public class JacksonStreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             String s = parser.getText();
             parser.nextToken();
@@ -140,6 +142,7 @@ public class JacksonStreamingIO {
 
         if (rawClazz.isEnum()) {
             String s = parser.getText();
+            parser.nextToken();
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
         throw new JsonException("Cannot deserialize JSON String into type " + rawClazz.getName());
@@ -148,7 +151,7 @@ public class JacksonStreamingIO {
 
     public static Object readObject(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
@@ -224,7 +227,7 @@ public class JacksonStreamingIO {
 
     public static Object readArray(JsonParser parser, Type type) throws IOException {
         if (parser == null) throw new IllegalArgumentException("Parser must not be null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || ci != null) {

@@ -89,13 +89,13 @@ public class ReadBenchmark {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-//    @Param({"STREAMING_GENERAL", "STREAMING_SPECIFIC", "USE_MODULE"})
-//    public String readMode;
-//
-//    @Setup(Level.Trial)
-//    public void setup() {
-//        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.valueOf(readMode)).build());
-//    }
+    @Param({"STREAMING_GENERAL", "STREAMING_SPECIFIC", "USE_MODULE"})
+    public String readMode;
+
+    @Setup(Level.Trial)
+    public void setup() {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.valueOf(readMode)).build());
+    }
 
 
 

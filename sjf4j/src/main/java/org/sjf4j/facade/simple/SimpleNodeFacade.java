@@ -24,7 +24,7 @@ public class SimpleNodeFacade implements NodeFacade {
     public Object readNode(Object node, Type type) {
         if (node == null) return null;
 
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
             return rawClazz.isInstance(node) ? vci.copy(node) : vci.decode(node);
@@ -46,7 +46,7 @@ public class SimpleNodeFacade implements NodeFacade {
             if (Number.class.isAssignableFrom(rawClazz)) {
                 return Numbers.to((Number) node, rawClazz);
             }
-            throw new JsonException("Cannot deserialize Number value '" + node + "' (" + node.getClass().getName() +
+            throw new JsonException("Cannot deserialize Number value '" + node + "' (" + Types.name(node) +
                     ") to target type " + rawClazz.getName());
         }
 
@@ -86,7 +86,7 @@ public class SimpleNodeFacade implements NodeFacade {
             return readFromPojo(node, oldPi, rawClazz, type);
         }
 
-        throw new JsonException("Cannot deserialize value of type '" + node.getClass().getName() +
+        throw new JsonException("Cannot deserialize value of type '" + Types.name(node) +
                 "' to target type " + type);
     }
 
@@ -576,7 +576,7 @@ public class SimpleNodeFacade implements NodeFacade {
             return newMap;
         }
 
-        throw new IllegalStateException("Unsupported node type '" + node.getClass().getName() + "'");
+        throw new IllegalStateException("Unsupported node type '" + Types.name(node) + "'");
     }
 
 }

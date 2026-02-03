@@ -262,7 +262,7 @@ public class JsonObject extends JsonContainer {
         put(key8, value8);
     }
 
-    void setDynamicNodes(Map<String, Object> map) {
+    public void setDynamicMap(Map<String, Object> map) {
         this.dynamicMap = map;
     }
 

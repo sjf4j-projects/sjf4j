@@ -22,7 +22,7 @@ import java.util.Map;
 
 public interface GsonModule {
 
-    public static class MyTypeAdapterFactory implements TypeAdapterFactory {
+    class MyTypeAdapterFactory implements TypeAdapterFactory {
         @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
@@ -42,7 +42,7 @@ public interface GsonModule {
         }
     }
 
-    public static class JsonObjectAdapter<T extends JsonObject> extends TypeAdapter<T> {
+    class JsonObjectAdapter<T extends JsonObject> extends TypeAdapter<T> {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
         private final Map<String, TypeAdapter<?>> fieldAdapters;
@@ -103,7 +103,7 @@ public interface GsonModule {
     }
 
 
-    public static class JsonArrayAdapter<T extends JsonArray> extends TypeAdapter<T> {
+    class JsonArrayAdapter<T extends JsonArray> extends TypeAdapter<T> {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
 
@@ -139,7 +139,7 @@ public interface GsonModule {
     }
 
 
-    public static class NodeValueAdapter<T> extends TypeAdapter<T> {
+    class NodeValueAdapter<T> extends TypeAdapter<T> {
         private final Gson gson;
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
 
@@ -165,14 +165,14 @@ public interface GsonModule {
     }
 
     /// To Number
-    public static class MyToNumberStrategy implements ToNumberStrategy {
+    class MyToNumberStrategy implements ToNumberStrategy {
         @Override
         public Number readNumber(JsonReader in) throws IOException {
             return Numbers.asNumber(in.nextString());
         }
     }
 
-    /// NodeField
+    /// NodeProperty
     class NodeFieldNamingStrategy implements FieldNamingStrategy {
         @Override
         public String translateName(Field field) {

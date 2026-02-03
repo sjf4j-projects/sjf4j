@@ -55,7 +55,7 @@ public class Types {
     public static Class<?> rawClazz(Type type) {
         if (type == null) return Object.class;
 
-        if (type instanceof Class) return box((Class<?>) type);
+        if (type instanceof Class) return (Class<?>) type;
 
         if (type instanceof ParameterizedType) return (Class<?>) ((ParameterizedType) type).getRawType();
 
@@ -80,6 +80,9 @@ public class Types {
         throw new IllegalArgumentException("Cannot get raw class from type: " + type);
     }
 
+    public static Class<?> rawBox(Type type) {
+        return box(rawClazz(type));
+    }
 
     /**
      * Resolves a type argument for a parameterized type.

@@ -463,7 +463,7 @@ public class Nodes {
     private static Object _to(Object node, Type type, boolean cross) {
         if (node == null) return null;
 
-        Class<?> clazz = Types.rawClazz(type);
+        Class<?> clazz = Types.rawBox(type);
         if (clazz.isInstance(node)) return node;
 
         if (clazz == String.class) {
@@ -489,7 +489,7 @@ public class Nodes {
 
         if (Map.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
-            Class<?> vc = Types.rawClazz(vt);
+            Class<?> vc = Types.rawBox(vt);
             return toMap(node, vc);
         }
         if (clazz == JsonObject.class) return toJsonObject(node);
@@ -497,7 +497,7 @@ public class Nodes {
 
         if (List.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
-            Class<?> vc = Types.rawClazz(vt);
+            Class<?> vc = Types.rawBox(vt);
             return toList(node, vc);
         }
         if (clazz == JsonArray.class) return toJsonArray(node);
@@ -505,7 +505,7 @@ public class Nodes {
         if (clazz.isArray()) return toArray(node, clazz.getComponentType());
         if (Set.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
-            Class<?> vc = Types.rawClazz(vt);
+            Class<?> vc = Types.rawBox(vt);
             return toSet(node, vc);
         }
 

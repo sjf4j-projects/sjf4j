@@ -66,18 +66,18 @@ public class Fastjson2StreamingIO {
     }
 
     public static Object readNull(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
-        reader.nextIfNull();
+        Class<?> rawClazz = Types.rawBox(type);
+        reader.readNull();
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (ci != null) {
             return ci.decode(null);
         }
-        return  null;
+        return null;
     }
 
     public static Object readBoolean(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Boolean.class)) {
             return reader.readBoolValue();
         }
@@ -91,7 +91,7 @@ public class Fastjson2StreamingIO {
     }
 
     public static Object readNumber(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
             return reader.readNumber();
         }
@@ -110,7 +110,7 @@ public class Fastjson2StreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JSONReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(String.class)) {
             return reader.readString();
         }
@@ -135,7 +135,7 @@ public class Fastjson2StreamingIO {
 
     public static Object readObject(JSONReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(Map.class) || ci != null) {
@@ -203,7 +203,7 @@ public class Fastjson2StreamingIO {
 
     public static Object readArray(JSONReader reader, Type type) throws IOException {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
-        Class<?> rawClazz = Types.rawClazz(type);
+        Class<?> rawClazz = Types.rawBox(type);
 
         NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (rawClazz.isAssignableFrom(List.class) || ci != null) {
@@ -282,7 +282,7 @@ public class Fastjson2StreamingIO {
             return FacadeReader.Token.STRING;
         } else if (reader.isNumber()) {
             return FacadeReader.Token.NUMBER;
-        } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
+        } else if (reader.current() == 't' || reader.current() == 'f') {    // Yeah~I got it!
             return FacadeReader.Token.BOOLEAN;
         } else if (reader.isNull()) {
             return FacadeReader.Token.NULL;

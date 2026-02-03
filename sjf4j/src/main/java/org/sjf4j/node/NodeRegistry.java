@@ -3,7 +3,6 @@ package org.sjf4j.node;
 import org.sjf4j.JsonException;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeValue;
-import sun.management.MethodInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
@@ -191,6 +190,7 @@ public final class NodeRegistry {
         return VALUE_CODEC_INFO_CACHE;
     }
 
+
     /// POJO
 
     private static final Map<Class<?>, Optional<PojoInfo>> POJO_CACHE = new ConcurrentHashMap<>();
@@ -256,15 +256,15 @@ public final class NodeRegistry {
         private final Class<?> clazz;
         private final CreatorInfo creatorInfo;
         private final Map<String, FieldInfo> fields;
-        private final Map<String, String> aliasMap;
+        private final Map<String, FieldInfo> aliasFields;
 
 
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
-                        Map<String, FieldInfo> fields, Map<String, String> aliasMap) {
+                        Map<String, FieldInfo> fields, Map<String, FieldInfo> aliasFields) {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
             this.fields = fields;
-            this.aliasMap = aliasMap;
+            this.aliasFields = aliasFields;
         }
 
         public Class<?> getType() {
@@ -283,12 +283,12 @@ public final class NodeRegistry {
             return fields;
         }
 
-        public Map<String, String> getAliasMap() {
-            return aliasMap;
+        public Map<String, FieldInfo> getAliasFields() {
+            return aliasFields;
         }
 
         public boolean hasNoArgsCtor() {
-            return creatorInfo != null && creatorInfo.noArgsCtor != null;
+            return creatorInfo != null && creatorInfo.noArgsCtorHandle != null;
         }
 
         public Object newInstance() {
@@ -298,27 +298,26 @@ public final class NodeRegistry {
         }
     }
 
-
     public static class CreatorInfo {
         private final Class<?> clazz;
-        private final MethodHandle noArgsCtor;
-        private final Supplier<?> noArgsLambdaCtor;
-        private final Executable creator;
-        private final MethodHandle creatorHandle;
+        private final MethodHandle noArgsCtorHandle;
+        private final Supplier<?> noArgsCtorLambda;
+        private final Executable argsCreator;
+        private final MethodHandle argsCreatorHandle;
         private final String[] argNames;
         private final Type[] argTypes;
         private final Map<String, Integer> argIndexes;
         private final Map<String, String> aliasMap;
 
-        public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtor, Supplier<?> noArgsLambdaCtor,
-                           Executable creator, MethodHandle creatorHandle,
+        public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
+                           Executable argsCreator, MethodHandle argsCreatorHandle,
                            String[] argNames, Type[] argTypes, Map<String, Integer> argIndexes,
                            Map<String, String> aliasMap) {
             this.clazz = clazz;
-            this.noArgsCtor = noArgsCtor;
-            this.noArgsLambdaCtor = noArgsLambdaCtor;
-            this.creator = creator;
-            this.creatorHandle = creatorHandle;
+            this.noArgsCtorHandle = noArgsCtorHandle;
+            this.noArgsCtorLambda = noArgsCtorLambda;
+            this.argsCreator = argsCreator;
+            this.argsCreatorHandle = argsCreatorHandle;
             this.argNames = argNames;
             this.argTypes = argTypes;
             this.argIndexes = argIndexes;
@@ -326,23 +325,23 @@ public final class NodeRegistry {
         }
 
         public boolean hasCreator() {
-            return creator != null || noArgsCtor != null;
+            return argsCreator != null || noArgsCtorHandle != null;
         }
 
-        public MethodHandle getNoArgsCtor() {
-            return noArgsCtor;
+        public MethodHandle getNoArgsCtorHandle() {
+            return noArgsCtorHandle;
         }
 
-        public Supplier<?> getNoArgsLambdaCtor() {
-            return noArgsLambdaCtor;
+        public Supplier<?> getNoArgsCtorLambda() {
+            return noArgsCtorLambda;
         }
 
-        public Executable getCreator() {
-            return creator;
+        public Executable getArgsCreator() {
+            return argsCreator;
         }
 
-        public MethodHandle getCreatorHandle() {
-            return creatorHandle;
+        public MethodHandle getArgsCreatorHandle() {
+            return argsCreatorHandle;
         }
 
         public String[] getArgNames() {
@@ -370,11 +369,11 @@ public final class NodeRegistry {
         }
 
         public Object newInstance() {
-            if (noArgsLambdaCtor != null) {
-                return noArgsLambdaCtor.get();
-            } else if (noArgsCtor != null) {
+            if (noArgsCtorLambda != null) {
+                return noArgsCtorLambda.get();
+            } else if (noArgsCtorHandle != null) {
                 try {
-                    return noArgsCtor.invoke();
+                    return noArgsCtorHandle.invoke();
                 } catch (Throwable e) {
                     throw new JsonException("Failed to invoke constructor of " + clazz, e);
                 }
@@ -384,7 +383,7 @@ public final class NodeRegistry {
 
         public Object newInstance(Object[] args) {
             Objects.requireNonNull(args, "args is null");
-            if (creatorHandle == null) {
+            if (argsCreatorHandle == null) {
                 throw new JsonException("Failed to create instance of " + clazz + ": No creator constructor");
             }
             try {
@@ -392,21 +391,19 @@ public final class NodeRegistry {
                 for (int i = 0; i < args.length; i++) {
                     if (args[i] == null) {
                         Class<?> argClazz = Types.rawClazz(argTypes[i]);
-                        if (argClazz.isPrimitive()) {
-                            args[i] = defaultPrimitiveValue(argClazz);
-                        }
+                        args[i] = missingValueOfClass(argClazz);
                     }
                 }
-                return creatorHandle.invokeWithArguments(args);
+                return argsCreatorHandle.invokeWithArguments(args);
             } catch (Throwable e) {
                 throw new JsonException("Failed to invoke creator constructor of " + clazz, e);
             }
         }
 
         public Object newInstance2() {
-            if (noArgsCtor != null) {
+            if (noArgsCtorHandle != null) {
                 try {
-                    return noArgsCtor.invoke();
+                    return noArgsCtorHandle.invoke();
                 } catch (Throwable e) {
                     throw new JsonException("Failed to invoke constructor for '" + clazz + "'", e);
                 }
@@ -415,15 +412,17 @@ public final class NodeRegistry {
         }
 
 
-        private static Object defaultPrimitiveValue(Class<?> primitiveType) {
-            if (primitiveType == boolean.class) return false;
-            if (primitiveType == byte.class) return (byte) 0;
-            if (primitiveType == short.class) return (short) 0;
-            if (primitiveType == int.class) return 0;
-            if (primitiveType == long.class) return 0L;
-            if (primitiveType == float.class) return 0f;
-            if (primitiveType == double.class) return 0d;
-            if (primitiveType == char.class) return '\0';
+        private static Object missingValueOfClass(Class<?> clazz) {
+            if (clazz == null) return null;
+            if (!clazz.isPrimitive()) return null;
+            if (clazz == boolean.class) return false;
+            if (clazz == byte.class) return (byte) 0;
+            if (clazz == short.class) return (short) 0;
+            if (clazz == int.class) return 0;
+            if (clazz == long.class) return 0L;
+            if (clazz == float.class) return 0f;
+            if (clazz == double.class) return 0d;
+            if (clazz == char.class) return '\0';
             return null;
         }
 
@@ -511,6 +510,10 @@ public final class NodeRegistry {
             this.lambdaSetter = lambdaSetter;
         }
 
+        public String getName() {
+            return name;
+        }
+
         /**
          * Gets the field type.
          *
@@ -520,20 +523,18 @@ public final class NodeRegistry {
             return type;
         }
 
-        /**
-         * Gets the method handle for the field getter.
-         *
-         * @return the getter method handle
-         */
+        public boolean hasGetter() {
+            return getter != null;
+        }
+
         public MethodHandle getGetter() {
             return getter;
         }
 
-        /**
-         * Gets the method handle for the field setter.
-         *
-         * @return the setter method handle
-         */
+        public boolean hasSetter() {
+            return setter != null;
+        }
+
         public MethodHandle getSetter() {
             return setter;
         }

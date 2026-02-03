@@ -1,5 +1,6 @@
 package org.sjf4j.facade.jackson;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -13,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
@@ -22,10 +24,13 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public interface JacksonModule {
@@ -198,24 +203,51 @@ public interface JacksonModule {
         }
     }
 
-    /// NodeField
-    class NodeFieldAnnotationIntrospector extends JacksonAnnotationIntrospector {
+    /// NodeProperty
+    class NodePropertyAnnotationIntrospector extends JacksonAnnotationIntrospector {
         @Override
-        public PropertyName findNameForSerialization(Annotated a) {
-            NodeProperty nf = a.getAnnotation(NodeProperty.class);
+        public PropertyName findNameForSerialization(Annotated ann) {
+            NodeProperty nf = ann.getAnnotation(NodeProperty.class);
             if (nf != null && !nf.value().isEmpty()) {
                 return PropertyName.construct(nf.value());
             }
-            return super.findNameForSerialization(a);
+            return super.findNameForSerialization(ann);
         }
+
         @Override
-        public PropertyName findNameForDeserialization(Annotated a) {
-            NodeProperty nf = a.getAnnotation(NodeProperty.class);
+        public PropertyName findNameForDeserialization(Annotated ann) {
+            NodeProperty nf = ann.getAnnotation(NodeProperty.class);
             if (nf != null && !nf.value().isEmpty()) {
                 return PropertyName.construct(nf.value());
             }
-            return super.findNameForDeserialization(a);
+            return super.findNameForDeserialization(ann);
         }
+
+        @Override
+        public List<PropertyName> findPropertyAliases(Annotated ann) {
+            NodeProperty nf = ann.getAnnotation(NodeProperty.class);
+            if (nf != null) {
+                String[] aliases = nf.aliases();
+                if (aliases != null && aliases.length > 0) {
+                    List<PropertyName> result = new ArrayList<>(aliases.length);
+                    for (int i = 0; i < aliases.length; ++i) {
+                        result.add(PropertyName.construct(aliases[i]));
+                    }
+                    return result;
+                }
+            }
+            return super.findPropertyAliases(ann);
+        }
+
+        @Override
+        public JsonCreator.Mode findCreatorAnnotation(MapperConfig<?> config, Annotated ann) {
+            NodeCreator nc = ann.getAnnotation(NodeCreator.class);
+            if (nc != null) {
+                return JsonCreator.Mode.PROPERTIES;
+            }
+            return super.findCreatorAnnotation(config, ann);
+        }
+
     }
 
 }

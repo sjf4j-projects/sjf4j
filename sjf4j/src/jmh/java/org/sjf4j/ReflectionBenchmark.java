@@ -91,10 +91,10 @@ public class ReflectionBenchmark {
         return new Person();
     }
 
-    @Benchmark
-    public Object reflection_ctor_methodHandler() {
-        return pi.newInstance2();
-    }
+//    @Benchmark
+//    public Object reflection_ctor_methodHandler() {
+//        return pi.newInstance2();
+//    }
 
     @Benchmark
     public Object reflection_ctor_lambda() {

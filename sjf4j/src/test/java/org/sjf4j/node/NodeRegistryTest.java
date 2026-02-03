@@ -118,7 +118,7 @@ public class NodeRegistryTest {
         private final String name;
         private final int age;
 
-        @NodeCreator
+//        @NodeCreator
         public CreatorPojo(@NodeProperty("name") String name,
                            @NodeProperty("age") int age) {
             this.name = name;
@@ -248,6 +248,8 @@ public class NodeRegistryTest {
         log.info("now2={}", now2);
         assertEquals(now, now2);
     }
+
+    /// Creator
 
     @Test
     public void testCreatorPojo() {

@@ -93,7 +93,7 @@ public interface StreamingFacade<R extends FacadeReader, W extends FacadeWriter>
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node type '" + Types.name(type) + "'", e);
+            throw new JsonException("Failed to read streaming into node type '" + type + "'", e);
         }
     }
 

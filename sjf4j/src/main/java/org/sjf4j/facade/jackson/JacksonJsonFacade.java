@@ -36,7 +36,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         this.objectMapper = objectMapper;
         this.module = new JacksonModule.MySimpleModule();
         this.objectMapper.registerModule(this.module);
-        this.objectMapper.setAnnotationIntrospector(new JacksonModule.NodeFieldAnnotationIntrospector());
+        this.objectMapper.setAnnotationIntrospector(new JacksonModule.NodePropertyAnnotationIntrospector());
     }
 
 
@@ -78,14 +78,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JsonParser parser = objectMapper.getFactory().createParser(input);
                     return JacksonStreamingIO.readNode(parser, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             default:
@@ -105,14 +105,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JsonParser parser = objectMapper.getFactory().createParser(input);
                     return JacksonStreamingIO.readNode(parser, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             default:
@@ -132,14 +132,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JsonParser parser = objectMapper.getFactory().createParser(input);
                     return JacksonStreamingIO.readNode(parser, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
             default:
@@ -159,14 +159,14 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     JsonParser parser = objectMapper.getFactory().createParser(input);
                     return JacksonStreamingIO.readNode(parser, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON byte[] into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);
                 }
             }
             case USE_MODULE: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON byte[] into node type '" + Types.name(type) + "'", e);
+                    throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);
                 }
             }
             default:

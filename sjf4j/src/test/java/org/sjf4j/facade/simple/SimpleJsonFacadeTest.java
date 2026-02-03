@@ -1,14 +1,23 @@
 package org.sjf4j.facade.simple;
 
+import com.alibaba.fastjson2.annotation.JSONCreator;
+import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.Decode;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
 import java.io.StringReader;
@@ -17,7 +26,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Slf4j
@@ -114,11 +125,105 @@ public class SimpleJsonFacadeTest {
     }
 
     @Test
-    public void testPojo1() {
+    public void testPojoUnknownKey() {
         String json = "{\"active\": true }";
         SimpleJsonFacade facade = new SimpleJsonFacade();
-        assertThrows(JsonException.class, () -> facade.readNode(json, User.class));
+        assertDoesNotThrow(() -> facade.readNode(json, User.class));
     }
 
+
+    /// With Args Creator
+
+    static class Ctor2PlusField {
+        final String name;
+        final int age;
+        String city;
+
+        @NodeCreator
+        public Ctor2PlusField(@NodeProperty("name") String name,
+                              @JsonProperty("age") int age) {
+            this.name = name;
+            this.age = age;
+        }
+        public void setCity(String city) { this.city = city; }
+    }
+
+    @Test
+    void ctor_with_extra_field_should_fill_by_setter() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        String json = "{\"name\":\"a\",\"age\":1,\"city\":\"sh\"}";
+        Ctor2PlusField pojo = (Ctor2PlusField) facade.readNode(json, Ctor2PlusField.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("a", pojo.name);
+    }
+
+    static class CtorAlias {
+        final String name;
+        final int age;
+
+        @JsonCreator
+        public CtorAlias(@NodeProperty(value = "name", aliases = {"n"}) String name,
+                         @NodeProperty("age") @JsonAlias("old") int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    @Test
+    void ctor_with_alias_param_should_bind() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        String json = "{\"n\":\"a\",\"age\":2}";
+        CtorAlias pojo = (CtorAlias) facade.readNode(json, CtorAlias.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("a", pojo.name);
+
+        String json2 = facade.writeNodeAsString(pojo);
+        log.info("json2={}", json2);
+        assertEquals("{\"name\":\"a\",\"age\":2}", json2);
+    }
+
+    static class CtorMissingRef {
+        final String name;
+        final Integer age;
+
+        @NodeCreator
+        public CtorMissingRef(@JSONField(name = "name") String name,
+                              @JsonProperty("age") Integer age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    @Test
+    void ctor_missing_reference_param_should_default_null() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        String json = "{\"name\":\"a\"}";
+        CtorMissingRef pojo = (CtorMissingRef) facade.readNode(json, CtorMissingRef.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("a", pojo.name);
+        assertNull(pojo.age);
+    }
+
+    static class CtorMissingPrimitive {
+        final String name;
+        final int age;
+
+        @JSONCreator
+        public CtorMissingPrimitive(@NodeProperty("name") String name,
+                                    @JsonProperty("age") int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    @Test
+    void ctor_missing_primitive_param_should_default_zero() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        String json = "{\"name\":\"a\"}";
+        CtorMissingPrimitive pojo = (CtorMissingPrimitive) facade.readNode(json, CtorMissingPrimitive.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("a", pojo.name);
+        assertEquals(0, pojo.age);
+    }
 
 }
