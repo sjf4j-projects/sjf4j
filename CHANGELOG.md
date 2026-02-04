@@ -9,12 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Improved
-- add skipNode
-- support args-creator, record
-
 ### Changed
 ### Fixed
 ### Removed
+
+## [1.1.2] - 2026.02.04
+### Added
+- Added `skipNode()` method to `StreamingReader` interface, enabling efficient skipping of entire JSON nodes 
+  during streaming parsing without fully deserializing them. This improves performance when processing large 
+  JSON documents where certain sections can be ignored.
+- Added `@NodeCreator` annotation to support ***custom object construction with parameterized constructors***. 
+  This annotation can be applied to constructors or static factory methods, allowing fine-grained control 
+  over how objects are instantiated during deserialization.
+
+### Improved
+- Enhanced POJO deserialization to ***automatically support Java records*** (JDK 14+). Record classes are now 
+  recognized and handled seamlessly, with their canonical constructors used for instantiation without requiring 
+  explicit `@NodeCreator` annotations.
+- Improved constructor parameter name resolution for `@NodeCreator` annotated constructors, supporting both 
+  `@NodeProperty` explicit naming and automatic parameter name detection (when compiled with `-parameters` flag).
 
 ## [1.1.1] - 2026.01.26
 ### Fixed
