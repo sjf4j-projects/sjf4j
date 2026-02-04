@@ -238,8 +238,8 @@ public class ReflectUtil {
     }
 
 
-    static NodeRegistry.CreatorInfo analyzeCreator(Class<?> clazz,
-                                                           MethodHandles.Lookup lookup) {
+    public static NodeRegistry.CreatorInfo analyzeCreator(Class<?> clazz,
+                                                          MethodHandles.Lookup lookup) {
         Executable creator = null;
         MethodHandle creatorHandle = null;
         String[] argNames = null;
@@ -724,9 +724,9 @@ public class ReflectUtil {
     }
 
     @SuppressWarnings("unchecked")
-    static BiConsumer<Object, Object> createLambdaSetter(MethodHandles.Lookup lookup,
-                                                         Class<?> clazz,
-                                                         Field field) {
+    public static BiConsumer<Object, Object> createLambdaSetter(MethodHandles.Lookup lookup,
+                                                                Class<?> clazz,
+                                                                Field field) {
         // Lambda-based setter does NOT support primitive types.
         if (field.getType().isPrimitive()) return null;
 
