@@ -10,8 +10,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleJsonFacadeTest;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;

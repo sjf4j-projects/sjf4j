@@ -7,7 +7,6 @@ import com.alibaba.fastjson2.codec.BeanInfo;
 import com.alibaba.fastjson2.codec.FieldInfo;
 import com.alibaba.fastjson2.modules.ObjectReaderAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectReaderModule;
-import com.alibaba.fastjson2.modules.ObjectWriterAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectWriterModule;
 import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.writer.ObjectWriter;
@@ -161,7 +160,7 @@ public interface Fastjson2Module {
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (!reader.nextIfArrayStart()) throw new JSONException(reader.info("expect '['"));
 
-            T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.getCreatorInfo().forceNewPojo();
             while (!reader.nextIfArrayEnd()) {
                 Object value = reader.read(ja.elementType());
                 ja.add(value);

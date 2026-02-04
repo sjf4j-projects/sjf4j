@@ -51,12 +51,19 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Creates an empty JsonObject instance.
-     * If this is called from a subclass, it registers the subclass fields for POJO mapping.
      */
     public JsonObject() {
-//        if (this.getClass() != JsonObject.class) {
-//            fieldMap = NodeRegistry.registerPojoOrElseThrow(this.getClass()).getFields();
-//        }
+        super();
+    }
+
+    public JsonObject(Map<String, Object> dynamicMap) {
+        this();
+        this.dynamicMap = dynamicMap;
+    }
+
+    public JsonObject(JsonObject jo) {
+        this();
+        putAll(jo);
     }
 
     /**
@@ -79,7 +86,7 @@ public class JsonObject extends JsonContainer {
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-        if (pi != null) {
+        if (pi != null && !pi.isJajo()) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 put(fi.getKey(), v);
@@ -1488,24 +1495,39 @@ public class JsonObject extends JsonContainer {
         return old;
     }
 
-    public void putAll(JsonObject jsonObject) {
-        if (jsonObject == null) return;
-        jsonObject.forEach(this::put);
-    }
-
-    public void putAll(Map<?, ?> map) {
+    public void putAll(Map<String, Object> map) {
         if (map == null) return;
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            put(entry.getKey().toString(), entry.getValue());
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            put(entry.getKey(), entry.getValue());
         }
     }
 
-    public void putAll(Object pojo) {
-        if (pojo == null) return;
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(pojo.getClass());
-        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
-            put(entry.getKey(), entry.getValue().invokeGetter(pojo));
+    public void putAll(JsonObject jo) {
+        if (jo == null) return;
+        jo.forEach(this::put);
+    }
+
+    @SuppressWarnings("unchecked")
+    public void putAll(Object node) {
+        if (node == null) return;
+        if (node instanceof Map) {
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
+                put(entry.getKey(), entry.getValue());
+            }
+            return;
         }
+        if (node instanceof JsonObject) {
+            ((JsonObject) node).forEach(this::put);
+            return;
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        if (pi != null && !pi.isJajo()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                put(entry.getKey(), entry.getValue().invokeGetter(node));
+            }
+        }
+        throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
+                "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");
     }
 
     public Object remove(String key) {

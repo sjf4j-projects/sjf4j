@@ -8,8 +8,6 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.facade.fastjson2.Fastjson2FacadeTest;
-import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.Encode;
 import org.sjf4j.annotation.node.NodeValue;

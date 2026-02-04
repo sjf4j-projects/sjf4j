@@ -20,6 +20,9 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.models.JojoTest;
+import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.ValueCodec;
 
 import java.time.LocalDate;
 import java.util.List;

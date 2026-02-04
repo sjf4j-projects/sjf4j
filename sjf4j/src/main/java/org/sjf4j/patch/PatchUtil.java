@@ -2,7 +2,6 @@ package org.sjf4j.patch;
 
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeType;
-import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathToken;
 

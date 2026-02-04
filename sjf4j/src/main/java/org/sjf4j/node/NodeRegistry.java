@@ -1,6 +1,8 @@
 package org.sjf4j.node;
 
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
+import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeValue;
 
@@ -243,7 +245,7 @@ public final class NodeRegistry {
      */
     public static boolean isPojo(Class<?> clazz) {
         PojoInfo pi = registerPojo(clazz);
-        return pi != null && pi.isPojo();
+        return pi != null;
     }
 
 
@@ -257,7 +259,8 @@ public final class NodeRegistry {
         private final CreatorInfo creatorInfo;
         private final Map<String, FieldInfo> fields;
         private final Map<String, FieldInfo> aliasFields;
-
+        private final boolean isJojo;
+        private final boolean isJajo;
 
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
                         Map<String, FieldInfo> fields, Map<String, FieldInfo> aliasFields) {
@@ -265,6 +268,8 @@ public final class NodeRegistry {
             this.creatorInfo = creatorInfo;
             this.fields = fields;
             this.aliasFields = aliasFields;
+            this.isJojo = JsonObject.class.isAssignableFrom(clazz);
+            this.isJajo = JsonArray.class.isAssignableFrom(clazz);
         }
 
         public Class<?> getType() {
@@ -275,10 +280,6 @@ public final class NodeRegistry {
             return creatorInfo;
         }
 
-        public boolean isPojo() {
-            return creatorInfo != null && creatorInfo.hasCreator();
-        }
-
         public Map<String, FieldInfo> getFields() {
             return fields;
         }
@@ -287,14 +288,11 @@ public final class NodeRegistry {
             return aliasFields;
         }
 
-        public boolean hasNoArgsCtor() {
-            return creatorInfo != null && creatorInfo.noArgsCtorHandle != null;
+        public boolean isJojo() {
+            return isJojo;
         }
-
-        public Object newInstance() {
-            if (creatorInfo == null)
-                throw new JsonException("Failed to create instance of " + clazz + ": Not found creator info");
-            return creatorInfo.newInstance();
+        public boolean isJajo() {
+            return isJajo;
         }
     }
 
@@ -368,7 +366,12 @@ public final class NodeRegistry {
             return aliasMap;
         }
 
-        public Object newInstance() {
+        // Create instance
+        public boolean hasNoArgsCtor() {
+            return noArgsCtorHandle != null;
+        }
+
+        public Object newPojoNoArgs() {
             if (noArgsCtorLambda != null) {
                 return noArgsCtorLambda.get();
             } else if (noArgsCtorHandle != null) {
@@ -381,7 +384,7 @@ public final class NodeRegistry {
             throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
         }
 
-        public Object newInstance(Object[] args) {
+        public Object newPojoWithArgs(Object[] args) {
             Objects.requireNonNull(args, "args is null");
             if (argsCreatorHandle == null) {
                 throw new JsonException("Failed to create instance of " + clazz + ": No creator constructor");
@@ -400,17 +403,11 @@ public final class NodeRegistry {
             }
         }
 
-        public Object newInstance2() {
-            if (noArgsCtorHandle != null) {
-                try {
-                    return noArgsCtorHandle.invoke();
-                } catch (Throwable e) {
-                    throw new JsonException("Failed to invoke constructor for '" + clazz + "'", e);
-                }
-            }
-            throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
+        public Object forceNewPojo() {
+            if (hasNoArgsCtor()) return newPojoNoArgs();
+            Object[] args = new Object[argNames.length];
+            return newPojoWithArgs(args);
         }
-
 
         private static Object missingValueOfClass(Class<?> clazz) {
             if (clazz == null) return null;
@@ -574,41 +571,30 @@ public final class NodeRegistry {
          */
         public Object invokeGetter2(Object receiver) {
             if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
-            if (getter == null) {
-                throw new JsonException("No getter available for field '" + name + "' of " + type);
-            }
+            if (getter == null) throw new JsonException("No getter available for field '" + name + "' of " + type);
             try {
                 return getter.invoke(receiver);
             } catch (Throwable e) {
-                throw new JsonException("Failed to invoke getter for field '" + name + "' of " + type, e);
+                throw new JsonException("Failed to invoke getter for field '" + name + "' of type '" +
+                        type+ "' (node type: " + Types.name(receiver)+ ")", e);
             }
         }
 
-        /**
-         * Invokes the setter for this field on the specified receiver object with the given value.
-         *
-         * @param receiver the object to set the field value on
-         * @param value the value to set
-         * @throws IllegalArgumentException if the receiver is null
-         * @throws JsonException if no setter is available, if value conversion fails, or if invocation fails
-         */
+        public boolean invokeSetterIfPresent(Object receiver, Object value) {
+            if (setter == null) return false;
+            invokeSetter(receiver, value);
+            return true;
+        }
+
         public void invokeSetter(Object receiver, Object value) {
             if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
-            if (setter == null) {
+            if (setter == null)
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
-            }
-//            if (value instanceof Number && type instanceof Class) {
-//                Class<?> boxed = Types.box((Class<?>) type);
-//                if (Number.class.isAssignableFrom(boxed)) {
-//                    value = Numbers.to((Number) value, boxed);
-//                }
-//            }
-
-            if (lambdaSetter != null) {
-                lambdaSetter.accept(receiver, value);
-                return;
-            }
             try {
+                if (lambdaSetter != null) {
+                    lambdaSetter.accept(receiver, value);
+                    return;
+                }
                 setter.invoke(receiver, value);
             } catch (Throwable e) {
                 throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +

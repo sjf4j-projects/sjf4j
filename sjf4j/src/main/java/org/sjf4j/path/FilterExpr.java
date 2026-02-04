@@ -1,7 +1,6 @@
 package org.sjf4j.path;
 
 import org.sjf4j.node.NodeType;
-import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Numbers;
 

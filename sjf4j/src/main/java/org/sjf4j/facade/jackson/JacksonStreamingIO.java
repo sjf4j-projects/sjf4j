@@ -3,7 +3,6 @@ package org.sjf4j.facade.jackson;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.JsonTokenId;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonException;
@@ -164,7 +163,7 @@ public class JacksonStreamingIO {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+            while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();parser.nextToken();
                 Object value = readNode(parser, valueType);
                 map.put(key, value);
@@ -176,7 +175,7 @@ public class JacksonStreamingIO {
         if (rawClazz.isAssignableFrom(JsonObject.class)) {
             JsonObject jo = new JsonObject();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+            while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();parser.nextToken();
                 Object value = readNode(parser, Object.class);
                 jo.put(key, value);
@@ -186,27 +185,26 @@ public class JacksonStreamingIO {
         }
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-        if (pi != null) {
+        if (pi != null && !pi.isJajo()) {
             NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-
-            boolean useArgsCreator = ci.getArgsCreator() != null;
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
             Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
             int remainingArgs = useArgsCreator ? args.length : 0;
-            Object pojo = !useArgsCreator ? ci.newInstance() : null;
-            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(pi.getType());
 
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_OBJECT) {
+            while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();parser.nextToken();
 
                 int argIdx = -1;
-                if (useArgsCreator) {
+                if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
                     if (argIdx < 0 && ci.getAliasMap() != null) {
                         String origin = ci.getAliasMap().get(key); // alias -> origin
@@ -215,16 +213,15 @@ public class JacksonStreamingIO {
                         }
                     }
                 }
-
                 if (argIdx >= 0) {
                     Type argType = ci.getArgTypes()[argIdx];
+                    assert args != null;
                     args[argIdx] = readNode(parser, argType);
                     remainingArgs--;
-                    if (pojo == null && remainingArgs == 0) {
-                        pojo = ci.newInstance(args);
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
                         for (int i = 0; i < pendingSize; i++) {
-                            if (pendingFields[i].hasSetter())
-                                pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                         }
                         pendingSize = 0;
                     }
@@ -235,7 +232,7 @@ public class JacksonStreamingIO {
                 if (fi != null) {
                     Object vv = readNode(parser, fi.getType());
                     if (pojo != null) {
-                        fi.invokeSetter(pojo, vv);
+                        fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
                             int cap = fields.size();
@@ -251,7 +248,8 @@ public class JacksonStreamingIO {
 
                 if (isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
-                    dynamicMap.put(key, readNode(parser, Object.class));
+                    Object vv = readNode(parser, Object.class);
+                    dynamicMap.put(key, vv);
                 } else {
                     skipNode(parser);
                 }
@@ -259,9 +257,9 @@ public class JacksonStreamingIO {
             parser.nextToken();
 
             if (pojo == null) {
-                pojo = ci.newInstance(args);
+                pojo = ci.newPojoWithArgs(args);
                 for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
             if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
@@ -280,7 +278,7 @@ public class JacksonStreamingIO {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, valueType);
                 list.add(value);
             }
@@ -291,7 +289,7 @@ public class JacksonStreamingIO {
         if (rawClazz.isAssignableFrom(JsonArray.class)) {
             JsonArray ja = new JsonArray();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, Object.class);
                 ja.add(value);
             }
@@ -301,9 +299,9 @@ public class JacksonStreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.newInstance();
+            JsonArray ja = (JsonArray) pi.getCreatorInfo().forceNewPojo();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, ja.elementType());
                 ja.add(value);
             }
@@ -315,7 +313,7 @@ public class JacksonStreamingIO {
             Class<?> valueClazz = rawClazz.getComponentType();
             List<Object> list = new ArrayList<>();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, valueClazz);
                 list.add(value);
             }
@@ -332,7 +330,7 @@ public class JacksonStreamingIO {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Set<Object> set = Sjf4jConfig.global().setSupplier.create();
             parser.nextToken();
-            while (parser.currentTokenId() != JsonTokenId.ID_END_ARRAY) {
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, valueType);
                 set.add(value);
             }
@@ -347,29 +345,26 @@ public class JacksonStreamingIO {
     /// Reader
 
     public static StreamingReader.Token peekToken(JsonParser parser) throws IOException {
-        int tokenId = parser.currentTokenId();
-        if (tokenId == JsonTokenId.ID_NO_TOKEN) {
-            JsonToken tk = parser.nextToken();
-            tokenId = parser.currentTokenId();
-        }
-        switch (tokenId) {
-            case JsonTokenId.ID_START_OBJECT:
+        JsonToken tk = parser.currentToken();
+        if (tk == null) tk = parser.nextToken();
+        switch (tk) {
+            case START_OBJECT:
                 return StreamingReader.Token.START_OBJECT;
-            case JsonTokenId.ID_END_OBJECT:
+            case END_OBJECT:
                 return StreamingReader.Token.END_OBJECT;
-            case JsonTokenId.ID_START_ARRAY:
+            case START_ARRAY:
                 return StreamingReader.Token.START_ARRAY;
-            case JsonTokenId.ID_END_ARRAY:
+            case END_ARRAY:
                 return StreamingReader.Token.END_ARRAY;
-            case JsonTokenId.ID_STRING:
+            case VALUE_STRING:
                 return StreamingReader.Token.STRING;
-            case JsonTokenId.ID_NUMBER_INT:
-            case JsonTokenId.ID_NUMBER_FLOAT:
+            case VALUE_NUMBER_INT:
+            case VALUE_NUMBER_FLOAT:
                 return StreamingReader.Token.NUMBER;
-            case JsonTokenId.ID_TRUE:
-            case JsonTokenId.ID_FALSE:
+            case VALUE_TRUE:
+            case VALUE_FALSE:
                 return StreamingReader.Token.BOOLEAN;
-            case JsonTokenId.ID_NULL:
+            case VALUE_NULL:
                 return StreamingReader.Token.NULL;
             default:
                 return StreamingReader.Token.UNKNOWN;

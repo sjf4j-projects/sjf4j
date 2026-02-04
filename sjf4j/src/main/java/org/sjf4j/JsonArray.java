@@ -47,69 +47,37 @@ public class JsonArray extends JsonContainer {
         super();
     }
 
+    public JsonArray(List<Object> nodeList) {
+        this();
+        setNodeList(nodeList);
+    }
+
+    public JsonArray(JsonArray ja) {
+        this();
+        setNodeList(ja.nodeList);
+    }
+
+    public JsonArray(Set<Object> set) {
+        this();
+        setNodeList(Sjf4jConfig.global().listSupplier.create(set));
+    }
+
+    public JsonArray(Object[] array) {
+        this();
+        setNodeList(Sjf4jConfig.global().listSupplier.create(array));
+    }
+
     /**
      * Creates a JsonArray from an existing object, supporting multiple input types.
      *
      * @param node the object to wrap or copy
      * @throws JsonException if the input object type is not supported
      */
-    @SuppressWarnings("unchecked")
     public JsonArray(Object node) {
         this();
-        if (node == null) return;
-
-        Class<?> elemClazz = elementType();
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            if (elemClazz != Object.class) {
-                list.forEach(v -> {
-                    if (v != null && !elemClazz.isInstance(v))
-                        throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
-                                ", but got " + v.getClass().getName());
-                });
-            }
-            this.nodeList = list;
-        } else if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            if (!elemClazz.isAssignableFrom(ja.elementType())) {
-                ja.forEach(v -> {
-                    if (v != null && !elemClazz.isInstance(v))
-                        throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
-                                ", but got " + v.getClass().getName());
-                });
-            }
-            this.nodeList = ja.nodeList;
-        } else if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            if (len > 0) {
-                if (!elemClazz.isAssignableFrom(node.getClass().getComponentType())) {
-                    for (int i = 0; i < len; i++) {
-                        Object v = Array.get(node, i);
-                        if (v != null && !elemClazz.isInstance(v))
-                            throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
-                                    ", but got " + v.getClass().getName());
-                    }
-                }
-                this.nodeList = Sjf4jConfig.global().listSupplier.create();
-                for (int i = 0; i < len; i++) {
-                    this.nodeList.add(Array.get(node, i));
-                }
-            }
-        } else if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            this.nodeList = Sjf4jConfig.global().listSupplier.create(set);
-            if (elemClazz != Object.class) {
-                for (Object v : this.nodeList) {
-                    if (v != null && !elemClazz.isInstance(v))
-                        throw new JsonException("Element type mismatch: expected " + elemClazz.getName() +
-                                ", but got " + v.getClass().getName());
-                }
-            }
-        } else {
-            throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
-                    "' into JsonArray. Supported types are: JsonArray, List, or Array.");
-        }
+        setNodeList(Nodes.toList(node));
     }
+
 
     /// Object
 
@@ -131,6 +99,19 @@ public class JsonArray extends JsonContainer {
      */
     public Class<?> elementType() {
         return Object.class;
+    }
+
+    public void setNodeList(List<Object> nodeList) {
+        Class<?> elemClazz = elementType();
+        if (elemClazz != Object.class) {
+            for (int i = 0; i < nodeList.size(); i++) {
+                Object v = nodeList.get(i);
+                if (v != null && !elemClazz.isInstance(v))
+                    throw new JsonException("Element type mismatch at " + i + ": expected " + elemClazz.getName() +
+                            ", but got " + v.getClass().getName());
+            }
+        }
+        this.nodeList = nodeList;
     }
 
     /**

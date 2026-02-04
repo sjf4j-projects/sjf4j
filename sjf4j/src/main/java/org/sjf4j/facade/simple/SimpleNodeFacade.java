@@ -11,7 +11,6 @@ import org.sjf4j.node.Types;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +31,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
         // Object.class means deep copy
         if (rawClazz == Object.class) {
-            return readAsDeepCopy(node);
+            return deepNode(node);
         }
 
         if (node instanceof CharSequence || node instanceof Character) {
@@ -92,41 +91,103 @@ public class SimpleNodeFacade implements NodeFacade {
 
     // Object -> deep copied Object
     @SuppressWarnings("unchecked")
-    private Object readAsDeepCopy(Object node) {
+    @Override
+    public Object deepNode(Object node) {
         if (node == null) return null;
 
         Class<?> nodeClazz = node.getClass();
         if (node instanceof Map) {
             Map<String, Object> srcMap = (Map<String, Object>) node;
             Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(srcMap.size());
-            srcMap.forEach((k, v) -> newMap.put(k, readNode(v, Object.class)));
+            srcMap.forEach((k, v) -> newMap.put(k, deepNode(v)));
             return newMap;
         }
-        if (node instanceof JsonObject) {
+
+        if (node.getClass() == JsonObject.class) {
             JsonObject srcJo = (JsonObject) node;
-            JsonObject newJo = nodeClazz == JsonObject.class ? new JsonObject()
-                    : (JsonObject) NodeRegistry.registerPojoOrElseThrow(nodeClazz).newInstance();
-            srcJo.forEach((k, v) -> newJo.put(k, readNode(v, Object.class)));
+            JsonObject newJo = new JsonObject();
+            srcJo.forEach((k, v) -> newJo.put(k, deepNode(v)));
             return newJo;
         }
+
+        if (node instanceof JsonObject) {
+            JsonObject srcJo = (JsonObject) node;
+            NodeRegistry.CreatorInfo ci = NodeRegistry.registerPojoOrElseThrow(nodeClazz).getCreatorInfo();
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            JsonObject newJo = (JsonObject) (useArgsCreator ? null : ci.newPojoNoArgs());
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            int pendingSize = 0;
+            String[] pendingKeys = null;
+            Object[] pendingValues = null;
+
+            for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
+                String key = entry.getKey();
+                int argIdx = -1;
+                if (newJo == null) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+                if (argIdx >= 0) {
+                    assert args != null;
+                    args[argIdx] = entry.getValue();
+                    remainingArgs--;
+                    if (remainingArgs == 0) {
+                        newJo = (JsonObject) ci.newPojoWithArgs(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            newJo.put(pendingKeys[i], pendingValues[i]);
+                        }
+                    }
+                    continue;
+                }
+
+                Object vv = deepNode(entry.getValue());
+                if (newJo != null) {
+                    newJo.put(key, vv);
+                } else {
+                    if (pendingKeys == null) {
+                        int cap = srcJo.size();
+                        pendingKeys = new String[cap];
+                        pendingValues = new Object[cap];
+                    }
+                    pendingKeys[pendingSize] = key;
+                    pendingValues[pendingSize] = vv;
+                    pendingSize++;
+                }
+            }
+
+            if (newJo == null) {
+                newJo = (JsonObject) ci.newPojoWithArgs(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    newJo.put(pendingKeys[i], pendingValues[i]);
+                }
+            }
+            return newJo;
+        }
+
         if (node instanceof List) {
             List<Object> srcList = (List<Object>) node;
             List<Object> newList = Sjf4jConfig.global().listSupplier.create(srcList.size());
-            srcList.forEach(v -> newList.add(readNode(v, Object.class)));
+            srcList.forEach(v -> newList.add(deepNode(v)));
             return newList;
         }
         if (node instanceof JsonArray) {
             JsonArray srcJa = (JsonArray) node;
             JsonArray newJa = nodeClazz == JsonArray.class ? new JsonArray()
-                    : (JsonArray) NodeRegistry.registerPojoOrElseThrow(nodeClazz).newInstance();
-            srcJa.forEach(v -> newJa.add(readNode(v, Object.class)));
+                    : (JsonArray) NodeRegistry.registerPojoOrElseThrow(nodeClazz).getCreatorInfo().forceNewPojo();
+            srcJa.forEach(v -> newJa.add(deepNode(v)));
             return newJa;
         }
         if (nodeClazz.isArray()) {
             int len = Array.getLength(node);
             Object newArr = Array.newInstance(nodeClazz.getComponentType(), len);
             for (int i = 0; i < len; i++) {
-                Object vv = readNode(Array.get(node, i), Object.class);
+                Object vv = deepNode(Array.get(node, i));
                 Array.set(newArr, i, vv);
             }
             return newArr;
@@ -134,21 +195,76 @@ public class SimpleNodeFacade implements NodeFacade {
         if (node instanceof Set) {
             Set<Object> srcSet = (Set<Object>) node;
             Set<Object> newSet = Sjf4jConfig.global().setSupplier.create(srcSet.size());
-            srcSet.forEach(v -> newSet.add(readNode(v, Object.class)));
+            srcSet.forEach(v -> newSet.add(deepNode(v)));
             return newSet;
         }
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(nodeClazz);
         if (pi != null) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
-            fields.forEach((k, fi) -> {
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fields.entrySet()) {
+                String key = entry.getKey();
+                NodeRegistry.FieldInfo fi = entry.getValue();
+
+                int argIdx = -1;
+                if (pojo == null) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+                if (argIdx >= 0) {
+                    assert args != null;
+                    Object v = fi.invokeGetter(node);
+                    Object vv = deepNode(v);
+                    args[argIdx] = vv;
+                    remainingArgs--;
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
                 Object v = fi.invokeGetter(node);
-                Object vv = readNode(v, Object.class);
-                fi.invokeSetter(pojo, vv);
-            });
+                Object vv = deepNode(v);
+                if (pojo != null) {
+                    fi.invokeSetterIfPresent(pojo, vv);
+                } else {
+                    if (pendingFields == null) {
+                        int cap = fields.size();
+                        pendingFields = new NodeRegistry.FieldInfo[cap];
+                        pendingValues = new Object[cap];
+                    }
+                    pendingFields[pendingSize] = fi;
+                    pendingValues[pendingSize] = vv;
+                    pendingSize++;
+                }
+            }
+            if (pojo == null) {
+                pojo = ci.newPojoWithArgs(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                }
+            }
             return pojo;
         }
+
         return node;
     }
 
@@ -176,6 +292,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return map;
         }
+
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
@@ -184,20 +301,82 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return jo;
         }
+
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
-            JsonObject jojo = pojo instanceof JsonObject ? (JsonObject) pojo : null;
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(pi.getType());
+
             for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                NodeRegistry.FieldInfo fi = fields.get(entry.getKey());
+                String key = entry.getKey();
+
+                int argIdx = -1;
+                if (pojo == null) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+                if (argIdx >= 0) {
+                    assert args != null;
+                    Type argType = ci.getArgTypes()[argIdx];
+                    args[argIdx] = readNode(entry.getValue(), argType);
+                    remainingArgs--;
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
                 if (fi != null) {
                     Object vv = readNode(entry.getValue(), fi.getType());
-                    fi.invokeSetter(pojo, vv);
-                } else if (jojo != null) {
-                    jojo.put(entry.getKey(), readNode(entry.getValue(), Object.class));
+                    if (pojo != null) {
+                        fi.invokeSetterIfPresent(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    Object vv = readNode(entry.getValue(), Object.class);
+                    dynamicMap.put(key, vv);
                 }
             }
+
+            if (pojo == null) {
+                pojo = ci.newPojoWithArgs(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
         throw new JsonException("Cannot deserialize Map value to target type " + rawClazz.getName());
@@ -214,6 +393,7 @@ public class SimpleNodeFacade implements NodeFacade {
             });
             return map;
         }
+
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             oldJo.forEach((k, v) -> {
@@ -222,20 +402,82 @@ public class SimpleNodeFacade implements NodeFacade {
             });
             return jo;
         }
+
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
-            JsonObject jojo = pojo instanceof JsonObject ? (JsonObject) pojo : null;
-            oldJo.forEach((k, v) -> {
-                NodeRegistry.FieldInfo fi = fields.get(k);
-                if (fi != null) {
-                    Object vv = readNode(v, fi.getType());
-                    fi.invokeSetter(pojo, vv);
-                } else if (jojo != null) {
-                    jojo.put(k, readNode(v, Object.class));
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
+
+            for (Map.Entry<String, Object> entry : oldJo.entrySet()) {
+                String key = entry.getKey();
+
+                int argIdx = -1;
+                if (pojo == null) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
                 }
-            });
+                if (argIdx >= 0) {
+                    assert args != null;
+                    Type argType = ci.getArgTypes()[argIdx];
+                    args[argIdx] = readNode(entry.getValue(), argType);
+                    remainingArgs--;
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                if (fi != null) {
+                    Object vv = readNode(entry.getValue(), fi.getType());
+                    if (pojo != null) {
+                        fi.invokeSetterIfPresent(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    Object vv = readNode(entry.getValue(), Object.class);
+                    dynamicMap.put(key, vv);
+                }
+            }
+
+            if (pojo == null) {
+                pojo = ci.newPojoWithArgs(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
         throw new JsonException("Cannot deserialize JsonObject value to target type " + rawClazz.getName());
@@ -262,7 +504,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray jajo = (JsonArray) pi.newInstance();
+            JsonArray jajo = (JsonArray) pi.getCreatorInfo().forceNewPojo();
             for (Object v : oldList) {
                 Object vv = readNode(v, Object.class);
                 jajo.add(vv);
@@ -306,7 +548,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray jajo = (JsonArray) pi.newInstance();
+            JsonArray jajo = (JsonArray) pi.getCreatorInfo().forceNewPojo();
             oldJa.forEach(v -> jajo.add(readNode(v, Object.class)));
             return jajo;
         }
@@ -349,7 +591,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray jajo = (JsonArray) pi.newInstance();
+            JsonArray jajo = (JsonArray) pi.getCreatorInfo().forceNewPojo();
             for (int i = 0; i < len; i++) {
                 Object v = Array.get(node, i);
                 Object vv = readNode(v, Object.class);
@@ -403,7 +645,7 @@ public class SimpleNodeFacade implements NodeFacade {
         }
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray jajo = (JsonArray) pi.newInstance();
+            JsonArray jajo = (JsonArray) pi.getCreatorInfo().forceNewPojo();
             for (Object v : oldSet) {
                 Object vv = readNode(v, Object.class);
                 jajo.add(vv);
@@ -446,6 +688,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return map;
         }
+
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
@@ -456,21 +699,85 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return jo;
         }
+
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Object pojo = pi.newInstance();
-            JsonObject jojo = pojo instanceof JsonObject ? (JsonObject) pojo : null;
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
+
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                Object v = entry.getValue().invokeGetter(node);
-                NodeRegistry.FieldInfo fi = fields.get(entry.getKey());
+                String key = entry.getKey();
+
+                int argIdx = -1;
+                if (pojo == null) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+                if (argIdx >= 0) {
+                    assert args != null;
+                    Type argType = ci.getArgTypes()[argIdx];
+                    Object v = entry.getValue().invokeGetter(node);
+                    args[argIdx] = readNode(v, argType);
+                    remainingArgs--;
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
                 if (fi != null) {
+                    Object v = entry.getValue().invokeGetter(node);
                     Object vv = readNode(v, fi.getType());
-                    fi.invokeSetter(pojo, vv);
-                } else if (jojo != null) {
-                    jojo.put(entry.getKey(), readNode(v, Object.class));
+                    if (pojo != null) {
+                        fi.invokeSetterIfPresent(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (isJojo) {
+                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    Object v = entry.getValue().invokeGetter(node);
+                    Object vv = readNode(v, Object.class);
+                    dynamicMap.put(key, vv);
                 }
             }
+
+            if (pojo == null) {
+                pojo = ci.newPojoWithArgs(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                }
+            }
+            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
         throw new JsonException("Cannot deserialize POJO value to target type " + rawClazz.getName());

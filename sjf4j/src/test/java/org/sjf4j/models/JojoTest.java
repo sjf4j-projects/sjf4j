@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.node.Nodes;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -283,6 +284,7 @@ public class JojoTest {
         baby.setMonth(12);
         parent.setBabies(Collections.singletonList(baby));
 
+        log.info("parent={}", Nodes.inspect(parent));
         JsonObject jo2 = JsonObject.fromNode(parent);
         log.info("jo2={}", jo2);
 

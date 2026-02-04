@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.node.NodeRegistry;
 
 import java.io.File;
 import java.net.InetAddress;

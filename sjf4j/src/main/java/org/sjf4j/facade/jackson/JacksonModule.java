@@ -138,7 +138,7 @@ public interface JacksonModule {
                 ctx.reportInputMismatch(JsonArray.class, "JsonArray must start with [");
             }
 
-            T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.getCreatorInfo().forceNewPojo();
             JsonDeserializer<Object> deserializer =
                     ctx.findRootValueDeserializer(ctx.constructType(ja.elementType()));
             while (p.nextToken() != JsonToken.END_ARRAY) {

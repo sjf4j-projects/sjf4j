@@ -1,24 +1,15 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathToken;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Type;
-import java.util.AbstractMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 
 public class NodeWalker {
 

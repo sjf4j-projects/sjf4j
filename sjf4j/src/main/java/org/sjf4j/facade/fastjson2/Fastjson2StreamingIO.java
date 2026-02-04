@@ -160,27 +160,26 @@ public class Fastjson2StreamingIO {
         }
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-        if (pi != null) {
+        if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
             Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
             Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-
-            boolean useArgsCreator = ci.getArgsCreator() != null;
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
             Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
             int remainingArgs = useArgsCreator ? args.length : 0;
-            Object pojo = !useArgsCreator ? ci.newInstance() : null;
-            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
+            boolean isJojo = JsonObject.class.isAssignableFrom(rawClazz);
 
             reader.nextIfObjectStart();
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
 
                 int argIdx = -1;
-                if (useArgsCreator) {
+                if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
                     if (argIdx < 0 && ci.getAliasMap() != null) {
                         String origin = ci.getAliasMap().get(key); // alias -> origin
@@ -189,16 +188,15 @@ public class Fastjson2StreamingIO {
                         }
                     }
                 }
-
                 if (argIdx >= 0) {
                     Type argType = ci.getArgTypes()[argIdx];
+                    assert args != null;
                     args[argIdx] = readNode(reader, argType);
                     remainingArgs--;
-                    if (pojo == null && remainingArgs == 0) {
-                        pojo = ci.newInstance(args);
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
                         for (int i = 0; i < pendingSize; i++) {
-                            if (pendingFields[i].hasSetter())
-                                pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                         }
                         pendingSize = 0;
                     }
@@ -209,7 +207,7 @@ public class Fastjson2StreamingIO {
                 if (fi != null) {
                     Object vv = readNode(reader, fi.getType());
                     if (pojo != null) {
-                        fi.invokeSetter(pojo, vv);
+                        fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
                             int cap = fields.size();
@@ -225,16 +223,17 @@ public class Fastjson2StreamingIO {
 
                 if (isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
-                    dynamicMap.put(key, readNode(reader, Object.class));
+                    Object vv = readNode(reader, Object.class);
+                    dynamicMap.put(key, vv);
                 } else {
                     reader.skipValue();
                 }
             }
 
             if (pojo == null) {
-                pojo = ci.newInstance(args);
+                pojo = ci.newPojoWithArgs(args);
                 for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetter(pojo, pendingValues[i]);
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
             if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
@@ -273,7 +272,7 @@ public class Fastjson2StreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.newInstance();
+            JsonArray ja = (JsonArray) pi.getCreatorInfo().forceNewPojo();
             reader.nextIfArrayStart();
             while (!reader.nextIfArrayEnd()) {
                 Object value = readNode(reader, ja.elementType());

@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
 
-import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.Nodes;

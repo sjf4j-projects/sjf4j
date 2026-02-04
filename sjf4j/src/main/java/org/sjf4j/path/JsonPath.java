@@ -1083,30 +1083,32 @@ public class JsonPath {
         if (pt instanceof PathToken.Name) {
             if (clazz.isAssignableFrom(Map.class)) {
                 return Sjf4jConfig.global().mapSupplier.create();
-            } else if (clazz.isAssignableFrom(JsonObject.class)) {
-                return new JsonObject();
-            } else if (NodeRegistry.isPojo(clazz)) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(clazz);
-                return pi.newInstance();
-            } else {
-                throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +
-                        pt + "'. The type must be one of JsonObject/Map/POJO.");
             }
+            if (clazz.isAssignableFrom(JsonObject.class)) {
+                return new JsonObject();
+            }
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
+            if (pi != null) {
+                return pi.getCreatorInfo().forceNewPojo();
+            }
+            throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +
+                        pt + "'. The type must be one of JsonObject/Map/POJO.");
         } else if (pt instanceof PathToken.Index) {
             if (clazz.isAssignableFrom(List.class)) {
                 return Sjf4jConfig.global().listSupplier.create();
-            } else if (clazz.isAssignableFrom(JsonArray.class)) {
+            }
+            if (clazz.isAssignableFrom(JsonArray.class)) {
                 return new JsonArray();
-            } else if (JsonArray.class.isAssignableFrom(clazz)) {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
-                return pi.newInstance();
-            } else if (clazz.isArray()) {
+            }
+            if (JsonArray.class.isAssignableFrom(clazz)) {
+                return NodeRegistry.registerPojoOrElseThrow(clazz).getCreatorInfo().forceNewPojo();
+            }
+            if (clazz.isArray()) {
                 int idx = ((PathToken.Index) pt).index;
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
-            } else {
-                throw new JsonException("Cannot create container with type '" + clazz +
-                        "' at index token '" + pt + "'. The type must be one of JsonArray/List/Array.");
             }
+            throw new JsonException("Cannot create container with type '" + clazz +
+                    "' at index token '" + pt + "'. The type must be one of JsonArray/List/Array.");
         } else {
             throw new JsonException("Unexpected path token '" + pt + "'");
         }

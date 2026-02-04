@@ -6,6 +6,8 @@ public interface NodeFacade {
 
     Object readNode(Object node, Type type);
 
+    Object deepNode(Object node);
+
     Object writeNode(Object node);
 
 }

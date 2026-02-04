@@ -10,6 +10,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
@@ -17,7 +18,7 @@ import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.HashMap;
+import java.lang.reflect.Type;
 import java.util.Map;
 
 public interface GsonModule {
@@ -45,43 +46,102 @@ public interface GsonModule {
     class JsonObjectAdapter<T extends JsonObject> extends TypeAdapter<T> {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
-        private final Map<String, TypeAdapter<?>> fieldAdapters;
         private final TypeAdapter<?> objectAdapter;
 
         public JsonObjectAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
             this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
-            if (pi != null) {
-                Map<String, TypeAdapter<?>> map = new HashMap<>();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> e : pi.getFields().entrySet()) {
-                    map.put(e.getKey(), gson.getAdapter(Types.rawClazz(e.getValue().getType())));
-                }
-                this.fieldAdapters = map;
-            } else {
-                this.fieldAdapters = null;
-            }
             this.objectAdapter = gson.getAdapter(Object.class);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
-            JsonObject jo = pi == null ? new JsonObject() : (JsonObject) pi.newInstance();
-            in.beginObject();
-            while (in.hasNext()) {
-                String name = in.nextName();
-                NodeRegistry.FieldInfo fi;
-                if (pi != null && (fi = pi.getFields().get(name)) != null) {
-                    TypeAdapter<?> adapter = fieldAdapters.get(name);
-                    Object value = adapter.read(in);
-                    fi.invokeSetter(jo, value);
-                } else {
+            if (pi == null) {
+                JsonObject jo = new JsonObject();
+                in.beginObject();
+                while (in.hasNext()) {
+                    String name = in.nextName();
                     Object value = objectAdapter.read(in);
                     jo.put(name, value);
                 }
+                in.endObject();
+                return (T) jo;
+            }
+
+            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
+            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
+            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
+            boolean useArgsCreator = !ci.hasNoArgsCtor();
+            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
+            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
+            int remainingArgs = useArgsCreator ? args.length : 0;
+            int pendingSize = 0;
+            NodeRegistry.FieldInfo[] pendingFields = null;
+            Object[] pendingValues = null;
+            Map<String, Object> dynamicMap = null;
+
+            in.beginObject();
+            while (in.hasNext()) {
+                String key = in.nextName();
+
+                int argIdx = -1;
+                if (pojo == null) {
+                    argIdx = ci.getArgIndex(key);
+                    if (argIdx < 0 && ci.getAliasMap() != null) {
+                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                        if (origin != null) {
+                            argIdx = ci.getArgIndex(origin);
+                        }
+                    }
+                }
+                if (argIdx >= 0) {
+                    Type argType = ci.getArgTypes()[argIdx];
+                    assert args != null;
+                    args[argIdx] = gson.getAdapter(Types.rawClazz(argType)).read(in);
+                    remainingArgs--;
+                    if (remainingArgs == 0) {
+                        pojo = ci.newPojoWithArgs(args);
+                        for (int i = 0; i < pendingSize; i++) {
+                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        }
+                        pendingSize = 0;
+                    }
+                    continue;
+                }
+
+                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                if (fi != null) {
+                    Object vv = gson.getAdapter(Types.rawClazz(fi.getType())).read(in);
+                    if (pojo != null) {
+                        fi.invokeSetterIfPresent(pojo, vv);
+                    } else {
+                        if (pendingFields == null) {
+                            int cap = fields.size();
+                            pendingFields = new NodeRegistry.FieldInfo[cap];
+                            pendingValues = new Object[cap];
+                        }
+                        pendingFields[pendingSize] = fi;
+                        pendingValues[pendingSize] = vv;
+                        pendingSize++;
+                    }
+                    continue;
+                }
+
+                if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                Object vv = objectAdapter.read(in);
+                dynamicMap.put(key, vv);
             }
             in.endObject();
-            return (T) jo;
+
+            if (pojo == null) {
+                pojo = ci.newPojoWithArgs(args);
+                for (int i = 0; i < pendingSize; i++) {
+                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                }
+            }
+            ((JsonObject) pojo).setDynamicMap(dynamicMap);
+            return (T) pojo;
         }
 
         @SuppressWarnings("unchecked")
@@ -115,7 +175,7 @@ public interface GsonModule {
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
-            T ja = pi == null ? (T) new JsonArray() : (T) pi.newInstance();
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.getCreatorInfo().forceNewPojo();
             in.beginArray();
             TypeAdapter<?> adapter = gson.getAdapter(ja.elementType());
             while (in.hasNext()) {

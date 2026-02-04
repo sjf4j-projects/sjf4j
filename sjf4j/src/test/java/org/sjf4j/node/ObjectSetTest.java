@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.node.NodeType;
+import org.sjf4j.node.Nodes;
+import org.sjf4j.node.TypeReference;
 
 import java.util.LinkedHashSet;
 import java.util.List;

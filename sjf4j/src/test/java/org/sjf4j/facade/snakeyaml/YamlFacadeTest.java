@@ -6,11 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.snake.SnakeYamlFacade;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -69,5 +72,32 @@ public class YamlFacadeTest {
         assertEquals(p1, p2);
     }
 
+
+    static class User {
+        String name;
+        List<User> friends;
+        Map<String, Object> ext;
+    }
+
+    @Test
+    void testSkipNode1() {
+        SnakeYamlFacade facade = new SnakeYamlFacade();
+        String json = "{\n" +
+                "  \"id\": 7,\n" +
+                "  \"skipObj\": {\n" +
+                "    \"x\": [true, false, null, {\"deep\": \"v, }\"}],\n" +
+                "    \"y\": 2\n" +
+                "  },\n" +
+                "  \"skipArr\": [1,2,{\"a\":[3,4]}],\n" +
+                "  \"skipStr\": \"wa,w[]{}a\",\n" +
+                "  \"skipNumber\": -334455,\n" +
+                "  \"skipBoolean\": false,\n" +
+                "  \"skipNull\": null,\n" +
+                "  \"name\": \"Jack\"\n" +
+                "}";
+        User pojo = (User) facade.readNode(json, User.class);
+        log.info("pojo={}", Nodes.inspect(pojo));
+        assertEquals("Jack", pojo.name);
+    }
 
 }

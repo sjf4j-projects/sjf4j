@@ -325,6 +325,10 @@ public class Sjf4j {
 
     /// Node
 
+    public static Object fromNode(Object node) {
+        return fromNode(node, Object.class);
+    }
+
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);
@@ -336,8 +340,9 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType());
     }
 
-    public static Object fromNode(Object node) {
-        return fromNode(node, Object.class);
+    @SuppressWarnings("unchecked")
+    public static <T> T deepNode(T node) {
+        return (T) Sjf4jConfig.global().getNodeFacade().deepNode(node);
     }
 
     public static Object toRaw(Object node) {

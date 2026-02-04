@@ -1,7 +1,11 @@
 package org.sjf4j.supplier;
 
+import org.sjf4j.Sjf4jConfig;
+
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,6 +18,12 @@ public interface ListSupplier {
     <T> List<T> create(int initialCapacity);
 
     <T> List<T> create(Collection<T> target);
+
+    default <T> List<T> create(T[] target) {
+        List<T> list = create(target.length);
+        Collections.addAll(list, target);
+        return list;
+    }
 
 
     /// Build-in List Suppliers

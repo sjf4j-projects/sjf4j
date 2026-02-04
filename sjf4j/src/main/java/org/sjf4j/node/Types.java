@@ -33,6 +33,7 @@ public class Types {
     }
 
     public static Class<?> box(Class<?> clazz) {
+        if (clazz == null) return Object.class;
         if (!clazz.isPrimitive()) return clazz;
         if (clazz == int.class) return Integer.class;
         if (clazz == long.class) return Long.class;
