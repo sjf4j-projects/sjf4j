@@ -16,11 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.3] - 2026.02.04
 ### Added
 - Added `skipNode()` method to `StreamingReader` interface, enabling efficient skipping of entire JSON nodes 
-  during streaming parsing without fully deserializing them. This improves performance when processing large 
-  JSON documents where certain sections can be ignored.
+  during streaming parsing without fully deserializing them.
 - Added `@NodeCreator` annotation to support ***custom object construction with parameterized constructors***. 
-  This annotation can be applied to constructors or static factory methods, allowing fine-grained control 
-  over how objects are instantiated during deserialization.
 
 ### Improved
 - Enhanced POJO deserialization to ***automatically support Java records*** (JDK 14+). Record classes are now 
