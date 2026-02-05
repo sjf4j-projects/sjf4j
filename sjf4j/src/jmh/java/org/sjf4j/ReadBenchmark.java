@@ -25,6 +25,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
@@ -89,12 +90,13 @@ public class ReadBenchmark {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-    @Param({"STREAMING_GENERAL", "STREAMING_SPECIFIC", "USE_MODULE"})
-    public String readMode;
+    @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
+    public String streamingMode;
 
     @Setup(Level.Trial)
     public void setup() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().readMode(Sjf4jConfig.ReadMode.valueOf(readMode)).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(
+                StreamingFacade.StreamingMode.valueOf(streamingMode)).build());
     }
 
 

@@ -20,6 +20,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
@@ -60,12 +61,13 @@ public class WriteBenchmark {
     private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
 
 
-    @Param({"STREAMING_GENERAL", "STREAMING_SPECIFIC", "USE_MODULE"})
-    public String writeMode;
+    @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
+    public String streamingMode;
 
     @Setup(Level.Trial)
     public void setup() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().writeMode(Sjf4jConfig.WriteMode.valueOf(writeMode)).build());
+        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(
+                StreamingFacade.StreamingMode.valueOf(streamingMode)).build());
     }
 
 
