@@ -4,7 +4,7 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
-import org.sjf4j.patch.PatchUtil;
+import org.sjf4j.patch.Patches;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -973,14 +973,14 @@ public abstract class JsonContainer {
      * Merges the specified {@code mergePatch} into this {@code JsonObject}.
      *
      * <p>The merge is applied in place. Objects and arrays are merged recursively
-     * according to {@link PatchUtil#merge(Object, Object, boolean, boolean)}.
+     * according to {@link Patches#merge(Object, Object, boolean, boolean)}.
      *
      * @param mergePatch    the patch object to merge
      * @param overwrite     whether existing non-null values should be replaced
      * @param deepCopy      whether composite values from the patch should be deep-copied
      */
     public void merge(Object mergePatch, boolean overwrite, boolean deepCopy) {
-        PatchUtil.merge(this, mergePatch, overwrite, deepCopy);
+        Patches.merge(this, mergePatch, overwrite, deepCopy);
     }
 
     /**
@@ -1023,7 +1023,7 @@ public abstract class JsonContainer {
      * @param mergePatch the JSON Merge Patch to apply
      */
     public void mergeRfc7386(Object mergePatch) {
-        PatchUtil.mergeRfc7386(this, mergePatch);
+        Patches.mergeRfc7386(this, mergePatch);
     }
 
 

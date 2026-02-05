@@ -500,7 +500,7 @@ class JsonObjectTest {
                 "address", new JsonObject(
                         "city", "New York",
                         "street", "5th Ave"));
-        Person p1 = jo.toNode(Person.class);
+        Person p1 = jo.toPojo(Person.class);
         assertEquals("Bob", p1.name);
         assertEquals("New York", p1.address.city);
         assertEquals("5th Ave", p1.address.street);

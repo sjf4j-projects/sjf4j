@@ -325,10 +325,6 @@ public class Sjf4j {
 
     /// Node
 
-    public static Object fromNode(Object node) {
-        return fromNode(node, Object.class);
-    }
-
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);

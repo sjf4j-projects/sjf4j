@@ -10,9 +10,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.Nodes;
-import org.sjf4j.node.ValueCodec;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -263,7 +260,7 @@ public class NodesTest {
                 "address", new JsonObject(
                         "city", "New York",
                         "street", "5th Ave"));
-        Person p1 = jo.toNode(Person.class);
+        Person p1 = jo.toPojo(Person.class);
         JsonObject jo1 = new JsonObject(p1);
         assertEquals(p1, jo1);
         assertEquals(jo1, p1);
@@ -317,7 +314,7 @@ public class NodesTest {
                 "address", new JsonObject(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.toNode(Person.class);
+        Person p1 = jo.toPojo(Person.class);
         Person p2 = Nodes.copy(p1);
         Person p3 = Nodes.deepCopy(p1);
         assertEquals(p1, p2);
@@ -336,7 +333,7 @@ public class NodesTest {
         JsonObject jo = new JsonObject(
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
-        Baby b1 = jo.toNode(Baby.class);
+        Baby b1 = jo.toPojo(Baby.class);
         Baby b2 = Nodes.copy(b1);
         Baby b3 = Nodes.deepCopy(b1);
         log.info("b1={}, b3={}", b1, b3);

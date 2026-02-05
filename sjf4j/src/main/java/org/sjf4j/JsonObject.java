@@ -423,6 +423,10 @@ public class JsonObject extends JsonContainer {
         return Nodes.toMap(toMap(), clazz);
     }
 
+    public <T> T toPojo(Class<T> clazz) {
+        return Nodes.toPojo(this, clazz);
+    }
+
     /**
      * Returns a Set view of the mappings contained in this JsonObject, including both POJO fields
      * and dynamic nodes. The set is backed by the JsonObject, so changes to the JsonObject are
@@ -510,17 +514,10 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromNode(node, type);
     }
 
-    public <T> T toNode(Class<T> clazz) {
-        return Sjf4j.fromNode(this, clazz);
-    }
-
-    public <T> T toNode(TypeReference<T> type) {
-        return Sjf4j.fromNode(this, type);
-    }
-
     public Object toRaw() {
         return Sjf4j.toRaw(this);
     }
+
 
 
     /// Properties Facade
@@ -1591,7 +1588,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T deepCopy() {
-        return (T) Nodes.deepCopy(this);
+        return (T) Sjf4j.deepNode(this);
     }
 
     /// Stream

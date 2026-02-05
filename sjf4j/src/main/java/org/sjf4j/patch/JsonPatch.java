@@ -25,7 +25,7 @@ public class JsonPatch extends JsonArray {
     }
 
     public static JsonPatch diff(Object source, Object target) {
-        List<PatchOp> ops = PatchUtil.diff(source, target);
+        List<PatchOp> ops = Patches.diff(source, target);
         return new JsonPatch(ops);
     }
 

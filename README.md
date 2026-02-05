@@ -37,7 +37,7 @@ Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
 
 ```mermaid
 graph BT
-    node(("Object-Based Node Tree"))
+    node(("&lt;Object&gt; <br/> Object-Based Node Tree"))
     node --> object(("JSON Object <br/> { }"))
         object --> map("Map")
         object --> jo("JsonObject")
@@ -47,12 +47,13 @@ graph BT
         array --> list("List")
         array --> ja("JsonArray")
             ja --> jajo(" &lt;JAJO&gt; <br/> (extends JsonArray)")
-        array --> arr("&lt;Array&gt;")
+        array --> arr("Array")
+        array ---> set("Set")
     node --> value(("JSON Value <br/> ..."))
         value --> string("String")
         value --> number("Number")
         value --> boolean("Boolean")
-        value ---> nodeValue("&lt;Object&gt; <br/> (via @NodeValue)")
+        value ---> nodeValue("&lt;@NodeValue&gt;")
 ```
 
 **JSON Object (`{}`)**
@@ -73,21 +74,21 @@ A standard Java `List` used as a direct representation of a JSON array.
 - **`JsonArray`**  
 A structured wrapper around a JSON array that provides JSON-semantic APIs.
 - **`<Array>`**  
-A native Java array (e.g. `Object[]`, `String[]`, `int[]`) used when a fixed-size, 
+A native Java array (e.g. `String[]`, `int[]`) used when a fixed-size, 
 strongly typed representation is desired.
 - **`<JAJO>` (JSON Array Java Object)**  
-  An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array  
-  (never a JSON Object), and is suitable for domain-specific array models (e.g. `JsonPatch`).
+An array type extending `JsonArray`. It is a first-class Java object that strictly represents a JSON Array,
+and is suitable for domain-specific array models (e.g. `JsonPatch`).
+- **`Set`**  
+A Java `Set` mapped to a JSON array for compatibility, with no ordering guarantees.
 
 **JSON Value (`..`)**
-- **`String`**  Represents JSON `string` values.
-- **`Number`**  Represents JSON `numeric` values, including integers and floating-point numbers.
-- **`Boolean`** Represents JSON boolean values (`true` and `false`).
-- **`Null`**    Represents the JSON `null` literal.
-- **`<Object>`**  
-SJF4J allows JSON values to be ***converted into arbitrary Java objects*** through a pluggable conversion mechanism 
-(via `@Convertible` or `Converter`), enabling seamless integration with domain-specific types (e.g. `LocalDate`).
-
+- **`String`**  - JSON `string` values.
+- **`Number`**  - JSON `numeric` values, including integers and floating-point numbers.
+- **`Boolean`** - JSON `true` or `false`.
+- **`Null`**    - JSON `null` literal.
+- **`<@NodeValue>`**  
+JSON values in SJF4J are handled as typed nodes, with optional adapters for mapping to Java types (e.g. `LocalDate`).
 
 ## Getting Started
 
@@ -121,18 +122,17 @@ providing the same JSON-semantic APIs.
 
 **Basic Access and mutation Methods**:
 
-| Class      | Method                                      | Description                                                                                                            |
-|------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| JsonObject | `getNode(key)` <br>                         | Returns the raw underlying node as an `Object`, without any type conversion or adaptation.                             |
-|            | `get(key, type)` <br> `getString(key)`  ... | Performs ***type-safe access*** with minimal adaptation when necessary (e.g. `Double` → `Float`, `Integer` → `Long`).  |
-|            | `as(key, type)` <br> `asLong(key)` ...      | Performs ***cross-type conversion***, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`). |
-|            | `put(key, value)` <br> `remove(key)` ...    | Performs mutation operations such as insert, replace, and remove.                                                      |
-|            | `toBuilder().put(..).put()`                 | Provides a builder-style API that supports fluent, chained operations.                                                 |
+| Class      | Method                                       | Description                                                                                                                       |
+|------------|----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| JsonObject | `getNode(key)` <br>                          | Returns the raw underlying node as an `Object`, without any type conversion or adaptation.                                        |
+|            | `get(key, type)` <br> `getLong(key)`  ...    | `getXxx` Performs ***type-safe access*** with minimal adaptation when necessary (e.g. `Double` → `Float`, `Integer` → `Long`).    |
+|            | `getAs(key, type)` <br> `getAsLong(key)` ... | `getAsXxx` Performs ***cross-type conversion***, including semantic conversions (e.g. `String` → `Number`, `Boolean` → `String`). |
+|            | `put(key, value)` <br> `remove(key)` ...     | Performs mutation operations such as insert, replace, and remove.                                                                 |
+|            | `toBuilder().put(..).put()`                  | Provides a builder-style API that supports fluent, chained operations.                                                            |
 
 
 **Examples**:
-(Full source code: 
-[SimpleExampleTest](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExampleTest.java))
+(Full source code: [SimpleExampleTest](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/test/java/org/sjf4j/SimpleExampleTest.java))
 
 ```java
     String json = "{\n" +
@@ -172,14 +172,14 @@ providing the same JSON-semantic APIs.
     // Dynamic type inference version of `get()`.
     // Type is inferred based on the context, convenient for shorthand usage.
 
-    String active = jo.asString("active");
+    String active = jo.getAsString("active");
     // Retrieve and convert the node value across types using `asXxx(key)`.
     // Supports cross-type casting (e.g., Number → String).
 
-    String active2 = jo.as("active");
-    // Dynamic type conversion, short form of `as(key, type)`.
+    String active2 = jo.getAs("active");
+    // Dynamic type conversion, short form of `getAs(key, type)`.
 
-    String role = jo.asJsonObject("user").get("role");
+    String role = jo.getJsonObject("user").get("role");
     // Chain operations for nested nodes.
     // First converts "user" node to JsonObject, then retrieves "role".
 
@@ -204,16 +204,16 @@ providing the same JSON-semantic APIs.
 
 **Path-Based Methods** (in `JsonPath` and `JsonObject`/`JsonArray`)
 
-| Class                    | Methods                                                                                                                            | Description                                                                                                                                                                                                                                                                 |
-|--------------------------|------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JsonPath                 | `JsonPath.compile(path)`                                                                                                           | Compiles a JSON Path or JSON Pointer expression into a ***reusable*** `JsonPath` instance.                                                                                                                                                                                  |
-|                          | `getNode(node)` <br> `get(node)` / `getXxx()` ... <br> `as(node)` / `asXxx()` ...                                                  | Returns a ***single matched node***, with `getXxx()` providing type-safe access and `asXxx()` performing cross-type conversion. Returns `null` if no nodes found.                                                                                                           |
-|                          | `find(node)` <br> `findAs(node, type)`                                                                                             | Returns a ***list of matched nodes***. Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                                 |
-|                          | `eval(node)` <br> `evalAs(node, type)`                                                                                             | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
-|                          | `add(node, value)` <br> `replace(node, value)` <br> `remove(node)`                                                                 | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
-|                          | `ensurePut(node, value)`                                                                                                           | Ensures the path exists and inserts the value, ***creating intermediate nodes if necessary***; for arrays, appends the value when the target index equals the current array size.                                                                                           |
-| JsonObject <p> JsonArray | `getNodeByPath(path)` <br> `getByPath(path)` ... <br> `asByPath(path)` ... <br> `findByPath(path)` ... <br> `evalByPath(path)` ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
-|                          | `addByPath(path, value)` <br> `replaceByPath(path, value)` <br> `removeByPath(path)` <br> `ensurePut(path, vlaue)`                 | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
+| Class                    | Methods                                                                                                    | Description                                                                                                                                                                                                                                                                 |
+|--------------------------|------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JsonPath                 | `JsonPath.compile(path)`                                                                                   | Compiles a JSON Path or JSON Pointer expression into a ***reusable*** `JsonPath` instance.                                                                                                                                                                                  |
+|                          | `getXxx()` ... <br>  `getAsXxx()` ...                                                                      | Returns a ***single matched node***, with `getXxx()` providing type-safe access and `getAsXxx()` performing cross-type conversion. <br/> Returns `null` if no nodes found.                                                                                                  |
+|                          | `find(node)` <br> `findAs(node, type)`                                                                     | Returns a ***list of matched nodes***. <br/> Returns an ***empty list*** if no nodes are matched.                                                                                                                                                                           |
+|                          | `eval(node)` <br> `evalAs(node, type)`                                                                     | Returns a flexible result: <br/> - a ***single node*** if exactly one node is matched; <br/> - a ***list of nodes*** if multiple nodes are matched; <br/> - the ***function result*** if the path ends with a function call; <br/> - or ***null*** if no nodes are matched. |
+|                          | `add(node, value)` <br> `replace(node, value)` <br> `remove(node)`                                         | Applies mutation operations at the path location on the target container, following JSON Patch–style semantics.                                                                                                                                                             |
+|                          | `ensurePut(node, value)`                                                                                   | Ensures the path exists and inserts the value, ***creating intermediate nodes if necessary***; for arrays, appends the value when the target index equals the current array size.                                                                                           |
+| JsonObject <p> JsonArray | `getByPath(path)` ... <br> `getAsByPath(path)` ... <br> `findByPath(path)` ... <br> `evalByPath(path)` ... | One-shot path evaluation APIs that compile and execute the path against the current container.                                                                                                                                                                              |
+|                          | `addByPath(path, value)` <br> `removeByPath(path)` ...                                                     | One-shot path-based mutation APIs applied directly to the current container.                                                                                                                                                                                                |
 
 **Examples**: Path-Based Access and mutation
 
@@ -226,7 +226,7 @@ providing the same JSON-semantic APIs.
     String role3 = jo.getStringByPath("/user/role");
     // Uses a JSON Pointer expression to access the same node via a one-shot path API.
     
-    String role4 = jo.asByPath("$..role");
+    String role4 = jo.getAsByPath("$..role");
     // Uses the descendant operator (`..`) to deep traversal
 
     List<String> tags = jo.findByPath("$.tags[*]", String.class);
@@ -235,7 +235,7 @@ providing the same JSON-semantic APIs.
     List<Short> scores = jo.findAsByPath("$.scores[0:3]", Short.class);
     // Uses array slicing (`[start:end:step]`)
     
-    List<Object> unions = jo.findNodesByPath("$.user['role','profile']");
+    List<Object> unions = jo.findByPath("$.user['role','profile']");
     // Uses a union expression to select multiple object members
 
     int count = JsonPath.compile("$.scores.count()").eval(jo, int.class);
@@ -332,7 +332,7 @@ List<String> tags = jo.stream()
 int x = jo.stream()
         .findAsByPath("$..profile", JsonObject.class)   // Primary `findAsByPath()`
         .filter(n -> n.hasNonNull("values")) 
-        .asByPath("$..x", Integer.class)                // Secondary `asByPath()`
+        .getAsByPath("$..x", Integer.class)                // Secondary `asByPath()`
         .findFirst()
         .orElse(4);
 ```
@@ -462,12 +462,12 @@ This includes Java `Record`, `Protobuf` messages, or classes from external libra
   These APIs operate directly on arbitrary Java object graphs 
   and are also the underlying foundation used internally by `JsonObject`/`JsonArray`.
 
-| Helper Class | Static Methods                                                                                                   | Description                                                                  |
-|--------------|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| Sjf4j        | `fromXxx()` ... <br> `toXxx()` ...                                                                               | Entry-point helpers for parsing, serialization, and cross-format conversion. |
-| NodeUtil     | `getXxx()` ... <br> `asXxx()` ... <br> `copy()` / `inspect()` ...                                                | Node-level access, conversion, inspection, and comparison utilities.         |
-| NodeWalker   | `walk()` ... <br> `visitObject()` ... <br> `sizeInList()` ... <br> `setInObject()` ... <br> `removeInList()` ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
-| PatchUtil    | `diff()` / `merge()` ...                                                                                         | JSON Patch–based operations.                                                 |
+| Helper Class | Static Methods                                                                                             | Description                                                                  |
+|--------------|------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| Sjf4j        | `Sjf4j.fromJson()` ... <br> `Sjf4j.toYaml()` ...                                                           | Entry-point helpers for parsing, serialization, and cross-format conversion. |
+| Nodes        | `Nodes.toLong()` ... <br> `Nodes.asString()` ... <br> `Nodes.inspect()` ...                                | Node-level access, conversion, inspection, and comparison utilities.         |
+| Nodes        | `Nodes.visitObject()` <br> `Nodes.sizeInList()` <br> `Nodes.setInObject()` <br> `Nodes.removeInList()` ... | Traversal and mutation of the **Object-Based Node Tree**.                    |
+| Patches      | `Patches.diff()` <br/> `Patches.merge()` ...                                                               | JSON Patch–based operations.                                                 |
 
 **Exampl**e: Low-level static APIs
 ```java
@@ -475,7 +475,7 @@ This includes Java `Record`, `Protobuf` messages, or classes from external libra
         System.out.println("key=" + k + " value=" + v);
     });
 
-    NodeWalker.visitObject(user, (k, v) -> {
+    Nodes.visitObject(user, (k, v) -> {
         System.out.println("key=" + k + " value=" + v);
     });
     // Functionally equivalent to `JsonObject.forEach(...)`, but usable with any object node.
@@ -489,9 +489,10 @@ This includes Java `Record`, `Protobuf` messages, or classes from external libra
 ```java
     JsonObject userJo = JsonObject.fromNode(user);  // Project POJO as JsonObject
     ...
-    user = userJo.toNode(User.class);               // Materialize back to POJO
+    user = userJo.toPojo(User.class);               // Materialize back to POJO
 ```
-Object projection is implemented as a ***shallow copy***, introducing a small and predictable overhead.
+`Nodes.toXxx()` implements ***shallow copy*** (or direct references for matching types).  
+`Sjf4j.readNode()`/`deepNode()` is for ***deep copy***.
 
 > **About JAJO (JSON Array Java Object)**  
 > Unlike `JOJO`, a `JAJO` extends `JsonArray`, but intentionally introduces no additional fields.  
@@ -524,30 +525,30 @@ Sjf4j provides a unified set of entry-point APIs for converting between JSON-lik
     // Conversion is symmetric: `fromNode(..)` is used for both directions.
     // No separate `toNode(..)` API is required.
     
-    User user3              = Sjf4j.deepNode(user2, User.class);
+    User user3              = Sjf4j.deepNode(user2);
     // Always performs a deep copy.
     // The resulting object graph is fully detached from the source.
 ```
 
-**Extensibility**: SJF4J allows ***custom Java types*** to participate in the Object-Based Node Tree via 
-`@Convertible` annotation or `Converter` interface.
+**Extensibility**: SJF4J allows ***custom Java types*** to participate in OBNT via 
+`@NodeValue` annotation or `ValueCodec` interface.
 
-- **Example: Using the `@Convertible` Annotation**
+- **Example: Using the `@NodeValue` Annotation**
 ```java
-    @Convertible    
+    @NodeValue    
     public static class BigDay {
         private final LocalDate localDate;
         public BigDay(LocalDate localDate) {
             this.localDate = localDate;
         }
 
-        @Convert
-        public String convert() {
+        @Encode
+        public String encode() {
             return localDate.toString();
         }
 
-        @Unconvert
-        public static BigDay unconvert(String raw) {
+        @Decode
+        public static BigDay decode(String raw) {
             return new BigDay(LocalDate.parse(raw));
         }
 
@@ -557,13 +558,13 @@ Sjf4j provides a unified set of entry-point APIs for converting between JSON-lik
         }
     }
 ```
-- `@Convert` defines how the object is converted into a ***raw type*** value (in Object-Based Node Tree).
-- `@Unconvert` defines how the raw value is unconverted back into the ***node type*** object.
+- `@Encode` defines how the object is encoded into a ***raw type*** value (in OBNT).
+- `@Decode` defines how the raw value is decoded back into the ***node type*** object.
 - `@Copy` defines how the object is duplicated when a shallow or deep copy is required.
   
 Then registering it:
 ```java
-    NodeRegistry.registerConvertible(BigDay.class);
+    NodeRegistry.registerValueCodec(BigDay.class);
     // Throws an exception if registration fails
     
     BigDay day = Sjf4j.fromJson("\"2026-01-01\"", BigDay.class);
@@ -572,22 +573,22 @@ Then registering it:
     // transparently via its raw representation ("2026-01-01").
 ```
 
-- **Example: Using the `Converter` Interface**:  
+- **Example: Using the `ValueCodec` Interface**:  
 (If annotations are not possible, e.g. JDK classes, third-party types.)
 ```java
-    NodeRegistry.registerConvertible(new NodeConverter<LocalDate, String>() {
+    NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
         @Override
-        public String convert(LocalDate node) {
+        public String encode(LocalDate node) {
             return node.toString();
         }
 
         @Override
-        public LocalDate unconvert(String raw) {
+        public LocalDate decode(String raw) {
             return LocalDate.parse(raw);
         }
 
         @Override
-        public Class<LocalDate> getNodeClass() {
+        public Class<LocalDate> getValueClass() {
             return LocalDate.class;
         }
 
@@ -597,10 +598,9 @@ Then registering it:
         }
     });
 ```
-Here, the `Converter` explicitly declares:
-- the ***node type*** participating in the Object-Based Node Tree
-- the ***raw type*** used for JSON serialization
-- and the ***bidirectional conversion logic*** between them
+A `ValueCodec` explicitly specifies the value class involved in OBNT, 
+its raw JSON representation (`Map`, `List`, `String`, `Number`, `Boolean`, or `null`), 
+and the bidirectional conversion logic between them.
 
 
 ### Transforming with `JsonPatch`
@@ -673,10 +673,10 @@ and each `PatchOp` consists of four fields: `op`, `path`, `value` and `from`.
 SJF4J also supports [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386),
 allowing partial updates to JSON objects.
 
-| Class                                  | Method                                                          | Description                                                                                                                                                                                                                                                                                                                                                |
-|----------------------------------------|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JsonObject <p> JsonArray <p> PatchUtil | `mergeRfc7386(Object mergePatch)`                               | Following RFC 7386 semantics: <br/>• If a field exists in both the target and the patch, the patch value replaces the target value. <br/>• If a field in the patch is `null`, the corresponding target field is removed. <br/>• Nested objects are merged recursively. <br>• Arrays are replaced as a whole, not merged.                                   |
-|                                        | `merge(Object mergePatch, boolean overwrite, boolean deepCopy)` | SJF4J provides a more flexible merge method: <br>• `overwrite` – if `true`, existing values are replaced; otherwise, only missing keys are added. <br>• `deepCopy` – if `true`, values are copied deeply instead of by reference. <br/>• If a field in the patch is `null`, no operation is performed. <br/>• Arrays are merged recursively, not replaced. |
+| Class                                | Method                                                          | Description                                                                                                                                                                                                                                                                                                                                                |
+|--------------------------------------|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JsonObject <p> JsonArray <p> Patches | `mergeRfc7386(Object mergePatch)`                               | Following RFC 7386 semantics: <br/>• If a field exists in both the target and the patch, the patch value replaces the target value. <br/>• If a field in the patch is `null`, the corresponding target field is removed. <br/>• Nested objects are merged recursively. <br>• Arrays are replaced as a whole, not merged.                                   |
+|                                      | `merge(Object mergePatch, boolean overwrite, boolean deepCopy)` | SJF4J provides a more flexible merge method: <br>• `overwrite` – if `true`, existing values are replaced; otherwise, only missing keys are added. <br>• `deepCopy` – if `true`, values are copied deeply instead of by reference. <br/>• If a field in the patch is `null`, no operation is performed. <br/>• Arrays are merged recursively, not replaced. |
 
 ### Validating with `JsonSchema`
 

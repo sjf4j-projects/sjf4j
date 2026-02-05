@@ -842,11 +842,6 @@ public class Nodes {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T deepCopy(T node) {
-        return (T) Sjf4j.fromNode(node);
-    }
-
     /**
      * Returns a compact, human-readable representation of the given object.
      * <p>

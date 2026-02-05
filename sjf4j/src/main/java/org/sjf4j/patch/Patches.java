@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class PatchUtil {
+public class Patches {
 
     /**
      * Recursively merges {@code mergePatch} into {@code target}.
