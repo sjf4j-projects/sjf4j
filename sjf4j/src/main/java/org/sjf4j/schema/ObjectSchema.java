@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonObject;
 import org.sjf4j.path.JsonPointer;
+import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -143,12 +144,11 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
     public void compile(SchemaStore outer) {
         outerStore = outer;
         innerStore = new HashMap<>();
-        JsonPointer path = new JsonPointer();
         compileMeta();
-        compile(path, this, this);
+        compile(PathSegment.Root.INSTANCE, this, this);
     }
 
-    void compile(JsonPointer path, ObjectSchema idSchema, ObjectSchema rootSchema) {
+    void compile(PathSegment ps, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
             if (uri == null) uri = CompileUtil.resolveUri(getId(), idSchema.getUri());
             if (uri == null && this == idSchema) uri = URI.create("");
@@ -157,7 +157,7 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
                 rootSchema.innerStore.put(uri, this);
             }
             this.idSchema = idSchema;
-            evaluators = CompileUtil.compile(path, this, idSchema, rootSchema);
+            evaluators = CompileUtil.compile(ps, this, idSchema, rootSchema);
         }
     }
 
@@ -187,7 +187,7 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
                 innerStore.put(uri, schema);
             }
         } else {
-            schema.compile(new JsonPointer(), schema, this);
+            schema.compile(PathSegment.Root.INSTANCE, schema, this);
         }
         return schema;
     }
@@ -202,11 +202,11 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
     public ValidationResult validate(Object node, ValidationOptions options) {
         InstancedNode instance = InstancedNode.infer(node);
         ValidationContext ctx = new ValidationContext(this, options);
-        _validate(instance, new JsonPointer(), ctx);
+        _validate(instance, new PathSegment.Root(null, instance.getObjectType()), ctx);
         return ctx.toResult();
     }
 
-    boolean _validate(InstancedNode instance, JsonPointer path, ValidationContext ctx) {
+    boolean _validate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
         if (evaluators == null)
             throw new SchemaException("Schema has not been compiled.");
         int len = evaluators.length;
@@ -216,7 +216,7 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
         boolean result = true;
         boolean pushed = ctx.pushIdSchema(this.idSchema);
         for (Evaluator evaluator : evaluators) {
-            result = result && evaluator.evaluate(instance, path, ctx);
+            result = result && evaluator.evaluate(instance, ps, ctx);
             if (ctx.shouldAbort()) return result;
         }
         if (pushed) ctx.popIdSchema();

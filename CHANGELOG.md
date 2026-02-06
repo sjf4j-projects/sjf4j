@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Improved
+- Improve `JsonPath` performance by converting `PathToken` to `PathSegment`, with location reporting on parse errors.
 ### Changed
 ### Fixed
 ### Removed

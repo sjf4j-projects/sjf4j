@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.JsonPointer;
+import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
 import java.util.ArrayDeque;
@@ -78,7 +79,7 @@ public class ValidationContext {
     }
 
     // message
-    void addError(String path, String keyword, String message) {
+    void addError(JsonPointer path, String keyword, String message) {
         if (ignoreErrorAdding < 1) {
             valid = false;
             addMessage(ValidationMessage.Severity.ERROR, path, keyword, message);
@@ -86,16 +87,16 @@ public class ValidationContext {
             addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
         }
     }
-    void addWarn(String path, String keyword, String message) {
+    void addWarn(JsonPointer path, String keyword, String message) {
         addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
     }
-    void addInfo(String path, String keyword, String message) {
+    void addInfo(JsonPointer path, String keyword, String message) {
         addMessage(ValidationMessage.Severity.INFO, path, keyword, message);
     }
-    void addDebug(String path, String keyword, String message) {
+    void addDebug(JsonPointer path, String keyword, String message) {
         addMessage(ValidationMessage.Severity.DEBUG, path, keyword, message);
     }
-    private void addMessage(ValidationMessage.Severity severity, String path, String keyword, String message) {
+    private void addMessage(ValidationMessage.Severity severity, JsonPointer path, String keyword, String message) {
         ValidationMessage error = new ValidationMessage(severity, path, keyword, message);
         messages.add(error);
     }

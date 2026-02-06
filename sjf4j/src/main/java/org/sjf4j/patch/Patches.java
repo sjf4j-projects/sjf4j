@@ -1,9 +1,10 @@
 package org.sjf4j.patch;
 
+import org.sjf4j.Sjf4j;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.path.JsonPointer;
-import org.sjf4j.path.PathToken;
+import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +51,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.putInObject(target, key, Nodes.deepCopy(subPatch));
+                            Nodes.putInObject(target, key, Sjf4j.deepNode(subPatch));
                         } else {
                             Nodes.putInObject(target, key, subPatch);
                         }
@@ -60,7 +61,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.putInObject(target, key, Nodes.deepCopy(subPatch));
+                            Nodes.putInObject(target, key, Sjf4j.deepNode(subPatch));
                         } else {
                             Nodes.putInObject(target, key, subPatch);
                         }
@@ -79,7 +80,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.setInArray(target, i, Nodes.deepCopy(subPatch));
+                            Nodes.setInArray(target, i, Sjf4j.deepNode(subPatch));
                         } else {
                             Nodes.setInArray(target, i, subPatch);
                         }
@@ -89,7 +90,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.setInArray(target, i, Nodes.deepCopy(subPatch));
+                            Nodes.setInArray(target, i, Sjf4j.deepNode(subPatch));
                         } else {
                             Nodes.setInArray(target, i, subPatch);
                         }
@@ -144,35 +145,33 @@ public class Patches {
 
     public static List<PatchOp> diff(Object source, Object target) {
         List<PatchOp> ops = new ArrayList<>();
-        _diff(ops, new JsonPointer(), source, target);
+        _diff(ops, PathSegment.Root.INSTANCE, source, target);
         return ops;
     }
 
-    private static void _diff(List<PatchOp> ops, JsonPointer path, Object source, Object target) {
+    private static void _diff(List<PatchOp> ops, PathSegment ps, Object source, Object target) {
         if (source == null && target == null) return;
         if (null == source) {
-            ops.add(new PatchOp(PatchOp.STD_ADD, path, target, null));
+            ops.add(new PatchOp(PatchOp.STD_ADD, JsonPointer.fromLast(ps), target, null));
         } else if (null == target) {
-            ops.add(new PatchOp(PatchOp.STD_REMOVE, path, null, null));
+            ops.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.fromLast(ps), null, null));
         } else {
             NodeType sourceType = NodeType.of(source);
             NodeType targetType = NodeType.of(target);
             if (sourceType.isObject() && targetType.isObject()) {
                 Nodes.visitObject(source, (k, v) -> {
-                    JsonPointer newPath = path.copy();
-                    newPath.push(new PathToken.Name(k));
+                    PathSegment cps = new PathSegment.Name(ps, null, k);
                     Object newTarget = Nodes.getInObject(target, k);
                     if (newTarget != null) {
-                        _diff(ops, newPath, v, newTarget);
+                        _diff(ops, cps, v, newTarget);
                     } else {
-                        ops.add(new PatchOp(PatchOp.STD_REMOVE, newPath, null, null));
+                        ops.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.fromLast(cps), null, null));
                     }
                 });
                 Nodes.visitObject(target, (k, v) -> {
                    if (!Nodes.containsInObject(source, k)) {
-                       JsonPointer newPath = path.copy();
-                       newPath.push(new PathToken.Name(k));
-                       ops.add(new PatchOp(PatchOp.STD_ADD, newPath, v, null));
+                       PathSegment cps = new PathSegment.Name(ps, null, k);
+                       ops.add(new PatchOp(PatchOp.STD_ADD, JsonPointer.fromLast(cps), v, null));
                    }
                 });
             } else if (sourceType.isArray() && targetType.isArray()) {
@@ -180,26 +179,24 @@ public class Patches {
                 int targetSize = Nodes.sizeInArray(target);
                 int size = Math.min(sourceSize, targetSize);
                 for (int i = 0; i < size; i++) {
-                    JsonPointer newPath = path.copy();
-                    newPath.push(new PathToken.Index(i));
-                    _diff(ops, newPath, Nodes.getInArray(source, i), Nodes.getInArray(target, i));
+                    PathSegment cps = new PathSegment.Index(ps, null, i);
+                    _diff(ops, cps, Nodes.getInArray(source, i), Nodes.getInArray(target, i));
                 }
                 if (targetSize > sourceSize) {  // add with '/xx/-'
-                    JsonPointer newPath = path.copy();
-                    newPath.push(PathToken.Append.INSTANCE);
+                    PathSegment cps = new PathSegment.Append(ps, null);
                     for (int i = sourceSize; i < targetSize; i++) {
-                        ops.add(new PatchOp(PatchOp.STD_ADD, newPath, Nodes.getInArray(target, i), null));
+                        ops.add(new PatchOp(PatchOp.STD_ADD, JsonPointer.fromLast(cps),
+                                Nodes.getInArray(target, i), null));
                     }
                 }
                 if (targetSize < sourceSize) {  // Remove from back to front
                     for (int i = sourceSize - 1; i >= targetSize; i--) {
-                        JsonPointer newPath = path.copy();
-                        newPath.push(new PathToken.Index(i));
-                        ops.add(new PatchOp(PatchOp.STD_REMOVE, newPath, null, null));
+                        PathSegment cps = new PathSegment.Index(ps, null, i);
+                        ops.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.fromLast(cps), null, null));
                     }
                 }
             } else if (!Objects.equals(source, target)) {
-                ops.add(new PatchOp(PatchOp.STD_REPLACE, path, target, null));
+                ops.add(new PatchOp(PatchOp.STD_REPLACE, JsonPointer.fromLast(ps), target, null));
             }
         }
     }

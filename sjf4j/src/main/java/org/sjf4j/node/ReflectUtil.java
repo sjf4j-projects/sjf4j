@@ -363,12 +363,27 @@ public class ReflectUtil {
         Class<?> current = clazz;
         while (current != null && current != Object.class &&
                 (encodeHandle == null || decodeHandle == null || copyHandle == null)) {
+            for (Constructor<?> ctor : current.getDeclaredConstructors()) {
+                // Decode
+                if (ctor.isAnnotationPresent(NodeValue.class)) {
+                    if (decodeHandle != null)
+                        throw new JsonException("Multiple @Deocde definitions found in " + clazz.getName());
+                    try {
+                        decodeHandle = lookup.unreflectConstructor(ctor);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
             for (Method m : current.getDeclaredMethods()) {
                 if (m.isBridge()) continue;
                 // Encode
-                if (encodeHandle == null && m.isAnnotationPresent(Encode.class)) {
+                if (m.isAnnotationPresent(Encode.class)) {
+                    if (encodeHandle != null)
+                        throw new JsonException("Multiple @Enocde definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Cannot use @Encode on static methods");
+                        throw new JsonException("Cannot use @Encode on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
@@ -381,9 +396,11 @@ public class ReflectUtil {
                     }
                 }
                 // Decode
-                if (decodeHandle == null && m.isAnnotationPresent(Decode.class)) {
+                if (m.isAnnotationPresent(Decode.class)) {
+                    if (decodeHandle != null)
+                        throw new JsonException("Multiple @Deocde definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Must use @Decode on static methods");
+                        throw new JsonException("Must use @Decode on constructor or static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
@@ -395,9 +412,11 @@ public class ReflectUtil {
                     }
                 }
                 // Copy
-                if (copyHandle == null && m.isAnnotationPresent(Copy.class)) {
+                if (m.isAnnotationPresent(Copy.class)) {
+                    if (copyHandle != null)
+                        throw new JsonException("Multiple @Copy definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Cannot use @Copy on static methods");
+                        throw new JsonException("Cannot use @Copy on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
@@ -408,24 +427,24 @@ public class ReflectUtil {
                         throw new RuntimeException(e);
                     }
                 }
-            }
+            }// for
             current = current.getSuperclass();
         }
 
         if (encodeHandle == null)
-            throw new JsonException("Missing @Encode method in class " + clazz.getName());
+            throw new JsonException("Missing @Encode method in " + clazz.getName());
         if (encodeHandle.type().parameterCount() != 1) {
             throw new JsonException("@Encode method must have no parameters, but found " +
-                    (encodeHandle.type().parameterCount() - 1));
+                    (encodeHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
         Class<?> rawClazz = encodeHandle.type().returnType();
         if (!NodeType.of(rawClazz).isRaw())
             throw new JsonException("@Encode method return invalid type " + rawClazz.getName() +
-                    " in class " + clazz.getName() +
+                    " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
         if (decodeHandle == null)
-            throw new JsonException("Missing @Decode method in class " + clazz.getName());
+            throw new JsonException("Missing @Decode method in " + clazz.getName());
         if (decodeHandle.type().parameterCount() != 1)
             throw new JsonException("@Decode method must have exactly one parameter, but found " +
                     decodeHandle.type().parameterCount());

@@ -1,30 +1,85 @@
 package org.sjf4j.path;
 
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonException;
+import org.sjf4j.JsonObject;
+import org.sjf4j.node.NodeRegistry;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
-public class PathUtil {
+public class Paths {
+
+    /// Inspect
+    public static String inspect(PathSegment lastSegment) {
+        return inspect(linearize(lastSegment));
+    }
+
+    static PathSegment[] linearize(PathSegment lastSegment) {
+        Objects.requireNonNull(lastSegment, "lastSegment is null");
+        int size = 0;
+        for (PathSegment p = lastSegment; p != null; p = p.parent()) size++;
+        PathSegment[] segments = new PathSegment[size];
+        int idx = size - 1;
+        for (PathSegment p = lastSegment; p != null; p = p.parent()) {
+            segments[idx--] = p;
+        }
+        return segments;
+    }
+
+    public static String inspect(PathSegment[] segments) {
+        Objects.requireNonNull(segments, "segments is null");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i < segments.length; i++) {
+            PathSegment ps = segments[i];
+            if (ps instanceof PathSegment.Name) {
+                Class<?> clazz = ps.clazz();
+                String name = ((PathSegment.Name) ps).name;
+                if (clazz == null || Map.class.isAssignableFrom(clazz)) sb.append("{").append(name).append("= ");
+                else if (clazz == JsonObject.class) sb.append("J{").append(name).append("= ");
+                else {
+                    sb.append("@").append(clazz.getSimpleName()).append("{");
+                    if (NodeRegistry.registerPojoOrElseThrow(clazz).getFields().containsKey(name)) sb.append("*");
+                    sb.append(name).append("= ");
+                }
+            } else if (ps instanceof PathSegment.Index) {
+                Class<?> clazz = ps.clazz();
+                int idx = ((PathSegment.Index) ps).index;
+                if (clazz == null || List.class.isAssignableFrom(clazz)) sb.append("[").append(idx).append(": ");
+                else if (clazz == JsonArray.class) sb.append("J[").append(idx).append(": ");
+                else if (clazz.isArray()) sb.append("A[").append(idx).append(": ");
+                else if (Set.class.isAssignableFrom(clazz)) sb.append("S[").append(idx).append(": ");
+                else sb.append("@").append(clazz.getSimpleName()).append("[").append(idx).append(": ");
+            } else {
+                sb.append("!").append(ps).append(" ");
+            }
+        }
+        return sb.toString();
+    }
 
     /// JSON Pointer
 
-    public static List<PathToken> tokenizePointer(String expr) {
-        if (expr == null) throw new IllegalArgumentException("Expr must not be null");
+    public static PathSegment[] parsePointer(String expr) {
+        Objects.requireNonNull(expr, "expr is null");
         if (!expr.isEmpty() && !expr.startsWith("/"))
             throw new IllegalArgumentException("Invalid JSON pointer '" + expr + "': must start with '/'");
 
-        List<PathToken> tokens = new ArrayList<>();
-        tokens.add(PathToken.Root.INSTANCE);
-        if (expr.isEmpty() || expr.equals("/")) return tokens;
+        Deque<PathSegment> segments = new ArrayDeque<>();
+        segments.addLast(PathSegment.Root.INSTANCE);
+        if (expr.isEmpty() || expr.equals("/")) return segments.toArray(new PathSegment[0]);
 
+        PathSegment parent = PathSegment.Root.INSTANCE;
         int len = expr.length();
         int start = 1; // skip leading '/'
         while (start <= len) {
             int end = expr.indexOf('/', start);
             if (end == -1) end = len;
-
             String seg = expr.substring(start, end);
             String name;
 
@@ -53,39 +108,43 @@ public class PathUtil {
             }
 
             if (isNumber) {
-                tokens.add(new PathToken.Index(Integer.parseInt(name)));
+                segments.addLast(new PathSegment.Index(segments.peekLast(), null, Integer.parseInt(name)));
             } else if (name.equals("-")) {
-                tokens.add(PathToken.Append.INSTANCE);
+                segments.addLast(new PathSegment.Append(segments.peekLast(), null));
             } else {
-                tokens.add(new PathToken.Name(name));
+                segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
             }
 
             start = end + 1;
         }
 
-        return tokens;
+        return segments.toArray(new PathSegment[0]);
     }
 
-    public static String toPointerExpr(List<PathToken> tokens) {
-        if (tokens == null) throw new IllegalArgumentException("Tokens must not be null");
+    public static String toPointerExpr(PathSegment lastSegment) {
+        return toPointerExpr(linearize(lastSegment));
+    }
+
+    public static String toPointerExpr(PathSegment[] segments) {
+        Objects.requireNonNull(segments, "segments is null");
         StringBuilder sb = new StringBuilder();
 
-        for (int i = 0, len = tokens.size(); i < len; i++) {
-            PathToken token = tokens.get(i);
+        for (int i = 0, len = segments.length; i < len; i++) {
+            PathSegment token = segments[i];
 
-            if (token instanceof PathToken.Root) {
+            if (token instanceof PathSegment.Root) {
                 if (i != 0) throw new JsonException("Root token must be the first token in JSON Pointer");
                 // Root token: no output
-            } else if (token instanceof PathToken.Index) {
+            } else if (token instanceof PathSegment.Index) {
                 sb.append('/');
-                sb.append(((PathToken.Index) token).index);
-            } else if (token instanceof PathToken.Append) {
+                sb.append(((PathSegment.Index) token).index);
+            } else if (token instanceof PathSegment.Append) {
                 sb.append("/-");
-                if (i != tokens.size() - 1)
+                if (i != segments.length - 1)
                     throw new JsonException("Append token '-' can only appear at the end of a JSON Patch path");
-            } else if (token instanceof PathToken.Name) {
+            } else if (token instanceof PathSegment.Name) {
                 sb.append('/');
-                String name = ((PathToken.Name) token).name;
+                String name = ((PathSegment.Name) token).name;
                 // ~0/~1
                 for (int j = 0, len2 = name.length(); j < len2; j++) {
                     char c = name.charAt(j);
@@ -108,12 +167,17 @@ public class PathUtil {
 
     ///  JSON Path
 
-    public static String toPathExpr(List<PathToken> tokens) {
+    public static String toPathExpr(PathSegment lastSegment) {
+        return toPathExpr(linearize(lastSegment));
+    }
+
+    public static String toPathExpr(PathSegment[] segments) {
+        Objects.requireNonNull(segments, "segments is null");
         StringBuilder sb = new StringBuilder();
-        PathToken lastPt = null;
-        for (PathToken pt : tokens) {
-            if (lastPt instanceof PathToken.Descendant && pt instanceof PathToken.Name) {
-                PathToken.Name name = (PathToken.Name) pt;
+        PathSegment lastPt = null;
+        for (PathSegment pt : segments) {
+            if (lastPt instanceof PathSegment.Descendant && pt instanceof PathSegment.Name) {
+                PathSegment.Name name = (PathSegment.Name) pt;
                 if (name.needQuoted()) {
                     sb.append("[").append(name.toQuoted()).append("]");
                 } else {
@@ -127,21 +191,22 @@ public class PathUtil {
         return sb.toString();
     }
 
-    public static List<PathToken> tokenizePath(String expr) {
+    public static PathSegment[] parsePath(String expr) {
         if (expr == null || expr.isEmpty()) throw new JsonException("expr is empty");
 
-        List<PathToken> tokens = new ArrayList<>();
+        Deque<PathSegment> segments = new ArrayDeque<>();
         int i = 0;
 
         if (expr.charAt(i) == '$') {
-            tokens.add(PathToken.Root.INSTANCE);
+            segments.addLast(PathSegment.Root.INSTANCE);
             i++;
         } else if (expr.charAt(i) == '@') {
-            tokens.add(PathToken.Current.INSTANCE);
+            segments.addLast(PathSegment.Current.INSTANCE);
             i++;
         } else {
-//            throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
-            tokens.add(PathToken.Root.INSTANCE);
+            // throw new JsonException("Must start with '$' or '@' in path '" + expr + "'");
+            // Can start with empty
+            segments.addLast(PathSegment.Root.INSTANCE);
         }
 
         while (i < expr.length()) {
@@ -149,7 +214,7 @@ public class PathUtil {
 
             // Descendant ..
             if (c == '.' && i + 1 < expr.length() && expr.charAt(i + 1) == '.') {
-                tokens.add(PathToken.Descendant.INSTANCE);
+                segments.addLast(new PathSegment.Descendant(segments.peekLast(), null));
                 if (i + 2 == expr.length()) {
                     break;
                 } else if (expr.charAt(i + 2) == '[') {
@@ -214,21 +279,21 @@ public class PathUtil {
                     // Filter
                     String filterStr = content.substring(1).trim();
                     FilterExpr filterExpr = parseFilter(filterStr);
-                    tokens.add(new PathToken.Filter(filterExpr));
+                    segments.addLast(new PathSegment.Filter(segments.peekLast(), null, filterExpr));
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
-                    List<PathToken> unionTokens = parseUnionTokens(content);
-                    tokens.add(new PathToken.Union(unionTokens));
+                    PathSegment[] unionTokens = parseUnionTokens(content);
+                    segments.addLast(new PathSegment.Union(segments.peekLast(), null, unionTokens));
                 } else {
                     if (content.isEmpty()) {
                         throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
                     } else if (content.equals("*")) {
                         // [*]
-                        tokens.add(PathToken.Wildcard.INSTANCE);
+                        segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
                     } else if (content.startsWith("'") || content.startsWith("\"")) {
                         // Single quoted name ['name'] or ["name"]
                         String name = parseSingleQuotedName(content);
-                        tokens.add(new PathToken.Name(name));
+                        segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
                     } else if (content.contains(":")) {
                         // Slice [start:end:step]
                         String[] sliceParts = content.split(":", -1);
@@ -241,12 +306,12 @@ public class PathUtil {
                         if (step != null && step == 0) {
                             throw new JsonException("Slice step cannot be 0 in path '" + expr + "'");
                         }
-                        tokens.add(new PathToken.Slice(startIdx, endIdx, step));
+                        segments.addLast(new PathSegment.Slice(segments.peekLast(), null, startIdx, endIdx, step));
                     } else {
                         try {
                             // Try to parse as numeric index
                             int idx = Integer.parseInt(content);
-                            tokens.add(new PathToken.Index(idx));
+                            segments.addLast(new PathSegment.Index(segments.peekLast(), null, idx));
                         } catch (NumberFormatException e) {
                             throw new JsonException("Invalid name or index '" + content + "' in path '" + expr + "'");
                         }
@@ -261,7 +326,7 @@ public class PathUtil {
 
                 // Wildcard
                 if (expr.charAt(i) == '*') {
-                    tokens.add(PathToken.Wildcard.INSTANCE);
+                    segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
                     i++;
                     continue;
                 }
@@ -279,21 +344,21 @@ public class PathUtil {
                     }
                     String funcName = expr.substring(start, i);
                     String args = expr.substring(i + 1, end); // inside (...)
-                    tokens.add(new PathToken.Function(funcName, parseFunctionArgs(args)));
+                    segments.addLast(new PathSegment.Function(segments.peekLast(), null, funcName, parseFunctionArgs(args)));
                     i = end + 1;
                     continue;
                 }
 
                 // Name
                 String name = expr.substring(start, i);
-                tokens.add(new PathToken.Name(name));
+                segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
             }
             else {
                 throw new JsonException("Unexpected char '" + c + "' in path '" + expr + "' at position " + i);
             }
         }
 
-        return tokens;
+        return segments.toArray(new PathSegment[0]);
     }
 
 
@@ -394,9 +459,9 @@ public class PathUtil {
         return sb.toString();
     }
 
-    // Helper method: parse multiple tokens in Union
-    private static List<PathToken> parseUnionTokens(String content) {
-        List<PathToken> tokens = new ArrayList<>();
+    // Helper method: parse multiple segments in Union
+    private static PathSegment[] parseUnionTokens(String content) {
+        List<PathSegment> segments = new ArrayList<>();
         int i = 0;
         while (i < content.length()) {
             // Skip spaces and commas
@@ -408,7 +473,7 @@ public class PathUtil {
             if (firstChar == '\'' || firstChar == '"') {
                 // Quoted name
                 String name = parseQuotedUnionName(content, i);
-                tokens.add(new PathToken.Name(name));
+                segments.add(new PathSegment.Name(null, null, name));
                 i += name.length() + 2; // Skip quotes and content
                 // Find next comma or end
                 while (i < content.length() && content.charAt(i) != ',') i++;
@@ -439,12 +504,12 @@ public class PathUtil {
                         throw new JsonException("Slice step cannot be 0 in union");
                     }
 
-                    tokens.add(new PathToken.Slice(startIdx, endIdx, step));
+                    segments.add(new PathSegment.Slice(null, null, startIdx, endIdx, step));
                 } else {
                     // Numeric index
                     try {
                         int idx = Integer.parseInt(part);
-                        tokens.add(new PathToken.Index(idx));
+                        segments.add(new PathSegment.Index(null, null, idx));
                     } catch (NumberFormatException e) {
                         throw new JsonException("Invalid index '" + part + "' in union");
                     }
@@ -454,7 +519,7 @@ public class PathUtil {
                         " in content '" + content + "'");
             }
         }
-        return tokens;
+        return segments.toArray(new PathSegment[0]);
     }
 
     /**
@@ -641,14 +706,14 @@ public class PathUtil {
     // primary := literal | path | '(' expr ')'
     private static FilterExpr parsePrimary(String s, int[] pos) {
         skipWs(s, pos);
-        char c = peek(s, pos);
+        char c = peekLast(s, pos);
 
         // (expr)
         if (c == '(') {
             pos[0]++;
             FilterExpr expr = parseOr(s, pos);
             skipWs(s, pos);
-            if (peek(s, pos) != ')') {
+            if (peekLast(s, pos) != ')') {
                 throw new JsonException("Missing ')'");
             }
             pos[0]++;
@@ -750,7 +815,7 @@ public class PathUtil {
         return false;
     }
 
-    private static char peek(String s, int[] pos) {
+    private static char peekLast(String s, int[] pos) {
         return pos[0] < s.length() ? s.charAt(pos[0]) : '\0';
     }
 

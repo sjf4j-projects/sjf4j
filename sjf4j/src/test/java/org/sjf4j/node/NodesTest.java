@@ -298,7 +298,7 @@ public class NodesTest {
     public void testCopy1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
         JsonObject jo2 = Nodes.copy(jo1);
-        JsonObject jo3 = Nodes.deepCopy(jo1);
+        JsonObject jo3 = Sjf4j.deepNode(jo1);
         assertEquals(jo1, jo2);
         assertEquals(jo1, jo3);
 
@@ -316,7 +316,7 @@ public class NodesTest {
                 "street", "5th Ave"));
         Person p1 = jo.toPojo(Person.class);
         Person p2 = Nodes.copy(p1);
-        Person p3 = Nodes.deepCopy(p1);
+        Person p3 = Sjf4j.deepNode(p1);
         assertEquals(p1, p2);
         assertEquals(p1, p3);
 
@@ -335,7 +335,7 @@ public class NodesTest {
                 "friends", new String[]{"Tom", "Jay"});
         Baby b1 = jo.toPojo(Baby.class);
         Baby b2 = Nodes.copy(b1);
-        Baby b3 = Nodes.deepCopy(b1);
+        Baby b3 = Sjf4j.deepNode(b1);
         log.info("b1={}, b3={}", b1, b3);
         log.info("b2={}, b3={}", b2, b3);
         assertEquals(b1, b2);

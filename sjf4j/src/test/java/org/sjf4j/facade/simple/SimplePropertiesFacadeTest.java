@@ -17,14 +17,16 @@ public class SimplePropertiesFacadeTest {
     public void testToFrom1() throws IOException {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = JsonObject.fromJson(json1);
+        log.info("jo1={}", jo1);
+
         Properties props = new Properties();
         new SimplePropertiesFacade().writeNode(props, jo1);
         StringWriter sw = new StringWriter();
         props.store(sw, "");
-        log.info("props:\n{}", sw.toString());
+        log.info("props={}", sw.toString());
 
         JsonObject jo2 = new SimplePropertiesFacade().readNode(props);
-//        assertEquals(jo1, jo2);
+        log.info("jo2={}", jo2);
         assertEquals("18", jo2.getNodeByPath("$.friends.rose.age[0]"));
     }
 

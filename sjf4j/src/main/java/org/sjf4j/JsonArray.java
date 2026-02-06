@@ -861,9 +861,10 @@ public class JsonArray extends JsonContainer {
     public <T extends JsonArray> T copy() {
         return (T) Nodes.copy(this);
     }
+
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T deepCopy() {
-        return (T) Nodes.deepCopy(this);
+        return (T) Sjf4j.deepNode(this);
     }
 
 }

@@ -5,6 +5,7 @@ import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.patch.Patches;
+import org.sjf4j.path.PathSegment;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -923,7 +924,7 @@ public abstract class JsonContainer {
      *
      * @param visitor the function to apply to each node during traversal
      */
-    public void walk(BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+    public void walk(BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
         NodeWalker.walk(this, visitor);
     }
 
@@ -934,7 +935,7 @@ public abstract class JsonContainer {
      * @param visitor the function to apply to each node during traversal
      */
     public void walk(NodeWalker.Target target,
-                     BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+                     BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
         NodeWalker.walk(this, target, visitor);
     }
 
@@ -946,7 +947,7 @@ public abstract class JsonContainer {
      * @param visitor the function to apply to each node during traversal
      */
     public void walk(NodeWalker.Target target, NodeWalker.Order order,
-                     BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+                     BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
         NodeWalker.walk(this, target, order, visitor);
     }
 
@@ -959,7 +960,7 @@ public abstract class JsonContainer {
      * @param visitor the function to apply to each node during traversal
      */
     public void walk(NodeWalker.Target target, NodeWalker.Order order, int maxDepth,
-                     BiFunction<JsonPath, Object, NodeWalker.Control> visitor) {
+                     BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
         NodeWalker.walk(this, target, order, maxDepth, visitor);
     }
 

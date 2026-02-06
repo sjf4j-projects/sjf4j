@@ -6,9 +6,9 @@
 ![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
-**SJF4J (Simple JSON Facade for Java)** is a simple facade over multiple JSON parsers and 
-other data formats (e.g. YAML, Properties), 
-serving as a ***unified semantic layer for structured data processing grounded in JSON specifications***. 
+**SJF4J (Simple JSON Facade for Java)** is a simple facade over multiple JSON libraries, 
+providing a unified semantic layer for structured data processing grounded in JSON specifications.  
+Beyond **JSON**, it also supports **YAML**, **Properties**, and a **unified in-memory object model**.
 
 ## Table of Contents
 - [Design Thinking](#design-thinking)
@@ -53,7 +53,7 @@ graph BT
         value --> string("String")
         value --> number("Number")
         value --> boolean("Boolean")
-        value ---> nodeValue("&lt;@NodeValue&gt;")
+        value ---> nodeValue("&lt;NodeValue&gt;")
 ```
 
 **JSON Object (`{}`)**

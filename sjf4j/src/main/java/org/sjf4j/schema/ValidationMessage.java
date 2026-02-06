@@ -1,15 +1,17 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.path.JsonPointer;
+
 public class ValidationMessage {
 
     public enum Severity { ERROR, WARN, INFO, DEBUG }
 
     private final Severity severity;
-    private final String path;
+    private final JsonPointer path;
     private final String keyword;
     private final String message;
 
-    public ValidationMessage(Severity severity, String path, String keyword, String message) {
+    public ValidationMessage(Severity severity, JsonPointer path, String keyword, String message) {
         this.severity = severity;
         this.path = path;
         this.keyword = keyword;
@@ -19,7 +21,7 @@ public class ValidationMessage {
     public Severity getSeverity() {
         return severity;
     }
-    public String getPath() {
+    public JsonPointer getPath() {
         return path;
     }
     public String getKeyword() {

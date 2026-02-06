@@ -79,7 +79,7 @@ public class ObjectSetTest {
     public void testSetFromNode() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
-        Object node = Sjf4j.fromNode(set);
+        Object node = Sjf4j.deepNode(set);
         System.out.println("type: " + node.getClass().getName() + " node: " + Nodes.inspect(node));
         assertInstanceOf(Set.class, node);
         assertEquals("[\"a\"]", Sjf4j.toJsonString(node));

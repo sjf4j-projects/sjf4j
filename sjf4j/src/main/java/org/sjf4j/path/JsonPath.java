@@ -41,20 +41,9 @@ public class JsonPath {
     /**
      * The raw path expression string.
      */
-    private String raw;
-    
-    /**
-     * List of parsed path tokens that represent the path expression.
-     */
-    private final List<PathToken> tokens;
+    private final String raw;
 
-    /**
-     * Creates an empty JsonPath with just a root token.
-     */
-    public JsonPath() {
-        this.tokens = new ArrayList<>();
-        push(PathToken.Root.INSTANCE);
-    }
+    private final PathSegment[] segments;
 
     /**
      * Creates a copy of an existing JsonPath instance.
@@ -63,43 +52,39 @@ public class JsonPath {
      */
     protected JsonPath(JsonPath target) {
         this.raw = target.raw;
-        this.tokens = new ArrayList<>(target.tokens);
+        this.segments = new PathSegment[target.segments.length];
+        System.arraycopy(target.segments, 0, segments, 0, segments.length);
     }
 
-    /**
-     * Creates a JsonPath from a path expression string.
-     *
-     * @param expr the path expression to compile
-     * @throws IllegalArgumentException if expr is null
-     * @throws JsonException if the path expression is invalid
-     */
-    protected JsonPath(String expr) {
+    protected JsonPath(String raw, PathSegment[] segments) {
+        this.raw = raw;
+        this.segments = segments;
+    }
+
+    public static JsonPath compile(String expr) {
         Objects.requireNonNull(expr, "expr is null");
+        expr = expr.trim();
+
+        PathSegment[] segments;
         if (expr.isEmpty()) {
-            this.tokens = new ArrayList<>();
-            this.tokens.add(PathToken.Root.INSTANCE);
+            segments = new PathSegment[]{PathSegment.Root.INSTANCE};
         } else if (expr.startsWith("/")) {
-            this.tokens = PathUtil.tokenizePointer(expr);
+            segments = Paths.parsePointer(expr);
         } else if (expr.startsWith("$") || expr.startsWith("@")) {
-            this.tokens = PathUtil.tokenizePath(expr);
+            segments = Paths.parsePath(expr);
         } else {
-            this.tokens = PathUtil.tokenizePath(expr);
+            segments = Paths.parsePath(expr);
 //            throw new JsonException("Invalid path expression '" + expr + "'. " +
 //                    "Must start with '$' or '@' for JSON Path, or '/' for JSON Pointer.");
         }
-        this.raw = expr;
+        return new JsonPath(expr, segments);
     }
-    
-    /**
-     * Compiles a path expression string into a JsonPath instance.
-     *
-     * @param expr the path expression to compile
-     * @return a new JsonPath instance
-     * @throws IllegalArgumentException if expr is null
-     * @throws JsonException if the path expression is invalid
-     */
-    public static JsonPath compile(String expr) {
-        return new JsonPath(expr);
+
+
+    public static JsonPath fromLast(PathSegment lastSegment) {
+        Objects.requireNonNull(lastSegment, "lastSegment is null");
+        PathSegment[] segments = Paths.linearize(lastSegment);
+        return new JsonPath(null, segments);
     }
 
     /**
@@ -108,7 +93,7 @@ public class JsonPath {
      * @return the JSON Path expression string
      */
     public String toExpr() {
-        return PathUtil.toPathExpr(tokens);
+        return Paths.toPathExpr(segments);
     }
 
     /**
@@ -117,7 +102,7 @@ public class JsonPath {
      * @return the JSON Pointer expression string
      */
     public String toPointerExpr() {
-        return PathUtil.toPointerExpr(tokens);
+        return Paths.toPointerExpr(segments);
     }
 
     /**
@@ -126,7 +111,7 @@ public class JsonPath {
      * @return the depth of the path
      */
     public int depth() {
-        return tokens.size();
+        return segments.length;
     }
 
     /**
@@ -153,38 +138,38 @@ public class JsonPath {
      *
      * @return the first path token
      */
-    public PathToken head() {
-        return tokens.get(0);
+    public PathSegment head() {
+        return segments.length > 0 ? segments[0] : null;
     }
 
-    /**
-     * Returns the last token in the path without removing it.
-     *
-     * @return the last path token
-     */
-    public PathToken tail() {
-        return tokens.get(tokens.size() - 1);
-    }
-
-    /**
-     * Pushes a new path token to the end of the path.
-     *
-     * @param token the token to add
-     * @throws IllegalArgumentException if token is null
-     */
-    public void push(PathToken token) {
-        Objects.requireNonNull(token, "token is null");
-        tokens.add(token);
-    }
-
-    /**
-     * Removes the last token in the path, and returns it.
-     *
-     * @return the removed path token
-     */
-    public PathToken pop() {
-        return tokens.remove(tokens.size() - 1);
-    }
+//    /**
+//     * Returns the last token in the path without removing it.
+//     *
+//     * @return the last path token
+//     */
+//    public PathSegment tail() {
+//        return tokens.get(tokens.size() - 1);
+//    }
+//
+//    /**
+//     * Pushes a new path token to the end of the path.
+//     *
+//     * @param token the token to add
+//     * @throws IllegalArgumentException if token is null
+//     */
+//    public void push(PathSegment token) {
+//        Objects.requireNonNull(token, "token is null");
+//        tokens.add(token);
+//    }
+//
+//    /**
+//     * Removes the last token in the path, and returns it.
+//     *
+//     * @return the removed path token
+//     */
+//    public PathSegment pop() {
+//        return tokens.remove(tokens.size() - 1);
+//    }
 
     /// Find
 
@@ -710,9 +695,9 @@ public class JsonPath {
         _findAll(container, container, 1, result, (n) -> n);
         if (result.isEmpty()) return null;
 
-        PathToken tk = tokens.get(tokens.size() - 1);
-        if (tk instanceof PathToken.Function) {
-            PathToken.Function func = (PathToken.Function) tk;
+        PathSegment tk = segments[segments.length - 1];
+        if (tk instanceof PathSegment.Function) {
+            PathSegment.Function func = (PathSegment.Function) tk;
             Object[] args = new Object[1 + func.args.size()];
             args[0] = (result.size() == 1 ? result.get(0) : result);
             for (int i = 0; i < func.args.size(); i++) {
@@ -748,12 +733,12 @@ public class JsonPath {
     public Object ensurePut(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
         Object lastContainer = _ensureContainersInPath(container);
-        PathToken lastToken = tail();
-        if (lastToken instanceof PathToken.Name) {
-            String name = ((PathToken.Name) lastToken).name;
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
             return Nodes.putInObject(lastContainer, name, value);
-        } else if (lastToken instanceof PathToken.Index) {
-            int idx = ((PathToken.Index) lastToken).index;
+        } else if (lastToken instanceof PathSegment.Index) {
+            int idx = ((PathSegment.Index) lastToken).index;
             Nodes.setInArray(lastContainer, idx, value);
             return null; // No need return old value in List/JsonArray
         } else {
@@ -802,14 +787,14 @@ public class JsonPath {
         Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
         if (penult == null) return false;
-        PathToken lastToken = tail();
-        if (lastToken instanceof PathToken.Name) {
-            String name = ((PathToken.Name) lastToken).name;
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
             return Nodes.containsInObject(penult, name);
-        } else if (lastToken instanceof PathToken.Index) {
-            int index = ((PathToken.Index) lastToken).index;
+        } else if (lastToken instanceof PathSegment.Index) {
+            int index = ((PathSegment.Index) lastToken).index;
             return Nodes.containsInArray(penult, index);
-        } else if (lastToken instanceof PathToken.Append) {
+        } else if (lastToken instanceof PathSegment.Append) {
             return false;
         } else {
             throw new JsonException("contains() not supported for last path token '" + lastToken +
@@ -825,14 +810,14 @@ public class JsonPath {
         if  (penult == null)
             throw new JsonException("Parent container at the penultimate path token does not exist");
 
-        PathToken lastToken = tail();
-        if (lastToken instanceof PathToken.Name) {
-            String name = ((PathToken.Name) lastToken).name;
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
             Nodes.putInObject(penult, name, value);
-        } else if (lastToken instanceof PathToken.Index) {
-            int idx = ((PathToken.Index) lastToken).index;
+        } else if (lastToken instanceof PathSegment.Index) {
+            int idx = ((PathSegment.Index) lastToken).index;
             Nodes.addInArray(penult, idx, value);
-        } else if (lastToken instanceof PathToken.Append) {
+        } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(penult, value);
         } else {
             throw new JsonException("add() not supported for last path token '" + lastToken +
@@ -846,12 +831,12 @@ public class JsonPath {
         if  (penult == null)
             throw new JsonException("Parent container at the penultimate path token does not exist");
 
-        PathToken lastToken = tail();
-        if (lastToken instanceof PathToken.Name) {
-            String name = ((PathToken.Name) lastToken).name;
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
             return Nodes.putInObject(penult, name, value);
-        } else if (lastToken instanceof PathToken.Index) {
-            int idx = ((PathToken.Index) lastToken).index;
+        } else if (lastToken instanceof PathSegment.Index) {
+            int idx = ((PathSegment.Index) lastToken).index;
             return Nodes.setInArray(penult, idx, value);
         } else {
             throw new JsonException("add() not supported for last path token '" + lastToken +
@@ -864,14 +849,14 @@ public class JsonPath {
         Object penult = _findOne(container, -1);
         if  (penult == null) return null;
 
-        PathToken lastToken = tail();
-        if (lastToken instanceof PathToken.Name) {
-            String name = ((PathToken.Name) lastToken).name;
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
             return Nodes.removeInObject(penult, name);
-        } else if (lastToken instanceof PathToken.Index) {
-            int index = ((PathToken.Index) lastToken).index;
+        } else if (lastToken instanceof PathSegment.Index) {
+            int index = ((PathSegment.Index) lastToken).index;
             return Nodes.removeInArray(penult, index);
-        } else if (lastToken instanceof PathToken.Append) {
+        } else if (lastToken instanceof PathSegment.Append) {
             return null;
         } else {
             throw new JsonException("remove() not supported for last path token '" + lastToken +
@@ -884,24 +869,24 @@ public class JsonPath {
 
     private Object _findOne(Object container, int tailIndex) {
         Object node = container;
-        for (int i = 1; i < tokens.size() + tailIndex; i++) {
+        for (int i = 1, len = segments.length + tailIndex; i < len; i++) {
             if (node == null) return null;
-            PathToken pt = tokens.get(i);
+            PathSegment pt = segments[i];
             NodeType nt = NodeType.of(node);
-            if (pt instanceof PathToken.Name) {
+            if (pt instanceof PathSegment.Name) {
                 if (nt.isObject()) {
-                    node = Nodes.getInObject(node, ((PathToken.Name) pt).name);
+                    node = Nodes.getInObject(node, ((PathSegment.Name) pt).name);
                 } else {
                     return null;
                 }
-            } else if (pt instanceof PathToken.Index) {
+            } else if (pt instanceof PathSegment.Index) {
                 if (nt.isArray()) {
-                    node = Nodes.getInArray(node, ((PathToken.Index) pt).index);
+                    node = Nodes.getInArray(node, ((PathSegment.Index) pt).index);
                 } else {
                     return null;
                 }
-            } else if (pt instanceof PathToken.Descendant) {
-                if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
+            } else if (pt instanceof PathSegment.Descendant) {
+                if (i + 1 >= segments.length) throw new JsonException("Descendant '..' cannot appear at the end.");
                 List<Object> result = new ArrayList<>();
                 _findMatch(container, node, i + 1, result, Function.identity());
                 if (result.isEmpty()) {
@@ -924,43 +909,43 @@ public class JsonPath {
     private <T> void _findAll(Object root, Object current, int tokenIdx,
                               List<T> result, Function<Object, T> converter) {
         Object node = current;
-        for (int i = tokenIdx; i < tokens.size(); i++) {
+        for (int i = tokenIdx; i < segments.length; i++) {
             if (node ==  null) return;
-            PathToken pt = tokens.get(i);
-            if (i == tokens.size() - 1 && pt instanceof PathToken.Function) break;
+            PathSegment pt = segments[i];
+            if (i == segments.length - 1 && pt instanceof PathSegment.Function) break;
             NodeType nt = NodeType.of(node);
             final int nextI = i + 1;
-            if (pt instanceof PathToken.Name) {
+            if (pt instanceof PathSegment.Name) {
                 if (nt.isObject()) {
-                    String name = ((PathToken.Name) pt).name;
+                    String name = ((PathSegment.Name) pt).name;
                     if (Nodes.containsInObject(node, name)) {
                         node = Nodes.getInObject(node, name);
                         continue;
                     }
                 }
-            } else if (pt instanceof PathToken.Index) {
+            } else if (pt instanceof PathSegment.Index) {
                 if (nt.isArray()) {
-                    node = Nodes.getInArray(node, ((PathToken.Index) pt).index);
+                    node = Nodes.getInArray(node, ((PathSegment.Index) pt).index);
                     continue;
                 }
-            } else if (pt instanceof PathToken.Wildcard) {
+            } else if (pt instanceof PathSegment.Wildcard) {
                 if (nt.isObject()) {
                     Nodes.visitObject(node, (k, v) -> _findAll(root, v, nextI, result, converter));
                 } else if (nt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> _findAll(root, v, nextI, result, converter));
                 }
-            } else if (pt instanceof PathToken.Descendant) {
-                if (i + 1 >= tokens.size()) throw new JsonException("Descendant '..' cannot appear at the end.");
+            } else if (pt instanceof PathSegment.Descendant) {
+                if (i + 1 >= segments.length) throw new JsonException("Descendant '..' cannot appear at the end.");
                 _findMatch(root, node, i + 1, result, converter);
-            } else if (pt instanceof PathToken.Slice) {
-                PathToken.Slice slicePt = (PathToken.Slice) pt;
+            } else if (pt instanceof PathSegment.Slice) {
+                PathSegment.Slice slicePt = (PathSegment.Slice) pt;
                 if (nt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> {
                         if (slicePt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
-            } else if (pt instanceof PathToken.Union) {
-                PathToken.Union unionPt = (PathToken.Union) pt;
+            } else if (pt instanceof PathSegment.Union) {
+                PathSegment.Union unionPt = (PathSegment.Union) pt;
                 if (nt.isObject()) {
                     Nodes.visitObject(node, (k, v) -> {
                         if (unionPt.matchKey(k)) _findAll(root, v, nextI, result, converter);
@@ -970,8 +955,8 @@ public class JsonPath {
                         if (unionPt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
-            } else if (pt instanceof PathToken.Filter) {
-                PathToken.Filter filterPt = (PathToken.Filter) pt;
+            } else if (pt instanceof PathSegment.Filter) {
+                PathSegment.Filter filterPt = (PathSegment.Filter) pt;
                 if (nt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
@@ -999,7 +984,7 @@ public class JsonPath {
 
     private <T> void _findMatch(Object root, Object current, int tokenIdx, List<T> result, Function<Object, T> converter) {
         if (current == null) return;
-        PathToken pt = tokens.get(tokenIdx);
+        PathSegment pt = segments[tokenIdx];
         NodeType nt = NodeType.of(current);
         if (nt.isObject()) {
             Nodes.visitObject(current, (k, v) -> {
@@ -1028,18 +1013,18 @@ public class JsonPath {
         }
 
         TypedNode tnode = TypedNode.infer(container);
-        for (int i = 1; i < tokens.size() - 1; i++) { // traverse up to the second-last token
-            PathToken pt = tokens.get(i);
+        for (int i = 1, len = segments.length - 1; i < len; i++) { // traverse up to the second-last token
+            PathSegment pt = segments[i];
             NodeType nt = NodeType.of(tnode.getNode());
-            if (pt instanceof PathToken.Name) {
-                String key = ((PathToken.Name) pt).name;
+            if (pt instanceof PathSegment.Name) {
+                String key = ((PathSegment.Name) pt).name;
                 if (nt.isObject()) {
                     TypedNode tnn = Nodes.getTypedInObject(tnode, key);
                     if (tnn == null) {
                         throw new JsonException("Cannot access or put field '" + key + "' on an object container '" +
                                 tnode.getClazzType() + "'");
                     } else if (tnn.isNull()) {
-                        PathToken nextPt = tokens.get(i + 1);
+                        PathSegment nextPt = segments[i + 1];
                         Class<?> rawClazz = Types.rawClazz(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
                         Nodes.putInObject(tnode.getNode(), key, nn);
@@ -1051,15 +1036,15 @@ public class JsonPath {
                     throw new JsonException("Unexpected container type '" + tnode.getClazzType() +
                             "' with name token '" + pt + "'. The type must be one of JsonObject/Map/POJO.");
                 }
-            } else if (pt instanceof PathToken.Index) {
-                int idx = ((PathToken.Index) pt).index;
+            } else if (pt instanceof PathSegment.Index) {
+                int idx = ((PathSegment.Index) pt).index;
                 if (nt.isArray()) {
                     TypedNode tnn = Nodes.getTypedInArray(tnode, idx);
                     if (tnn == null) {
                         throw new JsonException("Cannot get or set index " + idx + " on an array container '" +
                                 tnode.getClazzType() + "'");
                     } else if (tnn.isNull()) {
-                        PathToken nextPt = tokens.get(i + 1);
+                        PathSegment nextPt = segments[i + 1];
                         Class<?> rawClazz = Types.rawClazz(tnn.getClazzType());
                         Object nn = _createContainer(nextPt, rawClazz);
                         Nodes.setInArray(tnode.getNode(), idx, nn);
@@ -1079,8 +1064,8 @@ public class JsonPath {
     }
 
 
-    private Object _createContainer(PathToken pt, Class<?> clazz) {
-        if (pt instanceof PathToken.Name) {
+    private Object _createContainer(PathSegment pt, Class<?> clazz) {
+        if (pt instanceof PathSegment.Name) {
             if (clazz.isAssignableFrom(Map.class)) {
                 return Sjf4jConfig.global().mapSupplier.create();
             }
@@ -1093,7 +1078,7 @@ public class JsonPath {
             }
             throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +
                         pt + "'. The type must be one of JsonObject/Map/POJO.");
-        } else if (pt instanceof PathToken.Index) {
+        } else if (pt instanceof PathSegment.Index) {
             if (clazz.isAssignableFrom(List.class)) {
                 return Sjf4jConfig.global().listSupplier.create();
             }
@@ -1104,7 +1089,7 @@ public class JsonPath {
                 return NodeRegistry.registerPojoOrElseThrow(clazz).getCreatorInfo().forceNewPojo();
             }
             if (clazz.isArray()) {
-                int idx = ((PathToken.Index) pt).index;
+                int idx = ((PathSegment.Index) pt).index;
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
             }
             throw new JsonException("Cannot create container with type '" + clazz +
@@ -1115,8 +1100,8 @@ public class JsonPath {
     }
 
     private boolean _isSingle() {
-        for (PathToken pt : tokens) {
-            if (!(pt instanceof PathToken.Root || pt instanceof PathToken.Name || pt instanceof PathToken.Index)) {
+        for (PathSegment pt : segments) {
+            if (!(pt instanceof PathSegment.Root || pt instanceof PathSegment.Name || pt instanceof PathSegment.Index)) {
                 return false;
             }
         }

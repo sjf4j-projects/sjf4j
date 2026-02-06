@@ -4,7 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
-import org.sjf4j.path.PathToken;
+import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -17,24 +17,24 @@ import java.util.Objects;
 public class CompileUtil {
 
 
-    static void checkVocabulary(JsonPointer path, ObjectSchema schema, Map<String, Boolean> vocabulary) {
+    static void checkVocabulary(PathSegment ps, ObjectSchema schema, Map<String, Boolean> vocabulary) {
         for (String property : schema.keySet()) {
             String vocabUri = VocabularyRegistry.getVocabUri(property);
             if (vocabUri != null) {
                 if (vocabulary != null) {
                     Boolean allow = vocabulary.get(vocabUri);
                     if (allow != null && !allow)
-                        throw new SchemaException("Keyword '" + property + "' at " + path +
+                        throw new SchemaException("Keyword '" + property + "' at " + JsonPointer.fromLast(ps) +
                                 " is disallowed by declared vocabulary " + vocabUri);
                 }
             } else {
-                throw new SchemaException("Unrecognized schema keyword '" + property + "' at " + path +
-                        " . No registered vocabulary claims support for it.\n");
+                throw new SchemaException("Unrecognized schema keyword '" + property + "' at " +
+                        JsonPointer.fromLast(ps) + " . No registered vocabulary claims support for it.\n");
             }
         }
     }
 
-    static Evaluator[] compile(JsonPointer path,
+    static Evaluator[] compile(PathSegment ps,
                                       ObjectSchema schema,
                                       ObjectSchema idSchema,
                                       ObjectSchema rootSchema) {
@@ -42,11 +42,11 @@ public class CompileUtil {
         Objects.requireNonNull(idSchema);
         Objects.requireNonNull(rootSchema);
 
-        checkVocabulary(path, schema, idSchema.getVocabulary());
+        checkVocabulary(ps, schema, idSchema.getVocabulary());
 
         // $defs
-        compileSchemaMapByKey("$defs", path, schema, idSchema, rootSchema);
-        compileSchemaMapByKey("definitions", path, schema, idSchema, rootSchema);
+        compileSchemaMapByKey("$defs", ps, schema, idSchema, rootSchema);
+        compileSchemaMapByKey("definitions", ps, schema, idSchema, rootSchema);
 
         // $anchor
         String anchor = schema.getString("$anchor");
@@ -162,11 +162,11 @@ public class CompileUtil {
         // required / properties / patternProperties / additionalProperties
         String[] required = schema.getArray("required", String.class);
         Map<String, Object> properties =
-                compileSchemaMapByKey("properties", path, schema, idSchema, rootSchema);
+                compileSchemaMapByKey("properties", ps, schema, idSchema, rootSchema);
         Map<String, Object> patternProperties =
-                compileSchemaMapByKey("patternProperties", path, schema, idSchema, rootSchema);
+                compileSchemaMapByKey("patternProperties", ps, schema, idSchema, rootSchema);
         Object additionalProperties =
-                compileSchemaByKey("additionalProperties", path, schema, idSchema, rootSchema);
+                compileSchemaByKey("additionalProperties", ps, schema, idSchema, rootSchema);
         if ((required != null || properties != null || patternProperties != null || additionalProperties != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.PropertiesEvaluator(required, properties, patternProperties,
@@ -182,14 +182,14 @@ public class CompileUtil {
 
         // dependentSchemas
         Map<String, Object> dependentSchemas =
-                compileSchemaMapByKey("dependentSchemas", path, schema, idSchema, rootSchema);
+                compileSchemaMapByKey("dependentSchemas", ps, schema, idSchema, rootSchema);
         if (dependentSchemas != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.DependentSchemasEvaluator(dependentSchemas));
         }
 
         // propertyNames
-        Object propertyNames = compileSchemaByKey("propertyNames", path, schema, idSchema, rootSchema);
+        Object propertyNames = compileSchemaByKey("propertyNames", ps, schema, idSchema, rootSchema);
         if (propertyNames != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.PropertyNamesEvaluator(propertyNames));
@@ -205,15 +205,15 @@ public class CompileUtil {
         }
 
         // items / prefixItems
-        Object items = compileSchemaByKey("items", path, schema, idSchema, rootSchema);
-        Object[] prefixItems = compileSchemaArrayByKey("prefixItems", path, schema, idSchema, rootSchema);
+        Object items = compileSchemaByKey("items", ps, schema, idSchema, rootSchema);
+        Object[] prefixItems = compileSchemaArrayByKey("prefixItems", ps, schema, idSchema, rootSchema);
         if ((items != null || prefixItems != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.ItemsEvaluator(items, prefixItems));
         }
 
         // contains / minContains / maxContains
-        Object contains = compileSchemaByKey("contains", path, schema, idSchema, rootSchema);
+        Object contains = compileSchemaByKey("contains", ps, schema, idSchema, rootSchema);
         Integer minContains = schema.getInteger("minContains");
         Integer maxContains = schema.getInteger("maxContains");
         if ((contains != null || minContains != null || maxContains != null)
@@ -222,37 +222,37 @@ public class CompileUtil {
         }
 
         // if / then / else
-        Object ifSchema = compileSchemaByKey("if", path, schema, idSchema, rootSchema);
-        Object thenSchema = compileSchemaByKey("then", path, schema, idSchema, rootSchema);
-        Object elseSchema = compileSchemaByKey("else", path, schema, idSchema, rootSchema);
+        Object ifSchema = compileSchemaByKey("if", ps, schema, idSchema, rootSchema);
+        Object thenSchema = compileSchemaByKey("then", ps, schema, idSchema, rootSchema);
+        Object elseSchema = compileSchemaByKey("else", ps, schema, idSchema, rootSchema);
         if ((ifSchema != null || thenSchema != null || elseSchema != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.IfThenElseEvaluator(ifSchema, thenSchema, elseSchema));
         }
 
         // allOf
-        Object[] allOfSchemas = compileSchemaArrayByKey("allOf", path, schema, idSchema, rootSchema);
+        Object[] allOfSchemas = compileSchemaArrayByKey("allOf", ps, schema, idSchema, rootSchema);
         if (allOfSchemas != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.AllOfEvaluator(allOfSchemas));
         }
 
         // anyOf
-        Object[] anyOfSchemas = compileSchemaArrayByKey("anyOf", path, schema, idSchema, rootSchema);
+        Object[] anyOfSchemas = compileSchemaArrayByKey("anyOf", ps, schema, idSchema, rootSchema);
         if (anyOfSchemas != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.AnyOfEvaluator(anyOfSchemas));
         }
 
         // oneOf
-        Object[] oneOfSchemas = compileSchemaArrayByKey("oneOf", path, schema, idSchema, rootSchema);
+        Object[] oneOfSchemas = compileSchemaArrayByKey("oneOf", ps, schema, idSchema, rootSchema);
         if (oneOfSchemas != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.OneOfEvaluator(oneOfSchemas));
         }
 
         // not
-        Object notSchema = compileSchemaByKey("not", path, schema, idSchema, rootSchema);
+        Object notSchema = compileSchemaByKey("not", ps, schema, idSchema, rootSchema);
         if (notSchema != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
             evaluators.add(new Evaluator.NotEvaluator(notSchema));
@@ -260,9 +260,9 @@ public class CompileUtil {
 
         // unevaluatedProperties / unevaluatedItems
         Object unevaluatedPropertiesSchema =
-                compileSchemaByKey("unevaluatedProperties", path, schema, idSchema, rootSchema);
+                compileSchemaByKey("unevaluatedProperties", ps, schema, idSchema, rootSchema);
         Object unevaluatedItemsSchema =
-                compileSchemaByKey("unevaluatedItems", path, schema, idSchema, rootSchema);
+                compileSchemaByKey("unevaluatedItems", ps, schema, idSchema, rootSchema);
         if ((unevaluatedPropertiesSchema != null || unevaluatedItemsSchema != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_UNEVALUATED)) {
             evaluators.add(new Evaluator.UnevaluatedEvaluator(unevaluatedPropertiesSchema, unevaluatedItemsSchema));
@@ -272,57 +272,53 @@ public class CompileUtil {
     }
 
 
-    static Map<String, Object> compileSchemaMapByKey(String key, JsonPointer path,
+    static Map<String, Object> compileSchemaMapByKey(String key, PathSegment ps,
                                                      ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object schemaMapNode = schema.getNode(key);
         if (schemaMapNode == null) return null;
 
-        path.push(new PathToken.Name(key));
+        PathSegment cps = new PathSegment.Name(ps, null, key);
         if (!NodeType.of(schemaMapNode).isObject())
-            throw new SchemaException("Schema node at " + path + " must be a JSON Object");
+            throw new SchemaException("Schema node at " + JsonPointer.fromLast(cps) + " must be a JSON Object");
         for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(schemaMapNode)) {
             Object subNode = entry.getValue();
-            path.push(new PathToken.Name(entry.getKey()));
-            Object subSchema = compileSchema(subNode, path, idSchema, rootSchema);
-            path.pop();
+            PathSegment ccps = new PathSegment.Name(cps, null, entry.getKey());
+            Object subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
             if (subSchema != subNode) entry.setValue(subSchema);
         }
-        path.pop();
         return Nodes.toMap(schemaMapNode);
     }
 
-    static Object[] compileSchemaArrayByKey(String key, JsonPointer path,
+    static Object[] compileSchemaArrayByKey(String key, PathSegment ps,
                                             ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object schemaArrayNode = schema.getNode(key);
         if (schemaArrayNode == null) return null;
 
-        path.push(new PathToken.Name(key));
+        PathSegment cps = new PathSegment.Name(ps, null, key);
         if (!NodeType.of(schemaArrayNode).isArray())
-            throw new SchemaException("Node at " + path + " must be a JSON Array");
+            throw new SchemaException("Node at " + JsonPointer.fromLast(cps) + " must be a JSON Array");
         int size = Nodes.sizeInArray(schemaArrayNode);
         for (int i = 0; i < size; i++) {
             Object subNode = Nodes.getInArray(schemaArrayNode, i);
             if (subNode == null) continue;
-            path.push(new PathToken.Index(i));
-            Object subSchema = compileSchema(subNode, path, idSchema, rootSchema);
-            path.pop();
+            PathSegment ccps = new PathSegment.Index(cps, null, i);
+            Object subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
             if (subSchema != subNode) Nodes.setInArray(schemaArrayNode, i, subSchema);
         }
         return Nodes.toArray(schemaArrayNode);
     }
 
-    static Object compileSchemaByKey(String key, JsonPointer path,
+    static Object compileSchemaByKey(String key, PathSegment ps,
                                      ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object subNode = schema.getNode(key);
         if (subNode == null) return null;
-        path.push(new PathToken.Name(key));
-        Object subSchema = compileSchema(subNode, path, idSchema, rootSchema);
-        path.pop();
+        PathSegment cps = new PathSegment.Name(ps, null, key);
+        Object subSchema = compileSchema(subNode, cps, idSchema, rootSchema);
         if (subSchema != subNode) schema.put(key, subSchema);
         return subSchema;
     }
 
-    static Object compileSchema(Object schemaNode, JsonPointer path,
+    static Object compileSchema(Object schemaNode, PathSegment ps,
                                 ObjectSchema idSchema, ObjectSchema rootSchema) {
         JsonType jt = JsonType.of(schemaNode);
         switch (jt) {
@@ -330,10 +326,10 @@ public class CompileUtil {
             case BOOLEAN: return schemaNode;
             case OBJECT: {
                 ObjectSchema schema = new ObjectSchema(schemaNode);
-                schema.compile(path, idSchema, rootSchema);
+                schema.compile(ps, idSchema, rootSchema);
                 return schema;
             }
-            default: throw new SchemaException("Invalid schema at " + path + " : node type is " + jt);
+            default: throw new SchemaException("Invalid schema at " + JsonPointer.fromLast(ps) + " : node type is " + jt);
         }
     }
 

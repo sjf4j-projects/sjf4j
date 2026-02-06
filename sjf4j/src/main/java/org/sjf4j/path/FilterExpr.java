@@ -92,7 +92,7 @@ public interface FilterExpr {
 
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            if (path.head() instanceof PathToken.Current) {
+            if (path.head() instanceof PathSegment.Current) {
                 return path.eval(currentNode);
             } else {
                 return path.eval(rootNode);

@@ -13,6 +13,7 @@ import java.util.Map;
 
 public final class InstancedNode {
     private final Object node;
+    private final Class<?> objectType;
     private final JsonType jsonType;
     private final NodeType nodeType;
     private final boolean encoded;
@@ -26,6 +27,7 @@ public final class InstancedNode {
 
     private InstancedNode(Object node, JsonType jsonType, NodeType nodeType, boolean encoded) {
         this.node = node;
+        this.objectType = node == null ? null : node.getClass();
         this.jsonType = jsonType;
         this.nodeType = nodeType;
         this.encoded = encoded;
@@ -54,6 +56,7 @@ public final class InstancedNode {
     }
 
     public Object getNode() {return node;}
+    public Class<?> getObjectType() {return objectType;}
     public JsonType getJsonType() {return jsonType;}
     public NodeType getNodeType() {return nodeType;}
     public boolean isEncoded() {return encoded;}

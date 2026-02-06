@@ -860,7 +860,7 @@ public class Nodes {
      *   <li>{@code A[..]}      – Array</li>
      *   <li>{@code S[..]}      – Set</li>
      *   <li>{@code @Type#raw}  – NodeValue</li>
-     *   <li>{@code !Type@hash} – Unknown</li>
+     *   <li>{@code !node} – Unknown</li>
      * </ul>
      *
      * <h3>Example</h3>
