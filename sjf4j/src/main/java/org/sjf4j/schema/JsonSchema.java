@@ -31,17 +31,17 @@ public interface JsonSchema {
     }
 
     default void validateOrThrow(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
+        ValidationResult result = validate(node, ValidationOptions.FAIL_FAST);
         if (!result.isValid()) throw new ValidationException(result);
     }
 
     default boolean isValid(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
+        ValidationResult result = validate(node, ValidationOptions.FAIL_FAST);
         return result.isValid();
     }
 
     default ValidationResult validateFailFast(Object node) {
-        return validate(node, ValidationOptions.FAILFAST);
+        return validate(node, ValidationOptions.FAIL_FAST);
     }
 
     default ValidationResult validate(Object node) {

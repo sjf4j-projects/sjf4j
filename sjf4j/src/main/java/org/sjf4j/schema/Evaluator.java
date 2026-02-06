@@ -10,11 +10,9 @@ import org.sjf4j.node.Numbers;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -406,7 +404,7 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.STRING) return true;
             String actual = (String) instance.getNode();
-            if (ctx.getOptions().isStrictFormats()) {
+            if (ctx.getOptions().isStrictFormat()) {
                 if (!formatValidator.validate(actual)) {
                     ctx.addError(JsonPointer.fromLast(ps), "format",
                             "Value '" + actual + "' does not match format " + format);
@@ -446,18 +444,15 @@ public interface Evaluator {
         }
     }
 
-    // required / properties / patternProperties / additionalProperties
+    // properties / patternProperties / additionalProperties
     class PropertiesEvaluator implements Evaluator {
-        private final String[] required;
         private final Map<String, Object> properties;
         private final Pattern[] patternPns;
         private final Object[] patternSchemas;
         private final Object additionalPropertiesSchema;
-        public PropertiesEvaluator(String[] required,
-                                   Map<String, Object> properties,
+        public PropertiesEvaluator(Map<String, Object> properties,
                                    Map<String, Object> patternProperties,
                                    Object additionalPropertiesSchema) {
-            this.required = required;
             this.properties = properties;
             if (patternProperties != null) {
                 this.patternPns = new Pattern[patternProperties.size()];
@@ -478,20 +473,9 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
-
             Object actual = instance.getNode();
             boolean result = true;
-            if (required != null) {
-                for (String key : required) {
-                    if (!Nodes.containsInObject(actual, key)) {
-                        ctx.addError(JsonPointer.fromLast(ps), "required", "Missing required property '" + key + "'");
-                        result = false;
-                    }
-                }
-            }
-            if (ctx.shouldAbort()) return result;
 
-            // properties
             int propIdx = 0;
             for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
                 String key = entry.getKey();
@@ -503,9 +487,11 @@ public interface Evaluator {
                                 "properties", instance, ps, key, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
+                        if (ctx.shouldAbort()) return result;
                         matched = true;
                     }
                 }
+
                 if (patternPns != null) {
                     for (int i = 0; i < patternPns.length; i++) {
                         if (patternPns[i].matcher(key).find()) {
@@ -515,48 +501,64 @@ public interface Evaluator {
                                         "patternProperties", instance, ps, key, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
                                 result = result && subResult;
+                                if (ctx.shouldAbort()) return result;
                                 matched = true;
                             }
                         }
                     }
                 }
+
                 if (additionalPropertiesSchema != null && !matched) {
                     boolean subResult = evaluateProperty(additionalPropertiesSchema,
                             "additionalProperties", instance, ps, key, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
                     result = result && subResult;
+                    if (ctx.shouldAbort()) return result;
                 }
-                if (ctx.shouldAbort()) return result;
                 propIdx++;
             }
             return result;
         }
     }
 
-    // dependentRequired
-    class DependentRequiredEvaluator implements Evaluator {
+    // required / dependentRequired
+    class RequiredEvaluator implements Evaluator {
+        private final String[] required;
         private final Map<String, String[]> dependentRequired;
-        public DependentRequiredEvaluator(Map<String, String[]> dependentRequired) {
+        public RequiredEvaluator(String[] required, Map<String, String[]> dependentRequired) {
+            this.required = required;
             this.dependentRequired = dependentRequired;
         }
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
-
             Object actual = instance.getNode();
             boolean result = true;
-            for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
-                String key = entry.getKey();
-                if (Nodes.containsInObject(actual, key)) {
-                    String[] required = entry.getValue();
-                    for (String property : required) {
-                        if (!Nodes.containsInObject(actual, property)) {
-                            ctx.addError(JsonPointer.fromLast(ps), "dependentRequired", "Property '" + property +
-                                    "' is required when property '" + key + "' is present");
-                            result = false;
-                        }
+
+            if (required != null) {
+                for (String key : required) {
+                    if (!Nodes.containsInObject(actual, key)) {
+                        ctx.addError(JsonPointer.fromLast(ps), "required", "Missing required property '" + key + "'");
+                        result = false;
                     }
-                    if (ctx.shouldAbort()) return result;
+                }
+                if (ctx.shouldAbort()) return result;
+            }
+
+            if (dependentRequired != null) {
+                for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
+                    String key = entry.getKey();
+                    if (Nodes.containsInObject(actual, key)) {
+                        String[] required = entry.getValue();
+                        for (String property : required) {
+                            if (!Nodes.containsInObject(actual, property)) {
+                                ctx.addError(JsonPointer.fromLast(ps), "dependentRequired", "Property '" + property +
+                                        "' is required when property '" + key + "' is present");
+                                result = false;
+                            }
+                        }
+                        if (ctx.shouldAbort()) return result;
+                    }
                 }
             }
             return result;
@@ -608,6 +610,7 @@ public interface Evaluator {
                     ctx.addError(JsonPointer.fromLast(ps), "propertyNames",
                             "Property name '" + key + "' is invalid");
                     result = false;
+                    if (ctx.shouldAbort()) return result;
                 }
             }
             return result;
@@ -758,7 +761,7 @@ public interface Evaluator {
                 if (result && cousinEvaluated != null && ifThenEvaluated != null)
                     cousinEvaluated.or(ifThenEvaluated);
             } else {
-                BitSet dropedEvaluated = instance.popEvaluated();
+                BitSet droppedEvaluated = instance.popEvaluated();
                 if (elseSchema != null) {
                     instance.pushEvaluated();
                     result = evaluate(elseSchema, "else", instance, ps, ctx);
@@ -781,23 +784,25 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;
-            List<BitSet> evaluatedList = null;
+            BitSet[] evaluatedArr = null;
             BitSet cousinEvaluated = instance.popEvaluated();
-            if (cousinEvaluated != null)
-                evaluatedList = new ArrayList<>(allOfSchemas.length);
-            for (Object schema : allOfSchemas) {
+            if (cousinEvaluated != null) {
+                evaluatedArr = new BitSet[allOfSchemas.length];
+            }
+            for (int i = 0; i < allOfSchemas.length; i++) {
+                Object schema = allOfSchemas[i];
                 instance.pushEvaluated();
                 boolean subResult = evaluate(schema, "allOf", instance, ps, ctx);
                 BitSet childEvaluated = instance.popEvaluated();
-                if (subResult && evaluatedList != null && childEvaluated != null) evaluatedList.add(childEvaluated);
+                if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
                 if (ctx.shouldAbort()) return result;
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
-            if (result && evaluatedList != null) {
-                for (BitSet evaluated : evaluatedList) {
-                    cousinEvaluated.or(evaluated);
+            if (result && evaluatedArr != null) {
+                for (BitSet evaluated : evaluatedArr) {
+                    if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
             return result;
@@ -813,24 +818,28 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = false;
-            List<BitSet> evaluatedList = null;
+            BitSet[] evaluatedArr = null;
             BitSet cousinEvaluated = instance.popEvaluated();
-            if (cousinEvaluated != null)
-                evaluatedList = new ArrayList<>(anyOfSchemas.length);
-            for (Object schema : anyOfSchemas) {
+            if (cousinEvaluated != null) {
+                evaluatedArr = new BitSet[anyOfSchemas.length];
+            }
+            for (int i = 0; i < anyOfSchemas.length; i++) {
+                Object schema = anyOfSchemas[i];
                 instance.pushEvaluated();
                 ctx.pushIgnoreError();
                 boolean subResult = evaluate(schema, "anyOf", instance, ps, ctx);
                 ctx.popIgnoreError();
                 BitSet childEvaluated = instance.popEvaluated();
-                if (subResult && evaluatedList != null && childEvaluated != null) evaluatedList.add(childEvaluated);
+                if (subResult && evaluatedArr != null && childEvaluated != null) {
+                    evaluatedArr[i] = childEvaluated;
+                }
                 result = result || subResult;
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
-            if (result && evaluatedList != null) {
-                for (BitSet evaluated : evaluatedList) {
-                    cousinEvaluated.or(evaluated);
+            if (result && evaluatedArr != null) {
+                for (BitSet evaluated : evaluatedArr) {
+                    if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
             if (!result) {
@@ -849,27 +858,31 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             int matches = 0;
-            List<BitSet> evaluatedList = null;
+            BitSet[] evaluatedArr = null;
             BitSet cousinEvaluated = instance.popEvaluated();
-            if (cousinEvaluated != null) evaluatedList = new ArrayList<>(oneOfSchemas.length);
-            for (Object schema : oneOfSchemas) {
+            if (cousinEvaluated != null) {
+                evaluatedArr = new BitSet[oneOfSchemas.length];
+            }
+            for (int i = 0; i < oneOfSchemas.length; i++) {
+                Object schema = oneOfSchemas[i];
                 instance.pushEvaluated();
                 ctx.pushIgnoreError();
                 boolean subResult = evaluate(schema, "oneOf", instance, ps, ctx);
                 ctx.popIgnoreError();
                 BitSet childEvaluated = instance.popEvaluated();
-                if (subResult && evaluatedList != null && childEvaluated != null) evaluatedList.add(childEvaluated);
+                if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 if (subResult) matches++;
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
-            if (matches == 1 && evaluatedList != null) {
-                for (BitSet evaluated : evaluatedList) {
-                    cousinEvaluated.or(evaluated);
+            if (matches == 1 && evaluatedArr != null) {
+                for (BitSet evaluated : evaluatedArr) {
+                    if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
             if (matches != 1) {
-                ctx.addError(JsonPointer.fromLast(ps), "oneOf", "Must match exactly 1 schema, but found " + matches);
+                ctx.addError(JsonPointer.fromLast(ps), "oneOf",
+                        "Must match exactly 1 schema, but found " + matches);
                 return false;
             }
             return true;

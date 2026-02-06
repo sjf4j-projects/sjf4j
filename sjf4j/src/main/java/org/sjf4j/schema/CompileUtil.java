@@ -98,6 +98,12 @@ public class CompileUtil {
             evaluators.add(new Evaluator.DynamicRefEvaluator(dropedUri, refPath, refDynamicAnchor));
         }
 
+        // format
+        String format = schema.getString("format");
+        if (format != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT)) {
+            evaluators.add(new Evaluator.FormatEvaluator(format));
+        }
+
         // type
         Object type = schema.getNode("type");
         if (type != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
@@ -145,12 +151,6 @@ public class CompileUtil {
             evaluators.add(new Evaluator.PatternEvaluator(pattern));
         }
 
-        // format
-        String format = schema.getString("format");
-        if (format != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT)) {
-            evaluators.add(new Evaluator.FormatEvaluator(format));
-        }
-
         // minProperties / maxProperties
         Integer minProperties = schema.getInteger("minProperties");
         Integer maxProperties = schema.getInteger("maxProperties");
@@ -159,25 +159,25 @@ public class CompileUtil {
             evaluators.add(new Evaluator.ObjectEvaluator(minProperties, maxProperties));
         }
 
-        // required / properties / patternProperties / additionalProperties
+        // required / dependentRequired
         String[] required = schema.getArray("required", String.class);
+        Map<String, String[]> dependentRequired = schema.getMap("dependentRequired", String[].class);
+        if ((required != null || dependentRequired != null)
+                && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
+            evaluators.add(new Evaluator.RequiredEvaluator(required, dependentRequired));
+        }
+
+        // properties / patternProperties / additionalProperties
         Map<String, Object> properties =
                 compileSchemaMapByKey("properties", ps, schema, idSchema, rootSchema);
         Map<String, Object> patternProperties =
                 compileSchemaMapByKey("patternProperties", ps, schema, idSchema, rootSchema);
         Object additionalProperties =
                 compileSchemaByKey("additionalProperties", ps, schema, idSchema, rootSchema);
-        if ((required != null || properties != null || patternProperties != null || additionalProperties != null)
+        if ((properties != null || patternProperties != null || additionalProperties != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
-            evaluators.add(new Evaluator.PropertiesEvaluator(required, properties, patternProperties,
+            evaluators.add(new Evaluator.PropertiesEvaluator(properties, patternProperties,
                     additionalProperties));
-        }
-
-        // dependentRequired
-        Map<String, String[]> dependentRequired = schema.getMap("dependentRequired", String[].class);
-        if (dependentRequired != null
-                && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.DependentRequiredEvaluator(dependentRequired));
         }
 
         // dependentSchemas
@@ -254,7 +254,7 @@ public class CompileUtil {
         // not
         Object notSchema = compileSchemaByKey("not", ps, schema, idSchema, rootSchema);
         if (notSchema != null
-                && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
+                && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.NotEvaluator(notSchema));
         }
 
@@ -270,6 +270,7 @@ public class CompileUtil {
 
         return evaluators.toArray(new Evaluator[0]);
     }
+
 
 
     static Map<String, Object> compileSchemaMapByKey(String key, PathSegment ps,
