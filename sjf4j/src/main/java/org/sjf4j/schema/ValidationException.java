@@ -1,6 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 
 import java.util.List;
 

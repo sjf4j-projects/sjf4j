@@ -1,7 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeValue;
@@ -258,6 +258,7 @@ public final class NodeRegistry {
         private final Class<?> clazz;
         private final CreatorInfo creatorInfo;
         private final Map<String, FieldInfo> fields;
+        private final int fieldCount;
         private final Map<String, FieldInfo> aliasFields;
         private final boolean isJojo;
         private final boolean isJajo;
@@ -267,6 +268,7 @@ public final class NodeRegistry {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
             this.fields = fields;
+            this.fieldCount = fields.size();
             this.aliasFields = aliasFields;
             this.isJojo = JsonObject.class.isAssignableFrom(clazz);
             this.isJajo = JsonArray.class.isAssignableFrom(clazz);
@@ -282,6 +284,10 @@ public final class NodeRegistry {
 
         public Map<String, FieldInfo> getFields() {
             return fields;
+        }
+
+        public int getFieldCount() {
+            return fieldCount;
         }
 
         public Map<String, FieldInfo> getAliasFields() {

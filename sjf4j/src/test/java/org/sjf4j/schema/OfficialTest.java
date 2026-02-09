@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 
+import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
@@ -12,7 +13,7 @@ import java.net.URL;
 import java.nio.file.*;
 import java.util.*;
 
-public final class OfficialTestRunner {
+public final class OfficialTest {
 
     private static SchemaStore _store;
     private static JsonFacade<?, ?> facade = FacadeFactory.createFastjson2Facade();
@@ -21,9 +22,20 @@ public final class OfficialTestRunner {
         _store = loadRemotesToStore(locatePath("json-schema/remotes"));
         Path root = locatePath("json-schema/tests/draft2020-12");
 
-        runTestDir(root);
+        runTestDir(root, false);
 //        runTestFile(root.resolve("ref.json"), "remote ref, containing refs itself", "");
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
+    }
+
+    @Test
+    public void testSuite() throws Exception {
+        _store = loadRemotesToStore(locatePath("json-schema/remotes"));
+        Path root = locatePath("json-schema/tests/draft2020-12");
+
+        runTestDir(root, true);
+    }
+
+    private static void runSuite() throws Exception {
     }
 
     private static Path locatePath(String dir) throws Exception {
@@ -35,12 +47,15 @@ public final class OfficialTestRunner {
         return Paths.get(url.toURI());
     }
 
-    private static void runTestDir(Path dir) throws Exception {
+    private static void runTestDir(Path dir, boolean canThrow) throws Exception {
         TestSuiteReport suite = new TestSuiteReport();
         Files.walk(dir, 1)
                 .filter(p -> p.toString().endsWith(".json"))
                 .forEach(p -> runTestFile(p, suite, true, null, null));
         printSuiteReport(suite);
+        if (canThrow && (suite.error > 0 || suite.failed > 0)) {
+            throw new RuntimeException("JSON Schema Official tests failed " + suite.failed + " and error " + suite.error);
+        }
     }
 
     private static void runTestFile(Path file, String groupFilter, String testFilter) throws Exception {
@@ -58,8 +73,8 @@ public final class OfficialTestRunner {
         String groupDesc;
 
         try {
-//            JsonArray cases = Sjf4j.fromJson(Files.readAllBytes(file), JsonArray.class);
-            JsonArray cases = (JsonArray) facade.readNode(Files.readAllBytes(file), JsonArray.class);
+            JsonArray cases = Sjf4j.fromJson(Files.readAllBytes(file), JsonArray.class);
+//            JsonArray cases = (JsonArray) facade.readNode(Files.readAllBytes(file), JsonArray.class);
 
             for (int i = 0; i < cases.size(); i++) {
                 JsonObject caseObj = cases.getJsonObject(i);

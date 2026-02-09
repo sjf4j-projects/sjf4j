@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.Copy;
@@ -20,9 +20,6 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.models.JojoTest;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueCodec;
 
 import java.time.LocalDate;
 import java.util.List;

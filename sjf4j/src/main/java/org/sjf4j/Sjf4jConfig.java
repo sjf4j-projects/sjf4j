@@ -48,11 +48,6 @@ public final class Sjf4jConfig {
     public final StreamingFacade.StreamingMode streamingMode;
 
     /**
-     * The format used when encoding/decoding {@link java.time.Instant}.
-     */
-    public final InstantFormat instantFormat;
-
-    /**
      * The supplier used to create map instances.
      */
     public final MapSupplier mapSupplier;
@@ -66,6 +61,18 @@ public final class Sjf4jConfig {
      * The supplier used to create list instances.
      */
     public final SetSupplier setSupplier;
+
+    public enum InstantFormat {
+        ISO_STRING,
+        EPOCH_MILLIS,
+    }
+
+    /**
+     * The format used when encoding/decoding {@link java.time.Instant}.
+     */
+    public final InstantFormat instantFormat;
+
+    public final boolean bindingPath;
 
     /**
      * Private constructor for JsonConfig. Use the Builder to create instances.
@@ -82,6 +89,7 @@ public final class Sjf4jConfig {
         this.setSupplier = builder.setSupplier;
         this.streamingMode = builder.streamingMode;
         this.instantFormat = builder.instantFormat;
+        this.bindingPath = builder.bindingPath;
     }
 
     private static volatile Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
@@ -108,6 +116,19 @@ public final class Sjf4jConfig {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
     }
+    public static void useStreamingSharedIOAsGlobal() {
+        Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
+                .streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
+    }
+    public static void useStreamingExclusiveIOAsGlobal() {
+        Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
+                .streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
+    }
+    public static void useStreamingPluginModuleAsGlobal() {
+        Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
+                .streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
+    }
+
     public static void useSimpleJsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
@@ -151,9 +172,8 @@ public final class Sjf4jConfig {
         return nodeFacade;
     }
 
-    public enum InstantFormat {
-        ISO_STRING,
-        EPOCH_MILLIS,
+    public boolean isBindingPath() {
+        return bindingPath;
     }
 
 
@@ -172,6 +192,7 @@ public final class Sjf4jConfig {
 
         private StreamingFacade.StreamingMode streamingMode = null;
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
+        private boolean bindingPath = true;
 
         /**
          * Creates a new Builder with default settings.
@@ -236,6 +257,10 @@ public final class Sjf4jConfig {
         public Builder instantFormat(InstantFormat instantFormat) {
             if (instantFormat == null) throw new IllegalArgumentException("instantFormat must not be null");
             this.instantFormat = instantFormat;
+            return this;
+        }
+        public Builder bindingPath(boolean bindingPath) {
+            this.bindingPath = bindingPath;
             return this;
         }
 

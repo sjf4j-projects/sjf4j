@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonObject;
+import org.sjf4j.exception.SchemaException;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 

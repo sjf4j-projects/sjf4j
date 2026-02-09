@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -228,6 +228,7 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldAllowNullToWrapper() throws Exception {
+        Sjf4jConfig.useSimpleJsonAsGlobal();
         WrapperPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"age\":null}", WrapperPojo.class);
         assertNull(p.age);
     }
@@ -244,7 +245,6 @@ public class WithArgsCreatorTest {
                 () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":2147483648}", PrimitivePojo.class));
     }
 
-    // ---------- 4) 冲突/歧义 ----------
 
     static class ConflictingNamePojo {
         final String name;

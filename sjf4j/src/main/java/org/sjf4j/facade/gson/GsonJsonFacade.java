@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.Types;
 

@@ -6,7 +6,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.alibaba.fastjson2.writer.ObjectWriterProvider;
 import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.Types;
@@ -109,7 +109,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + type.getTypeName() + "'", e);
+                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
             case PLUGIN_MODULE: {

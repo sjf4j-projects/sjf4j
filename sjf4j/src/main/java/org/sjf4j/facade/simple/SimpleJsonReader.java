@@ -6,6 +6,8 @@ import org.sjf4j.node.Numbers;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public class SimpleJsonReader implements StreamingReader {
 
@@ -48,12 +50,28 @@ public class SimpleJsonReader implements StreamingReader {
         }
     }
 
+    private void skipSeparators() throws IOException {
+        int c;
+        while ((c = peek()) != -1) {
+            if (!isSeparator(c)) {
+                return;
+            }
+            read();
+        }
+    }
+
+    private boolean isSeparator(int c) {
+        return Character.isWhitespace(c)
+                || c == ','
+                || c == ':';
+    }
+
 
     @Override
     public Token peekToken() throws IOException {
         if (bufferedToken != null) return bufferedToken;
 
-        skipWhitespace();
+        skipSeparators();
         int c = peek();
         if (c == -1) return bufferedToken = Token.UNKNOWN;
         switch (c) {
@@ -126,11 +144,51 @@ public class SimpleJsonReader implements StreamingReader {
     @Override
     public Number nextNumber() throws IOException {
         bufferedToken = null;
-        return readNumber();
+        return Numbers.asNumber(readNumberString());
+    }
+    @Override
+    public long nextLong() throws IOException {
+        bufferedToken = null;
+        return Long.parseLong(readNumberString());
+    }
+    @Override
+    public int nextInt() throws IOException {
+        bufferedToken = null;
+        return Integer.parseInt(readNumberString());
+    }
+    @Override
+    public short nextShort() throws IOException {
+        bufferedToken = null;
+        return Short.parseShort(readNumberString());
+    }
+    @Override
+    public byte nextByte() throws IOException {
+        bufferedToken = null;
+        return Byte.parseByte(readNumberString());
+    }
+    @Override
+    public double nextDouble() throws IOException {
+        bufferedToken = null;
+        return Double.parseDouble(readNumberString());
+    }
+    @Override
+    public float nextFloat() throws IOException {
+        bufferedToken = null;
+        return Float.parseFloat(readNumberString());
+    }
+    @Override
+    public BigInteger nextBigInteger() throws IOException {
+        bufferedToken = null;
+        return new BigInteger(readNumberString());
+    }
+    @Override
+    public BigDecimal nextBigDecimal() throws IOException {
+        bufferedToken = null;
+        return new BigDecimal(readNumberString());
     }
 
     @Override
-    public Boolean nextBoolean() throws IOException {
+    public boolean nextBoolean() throws IOException {
         bufferedToken = null;
         return readBoolean();
     }
@@ -139,19 +197,6 @@ public class SimpleJsonReader implements StreamingReader {
     public void nextNull() throws IOException {
         bufferedToken = null;
         readNull();
-    }
-
-    @Override
-    public boolean hasNext() throws IOException {
-        skipWhitespace();
-        int c = peek();
-        if (c == ',') {
-            read();
-            return true;
-        } else if (c == '}' || c == ']') {
-            return false;
-        }
-        return true;
     }
 
     @Override
@@ -230,7 +275,7 @@ public class SimpleJsonReader implements StreamingReader {
         return sb.toString();
     }
 
-    private Number readNumber() throws IOException {
+    private String readNumberString() throws IOException {
         StringBuilder sb = new StringBuilder();
         int c;
         while ((c = peek()) != -1) {
@@ -238,8 +283,7 @@ public class SimpleJsonReader implements StreamingReader {
                 sb.append((char) read());
             } else break;
         }
-        String s = sb.toString();
-        return Numbers.asNumber(s);
+        return sb.toString();
     }
 
     private Boolean readBoolean() throws IOException {
@@ -278,7 +322,7 @@ public class SimpleJsonReader implements StreamingReader {
 
     /// Skip
     @Override
-    public void skipNode() throws IOException {
+    public void nextSkip() throws IOException {
         bufferedToken = null;
         skipWhitespace();
         int c = peek();
@@ -364,7 +408,7 @@ public class SimpleJsonReader implements StreamingReader {
             skipWhitespace();
             c = read();
             if (c != ':') throw error("Expected ':'", c);
-            skipNode();   // value
+            nextSkip();   // value
             skipWhitespace();
             c = read();
             if (c == ',') {
@@ -386,7 +430,7 @@ public class SimpleJsonReader implements StreamingReader {
             return;
         }
         while (true) {
-            skipNode();   // element
+            nextSkip();   // element
             skipWhitespace();
             c = read();
             if (c == ',') {

@@ -1,6 +1,6 @@
 package org.sjf4j.facade;
 
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -99,7 +99,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node type '" + type + "'", e);
+            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -114,7 +114,15 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      */
     default Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        return readNode(new InputStreamReader(input, StandardCharsets.UTF_8), type);
+        try {
+            StreamingReader reader = createReader(input);
+            reader.startDocument();
+            Object node = StreamingIO.readNode(reader, type);
+            reader.endDocument();
+            return node;
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+        }
     }
 
     /**
@@ -128,12 +136,28 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      */
     default Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        return readNode(new StringReader(input), type);
+        try {
+            StreamingReader reader = createReader(input);
+            reader.startDocument();
+            Object node = StreamingIO.readNode(reader, type);
+            reader.endDocument();
+            return node;
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+        }
     }
 
     default Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        return readNode(new ByteArrayInputStream(input), type);
+        try {
+            StreamingReader reader = createReader(input);
+            reader.startDocument();
+            Object node = StreamingIO.readNode(reader, type);
+            reader.endDocument();
+            return node;
+        } catch (Exception e) {
+            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+        }
     }
 
 

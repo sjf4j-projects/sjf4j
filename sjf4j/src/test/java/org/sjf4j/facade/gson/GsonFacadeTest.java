@@ -189,7 +189,6 @@ public class GsonFacadeTest {
     static class User {
         String name;
         List<User> friends;
-        Map<String, Object> ext;
     }
 
     @Test

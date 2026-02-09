@@ -5,7 +5,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.GsonBuilder;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;

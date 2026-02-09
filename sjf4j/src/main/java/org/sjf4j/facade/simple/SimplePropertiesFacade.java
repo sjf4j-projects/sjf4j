@@ -28,7 +28,7 @@ public class SimplePropertiesFacade implements PropertiesFacade {
         if (properties == null) throw new IllegalArgumentException("Properties must not be null");
         NodeWalker.walk(node, NodeWalker.Target.VALUE, NodeWalker.Order.TOP_DOWN, (ps, value) -> {
             if (value != null) {
-                properties.setProperty(jsonPath2PropKey(Paths.toPathExpr(ps)), value.toString());
+                properties.setProperty(jsonPath2PropKey(Paths.toRootedPathExpr(ps)), value.toString());
             }
             return NodeWalker.Control.CONTINUE;
         });

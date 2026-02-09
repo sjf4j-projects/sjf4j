@@ -1,7 +1,8 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.exception.SchemaException;
 
 import java.io.InputStream;
 import java.net.URI;

@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.sjf4j.exception.JsonException;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -221,7 +221,7 @@ class JsonArrayTest {
         assertEquals(ja1, ja2);
     }
 
-    // ========== 补充测试用例 ==========
+    // ========== test case by ai ==========
 
     public void testHashCodeEquals() {
         JsonArray ja1 = JsonArray.fromJson("[1,2,\"test\"]");

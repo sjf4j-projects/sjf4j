@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.facade.StreamingReader;

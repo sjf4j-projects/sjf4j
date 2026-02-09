@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;

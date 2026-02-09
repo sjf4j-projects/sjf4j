@@ -2,9 +2,8 @@ package org.sjf4j.node;
 
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 
 import java.lang.reflect.Array;
@@ -137,7 +136,9 @@ public class Nodes {
      * @return the Long representation
      */
     public static Long asLong(Object node) {
-        return Numbers.toLong(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toLong(n);
     }
 
     /**
@@ -149,7 +150,7 @@ public class Nodes {
      */
     public static Integer toInteger(Object node) {
         if (node == null) return null;
-        if (node instanceof Number) return Numbers.toInteger((Number) node);
+        if (node instanceof Number) return Numbers.toInt((Number) node);
         throw new JsonException("Expected Number, but got " + Types.name(node));
     }
 
@@ -160,7 +161,9 @@ public class Nodes {
      * @return the Integer representation
      */
     public static Integer asInteger(Object node) {
-        return Numbers.toInteger(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toInt(n);
     }
 
     /**
@@ -186,7 +189,9 @@ public class Nodes {
      * @return the Short representation
      */
     public static Short asShort(Object node) {
-        return Numbers.toShort(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toShort(n);
     }
 
     public static Byte toByte(Object node) {
@@ -199,7 +204,9 @@ public class Nodes {
     }
 
     public static Byte asByte(Object node) {
-        return Numbers.toByte(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toByte(n);
     }
 
     public static Double toDouble(Object node) {
@@ -212,7 +219,9 @@ public class Nodes {
     }
 
     public static Double asDouble(Object node) {
-        return Numbers.toDouble(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toDouble(n);
     }
 
     public static Float toFloat(Object node) {
@@ -225,7 +234,9 @@ public class Nodes {
     }
 
     public static Float asFloat(Object node) {
-        return Numbers.toFloat(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toFloat(n);
     }
 
     public static BigInteger toBigInteger(Object node) {
@@ -238,7 +249,9 @@ public class Nodes {
     }
 
     public static BigInteger asBigInteger(Object node) {
-        return Numbers.toBigInteger(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toBigInteger(n);
     }
 
     public static BigDecimal toBigDecimal(Object node) {
@@ -251,7 +264,9 @@ public class Nodes {
     }
 
     public static BigDecimal asBigDecimal(Object node) {
-        return Numbers.toBigDecimal(asNumber(node));
+        Number n = asNumber(node);
+        if (n == null) return null;
+        return Numbers.toBigDecimal(n);
     }
 
     public static Boolean toBoolean(Object node) {

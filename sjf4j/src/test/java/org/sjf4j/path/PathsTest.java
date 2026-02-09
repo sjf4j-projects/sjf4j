@@ -2,7 +2,7 @@ package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 
 import java.util.List;
 

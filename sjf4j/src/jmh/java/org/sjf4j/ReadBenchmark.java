@@ -103,7 +103,12 @@ public class ReadBenchmark {
 
     // ----- Simple JSON baselines -----
     @Benchmark
-    public Object json_simple_facade() throws IOException {
+    public Object json_simple_facade_pojo() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_simple_facade_jojo() throws IOException {
         return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User2.class);
     }
 
@@ -124,7 +129,12 @@ public class ReadBenchmark {
     }
 
     @Benchmark
-    public Object json_jackson_facade() throws IOException {
+    public Object json_jackson_facade_pojo() throws IOException {
+        return JACKSON_FACADE.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_jackson_facade_jojo() throws IOException {
         return JACKSON_FACADE.readNode(JSON_DATA2, User2.class);
     }
 
@@ -141,7 +151,12 @@ public class ReadBenchmark {
     }
 
     @Benchmark
-    public Object json_gson_facade() {
+    public Object json_gson_facade_pojo() {
+        return GSON_FACADE.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_gson_facade_jojo() {
         return GSON_FACADE.readNode(JSON_DATA2, User2.class);
     }
 
@@ -162,7 +177,12 @@ public class ReadBenchmark {
     }
 
     @Benchmark
-    public Object json_fastjson2_facade() throws IOException {
+    public Object json_fastjson2_facade_pojo() throws IOException {
+        return FASTJSON2_FACADE.readNode(JSON_DATA2, User.class);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_facade_jojo() throws IOException {
         return FASTJSON2_FACADE.readNode(JSON_DATA2, User2.class);
     }
 

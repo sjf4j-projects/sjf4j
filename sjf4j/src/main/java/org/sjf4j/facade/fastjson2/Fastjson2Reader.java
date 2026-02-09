@@ -1,11 +1,12 @@
 package org.sjf4j.facade.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public class Fastjson2Reader implements StreamingReader {
 
@@ -16,8 +17,12 @@ public class Fastjson2Reader implements StreamingReader {
         this.reader = reader;
     }
 
+    private Token peeked;
+
     @Override
     public Token peekToken() throws IOException {
+        if (peeked != null) return peeked;
+
         if (reader.isObject()) {
             return Token.START_OBJECT;
         } else if (reader.current() == '}') {
@@ -41,6 +46,7 @@ public class Fastjson2Reader implements StreamingReader {
 
     @Override
     public void startObject() throws IOException {
+        peeked = null;
         if (!reader.nextIfObjectStart()) {
             throw new JsonException("Expected token 'START_OBJECT', but got " + reader.current());
         }
@@ -48,6 +54,7 @@ public class Fastjson2Reader implements StreamingReader {
 
     @Override
     public void endObject() throws IOException {
+        peeked = null;
         if (!reader.nextIfObjectEnd()) {
             throw new JsonException("Expected token 'END_OBJECT', but got " + reader.current());
         }
@@ -55,6 +62,7 @@ public class Fastjson2Reader implements StreamingReader {
 
     @Override
     public void startArray() throws IOException {
+        peeked = null;
         if (!reader.nextIfArrayStart()) {
             throw new JsonException("Expected token 'START_ARRAY', but got " + reader.current());
         }
@@ -62,6 +70,7 @@ public class Fastjson2Reader implements StreamingReader {
 
     @Override
     public void endArray() throws IOException {
+        peeked = null;
         if (!reader.nextIfArrayEnd()) {
             throw new JsonException("Expected token 'END_ARRAY', but got " + reader.current());
         }
@@ -69,39 +78,72 @@ public class Fastjson2Reader implements StreamingReader {
 
     @Override
     public String nextName() throws IOException {
+        peeked = null;
         return reader.readFieldName();
     }
 
     @Override
     public String nextString() throws IOException {
+        peeked = null;
         return reader.readString();
     }
 
     @Override
     public Number nextNumber() throws IOException {
-        Number n = reader.readNumber();
-        // Double is more popular and common usage
-        if (n instanceof BigDecimal) {
-            double f = n.doubleValue();
-            if (Double.isFinite(f)) return f;
-        }
-        return n;
+        peeked = null;
+        return reader.readNumber();
+    }
+    @Override
+    public long nextLong() throws IOException {
+        peeked = null;
+        return reader.getInt64Value();
+    }
+    @Override
+    public int nextInt() throws IOException {
+        peeked = null;
+        return reader.readInt32Value();
+    }
+    @Override
+    public short nextShort() throws IOException {
+        peeked = null;
+        return reader.readInt16Value();
+    }
+    @Override
+    public byte nextByte() throws IOException {
+        peeked = null;
+        return reader.readInt8Value();
+    }
+    @Override
+    public double nextDouble() throws IOException {
+        peeked = null;
+        return reader.readDoubleValue();
+    }
+    @Override
+    public float nextFloat() throws IOException {
+        peeked = null;
+        return reader.readFloatValue();
+    }
+    @Override
+    public BigInteger nextBigInteger() throws IOException {
+        peeked = null;
+        return reader.readBigInteger();
+    }
+    @Override
+    public BigDecimal nextBigDecimal() throws IOException {
+        peeked = null;
+        return reader.readBigDecimal();
     }
 
     @Override
-    public Boolean nextBoolean() throws IOException {
+    public boolean nextBoolean() throws IOException {
+        peeked = null;
         return reader.readBoolValue();
     }
 
     @Override
     public void nextNull() throws IOException {
+        peeked = null;
         reader.nextIfNull();
-    }
-
-    @Override
-    public boolean hasNext() throws IOException {
-        Token token = peekToken();
-        return token != Token.END_OBJECT && token != Token.END_ARRAY;
     }
 
     @Override
@@ -110,7 +152,8 @@ public class Fastjson2Reader implements StreamingReader {
     }
 
     @Override
-    public void skipNode() throws IOException {
+    public void nextSkip() throws IOException {
+        peeked = null;
         reader.skipValue();
     }
 

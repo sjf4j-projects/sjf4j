@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.exception.SchemaException;
 
 import java.time.LocalDate;
 

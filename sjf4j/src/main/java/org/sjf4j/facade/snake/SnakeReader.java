@@ -1,6 +1,6 @@
 package org.sjf4j.facade.snake;
 
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.yaml.snakeyaml.events.AliasEvent;
@@ -17,6 +17,8 @@ import org.yaml.snakeyaml.events.StreamStartEvent;
 import org.yaml.snakeyaml.parser.Parser;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public class SnakeReader implements StreamingReader {
 
@@ -102,6 +104,12 @@ public class SnakeReader implements StreamingReader {
     }
 
     @Override
+    public String nextName() {
+        ScalarEvent se = (ScalarEvent) parser.getEvent();
+        return se.getValue();
+    }
+
+    @Override
     public String nextString() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         return se.getValue();
@@ -112,9 +120,41 @@ public class SnakeReader implements StreamingReader {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         return Numbers.asNumber(se.getValue());
     }
+    @Override
+    public long nextLong() {
+        return Numbers.toLong(nextNumber());
+    }
+    @Override
+    public int nextInt() {
+        return Numbers.toInt(nextNumber());
+    }
+    @Override
+    public short nextShort() {
+        return Numbers.toShort(nextNumber());
+    }
+    @Override
+    public byte nextByte() {
+        return Numbers.toByte(nextNumber());
+    }
+    @Override
+    public double nextDouble() {
+        return Numbers.toDouble(nextNumber());
+    }
+    @Override
+    public float nextFloat() {
+        return Numbers.toFloat(nextNumber());
+    }
+    @Override
+    public BigInteger nextBigInteger() {
+        return Numbers.toBigInteger(nextNumber());
+    }
+    @Override
+    public BigDecimal nextBigDecimal() {
+        return Numbers.toBigDecimal(nextNumber());
+    }
 
     @Override
-    public Boolean nextBoolean() {
+    public boolean nextBoolean() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         String value = se.getValue();
         String low = value.toLowerCase();
@@ -140,24 +180,12 @@ public class SnakeReader implements StreamingReader {
     }
 
     @Override
-    public String nextName() {
-        ScalarEvent se = (ScalarEvent) parser.getEvent();
-        return se.getValue();
-    }
-
-    @Override
-    public boolean hasNext() throws IOException {
-        Event event = parser.peekEvent();
-        return !(event instanceof MappingEndEvent) && !(event instanceof SequenceEndEvent);
-    }
-
-    @Override
     public void close() throws IOException {
         // Nothing
     }
 
     @Override
-    public void skipNode() throws IOException {
+    public void nextSkip() throws IOException {
         Event event = parser.peekEvent();
         if (event instanceof ScalarEvent) {
             parser.getEvent();
@@ -173,5 +201,85 @@ public class SnakeReader implements StreamingReader {
             } while (depth > 0);
         }
     }
+
+
+//    @Override
+//    public Token nextToken() throws IOException {
+//        Token tk = peekToken();
+//        parser.getEvent();
+//        return tk;
+//    }
+//
+//    @Override
+//    public String peekName() {
+//        ScalarEvent se = (ScalarEvent) parser.peekEvent();
+//        return se.getValue();
+//    }
+//
+//    @Override
+//    public String nextString() {
+//        ScalarEvent se = (ScalarEvent) parser.getEvent();
+//        return se.getValue();
+//    }
+//
+//    @Override
+//    public Number nextNumber() {
+//        ScalarEvent se = (ScalarEvent) parser.getEvent();
+//        return Numbers.asNumber(se.getValue());
+//    }
+//    @Override
+//    public long nextLong() {
+//        ScalarEvent se = (ScalarEvent) parser.getEvent();
+//        return Long.parseLong(se.getValue());
+//    }
+//    @Override
+//    public int nextInt() {
+//        ScalarEvent se = (ScalarEvent) parser.getEvent();
+//        return Integer.parseInt(se.getValue());
+//    }
+//    @Override
+//    public short nextShort() {
+//        ScalarEvent se = (ScalarEvent) parser.getEvent();
+//        return Short.parseShort(se.getValue());
+//    }
+//    @Override
+//    public byte nextByte() {
+//        ScalarEvent se = (ScalarEvent) parser.getEvent();
+//        return Byte.parseByte(se.getValue());
+//    }
+//    @Override
+//    public double peekDouble() {
+//        ScalarEvent se = (ScalarEvent) parser.peekEvent();
+//        return Double.parseDouble(se.getValue());
+//    }
+//    @Override
+//    public float peekFloat() {
+//        ScalarEvent se = (ScalarEvent) parser.peekEvent();
+//        return Float.parseFloat(se.getValue());
+//    }
+//    @Override
+//    public BigInteger peekBigInteger() {
+//        ScalarEvent se = (ScalarEvent) parser.peekEvent();
+//        return new BigInteger(se.getValue());
+//    }
+//    @Override
+//    public BigDecimal peekBigDecimal() {
+//        ScalarEvent se = (ScalarEvent) parser.peekEvent();
+//        return new BigDecimal(se.getValue());
+//    }
+//
+//    @Override
+//    public boolean peekBoolean() {
+//        ScalarEvent se = (ScalarEvent) parser.peekEvent();
+//        String value = se.getValue();
+//        String low = value.toLowerCase();
+//        if (low.equals("true") || low.equals("yes") || low.equals("on")) {
+//            return true;
+//        }
+//        if (low.equals("false") || low.equals("no") || low.equals("off")) {
+//            return false;
+//        }
+//        throw new JsonException("Expect a Boolean but got '" + value + "'");
+//    }
 
 }

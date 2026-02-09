@@ -10,7 +10,7 @@ import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.Types;
 

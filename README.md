@@ -8,7 +8,7 @@
 
 **SJF4J (Simple JSON Facade for Java)** is a simple facade over multiple JSON libraries, 
 providing a unified semantic layer for structured data processing grounded in JSON specifications.  
-Beyond **JSON**, it also supports **YAML**, **Properties**, and a **unified in-memory object model**.
+Beyond JSON, it also supports YAML / Properties..., and a unified in-memory Object-Based Node Tree.
 
 ## Table of Contents
 - [Design Thinking](#design-thinking)

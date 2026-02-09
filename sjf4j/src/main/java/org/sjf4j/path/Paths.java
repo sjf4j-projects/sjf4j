@@ -1,7 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
 
@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 public class Paths {
 
     /// Inspect
-    public static String inspect(PathSegment lastSegment) {
+    public static String inspectRooted(PathSegment lastSegment) {
         return inspect(linearize(lastSegment));
     }
 
@@ -38,26 +38,27 @@ public class Paths {
         StringBuilder sb = new StringBuilder();
         for (int i = 1; i < segments.length; i++) {
             PathSegment ps = segments[i];
+            sb.append("/");
             if (ps instanceof PathSegment.Name) {
                 Class<?> clazz = ps.clazz();
                 String name = ((PathSegment.Name) ps).name;
-                if (clazz == null || Map.class.isAssignableFrom(clazz)) sb.append("{").append(name).append("= ");
-                else if (clazz == JsonObject.class) sb.append("J{").append(name).append("= ");
+                if (clazz == null || Map.class.isAssignableFrom(clazz)) sb.append("{").append(name);
+                else if (clazz == JsonObject.class) sb.append("J{").append(name);
                 else {
                     sb.append("@").append(clazz.getSimpleName()).append("{");
                     if (NodeRegistry.registerPojoOrElseThrow(clazz).getFields().containsKey(name)) sb.append("*");
-                    sb.append(name).append("= ");
+                    sb.append(name);
                 }
             } else if (ps instanceof PathSegment.Index) {
                 Class<?> clazz = ps.clazz();
                 int idx = ((PathSegment.Index) ps).index;
-                if (clazz == null || List.class.isAssignableFrom(clazz)) sb.append("[").append(idx).append(": ");
-                else if (clazz == JsonArray.class) sb.append("J[").append(idx).append(": ");
-                else if (clazz.isArray()) sb.append("A[").append(idx).append(": ");
-                else if (Set.class.isAssignableFrom(clazz)) sb.append("S[").append(idx).append(": ");
-                else sb.append("@").append(clazz.getSimpleName()).append("[").append(idx).append(": ");
+                if (clazz == null || List.class.isAssignableFrom(clazz)) sb.append("[").append(idx);
+                else if (clazz == JsonArray.class) sb.append("J[").append(idx);
+                else if (clazz.isArray()) sb.append("A[").append(idx);
+                else if (Set.class.isAssignableFrom(clazz)) sb.append("S[").append(idx);
+                else sb.append("@").append(clazz.getSimpleName()).append("[").append(idx);
             } else {
-                sb.append("!").append(ps).append(" ");
+                sb.append("!").append(ps);
             }
         }
         return sb.toString();
@@ -121,7 +122,7 @@ public class Paths {
         return segments.toArray(new PathSegment[0]);
     }
 
-    public static String toPointerExpr(PathSegment lastSegment) {
+    public static String toRootedPointerExpr(PathSegment lastSegment) {
         return toPointerExpr(linearize(lastSegment));
     }
 
@@ -167,7 +168,7 @@ public class Paths {
 
     ///  JSON Path
 
-    public static String toPathExpr(PathSegment lastSegment) {
+    public static String toRootedPathExpr(PathSegment lastSegment) {
         return toPathExpr(linearize(lastSegment));
     }
 

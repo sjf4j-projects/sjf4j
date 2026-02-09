@@ -5,13 +5,16 @@ import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.facade.StreamingReader;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Objects;
 
 public class JacksonReader implements StreamingReader {
 
     private final JsonParser parser;
 
     public JacksonReader(JsonParser parser) {
-        if (parser == null) throw new IllegalArgumentException("Parser must not be null");
+        Objects.requireNonNull(parser, "parser is null");
         this.parser = parser;
     }
 
@@ -83,10 +86,57 @@ public class JacksonReader implements StreamingReader {
         parser.nextToken();
         return value;
     }
-
     @Override
-    public Boolean nextBoolean() throws IOException {
-        Boolean value = parser.getBooleanValue();
+    public long nextLong() throws IOException {
+        long value = parser.getLongValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public int nextInt() throws IOException {
+        int value = parser.getIntValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public short nextShort() throws IOException {
+        short value = parser.getShortValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public byte nextByte() throws IOException {
+        byte value = parser.getByteValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public double nextDouble() throws IOException {
+        double value = parser.getDoubleValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public float nextFloat() throws IOException {
+        float value = parser.getFloatValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public BigInteger nextBigInteger() throws IOException {
+        BigInteger value = parser.getBigIntegerValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public BigDecimal nextBigDecimal() throws IOException {
+        BigDecimal value = parser.getDecimalValue();
+        parser.nextToken();
+        return value;
+    }
+    @Override
+    public boolean nextBoolean() throws IOException {
+        boolean value = parser.getBooleanValue();
         parser.nextToken();
         return value;
     }
@@ -97,12 +147,6 @@ public class JacksonReader implements StreamingReader {
     }
 
     @Override
-    public boolean hasNext() throws IOException {
-        Token token = peekToken();
-        return token != Token.END_OBJECT && token != Token.END_ARRAY;
-    }
-
-    @Override
     public void close() throws IOException {
         parser.close();
     }
@@ -110,10 +154,14 @@ public class JacksonReader implements StreamingReader {
     /// Skip
 
     @Override
-    public void skipNode() throws IOException {
+    public void nextSkip() throws IOException {
         JsonToken tk = parser.currentToken();
-        if (tk.isScalarValue()) parser.nextToken();
-        else parser.skipChildren();
+        if (tk.isScalarValue()) {
+            parser.nextToken();
+        } else {
+            parser.skipChildren();
+            parser.nextToken();
+        }
     }
 
 

@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
-import org.sjf4j.JsonException;
+import org.sjf4j.exception.JsonException;
+import org.sjf4j.util.Strings;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -103,9 +104,9 @@ public class Numbers {
      * @return the Long representation
      * @throws IllegalArgumentException if the number is outside the Long range
      */
-    public static Long toLong(Number number) {
-        if (number == null) return null;
-        if (number instanceof Long) return (Long) number;
+    public static long toLong(Number number) {
+        Objects.requireNonNull(number, "number is null");
+        if (number instanceof Long) return (long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
             throw new JsonException("Cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
         }
@@ -125,31 +126,28 @@ public class Numbers {
      * @return the Integer representation
      * @throws IllegalArgumentException if the number is outside the Integer range
      */
-    public static Integer toInteger(Number number) {
-        Long longValue = toLong(number);
-        if (longValue == null) return null;
+    public static int toInt(Number number) {
+        long longValue = toLong(number);
         if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
             throw new JsonException("Cannot convert Number '" + number + "' to Integer: out of 32-bit range");
         }
-        return longValue.intValue();
+        return (int) longValue;
     }
 
-    public static Short toShort(Number number) {
-        Long longValue = toLong(number);
-        if (longValue == null) return null;
+    public static short toShort(Number number) {
+        long longValue = toLong(number);
         if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
             throw new JsonException("Cannot convert Number '" + number + "' to Short: out of 16-bit range");
         }
-        return longValue.shortValue();
+        return (short) longValue;
     }
 
-    public static Byte toByte(Number number) {
-        Long longValue = toLong(number);
-        if (longValue == null) return null;
+    public static byte toByte(Number number) {
+        long longValue = toLong(number);
         if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
             throw new JsonException("Cannot convert Number '" + number + "' to Byte: out of 8-bit range");
         }
-        return longValue.byteValue();
+        return (byte) longValue;
     }
 
     /**
@@ -159,10 +157,9 @@ public class Numbers {
      * @return the Double representation
      * @throws IllegalArgumentException if the number is not a finite Double
      */
-    public static Double toDouble(Number number) {
-        if (number == null) return null;
-        if (number instanceof Double) return (Double) number;
-
+    public static double toDouble(Number number) {
+        Objects.requireNonNull(number, "number is null");
+        if (number instanceof Double) return (double) number;
         double d = number.doubleValue();
         if (!Double.isFinite(d)) {
             throw new JsonException("Cannot convert Number '" + number + "' to Double: non-finite value");
@@ -177,9 +174,9 @@ public class Numbers {
      * @return the Float representation
      * @throws IllegalArgumentException if the number is not a finite Float
      */
-    public static Float toFloat(Number number) {
-        if (number == null) return null;
-        if (number instanceof Float) return (Float) number;
+    public static float toFloat(Number number) {
+        Objects.requireNonNull(number, "number is null");
+        if (number instanceof Float) return (float) number;
 
         float f = number.floatValue();
         if (!Float.isFinite(f)) {
@@ -189,7 +186,7 @@ public class Numbers {
     }
 
     public static BigInteger toBigInteger(Number number) {
-        if (number == null) return null;
+        Objects.requireNonNull(number, "number is null");
         if (number instanceof BigInteger) return (BigInteger) number;
         if (number instanceof BigDecimal) return ((BigDecimal) number).toBigInteger();
         if (number instanceof Double || number instanceof Float) {
@@ -203,7 +200,7 @@ public class Numbers {
     }
 
     public static BigDecimal toBigDecimal(Number number) {
-        if (number == null) return null;
+        Objects.requireNonNull(number, "number is null");
         if (number instanceof BigDecimal) return (BigDecimal) number;
         if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
         if (number instanceof Double || number instanceof Float) {
@@ -216,42 +213,94 @@ public class Numbers {
     public static <T> T to(Number number, Class<T> clazz) {
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
         Class<?> boxed = Types.box(clazz);
-        if (boxed == Long.class) return (T) Numbers.toLong(number);
-        if (boxed == Integer.class) return (T) Numbers.toInteger( number);
-        if (boxed == Short.class) return (T) Numbers.toShort(number);
-        if (boxed == Byte.class) return (T) Numbers.toByte(number);
-        if (boxed == Double.class) return (T) Numbers.toDouble(number);
-        if (boxed == Float.class) return (T) Numbers.toFloat(number);
+        if (boxed == Long.class) return (T) Long.valueOf(Numbers.toLong(number));
+        if (boxed == Integer.class) return (T) Integer.valueOf(Numbers.toInt(number));
+        if (boxed == Short.class) return (T) Short.valueOf(Numbers.toShort(number));
+        if (boxed == Byte.class) return (T) Byte.valueOf(Numbers.toByte(number));
+        if (boxed == Double.class) return (T) Double.valueOf(Numbers.toDouble(number));
+        if (boxed == Float.class) return (T) Float.valueOf(Numbers.toFloat(number));
         if (boxed == BigInteger.class) return (T) Numbers.toBigInteger(number);
         if (boxed == BigDecimal.class) return (T) Numbers.toBigDecimal(number);
         throw new JsonException("Cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
     }
 
 
-    public static Number asNumber(String text) {
-        if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
+//    public static Number asNumber(String text) {
+//        if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
+//
+//        if (text.length() > MAX_NUMBER_DIGITS) {
+//            throw new IllegalArgumentException("Number too large (" + text.length() + " digits): '" +
+//                    text.substring(0, 20) + "'");
+//        }
+//        if (text.contains(".") || text.contains("e") || text.contains("E")) {
+//            try {
+//                // `parseDouble` is faster than `parseFloat`
+//                return Double.parseDouble(text);
+//            } catch (NumberFormatException e) {
+//                return new BigDecimal(text);
+//            }
+//        } else {
+//            try {
+//                return Integer.parseInt(text);
+//            } catch (NumberFormatException e) {
+//                try {
+//                    return Long.parseLong(text);
+//                } catch (NumberFormatException ex) {
+//                    return new BigInteger(text);
+//                }
+//            }
+//        }
+//    }
 
-        if (text.length() > MAX_NUMBER_DIGITS) {
-            throw new IllegalArgumentException("Number too large (" + text.length() + " digits): '" +
-                    text.substring(0, 20) + "'");
+    public static Number asNumber(String text) {
+        if (text == null || text.isEmpty()) {
+            throw new IllegalArgumentException("text is null or empty");
         }
-        if (text.contains(".") || text.contains("e") || text.contains("E")) {
+
+        final int len = text.length();
+        if (len > MAX_NUMBER_DIGITS) {
+            throw new IllegalArgumentException("Number too large (" + len + " digits): '" +
+                    Strings.truncate(text) + "'");
+        }
+
+        boolean floating = false;
+        for (int i = 0; i < len; i++) {
+            char c = text.charAt(i);
+            if (c == '.' || c == 'e' || c == 'E') {
+                floating = true;
+                break;
+            }
+        }
+
+        if (floating) {
             try {
-                // `parseDouble` is faster than `parseFloat`
                 return Double.parseDouble(text);
             } catch (NumberFormatException e) {
                 return new BigDecimal(text);
             }
-        } else {
+        }
+
+        final boolean neg = text.charAt(0) == '-';
+        final int digits = neg ? (len - 1) : len;
+        if (digits > 19) {
+            return new BigInteger(text);
+        }
+        if (digits < 10) {
+            return Integer.parseInt(text);
+        }
+
+        if (len <= 11) {
             try {
                 return Integer.parseInt(text);
-            } catch (NumberFormatException e) {
-                try {
-                    return Long.parseLong(text);
-                } catch (NumberFormatException ex) {
-                    return new BigInteger(text);
-                }
+            } catch (NumberFormatException ignore) {
+                return Long.parseLong(text);
             }
+        }
+
+        try {
+            return Long.parseLong(text);
+        } catch (NumberFormatException e) {
+            return new BigInteger(text);
         }
     }
 

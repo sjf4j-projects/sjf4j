@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.node.NodeType;
 import org.sjf4j.supplier.MapSupplier;

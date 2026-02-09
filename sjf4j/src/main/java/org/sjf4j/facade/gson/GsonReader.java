@@ -6,6 +6,8 @@ import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public class GsonReader implements StreamingReader {
 
@@ -15,31 +17,6 @@ public class GsonReader implements StreamingReader {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         this.reader = reader;
     }
-
-//    @Override
-//    public int peekTokenId() throws IOException {
-//        JsonToken token = reader.peek();
-//        switch (token) {
-//            case BEGIN_OBJECT:
-//                return ID_START_OBJECT;
-//            case END_OBJECT:
-//                return ID_END_OBJECT;
-//            case BEGIN_ARRAY:
-//                return ID_START_ARRAY;
-//            case END_ARRAY:
-//                return ID_END_ARRAY;
-//            case STRING:
-//                return ID_STRING;
-//            case NUMBER:
-//                return ID_NUMBER;
-//            case BOOLEAN:
-//                return ID_BOOLEAN;
-//            case NULL:
-//                return ID_NULL;
-//            default:
-//                return ID_UNKNOWN;
-//        }
-//    }
 
     @Override
     public Token peekToken() throws IOException {
@@ -98,12 +75,43 @@ public class GsonReader implements StreamingReader {
 
     @Override
     public Number nextNumber() throws IOException {
-//        return reader.nextDouble();
         return Numbers.asNumber(reader.nextString());
+    }
+    @Override
+    public long nextLong() throws IOException {
+        return reader.nextLong();
+    }
+    @Override
+    public int nextInt() throws IOException {
+        return reader.nextInt();
+    }
+    @Override
+    public short nextShort() throws IOException {
+        return Short.parseShort(reader.nextString());
+    }
+    @Override
+    public byte nextByte() throws IOException {
+        return Byte.parseByte(reader.nextString());
+    }
+    @Override
+    public double nextDouble() throws IOException {
+        return reader.nextDouble();
+    }
+    @Override
+    public float nextFloat() throws IOException {
+        return Float.parseFloat(reader.nextString());
+    }
+    @Override
+    public BigInteger nextBigInteger() throws IOException {
+        return new BigInteger(reader.nextString());
+    }
+    @Override
+    public BigDecimal nextBigDecimal() throws IOException {
+        return new BigDecimal(reader.nextString());
     }
 
     @Override
-    public Boolean nextBoolean() throws IOException {
+    public boolean nextBoolean() throws IOException {
         return reader.nextBoolean();
     }
 
@@ -113,18 +121,12 @@ public class GsonReader implements StreamingReader {
     }
 
     @Override
-    public boolean hasNext() throws IOException {
-        Token token = peekToken();
-        return token != Token.END_OBJECT && token != Token.END_ARRAY;
-    }
-
-    @Override
     public void close() throws IOException {
         reader.close();
     }
 
     @Override
-    public void skipNode() throws IOException {
+    public void nextSkip() throws IOException {
         reader.skipValue();
     }
 

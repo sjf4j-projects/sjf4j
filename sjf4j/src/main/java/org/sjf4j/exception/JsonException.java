@@ -1,4 +1,4 @@
-package org.sjf4j;
+package org.sjf4j.exception;
 
 
 /**
@@ -9,6 +9,7 @@ package org.sjf4j;
  * different error scenarios and wraps underlying exceptions when necessary.
  */
 public class JsonException extends RuntimeException {
+
 
     /**
      * Constructs a new JsonException with the specified detail message.
@@ -29,12 +30,13 @@ public class JsonException extends RuntimeException {
         super(message, cause);
     }
 
-    /**
-     * Constructs a new JsonException with the specified cause.
-     *
-     * @param cause the underlying cause of the exception
-     */
+    public JsonException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
+    }
+
     public JsonException(Throwable cause) {
         super(cause);
     }
+
+
 }

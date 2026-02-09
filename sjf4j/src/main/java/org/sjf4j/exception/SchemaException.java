@@ -1,8 +1,7 @@
-package org.sjf4j.schema;
-
-import org.sjf4j.JsonException;
+package org.sjf4j.exception;
 
 public class SchemaException extends JsonException {
+
     public SchemaException(String message) {
         super(message);
     }
