@@ -81,9 +81,10 @@ public enum NodeType {
             return ARRAY_SET;
         }
 
-        if (NodeRegistry.isNodeValue(clazz)) {
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        if (ti.isNodeValue()) {
             return VALUE_REGISTERED;
-        } else if (NodeRegistry.isPojo(clazz)) {
+        } else if (ti.isPojo()) {
             return OBJECT_POJO;
         }
 
@@ -137,9 +138,10 @@ public enum NodeType {
             return VALUE_NULL;
         }
 
-        if (NodeRegistry.isNodeValue(clazz)) {
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        if (ti.isNodeValue()) {
             return VALUE_REGISTERED;
-        } else if (NodeRegistry.isPojo(clazz)) {
+        } else if (ti.isPojo()) {
             return OBJECT_POJO;
         }
 

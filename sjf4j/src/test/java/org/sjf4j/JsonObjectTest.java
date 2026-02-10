@@ -495,6 +495,7 @@ class JsonObjectTest {
         public Address address;
     }
 
+    @Test
     public void testPojo1() {
         JsonObject jo = new JsonObject(
                 "name", "Bob",
@@ -510,7 +511,7 @@ class JsonObjectTest {
         assertEquals("Bob", back.getString("name"));
     }
 
-    // ========== 补充测试用例 ==========
+    // ========== test cases ==========
 
     public void testHashCodeEquals() {
         JsonObject jo1 = JsonObject.fromJson("{\"a\":1,\"b\":\"test\"}");

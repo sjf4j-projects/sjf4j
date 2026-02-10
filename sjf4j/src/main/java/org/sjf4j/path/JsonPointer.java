@@ -42,10 +42,9 @@ public class JsonPointer extends JsonPath {
         return new JsonPointer(null, segments);
     }
 
-
-    static {
-        NodeRegistry.registerValueCodec(JsonPointer.class);
-    }
+//    static {
+//        NodeRegistry.registerValueCodec(JsonPointer.class);
+//    }
 
     @Encode
     @Override

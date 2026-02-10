@@ -35,9 +35,9 @@ public interface GsonModule {
                 return (TypeAdapter<T>) new JsonArrayAdapter(gson, rawClazz);
             }
 
-            NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-            if (ci != null) {
-                return new NodeValueAdapter<>(gson, ci);
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+            if (vci != null) {
+                return new NodeValueAdapter<>(gson, vci);
             }
             return null;
         }
@@ -69,13 +69,10 @@ public interface GsonModule {
                 return (T) jo;
             }
 
-            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-            boolean useArgsCreator = !ci.hasNoArgsCtor();
-            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
-            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
-            int remainingArgs = useArgsCreator ? args.length : 0;
+            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
+            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
+            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
@@ -88,15 +85,15 @@ public interface GsonModule {
                 int argIdx = -1;
                 if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.getAliasMap() != null) {
-                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                    if (argIdx < 0 && ci.aliasMap != null) {
+                        String origin = ci.aliasMap.get(key); // alias -> origin
                         if (origin != null) {
                             argIdx = ci.getArgIndex(origin);
                         }
                     }
                 }
                 if (argIdx >= 0) {
-                    Type argType = ci.getArgTypes()[argIdx];
+                    Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     args[argIdx] = gson.getAdapter(Types.rawClazz(argType)).read(in);
                     remainingArgs--;
@@ -110,14 +107,14 @@ public interface GsonModule {
                     continue;
                 }
 
-                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = gson.getAdapter(Types.rawClazz(fi.getType())).read(in);
+                    Object vv = gson.getAdapter(Types.rawClazz(fi.type)).read(in);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
-                            int cap = fields.size();
+                            int cap = pi.fieldCount;
                             pendingFields = new NodeRegistry.FieldInfo[cap];
                             pendingValues = new Object[cap];
                         }
@@ -175,7 +172,7 @@ public interface GsonModule {
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
-            T ja = pi == null ? (T) new JsonArray() : (T) pi.getCreatorInfo().forceNewPojo();
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             in.beginArray();
             TypeAdapter<?> adapter = gson.getAdapter(ja.elementType());
             while (in.hasNext()) {

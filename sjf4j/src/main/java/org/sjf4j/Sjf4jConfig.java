@@ -97,7 +97,6 @@ public final class Sjf4jConfig {
     public static void global(Sjf4jConfig sjf4jConfig) {
         if (sjf4jConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
         GLOBAL = sjf4jConfig;
-
         NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
     }
     public static Sjf4jConfig global() {

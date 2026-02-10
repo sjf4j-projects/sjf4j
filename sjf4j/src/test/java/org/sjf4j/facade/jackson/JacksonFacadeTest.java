@@ -125,7 +125,7 @@ public class JacksonFacadeTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testNodeValue1() {
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(Ops.class);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(Ops.class);
         JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
 
 

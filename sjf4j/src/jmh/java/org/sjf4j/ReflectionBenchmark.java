@@ -98,7 +98,7 @@ public class ReflectionBenchmark {
 
     @Benchmark
     public Object reflection_ctor_lambda() {
-        return pi.getCreatorInfo().newPojoNoArgs();
+        return pi.creatorInfo.newPojoNoArgs();
     }
 
     // ----- Getter pathways -----

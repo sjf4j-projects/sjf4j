@@ -125,15 +125,15 @@ class ReflectUtilTest {
         NodeRegistry.RecordInfo ri = ReflectUtil.analyzeRecord(Person.class, lookup);
         assertNotNull(ri);
 
-        assertEquals(2, ri.getCompCount());
-        assertArrayEquals(new String[]{"name", "age"}, ri.getCompNames());
+        assertEquals(2, ri.compCount);
+        assertArrayEquals(new String[]{"name", "age"}, ri.compNames);
 
         // compClasses
-        assertEquals(String.class, ri.getCompClasses()[0]);
-        assertEquals(int.class, ri.getCompClasses()[1]);
+        assertEquals(String.class, ri.compClasses[0]);
+        assertEquals(int.class, ri.compClasses[1]);
 
-        assertNotNull(ri.getCompCtor());
-        assertNotNull(ri.getCompCtorHandle());
+        assertNotNull(ri.compCtor);
+        assertNotNull(ri.compCtorHandle);
     }
 
     public record Person(String name, int age) {}
@@ -164,12 +164,12 @@ class ReflectUtilTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
 
-        assertNull(ci.getArgsCreator());
-        assertNull(ci.getArgsCreatorHandle());
-        assertNotNull(ci.getNoArgsCtorHandle());
-        assertNotNull(ci.getNoArgsCtorLambda());
+        assertNull(ci.argsCreator);
+        assertNull(ci.argsCreatorHandle);
+        assertNotNull(ci.noArgsCtorHandle);
+        assertNotNull(ci.noArgsCtorLambda);
 
-        Object obj = ci.getNoArgsCtorLambda().get();
+        Object obj = ci.noArgsCtorLambda.get();
         assertTrue(obj instanceof NoArgsPojo);
     }
 

@@ -57,9 +57,6 @@ public class ReflectUtil {
                 clazz.isEnum() || clazz.isInterface() || clazz.isArray()) {
             return false;
         }
-        if (NodeRegistry.isNodeValue(clazz)) {
-            return false;
-        }
 
         String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
         return !inJdkPackage(pkg);
@@ -92,7 +89,7 @@ public class ReflectUtil {
 
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = Sjf4jConfig.global().mapSupplier.create();
-        Map<String, String> aliasMap = creatorInfo.getAliasMap();
+        Map<String, String> aliasMap = creatorInfo.aliasMap;
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
@@ -289,9 +286,9 @@ public class ReflectUtil {
 
         // 2. Find Record
         NodeRegistry.RecordInfo recordInfo = analyzeRecord(clazz, lookup);
-        if (recordInfo != null && (creator == null || creator == recordInfo.getCompCtor())) {
-            if (creator == null) creator = recordInfo.getCompCtor();
-            if (creatorHandle == null) creatorHandle = recordInfo.getCompCtorHandle();
+        if (recordInfo != null && (creator == null || creator == recordInfo.compCtor)) {
+            if (creator == null) creator = recordInfo.compCtor;
+            if (creatorHandle == null) creatorHandle = recordInfo.compCtorHandle;
 //            argNames = recordInfo.getCompNames();
 //            argTypes = recordInfo.getCompTypes();
 //            argIndexes = createArgIndexes(argNames);

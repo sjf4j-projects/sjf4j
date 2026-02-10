@@ -12,6 +12,7 @@ import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.Types;
+import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -67,9 +68,9 @@ public class GsonStreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
         reader.nextNull();
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            return ci.decode(null);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            return vci.decode(null);
         }
 
         return  null;
@@ -81,10 +82,10 @@ public class GsonStreamingIO {
             return reader.nextBoolean();
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Boolean b = reader.nextBoolean();
-            return ci.decode(b);
+            return vci.decode(b);
         }
         throw new JsonException("Cannot deserialize JSON Boolean into type " + rawClazz.getName());
     }
@@ -99,10 +100,10 @@ public class GsonStreamingIO {
             return Numbers.to(n, rawClazz);
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Number n = Numbers.asNumber(reader.nextString());
-            return ci.decode(n);
+            return vci.decode(n);
         }
         throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
     }
@@ -117,17 +118,17 @@ public class GsonStreamingIO {
             String s = reader.nextString();
             return s.length() > 0 ? s.charAt(0) : null;
         }
-
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            String s = reader.nextString();
-            return ci.decode(s);
-        }
-
         if (rawClazz.isEnum()) {
             String s = reader.nextString();
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
+
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            String s = reader.nextString();
+            return vci.decode(s);
+        }
+
         throw new JsonException("Cannot deserialize JSON String into type " + rawClazz.getName());
     }
 
@@ -136,7 +137,33 @@ public class GsonStreamingIO {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (rawClazz == Object.class || rawClazz == Map.class) {
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+            reader.beginObject();
+            while (reader.peek() != JsonToken.END_OBJECT) {
+                String key = reader.nextName();
+                Object value = readNode(reader, valueType);
+                map.put(key, value);
+            }
+            reader.endObject();
+            return map;
+        }
+
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = new JsonObject();
+            reader.beginObject();
+            while (reader.peek() != JsonToken.END_OBJECT) {
+                String key = reader.nextName();
+                Object value = readNode(reader, Object.class);
+                jo.put(key, value);
+            }
+            reader.endObject();
+            return jo;
+        }
+
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
         if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
@@ -150,32 +177,16 @@ public class GsonStreamingIO {
             return vci != null ? vci.decode(map) : map;
         }
 
-        if (rawClazz.isAssignableFrom(JsonObject.class)) {
-            JsonObject jo = new JsonObject();
-            reader.beginObject();
-            while (reader.peek() != JsonToken.END_OBJECT) {
-                String key = reader.nextName();
-                Object value = readNode(reader, Object.class);
-                jo.put(key, value);
-            }
-            reader.endObject();
-            return jo;
-        }
-
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-        if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-            boolean useArgsCreator = !ci.hasNoArgsCtor();
-            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
-            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
-            int remainingArgs = useArgsCreator ? args.length : 0;
+        NodeRegistry.PojoInfo pi = ti.pojoInfo;
+        if (pi != null && !pi.isJajo) {
+            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
+            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
+            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
-            boolean isJojo = JsonObject.class.isAssignableFrom(pi.getType());
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -184,15 +195,15 @@ public class GsonStreamingIO {
                 int argIdx = -1;
                 if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.getAliasMap() != null) {
-                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                    if (argIdx < 0 && ci.aliasMap != null) {
+                        String origin = ci.aliasMap.get(key); // alias -> origin
                         if (origin != null) {
                             argIdx = ci.getArgIndex(origin);
                         }
                     }
                 }
                 if (argIdx >= 0) {
-                    Type argType = ci.getArgTypes()[argIdx];
+                    Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     args[argIdx] = readNode(reader, argType);
                     remainingArgs--;
@@ -206,14 +217,14 @@ public class GsonStreamingIO {
                     continue;
                 }
 
-                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readNode(reader, fi.getType());
+                    Object vv = readNode(reader, fi.type);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
-                            int cap = fields.size();
+                            int cap = pi.fieldCount;
                             pendingFields = new NodeRegistry.FieldInfo[cap];
                             pendingValues = new Object[cap];
                         }
@@ -224,7 +235,7 @@ public class GsonStreamingIO {
                     continue;
                 }
 
-                if (isJojo) {
+                if (pi.isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     Object vv = readNode(reader, Object.class);
                     dynamicMap.put(key, vv);
@@ -240,7 +251,7 @@ public class GsonStreamingIO {
                     pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
-            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
+            if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
 
@@ -252,8 +263,7 @@ public class GsonStreamingIO {
         if (reader == null) throw new IllegalArgumentException("reader must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
+        if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.beginArray();
@@ -262,10 +272,10 @@ public class GsonStreamingIO {
                 list.add(value);
             }
             reader.endArray();
-            return ci != null ? ci.decode(list) : list;
+            return list;
         }
 
-        if (rawClazz.isAssignableFrom(JsonArray.class)) {
+        if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {
@@ -276,9 +286,9 @@ public class GsonStreamingIO {
             return ja;
         }
 
-        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+        if (rawClazz == Set.class) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.getCreatorInfo().forceNewPojo();
+            JsonArray ja = (JsonArray) pi.creatorInfo.forceNewPojo();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {
                 Object value = readNode(reader, ja.elementType());
@@ -305,16 +315,29 @@ public class GsonStreamingIO {
             return array;
         }
 
-        if (Set.class.isAssignableFrom(rawClazz)) {
-            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
+            int i = 0;
+            reader.beginArray();
+            while (reader.peek() != JsonToken.END_ARRAY) {
+                Object value = readNode(reader, Object.class);
+                ja.add(value);
+            }
+            reader.endArray();
+            return ja;
+        }
+
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = new ArrayList<>();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {
                 Object value = readNode(reader, valueType);
-                set.add(value);
+                list.add(value);
             }
             reader.endArray();
-            return set;
+            return vci.decode(list);
         }
 
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
@@ -407,13 +430,6 @@ public class GsonStreamingIO {
         }
 
         Class<?> rawClazz = node.getClass();
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (vci != null) {
-            Object raw = vci.encode(node);
-            writeNode(writer, raw);
-            return;
-        }
-
         if (node instanceof CharSequence || node instanceof Character) {
             writer.value(node.toString());
             return;
@@ -498,10 +514,18 @@ public class GsonStreamingIO {
             return;
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+        if (vci != null) {
+            Object raw = vci.encode(node);
+            writeNode(writer, raw);
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null) {
             writer.beginObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 writer.name(entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(writer, vv);

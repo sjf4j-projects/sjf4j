@@ -46,7 +46,7 @@ public class Paths {
                 else if (clazz == JsonObject.class) sb.append("J{").append(name);
                 else {
                     sb.append("@").append(clazz.getSimpleName()).append("{");
-                    if (NodeRegistry.registerPojoOrElseThrow(clazz).getFields().containsKey(name)) sb.append("*");
+                    if (NodeRegistry.registerPojoOrElseThrow(clazz).fields.containsKey(name)) sb.append("*");
                     sb.append(name);
                 }
             } else if (ps instanceof PathSegment.Index) {

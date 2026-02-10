@@ -151,8 +151,6 @@ public class JacksonReader implements StreamingReader {
         parser.close();
     }
 
-    /// Skip
-
     @Override
     public void nextSkip() throws IOException {
         JsonToken tk = parser.currentToken();

@@ -108,6 +108,10 @@ public class NodeWalker {
                                BiConsumer<PathSegment, Object> consumer,
                                Target target, Order order, int remainingDepth) {
         if (remainingDepth == 0) return;
+        if (container == null) {
+            if (target == Target.VALUE) consumer.accept(path, container);
+            return;
+        }
 
         if (container instanceof JsonObject) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
@@ -122,7 +126,10 @@ public class NodeWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else if (container instanceof Map) {
+            return;
+        }
+
+        if (container instanceof Map) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
@@ -136,7 +143,10 @@ public class NodeWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else if (container instanceof JsonArray) {
+            return;
+        }
+
+        if (container instanceof JsonArray) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
@@ -151,7 +161,10 @@ public class NodeWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else if (container instanceof List) {
+            return;
+        }
+
+        if (container instanceof List) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
@@ -166,7 +179,10 @@ public class NodeWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else if (container != null && container.getClass().isArray()) {
+            return;
+        }
+
+        if (container.getClass().isArray()) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
@@ -181,12 +197,15 @@ public class NodeWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else if (container != null && NodeRegistry.isPojo(container.getClass())) {
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(container.getClass());
+        if (pi != null) {
             if (order == Order.TOP_DOWN && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-            NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(container.getClass());
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 Object node = entry.getValue().invokeGetter(container);
                 if (node != null) {
                     PathSegment childPath = new PathSegment.Name(path, container.getClass(), entry.getKey());
@@ -196,10 +215,11 @@ public class NodeWalker {
             if (order == Order.BOTTOM_UP && target == Target.CONTAINER) {
                 consumer.accept(path, container);
             }
-        } else {
-            if (target == Target.VALUE) {
-                consumer.accept(path, container);
-            }
+            return;
+        }
+
+        if (target == Target.VALUE) {
+            consumer.accept(path, container);
         }
     }
 

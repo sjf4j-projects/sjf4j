@@ -67,9 +67,9 @@ public class Fastjson2StreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
         reader.readNull();
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            return ci.decode(null);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            return vci.decode(null);
         }
         return null;
     }
@@ -80,10 +80,10 @@ public class Fastjson2StreamingIO {
             return reader.readBoolValue();
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Boolean b = reader.readBoolValue();
-            return ci.decode(b);
+            return vci.decode(b);
         }
         throw new JsonException("Cannot deserialize JSON Boolean into type " + rawClazz.getName());
     }
@@ -98,10 +98,10 @@ public class Fastjson2StreamingIO {
             return Numbers.to(n, rawClazz);
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Number n = reader.readNumber();
-            return ci.decode(n);
+            return vci.decode(n);
         }
         throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
     }
@@ -116,6 +116,10 @@ public class Fastjson2StreamingIO {
             String s = reader.readString();
             return s.length() > 0 ? s.charAt(0) : null;
         }
+        if (rawClazz.isEnum()) {
+            String s = reader.readString();
+            return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
+        }
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
@@ -123,10 +127,6 @@ public class Fastjson2StreamingIO {
             return vci.decode(s);
         }
 
-        if (rawClazz.isEnum()) {
-            String s = reader.readString();
-            return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
-        }
         throw new JsonException("Cannot deserialize JSON String into type " + rawClazz.getName());
     }
 
@@ -135,8 +135,7 @@ public class Fastjson2StreamingIO {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
+        if (rawClazz == Object.class || rawClazz == Map.class) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
@@ -145,10 +144,10 @@ public class Fastjson2StreamingIO {
                 Object value = readNode(reader, valueType);
                 map.put(key, value);
             }
-            return vci != null ? vci.decode(map) : map;
+            return map;
         }
 
-        if (rawClazz.isAssignableFrom(JsonObject.class)) {
+        if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             reader.nextIfObjectStart();
             while (!reader.nextIfObjectEnd()) {
@@ -159,15 +158,26 @@ public class Fastjson2StreamingIO {
             return jo;
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-        if (pi != null && !JsonArray.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-            boolean useArgsCreator = !ci.hasNoArgsCtor();
-            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
-            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
-            int remainingArgs = useArgsCreator ? args.length : 0;
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+        if (vci != null) {
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+            reader.nextIfObjectStart();
+            while (!reader.nextIfObjectEnd()) {
+                String key = reader.readFieldName();
+                Object value = readNode(reader, valueType);
+                map.put(key, value);
+            }
+            return vci.decode(map);
+        }
+
+        NodeRegistry.PojoInfo pi = ti.pojoInfo;
+        if (pi != null && !pi.isJajo) {
+            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
+            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
+            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
@@ -181,15 +191,15 @@ public class Fastjson2StreamingIO {
                 int argIdx = -1;
                 if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.getAliasMap() != null) {
-                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                    if (argIdx < 0 && ci.aliasMap != null) {
+                        String origin = ci.aliasMap.get(key); // alias -> origin
                         if (origin != null) {
                             argIdx = ci.getArgIndex(origin);
                         }
                     }
                 }
                 if (argIdx >= 0) {
-                    Type argType = ci.getArgTypes()[argIdx];
+                    Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     args[argIdx] = readNode(reader, argType);
                     remainingArgs--;
@@ -203,14 +213,14 @@ public class Fastjson2StreamingIO {
                     continue;
                 }
 
-                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readNode(reader, fi.getType());
+                    Object vv = readNode(reader, fi.type);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
-                            int cap = fields.size();
+                            int cap = pi.fieldCount;
                             pendingFields = new NodeRegistry.FieldInfo[cap];
                             pendingValues = new Object[cap];
                         }
@@ -248,8 +258,7 @@ public class Fastjson2StreamingIO {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
+        if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             reader.nextIfArrayStart();
@@ -257,10 +266,10 @@ public class Fastjson2StreamingIO {
                 Object value = readNode(reader, valueType);
                 list.add(value);
             }
-            return ci != null ? ci.decode(list) : list;
+            return list;
         }
 
-        if (rawClazz.isAssignableFrom(JsonArray.class)) {
+        if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
             reader.nextIfArrayStart();
             while (!reader.nextIfArrayEnd()) {
@@ -270,15 +279,15 @@ public class Fastjson2StreamingIO {
             return ja;
         }
 
-        if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.getCreatorInfo().forceNewPojo();
+        if (rawClazz == Set.class) {
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
             reader.nextIfArrayStart();
             while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, ja.elementType());
-                ja.add(value);
+                Object value = readNode(reader, valueType);
+                set.add(value);
             }
-            return ja;
+            return set;
         }
 
         if (rawClazz.isArray()) {
@@ -297,16 +306,28 @@ public class Fastjson2StreamingIO {
             return array;
         }
 
-        if (Set.class.isAssignableFrom(rawClazz)) {
-            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        if (JsonArray.class.isAssignableFrom(rawClazz)) {
+            JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
+            reader.nextIfArrayStart();
+            while (!reader.nextIfArrayEnd()) {
+                Object value = readNode(reader, ja.elementType());
+                ja.add(value);
+            }
+            return ja;
+        }
+
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = new ArrayList<>();
             reader.nextIfArrayStart();
             while (!reader.nextIfArrayEnd()) {
                 Object value = readNode(reader, valueType);
-                set.add(value);
+                list.add(value);
             }
-            return set;
+            return vci.decode(list);
         }
+
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
     }
 
@@ -392,12 +413,6 @@ public class Fastjson2StreamingIO {
         }
 
         Class<?> rawClazz = node.getClass();
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            Object raw = ci.encode(node);
-            writeNode(writer, raw);
-            return;
-        }
 
         if (node instanceof CharSequence || node instanceof Character) {
             writer.writeString(node.toString());
@@ -488,10 +503,18 @@ public class Fastjson2StreamingIO {
             return;
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+        if (vci != null) {
+            Object raw = vci.encode(node);
+            writeNode(writer, raw);
+            return;
+        }
+
+        NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null) {
             writer.startObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 writer.writeName(entry.getKey());
                 writer.writeColon();
                 Object vv = entry.getValue().invokeGetter(node);

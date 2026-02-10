@@ -1074,7 +1074,7 @@ public class JsonPath {
             }
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
             if (pi != null) {
-                return pi.getCreatorInfo().forceNewPojo();
+                return pi.creatorInfo.forceNewPojo();
             }
             throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +
                         pt + "'. The type must be one of JsonObject/Map/POJO.");
@@ -1086,7 +1086,7 @@ public class JsonPath {
                 return new JsonArray();
             }
             if (JsonArray.class.isAssignableFrom(clazz)) {
-                return NodeRegistry.registerPojoOrElseThrow(clazz).getCreatorInfo().forceNewPojo();
+                return NodeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
             }
             if (clazz.isArray()) {
                 int idx = ((PathSegment.Index) pt).index;

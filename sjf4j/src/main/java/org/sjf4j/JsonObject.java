@@ -47,8 +47,10 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores field information for POJO mapping.
      */
-    protected transient Map<String, NodeRegistry.FieldInfo> fieldMap = this.getClass() == JsonObject.class ? null :
-            NodeRegistry.registerPojoOrElseThrow(this.getClass()).getFields();
+    protected transient Map<String, NodeRegistry.FieldInfo> fieldMap =
+            this.getClass() == JsonObject.class
+            ? null
+            : NodeRegistry.registerPojoOrElseThrow(this.getClass()).fields;
 
     /**
      * Creates an empty JsonObject instance.
@@ -87,8 +89,8 @@ public class JsonObject extends JsonContainer {
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-        if (pi != null && !pi.isJajo()) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.getFields().entrySet()) {
+        if (pi != null && !pi.isJajo) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.fields.entrySet()) {
                 Object v = fi.getValue().invokeGetter(node);
                 put(fi.getKey(), v);
             }
@@ -1519,8 +1521,8 @@ public class JsonObject extends JsonContainer {
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-        if (pi != null && !pi.isJajo()) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+        if (pi != null && !pi.isJajo) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
         }

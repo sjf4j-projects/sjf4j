@@ -139,7 +139,7 @@ public class Fastjson2FacadeTest {
     @Test
     public void testNodeValue1() {
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(Ops.class);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(Ops.class);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());

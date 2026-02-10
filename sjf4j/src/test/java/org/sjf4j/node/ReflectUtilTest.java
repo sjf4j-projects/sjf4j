@@ -138,12 +138,12 @@ class ReflectUtilTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         NodeRegistry.CreatorInfo ci = ReflectUtil.analyzeCreator(NoArgsPojo.class, lookup);
 
-        assertNull(ci.getArgsCreator());
-        assertNull(ci.getArgsCreatorHandle());
-        assertNotNull(ci.getNoArgsCtorHandle());
-        assertNotNull(ci.getNoArgsCtorLambda());
+        assertNull(ci.argsCreator);
+        assertNull(ci.argsCreatorHandle);
+        assertNotNull(ci.noArgsCtorHandle);
+        assertNotNull(ci.noArgsCtorLambda);
 
-        Object obj = ci.getNoArgsCtorLambda().get();
+        Object obj = ci.noArgsCtorLambda.get();
         assertTrue(obj instanceof NoArgsPojo);
     }
 

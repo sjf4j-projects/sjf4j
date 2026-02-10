@@ -78,9 +78,9 @@ public class JacksonStreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
         parser.nextToken();
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            return ci.decode(null);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            return vci.decode(null);
         }
 
         return  null;
@@ -94,11 +94,11 @@ public class JacksonStreamingIO {
             return b;
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Boolean b = parser.getBooleanValue();
             parser.nextToken();
-            return ci.decode(b);
+            return vci.decode(b);
         }
         throw new JsonException("Cannot deserialize JSON Boolean into type " + rawClazz.getName());
     }
@@ -116,11 +116,11 @@ public class JacksonStreamingIO {
             return Numbers.to(n, rawClazz);
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Number n = parser.getNumberValue();
             parser.nextToken();
-            return ci.decode(n);
+            return vci.decode(n);
         }
         throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
     }
@@ -138,19 +138,19 @@ public class JacksonStreamingIO {
             parser.nextToken();
             return s.length() > 0 ? s.charAt(0) : null;
         }
-
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            String s = parser.getText();
-            parser.nextToken();
-            return ci.decode(s);
-        }
-
         if (rawClazz.isEnum()) {
             String s = parser.getText();
             parser.nextToken();
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
+
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            String s = parser.getText();
+            parser.nextToken();
+            return vci.decode(s);
+        }
+
         throw new JsonException("Cannot deserialize JSON String into type " + rawClazz.getName());
     }
 
@@ -158,8 +158,7 @@ public class JacksonStreamingIO {
     public static Object readObject(JsonParser parser, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
+        if (rawClazz == Object.class || rawClazz == Map.class) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
@@ -169,10 +168,10 @@ public class JacksonStreamingIO {
                 map.put(key, value);
             }
             parser.nextToken();
-            return vci != null ? vci.decode(map) : map;
+            return map;
         }
 
-        if (rawClazz.isAssignableFrom(JsonObject.class)) {
+        if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
@@ -184,20 +183,31 @@ public class JacksonStreamingIO {
             return jo;
         }
 
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+        if (vci != null) {
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+            parser.nextToken();
+            while (parser.currentToken() != JsonToken.END_OBJECT) {
+                String key = parser.currentName();parser.nextToken();
+                Object value = readNode(parser, valueType);
+                map.put(key, value);
+            }
+            parser.nextToken();
+            return vci.decode(map);
+        }
+
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-        if (pi != null && !pi.isJajo()) {
-            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-            boolean useArgsCreator = !ci.hasNoArgsCtor();
-            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
-            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
-            int remainingArgs = useArgsCreator ? args.length : 0;
+        if (pi != null && !pi.isJajo) {
+            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
+            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
+            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
-            boolean isJojo = JsonObject.class.isAssignableFrom(pi.getType());
 
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
@@ -206,15 +216,15 @@ public class JacksonStreamingIO {
                 int argIdx = -1;
                 if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.getAliasMap() != null) {
-                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                    if (argIdx < 0 && ci.aliasMap != null) {
+                        String origin = ci.aliasMap.get(key); // alias -> origin
                         if (origin != null) {
                             argIdx = ci.getArgIndex(origin);
                         }
                     }
                 }
                 if (argIdx >= 0) {
-                    Type argType = ci.getArgTypes()[argIdx];
+                    Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     args[argIdx] = readNode(parser, argType);
                     remainingArgs--;
@@ -228,14 +238,14 @@ public class JacksonStreamingIO {
                     continue;
                 }
 
-                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readNode(parser, fi.getType());
+                    Object vv = readNode(parser, fi.type);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
-                            int cap = fields.size();
+                            int cap = pi.fieldCount;
                             pendingFields = new NodeRegistry.FieldInfo[cap];
                             pendingValues = new Object[cap];
                         }
@@ -246,7 +256,7 @@ public class JacksonStreamingIO {
                     continue;
                 }
 
-                if (isJojo) {
+                if (pi.isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     Object vv = readNode(parser, Object.class);
                     dynamicMap.put(key, vv);
@@ -262,7 +272,7 @@ public class JacksonStreamingIO {
                     pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
-            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
+            if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
 
@@ -273,8 +283,7 @@ public class JacksonStreamingIO {
     public static Object readArray(JsonParser parser, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (rawClazz.isAssignableFrom(List.class) || ci != null) {
+        if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             parser.nextToken();
@@ -283,10 +292,10 @@ public class JacksonStreamingIO {
                 list.add(value);
             }
             parser.nextToken();
-            return ci != null ? ci.decode(list) : list;
+            return list;
         }
 
-        if (rawClazz.isAssignableFrom(JsonArray.class)) {
+        if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
@@ -297,9 +306,21 @@ public class JacksonStreamingIO {
             return ja;
         }
 
+        if (rawClazz == Set.class) {
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+            parser.nextToken();
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
+                Object value = readNode(parser, valueType);
+                set.add(value);
+            }
+            parser.nextToken();
+            return set;
+        }
+
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.getCreatorInfo().forceNewPojo();
+            JsonArray ja = (JsonArray) pi.creatorInfo.forceNewPojo();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, ja.elementType());
@@ -326,16 +347,17 @@ public class JacksonStreamingIO {
             return array;
         }
 
-        if (Set.class.isAssignableFrom(rawClazz)) {
-            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = new ArrayList<>();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
                 Object value = readNode(parser, valueType);
-                set.add(value);
+                list.add(value);
             }
             parser.nextToken();
-            return set;
+            return vci.decode(list);
         }
 
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
@@ -440,9 +462,9 @@ public class JacksonStreamingIO {
         }
 
         Class<?> rawClazz = node.getClass();
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            Object raw = ci.encode(node);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            Object raw = vci.encode(node);
             writeNode(gen, raw);
             return;
         }
@@ -533,7 +555,7 @@ public class JacksonStreamingIO {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             gen.writeStartObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 gen.writeFieldName(entry.getKey());
                 Object vv = entry.getValue().invokeGetter(node);
                 writeNode(gen, vv);

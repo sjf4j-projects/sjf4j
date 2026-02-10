@@ -33,9 +33,9 @@ public interface Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return new JsonArrayReader<>(rawClazz);
             }
-            NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-            if (ci != null) {
-                return new NodeValueReader<>(ci);
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+            if (vci != null) {
+                return new NodeValueReader<>(vci);
             }
             return null;
         }
@@ -160,7 +160,7 @@ public interface Fastjson2Module {
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (!reader.nextIfArrayStart()) throw new JSONException(reader.info("expect '['"));
 
-            T ja = pi == null ? (T) new JsonArray() : (T) pi.getCreatorInfo().forceNewPojo();
+            T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             while (!reader.nextIfArrayEnd()) {
                 Object value = reader.read(ja.elementType());
                 ja.add(value);

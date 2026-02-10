@@ -55,13 +55,13 @@ public class NodeRegistryTest {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
-        assertEquals(4, pi.getFields().size());
-        assertNotNull(pi.getFields().get("name").getGetter());
-        assertNotNull(pi.getFields().get("name").getSetter());
-        assertEquals(int.class, pi.getFields().get("age").getType());
-        assertEquals(JsonObject.class, pi.getFields().get("info").getType());
+        assertEquals(4, pi.fieldCount);
+        assertNotNull(pi.fields.get("name").getter);
+        assertNotNull(pi.fields.get("name").setter);
+        assertEquals(int.class, pi.fields.get("age").type);
+        assertEquals(JsonObject.class, pi.fields.get("info").type);
         assertEquals(new TypeReference<List<JojoTest.Person>>(){}.getType(),
-                pi.getFields().get("friends").getType());
+                pi.fields.get("friends").type);
     }
 
     @Test
@@ -73,7 +73,7 @@ public class NodeRegistryTest {
     public void testInvoke1() {
         Person p1 = new Person();
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
-        NodeRegistry.FieldInfo fi = pi.getFields().get("name");
+        NodeRegistry.FieldInfo fi = pi.fields.get("name");
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);
@@ -193,17 +193,17 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(BigDay.class);
-        log.info("ci={}", ci);
-        assertNotNull(ci);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(BigDay.class);
+        log.info("vci={}", vci);
+        assertNotNull(vci);
 
         LocalDate now = LocalDate.now();
         BigDay day = new BigDay(now);
-        Object raw = ci.encode(day);
+        Object raw = vci.encode(day);
         log.info("raw={}", raw);
         assertEquals(now.toString(), raw);
 
-        BigDay day2 = (BigDay) ci.decode(raw);
+        BigDay day2 = (BigDay) vci.decode(raw);
         log.info("day2={}", day2);
         assertEquals(day.localDate, day2.localDate);
 
@@ -215,7 +215,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String encode(LocalDate node) {
                 return node.toString();
@@ -236,15 +236,15 @@ public class NodeRegistryTest {
                 return String.class;
             }
         });
-        log.info("ci={}", ci);
-        assertNotNull(ci);
+        log.info("vci={}", vci);
+        assertNotNull(vci);
 
         LocalDate now = LocalDate.now();
-        String raw = (String) ci.encode(now);
+        String raw = (String) vci.encode(now);
         log.info("raw={} type={}", raw, raw.getClass());
         assertEquals(now.toString(), raw);
 
-        LocalDate now2 = (LocalDate) ci.decode(raw);
+        LocalDate now2 = (LocalDate) vci.decode(raw);
         log.info("now2={}", now2);
         assertEquals(now, now2);
     }

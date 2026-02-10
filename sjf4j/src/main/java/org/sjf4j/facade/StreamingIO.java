@@ -74,9 +74,9 @@ public class StreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
         reader.nextNull();
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
-            return ci.decode(null);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
+            return vci.decode(null);
         }
         return null;
     }
@@ -87,10 +87,10 @@ public class StreamingIO {
             return reader.nextBoolean();
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             boolean b = reader.nextBoolean();
-            return ci.decode(b);
+            return vci.decode(b);
         }
         throw new BindingException("Cannot deserialize Boolean value into type " + rawClazz.getName(), ps);
     }
@@ -179,8 +179,8 @@ public class StreamingIO {
             return jo;
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (vci != null) {
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.startObject();
@@ -191,23 +191,19 @@ public class StreamingIO {
                 map.put(key, value);
             }
             reader.endObject();
-            return vci.decode(map);
+            return ti.valueCodecInfo.decode(map);
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
-        if (pi != null && !pi.isJajo()) {
-            NodeRegistry.CreatorInfo ci = pi.getCreatorInfo();
-            Map<String, NodeRegistry.FieldInfo> fields = pi.getFields();
-            Map<String, NodeRegistry.FieldInfo> aliasFields = pi.getAliasFields();
-            boolean useArgsCreator = !ci.hasNoArgsCtor();
-            Object pojo = useArgsCreator ? null : ci.newPojoNoArgs();
-            Object[] args = useArgsCreator ? new Object[ci.getArgNames().length] : null;
-            int remainingArgs = useArgsCreator ? args.length : 0;
+        NodeRegistry.PojoInfo pi = ti.pojoInfo;
+        if (pi != null && !pi.isJajo) {
+            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
+            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
+            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
             int pendingSize = 0;
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
-            boolean isJojo = JsonObject.class.isAssignableFrom(pi.getType());
 
             reader.startObject();
             while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
@@ -216,15 +212,15 @@ public class StreamingIO {
                 int argIdx = -1;
                 if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.getAliasMap() != null) {
-                        String origin = ci.getAliasMap().get(key); // alias -> origin
+                    if (argIdx < 0 && ci.aliasMap != null) {
+                        String origin = ci.aliasMap.get(key); // alias -> origin
                         if (origin != null) {
                             argIdx = ci.getArgIndex(origin);
                         }
                     }
                 }
                 if (argIdx >= 0) {
-                    Type argType = ci.getArgTypes()[argIdx];
+                    Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     args[argIdx] = _readNode(reader, argType, cps);
@@ -239,15 +235,15 @@ public class StreamingIO {
                     continue;
                 }
 
-                NodeRegistry.FieldInfo fi = aliasFields != null ? aliasFields.get(key) : fields.get(key);
+                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, fi.getType(), cps);
+                    Object vv = _readNode(reader, fi.type, cps);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
-                            int cap = pi.getFieldCount();
+                            int cap = pi.fieldCount;
                             pendingFields = new NodeRegistry.FieldInfo[cap];
                             pendingValues = new Object[cap];
                         }
@@ -258,7 +254,7 @@ public class StreamingIO {
                     continue;
                 }
 
-                if (isJojo) {
+                if (pi.isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     Object vv = _readNode(reader, Object.class, cps);
@@ -275,7 +271,7 @@ public class StreamingIO {
                     pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
-            if (isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
+            if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
 
@@ -346,7 +342,7 @@ public class StreamingIO {
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).getCreatorInfo().forceNewPojo();
+            JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             int i = 0;
             reader.startArray();
             while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
@@ -358,8 +354,8 @@ public class StreamingIO {
             return ja;
         }
 
-        NodeRegistry.ValueCodecInfo ci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (ci != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             List<Object> list = new ArrayList<>();
             int i = 0;
@@ -370,7 +366,7 @@ public class StreamingIO {
                 list.add(value);
             }
             reader.endArray();
-            return ci.decode(list);
+            return vci.decode(list);
         }
 
         throw new BindingException("Cannot deserialize Array value into type " + rawClazz.getName(), ps);
@@ -393,12 +389,6 @@ public class StreamingIO {
             }
 
             Class<?> rawClazz = node.getClass();
-            NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-            if (vci != null) {
-                Object raw = vci.encode(node);
-                _writeNode(writer, raw, ps);
-                return;
-            }
 
             if (node instanceof CharSequence || node instanceof Character) {
                 writer.writeString(node.toString());
@@ -501,11 +491,18 @@ public class StreamingIO {
                 return;
             }
 
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            if (ti.valueCodecInfo != null) {
+                Object raw = ti.valueCodecInfo.encode(node);
+                _writeNode(writer, raw, ps);
+                return;
+            }
+
+            NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 writer.startObject();
                 boolean veryStart = true;
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.getFields().entrySet()) {
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     if (veryStart) veryStart = false;
                     else writer.writeObjectComma();
                     writer.writeName(entry.getKey());
