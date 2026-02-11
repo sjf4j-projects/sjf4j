@@ -30,6 +30,7 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -77,6 +78,33 @@ public class ReadBenchmark {
             "  \"age\": 18\n" +
             "}\n";
 
+    // Same structure as JSON_DATA2 but without unknown fields for User2 (no dynamic map).
+    private static final String JSON_DATA2_NO_DYN = "{\n" +
+            "  \"name\": \"Alice\",\n" +
+            "  \"friends\": [\n" +
+            "    {\"name\": \"Bill\"},\n" +
+            "    {\n" +
+            "      \"name\": \"Cindy\",\n" +
+            "      \"friends\": [\n" +
+            "        {\"name\": \"David\"},\n" +
+            "        {}\n" +
+            "      ]\n" +
+            "    }\n" +
+            "  ]\n" +
+            "}\n";
+
+    // Pure list of User2 to focus on array/collection parsing overhead.
+    private static final String JSON_DATA2_LIST = "[\n" +
+            "  {\"name\": \"Alice\", \"friends\": [\n" +
+            "    {\"name\": \"Bill\", \"friends\": []},\n" +
+            "    {\"name\": \"Cindy\", \"friends\": []}\n" +
+            "  ]},\n" +
+            "  {\"name\": \"David\", \"friends\": []}\n" +
+            "]\n";
+
+    private static final java.lang.reflect.Type USER2_LIST_TYPE =
+            new TypeReference<List<User2>>() {}.getType();
+
     private static final ObjectMapper JACKSON = new ObjectMapper();
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
@@ -88,6 +116,7 @@ public class ReadBenchmark {
 
     static {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        Sjf4jConfig.useBindingPath(false);
     }
 
     @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
@@ -138,6 +167,16 @@ public class ReadBenchmark {
         return JACKSON_FACADE.readNode(JSON_DATA2, User2.class);
     }
 
+    @Benchmark
+    public Object json_jackson_facade_jojo_no_dyn() throws IOException {
+        return JACKSON_FACADE.readNode(JSON_DATA2_NO_DYN, User2.class);
+    }
+
+    @Benchmark
+    public Object json_jackson_facade_jojo_list() throws IOException {
+        return JACKSON_FACADE.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
+    }
+
 
     // ----- Gson baselines -----
     @Benchmark
@@ -158,6 +197,16 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_gson_facade_jojo() {
         return GSON_FACADE.readNode(JSON_DATA2, User2.class);
+    }
+
+    @Benchmark
+    public Object json_gson_facade_jojo_no_dyn() {
+        return GSON_FACADE.readNode(JSON_DATA2_NO_DYN, User2.class);
+    }
+
+    @Benchmark
+    public Object json_gson_facade_jojo_list() {
+        return GSON_FACADE.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
     }
 
     // ----- Fastjson2 baselines -----
@@ -184,6 +233,16 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_fastjson2_facade_jojo() throws IOException {
         return FASTJSON2_FACADE.readNode(JSON_DATA2, User2.class);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_facade_jojo_no_dyn() throws IOException {
+        return FASTJSON2_FACADE.readNode(JSON_DATA2_NO_DYN, User2.class);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_facade_jojo_list() throws IOException {
+        return FASTJSON2_FACADE.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
     }
 
     // --------- 模拟的 POJO ------------

@@ -30,7 +30,7 @@ public class StreamingIO {
     /// Read
 
     public static Object readNode(StreamingReader reader, Type type) {
-        return _readNode(reader, type,
+        return _readNode(reader, type, Types.rawBox(type),
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
     }
 
@@ -43,22 +43,22 @@ public class StreamingIO {
      * @return the parsed and converted JSON node
      * @throws JsonException if an unexpected token is encountered
      */
-    private static Object _readNode(StreamingReader reader, Type type, PathSegment ps) {
+    private static Object _readNode(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps) {
         try {
             StreamingReader.Token token = reader.peekToken();
             switch (token) {
                 case START_OBJECT:
-                    return _readObject(reader, type, ps);
+                    return _readObject(reader, type, rawClazz, ps);
                 case START_ARRAY:
-                    return _readArray(reader, type, ps);
+                    return _readArray(reader, type, rawClazz, ps);
                 case STRING:
-                    return _readString(reader, type, ps);
+                    return _readString(reader, rawClazz, ps);
                 case NUMBER:
-                    return _readNumber(reader, type, ps);
+                    return _readNumber(reader, rawClazz, ps);
                 case BOOLEAN:
-                    return _readBoolean(reader, type, ps);
+                    return _readBoolean(reader, rawClazz, ps);
                 case NULL:
-                    return _readNull(reader, type, ps);
+                    return _readNull(reader, rawClazz, ps);
                 default:
                     throw new JsonException("Unexpected token '" + token + "'");
             }
@@ -69,9 +69,8 @@ public class StreamingIO {
         }
     }
 
-    private static Object _readNull(StreamingReader reader, Type type, PathSegment ps)
+    private static Object _readNull(StreamingReader reader, Class<?> rawClazz, PathSegment ps)
             throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
         reader.nextNull();
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -81,8 +80,7 @@ public class StreamingIO {
         return null;
     }
 
-    private static Object _readBoolean(StreamingReader reader, Type type, PathSegment ps) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
+    private static Object _readBoolean(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
         if (rawClazz == Object.class || rawClazz == Boolean.class) {
             return reader.nextBoolean();
         }
@@ -95,8 +93,7 @@ public class StreamingIO {
         throw new BindingException("Cannot deserialize Boolean value into type " + rawClazz.getName(), ps);
     }
 
-    private static Object _readNumber(StreamingReader reader, Type type, PathSegment ps) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
+    private static Object _readNumber(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
         if (rawClazz == Object.class || rawClazz == Number.class) {
             return reader.nextNumber();
         }
@@ -118,8 +115,7 @@ public class StreamingIO {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _readString(StreamingReader reader, Type type, PathSegment ps) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
+    private static Object _readString(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
         if (rawClazz == Object.class || rawClazz == String.class) {
             return reader.nextString();
         }
@@ -149,21 +145,12 @@ public class StreamingIO {
      * @return the parsed and converted JSON object
      * @throws IOException if an I/O error occurs during reading
      */
-    private static Object _readObject(StreamingReader reader, Type type, PathSegment ps) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-
+    private static Object _readObject(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            reader.startObject();
-            while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
-                String key = reader.nextName();
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, vt, cps);
-                map.put(key, value);
-            }
-            reader.endObject();
-            return map;
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Class<?> valueClazz = Types.rawBox(valueType);
+            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -172,7 +159,7 @@ public class StreamingIO {
             while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
                 String key = reader.nextName();
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, Object.class, cps);
+                Object value = _readNode(reader, Object.class, Object.class, cps);
                 jo.put(key, value);
             }
             reader.endObject();
@@ -182,15 +169,8 @@ public class StreamingIO {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            reader.startObject();
-            while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
-                String key = reader.nextName();
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, valueType, cps);
-                map.put(key, value);
-            }
-            reader.endObject();
+            Class<?> valueClazz = Types.rawBox(valueType);
+            Map<String, Object> map = _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
             return ti.valueCodecInfo.decode(map);
         }
 
@@ -223,7 +203,7 @@ public class StreamingIO {
                     Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    args[argIdx] = _readNode(reader, argType, cps);
+                    args[argIdx] = _readNode(reader, argType, Types.rawBox(argType), cps);
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
@@ -238,7 +218,7 @@ public class StreamingIO {
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, fi.type, cps);
+                    Object vv = _readField(reader, fi, cps);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
@@ -257,7 +237,7 @@ public class StreamingIO {
                 if (pi.isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, Object.class, cps);
+                    Object vv = _readNode(reader, Object.class, Object.class, cps);
                     dynamicMap.put(key, vv);
                 } else {
                     reader.nextSkip();
@@ -278,21 +258,12 @@ public class StreamingIO {
         throw new BindingException("Cannot deserialize Object value into type " + rawClazz.getName(), ps);
     }
 
-    private static Object _readArray(StreamingReader reader, Type type, PathSegment ps) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-
+    private static Object _readArray(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            int i = 0;
-            reader.startArray();
-            while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, valueType, cps);
-                list.add(value);
-            }
-            reader.endArray();
-            return list;
+            Class<?> valueClazz = Types.rawBox(valueType);
+            return _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -301,7 +272,7 @@ public class StreamingIO {
             reader.startArray();
             while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, Object.class, cps);
+                Object value = _readNode(reader, Object.class, Object.class, cps);
                 ja.add(value);
             }
             reader.endArray();
@@ -310,31 +281,24 @@ public class StreamingIO {
 
         if (rawClazz == Set.class) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
-            int i = 0;
-            reader.startArray();
-            while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, valueType, cps);
-                set.add(value);
-            }
-            reader.endArray();
-            return set;
+            Class<?> valueClazz = Types.rawBox(valueType);
+            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz, ps);
         }
 
         if (rawClazz.isArray()) {
-            Class<?> vt = rawClazz.getComponentType();
+            Class<?> compType = rawClazz.getComponentType();
+            Class<?> valueClazz = Types.box(compType);
             List<Object> list = new ArrayList<>();
             int i = 0;
             reader.startArray();
             while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, vt, cps);
+                Object value = _readNode(reader, compType, valueClazz, cps);
                 list.add(value);
             }
             reader.endArray();
 
-            Object array = Array.newInstance(vt, list.size());
+            Object array = Array.newInstance(compType, list.size());
             for (int j = 0, len = list.size(); j < len; j++) {
                 Array.set(array, j, list.get(j));
             }
@@ -343,11 +307,13 @@ public class StreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
+            Class<?> elemType = ja.elementType();
+            Class<?> elemRaw = Types.box(elemType);
             int i = 0;
             reader.startArray();
             while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, ja.elementType(), cps);
+                Object value = _readNode(reader, elemType, elemRaw, cps);
                 ja.add(value);
             }
             reader.endArray();
@@ -357,19 +323,71 @@ public class StreamingIO {
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            int i = 0;
-            reader.startArray();
-            while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, valueType, cps);
-                list.add(value);
-            }
-            reader.endArray();
+            Class<?> valueClazz = Types.rawBox(valueType);
+            List<Object> list = _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
             return vci.decode(list);
         }
 
         throw new BindingException("Cannot deserialize Array value into type " + rawClazz.getName(), ps);
+    }
+
+    private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
+            throws IOException {
+        switch (fi.containerKind) {
+            case MAP:
+                return _readMapWithValueType(reader, fi.rawType, fi.argType, fi.argRawType, ps);
+            case LIST:
+                return _readListWithElementType(reader, fi.rawType, fi.argType, fi.argRawType, ps);
+            case SET:
+                return _readSetWithElementType(reader, fi.rawType, fi.argType, fi.argRawType, ps);
+            default:
+                return _readNode(reader, fi.type, fi.rawType, ps);
+        }
+    }
+
+    private static Map<String, Object> _readMapWithValueType(StreamingReader reader, Class<?> rawClazz,
+                                                             Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
+        Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        reader.startObject();
+        while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
+            String key = reader.nextName();
+            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+            Object value = _readNode(reader, valueType, valueClazz, cps);
+            map.put(key, value);
+        }
+        reader.endObject();
+        return map;
+    }
+
+    private static List<Object> _readListWithElementType(StreamingReader reader, Class<?> rawClazz,
+                                                         Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
+        List<Object> list = new ArrayList<>();
+        int i = 0;
+        reader.startArray();
+        while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(reader, valueType, valueClazz, cps);
+            list.add(value);
+        }
+        reader.endArray();
+        return list;
+    }
+
+    private static Set<Object> _readSetWithElementType(StreamingReader reader, Class<?> rawClazz,
+                                                       Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
+        Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        int i = 0;
+        reader.startArray();
+        while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(reader, valueType, valueClazz, cps);
+            set.add(value);
+        }
+        reader.endArray();
+        return set;
     }
 
 
@@ -505,9 +523,10 @@ public class StreamingIO {
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     if (veryStart) veryStart = false;
                     else writer.writeObjectComma();
-                    writer.writeName(entry.getKey());
+                    String key = entry.getKey();
+                    writer.writeName(key);
                     Object vv = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     _writeNode(writer, vv, cps);
                 }
                 writer.endObject();

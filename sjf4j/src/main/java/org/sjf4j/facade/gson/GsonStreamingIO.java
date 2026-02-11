@@ -138,12 +138,12 @@ public class GsonStreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
 
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.beginObject();
             while (reader.peek() != JsonToken.END_OBJECT) {
                 String key = reader.nextName();
-                Object value = readNode(reader, valueType);
+                Object value = readNode(reader, vt);
                 map.put(key, value);
             }
             reader.endObject();
@@ -165,12 +165,12 @@ public class GsonStreamingIO {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
         if (rawClazz.isAssignableFrom(Map.class) || vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.beginObject();
             while (reader.peek() != JsonToken.END_OBJECT) {
                 String key = reader.nextName();
-                Object value = readNode(reader, valueType);
+                Object value = readNode(reader, vt);
                 map.put(key, value);
             }
             reader.endObject();
@@ -219,7 +219,7 @@ public class GsonStreamingIO {
 
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readNode(reader, fi.type);
+                    Object vv = readField(reader, fi);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
@@ -264,15 +264,8 @@ public class GsonStreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
 
         if (rawClazz == Object.class || rawClazz == List.class) {
-            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            reader.beginArray();
-            while (reader.peek() != JsonToken.END_ARRAY) {
-                Object value = readNode(reader, valueType);
-                list.add(value);
-            }
-            reader.endArray();
-            return list;
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            return readListWithElementType(reader, vt);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -287,15 +280,8 @@ public class GsonStreamingIO {
         }
 
         if (rawClazz == Set.class) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.creatorInfo.forceNewPojo();
-            reader.beginArray();
-            while (reader.peek() != JsonToken.END_ARRAY) {
-                Object value = readNode(reader, ja.elementType());
-                ja.add(value);
-            }
-            reader.endArray();
-            return ja;
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            return readSetWithElementType(reader, vt);
         }
 
         if (rawClazz.isArray()) {
@@ -317,10 +303,10 @@ public class GsonStreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
-            int i = 0;
+            Class<?> elemType = ja.elementType();
             reader.beginArray();
             while (reader.peek() != JsonToken.END_ARRAY) {
-                Object value = readNode(reader, Object.class);
+                Object value = readNode(reader, elemType);
                 ja.add(value);
             }
             reader.endArray();
@@ -329,18 +315,62 @@ public class GsonStreamingIO {
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            reader.beginArray();
-            while (reader.peek() != JsonToken.END_ARRAY) {
-                Object value = readNode(reader, valueType);
-                list.add(value);
-            }
-            reader.endArray();
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = readListWithElementType(reader, vt);
             return vci.decode(list);
         }
 
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
+    }
+
+    private static Object readField(JsonReader reader, NodeRegistry.FieldInfo fi) throws IOException {
+        if (reader.peek() == JsonToken.NULL) {
+            return readNull(reader, fi.rawType);
+        }
+        switch (fi.containerKind) {
+            case MAP:
+                return readMapWithValueType(reader, fi.argType);
+            case LIST:
+                return readListWithElementType(reader, fi.argType);
+            case SET:
+                return readSetWithElementType(reader, fi.argType);
+            default:
+                return readNode(reader, fi.type);
+        }
+    }
+
+    private static Map<String, Object> readMapWithValueType(JsonReader reader, Type vt) throws IOException {
+        Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        reader.beginObject();
+        while (reader.peek() != JsonToken.END_OBJECT) {
+            String key = reader.nextName();
+            Object value = readNode(reader, vt);
+            map.put(key, value);
+        }
+        reader.endObject();
+        return map;
+    }
+
+    private static List<Object> readListWithElementType(JsonReader reader, Type vt) throws IOException {
+        List<Object> list = new ArrayList<>();
+        reader.beginArray();
+        while (reader.peek() != JsonToken.END_ARRAY) {
+            Object value = readNode(reader, vt);
+            list.add(value);
+        }
+        reader.endArray();
+        return list;
+    }
+
+    private static Set<Object> readSetWithElementType(JsonReader reader, Type vt) throws IOException {
+        Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        reader.beginArray();
+        while (reader.peek() != JsonToken.END_ARRAY) {
+            Object value = readNode(reader, vt);
+            set.add(value);
+        }
+        reader.endArray();
+        return set;
     }
 
 

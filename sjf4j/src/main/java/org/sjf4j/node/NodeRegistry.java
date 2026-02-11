@@ -12,6 +12,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -175,7 +176,8 @@ public final class NodeRegistry {
         public final boolean isJojo;
         public final boolean isJajo;
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
-                        Map<String, FieldInfo> fields, Map<String, FieldInfo> aliasFields) {
+                        Map<String, FieldInfo> fields,
+                        Map<String, FieldInfo> aliasFields) {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
             this.fields = fields;
@@ -295,8 +297,19 @@ public final class NodeRegistry {
 
     // FieldInfo
     public static class FieldInfo {
+        public enum ContainerKind {
+            NONE,
+            LIST,
+            SET,
+            MAP
+        }
+
         public final String name;
         public final Type type;
+        public final Class<?> rawType;
+        public final ContainerKind containerKind;
+        public final Type argType;
+        public final Class<?> argRawType;
         public final MethodHandle getter;
         public final Function<Object, Object> lambdaGetter;
         public final MethodHandle setter;
@@ -306,6 +319,26 @@ public final class NodeRegistry {
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter) {
             this.name = name;
             this.type = type;
+            this.rawType = Types.rawBox(type);
+            ContainerKind kind = ContainerKind.NONE;
+            Type argType = null;
+            Class<?> argRawType = null;
+            if (this.rawType == List.class) {
+                kind = ContainerKind.LIST;
+                argType = Types.resolveTypeArgument(type, List.class, 0);
+                argRawType = Types.rawBox(argType);
+            } else if (this.rawType == Set.class) {
+                kind = ContainerKind.SET;
+                argType = Types.resolveTypeArgument(type, Set.class, 0);
+                argRawType = Types.rawBox(argType);
+            } else if (this.rawType == Map.class) {
+                kind = ContainerKind.MAP;
+                argType = Types.resolveTypeArgument(type, Map.class, 1);
+                argRawType = Types.rawBox(argType);
+            }
+            this.containerKind = kind;
+            this.argType = argType;
+            this.argRawType = argRawType;
             this.getter = getter;
             this.lambdaGetter = lambdaGetter;
             this.setter = setter;

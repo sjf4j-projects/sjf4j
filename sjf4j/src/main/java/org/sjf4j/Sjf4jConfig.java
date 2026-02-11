@@ -92,7 +92,7 @@ public final class Sjf4jConfig {
         this.bindingPath = builder.bindingPath;
     }
 
-    private static volatile Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
+    private static Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
 
     public static void global(Sjf4jConfig sjf4jConfig) {
         if (sjf4jConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
@@ -131,6 +131,11 @@ public final class Sjf4jConfig {
     public static void useSimpleJsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
+    }
+
+    public static void useBindingPath(boolean bindingPath) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .bindingPath(bindingPath).build());
     }
 
     public static void useInstantEpochMillisAsGlobal() {

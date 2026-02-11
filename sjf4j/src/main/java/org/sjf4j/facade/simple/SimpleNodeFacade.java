@@ -228,7 +228,6 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(nodeClazz);
             if (pi != null) {
                 NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-                Map<String, NodeRegistry.FieldInfo> fields = pi.fields;
                 Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
                 Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
                 int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
@@ -236,7 +235,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 NodeRegistry.FieldInfo[] pendingFields = null;
                 Object[] pendingValues = null;
 
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fields.entrySet()) {
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     String key = entry.getKey();
                     NodeRegistry.FieldInfo fi = entry.getValue();
 
@@ -258,8 +257,8 @@ public class SimpleNodeFacade implements NodeFacade {
                         remainingArgs--;
                         if (remainingArgs == 0) {
                             pojo = ci.newPojoWithArgs(args);
-                            for (int i = 0; i < pendingSize; i++) {
-                                pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                            for (int j = 0; j < pendingSize; j++) {
+                                pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
                             }
                             pendingSize = 0;
                         }
@@ -272,7 +271,7 @@ public class SimpleNodeFacade implements NodeFacade {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
                         if (pendingFields == null) {
-                            int cap = fields.size();
+                            int cap = pi.fieldCount;
                             pendingFields = new NodeRegistry.FieldInfo[cap];
                             pendingValues = new Object[cap];
                         }
@@ -370,8 +369,8 @@ public class SimpleNodeFacade implements NodeFacade {
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        for (int j = 0; j < pendingSize; j++) {
+                            pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
                         }
                         pendingSize = 0;
                     }
@@ -405,12 +404,12 @@ public class SimpleNodeFacade implements NodeFacade {
                 }
             }
 
-            if (pojo == null) {
-                pojo = ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                if (pojo == null) {
+                    pojo = ci.newPojoWithArgs(args);
+                    for (int j = 0; j < pendingSize; j++) {
+                        pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
+                    }
                 }
-            }
             if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
             return pojo;
         }
@@ -472,8 +471,8 @@ public class SimpleNodeFacade implements NodeFacade {
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        for (int j = 0; j < pendingSize; j++) {
+                            pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
                         }
                         pendingSize = 0;
                     }
@@ -749,28 +748,27 @@ public class SimpleNodeFacade implements NodeFacade {
     // POJO -> Map/JsonObject/JOJO/POJO
     private Object _readFromPojo(Object node, NodeRegistry.PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, PathSegment ps) {
-        Map<String, NodeRegistry.FieldInfo> oldFields = oldPi.fields;
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldFields.size());
+            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldPi.fieldCount);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                NodeRegistry.FieldInfo fi = entry.getValue();
-                Object v = fi.invokeGetter(node);
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
+                String key = entry.getKey();
+                Object v = entry.getValue().invokeGetter(node);
+                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(v, vt, cps);
-                map.put(entry.getKey(), vv);
+                map.put(key, vv);
             }
             return map;
         }
 
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
-                NodeRegistry.FieldInfo fi = entry.getValue();
-                Object v = fi.invokeGetter(node);
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
+                String key = entry.getKey();
+                Object v = entry.getValue().invokeGetter(node);
+                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(v, Object.class, cps);
-                jo.put(entry.getKey(), vv);
+                jo.put(key, vv);
             }
             return jo;
         }
@@ -786,8 +784,9 @@ public class SimpleNodeFacade implements NodeFacade {
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
 
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldFields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
                 String key = entry.getKey();
+                NodeRegistry.FieldInfo oldFi = entry.getValue();
 
                 int argIdx = -1;
                 if (pojo == null) {
@@ -802,14 +801,14 @@ public class SimpleNodeFacade implements NodeFacade {
                 if (argIdx >= 0) {
                     assert args != null;
                     Type argType = ci.argTypes[argIdx];
-                    Object v = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                    Object v = oldFi.invokeGetter(node);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     args[argIdx] = _readNode(v, argType, cps);
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                        for (int j = 0; j < pendingSize; j++) {
+                            pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
                         }
                         pendingSize = 0;
                     }
@@ -818,8 +817,8 @@ public class SimpleNodeFacade implements NodeFacade {
 
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object v = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                    Object v = oldFi.invokeGetter(node);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     Object vv = _readNode(v, fi.type, cps);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
@@ -838,8 +837,8 @@ public class SimpleNodeFacade implements NodeFacade {
 
                 if (pi.isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
-                    Object v = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                    Object v = oldFi.invokeGetter(node);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     Object vv = _readNode(v, Object.class, cps);
                     dynamicMap.put(key, vv);
                 }
@@ -847,8 +846,8 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (pojo == null) {
                 pojo = ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                for (int j = 0; j < pendingSize; j++) {
+                    pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
                 }
             }
             if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
@@ -963,13 +962,13 @@ public class SimpleNodeFacade implements NodeFacade {
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                Map<String, NodeRegistry.FieldInfo> fields = pi.fields;
-                Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(fields.size());
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fields.entrySet()) {
+                Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(pi.fieldCount);
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                    String key = entry.getKey();
                     Object v = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                     Object vv = _writeNode(v, cps);
-                    newMap.put(entry.getKey(), vv);
+                    newMap.put(key, vv);
                 }
                 return newMap;
             }

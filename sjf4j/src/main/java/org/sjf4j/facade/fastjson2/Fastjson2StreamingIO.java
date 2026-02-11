@@ -136,12 +136,12 @@ public class Fastjson2StreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
 
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-                Object value = readNode(reader, valueType);
+                Object value = readNode(reader, vt);
                 map.put(key, value);
             }
             return map;
@@ -161,12 +161,12 @@ public class Fastjson2StreamingIO {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
         if (vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             reader.nextIfObjectStart();
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-                Object value = readNode(reader, valueType);
+                Object value = readNode(reader, vt);
                 map.put(key, value);
             }
             return vci.decode(map);
@@ -215,7 +215,7 @@ public class Fastjson2StreamingIO {
 
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readNode(reader, fi.type);
+                    Object vv = readField(reader, fi);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
@@ -259,14 +259,8 @@ public class Fastjson2StreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
 
         if (rawClazz == Object.class || rawClazz == List.class) {
-            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            reader.nextIfArrayStart();
-            while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, valueType);
-                list.add(value);
-            }
-            return list;
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            return readListWithElementType(reader, vt);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -280,14 +274,8 @@ public class Fastjson2StreamingIO {
         }
 
         if (rawClazz == Set.class) {
-            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
-            reader.nextIfArrayStart();
-            while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, valueType);
-                set.add(value);
-            }
-            return set;
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            return readSetWithElementType(reader, vt);
         }
 
         if (rawClazz.isArray()) {
@@ -308,9 +296,10 @@ public class Fastjson2StreamingIO {
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
+            Class<?> elemType = ja.elementType();
             reader.nextIfArrayStart();
             while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, ja.elementType());
+                Object value = readNode(reader, elemType);
                 ja.add(value);
             }
             return ja;
@@ -318,17 +307,60 @@ public class Fastjson2StreamingIO {
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            reader.nextIfArrayStart();
-            while (!reader.nextIfArrayEnd()) {
-                Object value = readNode(reader, valueType);
-                list.add(value);
-            }
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = readListWithElementType(reader, vt);
             return vci.decode(list);
         }
 
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
+    }
+
+    private static Object readField(JSONReader reader, NodeRegistry.FieldInfo fi) throws IOException {
+        StreamingReader.Token token = peekToken(reader);
+        if (token == StreamingReader.Token.NULL) {
+            return readNull(reader, fi.rawType);
+        }
+        switch (fi.containerKind) {
+            case MAP:
+                return readMapWithValueType(reader, fi.argType);
+            case LIST:
+                return readListWithElementType(reader, fi.argType);
+            case SET:
+                return readSetWithElementType(reader, fi.argType);
+            default:
+                return readNode(reader, fi.type);
+        }
+    }
+
+    private static Map<String, Object> readMapWithValueType(JSONReader reader, Type vt) throws IOException {
+        Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        reader.nextIfObjectStart();
+        while (!reader.nextIfObjectEnd()) {
+            String key = reader.readFieldName();
+            Object value = readNode(reader, vt);
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    private static List<Object> readListWithElementType(JSONReader reader, Type vt) throws IOException {
+        List<Object> list = new ArrayList<>();
+        reader.nextIfArrayStart();
+        while (!reader.nextIfArrayEnd()) {
+            Object value = readNode(reader, vt);
+            list.add(value);
+        }
+        return list;
+    }
+
+    private static Set<Object> readSetWithElementType(JSONReader reader, Type vt) throws IOException {
+        Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        reader.nextIfArrayStart();
+        while (!reader.nextIfArrayEnd()) {
+            Object value = readNode(reader, vt);
+            set.add(value);
+        }
+        return set;
     }
 
     /// Reader

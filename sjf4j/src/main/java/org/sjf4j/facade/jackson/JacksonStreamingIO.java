@@ -159,12 +159,12 @@ public class JacksonStreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
 
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();parser.nextToken();
-                Object value = readNode(parser, valueType);
+                Object value = readNode(parser, vt);
                 map.put(key, value);
             }
             parser.nextToken();
@@ -186,12 +186,12 @@ public class JacksonStreamingIO {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
         if (vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();parser.nextToken();
-                Object value = readNode(parser, valueType);
+                Object value = readNode(parser, vt);
                 map.put(key, value);
             }
             parser.nextToken();
@@ -240,7 +240,7 @@ public class JacksonStreamingIO {
 
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readNode(parser, fi.type);
+                    Object vv = readField(parser, fi);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
@@ -284,15 +284,8 @@ public class JacksonStreamingIO {
         Class<?> rawClazz = Types.rawBox(type);
 
         if (rawClazz == Object.class || rawClazz == List.class) {
-            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, valueType);
-                list.add(value);
-            }
-            parser.nextToken();
-            return list;
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            return readListWithElementType(parser, vt);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -307,23 +300,17 @@ public class JacksonStreamingIO {
         }
 
         if (rawClazz == Set.class) {
-            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, valueType);
-                set.add(value);
-            }
-            parser.nextToken();
-            return set;
+            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
+            return readSetWithElementType(parser, vt);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray ja = (JsonArray) pi.creatorInfo.forceNewPojo();
+            Class<?> elemType = ja.elementType();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, ja.elementType());
+                Object value = readNode(parser, elemType);
                 ja.add(value);
             }
             parser.nextToken();
@@ -349,18 +336,63 @@ public class JacksonStreamingIO {
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = new ArrayList<>();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, valueType);
-                list.add(value);
-            }
-            parser.nextToken();
+            Type vt = Types.resolveTypeArgument(type, List.class, 0);
+            List<Object> list = readListWithElementType(parser, vt);
             return vci.decode(list);
         }
 
         throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
+    }
+
+    private static Object readField(JsonParser parser, NodeRegistry.FieldInfo fi) throws IOException {
+        if (parser.currentToken() == JsonToken.VALUE_NULL) {
+            return readNull(parser, fi.rawType);
+        }
+        switch (fi.containerKind) {
+            case MAP:
+                return readMapWithValueType(parser, fi.argType);
+            case LIST:
+                return readListWithElementType(parser, fi.argType);
+            case SET:
+                return readSetWithElementType(parser, fi.argType);
+            default:
+                return readNode(parser, fi.type);
+        }
+    }
+
+    private static Map<String, Object> readMapWithValueType(JsonParser parser, Type vt) throws IOException {
+        Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_OBJECT) {
+            String key = parser.currentName();
+            parser.nextToken();
+            Object value = readNode(parser, vt);
+            map.put(key, value);
+        }
+        parser.nextToken();
+        return map;
+    }
+
+    private static List<Object> readListWithElementType(JsonParser parser, Type vt) throws IOException {
+        List<Object> list = new ArrayList<>();
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_ARRAY) {
+            Object value = readNode(parser, vt);
+            list.add(value);
+        }
+        parser.nextToken();
+        return list;
+    }
+
+    private static Set<Object> readSetWithElementType(JsonParser parser, Type vt) throws IOException {
+        Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_ARRAY) {
+            Object value = readNode(parser, vt);
+            set.add(value);
+        }
+        parser.nextToken();
+        return set;
     }
 
 

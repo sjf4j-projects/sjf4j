@@ -314,9 +314,9 @@ public class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.fields.entrySet()) {
-                Object v = fi.getValue().invokeGetter(node);
-                map.put(fi.getKey(), v);
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                Object v = entry.getValue().invokeGetter(node);
+                map.put(entry.getKey(), v);
             }
             return map;
         }
@@ -495,7 +495,7 @@ public class Nodes {
 
             NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
             if (fi != null) {
-                Object vv = to(entry.getValue(), Types.rawBox(fi.type));
+                Object vv = to(entry.getValue(), fi.rawType);
                 if (pojo != null) {
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else {
@@ -790,8 +790,8 @@ public class Nodes {
                         remainingArgs--;
                         if (remainingArgs == 0) {
                             pojo = ci.newPojoWithArgs(args);
-                            for (int i = 0; i < pendingSize; i++) {
-                                pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
+                            for (int j = 0; j < pendingSize; j++) {
+                                pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
                             }
                             pendingSize = 0;
                         }
@@ -933,10 +933,10 @@ public class Nodes {
                 NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());
                 sb.append("@").append(node.getClass().getSimpleName()).append("{");
                 int idx = 0;
-                for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.fields.entrySet()) {
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     if (idx++ > 0) sb.append(", ");
-                    sb.append("*").append(fi.getKey()).append("=");
-                    Object v = fi.getValue().invokeGetter(node);
+                    sb.append("*").append(entry.getKey()).append("=");
+                    Object v = entry.getValue().invokeGetter(node);
                     _inspect(v, sb);
                 }
                 sb.append("}");
@@ -1237,9 +1237,9 @@ public class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(container.getClass());
         if (pi != null) {
             Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>(pi.fieldCount);
-            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.fields.entrySet()) {
-                Object node = fi.getValue().invokeGetter(container);
-                entrySet.add(new AbstractMap.SimpleEntry<>(fi.getKey(), node));
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                Object node = entry.getValue().invokeGetter(container);
+                entrySet.add(new AbstractMap.SimpleEntry<>(entry.getKey(), node));
             }
             return entrySet;
         }

@@ -90,9 +90,9 @@ public class JsonObject extends JsonContainer {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null && !pi.isJajo) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> fi : pi.fields.entrySet()) {
-                Object v = fi.getValue().invokeGetter(node);
-                put(fi.getKey(), v);
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                Object v = entry.getValue().invokeGetter(node);
+                put(entry.getKey(), v);
             }
             return;
         }

@@ -85,61 +85,56 @@ public class ReflectionBenchmark {
     private static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
     private static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
 
-    // ----- Constructor pathways -----
-    @Benchmark
-    public Object reflection_ctor_native() {
-        return new Person();
-    }
-
+//    // ----- Constructor pathways -----
 //    @Benchmark
-//    public Object reflection_ctor_methodHandler() {
-//        return pi.newInstance2();
+//    public Object reflection_ctor_native() {
+//        return new Person();
 //    }
-
-    @Benchmark
-    public Object reflection_ctor_lambda() {
-        return pi.creatorInfo.newPojoNoArgs();
-    }
-
-    // ----- Getter pathways -----
-    @Benchmark
-    public Object reflection_getter_native() {
-        Person p = new Person();
-        return p.getName();
-    }
-
-    @Benchmark
-    public Object reflection_getter_methodHandler() {
-        Person p = new Person();
-        return fi.invokeGetter2(p);
-    }
-
-    @Benchmark
-    public Object reflection_getter_lambda() {
-        Person p = new Person();
-        return fi.invokeGetter(p);
-    }
-
-    // ----- Setter pathways -----
-    @Benchmark
-    public Object reflection_setter_native() {
-        Person p = new Person();
-        p.setName("hahaha");
-        return p;
-    }
-
-    @Benchmark
-    public Object reflection_setter_methodHandler() {
-        Person p = new Person();
-        fi.invokeSetter2(p, "hahaha");
-        return p;
-    }
-
-    @Benchmark
-    public Object reflection_setter_lambda() {
-        Person p = new Person();
-        fi.invokeSetter(p, "hahaha");
-        return p;
-    }
+//
+//    @Benchmark
+//    public Object reflection_ctor_lambda() {
+//        return pi.creatorInfo.newPojoNoArgs();
+//    }
+//
+//    // ----- Getter pathways -----
+//    @Benchmark
+//    public Object reflection_getter_native() {
+//        Person p = new Person();
+//        return p.getName();
+//    }
+//
+//    @Benchmark
+//    public Object reflection_getter_methodHandler() {
+//        Person p = new Person();
+//        return fi.invokeGetter2(p);
+//    }
+//
+//    @Benchmark
+//    public Object reflection_getter_lambda() {
+//        Person p = new Person();
+//        return fi.invokeGetter(p);
+//    }
+//
+//    // ----- Setter pathways -----
+//    @Benchmark
+//    public Object reflection_setter_native() {
+//        Person p = new Person();
+//        p.setName("hahaha");
+//        return p;
+//    }
+//
+//    @Benchmark
+//    public Object reflection_setter_methodHandler() {
+//        Person p = new Person();
+//        fi.invokeSetter2(p, "hahaha");
+//        return p;
+//    }
+//
+//    @Benchmark
+//    public Object reflection_setter_lambda() {
+//        Person p = new Person();
+//        fi.invokeSetter(p, "hahaha");
+//        return p;
+//    }
 
 }

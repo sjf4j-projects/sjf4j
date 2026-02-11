@@ -9,7 +9,6 @@ import org.sjf4j.annotation.jojo.Property;
         @Property(name = "name", type = String.class),
         @Property(name = "age", type = int.class),
 })
-
 public class Pojo extends JsonObject {
 
     public void method1() {

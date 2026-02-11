@@ -24,24 +24,25 @@ public class Fastjson2Reader implements StreamingReader {
         if (peeked != null) return peeked;
 
         if (reader.isObject()) {
-            return Token.START_OBJECT;
+            peeked = Token.START_OBJECT;
         } else if (reader.current() == '}') {
-            return Token.END_OBJECT;
+            peeked = Token.END_OBJECT;
         } else if (reader.isArray()) {
-            return Token.START_ARRAY;
+            peeked = Token.START_ARRAY;
         } else if (reader.current() == ']') {
-            return Token.END_ARRAY;
+            peeked = Token.END_ARRAY;
         } else if (reader.isString()) {
-            return Token.STRING;
+            peeked = Token.STRING;
         } else if (reader.isNumber()) {
-            return Token.NUMBER;
+            peeked = Token.NUMBER;
         } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
-            return Token.BOOLEAN;
+            peeked = Token.BOOLEAN;
         } else if (reader.isNull()) {
-            return Token.NULL;
+            peeked = Token.NULL;
         } else {
-            return Token.UNKNOWN;
+            peeked = Token.UNKNOWN;
         }
+        return peeked;
     }
 
     @Override
