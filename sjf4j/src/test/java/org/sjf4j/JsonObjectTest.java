@@ -7,7 +7,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;
@@ -378,7 +378,7 @@ class JsonObjectTest {
         Object obj = jo1.get("attr");
         System.out.println("obj: " + obj);
 //        assertInstanceOf(JsonObject.class, obj);
-        assertTrue(NodeType.of(obj).isObject());
+        assertTrue(JsonType.of(obj).isObject());
 
         Object obj2 = jo1.get("attr2");
         System.out.println("obj2: " + obj2);

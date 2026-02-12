@@ -316,10 +316,6 @@ public class Fastjson2StreamingIO {
     }
 
     private static Object readField(JSONReader reader, NodeRegistry.FieldInfo fi) throws IOException {
-        StreamingReader.Token token = peekToken(reader);
-        if (token == StreamingReader.Token.NULL) {
-            return readNull(reader, fi.rawType);
-        }
         switch (fi.containerKind) {
             case MAP:
                 return readMapWithValueType(reader, fi.argType);
@@ -333,6 +329,9 @@ public class Fastjson2StreamingIO {
     }
 
     private static Map<String, Object> readMapWithValueType(JSONReader reader, Type vt) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
         reader.nextIfObjectStart();
         while (!reader.nextIfObjectEnd()) {
@@ -344,6 +343,9 @@ public class Fastjson2StreamingIO {
     }
 
     private static List<Object> readListWithElementType(JSONReader reader, Type vt) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
         List<Object> list = new ArrayList<>();
         reader.nextIfArrayStart();
         while (!reader.nextIfArrayEnd()) {
@@ -354,6 +356,9 @@ public class Fastjson2StreamingIO {
     }
 
     private static Set<Object> readSetWithElementType(JSONReader reader, Type vt) throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         reader.nextIfArrayStart();
         while (!reader.nextIfArrayEnd()) {
@@ -366,6 +371,38 @@ public class Fastjson2StreamingIO {
     /// Reader
 
     public static StreamingReader.Token peekToken(JSONReader reader) throws IOException {
+        switch (reader.current()) {
+            case '{':
+                return StreamingReader.Token.START_OBJECT;
+            case '}':
+                return StreamingReader.Token.END_OBJECT;
+            case '[':
+                return StreamingReader.Token.START_ARRAY;
+            case ']':
+                return StreamingReader.Token.END_ARRAY;
+            case '"':
+                return StreamingReader.Token.STRING;
+            case 't':
+            case 'f':
+                return StreamingReader.Token.BOOLEAN;
+            case 'n':
+                return StreamingReader.Token.NULL;
+            case '-':
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                return StreamingReader.Token.NUMBER;
+            default:
+                break;
+        }
+
         if (reader.isObject()) {
             return StreamingReader.Token.START_OBJECT;
         } else if (reader.current() == '}') {
@@ -446,7 +483,7 @@ public class Fastjson2StreamingIO {
 
         Class<?> rawClazz = node.getClass();
 
-        if (node instanceof CharSequence || node instanceof Character) {
+        if (node instanceof String || node instanceof Character) {
             writer.writeString(node.toString());
             return;
         }

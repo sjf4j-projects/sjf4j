@@ -27,7 +27,7 @@ public class NodeWalkerTest {
         List<Object> values = new ArrayList<>();
         
         NodeWalker.walk(jo, NodeWalker.Target.VALUE, (ps, value) -> {
-            paths.add(Paths.toRootedPathExpr(ps));
+            paths.add(Paths.rootedPathExpr(ps));
             values.add(value);
             return NodeWalker.Control.CONTINUE;
         });
@@ -55,7 +55,7 @@ public class NodeWalkerTest {
         
         NodeWalker.walk(jo, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
                 (ps, container) -> {
-            containerPaths.add(Paths.toRootedPathExpr(ps));
+            containerPaths.add(Paths.rootedPathExpr(ps));
             assertNotNull(container);
             return NodeWalker.Control.CONTINUE;
         });
@@ -75,7 +75,7 @@ public class NodeWalkerTest {
         List<String> paths = new ArrayList<>();
         
         NodeWalker.walk(ja, NodeWalker.Target.VALUE, (ps, value) -> {
-            paths.add(Paths.toRootedPathExpr(ps));
+            paths.add(Paths.rootedPathExpr(ps));
             count.incrementAndGet();
             return NodeWalker.Control.CONTINUE;
         });
@@ -101,7 +101,7 @@ public class NodeWalkerTest {
         
         List<String> paths = new ArrayList<>();
         NodeWalker.walk(map, NodeWalker.Target.VALUE, (ps, value) -> {
-            paths.add(Paths.toRootedPathExpr(ps));
+            paths.add(Paths.rootedPathExpr(ps));
             return NodeWalker.Control.CONTINUE;
         });
         
@@ -121,7 +121,7 @@ public class NodeWalkerTest {
         
         List<String> paths = new ArrayList<>();
         NodeWalker.walk(list, NodeWalker.Target.VALUE, (ps, value) -> {
-            paths.add(Paths.toRootedPathExpr(ps));
+            paths.add(Paths.rootedPathExpr(ps));
             return NodeWalker.Control.CONTINUE;
         });
         
@@ -137,7 +137,7 @@ public class NodeWalkerTest {
         
         List<String> paths = new ArrayList<>();
         NodeWalker.walk(array, NodeWalker.Target.VALUE, (ps, value) -> {
-            paths.add(Paths.toRootedPathExpr(ps));
+            paths.add(Paths.rootedPathExpr(ps));
             return NodeWalker.Control.CONTINUE;
         });
         
@@ -216,7 +216,7 @@ public class NodeWalkerTest {
         List<String> values1 = new ArrayList<>();
         NodeWalker.walk(person, NodeWalker.Target.VALUE, (ps, node) -> {
             log.info("walk1 ps={}, node={}", ps, node);
-            values1.add(Paths.toRootedPathExpr(ps));
+            values1.add(Paths.rootedPathExpr(ps));
             return NodeWalker.Control.CONTINUE;
         });
         assertTrue(values1.contains("$.babies[1].name"));
@@ -224,7 +224,7 @@ public class NodeWalkerTest {
         List<String> values2 = new ArrayList<>();
         NodeWalker.walk(person, NodeWalker.Target.ANY, NodeWalker.Order.BOTTOM_UP, (ps, node) -> {
             log.info("walk2 ps={}, node={}", ps, node);
-            values2.add(Paths.toRootedPathExpr(ps));
+            values2.add(Paths.rootedPathExpr(ps));
             return NodeWalker.Control.CONTINUE;
         });
         assertEquals(16, values2.size());

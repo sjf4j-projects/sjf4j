@@ -345,9 +345,6 @@ public class JacksonStreamingIO {
     }
 
     private static Object readField(JsonParser parser, NodeRegistry.FieldInfo fi) throws IOException {
-        if (parser.currentToken() == JsonToken.VALUE_NULL) {
-            return readNull(parser, fi.rawType);
-        }
         switch (fi.containerKind) {
             case MAP:
                 return readMapWithValueType(parser, fi.argType);
@@ -361,6 +358,10 @@ public class JacksonStreamingIO {
     }
 
     private static Map<String, Object> readMapWithValueType(JsonParser parser, Type vt) throws IOException {
+        if (parser.currentToken() == JsonToken.VALUE_NULL) {
+            parser.nextToken();
+            return null;
+        }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_OBJECT) {
@@ -374,6 +375,10 @@ public class JacksonStreamingIO {
     }
 
     private static List<Object> readListWithElementType(JsonParser parser, Type vt) throws IOException {
+        if (parser.currentToken() == JsonToken.VALUE_NULL) {
+            parser.nextToken();
+            return null;
+        }
         List<Object> list = new ArrayList<>();
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
@@ -385,6 +390,10 @@ public class JacksonStreamingIO {
     }
 
     private static Set<Object> readSetWithElementType(JsonParser parser, Type vt) throws IOException {
+        if (parser.currentToken() == JsonToken.VALUE_NULL) {
+            parser.nextToken();
+            return null;
+        }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
@@ -501,7 +510,7 @@ public class JacksonStreamingIO {
             return;
         }
 
-        if (node instanceof CharSequence || node instanceof Character) {
+        if (node instanceof String || node instanceof Character) {
             gen.writeString(node.toString());
             return;
         }

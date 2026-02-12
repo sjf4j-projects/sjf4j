@@ -118,7 +118,7 @@ public class SnakeReader implements StreamingReader {
     @Override
     public Number nextNumber() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
-        return Numbers.asNumber(se.getValue());
+        return Numbers.parseNumber(se.getValue());
     }
     @Override
     public long nextLong() {

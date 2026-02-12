@@ -16,11 +16,19 @@ import java.util.regex.Pattern;
 
 public class Paths {
 
-    /// Inspect
-    public static String inspectRooted(PathSegment lastSegment) {
+    public static String rootedInspect(PathSegment lastSegment) {
         return inspect(linearize(lastSegment));
     }
 
+    public static String rootedPathExpr(PathSegment lastSegment) {
+        return toPathExpr(linearize(lastSegment));
+    }
+
+    public static String rootedPointerExpr(PathSegment lastSegment) {
+        return toPointerExpr(linearize(lastSegment));
+    }
+
+    /// Inspect
     static PathSegment[] linearize(PathSegment lastSegment) {
         Objects.requireNonNull(lastSegment, "lastSegment is null");
         int size = 0;
@@ -122,10 +130,6 @@ public class Paths {
         return segments.toArray(new PathSegment[0]);
     }
 
-    public static String toRootedPointerExpr(PathSegment lastSegment) {
-        return toPointerExpr(linearize(lastSegment));
-    }
-
     public static String toPointerExpr(PathSegment[] segments) {
         Objects.requireNonNull(segments, "segments is null");
         StringBuilder sb = new StringBuilder();
@@ -167,10 +171,6 @@ public class Paths {
 
 
     ///  JSON Path
-
-    public static String toRootedPathExpr(PathSegment lastSegment) {
-        return toPathExpr(linearize(lastSegment));
-    }
 
     public static String toPathExpr(PathSegment[] segments) {
         Objects.requireNonNull(segments, "segments is null");

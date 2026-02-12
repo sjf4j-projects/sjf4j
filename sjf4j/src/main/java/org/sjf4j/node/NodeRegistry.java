@@ -94,7 +94,7 @@ public final class NodeRegistry {
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueCodec, "valueCodec is null");
         Class<R> rawClazz = valueCodec.getRawClass();
-        if (!NodeType.of(rawClazz).isRaw())
+        if (!NodeKind.of(rawClazz).isRaw())
             throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = valueCodec.getValueClass();

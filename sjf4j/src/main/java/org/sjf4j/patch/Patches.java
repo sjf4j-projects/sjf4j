@@ -1,8 +1,9 @@
 package org.sjf4j.patch;
 
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 
@@ -39,15 +40,15 @@ public class Patches {
      */
     public static void merge(Object target, Object mergePatch, boolean overwrite, boolean deepCopy) {
         if (target == null || mergePatch == null) return;
-        NodeType ntTarget = NodeType.of(target);
-        NodeType ntPatch = NodeType.of(mergePatch);
-        if (ntTarget.isObject() && ntPatch.isObject()) {
+        JsonType targetJt = JsonType.of(target);
+        JsonType patchJt = JsonType.of(mergePatch);
+        if (targetJt.isObject() && patchJt.isObject()) {
             Nodes.visitObject(mergePatch, (key, subPatch) -> {
                 Object subTarget = Nodes.getInObject(target, key);
-                NodeType ntSubTarget = NodeType.of(subTarget);
-                NodeType ntSubPatch = NodeType.of(subPatch);
-                if (ntSubPatch.isObject()) {
-                    if (ntSubTarget.isObject()) {
+                JsonType subTargetJt = JsonType.of(subTarget);
+                JsonType subPatchJt = JsonType.of(subPatch);
+                if (subPatchJt.isObject()) {
+                    if (subTargetJt.isObject()) {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
@@ -56,8 +57,8 @@ public class Patches {
                             Nodes.putInObject(target, key, subPatch);
                         }
                     }
-                } else if (ntSubPatch.isArray()) {
-                    if (ntSubTarget.isArray()) {
+                } else if (subPatchJt.isArray()) {
+                    if (subTargetJt.isArray()) {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
@@ -70,13 +71,13 @@ public class Patches {
                     Nodes.putInObject(target, key, subPatch);
                 }
             });
-        } else if (ntTarget.isArray() && ntPatch.isArray()) {
+        } else if (targetJt.isArray() && patchJt.isArray()) {
             Nodes.visitArray(mergePatch, (i, subPatch) -> {
                 Object subTarget = Nodes.getInArray(target, i);
-                NodeType ntSubTarget = NodeType.of(subTarget);
-                NodeType ntSubPatch = NodeType.of(subPatch);
-                if (ntSubPatch.isObject()) {
-                    if (ntSubTarget.isObject()) {
+                JsonType subTargetJt = JsonType.of(subTarget);
+                JsonType subPatchJt = JsonType.of(subPatch);
+                if (subPatchJt.isObject()) {
+                    if (subTargetJt.isObject()) {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
@@ -85,8 +86,8 @@ public class Patches {
                             Nodes.setInArray(target, i, subPatch);
                         }
                     }
-                } else if (ntSubPatch.isArray()) {
-                    if (ntSubTarget.isArray()) {
+                } else if (subPatchJt.isArray()) {
+                    if (subTargetJt.isArray()) {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
@@ -118,19 +119,19 @@ public class Patches {
      */
     public static void mergeRfc7386(Object target, Object mergePatch) {
         if (target == null || mergePatch == null) return;
-        NodeType ntTarget = NodeType.of(target);
-        NodeType ntPatch = NodeType.of(mergePatch);
-        if (ntTarget.isObject() && ntPatch.isObject()) {
+        JsonType targetJt = JsonType.of(target);
+        JsonType patchJt = JsonType.of(mergePatch);
+        if (targetJt.isObject() && patchJt.isObject()) {
             Nodes.visitObject(mergePatch, (key, subPatch) -> {
                 Object subTarget = Nodes.getInObject(target, key);
-                NodeType ntSubTarget = NodeType.of(subTarget);
-                NodeType ntSubPatch = NodeType.of(subPatch);
+                JsonType subTargetJt = JsonType.of(subTarget);
+                JsonType subPatchJt = JsonType.of(subPatch);
                 if (subPatch == null) {
                     if (subTarget != null) {
                         Nodes.removeInObject(target, key);
                     }
-                } else if (ntSubPatch.isObject()) {
-                    if (ntSubTarget.isObject()) {
+                } else if (subPatchJt.isObject()) {
+                    if (subTargetJt.isObject()) {
                         mergeRfc7386(subTarget, subPatch);
                     } else {
                         Nodes.putInObject(target, key, subPatch);
@@ -156,9 +157,9 @@ public class Patches {
         } else if (null == target) {
             ops.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.fromLast(ps), null, null));
         } else {
-            NodeType sourceType = NodeType.of(source);
-            NodeType targetType = NodeType.of(target);
-            if (sourceType.isObject() && targetType.isObject()) {
+            JsonType sourceJt = JsonType.of(source);
+            JsonType targetJt = JsonType.of(target);
+            if (sourceJt.isObject() && targetJt.isObject()) {
                 Nodes.visitObject(source, (k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, null, k);
                     Object newTarget = Nodes.getInObject(target, k);
@@ -174,7 +175,7 @@ public class Patches {
                        ops.add(new PatchOp(PatchOp.STD_ADD, JsonPointer.fromLast(cps), v, null));
                    }
                 });
-            } else if (sourceType.isArray() && targetType.isArray()) {
+            } else if (sourceJt.isArray() && targetJt.isArray()) {
                 int sourceSize = Nodes.sizeInArray(source);
                 int targetSize = Nodes.sizeInArray(target);
                 int size = Math.min(sourceSize, targetSize);

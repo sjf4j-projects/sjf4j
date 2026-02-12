@@ -1,9 +1,10 @@
 package org.sjf4j.schema;
 
 
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.SchemaException;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 
 
@@ -20,10 +21,10 @@ public interface JsonSchema {
 
     static JsonSchema fromNode(Object node) {
         if (node == null) return null;
-        NodeType nt = NodeType.of(node);
-        if (nt.isBoolean()) return ((Boolean) node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
-        if (nt.isObject()) return Nodes.as(node, ObjectSchema.class);
-        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but got " + nt);
+        JsonType jt = JsonType.of(node);
+        if (jt.isBoolean()) return Nodes.toBoolean(node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
+        if (jt.isObject()) return Nodes.as(node, ObjectSchema.class);
+        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but got " + jt);
     }
 
     /// Default

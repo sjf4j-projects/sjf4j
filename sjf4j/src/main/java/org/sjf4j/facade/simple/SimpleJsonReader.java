@@ -144,7 +144,7 @@ public class SimpleJsonReader implements StreamingReader {
     @Override
     public Number nextNumber() throws IOException {
         bufferedToken = null;
-        return Numbers.asNumber(readNumberString());
+        return Numbers.parseNumber(readNumberString());
     }
     @Override
     public long nextLong() throws IOException {

@@ -2,7 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 
 import java.util.ArrayDeque;
@@ -15,7 +15,7 @@ public final class InstancedNode {
     private final Object node;
     private final Class<?> objectType;
     private final JsonType jsonType;
-    private final NodeType nodeType;
+    private final NodeKind nodeKind;
     private final boolean encoded;
     private Map<String, InstancedNode> subInstanceCache;
 
@@ -25,11 +25,11 @@ public final class InstancedNode {
     private Deque<Object> refSchemaStack;
 
 
-    private InstancedNode(Object node, JsonType jsonType, NodeType nodeType, boolean encoded) {
+    private InstancedNode(Object node, JsonType jsonType, NodeKind nodeKind, boolean encoded) {
         this.node = node;
         this.objectType = node == null ? null : node.getClass();
         this.jsonType = jsonType;
-        this.nodeType = nodeType;
+        this.nodeKind = nodeKind;
         this.encoded = encoded;
     }
 
@@ -45,20 +45,20 @@ public final class InstancedNode {
 
     public static InstancedNode infer(Object node) {
         if (node == null) return NULL.reset();
-        NodeType nodeType = NodeType.of(node);
+        NodeKind nodeKind = NodeKind.of(node);
         boolean encoded = false;
-        if (nodeType == NodeType.VALUE_REGISTERED) {
+        if (nodeKind == NodeKind.VALUE_REGISTERED) {
             node = NodeRegistry.getValueCodecInfo(node.getClass()).encode(node);
-            nodeType = NodeType.of(node);
+            nodeKind = NodeKind.of(node);
             encoded = true;
         }
-        return new InstancedNode(node, JsonType.of(nodeType), nodeType, encoded);
+        return new InstancedNode(node, JsonType.of(nodeKind), nodeKind, encoded);
     }
 
     public Object getNode() {return node;}
     public Class<?> getObjectType() {return objectType;}
     public JsonType getJsonType() {return jsonType;}
-    public NodeType getNodeType() {return nodeType;}
+    public NodeKind getNodeType() {return nodeKind;}
     public boolean isEncoded() {return encoded;}
 
     public void markEvaluated(int propIdx) {
