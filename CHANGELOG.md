@@ -8,9 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added support for Jackson `JsonNode` and Gson `JsonElement` in `Nodes`, 
+  via `FacadeNodes`, `JacksonNodes`, and `GsonNodes`.
 ### Improved
-- Improve `JsonPath` performance by converting `PathToken` to `PathSegment`, with location reporting on parse errors.
+- Improve `JsonPath` performance by replacing `PathToken` to `PathSegment`.
+- Enhanced error reporting with precise location information during path parsing.
 ### Changed
+- Renamed `NodeType` to `NodeKind` for clearer semantics.
+- Removed `TypedNode`; typed access now uses `Nodes.Access`
+
 ### Fixed
 ### Removed
 
