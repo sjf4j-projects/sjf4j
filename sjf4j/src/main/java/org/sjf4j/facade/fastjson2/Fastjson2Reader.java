@@ -23,24 +23,63 @@ public class Fastjson2Reader implements StreamingReader {
     public Token peekToken() throws IOException {
         if (peeked != null) return peeked;
 
-        if (reader.isObject()) {
-            peeked = Token.START_OBJECT;
-        } else if (reader.current() == '}') {
-            peeked = Token.END_OBJECT;
-        } else if (reader.isArray()) {
-            peeked = Token.START_ARRAY;
-        } else if (reader.current() == ']') {
-            peeked = Token.END_ARRAY;
-        } else if (reader.isString()) {
-            peeked = Token.STRING;
-        } else if (reader.isNumber()) {
-            peeked = Token.NUMBER;
-        } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
-            peeked = Token.BOOLEAN;
-        } else if (reader.isNull()) {
-            peeked = Token.NULL;
-        } else {
-            peeked = Token.UNKNOWN;
+        switch (reader.current()) {
+            case '{':
+                peeked = Token.START_OBJECT;
+                break;
+            case '}':
+                peeked = Token.END_OBJECT;
+                break;
+            case '[':
+                peeked = Token.START_ARRAY;
+                break;
+            case ']':
+                peeked = Token.END_ARRAY;
+                break;
+            case '"':
+                peeked = Token.STRING;
+                break;
+            case 't':
+            case 'f':
+                peeked = Token.BOOLEAN;
+                break;
+            case 'n':
+                peeked = Token.NULL;
+                break;
+            case '-':
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                peeked = Token.NUMBER;
+                break;
+            default:
+                if (reader.isObject()) {
+                    peeked = Token.START_OBJECT;
+                } else if (reader.current() == '}') {
+                    peeked = Token.END_OBJECT;
+                } else if (reader.isArray()) {
+                    peeked = Token.START_ARRAY;
+                } else if (reader.current() == ']') {
+                    peeked = Token.END_ARRAY;
+                } else if (reader.isString()) {
+                    peeked = Token.STRING;
+                } else if (reader.isNumber()) {
+                    peeked = Token.NUMBER;
+                } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
+                    peeked = Token.BOOLEAN;
+                } else if (reader.isNull()) {
+                    peeked = Token.NULL;
+                } else {
+                    peeked = Token.UNKNOWN;
+                }
+                break;
         }
         return peeked;
     }

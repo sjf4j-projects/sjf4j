@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.JsonType;
 import org.sjf4j.path.PathSegment;
 
 import java.lang.reflect.Array;
@@ -64,8 +64,8 @@ public class NodeWalker {
                               Target target, Order order, int remainingDepth) {
         if (remainingDepth == 0) return;
 
-        NodeType nt = NodeType.of(container);
-        if (nt.isObject()) {
+        JsonType jt = JsonType.of(container);
+        if (jt.isObject()) {
             if (order == Order.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
                 Control control = visitor.apply(path, container);
                 if (control == Control.STOP) return;
@@ -80,7 +80,7 @@ public class NodeWalker {
                 Control control = visitor.apply(path, container);
                 if (control == Control.STOP) return;
             }
-        } else if (nt.isArray()) {
+        } else if (jt.isArray()) {
             if (order == Order.TOP_DOWN && (target == Target.CONTAINER || target == Target.ANY)) {
                 Control control = visitor.apply(path, container);
                 if (control == Control.STOP) return;

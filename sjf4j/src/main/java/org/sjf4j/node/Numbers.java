@@ -252,7 +252,7 @@ public class Numbers {
 //        }
 //    }
 
-    public static Number asNumber(String text) {
+    public static Number parseNumber(String text) {
         if (text == null || text.isEmpty()) {
             throw new IllegalArgumentException("text is null or empty");
         }
@@ -351,11 +351,8 @@ public class Numbers {
         if (number instanceof BigDecimal) {
             return ((BigDecimal) number).stripTrailingZeros().scale() <= 0;
         }
-        if (number instanceof Double || number instanceof Float) {
-            double d = number.doubleValue();
-            return d % 1 == 0 && Double.isFinite(d);
-        }
-        return false;
+        double d = number.doubleValue();
+        return d % 1 == 0 && Double.isFinite(d);
     }
 
     public static BigDecimal normalizeDecimal(Number number) {

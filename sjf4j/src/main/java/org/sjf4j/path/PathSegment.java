@@ -17,6 +17,16 @@ public abstract class PathSegment {
     public boolean matchKey(String key) { return false; }
     public boolean matchIndex(int idx) { return false; }
 
+    public String rootedInspect() {
+        return Paths.rootedInspect(this);
+    }
+    public String rootedPointerExpr() {
+        return Paths.rootedPointerExpr(this);
+    }
+    public String rootedPathExpr() {
+        return Paths.rootedPathExpr(this);
+    }
+
     /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function, Filter, APPEND
 
     /**

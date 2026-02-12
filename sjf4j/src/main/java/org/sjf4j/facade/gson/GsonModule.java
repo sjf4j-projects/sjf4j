@@ -225,7 +225,7 @@ public interface GsonModule {
     class MyToNumberStrategy implements ToNumberStrategy {
         @Override
         public Number readNumber(JsonReader in) throws IOException {
-            return Numbers.asNumber(in.nextString());
+            return Numbers.parseNumber(in.nextString());
         }
     }
 

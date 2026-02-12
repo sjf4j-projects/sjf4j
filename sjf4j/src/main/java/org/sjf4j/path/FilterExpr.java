@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
-import org.sjf4j.node.NodeType;
+import org.sjf4j.JsonType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Numbers;
 
@@ -282,13 +283,13 @@ public interface FilterExpr {
      * @return true if a &gt; b according to JSON comparison rules
      */
     static boolean gt(Object a, Object b) {
-        NodeType aNt = NodeType.of(a);
-        NodeType bNt = NodeType.of(b);
-        if (aNt.isNumber() && bNt.isNumber()) {
-            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) > 0;
+        JsonType ajt = JsonType.of(a);
+        JsonType bjt = JsonType.of(b);
+        if (ajt.isNumber() && bjt.isNumber()) {
+            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) > 0;
         }
-        if (aNt.isString() && bNt.isString()) {
-            return a.toString().compareTo(b.toString()) > 0;
+        if (ajt.isString() && bjt.isString()) {
+            return Nodes.toString(a).compareTo(Nodes.toString(b)) > 0;
         }
         return false;
     }
@@ -303,13 +304,13 @@ public interface FilterExpr {
      * @return true if a &gt;= b according to JSON comparison rules
      */
     static boolean ge(Object a, Object b) {
-        NodeType aNt = NodeType.of(a);
-        NodeType bNt = NodeType.of(b);
-        if (aNt.isNumber() && bNt.isNumber()) {
-            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) >= 0;
+        JsonType ajt = JsonType.of(a);
+        JsonType bjt = JsonType.of(b);
+        if (ajt.isNumber() && bjt.isNumber()) {
+            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) >= 0;
         }
-        if (aNt.isString() && bNt.isString()) {
-            return a.toString().compareTo(b.toString()) >= 0;
+        if (ajt.isString() && bjt.isString()) {
+            return Nodes.toString(a).compareTo(Nodes.toString(b)) >= 0;
         }
         return false;
     }
@@ -324,12 +325,12 @@ public interface FilterExpr {
      * @return true if a &lt; b according to JSON comparison rules
      */
     static boolean lt(Object a, Object b) {
-        NodeType aNt = NodeType.of(a);
-        NodeType bNt = NodeType.of(b);
-        if (aNt.isNumber() && bNt.isNumber()) {
-            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) < 0;
+        JsonType ajt = JsonType.of(a);
+        JsonType bjt = JsonType.of(b);
+        if (ajt.isNumber() && bjt.isNumber()) {
+            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) < 0;
         }
-        if (aNt.isString() && bNt.isString()) {
+        if (ajt.isString() && bjt.isString()) {
             return Nodes.toString(a).compareTo(Nodes.toString(b)) < 0;
         }
         return false;
@@ -345,12 +346,12 @@ public interface FilterExpr {
      * @return true if a &lt;= b according to JSON comparison rules
      */
     static boolean le(Object a, Object b) {
-        NodeType aNt = NodeType.of(a);
-        NodeType bNt = NodeType.of(b);
-        if (aNt.isNumber() && bNt.isNumber()) {
-            return Numbers.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) <= 0;
+        JsonType ajt = JsonType.of(a);
+        JsonType bjt = JsonType.of(b);
+        if (ajt.isNumber() && bjt.isNumber()) {
+            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) <= 0;
         }
-        if (aNt.isString() && bNt.isString()) {
+        if (ajt.isString() && bjt.isString()) {
             return Nodes.toString(a).compareTo(Nodes.toString(b)) <= 0;
         }
         return false;
@@ -361,15 +362,15 @@ public interface FilterExpr {
         if (a == null) return false;
         Pattern p = (Pattern) b;
 
-        NodeType aNt = NodeType.of(a);
-        if (aNt.isString()) {
+        JsonType ajt = JsonType.of(a);
+        if (ajt.isString()) {
             return p.matcher(Nodes.toString(a)).find();
         }
 
         // Matches if at least one element in the array matches
-        if (aNt.isArray()) {
+        if (ajt.isArray()) {
             return Nodes.anyMatchInArray(a,
-                    (i, v) -> NodeType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
+                    (i, v) -> JsonType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
         }
 
         return false;
@@ -398,11 +399,11 @@ public interface FilterExpr {
      */
     static boolean truth(Object x) {
         if (x == null) return false;
-        NodeType xNt = NodeType.of(x);
-        if (xNt.isBoolean()) return (Boolean) x;
-        if (xNt.isNumber()) return ((Number) x).doubleValue() != 0;
-        if (xNt.isString()) return !Nodes.toString(x).isEmpty();
-        if (xNt.isArray()) return Nodes.sizeInArray(x) > 0;
+        JsonType xjt = JsonType.of(x);
+        if (xjt.isBoolean()) return (Boolean) x;
+        if (xjt.isNumber()) return ((Number) x).doubleValue() != 0;
+        if (xjt.isString()) return !Nodes.toString(x).isEmpty();
+        if (xjt.isArray()) return Nodes.sizeInArray(x) > 0;
         return true;
     }
 

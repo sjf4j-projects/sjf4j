@@ -1,7 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
@@ -172,18 +172,18 @@ public interface Evaluator {
 
         public TypeEvaluator(Object type) {
             Objects.requireNonNull(type, "type is null");
-            NodeType nt = NodeType.of(type);
-            if (nt.isString()) {
+            JsonType jt = JsonType.of(type);
+            if (jt.isString()) {
                 this.type = (String) type;
-                this.jsonType = JsonType.from(this.type);
+                this.jsonType = JsonType.ofSchema(this.type);
                 this.types = null;
                 this.jsonTypes = null;
-            } else if (nt.isArray()) {
+            } else if (jt.isArray()) {
                 this.type = null;
                 this.jsonType = null;
                 this.types = Nodes.toArray(type, String.class);
                 this.jsonTypes = (JsonType[]) Array.newInstance(JsonType.class, types.length);
-                for (int i = 0; i < types.length; i++) this.jsonTypes[i] = JsonType.from(types[i]);
+                for (int i = 0; i < types.length; i++) this.jsonTypes[i] = JsonType.ofSchema(types[i]);
             } else {
                 throw new IllegalArgumentException("TypeEvaluator only supports String or Array, but found: " +
                         type.getClass().getSimpleName());
@@ -217,7 +217,8 @@ public interface Evaluator {
                 // JSON Schema compatibility: integer ⊂ number
                 if (expected == JsonType.INTEGER && jt == JsonType.NUMBER) {
                     Object actual = instance.getNode();
-                    return actual instanceof Number && Numbers.isSemanticInteger((Number) actual);
+                    Number number = Nodes.toNumber(actual);
+                    return number != null && Numbers.isSemanticInteger(number);
                 }
                 return false;
             }

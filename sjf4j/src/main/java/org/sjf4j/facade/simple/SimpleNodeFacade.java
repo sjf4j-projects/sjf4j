@@ -57,7 +57,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 return rawClazz.isInstance(node) ? vci.copy(node) : vci.decode(node);
             }
 
-            if (node instanceof CharSequence || node instanceof Character) {
+            if (node instanceof String || node instanceof Character) {
                 return _readString(node.toString(), rawClazz, ps);
             }
             if (node instanceof Enum) {
@@ -872,7 +872,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             Class<?> rawClazz = node.getClass();
 
-            if (node instanceof CharSequence || node instanceof Character) {
+            if (node instanceof String || node instanceof Character) {
                 return node.toString();
             }
             if (node instanceof Enum) {

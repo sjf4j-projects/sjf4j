@@ -12,7 +12,6 @@ import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.Types;
-import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -93,16 +92,16 @@ public class GsonStreamingIO {
     public static Object readNumber(JsonReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
         if (rawClazz.isAssignableFrom(Number.class)) {
-            return Numbers.asNumber(reader.nextString());
+            return Numbers.parseNumber(reader.nextString());
         }
         if (Number.class.isAssignableFrom(rawClazz)) {
-            Number n = Numbers.asNumber(reader.nextString());
+            Number n = Numbers.parseNumber(reader.nextString());
             return Numbers.to(n, rawClazz);
         }
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            Number n = Numbers.asNumber(reader.nextString());
+            Number n = Numbers.parseNumber(reader.nextString());
             return vci.decode(n);
         }
         throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
@@ -324,9 +323,6 @@ public class GsonStreamingIO {
     }
 
     private static Object readField(JsonReader reader, NodeRegistry.FieldInfo fi) throws IOException {
-        if (reader.peek() == JsonToken.NULL) {
-            return readNull(reader, fi.rawType);
-        }
         switch (fi.containerKind) {
             case MAP:
                 return readMapWithValueType(reader, fi.argType);
@@ -340,6 +336,10 @@ public class GsonStreamingIO {
     }
 
     private static Map<String, Object> readMapWithValueType(JsonReader reader, Type vt) throws IOException {
+        if (reader.peek() == JsonToken.NULL) {
+            reader.nextNull();
+            return null;
+        }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
         reader.beginObject();
         while (reader.peek() != JsonToken.END_OBJECT) {
@@ -352,6 +352,10 @@ public class GsonStreamingIO {
     }
 
     private static List<Object> readListWithElementType(JsonReader reader, Type vt) throws IOException {
+        if (reader.peek() == JsonToken.NULL) {
+            reader.nextNull();
+            return null;
+        }
         List<Object> list = new ArrayList<>();
         reader.beginArray();
         while (reader.peek() != JsonToken.END_ARRAY) {
@@ -363,6 +367,10 @@ public class GsonStreamingIO {
     }
 
     private static Set<Object> readSetWithElementType(JsonReader reader, Type vt) throws IOException {
+        if (reader.peek() == JsonToken.NULL) {
+            reader.nextNull();
+            return null;
+        }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         reader.beginArray();
         while (reader.peek() != JsonToken.END_ARRAY) {
@@ -460,7 +468,7 @@ public class GsonStreamingIO {
         }
 
         Class<?> rawClazz = node.getClass();
-        if (node instanceof CharSequence || node instanceof Character) {
+        if (node instanceof String || node instanceof Character) {
             writer.value(node.toString());
             return;
         }

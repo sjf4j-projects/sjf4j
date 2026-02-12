@@ -1,8 +1,10 @@
 package org.sjf4j.path;
 
+import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
+import org.sjf4j.node.Types;
 
 import java.util.Map;
 import java.util.Set;
@@ -70,22 +72,15 @@ public class PathFunctionRegistry {
             if (args.length != 1) 
                 throw new JsonException("length(): expects exactly 1 argument, but got: " + args.length);
             Object node = args[0];
-            switch (NodeType.of(node)) {
-                case VALUE_STRING:
+            switch (JsonType.of(node)) {
+                case STRING:
                     return ((String) node).length();
-                case OBJECT_MAP:
-                case OBJECT_JSON_OBJECT:
-                case OBJECT_JOJO:
-                case OBJECT_POJO:
+                case OBJECT:
                     return Nodes.sizeInObject(node);
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+                case ARRAY:
                     return Nodes.sizeInArray(node);
-                default:
-                    return null;
             }
+            return null;
         }));
 
         // count
@@ -93,15 +88,11 @@ public class PathFunctionRegistry {
             if (args.length != 1) 
                 throw new JsonException("count(): expects exactly 1 argument, but got: " + args.length);
             Object node = args[0];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     return Nodes.sizeInArray(node);
-                default:
-                    return null;
             }
+            return null;
         }));
 
         // match
@@ -109,10 +100,14 @@ public class PathFunctionRegistry {
         PathFunctionRegistry.register(new FunctionDescriptor("match", args -> {
             if (args.length != 2)
                 throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.length);
-            Object node0 = args[0];
-            Object node1 = args[1];
-            if (node0 instanceof String && node1 instanceof String) {
-                return IRegexpUtil.match((String) node1, (String) node0);
+            Object node = args[0];
+            if (!(args[1] instanceof String)) {
+                throw new JsonException("match(): the second argument must be a String but was " + Types.name(args[1]));
+            }
+            String pattern = (String) args[1];
+            switch (JsonType.of(node)) {
+                case STRING:
+                    return IRegexpUtil.match(pattern, Nodes.toString(node));
             }
             return false;
         }));
@@ -121,10 +116,14 @@ public class PathFunctionRegistry {
         PathFunctionRegistry.register(new FunctionDescriptor("search", args -> {
             if (args.length != 2)
                 throw new JsonException("search(): expects exactly 2 arguments, but got: " + args.length);
-            Object node0 = args[0];
-            Object node1 = args[1];
-            if (node0 instanceof String && node1 instanceof String) {
-                return IRegexpUtil.search((String) node1, (String) node0);
+            Object node = args[0];
+            if (!(args[1] instanceof String)) {
+                throw new JsonException("search(): the second argument must be a String but was " + Types.name(args[1]));
+            }
+            String pattern = (String) args[1];
+            switch (JsonType.of(node)) {
+                case STRING:
+                    return IRegexpUtil.search(pattern, Nodes.toString(node));
             }
             return false;
         }));
@@ -142,15 +141,11 @@ public class PathFunctionRegistry {
                 throw new JsonException("sum(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
             double[] sum = new double[1];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
-                    Nodes.visitArray(node, (i, n) -> {
-                        if (n instanceof Number) {
-                            sum[0] += ((Number) n).doubleValue();
-                        }
+            switch (JsonType.of(node)) {
+                case ARRAY:
+                    Nodes.visitArray(node, (i, v) -> {
+                        Double d = Nodes.toDouble(v);
+                        if (d != null) sum[0] += d;
                     });
             }
             return sum[0];
@@ -162,14 +157,11 @@ public class PathFunctionRegistry {
                 throw new JsonException("min(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
             Double[] min = new Double[1];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
-                        if (n instanceof Number) {
-                            double d = ((Number) n).doubleValue();
+                        Double d = Nodes.toDouble(n);
+                        if (d != null) {
                             if (min[0] == null || min[0] > d) min[0] = d;
                         }
                     });
@@ -183,14 +175,11 @@ public class PathFunctionRegistry {
                 throw new JsonException("max(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
             Double[] max = new Double[1];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
-                        if (n instanceof Number) {
-                            double d = ((Number) n).doubleValue();
+                        Double d = Nodes.toDouble(n);
+                        if (d != null) {
                             if (max[0] == null || max[0] < d) max[0] = d;
                         }
                     });
@@ -205,19 +194,18 @@ public class PathFunctionRegistry {
             Object node = args[0];
             double[] sum = new double[1];
             int[] cnt = new int[1];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
-                        if (n instanceof Number) {
-                            sum[0] += ((Number) n).doubleValue();
+                        Double d = Nodes.toDouble(n);
+                        if (d != null) {
+                            sum[0] += d;
                             cnt[0]++;
                         }
                     });
             }
-            return sum[0] / cnt[0];
+
+            return cnt[0] == 0 ? null : (sum[0] / cnt[0]);
         }));
 
         // stddev
@@ -227,29 +215,25 @@ public class PathFunctionRegistry {
             Object node = args[0];
             double[] sum = new double[1];
             int[] cnt = new int[1];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
-                        if (n instanceof Number) {
-                            sum[0] += ((Number) n).doubleValue();
+                        Double d = Nodes.toDouble(n);
+                        if (d != null) {
+                            sum[0] += d;
                             cnt[0]++;
                         }
                     });
             }
 
+            if (cnt[0] == 0) return null;
             double avg = sum[0] / cnt[0];
             double[] qe = new double[1];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     Nodes.visitArray(node, (i, n) -> {
-                        if (n instanceof Number) {
-                            double d = ((Number) n).doubleValue();
+                        Double d = Nodes.toDouble(n);
+                        if (d != null) {
                             qe[0] += (d - avg) * (d - avg);
                         }
                     });
@@ -262,11 +246,8 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("first(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     if (Nodes.sizeInArray(node) > 0) {
                         return Nodes.getInArray(node, 0);
                     }
@@ -279,11 +260,8 @@ public class PathFunctionRegistry {
             if (args.length != 1)
                 throw new JsonException("last(): expects exactly 1 arguments, but got: " + args.length);
             Object node = args[0];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     int size = Nodes.sizeInArray(node);
                     if (size > 0) {
                         return Nodes.getInArray(node, size - 1);
@@ -297,11 +275,8 @@ public class PathFunctionRegistry {
             if (args.length != 2)
                 throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];
-            switch (NodeType.of(node)) {
-                case ARRAY_LIST:
-                case ARRAY_JSON_ARRAY:
-                case ARRAY_JAJO:
-                case ARRAY_ARRAY:
+            switch (JsonType.of(node)) {
+                case ARRAY:
                     int size = Nodes.sizeInArray(node);
                     if (size > 0) {
                         int index = ((Number) args[1]).intValue();

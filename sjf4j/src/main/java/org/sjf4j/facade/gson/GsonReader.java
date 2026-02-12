@@ -75,7 +75,7 @@ public class GsonReader implements StreamingReader {
 
     @Override
     public Number nextNumber() throws IOException {
-        return Numbers.asNumber(reader.nextString());
+        return Numbers.parseNumber(reader.nextString());
     }
     @Override
     public long nextLong() throws IOException {

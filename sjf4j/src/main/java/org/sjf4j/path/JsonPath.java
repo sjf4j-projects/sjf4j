@@ -1,17 +1,18 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.TypedNode;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -872,15 +873,15 @@ public class JsonPath {
         for (int i = 1, len = segments.length + tailIndex; i < len; i++) {
             if (node == null) return null;
             PathSegment pt = segments[i];
-            NodeType nt = NodeType.of(node);
+            JsonType jt = JsonType.of(node);
             if (pt instanceof PathSegment.Name) {
-                if (nt.isObject()) {
+                if (jt.isObject()) {
                     node = Nodes.getInObject(node, ((PathSegment.Name) pt).name);
                 } else {
                     return null;
                 }
             } else if (pt instanceof PathSegment.Index) {
-                if (nt.isArray()) {
+                if (jt.isArray()) {
                     node = Nodes.getInArray(node, ((PathSegment.Index) pt).index);
                 } else {
                     return null;
@@ -913,10 +914,10 @@ public class JsonPath {
             if (node ==  null) return;
             PathSegment pt = segments[i];
             if (i == segments.length - 1 && pt instanceof PathSegment.Function) break;
-            NodeType nt = NodeType.of(node);
+            JsonType jt = JsonType.of(node);
             final int nextI = i + 1;
             if (pt instanceof PathSegment.Name) {
-                if (nt.isObject()) {
+                if (jt.isObject()) {
                     String name = ((PathSegment.Name) pt).name;
                     if (Nodes.containsInObject(node, name)) {
                         node = Nodes.getInObject(node, name);
@@ -924,14 +925,14 @@ public class JsonPath {
                     }
                 }
             } else if (pt instanceof PathSegment.Index) {
-                if (nt.isArray()) {
+                if (jt.isArray()) {
                     node = Nodes.getInArray(node, ((PathSegment.Index) pt).index);
                     continue;
                 }
             } else if (pt instanceof PathSegment.Wildcard) {
-                if (nt.isObject()) {
+                if (jt.isObject()) {
                     Nodes.visitObject(node, (k, v) -> _findAll(root, v, nextI, result, converter));
-                } else if (nt.isArray()) {
+                } else if (jt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> _findAll(root, v, nextI, result, converter));
                 }
             } else if (pt instanceof PathSegment.Descendant) {
@@ -939,31 +940,31 @@ public class JsonPath {
                 _findMatch(root, node, i + 1, result, converter);
             } else if (pt instanceof PathSegment.Slice) {
                 PathSegment.Slice slicePt = (PathSegment.Slice) pt;
-                if (nt.isArray()) {
+                if (jt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> {
                         if (slicePt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathSegment.Union) {
                 PathSegment.Union unionPt = (PathSegment.Union) pt;
-                if (nt.isObject()) {
+                if (jt.isObject()) {
                     Nodes.visitObject(node, (k, v) -> {
                         if (unionPt.matchKey(k)) _findAll(root, v, nextI, result, converter);
                     });
-                } else if (nt.isArray()) {
+                } else if (jt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> {
                         if (unionPt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathSegment.Filter) {
                 PathSegment.Filter filterPt = (PathSegment.Filter) pt;
-                if (nt.isArray()) {
+                if (jt.isArray()) {
                     Nodes.visitArray(node, (j, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
                             _findAll(root, v, nextI, result, converter);
                         }
                     });
-                } else if (nt.isObject()) {
+                } else if (jt.isObject()) {
                     Nodes.visitObject(node, (k, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
                             _findAll(root, v, nextI, result, converter);
@@ -985,15 +986,15 @@ public class JsonPath {
     private <T> void _findMatch(Object root, Object current, int tokenIdx, List<T> result, Function<Object, T> converter) {
         if (current == null) return;
         PathSegment pt = segments[tokenIdx];
-        NodeType nt = NodeType.of(current);
-        if (nt.isObject()) {
+        JsonType jt = JsonType.of(current);
+        if (jt.isObject()) {
             Nodes.visitObject(current, (k, v) -> {
                 if (pt.matchKey(k)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
                 }
                 _findMatch(root, v, tokenIdx, result, converter);
             });
-        } else if (nt.isArray()) {
+        } else if (jt.isArray()) {
             Nodes.visitArray(current, (j, v) -> {
                 if (pt.matchIndex(j)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
@@ -1007,65 +1008,66 @@ public class JsonPath {
     // 2. Automatically create or extends JsonArray nodes when they do not exist and the index is 0.
     private Object _ensureContainersInPath(Object container) {
         if (!_isSingle()) {
-            throw new JsonException("JsonPath '" + this +
-                    "' must represent a single node (only Name/Index tokens are allowed to automatically " +
-                    "create containers in path.)");
+            throw new JsonException("JsonPath '" + this + "' must represent a single node " +
+                    "(only Name/Index tokens are allowed to automatically create containers in path.)");
         }
 
-        TypedNode tnode = TypedNode.infer(container);
+        Nodes.Access acc = new Nodes.Access();
+        Object curNode = container;
+        Type curType = container.getClass();
         for (int i = 1, len = segments.length - 1; i < len; i++) { // traverse up to the second-last token
-            PathSegment pt = segments[i];
-            NodeType nt = NodeType.of(tnode.getNode());
-            if (pt instanceof PathSegment.Name) {
-                String key = ((PathSegment.Name) pt).name;
-                if (nt.isObject()) {
-                    TypedNode tnn = Nodes.getTypedInObject(tnode, key);
-                    if (tnn == null) {
-                        throw new JsonException("Cannot access or put field '" + key + "' on an object container '" +
-                                tnode.getClazzType() + "'");
-                    } else if (tnn.isNull()) {
+            PathSegment ps = segments[i];
+            JsonType jt = JsonType.of(curNode);
+            if (ps instanceof PathSegment.Name) {
+                String key = ((PathSegment.Name) ps).name;
+                if (jt.isObject()) {
+                    Nodes.accessInObject(curNode, curType, key, acc);
+                    if (acc.node != null) {
+                        curNode = acc.node;
+                        curType = acc.type;
+                    } else if (acc.insertable) {
                         PathSegment nextPt = segments[i + 1];
-                        Class<?> rawClazz = Types.rawClazz(tnn.getClazzType());
-                        Object nn = _createContainer(nextPt, rawClazz);
-                        Nodes.putInObject(tnode.getNode(), key, nn);
-                        tnode = TypedNode.of(nn, tnn.getClazzType());
+                        Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
+                        Nodes.putInObject(curNode, key, subNode);
+                        curNode = subNode;
+                        curType = acc.type;
                     } else {
-                        tnode = tnn;
+                        throw new JsonException("Cannot put field '" + key + "' on an object node '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() +
-                            "' with name token '" + pt + "'. The type must be one of JsonObject/Map/POJO.");
+                    throw new JsonException("Not an object node, but was '" + curType +
+                            "' at '" + ps.rootedInspect() + "'");
                 }
-            } else if (pt instanceof PathSegment.Index) {
-                int idx = ((PathSegment.Index) pt).index;
-                if (nt.isArray()) {
-                    TypedNode tnn = Nodes.getTypedInArray(tnode, idx);
-                    if (tnn == null) {
-                        throw new JsonException("Cannot get or set index " + idx + " on an array container '" +
-                                tnode.getClazzType() + "'");
-                    } else if (tnn.isNull()) {
+            } else if (ps instanceof PathSegment.Index) {
+                int idx = ((PathSegment.Index) ps).index;
+                if (jt.isArray()) {
+                    Nodes.accessInArray(curNode, curType, idx, acc);
+                    if (acc.node != null) {
+                        curNode = acc.node;
+                        curType = acc.type;
+                    } else if (acc.insertable) {
                         PathSegment nextPt = segments[i + 1];
-                        Class<?> rawClazz = Types.rawClazz(tnn.getClazzType());
-                        Object nn = _createContainer(nextPt, rawClazz);
-                        Nodes.setInArray(tnode.getNode(), idx, nn);
-                        tnode = TypedNode.of(nn, tnn.getClazzType());
+                        Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
+                        Nodes.setInArray(curNode, idx, subNode);
+                        curNode = subNode;
+                        curType = acc.type;
                     } else {
-                        tnode = tnn;
+                        throw new JsonException("Cannot add or set index " + idx + " on an array node '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("Unexpected container type '" + tnode.getClazzType() +
-                            "' with list token " + pt + ". The type must be one of JsonArray/List/Array.");
+                    throw new JsonException("Not an array node, but was '" + curType +
+                            "' at '" + ps.rootedInspect() + "'");
                 }
             } else {
-                throw new JsonException("Unexpected path token '" + pt + "'");
+                throw new JsonException("Unexpected path token '" + ps + "'");
             }
         }
-        return tnode.getNode(); // last container
+        return curNode; // last container
     }
 
 
-    private Object _createContainer(PathSegment pt, Class<?> clazz) {
-        if (pt instanceof PathSegment.Name) {
+    private Object _createContainer(PathSegment ps, Class<?> clazz) {
+        if (ps instanceof PathSegment.Name) {
             if (clazz.isAssignableFrom(Map.class)) {
                 return Sjf4jConfig.global().mapSupplier.create();
             }
@@ -1076,9 +1078,9 @@ public class JsonPath {
             if (pi != null) {
                 return pi.creatorInfo.forceNewPojo();
             }
-            throw new JsonException("Cannot create container with type '" + clazz + "' at name token '" +
-                        pt + "'. The type must be one of JsonObject/Map/POJO.");
-        } else if (pt instanceof PathSegment.Index) {
+            throw new JsonException("Cannot create object node with type '" + clazz + "' at '" +
+                    ps.rootedInspect() + "'. Only support Map/JsonObject/POJO.");
+        } else if (ps instanceof PathSegment.Index) {
             if (clazz.isAssignableFrom(List.class)) {
                 return Sjf4jConfig.global().listSupplier.create();
             }
@@ -1089,13 +1091,13 @@ public class JsonPath {
                 return NodeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
             }
             if (clazz.isArray()) {
-                int idx = ((PathSegment.Index) pt).index;
+                int idx = ((PathSegment.Index) ps).index;
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
             }
-            throw new JsonException("Cannot create container with type '" + clazz +
-                    "' at index token '" + pt + "'. The type must be one of JsonArray/List/Array.");
+            throw new JsonException("Cannot create array node with type '" + clazz +
+                    "' at '" + ps.rootedInspect() + "'. Only support JsonArray/List/Array.");
         } else {
-            throw new JsonException("Unexpected path token '" + pt + "'");
+            throw new JsonException("Unexpected path token '" + ps + "'");
         }
     }
 
@@ -1118,7 +1120,7 @@ public class JsonPath {
         } else if ("null".equals(raw)) {
             return null;
         } else if (Numbers.isNumeric(raw)) {
-            return Numbers.asNumber(raw);
+            return Numbers.parseNumber(raw);
         } else {
             throw new JsonException("Invalid raw argument '" + raw + "'");
         }

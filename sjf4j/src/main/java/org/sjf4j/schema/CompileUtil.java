@@ -2,7 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.SchemaException;
-import org.sjf4j.node.NodeType;
+import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
@@ -280,7 +280,7 @@ public class CompileUtil {
         if (schemaMapNode == null) return null;
 
         PathSegment cps = new PathSegment.Name(ps, null, key);
-        if (!NodeType.of(schemaMapNode).isObject())
+        if (!JsonType.of(schemaMapNode).isObject())
             throw new SchemaException("Schema node at " + JsonPointer.fromLast(cps) + " must be a JSON Object");
         for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(schemaMapNode)) {
             Object subNode = entry.getValue();
@@ -297,7 +297,7 @@ public class CompileUtil {
         if (schemaArrayNode == null) return null;
 
         PathSegment cps = new PathSegment.Name(ps, null, key);
-        if (!NodeType.of(schemaArrayNode).isArray())
+        if (!JsonType.of(schemaArrayNode).isArray())
             throw new SchemaException("Node at " + JsonPointer.fromLast(cps) + " must be a JSON Array");
         int size = Nodes.sizeInArray(schemaArrayNode);
         for (int i = 0; i < size; i++) {

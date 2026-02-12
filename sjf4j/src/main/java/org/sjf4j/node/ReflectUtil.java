@@ -58,8 +58,7 @@ public class ReflectUtil {
             return false;
         }
 
-        String pkg = clazz.getPackage() == null ? "" : clazz.getPackage().getName();
-        return !inJdkPackage(pkg);
+        return !isFrameworkPackage(clazz.getName());
     }
 
 
@@ -212,12 +211,13 @@ public class ReflectUtil {
     }
 
 
-    private static final String[] JDK_PREFIX = {
-            "java.", "javax.", "jakarta.", "jdk."
+    private static final String[] FRAMEWORK_PREFIX = {
+            "java.", "javax.", "jakarta.", "jdk.",
+            "com.fasterxml.jackson.", "com.google.gson."
     };
 
-    private static boolean inJdkPackage(String pkg) {
-        for (String prefix : JDK_PREFIX) if (pkg.startsWith(prefix)) return true;
+    private static boolean isFrameworkPackage(String clazzName) {
+        for (String prefix : FRAMEWORK_PREFIX) if (clazzName.startsWith(prefix)) return true;
         return false;
     }
 
@@ -435,7 +435,7 @@ public class ReflectUtil {
                     (encodeHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
         Class<?> rawClazz = encodeHandle.type().returnType();
-        if (!NodeType.of(rawClazz).isRaw())
+        if (!NodeKind.of(rawClazz).isRaw())
             throw new JsonException("@Encode method return invalid type " + rawClazz.getName() +
                     " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");

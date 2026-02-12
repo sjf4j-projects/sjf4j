@@ -348,6 +348,10 @@ public class StreamingIO {
     private static Map<String, Object> _readMapWithValueType(StreamingReader reader, Class<?> rawClazz,
                                                              Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
+        if (reader.peekToken() == StreamingReader.Token.NULL) {
+            reader.nextNull();
+            return null;
+        }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
         reader.startObject();
         while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
@@ -363,6 +367,10 @@ public class StreamingIO {
     private static List<Object> _readListWithElementType(StreamingReader reader, Class<?> rawClazz,
                                                          Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
+        if (reader.peekToken() == StreamingReader.Token.NULL) {
+            reader.nextNull();
+            return null;
+        }
         List<Object> list = new ArrayList<>();
         int i = 0;
         reader.startArray();
@@ -378,6 +386,10 @@ public class StreamingIO {
     private static Set<Object> _readSetWithElementType(StreamingReader reader, Class<?> rawClazz,
                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
+        if (reader.peekToken() == StreamingReader.Token.NULL) {
+            reader.nextNull();
+            return null;
+        }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         int i = 0;
         reader.startArray();
@@ -408,7 +420,7 @@ public class StreamingIO {
 
             Class<?> rawClazz = node.getClass();
 
-            if (node instanceof CharSequence || node instanceof Character) {
+            if (node instanceof String || node instanceof Character) {
                 writer.writeString(node.toString());
                 return;
             }
