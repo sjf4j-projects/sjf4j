@@ -27,13 +27,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 1)
-@Threads(1)
-@State(Scope.Thread)
+//@BenchmarkMode(Mode.AverageTime)
+//@OutputTimeUnit(TimeUnit.MICROSECONDS)
+//@Warmup(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+//@Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+//@Fork(value = 1)
+//@Threads(1)
+//@State(Scope.Thread)
 public class BindingBenchmark {
 
     // Define a POJO `User`
@@ -73,23 +73,23 @@ public class BindingBenchmark {
             "  \"age\": 18\n" +
             "}\n";
 
-    @Param({"path_off", "path_on"})
-    public String bindingPath;
+//    @Param({"path_off", "path_on"})
+//    public String bindingPath;
 
-    @Setup(Level.Trial)
-    public void setup() {
-        if (bindingPath.equals("path_on")) {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder().bindingPath(true).build());
-        } else {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder().bindingPath(false).build());
-        }
-    }
+//    @Setup(Level.Trial)
+//    public void setup() {
+//        if (bindingPath.equals("path_on")) {
+//            Sjf4jConfig.global(new Sjf4jConfig.Builder().bindingPath(true).build());
+//        } else {
+//            Sjf4jConfig.global(new Sjf4jConfig.Builder().bindingPath(false).build());
+//        }
+//    }
 
-    @Benchmark
-    public Object read_io() {
-        Object node = jsonFacade.readNode(JSON1, User.class);
-        return node;
-    }
+//    @Benchmark
+//    public Object read_io() {
+//        Object node = jsonFacade.readNode(JSON1, User.class);
+//        return node;
+//    }
 
 }
 

@@ -14,12 +14,12 @@ import org.sjf4j.node.NodeRegistry;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 1)
-@Threads(1)
+//@BenchmarkMode(Mode.AverageTime)
+//@OutputTimeUnit(TimeUnit.MICROSECONDS)
+//@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+//@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+//@Fork(value = 1)
+//@Threads(1)
 public class ReflectionBenchmark {
 
     // --------- 模拟的 POJO ------------

@@ -4,14 +4,14 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.JsonArray;
-import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
-import org.sjf4j.node.Numbers;
-import org.sjf4j.facade.StreamingIO;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
+import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -25,21 +25,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * A Jackson-specific, fully static implementation of the streaming JSON parser utilities.
- * <p>
- * This class is a specialized and performance-optimized version of {@link StreamingIO},
- * designed to maximize JIT inlining and reduce dynamic dispatch overhead.
- * <p>
- * Unlike {@code StreamingUtil}, this implementation:
- * <ul>
- *   <li>Removes all polymorphism and interface indirection (no {@code FacadeReader} abstraction).</li>
- *   <li>Uses only {@code static} methods for direct JIT inlining.</li>
- *   <li>Avoids reflection or dynamic lookups in the parsing hot path.</li>
- * </ul>
- * <p>
- * In practice, this allows the JVM JIT compiler to aggressively inline calls,
- * perform constant folding, and optimize the parser loops specifically for the original API,
- * achieving lower per-call latency compared to the generic {@code StreamingUtil}.
+ * Jackson specialized streaming implementation that mirrors StreamingIO semantics
+ * (including BindingException/PathSegment behavior) while keeping Jackson-native
+ * parser/generator hot paths.
  */
 public class JacksonStreamingIO {
 
@@ -47,73 +35,125 @@ public class JacksonStreamingIO {
 
     public static void skipNode(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
-        if (tk.isScalarValue()) parser.nextToken();
-        else {
+        if (tk.isScalarValue()) {
+            parser.nextToken();
+        } else {
             parser.skipChildren();
             parser.nextToken();
         }
     }
 
     public static Object readNode(JsonParser parser, Type type) throws IOException {
-        StreamingReader.Token token = peekToken(parser);
-        switch (token) {
-            case START_OBJECT:
-                return readObject(parser, type);
-            case START_ARRAY:
-                return readArray(parser, type);
-            case STRING:
-                return readString(parser, type);
-            case NUMBER:
-                return readNumber(parser, type);
-            case BOOLEAN:
-                return readBoolean(parser, type);
-            case NULL:
-                return readNull(parser, type);
-            default:
-                throw new JsonException("Unexpected token '" + token + "'");
+        return _readNode(
+                parser,
+                type,
+                Types.rawBox(type),
+                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+        );
+    }
+
+    private static Object _readNode(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
+        try {
+            StreamingReader.Token token = peekToken(parser);
+            switch (token) {
+                case START_OBJECT:
+                    return _readObject(parser, type, rawClazz, ps);
+                case START_ARRAY:
+                    return _readArray(parser, type, rawClazz, ps);
+                case STRING:
+                    return _readString(parser, rawClazz, ps);
+                case NUMBER:
+                    return _readNumber(parser, rawClazz, ps);
+                case BOOLEAN:
+                    return _readBoolean(parser, rawClazz, ps);
+                case NULL:
+                    return _readNull(parser, rawClazz, ps);
+                default:
+                    throw new JsonException("Unexpected token '" + token + "'");
+            }
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("Failed to read streaming into '" + type + "'", ps, e);
         }
     }
 
-    public static Object readNull(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
+    private static Object _readNull(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
         parser.nextToken();
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
             return vci.decode(null);
         }
-
-        return  null;
+        return null;
     }
 
-    public static Object readBoolean(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-        if (rawClazz.isAssignableFrom(Boolean.class)) {
-            Boolean b = parser.getBooleanValue();
+    private static Object _readBoolean(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
+        if (rawClazz == Object.class || rawClazz == Boolean.class) {
+            boolean b = parser.getBooleanValue();
             parser.nextToken();
             return b;
         }
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            Boolean b = parser.getBooleanValue();
+            boolean b = parser.getBooleanValue();
             parser.nextToken();
             return vci.decode(b);
         }
-        throw new JsonException("Cannot deserialize JSON Boolean into type " + rawClazz.getName());
+
+        throw new BindingException("Cannot read boolean value into type " + rawClazz.getName(), ps);
     }
 
-    public static Object readNumber(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-        if (rawClazz.isAssignableFrom(Number.class)) {
+    private static Object _readNumber(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
+        if (rawClazz == Object.class || rawClazz == Number.class) {
             Number n = parser.getNumberValue();
             parser.nextToken();
             return n;
         }
-        if (Number.class.isAssignableFrom(rawClazz)) {
-            Number n = parser.getNumberValue();
+        if (rawClazz == Integer.class) {
+            int n = parser.getIntValue();
             parser.nextToken();
-            return Numbers.to(n, rawClazz);
+            return n;
+        }
+        if (rawClazz == Long.class) {
+            long n = parser.getLongValue();
+            parser.nextToken();
+            return n;
+        }
+        if (rawClazz == Float.class) {
+            float n = parser.getFloatValue();
+            parser.nextToken();
+            return n;
+        }
+        if (rawClazz == Double.class) {
+            double n = parser.getDoubleValue();
+            parser.nextToken();
+            return n;
+        }
+        if (rawClazz == Short.class) {
+            short n = parser.getShortValue();
+            parser.nextToken();
+            return n;
+        }
+        if (rawClazz == Byte.class) {
+            byte n = parser.getByteValue();
+            parser.nextToken();
+            return n;
+        }
+        if (rawClazz == BigInteger.class) {
+            BigInteger n = parser.getBigIntegerValue();
+            parser.nextToken();
+            return n;
+        }
+        if (rawClazz == BigDecimal.class) {
+            BigDecimal n = parser.getDecimalValue();
+            parser.nextToken();
+            return n;
         }
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
@@ -122,13 +162,14 @@ public class JacksonStreamingIO {
             parser.nextToken();
             return vci.decode(n);
         }
-        throw new JsonException("Cannot deserialize JSON Number into type " + rawClazz.getName());
+
+        throw new BindingException("Cannot read number value into type " + rawClazz.getName(), ps);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Object readString(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-        if (rawClazz.isAssignableFrom(String.class)) {
+    private static Object _readString(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
+        if (rawClazz == Object.class || rawClazz == String.class) {
             String s = parser.getText();
             parser.nextToken();
             return s;
@@ -151,32 +192,25 @@ public class JacksonStreamingIO {
             return vci.decode(s);
         }
 
-        throw new JsonException("Cannot deserialize JSON String into type " + rawClazz.getName());
+        throw new BindingException("Cannot read string value into type " + rawClazz.getName(), ps);
     }
 
-
-    public static Object readObject(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-
+    private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_OBJECT) {
-                String key = parser.currentName();parser.nextToken();
-                Object value = readNode(parser, vt);
-                map.put(key, value);
-            }
-            parser.nextToken();
-            return map;
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Class<?> valueClazz = Types.rawBox(valueType);
+            return _readMapWithValueType(parser, rawClazz, valueType, valueClazz, ps);
         }
 
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
-                String key = parser.currentName();parser.nextToken();
-                Object value = readNode(parser, Object.class);
+                String key = parser.currentName();
+                parser.nextToken();
+                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                Object value = _readNode(parser, Object.class, Object.class, cps);
                 jo.put(key, value);
             }
             parser.nextToken();
@@ -184,21 +218,14 @@ public class JacksonStreamingIO {
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
-        if (vci != null) {
-            Type vt = Types.resolveTypeArgument(type, Map.class, 1);
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_OBJECT) {
-                String key = parser.currentName();parser.nextToken();
-                Object value = readNode(parser, vt);
-                map.put(key, value);
-            }
-            parser.nextToken();
-            return vci.decode(map);
+        if (ti.valueCodecInfo != null) {
+            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            Class<?> valueClazz = Types.rawBox(valueType);
+            Map<String, Object> map = _readMapWithValueType(parser, rawClazz, valueType, valueClazz, ps);
+            return ti.valueCodecInfo.decode(map);
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
+        NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
             NodeRegistry.CreatorInfo ci = pi.creatorInfo;
             Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
@@ -211,13 +238,14 @@ public class JacksonStreamingIO {
 
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
-                String key = parser.currentName();parser.nextToken();
+                String key = parser.currentName();
+                parser.nextToken();
 
                 int argIdx = -1;
                 if (pojo == null) {
                     argIdx = ci.getArgIndex(key);
                     if (argIdx < 0 && ci.aliasMap != null) {
-                        String origin = ci.aliasMap.get(key); // alias -> origin
+                        String origin = ci.aliasMap.get(key);
                         if (origin != null) {
                             argIdx = ci.getArgIndex(origin);
                         }
@@ -226,7 +254,8 @@ public class JacksonStreamingIO {
                 if (argIdx >= 0) {
                     Type argType = ci.argTypes[argIdx];
                     assert args != null;
-                    args[argIdx] = readNode(parser, argType);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                    args[argIdx] = _readNode(parser, argType, Types.rawBox(argType), cps);
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
@@ -240,7 +269,8 @@ public class JacksonStreamingIO {
 
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = readField(parser, fi);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                    Object vv = _readField(parser, fi, cps);
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
@@ -257,8 +287,11 @@ public class JacksonStreamingIO {
                 }
 
                 if (pi.isJojo) {
-                    if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
-                    Object vv = readNode(parser, Object.class);
+                    if (dynamicMap == null) {
+                        dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                    }
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                    Object vv = _readNode(parser, Object.class, Object.class, cps);
                     dynamicMap.put(key, vv);
                 } else {
                     skipNode(parser);
@@ -272,27 +305,30 @@ public class JacksonStreamingIO {
                     pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
-            if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
+            if (pi.isJojo) {
+                ((JsonObject) pojo).setDynamicMap(dynamicMap);
+            }
             return pojo;
         }
 
-        throw new JsonException("Cannot deserialize JSON Object into type " + rawClazz.getName());
+        throw new BindingException("Cannot read object value into type " + rawClazz.getName(), ps);
     }
 
-
-    public static Object readArray(JsonParser parser, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-
+    private static Object _readArray(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
+            throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
-            Type vt = Types.resolveTypeArgument(type, List.class, 0);
-            return readListWithElementType(parser, vt);
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
+            Class<?> valueClazz = Types.rawBox(valueType);
+            return _readListWithElementType(parser, rawClazz, valueType, valueClazz, ps);
         }
 
         if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
+            int i = 0;
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, Object.class);
+                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+                Object value = _readNode(parser, Object.class, Object.class, cps);
                 ja.add(value);
             }
             parser.nextToken();
@@ -300,64 +336,74 @@ public class JacksonStreamingIO {
         }
 
         if (rawClazz == Set.class) {
-            Type vt = Types.resolveTypeArgument(type, Set.class, 0);
-            return readSetWithElementType(parser, vt);
+            Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
+            Class<?> valueClazz = Types.rawBox(valueType);
+            return _readSetWithElementType(parser, rawClazz, valueType, valueClazz, ps);
+        }
+
+        if (rawClazz.isArray()) {
+            Class<?> compType = rawClazz.getComponentType();
+            Class<?> valueClazz = Types.box(compType);
+            List<Object> list = new ArrayList<>();
+            int i = 0;
+            parser.nextToken();
+            while (parser.currentToken() != JsonToken.END_ARRAY) {
+                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+                Object value = _readNode(parser, compType, valueClazz, cps);
+                list.add(value);
+            }
+            parser.nextToken();
+
+            Object array = Array.newInstance(compType, list.size());
+            for (int j = 0, len = list.size(); j < len; j++) {
+                Array.set(array, j, list.get(j));
+            }
+            return array;
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-            JsonArray ja = (JsonArray) pi.creatorInfo.forceNewPojo();
+            JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
+            Class<?> elemRaw = Types.box(elemType);
+            int i = 0;
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, elemType);
+                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+                Object value = _readNode(parser, elemType, elemRaw, cps);
                 ja.add(value);
             }
             parser.nextToken();
             return ja;
         }
 
-        if (rawClazz.isArray()) {
-            Class<?> valueClazz = rawClazz.getComponentType();
-            List<Object> list = new ArrayList<>();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = readNode(parser, valueClazz);
-                list.add(value);
-            }
-            parser.nextToken();
-
-            Object array = Array.newInstance(valueClazz, list.size());
-            for (int i = 0, len = list.size(); i < len; i++) {
-                Array.set(array, i, list.get(i));
-            }
-            return array;
-        }
-
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            Type vt = Types.resolveTypeArgument(type, List.class, 0);
-            List<Object> list = readListWithElementType(parser, vt);
+            Type valueType = Types.resolveTypeArgument(type, List.class, 0);
+            Class<?> valueClazz = Types.rawBox(valueType);
+            List<Object> list = _readListWithElementType(parser, rawClazz, valueType, valueClazz, ps);
             return vci.decode(list);
         }
 
-        throw new JsonException("Cannot deserialize JSON Array into type " + rawClazz.getName());
+        throw new BindingException("Cannot read array value into type " + rawClazz.getName(), ps);
     }
 
-    private static Object readField(JsonParser parser, NodeRegistry.FieldInfo fi) throws IOException {
+    private static Object _readField(JsonParser parser, NodeRegistry.FieldInfo fi, PathSegment ps)
+            throws IOException {
         switch (fi.containerKind) {
             case MAP:
-                return readMapWithValueType(parser, fi.argType);
+                return _readMapWithValueType(parser, fi.rawType, fi.argType, fi.argRawType, ps);
             case LIST:
-                return readListWithElementType(parser, fi.argType);
+                return _readListWithElementType(parser, fi.rawType, fi.argType, fi.argRawType, ps);
             case SET:
-                return readSetWithElementType(parser, fi.argType);
+                return _readSetWithElementType(parser, fi.rawType, fi.argType, fi.argRawType, ps);
             default:
-                return readNode(parser, fi.type);
+                return _readNode(parser, fi.type, fi.rawType, ps);
         }
     }
 
-    private static Map<String, Object> readMapWithValueType(JsonParser parser, Type vt) throws IOException {
+    private static Map<String, Object> _readMapWithValueType(JsonParser parser, Class<?> rawClazz,
+                                                              Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
@@ -367,49 +413,59 @@ public class JacksonStreamingIO {
         while (parser.currentToken() != JsonToken.END_OBJECT) {
             String key = parser.currentName();
             parser.nextToken();
-            Object value = readNode(parser, vt);
+            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+            Object value = _readNode(parser, valueType, valueClazz, cps);
             map.put(key, value);
         }
         parser.nextToken();
         return map;
     }
 
-    private static List<Object> readListWithElementType(JsonParser parser, Type vt) throws IOException {
+    private static List<Object> _readListWithElementType(JsonParser parser, Class<?> rawClazz,
+                                                          Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
         }
         List<Object> list = new ArrayList<>();
+        int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            Object value = readNode(parser, vt);
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(parser, valueType, valueClazz, cps);
             list.add(value);
         }
         parser.nextToken();
         return list;
     }
 
-    private static Set<Object> readSetWithElementType(JsonParser parser, Type vt) throws IOException {
+    private static Set<Object> _readSetWithElementType(JsonParser parser, Class<?> rawClazz,
+                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            Object value = readNode(parser, vt);
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(parser, valueType, valueClazz, cps);
             set.add(value);
         }
         parser.nextToken();
         return set;
     }
 
-
     /// Reader
 
     public static StreamingReader.Token peekToken(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
-        if (tk == null) tk = parser.nextToken();
+        if (tk == null) {
+            tk = parser.nextToken();
+        }
         switch (tk) {
             case START_OBJECT:
                 return StreamingReader.Token.START_OBJECT;
@@ -434,222 +490,164 @@ public class JacksonStreamingIO {
         }
     }
 
-//    public static void startDocument(JsonParser parser) throws IOException {
-//        // Nothing
-//    }
-//
-//    public static void endDocument(JsonParser parser) throws IOException {
-//        // Nothing
-//    }
-//
-//    public static void startObject(JsonParser parser) throws IOException {
-//        parser.nextToken();
-//    }
-//
-//    public static void endObject(JsonParser parser) throws IOException {
-//        parser.nextToken();
-//    }
-//
-//    public static void startArray(JsonParser parser) throws IOException {
-//        parser.nextToken();
-//    }
-//
-//    public static void endArray(JsonParser parser) throws IOException {
-//        parser.nextToken();
-//    }
-
-//    public static String nextName(JsonParser parser) throws IOException {
-//        String name = parser.currentName();
-//        parser.nextToken();
-//        return name;
-//    }
-
-//    public static String nextString(JsonParser parser) throws IOException {
-//        String value = parser.getText();
-//        parser.nextToken();
-//        return value;
-//    }
-//
-//    public static Number nextNumber(JsonParser parser) throws IOException {
-//        Number value = parser.getNumberValue();
-//        parser.nextToken();
-//        return value;
-//    }
-//
-//    public static Boolean nextBoolean(JsonParser parser) throws IOException {
-//        Boolean value = parser.getBooleanValue();
-//        parser.nextToken();
-//        return value;
-//    }
-//
-//    public static void nextNull(JsonParser parser) throws IOException {
-//        parser.nextToken();
-//    }
-
-//    public static boolean hasNext(JsonParser parser) throws IOException {
-//        int tid = parser.currentTokenId();
-//        return tid != JsonTokenId.ID_END_OBJECT && tid != JsonTokenId.ID_END_ARRAY;
-//    }
-
-
-
     /// Write
 
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
         Objects.requireNonNull(gen, "gen is null");
-        if (node == null) {
-            gen.writeNull();
-            return;
-        }
-
-        Class<?> rawClazz = node.getClass();
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-        if (vci != null) {
-            Object raw = vci.encode(node);
-            writeNode(gen, raw);
-            return;
-        }
-
-        if (node instanceof String || node instanceof Character) {
-            gen.writeString(node.toString());
-            return;
-        }
-        if (node instanceof Enum) {
-            gen.writeString(((Enum<?>) node).name());
-            return;
-        }
-
-        if (node instanceof Number) {
-            writeValue(gen, (Number) node);
-            return;
-        }
-
-        if (node instanceof Boolean) {
-            gen.writeBoolean((Boolean) node);
-            return;
-        }
-
-        if (node instanceof Map) {
-            gen.writeStartObject();
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                gen.writeFieldName(entry.getKey().toString());
-                writeNode(gen, entry.getValue());
-            }
-            gen.writeEndObject();
-            return;
-        }
-
-        if (node instanceof List) {
-            gen.writeStartArray();
-            List<?> list = (List<?>) node;
-            for (Object v : list) {
-                writeNode(gen, v);
-            }
-            gen.writeEndArray();
-            return;
-        }
-
-        if (node instanceof JsonObject) {
-            gen.writeStartObject();
-            ((JsonObject) node).forEach((k, v) -> {
-                try {
-                    gen.writeFieldName(k);
-                    writeNode(gen, v);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            gen.writeEndObject();
-            return;
-        }
-
-        if (node instanceof JsonArray) {
-            gen.writeStartArray();
-            JsonArray ja = (JsonArray) node;
-            for (int i = 0, len = ja.size(); i < len; i++) {
-                Object v = ja.getNode(i);
-                writeNode(gen, v);
-            }
-            gen.writeEndArray();
-            return;
-        }
-
-        if (node.getClass().isArray()) {
-            gen.writeStartArray();
-            int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) {
-                writeNode(gen, Array.get(node, i));
-            }
-            gen.writeEndArray();
-            return;
-        }
-
-        if (node instanceof Set) {
-            gen.writeStartArray();
-            for (Object v : (Set<?>) node) {
-                writeNode(gen, v);
-            }
-            gen.writeEndArray();
-            return;
-        }
-
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-        if (pi != null) {
-            gen.writeStartObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                gen.writeFieldName(entry.getKey());
-                Object vv = entry.getValue().invokeGetter(node);
-                writeNode(gen, vv);
-            }
-            gen.writeEndObject();
-            return;
-        }
-
-        throw new IllegalStateException("Unsupported node type " + node.getClass().getName());
+        _writeNode(
+                gen,
+                node,
+                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+        );
     }
 
-    /// Writer
+    private static void _writeNode(JsonGenerator gen, Object node, PathSegment ps) throws IOException {
+        try {
+            if (node == null) {
+                gen.writeNull();
+                return;
+            }
 
-//    public static void startDocument(JsonGenerator gen) throws IOException {
-//        // Nothing
-//    }
-//
-//    public static void endDocument(JsonGenerator gen) throws IOException {
-//        // Nothing
-//    }
-//
-//    public static void startObject(JsonGenerator gen) throws IOException {
-//        gen.writeStartObject();
-//    }
-//
-//    public static void endObject(JsonGenerator gen) throws IOException {
-//        gen.writeEndObject();
-//    }
-//
-//    public static void startArray(JsonGenerator gen) throws IOException {
-//        gen.writeStartArray();
-//    }
-//
-//    public static void endArray(JsonGenerator gen) throws IOException {
-//        gen.writeEndArray();
-//    }
-//
-//    public static void writeName(JsonGenerator gen, String name) throws IOException {
-//        gen.writeFieldName(name);
-//    }
+            Class<?> rawClazz = node.getClass();
+
+            if (node instanceof String || node instanceof Character) {
+                gen.writeString(node.toString());
+                return;
+            }
+            if (node instanceof Enum) {
+                gen.writeString(((Enum<?>) node).name());
+                return;
+            }
+
+            if (node instanceof Number) {
+                writeValue(gen, (Number) node);
+                return;
+            }
+
+            if (node instanceof Boolean) {
+                gen.writeBoolean((Boolean) node);
+                return;
+            }
+
+            if (node instanceof Map) {
+                gen.writeStartObject();
+                for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                    String key = entry.getKey().toString();
+                    gen.writeFieldName(key);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                    _writeNode(gen, entry.getValue(), cps);
+                }
+                gen.writeEndObject();
+                return;
+            }
+
+            if (node instanceof List) {
+                gen.writeStartArray();
+                List<?> list = (List<?>) node;
+                for (int i = 0, len = list.size(); i < len; i++) {
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                    _writeNode(gen, list.get(i), cps);
+                }
+                gen.writeEndArray();
+                return;
+            }
+
+            if (node instanceof JsonObject) {
+                gen.writeStartObject();
+                ((JsonObject) node).forEach((k, v) -> {
+                    try {
+                        gen.writeFieldName(k);
+                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, k);
+                        _writeNode(gen, v, cps);
+                    } catch (IOException e) {
+                        throw new BindingException(e, ps);
+                    }
+                });
+                gen.writeEndObject();
+                return;
+            }
+
+            if (node instanceof JsonArray) {
+                gen.writeStartArray();
+                JsonArray ja = (JsonArray) node;
+                for (int i = 0, len = ja.size(); i < len; i++) {
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                    _writeNode(gen, ja.getNode(i), cps);
+                }
+                gen.writeEndArray();
+                return;
+            }
+
+            if (rawClazz.isArray()) {
+                gen.writeStartArray();
+                int len = Array.getLength(node);
+                for (int i = 0; i < len; i++) {
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                    _writeNode(gen, Array.get(node, i), cps);
+                }
+                gen.writeEndArray();
+                return;
+            }
+
+            if (node instanceof Set) {
+                gen.writeStartArray();
+                int i = 0;
+                for (Object v : (Set<?>) node) {
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+                    _writeNode(gen, v, cps);
+                }
+                gen.writeEndArray();
+                return;
+            }
+
+            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            if (ti.valueCodecInfo != null) {
+                Object raw = ti.valueCodecInfo.encode(node);
+                _writeNode(gen, raw, ps);
+                return;
+            }
+
+            NodeRegistry.PojoInfo pi = ti.pojoInfo;
+            if (pi != null) {
+                gen.writeStartObject();
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                    String key = entry.getKey();
+                    gen.writeFieldName(key);
+                    Object vv = entry.getValue().invokeGetter(node);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                    _writeNode(gen, vv, cps);
+                }
+                gen.writeEndObject();
+                return;
+            }
+
+            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'", ps);
+        } catch (BindingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", ps, e);
+        }
+    }
 
     public static void writeValue(JsonGenerator gen, Number value) throws IOException {
-        if (value instanceof Long || value instanceof Integer) {
-            gen.writeNumber(value.longValue());
-        } else if (value instanceof Float || value instanceof Double) {
-            gen.writeNumber(value.doubleValue());
+        if (value instanceof Long) {
+            gen.writeNumber((Long) value);
+        } else if (value instanceof Integer) {
+            gen.writeNumber((Integer) value);
+        } else if (value instanceof Short) {
+            gen.writeNumber((Short) value);
+        } else if (value instanceof Byte) {
+            gen.writeNumber((Byte) value);
         } else if (value instanceof BigInteger) {
-            gen.writeNumber(((BigInteger) value));
+            gen.writeNumber((BigInteger) value);
+        } else if (value instanceof Double) {
+            gen.writeNumber((Double) value);
+        } else if (value instanceof Float) {
+            gen.writeNumber((Float) value);
         } else if (value instanceof BigDecimal) {
-            gen.writeNumber(((BigDecimal) value));
+            gen.writeNumber((BigDecimal) value);
         } else {
-            gen.writeNumber(value.longValue());
+            gen.writeNumber(value.toString());
         }
     }
-
 }
