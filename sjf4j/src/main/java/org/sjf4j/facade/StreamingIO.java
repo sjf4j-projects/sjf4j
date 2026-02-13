@@ -90,7 +90,7 @@ public class StreamingIO {
             boolean b = reader.nextBoolean();
             return vci.decode(b);
         }
-        throw new BindingException("Cannot deserialize Boolean value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read boolean value into type '" + rawClazz.getName() + "'", ps);
     }
 
     private static Object _readNumber(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
@@ -111,7 +111,7 @@ public class StreamingIO {
             Number n = reader.nextNumber();
             return vci.decode(n);
         }
-        throw new BindingException("Cannot deserialize Number value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read number value into type '" + rawClazz.getName() + "'", ps);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -133,7 +133,7 @@ public class StreamingIO {
             String s = reader.nextString();
             return vci.decode(s);
         }
-        throw new BindingException("Cannot deserialize String value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read string value into type '" + rawClazz.getName() + "'", ps);
     }
 
     /**
@@ -255,7 +255,7 @@ public class StreamingIO {
             return pojo;
         }
 
-        throw new BindingException("Cannot deserialize Object value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read object value into type '" + rawClazz.getName() + "'", ps);
     }
 
     private static Object _readArray(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps)
@@ -328,7 +328,7 @@ public class StreamingIO {
             return vci.decode(list);
         }
 
-        throw new BindingException("Cannot deserialize Array value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read array value into type '" + rawClazz.getName() + "'", ps);
     }
 
     private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
@@ -545,7 +545,7 @@ public class StreamingIO {
                 return;
             }
 
-            throw new BindingException("Unsupported node type '" + node.getClass().getName() + "'", ps);
+            throw new BindingException("Unsupported node type '" + Types.name(node) + "'", ps);
 
         } catch (BindingException e) {
             throw e;

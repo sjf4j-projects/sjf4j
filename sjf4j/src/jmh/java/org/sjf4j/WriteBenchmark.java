@@ -32,13 +32,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 
-@BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 1)
-@Threads(1)
-@State(Scope.Thread)
+//@BenchmarkMode(Mode.AverageTime)
+//@OutputTimeUnit(TimeUnit.MICROSECONDS)
+//@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+//@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+//@Fork(value = 1)
+//@Threads(1)
+//@State(Scope.Thread)
 public class WriteBenchmark {
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";

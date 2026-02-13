@@ -43,8 +43,8 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
@@ -113,18 +113,16 @@ public class ReadBenchmark {
 
     static {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        Sjf4jConfig.useBindingPath(false);
-    }
-
-    @Setup(Level.Trial)
-    public void setupCommon() {
-        Sjf4jConfig.useBindingPath(false);
+//        Sjf4jConfig.useBindingPath(false);
     }
 
     @State(Scope.Thread)
     public static class FacadeState {
         @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
         public String streamingMode;
+
+        @Param({"true", "false"})
+        public String useBindingPath;
 
         public JacksonJsonFacade jacksonFacade;
         public GsonJsonFacade gsonFacade;
@@ -134,7 +132,7 @@ public class ReadBenchmark {
         public void setup() {
             Sjf4jConfig.global(new Sjf4jConfig.Builder()
                     .streamingMode(StreamingFacade.StreamingMode.valueOf(streamingMode))
-                    .bindingPath(false)
+                    .bindingPath(Boolean.parseBoolean(useBindingPath))
                     .build());
             jacksonFacade = new JacksonJsonFacade(new ObjectMapper());
             gsonFacade = new GsonJsonFacade(new GsonBuilder());
@@ -181,15 +179,15 @@ public class ReadBenchmark {
         return state.jacksonFacade.readNode(JSON_DATA2, User2.class);
     }
 
-    @Benchmark
-    public Object json_jackson_facade_jojo_no_dyn(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
-    }
-
-    @Benchmark
-    public Object json_jackson_facade_jojo_list(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
-    }
+//    @Benchmark
+//    public Object json_jackson_facade_jojo_no_dyn(FacadeState state) throws IOException {
+//        return state.jacksonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
+//    }
+//
+//    @Benchmark
+//    public Object json_jackson_facade_jojo_list(FacadeState state) throws IOException {
+//        return state.jacksonFacade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
+//    }
 
 
     // ----- Gson baselines -----
@@ -213,15 +211,15 @@ public class ReadBenchmark {
         return state.gsonFacade.readNode(JSON_DATA2, User2.class);
     }
 
-    @Benchmark
-    public Object json_gson_facade_jojo_no_dyn(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
-    }
-
-    @Benchmark
-    public Object json_gson_facade_jojo_list(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
-    }
+//    @Benchmark
+//    public Object json_gson_facade_jojo_no_dyn(FacadeState state) {
+//        return state.gsonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
+//    }
+//
+//    @Benchmark
+//    public Object json_gson_facade_jojo_list(FacadeState state) {
+//        return state.gsonFacade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
+//    }
 
     // ----- Fastjson2 baselines -----
     @Benchmark
@@ -249,15 +247,15 @@ public class ReadBenchmark {
         return state.fastjson2Facade.readNode(JSON_DATA2, User2.class);
     }
 
-    @Benchmark
-    public Object json_fastjson2_facade_jojo_no_dyn(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, User2.class);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_facade_jojo_list(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
-    }
+//    @Benchmark
+//    public Object json_fastjson2_facade_jojo_no_dyn(FacadeState state) throws IOException {
+//        return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, User2.class);
+//    }
+//
+//    @Benchmark
+//    public Object json_fastjson2_facade_jojo_list(FacadeState state) throws IOException {
+//        return state.fastjson2Facade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
+//    }
 
     // --------- 模拟的 POJO ------------
     // Extend JsonObject so every framework can reuse the same helper methods when populating nested structures.

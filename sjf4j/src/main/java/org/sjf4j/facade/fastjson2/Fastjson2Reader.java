@@ -136,7 +136,7 @@ public class Fastjson2Reader implements StreamingReader {
     @Override
     public long nextLong() throws IOException {
         peeked = null;
-        return reader.getInt64Value();
+        return reader.readInt64Value();
     }
     @Override
     public int nextInt() throws IOException {

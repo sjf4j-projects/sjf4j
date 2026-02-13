@@ -9,10 +9,15 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.Types;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.Writer;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
@@ -61,6 +66,89 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                     return gson.fromJson(input, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type " + type, e);
+                }
+            }
+            default:
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+        }
+    }
+
+    @Override
+    public Object readNode(InputStream input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        switch (streamingMode) {
+            case SHARED_IO: {
+                return JsonFacade.super.readNode(input, type);
+            }
+            case EXCLUSIVE_IO: {
+                try {
+                    JsonReader reader = gson.newJsonReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+                    return GsonStreamingIO.readNode(reader, type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON stream into node type " + type, e);
+                }
+            }
+            case PLUGIN_MODULE: {
+                try {
+                    return gson.fromJson(new InputStreamReader(input, StandardCharsets.UTF_8), type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON stream into node type " + type, e);
+                }
+            }
+            default:
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+        }
+    }
+
+    @Override
+    public Object readNode(String input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        switch (streamingMode) {
+            case SHARED_IO: {
+                return JsonFacade.super.readNode(input, type);
+            }
+            case EXCLUSIVE_IO: {
+                try {
+                    JsonReader reader = gson.newJsonReader(new StringReader(input));
+                    return GsonStreamingIO.readNode(reader, type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON string into node type " + type, e);
+                }
+            }
+            case PLUGIN_MODULE: {
+                try {
+                    return gson.fromJson(input, type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON string into node type " + type, e);
+                }
+            }
+            default:
+                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+        }
+    }
+
+    @Override
+    public Object readNode(byte[] input, Type type) {
+        Objects.requireNonNull(input, "input is null");
+        switch (streamingMode) {
+            case SHARED_IO: {
+                return JsonFacade.super.readNode(input, type);
+            }
+            case EXCLUSIVE_IO: {
+                try {
+                    JsonReader reader = gson.newJsonReader(new InputStreamReader(
+                            new ByteArrayInputStream(input), StandardCharsets.UTF_8));
+                    return GsonStreamingIO.readNode(reader, type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON byte[] into node type " + type, e);
+                }
+            }
+            case PLUGIN_MODULE: {
+                try {
+                    return gson.fromJson(new InputStreamReader(
+                            new ByteArrayInputStream(input), StandardCharsets.UTF_8), type);
+                } catch (Exception e) {
+                    throw new JsonException("Failed to read JSON byte[] into node type " + type, e);
                 }
             }
             default:
