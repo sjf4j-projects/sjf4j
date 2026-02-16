@@ -313,5 +313,68 @@ public class FacadeNodes {
         throw new JsonException("Unknown node type '" + Types.name(node) + "'");
     }
 
+    public static Object putInObject(Object node, String key, Object value) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            return JacksonNodes.putInObject(node, key, value);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.putInObject(node, key, value);
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static Object setInArray(Object node, int idx, Object value) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            return JacksonNodes.setInArray(node, idx, value);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.setInArray(node, idx, value);
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static void addInArray(Object node, Object value) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            JacksonNodes.addInArray(node, value);
+            return;
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            GsonNodes.addInArray(node, value);
+            return;
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static void addInArray(Object node, int idx, Object value) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            JacksonNodes.addInArray(node, idx, value);
+            return;
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            GsonNodes.addInArray(node, idx, value);
+            return;
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static Object removeInObject(Object node, String key) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            return JacksonNodes.removeInObject(node, key);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.removeInObject(node, key);
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static Object removeInArray(Object node, int idx) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            return JacksonNodes.removeInArray(node, idx);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.removeInArray(node, idx);
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
 
 }

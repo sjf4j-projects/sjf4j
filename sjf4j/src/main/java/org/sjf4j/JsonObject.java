@@ -296,6 +296,7 @@ public class JsonObject extends JsonContainer {
      */
     @Override
     public int hashCode() {
+//        return Nodes.hash(this);
         int hash = dynamicMap == null ? 0 : dynamicMap.hashCode();
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
@@ -306,19 +307,25 @@ public class JsonObject extends JsonContainer {
         return hash;
     }
 
-    @SuppressWarnings("EqualsDoesntCheckParameterClass")
     @Override
     public boolean equals(Object target) {
-        return Nodes.equals(this, target);
-//        if (target == this) return true;
-//        if (target == null || target.getClass() != this.getClass()) return false;
-//        JsonObject targetJo = (JsonObject) target;
-//        if (targetJo.size() != this.size()) return false;
-//        for (Map.Entry<String, Object> entry : entrySet()) {
-//            Object targetValue = targetJo.get(entry.getKey());
-//            if (!Objects.equals(targetValue, entry.getValue())) return false;
-//        }
-//        return true;
+//        return Nodes.equals(this, target);
+        if (target == this) return true;
+        if (target == null || target.getClass() != this.getClass()) return false;
+        JsonObject targetJo = (JsonObject) target;
+        if (targetJo.size() != this.size()) return false;
+        for (Map.Entry<String, Object> entry : entrySet()) {
+            Object value = entry.getValue();
+            Object targetValue = targetJo.get(entry.getKey());
+            if (value == null) {
+                if (!targetJo.containsKey(entry.getKey()) || targetJo.getNode(entry.getKey()) != null) {
+                    return false;
+                }
+            } else {
+                if (!Objects.equals(targetValue, entry.getValue())) return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -1525,6 +1532,7 @@ public class JsonObject extends JsonContainer {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
+            return;
         }
         throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
                 "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");

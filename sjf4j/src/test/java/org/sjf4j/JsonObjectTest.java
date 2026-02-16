@@ -192,7 +192,7 @@ class JsonObjectTest {
         JsonObject jo1 = new JsonObject(map1);
 
         JsonObject jo2 = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"]}");
-        assertEquals(jo1, jo2);
+        assertNotEquals(jo1, jo2);
         assertTrue(jo1.nodeEquals(jo2));
         assertEquals(jo1.toJson(), jo2.toJson());
 

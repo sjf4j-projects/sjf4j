@@ -1068,10 +1068,10 @@ public class JsonPath {
 
     private Object _createContainer(PathSegment ps, Class<?> clazz) {
         if (ps instanceof PathSegment.Name) {
-            if (clazz.isAssignableFrom(Map.class)) {
+            if (clazz == Object.class || clazz == Map.class) {
                 return Sjf4jConfig.global().mapSupplier.create();
             }
-            if (clazz.isAssignableFrom(JsonObject.class)) {
+            if (clazz == JsonObject.class) {
                 return new JsonObject();
             }
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
@@ -1079,12 +1079,12 @@ public class JsonPath {
                 return pi.creatorInfo.forceNewPojo();
             }
             throw new JsonException("Cannot create object node with type '" + clazz + "' at '" +
-                    ps.rootedInspect() + "'. Only support Map/JsonObject/POJO.");
+                    ps.rootedInspect() + "'. Only support Map/JsonObject/JOJO/POJO.");
         } else if (ps instanceof PathSegment.Index) {
-            if (clazz.isAssignableFrom(List.class)) {
+            if (clazz == Object.class || clazz == List.class) {
                 return Sjf4jConfig.global().listSupplier.create();
             }
-            if (clazz.isAssignableFrom(JsonArray.class)) {
+            if (clazz == JsonArray.class) {
                 return new JsonArray();
             }
             if (JsonArray.class.isAssignableFrom(clazz)) {
@@ -1094,8 +1094,11 @@ public class JsonPath {
                 int idx = ((PathSegment.Index) ps).index;
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
             }
+            if (clazz == Set.class) {
+                return Sjf4jConfig.global().setSupplier.create();
+            }
             throw new JsonException("Cannot create array node with type '" + clazz +
-                    "' at '" + ps.rootedInspect() + "'. Only support JsonArray/List/Array.");
+                    "' at '" + ps.rootedInspect() + "'. Only support List/JsonArray/JAJO/Array/Set.");
         } else {
             throw new JsonException("Unexpected path token '" + ps + "'");
         }

@@ -132,16 +132,22 @@ public class JsonArray extends JsonContainer {
      */
     @Override
     public int hashCode() {
-        return nodeList == null ? 0 : nodeList.hashCode();
+        return nodeList == null || nodeList.isEmpty() ? 0 : nodeList.hashCode();
     }
 
     @Override
     public boolean equals(Object target) {
+//        return Nodes.equals(this, target);
         if (target == this) return true;
         if (target == null || target.getClass() != this.getClass()) return false;
         JsonArray targetJa = (JsonArray) target;
-        if (targetJa.size() != this.size()) return false;
-        return Objects.equals(this.nodeList, targetJa.nodeList);
+        int size = this.size();
+        if (size != targetJa.size()) return false;
+        if (size == 0) {
+            return true;
+        } else {
+            return Objects.equals(this.nodeList, targetJa.nodeList);
+        }
     }
 
     /**

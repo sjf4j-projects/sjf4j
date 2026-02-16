@@ -39,6 +39,10 @@ public abstract class JsonContainer {
         return Nodes.equals(this, target);
     }
 
+    public int nodeHash() {
+        return Nodes.hash(this);
+    }
+
     /**
      * Returns a string representation of this container for debugging purposes.
      * Uses {@link Nodes#inspect(Object)} to generate the string.
