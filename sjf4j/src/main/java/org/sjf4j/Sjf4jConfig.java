@@ -198,21 +198,20 @@ public final class Sjf4jConfig {
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
         private boolean bindingPath = true;
 
-        /**
-         * Creates a new Builder with default settings.
-         */
         public Builder() {}
 
-        /**
-         * Creates a new Builder with settings copied from the given configuration.
-         *
-         * @param config The configuration to copy settings from
-         */
         public Builder(Sjf4jConfig config) {
             if (config == null) throw new IllegalArgumentException("JsonConfig must not be null");
+            this.jsonFacade = config.jsonFacade;
+            this.yamlFacade = config.yamlFacade;
+            this.propertiesFacade = config.propertiesFacade;
+            this.nodeFacade = config.nodeFacade;
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
+            this.setSupplier = config.setSupplier;
+            this.streamingMode = config.streamingMode;
             this.instantFormat = config.instantFormat;
+            this.bindingPath = config.bindingPath;
         }
 
         public Sjf4jConfig build() {

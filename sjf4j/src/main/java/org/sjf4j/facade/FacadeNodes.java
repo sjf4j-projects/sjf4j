@@ -116,7 +116,7 @@ public class FacadeNodes {
     public static JsonObject toJsonObject(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toJsonObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toJsonObject(node);
-        return null;
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
     }
 
     public static Map<String, Object> toMap(Object node) {

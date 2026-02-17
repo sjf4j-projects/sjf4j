@@ -2,6 +2,8 @@ package org.sjf4j.schema;
 
 import org.sjf4j.node.Nodes;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -11,7 +13,7 @@ public class ValidationResult {
 
     public ValidationResult(boolean valid, List<ValidationMessage> messages) {
         this.valid = valid;
-        this.messages = messages;
+        this.messages = messages == null ? Collections.emptyList() : messages;
     }
 
     public boolean isValid() {

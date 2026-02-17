@@ -1,6 +1,8 @@
 package org.sjf4j.patch;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.Types;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,16 +33,18 @@ public class JsonPatch extends JsonArray {
 
 
     public void add(PatchOp op) {
-        Objects.requireNonNull(op, "op must not be null");
+        Objects.requireNonNull(op, "op is null");
         super.add(op);
     }
 
 
     public void apply(Object target) {
-        Objects.requireNonNull(target, "target must not be null");
+        Objects.requireNonNull(target, "target is null");
         forEach(v -> {
-            PatchOp op =  (PatchOp) v;
-            op.apply(target);
+            if (v instanceof PatchOp) {
+                PatchOp op =  (PatchOp) v;
+                op.apply(target);
+            } else throw new JsonException("Unsupported patch type: " + Types.name(v));
         });
     }
 

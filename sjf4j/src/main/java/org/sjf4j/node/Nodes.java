@@ -16,6 +16,7 @@ import java.util.AbstractMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -274,7 +275,7 @@ public class Nodes {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
         if (node instanceof String) {
-            String str = ((String) node).toLowerCase();
+            String str = ((String) node).toLowerCase(Locale.ROOT);
             if ("true".equals(str) || "yes".equals(str) || "on".equals(str) || "1".equals(str)) return true;
             if ("false".equals(str) || "no".equals(str) || "off".equals(str) || "0".equals(str)) return false;
 //            throw new JsonException("Cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
@@ -635,6 +636,7 @@ public class Nodes {
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
             for (Map.Entry<String, Object> entry : entrySetInObject(source)) {
+                if (!containsInObject(target, entry.getKey())) return false;
                 Object subSource = entry.getValue();
                 Object subTarget = getInObject(target, entry.getKey());
                 if (!equals(subSource, subTarget)) return false;

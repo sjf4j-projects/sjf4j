@@ -175,7 +175,7 @@ class JacksonNodesTest {
     void strictAndUnsupportedCases() throws Exception {
         JsonNode root = read("{\"s\":\"v\",\"n\":2,\"b\":true,\"arr\":[1,2],\"obj\":{\"x\":1}}");
 
-        assertNull(JacksonNodes.kindOf("not-node"));
+        assertThrows(JsonException.class, () -> JacksonNodes.kindOf("not-node"));
         assertThrows(JsonException.class, () -> JacksonNodes.toString(root.get("n")));
         assertThrows(JsonException.class, () -> JacksonNodes.toNumber(root.get("s")));
         assertThrows(JsonException.class, () -> JacksonNodes.toBoolean(root.get("n")));

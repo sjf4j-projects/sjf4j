@@ -275,14 +275,14 @@ public class PathFunctionRegistry {
             if (args.length != 2)
                 throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];
+            if (!(args[1] instanceof Number)) {
+                throw new JsonException("index(): the second argument must be a number but was " + Types.name(args[1]));
+            }
+            int idx = ((Number) args[1]).intValue();
+
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    int size = Nodes.sizeInArray(node);
-                    if (size > 0) {
-                        int index = ((Number) args[1]).intValue();
-                        index = index >= 0 ? index : size + index;
-                        if (index >= 0 && index < size) return Nodes.getInArray(node, index);
-                    }
+                    return Nodes.getInArray(node, idx);
             }
             return null;
         }));

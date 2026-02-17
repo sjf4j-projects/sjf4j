@@ -19,6 +19,7 @@ import org.yaml.snakeyaml.parser.Parser;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Locale;
 
 public class SnakeReader implements StreamingReader {
 
@@ -64,7 +65,7 @@ public class SnakeReader implements StreamingReader {
             if ("tag:yaml.org,2002:str".equals(tag) || "!".equals(tag)) {
                 return Token.STRING;
             }
-            String low = value.toLowerCase();
+            String low = value.toLowerCase(Locale.ROOT);
             if (low.equals("true") || low.equals("yes") || low.equals("on")) {
                 return Token.BOOLEAN;
             }

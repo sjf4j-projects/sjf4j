@@ -37,7 +37,7 @@ public final class JacksonNodes {
     }
 
     public static NodeKind kindOf(Object node) {
-        if (!isNode(node)) return null;
+        if (!isNode(node)) throw new JsonException("Not a Jackson's JsonNode, but was '" + Types.name(node) + "'");
         JsonNode jsonNode = (JsonNode) node;
         if (jsonNode.isNull() || jsonNode.isMissingNode()) return NodeKind.VALUE_NULL;
         if (jsonNode.isTextual()) return NodeKind.VALUE_STRING_FACADE;
@@ -48,107 +48,6 @@ public final class JacksonNodes {
         if (jsonNode.isPojo()) throw new JsonException("Not support POJONode of Jackson");
         return NodeKind.UNKNOWN;
     }
-
-//    public static boolean isObject(Object node) {
-//        return node instanceof ObjectNode;
-//    }
-//
-//    public static boolean isArray(Object node) {
-//        return node instanceof ArrayNode;
-//    }
-//
-//    public static boolean isNull(Object node) {
-//        return node == null || node instanceof NullNode;
-//    }
-//
-//    public static boolean isMissingNode(Object node) {
-//        return node instanceof MissingNode;
-//    }
-//
-//    public static int size(Object node) {
-//        return ((ContainerNode<?>) node).size();
-//    }
-//
-//    public static Iterator<String> fieldNames(Object node) {
-//        return ((JsonNode) node).fieldNames();
-//    }
-//
-//    public static Iterator<JsonNode> elements(Object node) {
-//        return ((JsonNode) node).elements();
-//    }
-
-//    public static Object get(Object node, String key) {
-//        if (node instanceof ObjectNode) {
-//            return ((ObjectNode) node).get(key);
-//        }
-//        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
-//    }
-//
-//    public static Object get(Object node, int idx) {
-//        if (node instanceof ArrayNode) {
-//            return ((ArrayNode) node).get(idx);
-//        }
-//        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
-//    }
-
-//    public static boolean hasField(Object node, String key) {
-//        JsonNode value = ((JsonNode) node).get(key);
-//        return value != null && !value.isMissingNode();
-//    }
-
-//    public static String asText(Object node) {
-//        return ((JsonNode) node).asText();
-//    }
-//
-//    public static Number numberValue(Object node) {
-//        return ((JsonNode) node).numberValue();
-//    }
-
-//    public static Boolean booleanValue(Object node) {
-//        JsonNode jsonNode = (JsonNode) node;
-//        return jsonNode.isNull() || jsonNode.isMissingNode() ? null : jsonNode.booleanValue();
-//    }
-//
-//    public static Object putField(Object objectNode, String key, Object value) {
-//        ObjectNode on = (ObjectNode) objectNode;
-//        JsonNode old = on.get(key);
-//        on.set(key, (JsonNode) toJsonNodeValue(value));
-//        return normalize(old);
-//    }
-//
-//    public static Object removeField(Object objectNode, String key) {
-//        ObjectNode on = (ObjectNode) objectNode;
-//        JsonNode old = on.remove(key);
-//        return normalize(old);
-//    }
-
-//    public static Object setElement(Object arrayNode, int idx, Object value) {
-//        ArrayNode an = (ArrayNode) arrayNode;
-//        JsonNode old = an.get(idx);
-//        an.set(idx, (JsonNode) toJsonNodeValue(value));
-//        return normalize(old);
-//    }
-//
-//    public static void addElement(Object arrayNode, Object value) {
-//        ((ArrayNode) arrayNode).add((JsonNode) toJsonNodeValue(value));
-//    }
-//
-//    public static void insertElement(Object arrayNode, int idx, Object value) {
-//        ((ArrayNode) arrayNode).insert(idx, (JsonNode) toJsonNodeValue(value));
-//    }
-//
-//    public static Object removeElement(Object arrayNode, int idx) {
-//        JsonNode old = ((ArrayNode) arrayNode).remove(idx);
-//        return normalize(old);
-//    }
-//
-//    public static Object deepCopy(Object node) {
-//        return ((JsonNode) node).deepCopy();
-//    }
-
-//    public static Object toJsonNode(Object value) {
-//        return toJsonNodeValue(value);
-//    }
 
     public static String toString(Object node) {
         if (node instanceof TextNode) {
@@ -173,7 +72,7 @@ public final class JacksonNodes {
             return ((NumericNode) node).numberValue();
         }
         if (node instanceof TextNode) {
-            Nodes.asNumber(((TextNode) node).textValue());
+            return Nodes.asNumber(((TextNode) node).textValue());
         }
         return null;
     }

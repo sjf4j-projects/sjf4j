@@ -102,14 +102,16 @@ public class JsonArray extends JsonContainer {
         return Object.class;
     }
 
-    public void setNodeList(List<Object> nodeList) {
-        Class<?> elemClazz = elementType();
-        if (elemClazz != Object.class) {
-            for (int i = 0; i < nodeList.size(); i++) {
-                Object v = nodeList.get(i);
-                if (v != null && !elemClazz.isInstance(v))
-                    throw new JsonException("Element type mismatch at " + i + ": expected " + elemClazz.getName() +
-                            ", but got " + v.getClass().getName());
+    protected void setNodeList(List<Object> nodeList) {
+        if (nodeList != null) {
+            Class<?> elemClazz = elementType();
+            if (elemClazz != Object.class) {
+                for (int i = 0; i < nodeList.size(); i++) {
+                    Object v = nodeList.get(i);
+                    if (v != null && !elemClazz.isInstance(v))
+                        throw new JsonException("Element type mismatch at " + i + ": expected " + elemClazz.getName() +
+                                ", but was " + v.getClass().getName());
+                }
             }
         }
         this.nodeList = nodeList;
@@ -221,7 +223,8 @@ public class JsonArray extends JsonContainer {
     }
 
     public Iterator<Object> iterator() {
-        return toList().iterator();
+        if (nodeList == null) return Collections.emptyIterator();
+        return nodeList.iterator();
     }
 
     private int pos(int idx) {

@@ -941,8 +941,9 @@ public class JsonPath {
             } else if (pt instanceof PathSegment.Slice) {
                 PathSegment.Slice slicePt = (PathSegment.Slice) pt;
                 if (jt.isArray()) {
+                    int size = Nodes.sizeInArray(node);
                     Nodes.visitArray(node, (j, v) -> {
-                        if (slicePt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
+                        if (slicePt.matchIndex(j, size)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathSegment.Union) {
@@ -952,8 +953,9 @@ public class JsonPath {
                         if (unionPt.matchKey(k)) _findAll(root, v, nextI, result, converter);
                     });
                 } else if (jt.isArray()) {
+                    int size = Nodes.sizeInArray(node);
                     Nodes.visitArray(node, (j, v) -> {
-                        if (unionPt.matchIndex(j)) _findAll(root, v, nextI, result, converter);
+                        if (unionPt.matchIndex(j, size)) _findAll(root, v, nextI, result, converter);
                     });
                 }
             } else if (pt instanceof PathSegment.Filter) {
@@ -995,8 +997,9 @@ public class JsonPath {
                 _findMatch(root, v, tokenIdx, result, converter);
             });
         } else if (jt.isArray()) {
+            int size = Nodes.sizeInArray(current);
             Nodes.visitArray(current, (j, v) -> {
-                if (pt.matchIndex(j)) {
+                if (pt.matchIndex(j, size)) {
                     _findAll(root, v, tokenIdx + 1, result, converter);
                 }
                 _findMatch(root, v, tokenIdx, result, converter);

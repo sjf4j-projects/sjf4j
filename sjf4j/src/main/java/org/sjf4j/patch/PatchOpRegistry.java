@@ -2,6 +2,7 @@ package org.sjf4j.patch;
 
 
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.Nodes;
 
 import java.util.Map;
 import java.util.Objects;
@@ -54,7 +55,7 @@ public class PatchOpRegistry {
         // test
         PatchOpRegistry.register(PatchOp.STD_TEST, (target, op) -> {
             Object node = op.getPath().getNode(target);
-            if (!Objects.equals(node, op.getValue())) {
+            if (!Nodes.equals(node, op.getValue())) {
                 throw new JsonException("'test' operation failed at path " + op.getPath() + ": expected " +
                         op.getValue() + ", found " + node);
             }
@@ -72,7 +73,7 @@ public class PatchOpRegistry {
 
         // replace
         PatchOpRegistry.register(PatchOp.STD_REPLACE, (target, op) -> {
-            if (!op.getPath().hasNonNull(target))
+            if (!op.getPath().contains(target))
                 throw new JsonException("'replace' operation failed at path " + op.getPath() +
                         ": cannot replace value at non-existent path");
             op.getPath().replace(target, op.getValue());

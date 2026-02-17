@@ -33,6 +33,7 @@ public final class GsonNodes {
     }
 
     public static NodeKind kindOf(Object node) {
+        if (!isNode(node)) throw new JsonException("Not a Gson's JsonElement, but was '" + Types.name(node) + "'");
         JsonElement jsonNode = (JsonElement) node;
         if (jsonNode.isJsonNull()) return NodeKind.VALUE_NULL;
         if (jsonNode.isJsonPrimitive()) {

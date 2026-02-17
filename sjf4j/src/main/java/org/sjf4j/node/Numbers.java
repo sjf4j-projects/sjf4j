@@ -253,9 +253,8 @@ public class Numbers {
 //    }
 
     public static Number parseNumber(String text) {
-        if (text == null || text.isEmpty()) {
-            throw new IllegalArgumentException("text is null or empty");
-        }
+        if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
+        text = text.replace("_", "").trim();
 
         final int len = text.length();
         if (len > MAX_NUMBER_DIGITS) {
@@ -312,7 +311,6 @@ public class Numbers {
      * - Integers (e.g., "42", "-7", "+8")
      * - Floating-point numbers (e.g., "3.14", "-0.5", ".5")
      * - Scientific notation (e.g., "1e3", "-2.5E-4")
-     * - Special floating-point numbers: ".nan", ".inf", "-.inf"
      * - Underscore separators in numbers (YAML style, e.g., "1_000_000")
      * <p>
      * Rules:

@@ -26,6 +26,7 @@ public class SchemaStore {
     }
 
     public void register(JsonSchema schema) {
+        if (!(schema instanceof ObjectSchema)) throw new SchemaException("Not an ObjectSchema");
         ObjectSchema os = (ObjectSchema) schema;
         URI uri = os.getResolvedUri();
         if (uri == null)
