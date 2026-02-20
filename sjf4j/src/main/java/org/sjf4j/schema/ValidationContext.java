@@ -22,7 +22,7 @@ public class ValidationContext {
     ValidationContext(ObjectSchema rootSchema, ValidationOptions options) {
         this.rootSchema = rootSchema;
         this.options = options;
-        this.messages = new ArrayList<>();
+        this.messages = options.isFailFast() ? null : new ArrayList<>();
     }
 
     public ValidationOptions getOptions() {return this.options;}
@@ -51,7 +51,7 @@ public class ValidationContext {
         if (found == null && !anchor.isEmpty()) found = rootSchema.getSchemaByDynamicAnchor(anchor);
         return found;
     }
-    Object getSchemaByPath(URI uri, JsonPointer path) {
+    JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
         return rootSchema.getSchemaByPath(uri, path);
     }
 
@@ -79,26 +79,26 @@ public class ValidationContext {
     }
 
     // message
-    void addError(JsonPointer path, String keyword, String message) {
+    void addError(PathSegment ps, String keyword, String message) {
         if (ignoreErrorAdding < 1) {
             valid = false;
-            addMessage(ValidationMessage.Severity.ERROR, path, keyword, message);
-        } else {
-            addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
+            addMessage(ValidationMessage.Severity.ERROR, ps, keyword, message);
         }
     }
-    void addWarn(JsonPointer path, String keyword, String message) {
-        addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
+    void addWarn(PathSegment ps, String keyword, String message) {
+        addMessage(ValidationMessage.Severity.WARN, ps, keyword, message);
     }
-    void addInfo(JsonPointer path, String keyword, String message) {
-        addMessage(ValidationMessage.Severity.INFO, path, keyword, message);
+    void addInfo(PathSegment ps, String keyword, String message) {
+        addMessage(ValidationMessage.Severity.INFO, ps, keyword, message);
     }
-    void addDebug(JsonPointer path, String keyword, String message) {
-        addMessage(ValidationMessage.Severity.DEBUG, path, keyword, message);
+    void addDebug(PathSegment ps, String keyword, String message) {
+        addMessage(ValidationMessage.Severity.DEBUG, ps, keyword, message);
     }
-    private void addMessage(ValidationMessage.Severity severity, JsonPointer path, String keyword, String message) {
-        ValidationMessage error = new ValidationMessage(severity, path, keyword, message);
-        messages.add(error);
+    private void addMessage(ValidationMessage.Severity severity, PathSegment ps, String keyword, String message) {
+        if (messages != null) {
+            ValidationMessage error = new ValidationMessage(severity, ps, keyword, message);
+            messages.add(error);
+        }
     }
 
 

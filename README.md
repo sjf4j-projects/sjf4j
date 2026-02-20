@@ -5,6 +5,8 @@
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 ![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)
+
 
 **SJF4J (Simple JSON Facade for Java)** is a simple facade over multiple JSON libraries, 
 providing a unified semantic layer for structured data processing grounded in JSON specifications.  

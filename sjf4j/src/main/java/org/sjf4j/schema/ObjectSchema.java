@@ -2,8 +2,10 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.SchemaException;
+import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.path.Paths;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -11,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 
-public class ObjectSchema extends JsonObject implements JsonSchema {
+public final class ObjectSchema extends JsonObject implements JsonSchema {
 
     private transient URI uri;
     private transient ObjectSchema idSchema;
@@ -82,11 +84,16 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
         }
         return null;
     }
-    Object getSchemaByPath(JsonPointer path) {
+    JsonSchema getSchemaByPath(JsonPointer path) {
         Objects.requireNonNull(path, "path is null");
-        return path.getNode(this);
+        Object node = path.getNode(this);
+        if (node instanceof JsonSchema) {
+            return (JsonSchema) node;
+        } else {
+            throw new SchemaException("Invalid schema at '" + path + "': node type is " + Types.name(node));
+        }
     }
-    Object getSchemaByPath(URI uri, JsonPointer path) {
+    JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
         Objects.requireNonNull(path);
         if (uri == null || uri.equals(this.uri)) {
             return getSchemaByPath(path);
@@ -200,14 +207,18 @@ public class ObjectSchema extends JsonObject implements JsonSchema {
 
 
     // validate
+    @Override
     public ValidationResult validate(Object node, ValidationOptions options) {
         InstancedNode instance = InstancedNode.infer(node);
         ValidationContext ctx = new ValidationContext(this, options);
-        _validate(instance, new PathSegment.Root(null, instance.getObjectType()), ctx);
+        PathSegment ps = options.isFailFast() ? null : new PathSegment.Root(null, instance.getObjectType());
+        evaluate(instance, ps, ctx);
         return ctx.toResult();
     }
 
-    boolean _validate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+    // evaluate
+    @Override
+    public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
         if (evaluators == null)
             throw new SchemaException("Schema has not been compiled.");
         int len = evaluators.length;

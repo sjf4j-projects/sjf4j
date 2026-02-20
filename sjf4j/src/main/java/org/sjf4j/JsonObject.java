@@ -504,6 +504,10 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromNode(node, type);
     }
 
+    public <T> T toNode(Class<T> clazz) {
+        return Sjf4j.fromNode(this, clazz);
+    }
+
     public Object toRaw() {
         return Sjf4j.toRaw(this);
     }

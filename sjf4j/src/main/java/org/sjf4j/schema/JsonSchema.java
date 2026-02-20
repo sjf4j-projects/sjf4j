@@ -4,14 +4,15 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.SchemaException;
-import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.path.PathSegment;
 
 
 public interface JsonSchema {
 
     void compile(SchemaStore outer);
     ValidationResult validate(Object node, ValidationOptions options);
+    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
     /// Static
     static JsonSchema fromJson(String json) {
@@ -24,7 +25,7 @@ public interface JsonSchema {
         JsonType jt = JsonType.of(node);
         if (jt.isBoolean()) return Nodes.toBoolean(node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
         if (jt.isObject()) return Nodes.as(node, ObjectSchema.class);
-        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but got " + jt);
+        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but was " + jt);
     }
 
     /// Default

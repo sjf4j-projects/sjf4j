@@ -1,11 +1,10 @@
 package org.sjf4j.path;
 
 
-import org.sjf4j.annotation.node.Encode;
-import org.sjf4j.annotation.node.Copy;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.Decode;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.annotation.node.RawToValue;
 
 import java.util.Objects;
 
@@ -20,7 +19,7 @@ public class JsonPointer extends JsonPath {
         super(raw, segments);
     }
 
-    @Decode
+    @RawToValue
     public static JsonPointer compile(String expr) {
         Objects.requireNonNull(expr, "expr is null");
         expr = expr.trim();
@@ -46,7 +45,7 @@ public class JsonPointer extends JsonPath {
 //        NodeRegistry.registerValueCodec(JsonPointer.class);
 //    }
 
-    @Encode
+    @ValueToRaw
     @Override
     public String toExpr() {
         return toPointerExpr();
@@ -57,7 +56,7 @@ public class JsonPointer extends JsonPath {
         return toPointerExpr();
     }
 
-    @Copy
+    @ValueCopy
     public JsonPointer copy() {
         return new JsonPointer(this);
     }

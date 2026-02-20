@@ -6,10 +6,10 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.annotation.node.Encode;
-import org.sjf4j.annotation.node.Copy;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.Decode;
+import org.sjf4j.annotation.node.RawToValue;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.LambdaMetafactory;
@@ -376,7 +376,7 @@ public class ReflectUtil {
             for (Method m : current.getDeclaredMethods()) {
                 if (m.isBridge()) continue;
                 // Encode
-                if (m.isAnnotationPresent(Encode.class)) {
+                if (m.isAnnotationPresent(ValueToRaw.class)) {
                     if (encodeHandle != null)
                         throw new JsonException("Multiple @Enocde definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
@@ -393,7 +393,7 @@ public class ReflectUtil {
                     }
                 }
                 // Decode
-                if (m.isAnnotationPresent(Decode.class)) {
+                if (m.isAnnotationPresent(RawToValue.class)) {
                     if (decodeHandle != null)
                         throw new JsonException("Multiple @Deocde definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
@@ -409,7 +409,7 @@ public class ReflectUtil {
                     }
                 }
                 // Copy
-                if (m.isAnnotationPresent(Copy.class)) {
+                if (m.isAnnotationPresent(ValueCopy.class)) {
                     if (copyHandle != null)
                         throw new JsonException("Multiple @Copy definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
