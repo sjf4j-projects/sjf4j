@@ -17,14 +17,17 @@ import java.util.regex.Pattern;
 public class Paths {
 
     public static String rootedInspect(PathSegment lastSegment) {
+        if (lastSegment == null) return "";
         return inspect(linearize(lastSegment));
     }
 
     public static String rootedPathExpr(PathSegment lastSegment) {
+        if (lastSegment == null) return "";
         return toPathExpr(linearize(lastSegment));
     }
 
     public static String rootedPointerExpr(PathSegment lastSegment) {
+        if (lastSegment == null) return "";
         return toPointerExpr(linearize(lastSegment));
     }
 

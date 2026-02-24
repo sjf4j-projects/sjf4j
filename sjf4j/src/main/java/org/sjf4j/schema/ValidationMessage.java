@@ -4,6 +4,8 @@ import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.Paths;
 
+import java.util.Objects;
+
 public class ValidationMessage {
 
     public enum Severity { ERROR, WARN, INFO, DEBUG }
@@ -14,6 +16,7 @@ public class ValidationMessage {
     private final String message;
 
     public ValidationMessage(Severity severity, PathSegment ps, String keyword, String message) {
+        Objects.requireNonNull(severity, "Severity is null");
         this.severity = severity;
         this.ps = ps;
         this.keyword = keyword;
@@ -24,9 +27,9 @@ public class ValidationMessage {
         return severity;
     }
     public PathSegment getPs() { return ps; }
-    public JsonPointer getPath() {
-        return JsonPointer.fromLast(ps);
-    }
+//    public JsonPointer getPath() {
+//        return JsonPointer.fromLast(ps);
+//    }
     public String getKeyword() {
         return keyword;
     }

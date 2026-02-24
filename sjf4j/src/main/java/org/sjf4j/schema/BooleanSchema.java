@@ -39,8 +39,8 @@ public final class BooleanSchema implements JsonSchema {
         if (booleanValue) {
             return ValidationResult.VALID;
         } else {
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR, null, null,
-                    "Schema 'false' always fails");
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                    PathSegment.Root.INSTANCE, null, "Schema 'false' always fails");
             return new ValidationResult(false, null, msg);
         }
     }

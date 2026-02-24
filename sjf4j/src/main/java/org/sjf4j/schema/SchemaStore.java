@@ -177,7 +177,11 @@ public class SchemaStore {
             return loadSchemaFromFile(uri.getPath());
         }
         if ("classpath".equalsIgnoreCase(uri.getScheme())) {
-            return loadSchemaFromResource(uri.getPath());
+            String path = uri.getPath();
+            if (path == null || path.isEmpty()) {
+                path = uri.getSchemeSpecificPart();
+            }
+            return loadSchemaFromResource(path);
         }
         throw new SchemaException("Unsupported local schema uri: " + uri);
     }

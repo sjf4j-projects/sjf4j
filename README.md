@@ -682,21 +682,21 @@ allowing partial updates to JSON objects.
 
 ### Validating with `JsonSchema`
 
-SJF4J provides full support for [JSON Schema Draft 2020-12](https://json-schema.org/), 
-and it can directly validate not only JSON / YAML data ***but also POJOs, JOJOs, Maps, Lists, 
-and plain Java objects.***
+SJF4J offers [full compliance](https://bowtie.report/#/implementations/java-sjf4j) with [JSON Schema Draft 2020-12](https://json-schema.org/) and goes beyond raw JSON validation.  
+It performs native, high-performance validation for `POJOs`, `JOJOs`, `Maps`, `Lists`, 
+and any Java object model — without intermediate conversions.
 
 **Example: Creating a `JsonSchema` and validating data**
 ```java
-String json = "{ \"type\": \"number\" }";
-JsonSchema schema = JsonSchema.fromJson(tupleSchema);
+JsonSchema schema = JsonSchema.fromJson("{ \"type\": \"number\" }");
 schema.compile();
 // Prepares the schema for validation
 
-ValidationResult result = schema.validate(1);
-assertTrue(result.isValid());                       // Passes validation
+assertTrue(schema.isValid(1));                              // Passes validation
 
-assertFalse(schema.isValid("a"));                   // Fails validation
+ValidationResult result = schema.validate("a");
+assertFalse(result.isValid());                              // Fails validation
+assertEquals("type", result.getLastMessage().getKeyword());
 ```
 
 **Example: Object validation with `properties`**
@@ -704,7 +704,7 @@ assertFalse(schema.isValid("a"));                   // Fails validation
 JsonSchema schema = JsonSchema.fromJson("{\n" +
         "  \"type\": \"object\",\n" +
         "  \"properties\": {\n" +
-        "    \"name\": {\"type\": \"string\"}\n" +
+        "    \"name\": {\"type\": \"string\", \"minLength\": 5}\n" +
         "  },\n" +
         "}");
 
@@ -712,12 +712,57 @@ Map<String, Object> map = Map.of("name", "Alice");
 assertTrue(schema.isValid(map));                    // Map can be validated directly
 
 MyPojo pojo = new MyPojo();
-pojo.setName("Alice");
-assertTrue(schema.isValid(pojo));                   // POJO validated directly
+pojo.setName("Tom");
+assertFalse(schema.isValid(pojo));                  // POJO validated directly
 ```
 
-TBD:
+**Validating POJOs with `@ValidJsonSchema`**
 
+SJF4J enables direct validation of `POJOs` and `JOJOs` —
+no JSON serialization step, no adapter layer, no intermediate model.  
+Simply annotate your class with `@ValidJsonSchema`, then validate the instance using `SchemaValidator`.
+```java
+@ValidJsonSchema("""
+{
+    "type": "object",
+    "required": ["id"],
+    "properties": {
+        "id": { "type": "integer" },
+        "user": { "format": "email" }
+    }
+}
+""")                                        // Inline schema 
+public class Order {
+    public int id;
+    public String user;
+}
+```
+
+Binding via `ref`
+```java
+@ValidJsonSchema(ref = "domain.schema.json#User")           // $anchor
+public class UserDto { ... }
+
+@ValidJsonSchema(ref = "domain.schema.json#/$defs/User")    // JSON Pointer
+public class UserDto2 { ... }
+
+@ValidJsonSchema                            // Convention-based lookup -- UserDto3.schema.json
+public class UserDto3 { ... }
+```
+
+**Schema Location Rules (convention-first)**
+- Default base directory: `classpath:///json-schemas/`
+- If no `value` or `ref` is provided, SJF4J tries:
+  - `<fully.qualified.ClassName>.schema.json`
+  - then `<SimpleName>.schema.json`
+- Supported `ref` schemes: `classpath:///`, `file:///` 
+- Network schemes (e.g., `https://`) are not loaded, unless used purely as `$id` identifiers.
+
+Validation:
+```java
+SchemaValidator validator = new SchemaValidator();
+ValidationResult result = validator.validate(new UserDto());
+```
 
 
 ## Benchmark

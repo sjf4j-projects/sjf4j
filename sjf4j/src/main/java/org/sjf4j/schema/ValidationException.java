@@ -2,8 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.exception.JsonException;
 
-import java.util.List;
-
 
 public class ValidationException extends JsonException {
     private final ValidationResult result;
@@ -14,14 +12,16 @@ public class ValidationException extends JsonException {
     }
 
     private static String buildMessage(ValidationResult result) {
-        List<ValidationMessage> errors = result.getErrors();
-        if (errors.isEmpty()) return "Schema validation failed with no error details";
-        ValidationMessage first = errors.get(0);
-        return "Failed with " + errors.size() + " errors, first one: '" + first.getKeyword() +
-                "' at '" + first.getPath() + "': " + first.getMessage();
+        ValidationMessage lastOne = result.getLastMessage();
+        if (lastOne == null) {
+            return "Failed with " + result.count() + " errors";
+        } else {
+            return "Failed with " + result.count() + " errors, last one: " + lastOne;
+        }
     }
 
     public ValidationResult getResult() {
         return result;
     }
+
 }

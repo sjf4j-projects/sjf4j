@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.node.Nodes;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,6 +19,12 @@ public class ValidationResult {
 
     public boolean isValid() {
         return valid;
+    }
+
+    public int count() {
+        if (messages != null) return messages.size();
+        if (lastMessage != null) return 1;
+        return 0;
     }
 
     public List<ValidationMessage> getMessages() {
