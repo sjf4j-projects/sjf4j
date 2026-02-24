@@ -81,7 +81,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         Objects.requireNonNull(anchor);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
-            if (uri == null || uri.toString().isEmpty()) {
+            if (uri == null || uri == this.uri || uri.toString().isEmpty()) {
                 return getSchemaByAnchor(anchor);
             }
             if (innerStore != null) {
@@ -113,7 +113,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         Objects.requireNonNull(path);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
-            if (uri == null || uri.toString().isEmpty()) {
+            if (uri == null || uri == this.uri || uri.toString().isEmpty()) {
                 return getSchemaByPath(path);
             }
             if (innerStore != null) {
@@ -147,7 +147,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         Objects.requireNonNull(dynamicAnchor);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
-            if (uri == null || uri.toString().isEmpty()) {
+            if (uri == null || uri == this.uri || uri.toString().isEmpty()) {
                 return getSchemaByDynamicAnchor(dynamicAnchor);
             }
             if (innerStore != null) {

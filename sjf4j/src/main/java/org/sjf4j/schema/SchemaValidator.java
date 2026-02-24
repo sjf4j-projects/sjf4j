@@ -18,11 +18,11 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class SchemaValidator {
-    private static final String DEFAULT_BASE_DIR = "classpath:/json-schemas/";
-    private static final String CLASSPATH_PREFIX = "classpath:";
+    private static final URI DEFAULT_BASE_URI = URI.create("classpath:/json-schemas/");
     private static final String SCHEMA_FILE_SUFFIX = ".schema.json";
 
-    private final String baseDir;
+//    private final String baseDir;
+    private final URI baseUri;
     private final SchemaStore schemaStore;
     private final ValidationOptions defaultOptions;
     private final Map<Class<?>, JsonSchema> pojoSchemaMapping = new ConcurrentHashMap<>();
@@ -32,7 +32,7 @@ public final class SchemaValidator {
     }
 
     public SchemaValidator(String baseDir, ValidationOptions options, SchemaStore store) {
-        this.baseDir = resolveBaseDir(baseDir);
+        this.baseUri = baseDir == null ? DEFAULT_BASE_URI : DEFAULT_BASE_URI.resolve(baseDir);
         this.defaultOptions = options == null ? ValidationOptions.DEFAULT : options;
         this.schemaStore = store == null ? new SchemaStore() : store;
     }
@@ -74,10 +74,8 @@ public final class SchemaValidator {
         // From ref
         String ref = anno.ref().trim();
         if (!ref.isEmpty()) {
-            JsonSchema schema;
-            if (!ref.contains(":")) ref = baseDir + ref;
-            URI uri = URI.create(ref);
-            schema = SchemaStore.loadSchemaFromLocalUri(uri);
+            URI uri = baseUri.resolve(ref);
+            JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
             compileAndRegister(schema);
 
             String refFragment = uri.getFragment();
@@ -89,27 +87,20 @@ public final class SchemaValidator {
         }
 
         // From convention
-        String fullNamePath = baseDir + clazz.getName() + SCHEMA_FILE_SUFFIX;
+        URI fullNameUri = baseUri.resolve(clazz.getName() + SCHEMA_FILE_SUFFIX);
         try {
-            ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(URI.create(fullNamePath));
+            ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(fullNameUri);
             return compileAndRegister(schema);
         } catch (Exception e) {
-            String simpleNamePath = baseDir + clazz.getSimpleName() + SCHEMA_FILE_SUFFIX;
+            URI simpleNameUri = baseUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX);
             try {
-                ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(URI.create(simpleNamePath));
+                ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(simpleNameUri);
                 return compileAndRegister(schema);
             } catch (Exception e2) {
                 throw new SchemaException("No 'value' or 'ref' specified for @ValidJsonSchema on " + clazz.getName() +
-                        ", and neither '" + fullNamePath + "' nor '" + simpleNamePath + "' was found");
+                        ", and neither '" + fullNameUri + "' nor '" + simpleNameUri + "' was found");
             }
         }
-    }
-
-    private String resolveBaseDir(String baseDir) {
-        if (baseDir == null) {
-            return DEFAULT_BASE_DIR;
-        }
-        return baseDir.contains(":") ? baseDir : CLASSPATH_PREFIX + baseDir;
     }
 
     private JsonSchema compileAndRegister(JsonSchema schema) {

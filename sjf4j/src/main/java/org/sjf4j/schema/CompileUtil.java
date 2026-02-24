@@ -354,7 +354,7 @@ public class CompileUtil {
         }
     }
 
-    static URI dropFragment(URI uri) {
+    public static URI dropFragment(URI uri) {
         try {
             if (uri.getFragment() != null) {
                 if (uri.isOpaque()) {

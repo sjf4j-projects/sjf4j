@@ -68,6 +68,8 @@ public class SchemaStore {
             throw new SchemaException("Invalid schema: uri should not be empty");
         if (!uri.isAbsolute())
             throw new SchemaException("Invalid schema: uri must be absolute (not relative): " + uri);
+        if (uri.getFragment() != null)
+            throw new SchemaException("Invalid schema: uri should not have fragment: " + uri);
         if (!(schema instanceof ObjectSchema))
             throw new SchemaException("Invalid schema: schema must be object (not true or false)");
         ObjectSchema os = (ObjectSchema) schema;
