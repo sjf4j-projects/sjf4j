@@ -68,43 +68,64 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         anchors.put(anchor, schema);
     }
     ObjectSchema getSchemaByAnchor(String anchor) {
-        if (anchor.isEmpty()) return this;
-        if (anchors != null) return anchors.get(anchor);
-        return null;
+        if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
+        if (idSchema == this) {
+            if (anchor.isEmpty()) return this;
+            if (anchors != null) return anchors.get(anchor);
+            return null;
+        } else {
+            return idSchema.getSchemaByAnchor(anchor);
+        }
     }
     ObjectSchema getSchemaByAnchor(URI uri, String anchor) {
         Objects.requireNonNull(anchor);
-        if (uri == null || uri.equals(this.uri)) {
-            return getSchemaByAnchor(anchor);
-        } else if (innerStore != null) {
-            ObjectSchema schema = innerStore.get(uri);
-            if (schema != null) {
-                return schema.getSchemaByAnchor(anchor);
+        if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
+        if (idSchema == this) {
+            if (uri == null || uri.toString().isEmpty()) {
+                return getSchemaByAnchor(anchor);
             }
+            if (innerStore != null) {
+                ObjectSchema schema = innerStore.get(uri);
+                if (schema != null) {
+                    return schema.getSchemaByAnchor(anchor);
+                }
+            }
+            return null;
+        } else {
+            return idSchema.getSchemaByAnchor(uri, anchor);
         }
-        return null;
     }
     JsonSchema getSchemaByPath(JsonPointer path) {
         Objects.requireNonNull(path, "path is null");
-        Object node = path.getNode(this);
-        if (node instanceof JsonSchema) {
-            return (JsonSchema) node;
+        if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
+        if (idSchema == this) {
+            Object node = path.getNode(this);
+            if (node instanceof JsonSchema) {
+                return (JsonSchema) node;
+            } else {
+                throw new SchemaException("Invalid schema at '" + path + "': node type is " + Types.name(node));
+            }
         } else {
-            throw new SchemaException("Invalid schema at '" + path + "': node type is " + Types.name(node));
+            return idSchema.getSchemaByPath(path);
         }
     }
     JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
         Objects.requireNonNull(path);
-        if (uri == null || uri.equals(this.uri)) {
-            return getSchemaByPath(path);
-        }
-        if (innerStore != null) {
-            ObjectSchema schema = innerStore.get(uri);
-            if (schema != null) {
-                return schema.getSchemaByPath(path);
+        if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
+        if (idSchema == this) {
+            if (uri == null || uri.toString().isEmpty()) {
+                return getSchemaByPath(path);
             }
+            if (innerStore != null) {
+                ObjectSchema schema = innerStore.get(uri);
+                if (schema != null) {
+                    return schema.getSchemaByPath(path);
+                }
+            }
+            return null;
+        } else {
+            return idSchema.getSchemaByPath(uri, path);
         }
-        return null;
     }
 
     // dynamicAnchor
@@ -113,21 +134,32 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         dynamicAnchors.computeIfAbsent(dynamicAnchor, k -> schema);
     }
     ObjectSchema getSchemaByDynamicAnchor(String dynamicAnchor) {
-        if (dynamicAnchor.isEmpty()) return this;
-        if (dynamicAnchors != null) return dynamicAnchors.get(dynamicAnchor);
-        return null;
+        if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
+        if (idSchema == this) {
+            if (dynamicAnchor.isEmpty()) return this;
+            if (dynamicAnchors != null) return dynamicAnchors.get(dynamicAnchor);
+            return null;
+        } else {
+            return idSchema.getSchemaByDynamicAnchor(dynamicAnchor);
+        }
     }
     ObjectSchema getSchemaByDynamicAnchor(URI uri, String dynamicAnchor) {
         Objects.requireNonNull(dynamicAnchor);
-        if (uri == null || uri.equals(this.uri)) {
-            return getSchemaByDynamicAnchor(dynamicAnchor);
-        } else if (innerStore != null) {
-            ObjectSchema schema = innerStore.get(uri);
-            if (schema != null) {
-                return schema.getSchemaByDynamicAnchor(dynamicAnchor);
+        if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
+        if (idSchema == this) {
+            if (uri == null || uri.toString().isEmpty()) {
+                return getSchemaByDynamicAnchor(dynamicAnchor);
             }
+            if (innerStore != null) {
+                ObjectSchema schema = innerStore.get(uri);
+                if (schema != null) {
+                    return schema.getSchemaByDynamicAnchor(dynamicAnchor);
+                }
+            }
+            return null;
+        } else {
+            return idSchema.getSchemaByDynamicAnchor(uri, dynamicAnchor);
         }
-        return null;
     }
 
     // allowedVocabulary
@@ -149,6 +181,10 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // compile
+    public boolean isCompiled() {
+        return evaluators != null;
+    }
+
     public void compile(SchemaStore outer) {
         outerStore = outer;
         innerStore = new HashMap<>();

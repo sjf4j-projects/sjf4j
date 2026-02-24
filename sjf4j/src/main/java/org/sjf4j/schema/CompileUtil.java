@@ -37,6 +37,9 @@ public class CompileUtil {
         }
     }
 
+    // schema: a sub-schema within a Schema document
+    // idSchema: an independent Schema document (maybe the target or a referenced schema)
+    // rootSchema: an independent target Schema document
     static Evaluator[] compile(PathSegment ps,
                                       ObjectSchema schema,
                                       ObjectSchema idSchema,

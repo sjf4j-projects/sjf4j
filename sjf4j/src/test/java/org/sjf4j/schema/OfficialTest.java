@@ -173,7 +173,7 @@ public final class OfficialTest {
                         }
 
                     } catch (Exception e) {
-                        System.err.println("Error loading remotes: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 });
         return store;

@@ -37,11 +37,11 @@ public final class BooleanSchema implements JsonSchema {
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {
         if (booleanValue) {
-            return new ValidationResult(true, null);
+            return ValidationResult.VALID;
         } else {
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR, null, null,
                     "Schema 'false' always fails");
-            return new ValidationResult(false, Collections.singletonList(msg));
+            return new ValidationResult(false, null, msg);
         }
     }
 
