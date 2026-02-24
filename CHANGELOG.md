@@ -8,17 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added support for Jackson `JsonNode` and Gson `JsonElement` in `Nodes`, 
-  via `FacadeNodes`, `JacksonNodes`, and `GsonNodes`.
 ### Improved
-- Improve `JsonPath` performance by replacing `PathToken` to `PathSegment`.
-- Enhanced error reporting with precise location information during path parsing.
 ### Changed
-- Renamed `NodeType` to `NodeKind` for clearer semantics.
-- Removed `TypedNode`; typed access now uses `Nodes.Access`
-
 ### Fixed
 ### Removed
+
+## [1.1.4] - 2026.02.24
+
+### Added
+- Added `@ValidJsonSchema` and `SchemaValidator` for schema-based validation入口。
+- Added `FacadeNodes` with backend adapters `JacksonNodes` and `GsonNodes`.
+- Added/expanded tests for schema/path/facade/JDK17 scenarios.
+
+### Improved
+- Optimized JSON Schema validation hot paths and compile/store flow.
+- Improved consistency of streaming IO behavior across facades.
+- Improved JsonPath internals by moving token model to segment model.
+- Improved cross-module behavior consistency across node/path/patch operations.
+
+### Changed
+- Renamed `NodeType` -> `NodeKind`.
+- Renamed `PathToken` -> `PathSegment`.
+- Renamed `PathUtil` -> `Paths`.
+- Renamed `PatchUtil` -> `Patches`.
+- Renamed annotations:
+    - `@Decode` -> `@RawToValue`
+    - `@Encode` -> `@ValueToRaw`
+    - `@Copy` -> `@ValueCopy`
+
+### Fixed
+- Fixed multiple node/path/patch semantic alignment issues.
+- Fixed schema loading/compilation edge cases and validation result handling.
+- Fixed backend-specific streaming conversion consistency issues.
+
 
 ## [1.1.3] - 2026.02.04
 ### Added
