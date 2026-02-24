@@ -1,0 +1,10 @@
+{
+  "$id": "urn:sjf4j:test:fragment-ref-user",
+  "$anchor": "User",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}

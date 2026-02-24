@@ -71,10 +71,8 @@ public class NodeWalker {
                 if (control == Control.STOP) return;
             }
             Nodes.visitObject(container, (key, node) -> {
-                if (node != null) {
-                    PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
-                    _walk(node, childPath, visitor, target, order, remainingDepth - 1);
-                }
+                PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
+                _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == Order.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
                 Control control = visitor.apply(path, container);
@@ -86,10 +84,8 @@ public class NodeWalker {
                 if (control == Control.STOP) return;
             }
             Nodes.visitArray(container, (idx, node) -> {
-                if (node != null) {
-                    PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
-                    _walk(node, childPath, visitor, target, order, remainingDepth - 1);
-                }
+                PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
+                _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == Order.BOTTOM_UP && (target == Target.CONTAINER || target == Target.ANY)) {
                 Control control = visitor.apply(path, container);

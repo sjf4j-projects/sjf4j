@@ -6,10 +6,10 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.annotation.node.Encode;
-import org.sjf4j.annotation.node.Copy;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.Decode;
+import org.sjf4j.annotation.node.RawToValue;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.LambdaMetafactory;
@@ -376,7 +376,7 @@ public class ReflectUtil {
             for (Method m : current.getDeclaredMethods()) {
                 if (m.isBridge()) continue;
                 // Encode
-                if (m.isAnnotationPresent(Encode.class)) {
+                if (m.isAnnotationPresent(ValueToRaw.class)) {
                     if (encodeHandle != null)
                         throw new JsonException("Multiple @Enocde definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
@@ -393,7 +393,7 @@ public class ReflectUtil {
                     }
                 }
                 // Decode
-                if (m.isAnnotationPresent(Decode.class)) {
+                if (m.isAnnotationPresent(RawToValue.class)) {
                     if (decodeHandle != null)
                         throw new JsonException("Multiple @Deocde definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
@@ -409,7 +409,7 @@ public class ReflectUtil {
                     }
                 }
                 // Copy
-                if (m.isAnnotationPresent(Copy.class)) {
+                if (m.isAnnotationPresent(ValueCopy.class)) {
                     if (copyHandle != null)
                         throw new JsonException("Multiple @Copy definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
@@ -434,9 +434,9 @@ public class ReflectUtil {
             throw new JsonException("@Encode method must have no parameters, but found " +
                     (encodeHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
-        Class<?> rawClazz = encodeHandle.type().returnType();
-        if (!NodeKind.of(rawClazz).isRaw())
-            throw new JsonException("@Encode method return invalid type " + rawClazz.getName() +
+        Class<?> encodeReturnClazz = encodeHandle.type().returnType();
+        if (!NodeKind.of(encodeReturnClazz).isRaw())
+            throw new JsonException("@Encode method return invalid type " + encodeReturnClazz.getName() +
                     " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
@@ -445,26 +445,26 @@ public class ReflectUtil {
         if (decodeHandle.type().parameterCount() != 1)
             throw new JsonException("@Decode method must have exactly one parameter, but found " +
                     decodeHandle.type().parameterCount());
-        Class<?> rawClazz2 = decodeHandle.type().parameterType(0);
-        Class<?> valueClazz2 = decodeHandle.type().returnType();
-        if (rawClazz2 != rawClazz)
+        Class<?> decodeParamClazz = decodeHandle.type().parameterType(0);
+        Class<?> decodeReturnClazz = decodeHandle.type().returnType();
+        if (decodeParamClazz != encodeReturnClazz)
             throw new JsonException("@Decode method parameter type must match @Encode return type. " +
-                    "Expected: " + rawClazz.getName() + ", Found: " + rawClazz2.getName());
-        if (valueClazz2 != clazz)
+                    "Expected: " + encodeReturnClazz.getName() + ", Found: " + decodeParamClazz.getName());
+        if (decodeReturnClazz != clazz)
             throw new JsonException("@Decode method return type must be " + clazz.getName() +
-                    ", but found " + valueClazz2.getName());
+                    ", but found " + decodeReturnClazz.getName());
 
         if (copyHandle != null) {
             if (copyHandle.type().parameterCount() != 1)
                 throw new JsonException("@Copy method must have no parameters, but found " +
                         (copyHandle.type().parameterCount() + 1));
-            Class<?> nodeClazz3 = copyHandle.type().returnType();
-            if (nodeClazz3 != clazz)
+            Class<?> copyReturnClazz = copyHandle.type().returnType();
+            if (copyReturnClazz != clazz)
                 throw new JsonException("@Copy method return type must be " + clazz.getName() +
-                        ", but found " + nodeClazz3.getName());
+                        ", but found " + copyReturnClazz.getName());
         }
 
-        return new NodeRegistry.ValueCodecInfo(clazz, rawClazz, null,
+        return new NodeRegistry.ValueCodecInfo(clazz, encodeReturnClazz, null,
                 encodeHandle, decodeHandle, copyHandle);
     }
 

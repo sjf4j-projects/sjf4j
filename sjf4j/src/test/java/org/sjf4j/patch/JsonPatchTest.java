@@ -221,7 +221,7 @@ public class JsonPatchTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.compile("/10"), null, null));
 
-        patch.apply(src);
+        assertThrows(JsonException.class, () -> patch.apply(src));
         assertEquals(Arrays.asList(1, 2, 3), src);
     }
 

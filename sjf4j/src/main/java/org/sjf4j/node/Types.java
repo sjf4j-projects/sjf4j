@@ -26,7 +26,7 @@ public class Types {
      * Gets the fully qualified class name of an object.
      *
      * @param object the object to get the class name from
-     * @return the fully qualified class name, or "[null]" if the object is null
+     * @return the fully qualified class name, or "null" if the object is null
      */
     public static String name(Object object) {
         return (object == null) ? "null" : object.getClass().getName();
@@ -85,16 +85,6 @@ public class Types {
         return box(rawClazz(type));
     }
 
-    /**
-     * Resolves a type argument for a parameterized type.
-     * <p>
-     * Supports types like Map&lt;String, Person&gt;, Wrapper&lt;Person&gt;, Person[]
-     *
-     * @param type the parameterized type
-     * @param target the target class to resolve the type argument for
-     * @param index the index of the type argument to resolve
-     * @return the resolved type argument
-     */
     public static Type resolveTypeArgument(Type type, Class<?> target, int index) {
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = ((ParameterizedType) type);
@@ -110,15 +100,6 @@ public class Types {
         return resolve(type, target, index, typeVarMap);
     }
 
-    /**
-     * Recursively resolves a type argument by traversing class hierarchy.
-     *
-     * @param type the starting type to resolve from
-     * @param target the target class to find
-     * @param index the index of the type argument to resolve
-     * @param typeVarMap map of type variables to their actual types
-     * @return the resolved type argument, or null if not found
-     */
     private static Type resolve(Type type, Class<?> target, int index, Map<TypeVariable<?>, Type> typeVarMap) {
         if (type instanceof Class<?>) {
             Class<?> clazz = (Class<?>) type;

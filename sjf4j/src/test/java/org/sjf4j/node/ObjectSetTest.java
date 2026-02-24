@@ -1,8 +1,10 @@
 package org.sjf4j.node;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingFacade;
 
 import java.util.LinkedHashSet;
@@ -46,8 +48,8 @@ public class ObjectSetTest {
         assertEquals(2, Nodes.sizeInArray(set));
         assertEquals("[\"a\",\"b\"]", Sjf4j.toJsonString(set));
 
-        Nodes.removeInArray(set, 0);
-        assertEquals("S[b]", Nodes.inspect(set));
+        JsonException e = assertThrows(JsonException.class, () -> Nodes.removeInArray(set, 0));
+        assertTrue(e.getMessage().contains("Cannot remove"));
     }
 
     @Test

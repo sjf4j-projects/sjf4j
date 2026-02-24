@@ -162,8 +162,8 @@ public class Patches {
             if (sourceJt.isObject() && targetJt.isObject()) {
                 Nodes.visitObject(source, (k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, null, k);
-                    Object newTarget = Nodes.getInObject(target, k);
-                    if (newTarget != null) {
+                    if (Nodes.containsInObject(target, k)) {
+                        Object newTarget = Nodes.getInObject(target, k);
                         _diff(ops, cps, v, newTarget);
                     } else {
                         ops.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.fromLast(cps), null, null));

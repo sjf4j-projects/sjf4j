@@ -39,6 +39,10 @@ public abstract class JsonContainer {
         return Nodes.equals(this, target);
     }
 
+    public int nodeHash() {
+        return Nodes.hash(this);
+    }
+
     /**
      * Returns a string representation of this container for debugging purposes.
      * Uses {@link Nodes#inspect(Object)} to generate the string.
@@ -49,12 +53,7 @@ public abstract class JsonContainer {
         return Nodes.inspect(this);
     }
 
-    /**
-     * Recursively removes all null values from this JsonObject and its nested structures.
-     * <p>
-     * This operation traverses all nested objects and arrays, removing any null values found.
-     * Empty containers resulting from null removal are not automatically removed.
-     */
+
     public void deepPruneNulls() {
         NodeWalker.walk(this, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
                 (path, node) -> {

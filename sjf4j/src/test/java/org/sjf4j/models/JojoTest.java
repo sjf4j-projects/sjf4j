@@ -1,6 +1,7 @@
 package org.sjf4j.models;
 
 import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -63,7 +64,11 @@ public class JojoTest {
 
         Person p2 = JsonObject.fromJson(json1).toPojo(Person.class);
         log.info("p2={}", p2.inspect());
-        assertEquals(p1, p2);
+        assertNotEquals(p1, p2);
+
+        Person p3 = Sjf4j.fromNode(JsonObject.fromJson(json1), Person.class);
+        log.info("p3={}", p3.inspect());
+        assertEquals(p1, p3);
     }
 
     @Test
@@ -77,7 +82,8 @@ public class JojoTest {
         p1.put("ex", "wang");
 
         JsonObject jo1 = JsonObject.fromNode(p1);
-        assertEquals(p1, jo1);
+        assertNotEquals(p1, jo1);
+        assertTrue(p1.nodeEquals(jo1));
         assertEquals(p1.toJson(), jo1.toJson());
         assertEquals(ArrayList.class, jo1.getNode("babies").getClass());
     }

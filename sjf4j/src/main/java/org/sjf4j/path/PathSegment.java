@@ -15,7 +15,7 @@ public abstract class PathSegment {
     public Class<?> clazz() {return clazz;}
 
     public boolean matchKey(String key) { return false; }
-    public boolean matchIndex(int idx) { return false; }
+    public boolean matchIndex(int idx, int size) { return false; }
 
     public String rootedInspect() {
         return Paths.rootedInspect(this);
@@ -80,7 +80,11 @@ public abstract class PathSegment {
             super(parent, clazz);
             this.index = index;
         }
-        public boolean matchIndex(int idx) { return index == idx; }
+        @Override
+        public boolean matchIndex(int idx, int size) {
+            int pindex = index < 0 ? size + index : index;
+            return pindex == idx;
+        }
         @Override public String toString() {
             return "[" + index + "]";
         }
@@ -94,7 +98,7 @@ public abstract class PathSegment {
             super(parent, clazz);
         }
         @Override public boolean matchKey(String key) { return true; }
-        @Override public boolean matchIndex(int index) { return true; }
+        @Override public boolean matchIndex(int index, int size) { return true; }
         @Override public String toString() { return "[*]"; }
     }
 
@@ -109,12 +113,19 @@ public abstract class PathSegment {
             super(parent, clazz);
             start = s; end = e; step = st;
         }
-        @Override public boolean matchIndex(int index) { // Must be positive
-            if (start != null && index < start) return false;
-            if (end != null && index >= end) return false;
+        @Override
+        public boolean matchIndex(int idx, int size) {
+            if (start != null) {
+                int pstart = start < 0 ? size + start : start;
+                if (idx < pstart) return false;
+            }
+            if (end != null) {
+                int pend = end < 0 ? size + end : end;
+                if (idx >= pend) return false;
+            }
             if (step != null) {
                 int mod = start == null ? 0 : start;
-                return (index - mod) % step == 0;
+                return (idx - mod) % step == 0;
             }
             return true;
         }
@@ -159,9 +170,9 @@ public abstract class PathSegment {
             }
             return false;
         }
-        @Override public boolean matchIndex(int index) {
+        @Override public boolean matchIndex(int index, int size) {
             for (PathSegment pt : union) {
-                if (pt.matchIndex(index)) return true;
+                if (pt.matchIndex(index, size)) return true;
             }
             return false;
         }

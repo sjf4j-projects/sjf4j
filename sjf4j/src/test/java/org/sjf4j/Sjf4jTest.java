@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ public class Sjf4jTest {
     }
 
     @ToString
+    @EqualsAndHashCode
     public static class Info {
         public String email;
         public String city;

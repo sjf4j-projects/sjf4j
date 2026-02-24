@@ -183,7 +183,7 @@ public class Fastjson2Reader implements StreamingReader {
     @Override
     public void nextNull() throws IOException {
         peeked = null;
-        reader.nextIfNull();
+        reader.readNull();
     }
 
     @Override

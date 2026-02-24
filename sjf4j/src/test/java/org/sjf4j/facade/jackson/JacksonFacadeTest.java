@@ -15,9 +15,9 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.annotation.node.Encode;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.Decode;
+import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
@@ -111,12 +111,12 @@ public class JacksonFacadeTest {
         public Ops(LocalDate localDate) {
             this.localDate = localDate;
         }
-        @Encode
+        @ValueToRaw
         public String encode() {
             return localDate.toString();
         }
 
-        @Decode
+        @RawToValue
         public static Ops decode(String raw) {
             return new Ops(LocalDate.parse(raw));
         }

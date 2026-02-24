@@ -262,12 +262,14 @@ public class NodesTest {
                         "street", "5th Ave"));
         Person p1 = jo.toPojo(Person.class);
         JsonObject jo1 = new JsonObject(p1);
-        assertEquals(p1, jo1);
-        assertEquals(jo1, p1);
+        assertTrue(Nodes.equals(p1,jo1));
+        assertTrue(Nodes.equals(jo1, p1));
 
         Map<String, Object> map1 = jo1.toMap();
-        assertEquals(jo1, map1);
-        assertNotEquals(map1, jo1);
+        assertNotEquals(jo1, map1);
+        assertTrue(Nodes.equals(p1, map1));
+        assertTrue(Nodes.equals(map1, jo1));
+        assertTrue(Nodes.equals(jo1, map1));
 
         assertEquals(jo1.toJson(), Sjf4j.toJsonString(map1));
         assertEquals(jo1.toJson(), p1.toJson());

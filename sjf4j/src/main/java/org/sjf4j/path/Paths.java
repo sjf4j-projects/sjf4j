@@ -17,14 +17,17 @@ import java.util.regex.Pattern;
 public class Paths {
 
     public static String rootedInspect(PathSegment lastSegment) {
+        if (lastSegment == null) return "";
         return inspect(linearize(lastSegment));
     }
 
     public static String rootedPathExpr(PathSegment lastSegment) {
+        if (lastSegment == null) return "";
         return toPathExpr(linearize(lastSegment));
     }
 
     public static String rootedPointerExpr(PathSegment lastSegment) {
+        if (lastSegment == null) return "";
         return toPointerExpr(linearize(lastSegment));
     }
 
@@ -81,9 +84,8 @@ public class Paths {
 
         Deque<PathSegment> segments = new ArrayDeque<>();
         segments.addLast(PathSegment.Root.INSTANCE);
-        if (expr.isEmpty() || expr.equals("/")) return segments.toArray(new PathSegment[0]);
+        if (expr.isEmpty()) return segments.toArray(new PathSegment[0]);
 
-        PathSegment parent = PathSegment.Root.INSTANCE;
         int len = expr.length();
         int start = 1; // skip leading '/'
         while (start <= len) {
@@ -426,7 +428,7 @@ public class Paths {
     }
 
     // Helper method: parse quoted name in Union
-    private static String parseQuotedUnionName(String content, int start) {
+    private static String parseQuotedUnionName(String content, int start, int[] end) {
         char quote = content.charAt(start);
         StringBuilder sb = new StringBuilder();
         int i = start + 1; // Skip opening quote
@@ -457,6 +459,7 @@ public class Paths {
             throw new JsonException("Missing closing quote in union name");
         }
 
+        end[0] = i + 1;
         return sb.toString();
     }
 
@@ -473,9 +476,11 @@ public class Paths {
 
             if (firstChar == '\'' || firstChar == '"') {
                 // Quoted name
-                String name = parseQuotedUnionName(content, i);
+                int[] end = new int[1];
+                String name = parseQuotedUnionName(content, i, end);
                 segments.add(new PathSegment.Name(null, null, name));
-                i += name.length() + 2; // Skip quotes and content
+//                i += (name.length() + 2); // Skip quotes and content
+                i = end[0];
                 // Find next comma or end
                 while (i < content.length() && content.charAt(i) != ',') i++;
             } else if (Character.isDigit(firstChar) || firstChar == '-') {

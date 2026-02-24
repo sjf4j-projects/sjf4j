@@ -1,11 +1,18 @@
 package org.sjf4j.schema;
 
 
-final class BooleanSchema implements JsonSchema {
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.path.PathSegment;
 
-    public static final JsonSchema TRUE = new BooleanSchema(true);
-    public static final JsonSchema FALSE = new BooleanSchema(false);
+import java.util.Collections;
 
+@NodeValue
+public final class BooleanSchema implements JsonSchema {
+
+    public static final BooleanSchema TRUE = new BooleanSchema(true);
+    public static final BooleanSchema FALSE = new BooleanSchema(false);
 
     private final boolean booleanValue;
     private BooleanSchema(boolean booleanValue) {
@@ -15,9 +22,38 @@ final class BooleanSchema implements JsonSchema {
     @Override
     public void compile(SchemaStore outer) {}
 
+    @ValueToRaw
+    public boolean value2Raw() {
+        return booleanValue;
+    }
+
+    @RawToValue
+    public static BooleanSchema raw2Value(boolean booleanValue) {
+        return booleanValue ? TRUE : FALSE;
+    }
+
+
+    // validate
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {
-        return new ValidationResult(booleanValue, null);
+        if (booleanValue) {
+            return ValidationResult.VALID;
+        } else {
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                    PathSegment.Root.INSTANCE, null, "Schema 'false' always fails");
+            return new ValidationResult(false, null, msg);
+        }
+    }
+
+    // evaluate
+    @Override
+    public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        if (booleanValue) {
+            return true;
+        } else {
+            ctx.addError(ps, "false", "Schema 'false' always fails");
+            return false;
+        }
     }
 
 }

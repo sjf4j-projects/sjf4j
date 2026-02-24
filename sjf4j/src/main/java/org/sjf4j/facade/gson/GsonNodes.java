@@ -33,6 +33,7 @@ public final class GsonNodes {
     }
 
     public static NodeKind kindOf(Object node) {
+        if (!isNode(node)) throw new JsonException("Not a Gson's JsonElement, but was '" + Types.name(node) + "'");
         JsonElement jsonNode = (JsonElement) node;
         if (jsonNode.isJsonNull()) return NodeKind.VALUE_NULL;
         if (jsonNode.isJsonPrimitive()) {
@@ -305,4 +306,27 @@ public final class GsonNodes {
         throw new JsonException("Expected JsonArray but was " + Types.name(node));
     }
 
+    public static Object putInObject(Object node, String key, Object value) {
+        throw new JsonException("'putInObject' is not supported for `JsonElement` in Gson");
+    }
+
+    public static Object setInArray(Object node, int idx, Object value) {
+        throw new JsonException("'setInArray' is not supported for `JsonElement` in Gson");
+    }
+
+    public static void addInArray(Object node, Object value) {
+        throw new JsonException("'addInArray' is not supported for `JsonElement` in Gson");
+    }
+
+    public static void addInArray(Object node, int idx, Object value) {
+        throw new JsonException("'addInArray' is not supported for `JsonElement` in Gson");
+    }
+
+    public static Object removeInObject(Object node, String key) {
+        throw new JsonException("'removeInObject' is not supported for `JsonElement` in Gson");
+    }
+
+    public static Object removeInArray(Object node, int idx) {
+        throw new JsonException("'removeInArray' is not supported for `JsonElement` in Gson");
+    }
 }

@@ -102,14 +102,16 @@ public class JsonArray extends JsonContainer {
         return Object.class;
     }
 
-    public void setNodeList(List<Object> nodeList) {
-        Class<?> elemClazz = elementType();
-        if (elemClazz != Object.class) {
-            for (int i = 0; i < nodeList.size(); i++) {
-                Object v = nodeList.get(i);
-                if (v != null && !elemClazz.isInstance(v))
-                    throw new JsonException("Element type mismatch at " + i + ": expected " + elemClazz.getName() +
-                            ", but got " + v.getClass().getName());
+    protected void setNodeList(List<Object> nodeList) {
+        if (nodeList != null) {
+            Class<?> elemClazz = elementType();
+            if (elemClazz != Object.class) {
+                for (int i = 0; i < nodeList.size(); i++) {
+                    Object v = nodeList.get(i);
+                    if (v != null && !elemClazz.isInstance(v))
+                        throw new JsonException("Element type mismatch at " + i + ": expected " + elemClazz.getName() +
+                                ", but was " + v.getClass().getName());
+                }
             }
         }
         this.nodeList = nodeList;
@@ -132,16 +134,22 @@ public class JsonArray extends JsonContainer {
      */
     @Override
     public int hashCode() {
-        return nodeList == null ? 0 : nodeList.hashCode();
+        return nodeList == null || nodeList.isEmpty() ? 0 : nodeList.hashCode();
     }
 
     @Override
     public boolean equals(Object target) {
+//        return Nodes.equals(this, target);
         if (target == this) return true;
         if (target == null || target.getClass() != this.getClass()) return false;
         JsonArray targetJa = (JsonArray) target;
-        if (targetJa.size() != this.size()) return false;
-        return Objects.equals(this.nodeList, targetJa.nodeList);
+        int size = this.size();
+        if (size != targetJa.size()) return false;
+        if (size == 0) {
+            return true;
+        } else {
+            return Objects.equals(this.nodeList, targetJa.nodeList);
+        }
     }
 
     /**
@@ -215,7 +223,8 @@ public class JsonArray extends JsonContainer {
     }
 
     public Iterator<Object> iterator() {
-        return toList().iterator();
+        if (nodeList == null) return Collections.emptyIterator();
+        return nodeList.iterator();
     }
 
     private int pos(int idx) {

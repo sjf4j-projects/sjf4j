@@ -296,6 +296,7 @@ public class JsonObject extends JsonContainer {
      */
     @Override
     public int hashCode() {
+//        return Nodes.hash(this);
         int hash = dynamicMap == null ? 0 : dynamicMap.hashCode();
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
@@ -306,19 +307,25 @@ public class JsonObject extends JsonContainer {
         return hash;
     }
 
-    @SuppressWarnings("EqualsDoesntCheckParameterClass")
     @Override
     public boolean equals(Object target) {
-        return Nodes.equals(this, target);
-//        if (target == this) return true;
-//        if (target == null || target.getClass() != this.getClass()) return false;
-//        JsonObject targetJo = (JsonObject) target;
-//        if (targetJo.size() != this.size()) return false;
-//        for (Map.Entry<String, Object> entry : entrySet()) {
-//            Object targetValue = targetJo.get(entry.getKey());
-//            if (!Objects.equals(targetValue, entry.getValue())) return false;
-//        }
-//        return true;
+//        return Nodes.equals(this, target);
+        if (target == this) return true;
+        if (target == null || target.getClass() != this.getClass()) return false;
+        JsonObject targetJo = (JsonObject) target;
+        if (targetJo.size() != this.size()) return false;
+        for (Map.Entry<String, Object> entry : entrySet()) {
+            Object value = entry.getValue();
+            Object targetValue = targetJo.get(entry.getKey());
+            if (value == null) {
+                if (!targetJo.containsKey(entry.getKey()) || targetJo.getNode(entry.getKey()) != null) {
+                    return false;
+                }
+            } else {
+                if (!Objects.equals(targetValue, entry.getValue())) return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -402,13 +409,7 @@ public class JsonObject extends JsonContainer {
         }
     }
 
-    /**
-     * Converts this JsonObject to a standard Map, merging both POJO fields and dynamic nodes.
-     * The returned map is a new instance if this JsonObject contains both POJO fields and dynamic nodes,
-     * otherwise it returns the underlying map or an empty map.
-     *
-     * @return a Map containing all entries from this JsonObject
-     */
+
     public Map<String, Object> toMap() {
         Map<String, Object> merged = Sjf4jConfig.global().mapSupplier.create();
         if (fieldMap != null) {
@@ -430,13 +431,6 @@ public class JsonObject extends JsonContainer {
         return Nodes.toPojo(this, clazz);
     }
 
-    /**
-     * Returns a Set view of the mappings contained in this JsonObject, including both POJO fields
-     * and dynamic nodes. The set is backed by the JsonObject, so changes to the JsonObject are
-     * reflected in the set, and vice-versa.
-     *
-     * @return a Set view of the mappings in this JsonObject
-     */
     public Set<Map.Entry<String, Object>> entrySet() {
         Set<Map.Entry<String, Object>> set = new LinkedHashSet<>(size());
         if (fieldMap != null) {
@@ -452,13 +446,6 @@ public class JsonObject extends JsonContainer {
         return set;
     }
 
-    /**
-     * Removes all entries from this JsonObject that satisfy the given predicate. Only dynamic
-     * node entries are removed; POJO fields are not affected by this operation.
-     *
-     * @param filter the predicate used to filter entries to be removed
-     * @return true if any entries were removed, false otherwise
-     */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
         if (dynamicMap != null) {
             return  dynamicMap.entrySet().removeIf(filter);
@@ -517,6 +504,10 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.fromNode(node, type);
     }
 
+    public <T> T toNode(Class<T> clazz) {
+        return Sjf4j.fromNode(this, clazz);
+    }
+
     public Object toRaw() {
         return Sjf4j.toRaw(this);
     }
@@ -536,14 +527,6 @@ public class JsonObject extends JsonContainer {
 
     /// Getter
 
-    /**
-     * Gets the raw node value associated with the specified key, checking both POJO fields
-     * and dynamic nodes. Returns null if the key does not exist.
-     *
-     * @param key the key to retrieve
-     * @return the value associated with the key, or null if the key doesn't exist
-     * @throws IllegalArgumentException if key is null
-     */
     public Object getNode(String key) {
         if (key == null) return null;
         if (fieldMap != null) {
@@ -558,26 +541,11 @@ public class JsonObject extends JsonContainer {
         return null;
     }
 
-    /**
-     * Gets the node value associated with the specified key, returning the default value
-     * if the key does not exist or the value is null.
-     *
-     * @param key the key to retrieve
-     * @param defaultValue the value to return if the key doesn't exist or is null
-     * @return the value associated with the key, or defaultValue if the key doesn't exist
-     */
     public Object getNode(String key, Object defaultValue) {
         Object value = getNode(key);
         return value == null ? defaultValue : value;
     }
 
-    /**
-     * Gets the value associated with the specified key as a String.
-     *
-     * @param key the key to retrieve
-     * @return the String value, or null if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a String
-     */
     public String getString(String key) {
         try {
             Object value = getNode(key);
@@ -586,54 +554,22 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("Failed to get String for key '" + key + "'", e);
         }
     }
-    
-    /**
-     * Gets the value associated with the specified key as a String, returning the default value
-     * if the key does not exist or the value is null.
-     *
-     * @param key the key to retrieve
-     * @param defaultValue the value to return if the key doesn't exist or is null
-     * @return the String value, or defaultValue if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a String
-     */
+
     public String getString(String key, String defaultValue) {
         String value = getString(key);
         return value == null ? defaultValue : value;
     }
 
-    /**
-     * Converts and gets the value associated with the specified key as a String.
-     *
-     * @param key the key to retrieve
-     * @return the converted String value, or null if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a String
-     */
     public String getAsString(String key) {
         Object value = getNode(key);
         return Nodes.asString(value);
     }
-    
-    /**
-     * Converts and gets the value associated with the specified key as a String, returning the default value
-     * if the key does not exist or the value is null.
-     *
-     * @param key the key to retrieve
-     * @param defaultValue the value to return if the key doesn't exist or is null
-     * @return the converted String value, or defaultValue if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a String
-     */
+
     public String getAsString(String key, String defaultValue) {
         String value = getAsString(key);
         return value == null ? defaultValue : value;
     }
 
-    /**
-     * Gets the value associated with the specified key as a Number.
-     *
-     * @param key the key to retrieve
-     * @return the Number value, or null if the key doesn't exist
-     * @throws JsonException if the value cannot be converted to a Number
-     */
     public Number getNumber(String key) {
         Object value = getNode(key);
         try {
@@ -1525,6 +1461,7 @@ public class JsonObject extends JsonContainer {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
+            return;
         }
         throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
                 "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");

@@ -1,0 +1,21 @@
+{
+  "$id": "urn:sjf4j:test:domain",
+  "$defs": {
+    "Tag": {
+      "$anchor": "Tag",
+      "type": "string",
+      "pattern": "^[a-z]+$"
+    },
+    "User": {
+      "$anchor": "User",
+      "type": "object",
+      "required": ["name", "email"],
+      "properties": {
+        "name": {"type": "string"},
+        "email": {"type": "string", "format": "email"},
+        "tag": {"$ref": "#Tag"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

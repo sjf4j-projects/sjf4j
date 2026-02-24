@@ -11,23 +11,25 @@ import java.util.Iterator;
 import java.util.List;
 
 public class ValidationContext {
-    private boolean valid = true;
+    private final ObjectSchema targetSchema;
     private final ValidationOptions options;
+
+    private boolean valid = true;
     private final List<ValidationMessage> messages;
-    private final ObjectSchema rootSchema;
+    private ValidationMessage lastMessage;
 
     private int ignoreErrorAdding = 0;
     private final Deque<ObjectSchema> idSchemaStack = new ArrayDeque<>();
 
-    ValidationContext(ObjectSchema rootSchema, ValidationOptions options) {
-        this.rootSchema = rootSchema;
+    ValidationContext(ObjectSchema targetSchema, ValidationOptions options) {
+        this.targetSchema = targetSchema;
         this.options = options;
-        this.messages = new ArrayList<>();
+        this.messages = options.isFailFast() ? null : new ArrayList<>();
     }
 
     public ValidationOptions getOptions() {return this.options;}
     public ValidationResult toResult() {
-        return new ValidationResult(valid, messages);
+        return new ValidationResult(valid, messages, lastMessage);
     }
     public boolean isValid() {
         return valid;
@@ -47,12 +49,12 @@ public class ValidationContext {
 
     // anchor
     ObjectSchema getSchemaByAnchor(URI uri, String anchor) {
-        ObjectSchema found = rootSchema.getSchemaByAnchor(uri, anchor);
-        if (found == null && !anchor.isEmpty()) found = rootSchema.getSchemaByDynamicAnchor(anchor);
+        ObjectSchema found = targetSchema.getSchemaByAnchor(uri, anchor);
+        if (found == null && !anchor.isEmpty()) found = targetSchema.getSchemaByDynamicAnchor(anchor);
         return found;
     }
-    Object getSchemaByPath(URI uri, JsonPointer path) {
-        return rootSchema.getSchemaByPath(uri, path);
+    JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
+        return targetSchema.getSchemaByPath(uri, path);
     }
 
     // dynamicAnchor
@@ -67,7 +69,7 @@ public class ValidationContext {
         return idSchemaStack.pop();
     }
     ObjectSchema getSchemaByDynamicAnchor(URI uri, String dynamicAnchor) {
-        ObjectSchema schema = rootSchema.getSchemaByDynamicAnchor(uri, dynamicAnchor);
+        ObjectSchema schema = targetSchema.getSchemaByDynamicAnchor(uri, dynamicAnchor);
         if (schema != null) {
             Iterator<ObjectSchema> it = idSchemaStack.descendingIterator();
             while (it.hasNext()) {
@@ -79,27 +81,22 @@ public class ValidationContext {
     }
 
     // message
-    void addError(JsonPointer path, String keyword, String message) {
+    void addError(PathSegment ps, String keyword, String message) {
         if (ignoreErrorAdding < 1) {
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR, ps, keyword, message);
+            if (messages != null) {
+                messages.add(msg);
+            } else {
+                lastMessage = msg;
+            }
             valid = false;
-            addMessage(ValidationMessage.Severity.ERROR, path, keyword, message);
-        } else {
-            addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
         }
     }
-    void addWarn(JsonPointer path, String keyword, String message) {
-        addMessage(ValidationMessage.Severity.WARN, path, keyword, message);
+    void addWarn(PathSegment ps, String keyword, String message) {
+        if (messages != null) {
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN, ps, keyword, message);
+            messages.add(msg);
+        }
     }
-    void addInfo(JsonPointer path, String keyword, String message) {
-        addMessage(ValidationMessage.Severity.INFO, path, keyword, message);
-    }
-    void addDebug(JsonPointer path, String keyword, String message) {
-        addMessage(ValidationMessage.Severity.DEBUG, path, keyword, message);
-    }
-    private void addMessage(ValidationMessage.Severity severity, JsonPointer path, String keyword, String message) {
-        ValidationMessage error = new ValidationMessage(severity, path, keyword, message);
-        messages.add(error);
-    }
-
 
 }

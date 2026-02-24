@@ -24,8 +24,10 @@ public class PathsTest {
         assertInstanceOf(PathSegment.Root.class, segments[0]);
 
         segments = Paths.parsePointer("/");
-        assertEquals(1, segments.length);
+        assertEquals(2, segments.length);
         assertInstanceOf(PathSegment.Root.class, segments[0]);
+        assertInstanceOf(PathSegment.Name.class, segments[1]);
+        assertEquals("", ((PathSegment.Name) segments[1]).name);
     }
 
     @Test

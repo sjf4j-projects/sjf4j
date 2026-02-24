@@ -16,6 +16,7 @@ import java.util.AbstractMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -274,7 +275,7 @@ public class Nodes {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
         if (node instanceof String) {
-            String str = ((String) node).toLowerCase();
+            String str = ((String) node).toLowerCase(Locale.ROOT);
             if ("true".equals(str) || "yes".equals(str) || "on".equals(str) || "1".equals(str)) return true;
             if ("false".equals(str) || "no".equals(str) || "off".equals(str) || "0".equals(str)) return false;
 //            throw new JsonException("Cannot convert String to Boolean: supported formats: true/false, yes/no, on/off, 1/0");
@@ -635,6 +636,7 @@ public class Nodes {
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
             for (Map.Entry<String, Object> entry : entrySetInObject(source)) {
+                if (!containsInObject(target, entry.getKey())) return false;
                 Object subSource = entry.getValue();
                 Object subTarget = getInObject(target, entry.getKey());
                 if (!equals(subSource, subTarget)) return false;
@@ -1509,7 +1511,7 @@ public class Nodes {
             out.type = node.getClass().getComponentType();
             int len = Array.getLength(node);
             idx = idx < 0 ? len + idx : idx;
-            if (idx >= 0 || idx < len) {
+            if (idx >= 0 && idx < len) {
                 out.node = Array.get(node, idx);
                 out.insertable = true;
                 return;
@@ -1625,17 +1627,9 @@ public class Nodes {
                 set.add(value);
                 return null;
             } else if (idx >= 0 && idx < set.size()) {
-                int i = 0;
-                Object replaced = null;
-                for (Object v : set) {
-                    if (i++ == idx) { replaced = v; break; }
-                }
-                set.remove(replaced);
-                set.add(value);
-                return replaced;
+                throw new JsonException("Cannot set an element at a given index in an unordered Java Set");
             } else {
-                throw new JsonException("Cannot set/add index " + idx + " in Set of size " +
-                        set.size() + " (index < size: modify; index == size: append)");
+                throw new JsonException("Cannot set/add index " + idx + " in Set of size " + set.size());
             }
         }
         if (FacadeNodes.isNode(node)) {
@@ -1672,7 +1666,9 @@ public class Nodes {
     public static void addInArray(Object node, int idx, Object value) {
         Objects.requireNonNull(node, "node is null");
         if (node instanceof List) {
-            ((List<Object>) node).add(idx, value);
+            List<Object> list = (List<Object>) node;
+            idx = idx < 0 ? list.size() + idx : idx;
+            list.add(idx, value);
             return;
         }
         if (node instanceof JsonArray) {
@@ -1683,7 +1679,7 @@ public class Nodes {
             throw new JsonException("Cannot add element to a Java array");
         }
         if (node instanceof Set) {
-            throw new JsonException("Cannot add element at a given index in a Java Set");
+            throw new JsonException("Cannot add element at a given index in an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             throw new JsonException("'addInArray' is not supported for node '" + Types.name(node) + "'");
@@ -1717,11 +1713,7 @@ public class Nodes {
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
-            if (idx < 0 || idx >= list.size()) {
-                return null;
-            } else {
-                return list.remove(idx);
-            }
+            return list.remove(idx);
         }
         if (node instanceof JsonArray) {
             return ((JsonArray) node).remove(idx);
@@ -1731,19 +1723,7 @@ public class Nodes {
                     node.getClass().getComponentType() + "'");
         }
         if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            idx = idx < 0 ? set.size() + idx : idx;
-            if (idx < 0 || idx >= set.size()) {
-                return null;
-            } else {
-                int i = 0;
-                Object removed = null;
-                for (Object v : set) {
-                    if (i++ == idx) { removed = v; break; }
-                }
-                set.remove(removed);
-                return removed;
-            }
+            throw new JsonException("Cannot remove element at a given index in an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             throw new JsonException("'removeInArray' is not supported for node '" + Types.name(node) + "'");

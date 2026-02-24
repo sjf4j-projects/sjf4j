@@ -259,29 +259,10 @@ public interface FilterExpr {
         @Override public String toString() { return symbol; }
     }
 
-    /**
-     * Compares two objects for equality according to JSON comparison rules.
-     * <p>
-     * Numbers are compared by their numeric value, not their type. All other types
-     * are compared using their natural equality semantics.
-     * 
-     * @param a the first object to compare
-     * @param b the second object to compare
-     * @return true if the objects are equal according to JSON rules
-     */
     static boolean eq(Object a, Object b) {
-        return Objects.equals(a, b);
+        return Nodes.equals(a, b);
     }
 
-    /**
-     * Compares if the first object is greater than the second according to JSON rules.
-     * <p>
-     * Numbers are compared numerically, strings lexicographically. Returns false for other types.
-     * 
-     * @param a the first object to compare
-     * @param b the second object to compare
-     * @return true if a &gt; b according to JSON comparison rules
-     */
     static boolean gt(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -294,15 +275,6 @@ public interface FilterExpr {
         return false;
     }
 
-    /**
-     * Compares if the first object is greater than or equal to the second according to JSON rules.
-     * <p>
-     * Numbers are compared numerically, strings lexicographically. Returns false for other types.
-     * 
-     * @param a the first object to compare
-     * @param b the second object to compare
-     * @return true if a &gt;= b according to JSON comparison rules
-     */
     static boolean ge(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -315,15 +287,6 @@ public interface FilterExpr {
         return false;
     }
 
-    /**
-     * Compares if the first object is less than the second according to JSON rules.
-     * <p>
-     * Numbers are compared numerically, strings lexicographically. Returns false for other types.
-     * 
-     * @param a the first object to compare
-     * @param b the second object to compare
-     * @return true if a &lt; b according to JSON comparison rules
-     */
     static boolean lt(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -336,15 +299,6 @@ public interface FilterExpr {
         return false;
     }
 
-    /**
-     * Compares if the first object is less than or equal to the second according to JSON rules.
-     * <p>
-     * Numbers are compared numerically, strings lexicographically. Returns false for other types.
-     * 
-     * @param a the first object to compare
-     * @param b the second object to compare
-     * @return true if a &lt;= b according to JSON comparison rules
-     */
     static boolean le(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);

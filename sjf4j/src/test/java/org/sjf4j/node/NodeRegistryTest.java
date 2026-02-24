@@ -13,9 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.Copy;
-import org.sjf4j.annotation.node.Decode;
-import org.sjf4j.annotation.node.Encode;
+import org.sjf4j.annotation.node.ValueCopy;
+import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -88,17 +88,17 @@ public class NodeRegistryTest {
             this.localDate = localDate;
         }
 
-        @Encode
+        @ValueToRaw
         public String encode() {
             return localDate.toString();
         }
 
-        @Decode
+        @RawToValue
         public static Day decode(String raw) {
             return new Day(LocalDate.parse(raw));
         }
 
-        @Copy
+        @ValueCopy
         public Day copy() {
             return new Day(localDate);
         }

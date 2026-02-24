@@ -1,0 +1,10 @@
+{
+  "$id": "urn:sjf4j:test:user",
+  "type": "object",
+  "required": ["id", "name"],
+  "properties": {
+    "id": {"type": "integer", "minimum": 1},
+    "name": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}
