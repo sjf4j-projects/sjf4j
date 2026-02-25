@@ -73,9 +73,6 @@ public class PatchOpRegistry {
 
         // replace
         PatchOpRegistry.register(PatchOp.STD_REPLACE, (target, op) -> {
-            if (!op.getPath().contains(target))
-                throw new JsonException("'replace' operation failed at path " + op.getPath() +
-                        ": cannot replace value at non-existent path");
             op.getPath().replace(target, op.getValue());
         });
 

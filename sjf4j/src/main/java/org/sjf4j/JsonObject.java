@@ -316,7 +316,7 @@ public class JsonObject extends JsonContainer {
         if (targetJo.size() != this.size()) return false;
         for (Map.Entry<String, Object> entry : entrySet()) {
             Object value = entry.getValue();
-            Object targetValue = targetJo.get(entry.getKey());
+            Object targetValue = targetJo.getNode(entry.getKey());
             if (value == null) {
                 if (!targetJo.containsKey(entry.getKey()) || targetJo.getNode(entry.getKey()) != null) {
                     return false;
@@ -1401,7 +1401,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Object putIfAbsent(String key, Object node) {
-        Object old = get(key);
+        Object old = getNode(key);
         if (old == null) {
             old = put(key, node);
         }
@@ -1409,7 +1409,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public Object replace(String key, Object value) {
-        Object old = get(key);
+        Object old = getNode(key);
         if (old != null) {
             return put(key, value);
         }

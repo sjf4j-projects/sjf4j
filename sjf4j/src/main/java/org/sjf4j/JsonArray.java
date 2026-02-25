@@ -337,7 +337,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public String asString(int idx) {
+    public String getAsString(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asString(value);
@@ -345,8 +345,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to String", e);
         }
     }
-    public String asString(int idx, String defaultValue) {
-        String value = asString(idx);
+    public String getAsString(int idx, String defaultValue) {
+        String value = getAsString(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -363,7 +363,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Number asNumber(int idx) {
+    public Number getAsNumber(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asNumber(value);
@@ -371,8 +371,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Number", e);
         }
     }
-    public Number asNumber(int idx, Number defaultValue) {
-        Number value = asNumber(idx);
+    public Number getAsNumber(int idx, Number defaultValue) {
+        Number value = getAsNumber(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -389,7 +389,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Long asLong(int idx) {
+    public Long getAsLong(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asLong(value);
@@ -397,8 +397,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Long", e);
         }
     }
-    public long asLong(int idx, long defaultValue) {
-        Long value = asLong(idx);
+    public long getAsLong(int idx, long defaultValue) {
+        Long value = getAsLong(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -415,7 +415,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Integer asInteger(int idx) {
+    public Integer getAsInteger(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asInteger(value);
@@ -423,8 +423,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Integer", e);
         }
     }
-    public int asInteger(int idx, int defaultValue) {
-        Integer value = asInteger(idx);
+    public int getAsInteger(int idx, int defaultValue) {
+        Integer value = getAsInteger(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -441,7 +441,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Short asShort(int idx) {
+    public Short getAsShort(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asShort(value);
@@ -449,8 +449,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Short", e);
         }
     }
-    public short asShort(int idx, short defaultValue) {
-        Short value = asShort(idx);
+    public short getAsShort(int idx, short defaultValue) {
+        Short value = getAsShort(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -467,7 +467,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Byte asByte(int idx) {
+    public Byte getAsByte(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asByte(value);
@@ -475,8 +475,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Byte", e);
         }
     }
-    public byte asByte(int idx, byte defaultValue) {
-        Byte value = asByte(idx);
+    public byte getAsByte(int idx, byte defaultValue) {
+        Byte value = getAsByte(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -493,7 +493,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Double asDouble(int idx) {
+    public Double getAsDouble(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asDouble(value);
@@ -501,8 +501,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Double", e);
         }
     }
-    public double asDouble(int idx, double defaultValue) {
-        Double value = asDouble(idx);
+    public double getAsDouble(int idx, double defaultValue) {
+        Double value = getAsDouble(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -519,7 +519,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Float asFloat(int idx) {
+    public Float getAsFloat(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asFloat(value);
@@ -527,8 +527,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Float", e);
         }
     }
-    public float asFloat(int idx, float defaultValue) {
-        Float value = asFloat(idx);
+    public float getAsFloat(int idx, float defaultValue) {
+        Float value = getAsFloat(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -545,7 +545,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public BigInteger asBigInteger(int idx) {
+    public BigInteger getAsBigInteger(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asBigInteger(value);
@@ -553,8 +553,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to BigInteger", e);
         }
     }
-    public BigInteger asBigInteger(int idx, BigInteger defaultValue) {
-        BigInteger value = asBigInteger(idx);
+    public BigInteger getAsBigInteger(int idx, BigInteger defaultValue) {
+        BigInteger value = getAsBigInteger(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -571,7 +571,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public BigDecimal asBigDecimal(int idx) {
+    public BigDecimal getAsBigDecimal(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asBigDecimal(value);
@@ -579,8 +579,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to BigDecimal", e);
         }
     }
-    public BigDecimal asBigDecimal(int idx, BigDecimal defaultValue) {
-        BigDecimal value = asBigDecimal(idx);
+    public BigDecimal getAsBigDecimal(int idx, BigDecimal defaultValue) {
+        BigDecimal value = getAsBigDecimal(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -597,7 +597,7 @@ public class JsonArray extends JsonContainer {
         return value == null ? defaultValue : value;
     }
 
-    public Boolean asBoolean(int idx) {
+    public Boolean getAsBoolean(int idx) {
         try {
             Object value = getNode(idx);
             return Nodes.asBoolean(value);
@@ -605,8 +605,8 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Boolean", e);
         }
     }
-    public boolean asBoolean(int idx, boolean defaultValue) {
-        Boolean value = asBoolean(idx);
+    public boolean getAsBoolean(int idx, boolean defaultValue) {
+        Boolean value = getAsBoolean(idx);
         return value == null ? defaultValue : value;
     }
 
@@ -731,7 +731,7 @@ public class JsonArray extends JsonContainer {
         return get(idx, clazz);
     }
 
-    public <T> T as(int idx, Class<T> clazz) {
+    public <T> T getAs(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz is null");
         Object value = getNode(idx);
         try {
@@ -741,10 +741,10 @@ public class JsonArray extends JsonContainer {
         }
     }
     @SuppressWarnings("unchecked")
-    public <T> T as(int idx, T... reified) {
+    public <T> T getAs(int idx, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
-        return as(idx, clazz);
+        return getAs(idx, clazz);
     }
 
 

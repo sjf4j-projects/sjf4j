@@ -743,8 +743,8 @@ public class JsonPath {
             Nodes.setInArray(lastContainer, idx, value);
             return null; // No need return old value in List/JsonArray
         } else {
-            throw new JsonException("ensurePut() not supported for last path token '" + lastToken +
-                    "'; expected Name or Index token");
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; ensurePut() expected Name or Index token");
         }
     }
 
@@ -798,8 +798,8 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             return false;
         } else {
-            throw new JsonException("contains() not supported for last path token '" + lastToken +
-                    "'; expected Name, Index, or Append token");
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; contains() expected Name, Index, or Append token");
         }
     }
 
@@ -821,8 +821,8 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(penult, value);
         } else {
-            throw new JsonException("add() not supported for last path token '" + lastToken +
-                    "'; expected Name, Index, or Append token");
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; add() expected Name, Index, or Append token");
         }
     }
 
@@ -835,13 +835,19 @@ public class JsonPath {
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
+            if (!Nodes.containsInObject(penult, name)) {
+                throw new JsonException("Cannot replace value at non-existent path '" + this + "'");
+            }
             return Nodes.putInObject(penult, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             int idx = ((PathSegment.Index) lastToken).index;
+            if (!Nodes.containsInArray(penult, idx)) {
+                throw new JsonException("Cannot replace value at non-existent path '" + this + "'");
+            }
             return Nodes.setInArray(penult, idx, value);
         } else {
-            throw new JsonException("add() not supported for last path token '" + lastToken +
-                    "'; expected Name or Index token");
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; replace() expected Name or Index token");
         }
     }
 
@@ -860,8 +866,8 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             return null;
         } else {
-            throw new JsonException("remove() not supported for last path token '" + lastToken +
-                    "'; expected Name, Index, or Append token");
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; remove() expected Name, Index, or Append token");
         }
     }
 
