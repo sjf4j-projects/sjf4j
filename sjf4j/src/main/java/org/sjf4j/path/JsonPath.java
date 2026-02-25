@@ -60,6 +60,9 @@ public class JsonPath {
         this.segments = segments;
     }
 
+    /**
+     * Compiles a JSONPath or JSON Pointer expression into tokens.
+     */
     public static JsonPath compile(String expr) {
         Objects.requireNonNull(expr, "expr is null");
         expr = expr.trim();
@@ -197,6 +200,9 @@ public class JsonPath {
     }
 
     // String
+    /**
+     * Returns a String at this path using strict conversion.
+     */
     public String getString(Object container) {
         try {
             Object value = getNode(container);
@@ -205,11 +211,17 @@ public class JsonPath {
             throw new JsonException("Failed to get String by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a String at this path or the default value when missing.
+     */
     public String getString(Object container, String defaultValue) {
         String value = getString(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a String at this path using lenient conversion.
+     */
     public String getAsString(Object container) {
         try {
             Object value = getNode(container);
@@ -218,12 +230,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to String", e);
         }
     }
+    /**
+     * Returns a String at this path using lenient conversion with default.
+     */
     public String getAsString(Object container, String defaultValue) {
         String value = getAsString(container);
         return value == null ? defaultValue : value;
     }
 
     // Number
+    /**
+     * Returns a Number at this path using strict conversion.
+     */
     public Number getNumber(Object container) {
         try {
             Object value = getNode(container);
@@ -232,11 +250,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Number by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Number at this path or the default value when missing.
+     */
     public Number getNumber(Object container, Number defaultValue) {
         Number value = getNumber(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Number at this path using lenient conversion.
+     */
     public Number getAsNumber(Object container) {
         try {
             Object value = getNode(container);
@@ -245,12 +269,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Number", e);
         }
     }
+    /**
+     * Returns a Number at this path using lenient conversion with default.
+     */
     public Number getAsNumber(Object container, Number defaultValue) {
         Number value = getAsNumber(container);
         return value == null ? defaultValue : value;
     }
 
     // Long
+    /**
+     * Returns a Long at this path using strict conversion.
+     */
     public Long getLong(Object container) {
         try {
             Object value = getNode(container);
@@ -259,11 +289,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Long by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Long at this path or the default value when missing.
+     */
     public long getLong(Object container, long defaultValue) {
         Long value = getLong(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Long at this path using lenient conversion.
+     */
     public Long getAsLong(Object container) {
         try {
             Object value = getNode(container);
@@ -272,12 +308,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Long", e);
         }
     }
+    /**
+     * Returns a Long at this path using lenient conversion with default.
+     */
     public long getAsLong(Object container, long defaultValue) {
         Long value = getAsLong(container);
         return value == null ? defaultValue : value;
     }
 
     // Integer
+    /**
+     * Returns an Integer at this path using strict conversion.
+     */
     public Integer getInteger(Object container) {
         try {
             Object value = getNode(container);
@@ -286,11 +328,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Integer by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns an Integer at this path or the default value when missing.
+     */
     public int getInteger(Object container, int defaultValue) {
         Integer value = getInteger(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns an Integer at this path using lenient conversion.
+     */
     public Integer getAsInteger(Object container) {
         try {
             Object value = getNode(container);
@@ -299,12 +347,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Integer", e);
         }
     }
+    /**
+     * Returns an Integer at this path using lenient conversion with default.
+     */
     public int getAsInteger(Object container, int defaultValue) {
         Integer value = getAsInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // Short
+    /**
+     * Returns a Short at this path using strict conversion.
+     */
     public Short getShort(Object container) {
         try {
             Object value = getNode(container);
@@ -313,11 +367,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Short by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Short at this path or the default value when missing.
+     */
     public short getShort(Object container, short defaultValue) {
         Short value = getShort(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Short at this path using lenient conversion.
+     */
     public Short getAsShort(Object container) {
         try {
             Object value = getNode(container);
@@ -326,12 +386,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Short", e);
         }
     }
+    /**
+     * Returns a Short at this path using lenient conversion with default.
+     */
     public short getAsShort(Object container, short defaultValue) {
         Short value = getAsShort(container);
         return value == null ? defaultValue : value;
     }
 
     // Byte
+    /**
+     * Returns a Byte at this path using strict conversion.
+     */
     public Byte getByte(Object container) {
         try {
             Object value = getNode(container);
@@ -340,11 +406,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Byte by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Byte at this path or the default value when missing.
+     */
     public byte getByte(Object container, byte defaultValue) {
         Byte value = getByte(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Byte at this path using lenient conversion.
+     */
     public Byte getAsByte(Object container) {
         try {
             Object value = getNode(container);
@@ -353,12 +425,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Byte", e);
         }
     }
+    /**
+     * Returns a Byte at this path using lenient conversion with default.
+     */
     public byte getAsByte(Object container, byte defaultValue) {
         Byte value = getAsByte(container);
         return value == null ? defaultValue : value;
     }
 
     // Double
+    /**
+     * Returns a Double at this path using strict conversion.
+     */
     public Double getDouble(Object container) {
         try {
             Object value = getNode(container);
@@ -367,11 +445,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Double by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Double at this path or the default value when missing.
+     */
     public double getDouble(Object container, double defaultValue) {
         Double value = getDouble(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Double at this path using lenient conversion.
+     */
     public Double getAsDouble(Object container) {
         try {
             Object value = getNode(container);
@@ -380,12 +464,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Double", e);
         }
     }
+    /**
+     * Returns a Double at this path using lenient conversion with default.
+     */
     public double getAsDouble(Object container, double defaultValue) {
         Double value = getAsDouble(container);
         return value == null ? defaultValue : value;
     }
 
     // Float
+    /**
+     * Returns a Float at this path using strict conversion.
+     */
     public Float getFloat(Object container) {
         try {
             Object value = getNode(container);
@@ -394,11 +484,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Float by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Float at this path or the default value when missing.
+     */
     public float getFloat(Object container, float defaultValue) {
         Float value = getFloat(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Float at this path using lenient conversion.
+     */
     public Float getAsFloat(Object container) {
         try {
             Object value = getNode(container);
@@ -407,12 +503,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Float", e);
         }
     }
+    /**
+     * Returns a Float at this path using lenient conversion with default.
+     */
     public float getAsFloat(Object container, float defaultValue) {
         Float value = getAsFloat(container);
         return value == null ? defaultValue : value;
     }
 
     // BigInteger
+    /**
+     * Returns a BigInteger at this path using strict conversion.
+     */
     public BigInteger getBigInteger(Object container) {
         try {
             Object value = getNode(container);
@@ -421,11 +523,17 @@ public class JsonPath {
             throw new JsonException("Failed to get BigInteger by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a BigInteger at this path or the default value when missing.
+     */
     public BigInteger getBigInteger(Object container, BigInteger defaultValue) {
         BigInteger value = getBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a BigInteger at this path using lenient conversion.
+     */
     public BigInteger getAsBigInteger(Object container) {
         try {
             Object value = getNode(container);
@@ -434,12 +542,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigInteger", e);
         }
     }
+    /**
+     * Returns a BigInteger at this path using lenient conversion with default.
+     */
     public BigInteger getAsBigInteger(Object container, BigInteger defaultValue) {
         BigInteger value = getAsBigInteger(container);
         return value == null ? defaultValue : value;
     }
 
     // BigDecimal
+    /**
+     * Returns a BigDecimal at this path using strict conversion.
+     */
     public BigDecimal getBigDecimal(Object container) {
         try {
             Object value = getNode(container);
@@ -448,11 +562,17 @@ public class JsonPath {
             throw new JsonException("Failed to get BigDecimal by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a BigDecimal at this path or the default value when missing.
+     */
     public BigDecimal getBigDecimal(Object container, BigDecimal defaultValue) {
         BigDecimal value = getBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a BigDecimal at this path using lenient conversion.
+     */
     public BigDecimal getAsBigDecimal(Object container) {
         try {
             Object value = getNode(container);
@@ -461,12 +581,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to BigDecimal", e);
         }
     }
+    /**
+     * Returns a BigDecimal at this path using lenient conversion with default.
+     */
     public BigDecimal getAsBigDecimal(Object container, BigDecimal defaultValue) {
         BigDecimal value = getAsBigDecimal(container);
         return value == null ? defaultValue : value;
     }
 
     // Boolean
+    /**
+     * Returns a Boolean at this path using strict conversion.
+     */
     public Boolean getBoolean(Object container) {
         try {
             Object value = getNode(container);
@@ -475,11 +601,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Boolean by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Boolean at this path or the default value when missing.
+     */
     public boolean getBoolean(Object container, boolean defaultValue) {
         Boolean value = getBoolean(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Boolean at this path using lenient conversion.
+     */
     public Boolean getAsBoolean(Object container) {
         try {
             Object value = getNode(container);
@@ -488,12 +620,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Boolean", e);
         }
     }
+    /**
+     * Returns a Boolean at this path using lenient conversion with default.
+     */
     public boolean getAsBoolean(Object container, boolean defaultValue) {
         Boolean value = getAsBoolean(container);
         return value == null ? defaultValue : value;
     }
 
     // JsonObject
+    /**
+     * Returns a JsonObject at this path using strict conversion.
+     */
     public JsonObject getJsonObject(Object container) {
         try {
             Object value = getNode(container);
@@ -502,12 +640,18 @@ public class JsonPath {
             throw new JsonException("Failed to get JsonObject by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a JsonObject at this path or the default value when missing.
+     */
     public JsonObject getJsonObject(Object container, JsonObject defaultValue) {
         JsonObject value = getJsonObject(container);
         return value == null ? defaultValue : value;
     }
 
     // Map
+    /**
+     * Returns a Map at this path using strict conversion.
+     */
     public Map<String, Object> getMap(Object container) {
         try {
             Object value = getNode(container);
@@ -516,11 +660,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Map<String, Object> by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Map at this path or the default value when missing.
+     */
     public Map<String, Object> getMap(Object container, Map<String, Object> defaultValue) {
         Map<String, Object> value = getMap(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed Map at this path using strict conversion.
+     */
     public <T> Map<String, T> getMap(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
@@ -530,12 +680,18 @@ public class JsonPath {
                     clazz.getName() + ">", e);
         }
     }
+    /**
+     * Returns a typed Map at this path or the default value when missing.
+     */
     public <T> Map<String, T> getMap(Object container, Class<T> clazz, Map<String, T> defaultValue) {
         Map<String, T> value = getMap(container, clazz);
         return value == null ? defaultValue : value;
     }
 
     // JsonArray
+    /**
+     * Returns a JsonArray at this path using strict conversion.
+     */
     public JsonArray getJsonArray(Object container) {
         try {
             Object value = getNode(container);
@@ -544,12 +700,18 @@ public class JsonPath {
             throw new JsonException("Failed to get JsonArray by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a JsonArray at this path or the default value when missing.
+     */
     public JsonArray getJsonArray(Object container, JsonArray defaultValue) {
         JsonArray value = getJsonArray(container);
         return value == null ? defaultValue : value;
     }
 
     // List
+    /**
+     * Returns a List at this path using strict conversion.
+     */
     public List<Object> getList(Object container) {
         try {
             Object value = getNode(container);
@@ -558,11 +720,17 @@ public class JsonPath {
             throw new JsonException("Failed to get List<Object> by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a List at this path or the default value when missing.
+     */
     public List<Object> getList(Object container, List<Object> defaultValue) {
         List<Object> value = getList(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed List at this path using strict conversion.
+     */
     public <T> List<T> getList(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
@@ -571,12 +739,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to List<" + clazz.getName() + ">", e);
         }
     }
+    /**
+     * Returns a typed List at this path or the default value when missing.
+     */
     public <T> List<T> getList(Object container, Class<T> clazz, List<T> defaultValue) {
         List<T> value = getList(container, clazz);
         return value == null ? defaultValue : value;
     }
 
     // Array
+    /**
+     * Returns an Object array at this path using strict conversion.
+     */
     public Object[] getArray(Object container) {
         try {
             Object value = getNode(container);
@@ -585,11 +759,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Object[] by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns an Object array at this path or the default value when missing.
+     */
     public Object[] getArray(Object container, Object[] defaultValue) {
         Object[] value = getArray(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed array at this path using strict conversion.
+     */
     public <T> T[] getArray(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
@@ -598,12 +778,18 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName() + "[]", e);
         }
     }
+    /**
+     * Returns a typed array at this path or the default value when missing.
+     */
     public <T> T[] getArray(Object container, Class<T> clazz, T[] defaultValue) {
         T[] value = getArray(container, clazz);
         return value == null ? defaultValue : value;
     }
 
     // Set
+    /**
+     * Returns a Set at this path using strict conversion.
+     */
     public Set<Object> getSet(Object container) {
         try {
             Object value = getNode(container);
@@ -612,11 +798,17 @@ public class JsonPath {
             throw new JsonException("Failed to get Set<Object> by path '" + this + "'", e);
         }
     }
+    /**
+     * Returns a Set at this path or the default value when missing.
+     */
     public Set<Object> getSet(Object container, Set<Object> defaultValue) {
         Set<Object> value = getSet(container);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed Set at this path using strict conversion.
+     */
     public <T> Set<T> getSet(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
@@ -625,12 +817,17 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to Set<" + clazz.getName() + ">", e);
         }
     }
+    /**
+     * Returns a typed Set at this path or the default value when missing.
+     */
     public <T> Set<T> getSet(Object container, Class<T> clazz, Set<T> defaultValue) {
         Set<T> value = getSet(container, clazz);
         return value == null ? defaultValue : value;
     }
 
-    
+    /**
+     * Returns a value at this path converted to the given type.
+     */
     public <T> T get(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
@@ -640,6 +837,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * Returns a value at this path converted to the inferred type parameter.
+     */
     @SuppressWarnings("unchecked")
     public <T> T get(Object container, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -647,6 +847,9 @@ public class JsonPath {
         return get(container, clazz);
     }
 
+    /**
+     * Returns a value at this path using lenient conversion.
+     */
     public <T> T getAs(Object container, Class<T> clazz) {
         try {
             Object value = getNode(container);
@@ -655,6 +858,9 @@ public class JsonPath {
             throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName(), e);
         }
     }
+    /**
+     * Returns a value at this path using lenient conversion with inferred type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T getAs(Object container, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -664,6 +870,9 @@ public class JsonPath {
 
 
     /// All
+    /**
+     * Finds all matching nodes for this path.
+     */
     public List<Object> find(Object container) {
         Objects.requireNonNull(container, "container is null");
         List<Object> result = new ArrayList<>();
@@ -671,6 +880,9 @@ public class JsonPath {
         return result;
     }
 
+    /**
+     * Finds and converts all matches using strict conversion.
+     */
     public <T> List<T> find(Object container, Class<T> clazz) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(clazz, "clazz is null");
@@ -679,6 +891,9 @@ public class JsonPath {
         return result;
     }
 
+    /**
+     * Finds and converts all matches using lenient conversion.
+     */
     public <T> List<T> findAs(Object container, Class<T> clazz) {
         Objects.requireNonNull(container, "container is null");
         Objects.requireNonNull(clazz, "clazz is null");
@@ -688,6 +903,9 @@ public class JsonPath {
     }
 
     // eval() is more powerful than get() / find()
+    /**
+     * Evaluates the path and returns either a single result, a list, or a function result.
+     */
     public Object eval(Object container) {
         Objects.requireNonNull(container, "container is null");
         List<Object> result = new ArrayList<>();
@@ -709,6 +927,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * Evaluates the path and converts the result using strict conversion.
+     */
     public <T> T eval(Object container, Class<T> clazz) {
         try {
             Object value = eval(container);
@@ -718,6 +939,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * Evaluates the path and converts the result using lenient conversion.
+     */
     public <T> T evalAs(Object container, Class<T> clazz) {
         try {
             Object value = eval(container);
@@ -729,6 +953,9 @@ public class JsonPath {
 
     /// ensurePut
 
+    /**
+     * Ensures all intermediate containers exist and writes the value at the last token.
+     */
     public Object ensurePut(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
         Object lastContainer = _ensureContainersInPath(container);
@@ -753,6 +980,9 @@ public class JsonPath {
         return getNode(container);
     }
 
+    /**
+     * Ensures the value exists; writes only when current value is null.
+     */
     public Object ensurePutIfAbsent(Object container, Object value) {
         Object old = getNode(container);
         if (old == null) {
@@ -778,10 +1008,16 @@ public class JsonPath {
 
     /// has
 
+    /**
+     * Returns true when the node exists and is non-null.
+     */
     public boolean hasNonNull(Object container) {
         return getNode(container) != null;
     }
 
+    /**
+     * Returns true if the path exists, regardless of null value.
+     */
     public boolean contains(Object container) {
         Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
@@ -803,6 +1039,9 @@ public class JsonPath {
 
     /// JSON Patch: add, replace, remove
 
+    /**
+     * JSON Patch add operation semantics.
+     */
     public void add(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
@@ -824,6 +1063,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * JSON Patch replace operation semantics (path must exist).
+     */
     public Object replace(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
@@ -849,6 +1091,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * JSON Patch remove operation semantics.
+     */
     public Object remove(Object container) {
         Objects.requireNonNull(container, "container is null");
         Object penult = _findOne(container, -1);
@@ -872,6 +1117,9 @@ public class JsonPath {
 
     /// private
 
+    /**
+     * Finds a single match for the path (optionally stopping before the tail).
+     */
     private Object _findOne(Object container, int tailIndex) {
         Object node = container;
         for (int i = 1, len = segments.length + tailIndex; i < len; i++) {
@@ -910,7 +1158,9 @@ public class JsonPath {
     }
 
 
-    // In the future, the `result` could be replaced with a callback to allow more flexible handling of matches.
+    /**
+     * Walks the path and collects all matches into the result list.
+     */
     private <T> void _findAll(Object root, Object current, int tokenIdx,
                               List<T> result, Function<Object, T> converter) {
         Object node = current;
@@ -989,6 +1239,9 @@ public class JsonPath {
         result.add(converter.apply(node));
     }
 
+    /**
+     * Recursively scans descendants and matches the next token.
+     */
     private <T> void _findMatch(Object root, Object current, int tokenIdx, List<T> result, Function<Object, T> converter) {
         if (current == null) return;
         PathSegment pt = segments[tokenIdx];
@@ -1011,8 +1264,9 @@ public class JsonPath {
         }
     }
 
-    // 1. Automatically create or extends JsonObject nodes when they do not exist.
-    // 2. Automatically create or extends JsonArray nodes when they do not exist and the index is 0.
+    /**
+     * Ensures intermediate containers exist for a single-name/index path.
+     */
     private Object _ensureContainersInPath(Object container) {
         if (!_isSingle()) {
             throw new JsonException("JsonPath '" + this + "' must represent a single node " +
@@ -1073,6 +1327,9 @@ public class JsonPath {
     }
 
 
+    /**
+     * Creates an object or array container based on the next path segment.
+     */
     private Object _createContainer(PathSegment ps, Class<?> clazz) {
         if (ps instanceof PathSegment.Name) {
             if (clazz == Object.class || clazz == Map.class) {
@@ -1111,6 +1368,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * Returns true if the path uses only root/name/index tokens.
+     */
     private boolean _isSingle() {
         for (PathSegment pt : segments) {
             if (!(pt instanceof PathSegment.Root || pt instanceof PathSegment.Name || pt instanceof PathSegment.Index)) {
@@ -1120,6 +1380,9 @@ public class JsonPath {
         return true;
     }
 
+    /**
+     * Parses a literal argument for a path function.
+     */
     private Object _resolveFunctionArg(String raw) {
         if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
             return raw.substring(1, raw.length() - 1);

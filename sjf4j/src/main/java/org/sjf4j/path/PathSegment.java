@@ -17,18 +17,39 @@ public abstract class PathSegment {
         this.parent = parent;
         this.clazz = clazz;
     }
+    /**
+     * Returns the parent segment in the chain.
+     */
     public PathSegment parent() {return parent;}
+    /**
+     * Returns the declared container type for this segment, if any.
+     */
     public Class<?> clazz() {return clazz;}
 
+    /**
+     * Returns true if this segment matches the given object key.
+     */
     public boolean matchKey(String key) { return false; }
+    /**
+     * Returns true if this segment matches the given array index.
+     */
     public boolean matchIndex(int idx, int size) { return false; }
 
+    /**
+     * Returns a human-readable inspection string rooted at this segment.
+     */
     public String rootedInspect() {
         return Paths.rootedInspect(this);
     }
+    /**
+     * Returns a JSON Pointer expression rooted at this segment.
+     */
     public String rootedPointerExpr() {
         return Paths.rootedPointerExpr(this);
     }
+    /**
+     * Returns a JSONPath expression rooted at this segment.
+     */
     public String rootedPathExpr() {
         return Paths.rootedPathExpr(this);
     }

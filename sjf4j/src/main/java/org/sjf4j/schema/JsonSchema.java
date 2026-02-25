@@ -26,6 +26,9 @@ public interface JsonSchema {
         compile(null);
     }
 
+    /**
+     * Validates and throws if invalid.
+     */
     default void validateOrThrow(Object node) {
         ValidationResult result = validate(node, ValidationOptions.FAIL_FAST);
         if (!result.isValid()) throw new ValidationException(result);
@@ -51,6 +54,9 @@ public interface JsonSchema {
         return fromNode(node);
     }
 
+    /**
+     * Creates a schema instance from a parsed JSON node.
+     */
     static JsonSchema fromNode(Object node) {
         if (node == null) return null;
         JsonType jt = JsonType.of(node);

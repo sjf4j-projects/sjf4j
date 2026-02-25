@@ -38,6 +38,9 @@ public abstract class JsonContainer {
         return Nodes.equals(this, target);
     }
 
+    /**
+     * Returns a hash based on node semantics.
+     */
     public int nodeHash() {
         return Nodes.hash(this);
     }

@@ -45,20 +45,20 @@ public interface Evaluator {
 //        ctx.addError(ps, keyword, "Not a valid schema type " + subSchema.getClass().getName());
 //        return false;
 //    }
-
-    default boolean evaluateProperty(JsonSchema subSchema, String keyword, InstancedNode instance,
-                                     PathSegment ps, String key, ValidationContext ctx) {
-        InstancedNode subInstance = instance.getSubByKey(key);
-        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, instance.getObjectType(), key);
-        return subSchema.evaluate(subInstance, cps, ctx);
-    }
-
-    default boolean evaluateItem(JsonSchema subSchema, String keyword, InstancedNode instance,
-                                 PathSegment ps, int idx, ValidationContext ctx) {
-        InstancedNode subInstance = instance.getSubByIndex(idx);
-        PathSegment cps = ps == null ? null : new PathSegment.Index(ps, instance.getObjectType(), idx);
-        return subSchema.evaluate(subInstance, cps, ctx);
-    }
+//
+//    default boolean evaluateProperty(JsonSchema subSchema, String keyword, InstancedNode instance,
+//                                     PathSegment ps, String key, ValidationContext ctx) {
+//        InstancedNode subInstance = instance.getSubByKey(key);
+//        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, instance.getObjectType(), key);
+//        return subSchema.evaluate(subInstance, cps, ctx);
+//    }
+//
+//    default boolean evaluateItem(JsonSchema subSchema, String keyword, InstancedNode instance,
+//                                 PathSegment ps, int idx, ValidationContext ctx) {
+//        InstancedNode subInstance = instance.getSubByIndex(idx);
+//        PathSegment cps = ps == null ? null : new PathSegment.Index(ps, instance.getObjectType(), idx);
+//        return subSchema.evaluate(subInstance, cps, ctx);
+//    }
 
 
     /// Built-in evaluators
@@ -73,6 +73,9 @@ public interface Evaluator {
             this.refPath = refPath;
             this.anchor = anchor;
         }
+        /**
+         * Resolves $ref and delegates evaluation to the referenced schema.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (refPath != null) {
@@ -110,6 +113,9 @@ public interface Evaluator {
             this.dynamicAnchor = dynamicAnchor;
         }
 
+        /**
+         * Resolves $dynamicRef using dynamic anchors or fallback path.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             JsonSchema schema = ctx.getSchemaByDynamicAnchor(uri, dynamicAnchor);
@@ -165,6 +171,9 @@ public interface Evaluator {
                         type.getClass().getSimpleName());
             }
         }
+        /**
+         * Validates instance type against a single or union type.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (jsonType != null) {
@@ -209,6 +218,9 @@ public interface Evaluator {
         public ConstEvaluator(Object constValue) {
             this.constValue = constValue;
         }
+        /**
+         * Ensures the instance equals the const value using node semantics.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             Object actual = instance.getNode();
@@ -227,6 +239,9 @@ public interface Evaluator {
         public EnumEvaluator(Object[] enumValues) {
             this.enumValues = Objects.requireNonNull(enumValues);
         }
+        /**
+         * Checks whether the instance matches any value in the enum.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             Object actual = instance.getNode();
@@ -261,6 +276,9 @@ public interface Evaluator {
             this.exclusiveMaximum = exclusiveMaximum != null ? exclusiveMaximum.doubleValue() : 0;
         }
 
+        /**
+         * Enforces min/max and exclusive bounds for numbers.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.NUMBER && instance.getJsonType() != JsonType.INTEGER) {
@@ -302,6 +320,9 @@ public interface Evaluator {
             this.divisorDouble = divisor.doubleValue();
         }
 
+        /**
+         * Validates that a numeric instance is a multiple of the divisor.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.NUMBER && instance.getJsonType() != JsonType.INTEGER) {
@@ -341,6 +362,9 @@ public interface Evaluator {
             this.minLength = minLength;
             this.maxLength = maxLength;
         }
+        /**
+         * Enforces minLength/maxLength for strings.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.STRING) return true;
@@ -368,6 +392,9 @@ public interface Evaluator {
             this.pn = Pattern.compile(pattern);
         }
 
+        /**
+         * Ensures a string matches the configured regex pattern.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.STRING) return true;
@@ -389,6 +416,9 @@ public interface Evaluator {
             this.format = Objects.requireNonNull(format, "format is null");
             this.formatValidator = FormatValidator.of(format);
         }
+        /**
+         * Validates a string against the configured format in strict mode.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.STRING) return true;
@@ -413,6 +443,9 @@ public interface Evaluator {
             this.maxProperties = maxProperties;
         }
 
+        /**
+         * Enforces minProperties/maxProperties for objects.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
@@ -459,6 +492,9 @@ public interface Evaluator {
             this.additionalPropertiesSchema = additionalPropertiesSchema;
         }
 
+        /**
+         * Validates properties, patternProperties, and additionalProperties.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
@@ -521,6 +557,9 @@ public interface Evaluator {
             this.required = required;
             this.dependentRequired = dependentRequired;
         }
+        /**
+         * Validates required and dependentRequired keys.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
@@ -563,6 +602,9 @@ public interface Evaluator {
         public DependentSchemasEvaluator(Map<String, JsonSchema> dependentSchemas) {
             this.dependentSchemas = dependentSchemas;
         }
+        /**
+         * Applies schemas when dependent properties are present.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
@@ -588,6 +630,9 @@ public interface Evaluator {
         public PropertyNamesEvaluator(JsonSchema propertyNamesSchema) {
             this.propertyNamesSchema = propertyNamesSchema;
         }
+        /**
+         * Validates each property name against propertyNames schema.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.OBJECT) return true;
@@ -618,6 +663,9 @@ public interface Evaluator {
             this.maxItems = maxItems;
             this.uniqueItems = uniqueItems;
         }
+        /**
+         * Enforces minItems/maxItems/uniqueItems for arrays.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.ARRAY) return true;
@@ -659,6 +707,9 @@ public interface Evaluator {
             this.itemsSchema = itemsSchema;
             this.prefixItemsSchemas = prefixItemsSchemas;
         }
+        /**
+         * Validates prefixItems and items schemas for array elements.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.ARRAY) return true;
@@ -702,6 +753,9 @@ public interface Evaluator {
             this.minContains = minContains == null ? 1 : minContains;
             this.maxContains = maxContains;
         }
+        /**
+         * Validates contains/minContains/maxContains for arrays.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.getJsonType() != JsonType.ARRAY) return true;
@@ -757,6 +811,9 @@ public interface Evaluator {
             this.elseSchema = elseSchema;
         }
 
+        /**
+         * Applies then/else depending on whether if schema matches.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (ifSchema == null) return true;
@@ -795,6 +852,9 @@ public interface Evaluator {
         public AllOfEvaluator(JsonSchema[] allOfSchemas) {
             this.allOfSchemas = allOfSchemas;
         }
+        /**
+         * Requires all subschemas to match.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;
@@ -829,6 +889,9 @@ public interface Evaluator {
         public AnyOfEvaluator(JsonSchema[] anyOfSchemas) {
             this.anyOfSchemas = anyOfSchemas;
         }
+        /**
+         * Requires at least one subschema to match.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = false;
@@ -869,6 +932,9 @@ public interface Evaluator {
         public OneOfEvaluator(JsonSchema[] oneOfSchemas) {
             this.oneOfSchemas = oneOfSchemas;
         }
+        /**
+         * Requires exactly one subschema to match.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             int matches = 0;
@@ -908,6 +974,9 @@ public interface Evaluator {
         public NotEvaluator(JsonSchema notSchema) {
             this.notSchema = notSchema;
         }
+        /**
+         * Fails when the subschema matches.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             instance.pushEvaluated();
@@ -933,6 +1002,9 @@ public interface Evaluator {
             this.unevaluatedPropertiesSchema = unevaluatedPropertiesSchema;
             this.unevaluatedItemsSchema = unevaluatedItemsSchema;
         }
+        /**
+         * Validates unevaluated properties or items against fallback schemas.
+         */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;

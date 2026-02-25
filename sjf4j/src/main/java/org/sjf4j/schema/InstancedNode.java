@@ -125,6 +125,9 @@ public final class InstancedNode {
 //    }
 //    public BitSet getEvaluatedItems() {return evaluatedItems;}
 
+    /**
+     * Returns a cached child instance for an object key when available.
+     */
     public InstancedNode getSubByKey(String key) {
         if (jsonType != JsonType.OBJECT) return NULL.reset();
         InstancedNode subInstance = null;
@@ -142,6 +145,9 @@ public final class InstancedNode {
         return subInstance == null ? NULL.reset() : subInstance.reset();
     }
 
+    /**
+     * Returns a cached child instance for an array index when available.
+     */
     public InstancedNode getSubByIndex(int idx) {
         if (jsonType != JsonType.ARRAY) return NULL.reset();
         InstancedNode subInstance = null;
@@ -161,6 +167,9 @@ public final class InstancedNode {
     }
 
     // refSchema
+    /**
+     * Returns true when a recursive schema reference is detected.
+     */
     public boolean isRecursiveRef(Object schema) {
         if (refSchemaTimes++ > 0) {
             if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();

@@ -147,6 +147,9 @@ public class Patches {
     }
 
 
+    /**
+     * Computes a JSON Patch that transforms {@code source} into {@code target}.
+     */
     public static List<PatchOp> diff(Object source, Object target) {
         List<PatchOp> ops = new ArrayList<>();
         _diff(ops, PathSegment.Root.INSTANCE, source, target);

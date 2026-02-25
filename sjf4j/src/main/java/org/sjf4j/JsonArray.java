@@ -59,10 +59,7 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Creates a JsonArray from an existing object, supporting multiple input types.
-     *
-     * @param node the object to wrap or copy
-     * @throws JsonException if the input object type is not supported
+     * Creates a JsonArray from a list-like node.
      */
     public JsonArray(Object node) {
         this();
@@ -73,20 +70,7 @@ public class JsonArray extends JsonContainer {
     /// Object
 
     /**
-     * Returns the expected element type of this JSON array.
-     *
-     * <p>The default implementation returns {@link Object}, indicating that
-     * this array accepts arbitrary element values.</p>
-     *
-     * <p>Subclasses may override this method to declare a more specific
-     * element type. This information can be used by JSON backends to
-     * correctly deserialize array elements and to perform runtime
-     * validation.</p>
-     *
-     * <p>This method serves as a semantic hint only and does not introduce
-     * compile-time type constraints.</p>
-     *
-     * @return      the expected runtime type of elements contained in this array
+     * Returns the expected element type for this array.
      */
     public Class<?> elementType() {
         return Object.class;
@@ -109,8 +93,6 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Returns the JSON-like string representation of this JsonArray.
-     *
-     * @return the JSON-like string representation
      */
     @Override
     public String toString() {
@@ -119,8 +101,6 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Returns the hash code value for this JsonArray.
-     *
-     * @return the hash code value
      */
     @Override
     public int hashCode() {
@@ -144,8 +124,6 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Returns the number of elements in this JsonArray.
-     *
-     * @return the number of elements
      */
     @Override
     public int size() {
@@ -153,51 +131,57 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns true if this JsonArray contains no elements.
-     *
-     * @return true if empty, false otherwise
+     * Returns true if this array has no elements.
      */
     public boolean isEmpty() {
         return nodeList == null || nodeList.isEmpty();
     }
 
     /**
-     * Returns the elements of this JsonArray as a List.
-     *
-     * @return a List containing the elements, or empty list if no elements
+     * Returns the elements as a List.
      */
     public List<Object> toList() {
         return nodeList == null ? Collections.emptyList() : Sjf4jConfig.global().listSupplier.create(nodeList);
     }
 
     /**
-     * Converts the elements of this JsonArray to a List of the specified type.
-     *
-     * @param <T> the target type
-     * @param clazz the class of the target type
-     * @return a List containing the converted elements
-     * @throws IllegalArgumentException if clazz is null
+     * Returns a typed List of elements.
      */
     public <T> List<T> toList(Class<T> clazz) {
         return Nodes.toList(toList(), clazz);
     }
 
+    /**
+     * Returns the elements as an Object array.
+     */
     public Object[] toArray() {
         return nodeList == null ? new Object[0] : nodeList.toArray();
     }
 
+    /**
+     * Returns the elements as a typed array.
+     */
     public <T> T[] toArray(Class<T> clazz) {
         return Nodes.toArray(toArray(), clazz);
     }
 
+    /**
+     * Returns the elements as a Set.
+     */
     public Set<Object> toSet() {
         return nodeList == null ? Collections.emptySet() : Sjf4jConfig.global().setSupplier.create(nodeList);
     }
 
+    /**
+     * Returns the elements as a typed Set.
+     */
     public <T> Set<T> toSet(Class<T> clazz) {
         return Nodes.toSet(toList(), clazz);
     }
 
+    /**
+     * Performs the action for each element.
+     */
     public void forEach(Consumer<Object> action) {
         if (nodeList == null) return;
         for (Object object : nodeList) {
@@ -205,6 +189,9 @@ public class JsonArray extends JsonContainer {
         }
     }
 
+    /**
+     * Performs the action for each index/value pair.
+     */
     public void forEach(BiConsumer<Integer, Object> action) {
         if (nodeList == null) return;
         for (int i = 0; i < nodeList.size(); i++) {
@@ -212,24 +199,39 @@ public class JsonArray extends JsonContainer {
         }
     }
 
+    /**
+     * Returns an iterator over elements.
+     */
     public Iterator<Object> iterator() {
         if (nodeList == null) return Collections.emptyIterator();
         return nodeList.iterator();
     }
 
+    /**
+     * Normalizes negative indices against array size.
+     */
     private int pos(int idx) {
         return idx < 0 ? size() + idx : idx;
     }
 
+    /**
+     * Returns true if the index is within bounds.
+     */
     public boolean containsIndex(int idx) {
         idx = pos(idx);
         return idx >= 0 && idx < size();
     }
 
+    /**
+     * Returns true if the index exists and the value is non-null.
+     */
     public boolean hasNonNull(int idx) {
         return getNode(idx) != null;
     }
 
+    /**
+     * Returns true if the array contains the given value.
+     */
     public boolean containsValue(Object value) {
         if (nodeList == null) return false;
         for (Object o : nodeList) {
@@ -243,57 +245,96 @@ public class JsonArray extends JsonContainer {
 
     /// JSON Facade
 
+    /**
+     * Parses a JSON string into a JsonArray.
+     */
     public static JsonArray fromJson(String input) {
         return Sjf4j.fromJson(input, JsonArray.class);
     }
 
+    /**
+     * Parses a JSON string into a JsonArray subtype.
+     */
     public static <T extends JsonArray> T fromJson(String input, Class<T> clazz) {
         return Sjf4j.fromJson(input, clazz);
     }
 
+    /**
+     * Parses a JSON string into a JsonArray using a type reference.
+     */
     public static <T extends JsonArray> T fromJson(String input, TypeReference<T> type) {
         return Sjf4j.fromJson(input, type);
     }
 
+    /**
+     * Serializes this JsonArray to JSON.
+     */
     public String toJson() {
         return Sjf4j.toJsonString(this);
     }
 
     /// YAML Facade
 
+    /**
+     * Parses a YAML string into a JsonArray.
+     */
     public static JsonArray fromYaml(String input) {
         return Sjf4j.fromYaml(input, JsonArray.class);
     }
 
+    /**
+     * Parses a YAML string into a JsonArray subtype.
+     */
     public static <T extends JsonArray> T fromYaml(String input, Class<T> clazz) {
         return Sjf4j.fromYaml(input, clazz);
     }
+    /**
+     * Serializes this JsonArray to YAML.
+     */
     public String toYaml() {
         return Sjf4j.toYamlString(this);
     }
 
     /// Node Facade
 
+    /**
+     * Converts a node into a JsonArray.
+     */
     public static JsonArray fromNode(Object node) {
         return Sjf4j.fromNode(node, JsonArray.class);
     }
 
+    /**
+     * Converts a node into a JsonArray subtype.
+     */
     public static <T extends JsonArray> T fromNode(Object node, Class<T> clazz) {
         return Sjf4j.fromNode(node, clazz);
     }
 
+    /**
+     * Converts a node into a JsonArray using a type reference.
+     */
     public static <T extends JsonArray> T fromNode(Object node, TypeReference<T> type) {
         return Sjf4j.fromNode(node, type);
     }
 
+    /**
+     * Converts this JsonArray into the target node type.
+     */
     public <T> T toNode(Class<T> clazz) {
         return Sjf4j.fromNode(this, clazz);
     }
 
+    /**
+     * Converts this JsonArray into the target node type using a reference.
+     */
     public <T> T toNode(TypeReference<T> type) {
         return Sjf4j.fromNode(this, type);
     }
 
+    /**
+     * Converts this JsonArray into a raw Java representation.
+     */
     public Object toRaw() {
         return Sjf4j.toRaw(this);
     }
@@ -301,6 +342,9 @@ public class JsonArray extends JsonContainer {
 
     /// Getter
 
+    /**
+     * Returns the node at the given index or null.
+     */
     public Object getNode(int idx) {
         int pidx = pos(idx);
         if (pidx >= 0 && pidx < size()) {
@@ -309,11 +353,17 @@ public class JsonArray extends JsonContainer {
             return null;
         }
     }
+    /**
+     * Returns the node at the given index or the default value.
+     */
     public Object getNode(int idx, Object defaultValue) {
         Object value = getNode(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a String value using strict conversion.
+     */
     public String getString(int idx) {
         try {
             Object value = getNode(idx);
@@ -322,11 +372,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get String at index " + idx, e);
         }
     }
+    /**
+     * Returns a String value or the default value when missing.
+     */
     public String getString(int idx, String defaultValue) {
         String value = getString(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a String value using lenient conversion.
+     */
     public String getAsString(int idx) {
         try {
             Object value = getNode(idx);
@@ -335,11 +391,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to String", e);
         }
     }
+    /**
+     * Returns a String value using lenient conversion with default.
+     */
     public String getAsString(int idx, String defaultValue) {
         String value = getAsString(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Number value using strict conversion.
+     */
     public Number getNumber(int idx) {
         try {
             Object value = getNode(idx);
@@ -348,11 +410,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Number at index " + idx, e);
         }
     }
+    /**
+     * Returns a Number value or the default value when missing.
+     */
     public Number getNumber(int idx, Number defaultValue) {
         Number value = getNumber(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Number value using lenient conversion.
+     */
     public Number getAsNumber(int idx) {
         try {
             Object value = getNode(idx);
@@ -361,11 +429,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Number", e);
         }
     }
+    /**
+     * Returns a Number value using lenient conversion with default.
+     */
     public Number getAsNumber(int idx, Number defaultValue) {
         Number value = getAsNumber(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Long value using strict conversion.
+     */
     public Long getLong(int idx) {
         try {
             Object value = getNode(idx);
@@ -374,11 +448,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Long at index " + idx, e);
         }
     }
+    /**
+     * Returns a Long value or the default value when missing.
+     */
     public long getLong(int idx, long defaultValue) {
         Long value = getLong(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Long value using lenient conversion.
+     */
     public Long getAsLong(int idx) {
         try {
             Object value = getNode(idx);
@@ -387,11 +467,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Long", e);
         }
     }
+    /**
+     * Returns a Long value using lenient conversion with default.
+     */
     public long getAsLong(int idx, long defaultValue) {
         Long value = getAsLong(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns an Integer value using strict conversion.
+     */
     public Integer getInteger(int idx) {
         try {
             Object value = getNode(idx);
@@ -400,11 +486,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Integer at index " + idx, e);
         }
     }
+    /**
+     * Returns an Integer value or the default value when missing.
+     */
     public int getInteger(int idx, int defaultValue) {
         Integer value = getInteger(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns an Integer value using lenient conversion.
+     */
     public Integer getAsInteger(int idx) {
         try {
             Object value = getNode(idx);
@@ -413,11 +505,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Integer", e);
         }
     }
+    /**
+     * Returns an Integer value using lenient conversion with default.
+     */
     public int getAsInteger(int idx, int defaultValue) {
         Integer value = getAsInteger(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Short value using strict conversion.
+     */
     public Short getShort(int idx) {
         try {
             Object value = getNode(idx);
@@ -426,11 +524,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Short at index " + idx, e);
         }
     }
+    /**
+     * Returns a Short value or the default value when missing.
+     */
     public short getShort(int idx, short defaultValue) {
         Short value = getShort(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Short value using lenient conversion.
+     */
     public Short getAsShort(int idx) {
         try {
             Object value = getNode(idx);
@@ -439,11 +543,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Short", e);
         }
     }
+    /**
+     * Returns a Short value using lenient conversion with default.
+     */
     public short getAsShort(int idx, short defaultValue) {
         Short value = getAsShort(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Byte value using strict conversion.
+     */
     public Byte getByte(int idx) {
         try {
             Object value = getNode(idx);
@@ -452,11 +562,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Byte at index " + idx, e);
         }
     }
+    /**
+     * Returns a Byte value or the default value when missing.
+     */
     public byte getByte(int idx, byte defaultValue) {
         Byte value = getByte(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Byte value using lenient conversion.
+     */
     public Byte getAsByte(int idx) {
         try {
             Object value = getNode(idx);
@@ -465,11 +581,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Byte", e);
         }
     }
+    /**
+     * Returns a Byte value using lenient conversion with default.
+     */
     public byte getAsByte(int idx, byte defaultValue) {
         Byte value = getAsByte(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Double value using strict conversion.
+     */
     public Double getDouble(int idx) {
         try {
             Object value = getNode(idx);
@@ -478,11 +600,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Double at index " + idx, e);
         }
     }
+    /**
+     * Returns a Double value or the default value when missing.
+     */
     public double getDouble(int idx, double defaultValue) {
         Double value = getDouble(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Double value using lenient conversion.
+     */
     public Double getAsDouble(int idx) {
         try {
             Object value = getNode(idx);
@@ -491,11 +619,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Double", e);
         }
     }
+    /**
+     * Returns a Double value using lenient conversion with default.
+     */
     public double getAsDouble(int idx, double defaultValue) {
         Double value = getAsDouble(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Float value using strict conversion.
+     */
     public Float getFloat(int idx) {
         try {
             Object value = getNode(idx);
@@ -504,11 +638,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Float at index " + idx, e);
         }
     }
+    /**
+     * Returns a Float value or the default value when missing.
+     */
     public float getFloat(int idx, float defaultValue) {
         Float value = getFloat(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Float value using lenient conversion.
+     */
     public Float getAsFloat(int idx) {
         try {
             Object value = getNode(idx);
@@ -517,11 +657,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Float", e);
         }
     }
+    /**
+     * Returns a Float value using lenient conversion with default.
+     */
     public float getAsFloat(int idx, float defaultValue) {
         Float value = getAsFloat(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a BigInteger value using strict conversion.
+     */
     public BigInteger getBigInteger(int idx) {
         try {
             Object value = getNode(idx);
@@ -530,11 +676,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get BigInteger at index " + idx, e);
         }
     }
+    /**
+     * Returns a BigInteger value or the default value when missing.
+     */
     public BigInteger getBigInteger(int idx, BigInteger defaultValue) {
         BigInteger value = getBigInteger(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a BigInteger value using lenient conversion.
+     */
     public BigInteger getAsBigInteger(int idx) {
         try {
             Object value = getNode(idx);
@@ -543,11 +695,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to BigInteger", e);
         }
     }
+    /**
+     * Returns a BigInteger value using lenient conversion with default.
+     */
     public BigInteger getAsBigInteger(int idx, BigInteger defaultValue) {
         BigInteger value = getAsBigInteger(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a BigDecimal value using strict conversion.
+     */
     public BigDecimal getBigDecimal(int idx) {
         try {
             Object value = getNode(idx);
@@ -556,11 +714,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get BigDecimal at index " + idx, e);
         }
     }
+    /**
+     * Returns a BigDecimal value or the default value when missing.
+     */
     public BigDecimal getBigDecimal(int idx, BigDecimal defaultValue) {
         BigDecimal value = getBigDecimal(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a BigDecimal value using lenient conversion.
+     */
     public BigDecimal getAsBigDecimal(int idx) {
         try {
             Object value = getNode(idx);
@@ -569,11 +733,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to BigDecimal", e);
         }
     }
+    /**
+     * Returns a BigDecimal value using lenient conversion with default.
+     */
     public BigDecimal getAsBigDecimal(int idx, BigDecimal defaultValue) {
         BigDecimal value = getAsBigDecimal(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Boolean value using strict conversion.
+     */
     public Boolean getBoolean(int idx) {
         try {
             Object value = getNode(idx);
@@ -582,11 +752,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Boolean at index " + idx, e);
         }
     }
+    /**
+     * Returns a Boolean value or the default value when missing.
+     */
     public boolean getBoolean(int idx, boolean defaultValue) {
         Boolean value = getBoolean(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Boolean value using lenient conversion.
+     */
     public Boolean getAsBoolean(int idx) {
         try {
             Object value = getNode(idx);
@@ -595,11 +771,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to Boolean", e);
         }
     }
+    /**
+     * Returns a Boolean value using lenient conversion with default.
+     */
     public boolean getAsBoolean(int idx, boolean defaultValue) {
         Boolean value = getAsBoolean(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a JsonObject value using strict conversion.
+     */
     public JsonObject getJsonObject(int idx) {
         try {
             Object value = getNode(idx);
@@ -608,11 +790,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get JsonObject at index " + idx, e);
         }
     }
+    /**
+     * Returns a JsonObject value or the default value when missing.
+     */
     public JsonObject getJsonObject(int idx, JsonObject defaultValue) {
         JsonObject value = getJsonObject(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a Map value using strict conversion.
+     */
     public Map<String, Object> getMap(int idx) {
         try {
             Object value = getNode(idx);
@@ -621,11 +809,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Map<String, Object> at index " + idx, e);
         }
     }
+    /**
+     * Returns a Map value or the default value when missing.
+     */
     public Map<String, Object> getMap(int idx, Map<String, Object> defaultValue) {
         Map<String, Object> value = getMap(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed Map value using strict conversion.
+     */
     public <T> Map<String, T> getMap(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
@@ -635,11 +829,17 @@ public class JsonArray extends JsonContainer {
                     clazz.getName() + ">", e);
         }
     }
+    /**
+     * Returns a typed Map value or the default value when missing.
+     */
     public <T> Map<String, T> getMap(int idx, Class<T> clazz, Map<String, T> defaultValue) {
         Map<String, T> value = getMap(idx, clazz);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a JsonArray value using strict conversion.
+     */
     public JsonArray getJsonArray(int idx) {
         try {
             Object value = getNode(idx);
@@ -648,11 +848,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get JsonArray at index " + idx, e);
         }
     }
+    /**
+     * Returns a JsonArray value or the default value when missing.
+     */
     public JsonArray getJsonArray(int idx, JsonArray defaultValue) {
         JsonArray value = getJsonArray(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a List value using strict conversion.
+     */
     public List<Object> getList(int idx) {
         try {
             Object value = getNode(idx);
@@ -661,11 +867,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get List<Object> at index " + idx, e);
         }
     }
+    /**
+     * Returns a List value or the default value when missing.
+     */
     public List<Object> getList(int idx, List<Object> defaultValue) {
         List<Object> value = getList(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed List value using strict conversion.
+     */
     public <T> List<T> getList(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
@@ -674,11 +886,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to List<" + clazz.getName() + ">", e);
         }
     }
+    /**
+     * Returns a typed List value or the default value when missing.
+     */
     public <T> List<T> getList(int idx, Class<T> clazz, List<T> defaultValue) {
         List<T> value = getList(idx, clazz);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns an Object array using strict conversion.
+     */
     public Object[] getArray(int idx) {
         try {
             Object value = getNode(idx);
@@ -687,11 +905,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get Object[] at index " + idx, e);
         }
     }
+    /**
+     * Returns an Object array or the default value when missing.
+     */
     public Object[] getArray(int idx, Object[] defaultValue) {
         Object[] value = getArray(idx);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a typed array using strict conversion.
+     */
     public <T> T[] getArray(int idx, Class<T> clazz) {
         try {
             Object value = getNode(idx);
@@ -700,11 +924,17 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName() + "[]", e);
         }
     }
+    /**
+     * Returns a typed array or the default value when missing.
+     */
     public <T> T[] getArray(int idx, Class<T> clazz, T[] defaultValue) {
         T[] value = getArray(idx, clazz);
         return value == null ? defaultValue : value;
     }
 
+    /**
+     * Returns a value converted to the given type.
+     */
     public <T> T get(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz is null");
         Object value = getNode(idx);
@@ -714,6 +944,9 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to get " + clazz.getName() + " at index " + idx, e);
         }
     }
+    /**
+     * Returns a value converted to the inferred type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T get(int idx, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -721,6 +954,9 @@ public class JsonArray extends JsonContainer {
         return get(idx, clazz);
     }
 
+    /**
+     * Returns a value using lenient conversion.
+     */
     public <T> T getAs(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz is null");
         Object value = getNode(idx);
@@ -730,6 +966,9 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName(), e);
         }
     }
+    /**
+     * Returns a value using lenient conversion with inferred type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T getAs(int idx, T... reified) {
         if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
@@ -740,6 +979,9 @@ public class JsonArray extends JsonContainer {
 
     /// Adder
 
+    /**
+     * Appends an element to the array.
+     */
     public void add(Object object) {
         if (object != null && !elementType().isInstance(object))
             throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
@@ -749,10 +991,16 @@ public class JsonArray extends JsonContainer {
         nodeList.add(object);
     }
 
+    /**
+     * Appends an element only when non-null.
+     */
     public void addNonNull(Object object) {
         if (object != null) add(object);
     }
 
+    /**
+     * Inserts an element at the given index.
+     */
     public void add(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
             throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
@@ -767,6 +1015,9 @@ public class JsonArray extends JsonContainer {
         nodeList.add(pidx, object);
     }
 
+    /**
+     * Replaces the element at the given index.
+     */
     public Object set(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
             throw new IllegalArgumentException("Cannot set element of type " + object.getClass().getName() +
@@ -780,6 +1031,9 @@ public class JsonArray extends JsonContainer {
         return nodeList.set(pidx, object);
     }
 
+    /**
+     * Sets a value only when the current value is null.
+     */
     public Object setIfAbsent(int idx, Object object) {
         Object old = getNode(idx);
         if (old == null) {
@@ -788,6 +1042,9 @@ public class JsonArray extends JsonContainer {
         return old;
     }
 
+    /**
+     * Appends all values, flattening array arguments.
+     */
     public void addAll(Object... values) {
         for (Object v : values) {
             if (v != null && v.getClass().isArray()) {
@@ -801,49 +1058,82 @@ public class JsonArray extends JsonContainer {
         }
     }
 
+    /**
+     * Appends all short values.
+     */
     public void addAll(short... values) {
         for (short v : values) { add(v); }
     }
 
+    /**
+     * Appends all int values.
+     */
     public void addAll(int... values) {
         for (int v : values) { add(v); }
     }
 
+    /**
+     * Appends all long values.
+     */
     public void addAll(long... values) {
         for (long v : values) { add(v); }
     }
 
+    /**
+     * Appends all float values.
+     */
     public void addAll(float... values) {
         for (float v : values) { add(v); }
     }
 
+    /**
+     * Appends all double values.
+     */
     public void addAll(double... values) {
         for (double v : values) { add(v); }
     }
 
+    /**
+     * Appends all char values.
+     */
     public void addAll(char... values) {
         for (char v : values) { add(v); }
     }
 
+    /**
+     * Appends all boolean values.
+     */
     public void addAll(boolean... values) {
         for (boolean v : values) { add(v); }
     }
 
+    /**
+     * Appends all values from a collection.
+     */
     public void addAll(Collection<?> values) {
         for (Object v : values) { add(v); }
     }
 
+    /**
+     * Appends all values from another JsonArray.
+     */
     public void addAll(JsonArray jsonArray) {
         for (int i=0; i < jsonArray.size(); i++) {
             add(jsonArray.getNode(i));
         }
     }
 
+    /**
+     * Removes the element at the given index.
+     */
     public Object remove(int idx) {
         if (nodeList == null) return null;
         return nodeList.remove(pos(idx));
     }
 
+    /**
+     * Removes all elements from the array.
+     */
     public void clear() {
         if (nodeList == null) return;
         nodeList.clear();
@@ -851,17 +1141,26 @@ public class JsonArray extends JsonContainer {
 
     /// Stream
 
+    /**
+     * Returns a stream wrapper for this array.
+     */
     public NodeStream<JsonArray> stream() {
         return NodeStream.of(this);
     }
 
     /// Copy
 
+    /**
+     * Creates a shallow copy of this JsonArray.
+     */
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T copy() {
         return (T) Nodes.copy(this);
     }
 
+    /**
+     * Creates a deep copy of this JsonArray.
+     */
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T deepCopy() {
         return (T) Sjf4j.deepNode(this);

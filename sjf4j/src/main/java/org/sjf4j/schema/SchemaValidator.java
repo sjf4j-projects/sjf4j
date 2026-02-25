@@ -30,12 +30,18 @@ public final class SchemaValidator {
         this(null, null, null);
     }
 
+    /**
+     * Creates a validator with base directory, options, and store.
+     */
     public SchemaValidator(String baseDir, ValidationOptions options, SchemaStore store) {
         this.baseUri = resolveBaseUri(baseDir);
         this.defaultOptions = options == null ? ValidationOptions.DEFAULT : options;
         this.schemaStore = store == null ? new SchemaStore() : store;
     }
 
+    /**
+     * Validates a POJO annotated with {@link ValidJsonSchema}.
+     */
     public ValidationResult validate(Object pojo) {
         if (pojo == null) return ValidationResult.VALID;
         Class<?> pojoClazz = pojo.getClass();

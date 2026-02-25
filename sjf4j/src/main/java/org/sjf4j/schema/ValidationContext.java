@@ -51,6 +51,9 @@ public class ValidationContext {
 //    }
 
     // anchor
+    /**
+     * Resolves a schema by anchor or dynamic anchor.
+     */
     ObjectSchema getSchemaByAnchor(URI uri, String anchor) {
         ObjectSchema found = targetSchema.getSchemaByAnchor(uri, anchor);
         if (found == null && !anchor.isEmpty()) found = targetSchema.getSchemaByDynamicAnchor(anchor);

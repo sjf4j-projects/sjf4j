@@ -54,14 +54,23 @@ public class PathFunctionRegistry {
         FUNCTION_CACHE.put(descriptor.getName(), descriptor);
     }
 
+    /**
+     * Returns true if a function is registered.
+     */
     public static boolean exists(String name) {
         return FUNCTION_CACHE.containsKey(name);
     }
 
+    /**
+     * Returns a function descriptor or null if absent.
+     */
     public static FunctionDescriptor get(String name) {
         return FUNCTION_CACHE.get(name);
     }
 
+    /**
+     * Invokes a registered function by name.
+     */
     public static Object invoke(String name, Object[] args) {
         FunctionDescriptor fd = get(name);
         if (fd == null) throw new JsonException("Function '" + name + "' not exist");

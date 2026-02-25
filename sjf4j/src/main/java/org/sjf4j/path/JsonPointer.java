@@ -25,6 +25,9 @@ public class JsonPointer extends JsonPath {
         super(raw, segments);
     }
 
+    /**
+     * Compiles a JSON Pointer expression (RFC 6901).
+     */
     @RawToValue
     public static JsonPointer compile(String expr) {
         Objects.requireNonNull(expr, "expr is null");
@@ -62,6 +65,9 @@ public class JsonPointer extends JsonPath {
         return toPointerExpr();
     }
 
+    /**
+     * Returns a copy of this pointer.
+     */
     @ValueCopy
     public JsonPointer copy() {
         return new JsonPointer(this);

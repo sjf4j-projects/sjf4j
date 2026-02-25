@@ -24,6 +24,9 @@ public class ValidationResult {
         return valid;
     }
 
+    /**
+     * Returns the number of messages in this result.
+     */
     public int count() {
         if (messages != null) return messages.size();
         if (lastMessage != null) return 1;

@@ -23,6 +23,9 @@ public final class PathStack {
         this(16);
     }
 
+    /**
+     * Creates a PathStack with the given initial capacity.
+     */
     public PathStack(int capacity) {
         if (capacity <= 0) throw new IllegalArgumentException("capacity must be > 0");
         this.kinds = new byte[capacity];
@@ -35,14 +38,23 @@ public final class PathStack {
         return size;
     }
 
+    /**
+     * Returns true if the stack is empty.
+     */
     public boolean isEmpty() {
         return size == 0;
     }
 
+    /**
+     * Clears all segments without releasing arrays.
+     */
     public void clear() {
         size = 0;
     }
 
+    /**
+     * Pushes a name segment with optional owning class.
+     */
     public void pushName(Class<?> clazz, String name) {
         Objects.requireNonNull(name, "name is null");
         ensureCapacity(size + 1);
@@ -60,6 +72,9 @@ public final class PathStack {
         size++;
     }
 
+    /**
+     * Pops the last segment.
+     */
     public void pop() {
         if (size == 0) {
             throw new IllegalStateException("PathStack is empty");

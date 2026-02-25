@@ -55,10 +55,6 @@ public class Nodes {
 
     /**
      * Converts a node to a String with strict type checking.
-     *
-     * @param node the node to convert
-     * @return the string representation
-     * @throws JsonException if the node is not a String, Character, or Enum
      */
     public static String toString(Object node) {
         if (node == null) return null;
@@ -70,9 +66,6 @@ public class Nodes {
 
     /**
      * Converts a node to a String with flexible type conversion.
-     *
-     * @param node the node to convert
-     * @return the string representation
      */
     public static String asString(Object node) {
         if (node == null) return null;
@@ -97,10 +90,6 @@ public class Nodes {
 
     /**
      * Converts a node to a Number with strict type checking.
-     *
-     * @param node the node to convert
-     * @return the number representation
-     * @throws JsonException if the node is not a Number
      */
     public static Number toNumber(Object node) {
         if (node == null) return null;
@@ -111,9 +100,6 @@ public class Nodes {
 
     /**
      * Converts a node to a Number with flexible type conversion.
-     *
-     * @param node the node to convert
-     * @return the number representation
      */
     public static Number asNumber(Object node) {
         if (node == null) return null;
@@ -132,10 +118,6 @@ public class Nodes {
 
     /**
      * Converts a node to a Long with strict type checking.
-     *
-     * @param node the node to convert
-     * @return the Long representation
-     * @throws JsonException if the node is not a Number
      */
     public static Long toLong(Object node) {
         Number n = toNumber(node);
@@ -145,9 +127,6 @@ public class Nodes {
 
     /**
      * Converts a node to a Long with flexible type conversion.
-     *
-     * @param node the node to convert
-     * @return the Long representation
      */
     public static Long asLong(Object node) {
         Number n = asNumber(node);
@@ -157,10 +136,6 @@ public class Nodes {
 
     /**
      * Converts a node to an Integer with strict type checking.
-     *
-     * @param node the node to convert
-     * @return the Integer representation
-     * @throws JsonException if the node is not a Number
      */
     public static Integer toInteger(Object node) {
         Number n = toNumber(node);
@@ -170,9 +145,6 @@ public class Nodes {
 
     /**
      * Converts a node to an Integer with flexible type conversion.
-     *
-     * @param node the node to convert
-     * @return the Integer representation
      */
     public static Integer asInteger(Object node) {
         Number n = asNumber(node);
@@ -182,10 +154,6 @@ public class Nodes {
 
     /**
      * Converts a node to a Short with strict type checking.
-     *
-     * @param node the node to convert
-     * @return the Short representation
-     * @throws JsonException if the node is not a Number
      */
     public static Short toShort(Object node) {
         Number n = toNumber(node);
@@ -195,9 +163,6 @@ public class Nodes {
 
     /**
      * Converts a node to a Short with flexible type conversion.
-     *
-     * @param node the node to convert
-     * @return the Short representation
      */
     public static Short asShort(Object node) {
         Number n = asNumber(node);
@@ -598,29 +563,7 @@ public class Nodes {
     /// Basic
 
     /**
-     * Compares two objects using <b>Object-Based Node Tree</b> semantics.
-     * <p>
-     * This method determines whether {@code source} and {@code target} represent
-     * the same logical JSON node, independent of their concrete Java types.
-     * <p>
-     * <b>JSON node semantics:</b>
-     * <ul>
-     *   <li><b>JSON Object</b> are compared by key sets and corresponding values,
-     *       regardless of whether they are backed by {@code Map}, {@code JsonObject},
-     *       {@code JOJO}, or {@code POJO}.</li>
-     *   <li><b>JSON Array</b> are compared by element order and values,
-     *       regardless of whether they are backed by {@code List},
-     *       {@code JsonArray}, {@code JAJO}, or Java arrays.</li>
-     * </ul>
-     * <p>
-     * The comparison is recursive and applies to nested objects, arrays, and primitive
-     * values. It focuses on node-level equivalence rather than Java
-     * {@link Object#equals(Object)} semantics.
-     *
-     * @param source the source object
-     * @param target the target object
-     * @return {@code true} if both objects are equivalent under node semantics;
-     *         {@code false} otherwise
+     * Compares two nodes using object-based node semantics.
      */
     public static boolean equals(Object source, Object target) {
         if (target == source) return true;
@@ -855,33 +798,7 @@ public class Nodes {
     }
 
     /**
-     * Returns a compact, human-readable representation of the given object.
-     * <p>
-     * This method is mainly used for debugging and logging. It prints objects
-     * in a deterministic, structure-oriented format instead of relying on
-     * {@link Object#toString()}.
-     *
-     * <h3>Type Notation</h3>
-     * <ul>
-     *   <li>{@code {..}}       – Map</li>
-     *   <li>{@code J{..}}      – JsonObject</li>
-     *   <li>{@code @Type{..}}  – POJO / JOJO</li>
-     *   <li>{@code [..]}       – List</li>
-     *   <li>{@code J[..]}      – JsonArray</li>
-     *   <li>{@code @Type[..]}  – JAJO</li>
-     *   <li>{@code A[..]}      – Array</li>
-     *   <li>{@code S[..]}      – Set</li>
-     *   <li>{@code @Type#raw}  – NodeValue</li>
-     *   <li>{@code !node} – Unknown</li>
-     * </ul>
-     *
-     * <h3>Example</h3>
-     * <pre>{@code
-     * J{email=.com, user=@User{*id=1, name=M{a=b, c=d}}, arr=A[haha, xi, 1], date=!LocalDate#2025-12-29}
-     * }</pre>
-     *
-     * @param node the object to inspect
-     * @return a compact structural string
+     * Returns a compact, human-readable representation of the given node.
      */
     public static String inspect(Object node) {
         StringBuilder sb = new StringBuilder();
@@ -1024,6 +941,9 @@ public class Nodes {
 
     /// Visit
 
+    /**
+     * Visits each entry in an object-like node.
+     */
     @SuppressWarnings("unchecked")
     public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
         Objects.requireNonNull(node, "node is null");
@@ -1052,6 +972,9 @@ public class Nodes {
     }
 
 
+    /**
+     * Visits each element in an array-like node.
+     */
     @SuppressWarnings("unchecked")
     public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
         Objects.requireNonNull(node, "node is null");
@@ -1083,6 +1006,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Returns true if any element matches the predicate.
+     */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(node, "node is null");
@@ -1122,6 +1048,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Returns true if all elements match the predicate.
+     */
     @SuppressWarnings("unchecked")
     public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(node, "node is null");
@@ -1161,6 +1090,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Returns true if no elements match the predicate.
+     */
     @SuppressWarnings("unchecked")
     public static boolean noneMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(node, "node is null");
@@ -1197,6 +1129,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Returns the number of entries in an object-like node.
+     */
     public static int sizeInObject(Object node) {
         Objects.requireNonNull(node, "node is null");
         if (node instanceof Map) {
@@ -1215,6 +1150,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Returns the number of elements in an array-like node.
+     */
     public static int sizeInArray(Object node) {
         Objects.requireNonNull(node, "node is null");
         if (node instanceof List) {
@@ -1235,6 +1173,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Returns the key set for an object-like node.
+     */
     @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
         Objects.requireNonNull(node, "node is null");
@@ -1254,6 +1195,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Returns the entry set for an object-like node.
+     */
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
         Objects.requireNonNull(node, "node is null");
@@ -1278,6 +1222,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Returns an iterator over an array-like node.
+     */
     @SuppressWarnings("unchecked")
     public static Iterator<Object> iteratorInArray(Object node) {
         Objects.requireNonNull(node, "node is null");
@@ -1299,6 +1246,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Creates an iterator for a raw Java array.
+     */
     private static Iterator<Object> _arrayIterator(Object array) {
         int len = Array.getLength(array);
         return new Iterator<Object>() {
@@ -1340,6 +1290,9 @@ public class Nodes {
         return idx >= 0 && idx < len;
     }
 
+    /**
+     * Gets a value by key from an object-like node.
+     */
     public static Object getInObject(Object node, String key) {
         Objects.requireNonNull(node, "node is null");
         Objects.requireNonNull(key, "key is null");
@@ -1361,6 +1314,9 @@ public class Nodes {
     }
 
 
+    /**
+     * Gets a value by index from an array-like node.
+     */
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
         Objects.requireNonNull(node, "node is null");
@@ -1427,6 +1383,9 @@ public class Nodes {
         }
     }
 
+    /**
+     * Accesses a child in an object node with type metadata and insertable flag.
+     */
     @SuppressWarnings("unchecked")
     public static void accessInObject(Object node, Type type, String key, Access out) {
         Objects.requireNonNull(node, "node is null");
@@ -1473,6 +1432,9 @@ public class Nodes {
 
     }
 
+    /**
+     * Accesses a child in an array node with type metadata and insertable flag.
+     */
     @SuppressWarnings("unchecked")
     public static void accessInArray(Object node, Type type, int idx, Access out) {
         Objects.requireNonNull(node, "node is null");
@@ -1553,6 +1515,9 @@ public class Nodes {
     }
 
 
+    /**
+     * Puts a value into an object-like node and returns the previous value.
+     */
     @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
         Objects.requireNonNull(node, "node is null");
@@ -1581,6 +1546,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Sets or appends a value in an array-like node by index.
+     */
     @SuppressWarnings("unchecked")
     public static Object setInArray(Object node, int idx, Object value) {
         Objects.requireNonNull(node, "node is null");
@@ -1639,6 +1607,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Appends a value to an array-like node.
+     */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, Object value) {
         Objects.requireNonNull(node, "node is null");
@@ -1663,6 +1634,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Inserts a value at the given index of an array-like node.
+     */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, int idx, Object value) {
         Objects.requireNonNull(node, "node is null");
@@ -1688,6 +1662,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Removes a key from an object-like node and returns the previous value.
+     */
     @SuppressWarnings("unchecked")
     public static Object removeInObject(Object node, String key) {
         Objects.requireNonNull(node, "node is null");
@@ -1708,6 +1685,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Removes an element by index from an array-like node.
+     */
     @SuppressWarnings("unchecked")
     public static Object removeInArray(Object node, int idx) {
         Objects.requireNonNull(node, "node is null");
