@@ -354,8 +354,8 @@ public interface FilterExpr {
     static boolean truth(Object x) {
         if (x == null) return false;
         JsonType xjt = JsonType.of(x);
-        if (xjt.isBoolean()) return (Boolean) x;
-        if (xjt.isNumber()) return ((Number) x).doubleValue() != 0;
+        if (xjt.isBoolean()) return Boolean.TRUE.equals(Nodes.toBoolean(x));
+        if (xjt.isNumber()) return Nodes.toDouble(x) != 0;
         if (xjt.isString()) return !Nodes.toString(x).isEmpty();
         if (xjt.isArray()) return Nodes.sizeInArray(x) > 0;
         return true;

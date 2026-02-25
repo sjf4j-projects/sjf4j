@@ -147,7 +147,7 @@ public interface Evaluator {
             Objects.requireNonNull(type, "type is null");
             JsonType jt = JsonType.of(type);
             if (jt.isString()) {
-                this.type = (String) type;
+                this.type = Nodes.toString(type);
                 this.jsonType = JsonType.ofSchema(this.type);
                 this.types = null;
                 this.jsonTypes = null;

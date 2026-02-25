@@ -74,7 +74,7 @@ public class PathFunctionRegistry {
             Object node = args[0];
             switch (JsonType.of(node)) {
                 case STRING:
-                    return ((String) node).length();
+                    return Nodes.toString(node).length();
                 case OBJECT:
                     return Nodes.sizeInObject(node);
                 case ARRAY:
@@ -101,10 +101,16 @@ public class PathFunctionRegistry {
             if (args.length != 2)
                 throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];
-            if (!(args[1] instanceof String)) {
-                throw new JsonException("match(): the second argument must be a String but was " + Types.name(args[1]));
+            String pattern;
+            try {
+                pattern = Nodes.toString(args[1]);
+            } catch (Exception e) {
+                throw new JsonException("match(): the second argument must be a String but was " +
+                        Types.name(args[1]), e);
             }
-            String pattern = (String) args[1];
+            if (pattern == null) {
+                throw new JsonException("match(): the second argument must be a String but was null");
+            }
             switch (JsonType.of(node)) {
                 case STRING:
                     return IRegexpUtil.match(pattern, Nodes.toString(node));
@@ -117,10 +123,16 @@ public class PathFunctionRegistry {
             if (args.length != 2)
                 throw new JsonException("search(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];
-            if (!(args[1] instanceof String)) {
-                throw new JsonException("search(): the second argument must be a String but was " + Types.name(args[1]));
+            String pattern;
+            try {
+                pattern = Nodes.toString(args[1]);
+            } catch (Exception e) {
+                throw new JsonException("search(): the second argument must be a String but was " +
+                        Types.name(args[1]), e);
             }
-            String pattern = (String) args[1];
+            if (pattern == null) {
+                throw new JsonException("search(): the second argument must be a String but was null");
+            }
             switch (JsonType.of(node)) {
                 case STRING:
                     return IRegexpUtil.search(pattern, Nodes.toString(node));
@@ -275,10 +287,10 @@ public class PathFunctionRegistry {
             if (args.length != 2)
                 throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
             Object node = args[0];
-            if (!(args[1] instanceof Number)) {
+            if (!JsonType.of(args[1]).isNumber()) {
                 throw new JsonException("index(): the second argument must be a number but was " + Types.name(args[1]));
             }
-            int idx = ((Number) args[1]).intValue();
+            int idx = Nodes.toInteger(args[1]);
 
             switch (JsonType.of(node)) {
                 case ARRAY:
