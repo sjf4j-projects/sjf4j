@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.Objects;
 
 
+/**
+ * JSON Schema object representation with compiled evaluators and resolution state.
+ */
 public final class ObjectSchema extends JsonObject implements JsonSchema {
 
     private transient URI uri;
@@ -45,7 +48,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         return uri;
     }
 
-    // Getter / Setter
+    // Schema keywords
     String getId() {return getString("$id");}
     String getDynamicAnchor() {return getString("$dynamicAnchor");}
     Map<String, Boolean> getVocabulary() {return getMap("$vocabulary", Boolean.class);}

@@ -25,8 +25,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
-import static org.sjf4j.node.NodeKind.OBJECT_MAP;
-
+/**
+ * Core node utilities: type conversion, inspection, and container access.
+ */
 public class Nodes {
 
 

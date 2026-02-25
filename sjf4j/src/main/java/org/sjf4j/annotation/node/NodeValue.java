@@ -7,8 +7,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 
+/**
+ * Marks a value type that is encoded/decoded via {@link org.sjf4j.node.ValueCodec}.
+ */
 @Inherited
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NodeValue {
-}
+public @interface NodeValue {}

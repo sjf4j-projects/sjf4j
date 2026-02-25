@@ -9,8 +9,17 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+/**
+ * Registry for patch operation handlers.
+ *
+ * <p>Handlers are registered at startup for RFC 6902 ops and
+ * SJF4J-specific extensions.
+ */
 public class PatchOpRegistry {
 
+    /**
+     * Patch operation handler.
+     */
     @FunctionalInterface
     public interface PatchOpHandler {
         void apply(Object target, PatchOp op);

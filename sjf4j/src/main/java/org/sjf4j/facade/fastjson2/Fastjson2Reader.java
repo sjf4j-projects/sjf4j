@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * Streaming reader backed by Fastjson2's {@link JSONReader}.
+ */
 public class Fastjson2Reader implements StreamingReader {
 
     private final JSONReader reader;

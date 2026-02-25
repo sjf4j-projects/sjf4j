@@ -4,6 +4,9 @@ import com.alibaba.fastjson2.JSONReader;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 
+/**
+ * Fastjson2 reader tree walk utilities.
+ */
 public class Fastjson2Walker {
 
 

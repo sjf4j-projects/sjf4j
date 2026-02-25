@@ -8,6 +8,9 @@ import org.sjf4j.path.PathSegment;
 
 import java.util.Collections;
 
+/**
+ * Boolean schema representation (true/false).
+ */
 @NodeValue
 public final class BooleanSchema implements JsonSchema {
 

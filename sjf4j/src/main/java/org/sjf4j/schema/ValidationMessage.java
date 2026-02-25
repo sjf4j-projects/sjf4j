@@ -6,6 +6,9 @@ import org.sjf4j.path.Paths;
 
 import java.util.Objects;
 
+/**
+ * Single validation message produced during schema evaluation.
+ */
 public class ValidationMessage {
 
     public enum Severity { ERROR, WARN, INFO, DEBUG }

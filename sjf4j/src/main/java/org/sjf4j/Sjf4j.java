@@ -11,10 +11,12 @@ import java.util.Objects;
 import java.util.Properties;
 
 
+/**
+ * Static entry point for JSON/YAML/properties IO and node conversion.
+ */
 public class Sjf4j {
 
     /// JSON
-
 
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(Reader input, Class<T> clazz) {

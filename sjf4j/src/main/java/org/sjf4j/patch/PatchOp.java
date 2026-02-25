@@ -3,9 +3,15 @@ package org.sjf4j.patch;
 import org.sjf4j.path.JsonPointer;
 
 
+/**
+ * Single JSON Patch operation.
+ *
+ * <p>Fields follow RFC 6902 ({@code op}, {@code path}, optional {@code from}/{@code value})
+ * with a few SJF4J extensions.
+ */
 public final class PatchOp {
 
-    // Standard Op defined in RFC 6902
+    // Standard op names defined in RFC 6902
     public static final String STD_ADD = "add";
     public static final String STD_REMOVE = "remove";
     public static final String STD_REPLACE = "replace";
@@ -13,7 +19,7 @@ public final class PatchOp {
     public static final String STD_COPY = "copy";
     public static final String STD_TEST = "test";
 
-    // Extension Op build in SJF4J
+    // Extension ops built into SJF4J
     public static final String EXT_EXIST = "exist";
     public static final String EXT_ENSURE_PUT = "ensurePut";
 

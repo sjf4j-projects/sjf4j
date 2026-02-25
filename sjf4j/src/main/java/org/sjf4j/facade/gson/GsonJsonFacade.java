@@ -20,6 +20,9 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
+/**
+ * Gson-based JSON facade with selectable streaming modes.
+ */
 public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
             ? Sjf4jConfig.global().streamingMode : StreamingMode.SHARED_IO;

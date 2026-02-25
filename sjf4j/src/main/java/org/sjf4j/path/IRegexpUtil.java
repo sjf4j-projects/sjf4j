@@ -4,8 +4,10 @@ import org.sjf4j.exception.JsonException;
 
 
 /**
- * Implement of <a href="https://datatracker.ietf.org/doc/html/draft-ietf-jsonpath-iregexp-08">I-Regexp</a>
+ * Minimal implementation of the JSONPath I-Regexp draft.
  *
+ * <p>This is a lightweight matcher used by JSONPath functions such as
+ * {@code match()} and {@code search()}.
  */
 public class IRegexpUtil {
 

@@ -8,6 +8,12 @@ import org.sjf4j.annotation.node.RawToValue;
 
 import java.util.Objects;
 
+/**
+ * JSON Pointer wrapper for JSON Patch paths.
+ *
+ * <p>This class is a restricted {@link JsonPath} that only accepts
+ * RFC 6901 pointer syntax (starts with '/').
+ */
 @NodeValue
 public class JsonPointer extends JsonPath {
 

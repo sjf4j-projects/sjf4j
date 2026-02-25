@@ -2,6 +2,9 @@ package org.sjf4j;
 
 import org.sjf4j.node.NodeKind;
 
+/**
+ * High-level JSON node classification used across the library.
+ */
 public enum JsonType {
     OBJECT,
     ARRAY,

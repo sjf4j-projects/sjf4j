@@ -14,6 +14,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+/**
+ * Parser/formatter helpers for JSONPath and JSON Pointer.
+ *
+ * <p>This class centralizes all string parsing and formatting logic so
+ * {@link JsonPath} can focus on execution semantics.
+ */
 public class Paths {
 
     public static String rootedInspect(PathSegment lastSegment) {

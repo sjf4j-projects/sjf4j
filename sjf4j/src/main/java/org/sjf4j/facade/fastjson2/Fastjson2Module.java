@@ -24,6 +24,9 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 
 
+/**
+ * Fastjson2 module integration for JsonObject/JsonArray and @NodeValue types.
+ */
 public interface Fastjson2Module {
 
     class MyReaderModule implements ObjectReaderModule {

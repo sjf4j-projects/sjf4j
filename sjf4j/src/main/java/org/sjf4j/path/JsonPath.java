@@ -22,19 +22,18 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * Represents a JSON path that provides functionality for parsing and evaluating
- * JSON path expressions. JsonPath supports both JSON Path syntax (starting with '$')
- * and JSON Pointer syntax (starting with '/'), allowing navigation and manipulation
- * of JSON data structures.
+ * JSONPath/JSON Pointer execution engine.
  *
- * <p>This class provides methods for:
+ * <p>JsonPath compiles a textual path expression into a chain of {@link PathSegment}
+ * tokens and then evaluates the path against a JSON container. It supports both:
  * <ul>
- *   <li>Compiling path expressions into executable path objects</li>
- *   <li>Finding values in JSON containers by path</li>
- *   <li>Putting values into JSON containers at specific paths</li>
- *   <li>Removing values from JSON containers at specific paths</li>
- *   <li>Converting between different path expression formats</li>
+ *   <li>JSONPath syntax (starts with '$' or '@')</li>
+ *   <li>JSON Pointer syntax (starts with '/')</li>
  * </ul>
+ *
+ * <p>Read operations return nodes or converted values using {@link Nodes} conversion
+ * semantics. Write operations delegate to {@link Nodes} for object/array mutation,
+ * and follow JSON Patch rules for add/replace/remove when used with pointer paths.
  */
 public class JsonPath {
 

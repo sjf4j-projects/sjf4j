@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 
+/**
+ * SnakeYAML-based YAML facade.
+ */
 public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
 
     private final LoaderOptions loaderOptions;

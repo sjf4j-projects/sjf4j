@@ -21,6 +21,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Locale;
 
+/**
+ * Streaming reader backed by SnakeYAML's parser events.
+ */
 public class SnakeReader implements StreamingReader {
 
     private final Parser parser;

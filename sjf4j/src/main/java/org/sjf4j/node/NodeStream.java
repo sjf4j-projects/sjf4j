@@ -16,15 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Provides a streaming interface for processing JSON nodes using Java Streams API.
- * <p>
- * This class wraps a Java Stream of JSON nodes and provides additional methods for working with JSON data,
- * including path-based value extraction, filtering, mapping, and other stream operations.
- * <p>
- * JsonStream allows for fluent and functional-style processing of JSON data structures, enabling
- * operations like finding values by path, filtering nodes, mapping to different types, and more.
- *
- * @param <T> the type of JSON nodes in the stream
+ * Stream wrapper for JSON nodes with JSONPath helpers.
  */
 public class NodeStream<T> {
 

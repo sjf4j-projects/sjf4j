@@ -8,6 +8,9 @@ import org.sjf4j.path.Paths;
 import java.util.Properties;
 import java.util.TreeSet;
 
+/**
+ * Properties facade based on JSONPath expansion.
+ */
 public class SimplePropertiesFacade implements PropertiesFacade {
 
     @Override

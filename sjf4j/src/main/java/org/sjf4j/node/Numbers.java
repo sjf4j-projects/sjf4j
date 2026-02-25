@@ -8,11 +8,7 @@ import java.math.BigInteger;
 import java.util.Objects;
 
 /**
- * Utility class for handling number operations, conversions, and type checking.
- * 
- * <p>This class provides a set of static methods for safe numeric conversions between
- * different Java number types, with range checking and appropriate exception handling.
- * It also includes utility methods for checking numeric types and string representations.
+ * Numeric conversion helpers with range checks.
  */
 public class Numbers {
 

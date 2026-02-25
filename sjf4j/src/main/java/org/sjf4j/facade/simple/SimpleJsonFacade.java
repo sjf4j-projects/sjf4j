@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 
+/**
+ * Built-in lightweight JSON facade.
+ */
 public class SimpleJsonFacade implements JsonFacade<SimpleJsonReader, SimpleJsonWriter> {
 
     @Override

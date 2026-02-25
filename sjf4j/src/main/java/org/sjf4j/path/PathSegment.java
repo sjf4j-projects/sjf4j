@@ -4,6 +4,12 @@ package org.sjf4j.path;
 import java.util.List;
 
 
+/**
+ * Immutable segment in a JSONPath/JSON Pointer token chain.
+ *
+ * <p>Each segment points to its parent to allow reconstructing the full path
+ * when formatting errors or converting to expressions.
+ */
 public abstract class PathSegment {
     protected final PathSegment parent;
     protected final Class<?> clazz;
@@ -27,7 +33,7 @@ public abstract class PathSegment {
         return Paths.rootedPathExpr(this);
     }
 
-    /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function, Filter, APPEND
+    /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function, Filter, Append
 
     /**
      * Represents the root token ($) in a JSON path expression.
@@ -204,6 +210,9 @@ public abstract class PathSegment {
         }
     }
 
+    /**
+     * JSONPath function call token, e.g. ".length()".
+     */
     public static final class Function extends PathSegment {
         public final String name;
         public final List<String> args;
@@ -218,6 +227,9 @@ public abstract class PathSegment {
         }
     }
 
+    /**
+     * Filter token, e.g. "[?(@.a > 1)]".
+     */
     public static final class Filter extends PathSegment {
         public final FilterExpr filterExpr;
         public Filter(PathSegment parent, Class<?> clazz, FilterExpr filterExpr) {
@@ -227,6 +239,9 @@ public abstract class PathSegment {
         public String toString() { return "[?" + filterExpr + "]"; }
     }
 
+    /**
+     * JSON Patch append token "-" used only in JSON Pointer paths.
+     */
     public static final class Append extends PathSegment {
         public Append(PathSegment parent, Class<?> clazz) {
             super(parent, clazz);

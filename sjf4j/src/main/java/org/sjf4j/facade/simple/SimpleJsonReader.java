@@ -9,6 +9,9 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * Minimal JSON reader for the built-in facade.
+ */
 public class SimpleJsonReader implements StreamingReader {
 
     private final Reader reader;

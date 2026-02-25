@@ -19,20 +19,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Represents a JSON array that extends {@link JsonContainer} and provides a list-like interface
- * for working with JSON data. JsonArray supports dynamic element storage and provides convenient
- * methods for type conversion and navigation.
+ * JSON array container backed by a mutable list.
  *
- * <p>JsonArray can be initialized from various sources:
- * <ul>
- *   <li>Empty constructor for creating a new JsonArray</li>
- *   <li>Existing JsonArray instances</li>
- *   <li>List objects</li>
- *   <li>Java arrays</li>
- * </ul>
- *
- * <p>This class implements list-like operations while maintaining JSON type safety and
- * providing convenient methods for type conversion and iteration.
+ * <p>Element access and conversion are delegated to {@link Nodes} to keep
+ * behavior consistent across JSON container types.
  */
 public class JsonArray extends JsonContainer {
 

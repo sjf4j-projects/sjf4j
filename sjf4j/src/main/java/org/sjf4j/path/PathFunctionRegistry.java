@@ -11,8 +11,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+/**
+ * Registry for JSONPath functions used by {@link JsonPath#eval}.
+ *
+ * <p>Built-in functions are registered in the static initializer and cover
+ * common JSONPath operations (length, sum, match, etc.). Custom functions
+ * can be added at runtime via {@link #register}.
+ */
 public class PathFunctionRegistry {
 
+    /**
+     * Function signature for JSONPath functions.
+     * Args are raw JSON nodes or literal values.
+     */
     @FunctionalInterface
     public interface PathFunction {
         Object apply(Object[] args);

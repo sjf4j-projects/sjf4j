@@ -10,10 +10,11 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Interface representing a filter expression for JSON Path queries.
- * <p>
- * Filter expressions are used to evaluate conditions on JSON nodes during path traversal,
- * enabling conditional filtering of JSON elements based on dynamic evaluations.
+ * Filter expression AST used by JSONPath parsing.
+ *
+ * <p>Expressions are evaluated against a root node and a current node. The
+ * result can be any value, and {@link #evalTruth} converts it to a boolean
+ * using JSONPath truthiness rules.
  */
 public interface FilterExpr {
 

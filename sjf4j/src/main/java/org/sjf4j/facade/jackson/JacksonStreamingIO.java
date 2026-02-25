@@ -25,9 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Jackson specialized streaming implementation that mirrors StreamingIO semantics
- * (including BindingException/PathSegment behavior) while keeping Jackson-native
- * parser/generator hot paths.
+ * Jackson streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
 public class JacksonStreamingIO {
 

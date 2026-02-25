@@ -5,6 +5,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 
+/**
+ * Property metadata for @Jojo code generation.
+ */
 @Target({})
 @Retention(RetentionPolicy.SOURCE)
 public @interface Property {

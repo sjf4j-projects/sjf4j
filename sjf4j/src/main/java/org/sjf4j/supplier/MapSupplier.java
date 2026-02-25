@@ -7,6 +7,9 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+/**
+ * Factory for creating Map instances used by JsonObject.
+ */
 public interface MapSupplier {
 
     <T> Map<String, T> create();

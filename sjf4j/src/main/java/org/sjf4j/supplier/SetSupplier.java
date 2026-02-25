@@ -6,6 +6,9 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 
+/**
+ * Factory for creating Set instances used by JsonArray set conversions.
+ */
 public interface SetSupplier {
 
     <T> Set<T> create();

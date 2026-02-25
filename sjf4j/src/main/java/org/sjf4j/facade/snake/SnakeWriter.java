@@ -16,6 +16,9 @@ import org.yaml.snakeyaml.events.StreamStartEvent;
 
 import java.io.IOException;
 
+/**
+ * Streaming writer backed by SnakeYAML emitter events.
+ */
 public class SnakeWriter implements StreamingWriter {
 
     private final Emitter emitter;

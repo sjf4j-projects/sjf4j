@@ -1,6 +1,9 @@
 package org.sjf4j.node;
 
 
+/**
+ * Key wrapper that uses {@link Nodes#equals(Object, Object)} semantics.
+ */
 public final class NodeKey {
     private final Object node;
 

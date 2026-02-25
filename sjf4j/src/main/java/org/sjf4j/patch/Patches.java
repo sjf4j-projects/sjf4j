@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Patch utilities: JSON Merge Patch (RFC 7386) and JSON Patch diff.
+ */
 public class Patches {
 
     /**

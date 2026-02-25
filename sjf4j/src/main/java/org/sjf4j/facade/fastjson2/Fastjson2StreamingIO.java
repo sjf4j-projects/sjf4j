@@ -24,9 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Fastjson2 specialized streaming implementation that mirrors StreamingIO semantics
- * (including BindingException/PathSegment behavior) while keeping fastjson2-native
- * reader/writer hot paths.
+ * Fastjson2 streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
 public class Fastjson2StreamingIO {
 

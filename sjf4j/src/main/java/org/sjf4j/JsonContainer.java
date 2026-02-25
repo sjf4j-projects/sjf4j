@@ -15,11 +15,10 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Abstract base class for JSON container types (JsonObject and JsonArray).
- * <p>
- * This class provides common functionality for working with JSON data structures,
- * including path-based access, type conversion methods, and traversal capabilities.
- * It serves as the foundation for both JSON object and array implementations.
+ * Base class for JSON containers ({@link JsonObject} and {@link JsonArray}).
+ *
+ * <p>Provides shared path-based accessors, conversion helpers, traversal, and
+ * patch/merge utilities via {@link JsonPath}, {@link Nodes}, and {@link Patches}.
  */
 public abstract class JsonContainer {
 

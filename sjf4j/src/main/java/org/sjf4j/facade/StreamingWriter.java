@@ -5,8 +5,7 @@ import java.io.IOException;
 import java.io.Writer;
 
 /**
- * Interface for writing JSON data in a streaming manner. This interface defines methods
- * for generating JSON tokens, constructing JSON structures, and writing values.
+ * Streaming writer abstraction for JSON-like outputs.
  */
 public interface StreamingWriter extends Closeable {
 

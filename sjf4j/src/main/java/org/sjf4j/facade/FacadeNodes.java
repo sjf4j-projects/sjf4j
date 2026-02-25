@@ -17,6 +17,9 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
+/**
+ * Bridge for external JSON node trees (Jackson/Gson).
+ */
 public class FacadeNodes {
 
     private static final boolean JACKSON_NODES_PRESENT;

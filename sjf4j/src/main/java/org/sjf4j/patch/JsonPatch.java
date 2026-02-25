@@ -7,6 +7,12 @@ import org.sjf4j.node.Types;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * JSON Patch document modeled as a JsonArray of {@link PatchOp}.
+ *
+ * <p>Supports RFC 6902 operations plus a small set of SJF4J extensions
+ * (e.g. {@code exist}, {@code ensurePut}).
+ */
 public class JsonPatch extends JsonArray {
 
     @Override
@@ -49,4 +55,3 @@ public class JsonPatch extends JsonArray {
     }
 
 }
-

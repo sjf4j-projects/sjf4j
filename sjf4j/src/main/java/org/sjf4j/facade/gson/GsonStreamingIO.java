@@ -26,9 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Gson specialized streaming implementation that mirrors StreamingIO semantics
- * (including BindingException/PathSegment behavior) while keeping Gson-native
- * reader/writer hot paths.
+ * Gson streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
 public class GsonStreamingIO {
 

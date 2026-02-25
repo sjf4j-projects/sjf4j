@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Registry of schema keywords mapped to vocabularies.
+ */
 public class VocabularyRegistry {
 
     private static final Map<String, String> KEYWORD_VOCAB_CACHE = new ConcurrentHashMap<>();

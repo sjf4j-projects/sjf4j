@@ -22,6 +22,9 @@ import java.io.Writer;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
+/**
+ * Jackson-based JSON facade with selectable streaming modes.
+ */
 public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWriter> {
     private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
             ? Sjf4jConfig.global().streamingMode : StreamingMode.PLUGIN_MODULE;

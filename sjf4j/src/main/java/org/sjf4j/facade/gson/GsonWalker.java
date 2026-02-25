@@ -8,6 +8,9 @@ import org.sjf4j.JsonObject;
 
 import java.io.IOException;
 
+/**
+ * Gson reader tree walk utilities.
+ */
 public class GsonWalker {
 
     public static void walk2Null(JsonReader reader) throws IOException {

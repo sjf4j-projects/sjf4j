@@ -2,11 +2,7 @@ package org.sjf4j.exception;
 
 
 /**
- * Exception class for JSON operations in the SJF4J library.
- * <p>
- * This runtime exception is thrown when errors occur during JSON parsing, serialization,
- * deserialization, or other JSON-related operations. It provides constructors for
- * different error scenarios and wraps underlying exceptions when necessary.
+ * Base runtime exception for JSON-related errors.
  */
 public class JsonException extends RuntimeException {
 

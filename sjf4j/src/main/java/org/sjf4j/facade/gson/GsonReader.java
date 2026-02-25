@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * Streaming reader backed by Gson's {@link JsonReader}.
+ */
 public class GsonReader implements StreamingReader {
 
     private final JsonReader reader;

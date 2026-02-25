@@ -12,6 +12,9 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
+/**
+ * Traversal utilities for JSON containers with path tracking.
+ */
 public class NodeWalker {
 
     /// Walk

@@ -14,11 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Utility class for handling Java reflection types. Provides methods for resolving
- * generic types, getting raw classes, determining array types, and performing type
- * variable substitutions.
- * <p>
- * A core principle of this class is that it should not return null for any of its methods.
+ * Reflection type helpers used for generic resolution and raw class lookup.
  */
 public class Types {
 

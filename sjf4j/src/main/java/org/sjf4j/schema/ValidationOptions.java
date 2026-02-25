@@ -1,6 +1,9 @@
 package org.sjf4j.schema;
 
 
+/**
+ * Options controlling schema validation behavior.
+ */
 public final class ValidationOptions {
 
     private final boolean failFast;

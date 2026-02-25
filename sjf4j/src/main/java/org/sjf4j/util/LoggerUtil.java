@@ -1,6 +1,6 @@
 package org.sjf4j.util;
 
-public class LoggerUtil {
-
-
-}
+/**
+ * Placeholder for logging helpers (currently empty).
+ */
+public class LoggerUtil {}

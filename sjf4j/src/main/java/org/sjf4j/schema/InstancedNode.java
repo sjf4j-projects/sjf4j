@@ -11,6 +11,9 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Wrapper around a runtime JSON node with cached type information.
+ */
 public final class InstancedNode {
     private final Object node;
     private final Class<?> objectType;

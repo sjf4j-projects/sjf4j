@@ -19,12 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
- * Interface for streaming that provides methods for reading and writing
- * JSON-like data through facade readers and writers. This interface serves as the base for
- * all facade implementations, defining common streaming operations.
- *
- * @param <R> the type of FacadeReader associated with this facade
- * @param <W> the type of FacadeWriter associated with this facade
+ * Base streaming facade for reading/writing JSON-like data.
  */
 public interface StreamingFacade<R extends StreamingReader, W extends StreamingWriter> {
 

@@ -19,6 +19,9 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 
+/**
+ * Registry for POJO metadata and {@link ValueCodec} mappings.
+ */
 public final class NodeRegistry {
 
     // All in TypeInfo

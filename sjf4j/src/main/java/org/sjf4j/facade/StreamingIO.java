@@ -21,9 +21,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Utility class for streaming JSON processing. Provides methods for reading JSON nodes from
- * a {@link StreamingReader} and writing JSON nodes to a {@link StreamingWriter}, with support
- * for type conversion and POJO handling.
+ * Streaming read/write helpers used by facade implementations.
  */
 public class StreamingIO {
 

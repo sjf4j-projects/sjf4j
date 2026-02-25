@@ -11,6 +11,9 @@ import java.time.format.DateTimeParseException;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+/**
+ * Format validation for JSON Schema "format" keyword.
+ */
 public interface FormatValidator {
 
     boolean validate(String value);

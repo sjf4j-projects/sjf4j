@@ -5,16 +5,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 /**
- * Abstract base class for capturing generic type information at runtime. This
- * class allows for preserving type parameters that would otherwise be erased
- * during Java's type erasure process.
- *
- * <p>Usage example:
- * <pre>{@code
- * Type listType = new TypeReference<List<String>>() {}.getType();
- * }</pre>
- *
- * @param <T> the generic type to capture
+ * Captures generic type information at runtime (type token).
  */
 public abstract class TypeReference<T> {
     /**

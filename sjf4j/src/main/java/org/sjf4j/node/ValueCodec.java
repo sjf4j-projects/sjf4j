@@ -27,6 +27,9 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+/**
+ * Codec for mapping custom value types to JSON-friendly raw types.
+ */
 public interface ValueCodec<N, R> {
 
     R encode(N value);
@@ -40,7 +43,7 @@ public interface ValueCodec<N, R> {
     default N copy(N value) {return value;}
 
 
-    /// Build-in Values
+    /// Built-in values
 
     // URI
     final class UriValueCodec implements ValueCodec<URI, String> {

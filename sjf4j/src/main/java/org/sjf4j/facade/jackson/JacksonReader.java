@@ -9,6 +9,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Objects;
 
+/**
+ * Streaming reader backed by Jackson's {@link JsonParser}.
+ */
 public class JacksonReader implements StreamingReader {
 
     private final JsonParser parser;

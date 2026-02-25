@@ -20,6 +20,9 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
+/**
+ * Gson JsonElement adapter used by {@link org.sjf4j.facade.FacadeNodes}.
+ */
 public final class GsonNodes {
 
     private GsonNodes() {}

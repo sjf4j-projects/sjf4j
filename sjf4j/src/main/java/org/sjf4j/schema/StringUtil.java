@@ -4,6 +4,9 @@ import com.ibm.icu.text.BreakIterator;
 
 import java.util.Locale;
 
+/**
+ * String length helpers for JSON Schema (grapheme cluster-aware when possible).
+ */
 public class StringUtil {
 
     /// Length of Unicode grapheme clusters

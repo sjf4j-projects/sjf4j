@@ -8,27 +8,20 @@ import org.sjf4j.node.Nodes;
 import org.sjf4j.path.PathSegment;
 
 
+/**
+ * Base interface for JSON Schema implementations.
+ *
+ * <p>Schema instances are compiled against a {@link SchemaStore} and then
+ * evaluated against JSON nodes via {@link #validate} or {@link #evaluate}.
+ */
 public interface JsonSchema {
 
     void compile(SchemaStore outer);
     ValidationResult validate(Object node, ValidationOptions options);
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
-    /// Static
-    static JsonSchema fromJson(String json) {
-        Object node = Sjf4j.fromJson(json) ;
-        return fromNode(node);
-    }
-
-    static JsonSchema fromNode(Object node) {
-        if (node == null) return null;
-        JsonType jt = JsonType.of(node);
-        if (jt.isBoolean()) return Nodes.toBoolean(node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
-        if (jt.isObject()) return Nodes.as(node, ObjectSchema.class);
-        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but was " + jt);
-    }
-
     /// Default
+
     default void compile() {
         compile(null);
     }
@@ -51,5 +44,19 @@ public interface JsonSchema {
         return validate(node, ValidationOptions.DEFAULT);
     }
 
+    /// Static
+
+    static JsonSchema fromJson(String json) {
+        Object node = Sjf4j.fromJson(json) ;
+        return fromNode(node);
+    }
+
+    static JsonSchema fromNode(Object node) {
+        if (node == null) return null;
+        JsonType jt = JsonType.of(node);
+        if (jt.isBoolean()) return Nodes.toBoolean(node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
+        if (jt.isObject()) return Nodes.as(node, ObjectSchema.class);
+        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but was " + jt);
+    }
 
 }

@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * Streaming writer backed by Jackson's {@link JsonGenerator}.
+ */
 public class JacksonWriter implements StreamingWriter {
 
     private final JsonGenerator gen;

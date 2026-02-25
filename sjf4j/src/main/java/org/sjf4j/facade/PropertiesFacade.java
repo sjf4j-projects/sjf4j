@@ -5,8 +5,9 @@ import java.util.Properties;
 
 
 /**
- * Warning: java.util.Properties does not maintain key order (extends Hashtable).
- * As a result, converting Properties to and from JSON may lead to mismatches
+ * Properties facade for mapping {@link java.util.Properties} to {@link JsonObject}.
+ *
+ * <p>Warning: {@link java.util.Properties} does not preserve key order.
  */
 public interface PropertiesFacade {
 

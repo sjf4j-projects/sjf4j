@@ -18,6 +18,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+/**
+ * Per-keyword evaluator used by compiled schemas.
+ */
 public interface Evaluator {
 
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
@@ -58,7 +61,7 @@ public interface Evaluator {
     }
 
 
-    /// Build-in evaluators
+    /// Built-in evaluators
 
     // $ref
     final class RefEvaluator implements Evaluator {

@@ -7,9 +7,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
- * Interface for reading JSON data in a streaming manner. This interface defines methods
- * for parsing JSON tokens, navigating through JSON structures, and extracting values.
- * It extends Closeable to ensure proper resource management.
+ * Streaming reader abstraction for JSON-like inputs.
  */
 public interface StreamingReader extends Closeable {
 

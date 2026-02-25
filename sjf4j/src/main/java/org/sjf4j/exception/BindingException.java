@@ -3,6 +3,9 @@ package org.sjf4j.exception;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.Paths;
 
+/**
+ * Exception for binding/streaming errors with optional path context.
+ */
 public class BindingException extends JsonException {
 
     private final PathSegment ps;

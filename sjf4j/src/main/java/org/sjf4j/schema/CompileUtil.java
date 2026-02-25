@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.Objects;
 
 
+/**
+ * Compilation helpers that translate schema keywords into evaluators.
+ */
 public class CompileUtil {
 
 
@@ -37,9 +40,9 @@ public class CompileUtil {
         }
     }
 
-    // schema: a sub-schema within a Schema document
-    // idSchema: an independent Schema document (maybe the target or a referenced schema)
-    // rootSchema: an independent target Schema document
+    // schema: sub-schema within a document
+    // idSchema: schema document that owns the current $id scope
+    // rootSchema: root schema document being compiled
     static Evaluator[] compile(PathSegment ps,
                                       ObjectSchema schema,
                                       ObjectSchema idSchema,

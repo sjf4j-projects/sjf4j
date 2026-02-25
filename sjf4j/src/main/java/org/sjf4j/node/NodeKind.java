@@ -10,9 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Enumeration representing the different types of JSON nodes in the sjf4j library.
- * This enum categorizes nodes into value types (void, string, number, boolean),
- * object types (JSONObject, JoJo, Map, POJO), and array types (JSONArray, List, array).
+ * Low-level node kind classification used for runtime dispatch.
  */
 public enum NodeKind {
     /** Represents a null or void value. */

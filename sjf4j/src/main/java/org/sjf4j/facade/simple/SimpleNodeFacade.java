@@ -20,6 +20,9 @@ import java.util.Objects;
 import java.util.Set;
 
 
+/**
+ * Node conversion facade backed by core node utilities.
+ */
 public class SimpleNodeFacade implements NodeFacade {
 
     @Override

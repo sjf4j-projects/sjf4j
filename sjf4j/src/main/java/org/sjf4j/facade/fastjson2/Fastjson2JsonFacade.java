@@ -20,6 +20,9 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
+/**
+ * Fastjson2-based JSON facade with selectable streaming modes.
+ */
 public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
     private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
             ? Sjf4jConfig.global().streamingMode : StreamingMode.PLUGIN_MODULE;

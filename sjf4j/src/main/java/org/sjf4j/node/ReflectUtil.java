@@ -34,6 +34,9 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 
+/**
+ * Reflection helpers for POJO and @NodeValue analysis.
+ */
 @SuppressWarnings("unchecked")
 public class ReflectUtil {
 

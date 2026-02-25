@@ -6,6 +6,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Result of schema validation.
+ */
 public class ValidationResult {
     private final boolean valid;
     private final List<ValidationMessage> messages;

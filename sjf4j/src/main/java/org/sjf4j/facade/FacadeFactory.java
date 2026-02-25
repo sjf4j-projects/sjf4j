@@ -18,13 +18,7 @@ import org.yaml.snakeyaml.LoaderOptions;
 
 
 /**
- * Factory class responsible for creating and managing facade implementations for SJF4J.
- * <p>
- * This class provides methods to create various facade implementations (JSON, YAML, Properties, Object) 
- * and manages the default facade selection based on the libraries available in the classpath.
- * <p>
- * It dynamically detects the presence of supported libraries (Jackson, Gson, Fastjson2, SnakeYAML)
- * and selects the appropriate facade implementation accordingly.
+ * Factory for facade implementations (JSON/YAML/properties).
  */
 public class FacadeFactory {
 

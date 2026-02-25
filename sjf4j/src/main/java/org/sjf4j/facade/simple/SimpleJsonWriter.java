@@ -6,6 +6,9 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
 
+/**
+ * Minimal JSON writer for the built-in facade.
+ */
 public class SimpleJsonWriter implements StreamingWriter {
 
     private final Writer writer;

@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 
+/**
+ * Factory for creating List instances used by JsonArray.
+ */
 public interface ListSupplier {
 
     <T> List<T> create();

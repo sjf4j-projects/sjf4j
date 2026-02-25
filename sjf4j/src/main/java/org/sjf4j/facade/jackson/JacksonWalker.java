@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Jackson parser tree walk utilities.
+ */
 public class JacksonWalker {
 
 

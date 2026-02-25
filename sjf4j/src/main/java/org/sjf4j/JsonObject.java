@@ -21,21 +21,11 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * Represents a JSON object that extends {@link JsonContainer} and provides a map-like interface
- * for working with JSON data. JsonObject supports both dynamic node-based storage and POJO field mapping,
- * allowing seamless integration between JSON structures and Java objects.
+ * JSON object container with both dynamic fields and POJO-backed fields.
  *
- * <p>JsonObject can be initialized from various sources:
- * <ul>
- *   <li>Empty constructor for creating a new JsonObject</li>
- *   <li>Existing JsonObject instances (deep copy)</li>
- *   <li>Map objects</li>
- *   <li>POJO objects (automatically maps fields)</li>
- *   <li>Direct key-value pairs</li>
- * </ul>
- *
- * <p>This class implements map-like operations while maintaining JSON type safety and
- * providing convenient methods for type conversion and navigation.
+ * <p>Dynamic fields are stored in {@code dynamicMap}; POJO fields are mapped
+ * via {@link NodeRegistry.FieldInfo}. Accessors use {@link Nodes} conversion
+ * semantics for strict/lenient reads.
  */
 public class JsonObject extends JsonContainer {
 

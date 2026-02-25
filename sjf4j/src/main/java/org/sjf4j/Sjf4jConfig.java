@@ -12,16 +12,10 @@ import org.sjf4j.supplier.MapSupplier;
 import org.sjf4j.supplier.SetSupplier;
 
 /**
- * Configuration class for SJF4J (Simple JSON Facade for Java).
- * <p>
- * This class manages the configuration settings for SJF4J, including:
- * - The facades used for JSON, YAML, Properties, and Object operations
- * - The read and write modes for data processing
- * - The suppliers for creating maps and lists
- * - Global configuration settings
- * <p>
- * It uses the builder pattern to create and configure instances, allowing for flexible
- * customization of SJF4J behavior.
+ * Global configuration for SJF4J.
+ *
+ * <p>Controls facade implementations, streaming mode, container suppliers,
+ * and encoding options (e.g. {@link java.time.Instant} format).
  */
 public final class Sjf4jConfig {
 

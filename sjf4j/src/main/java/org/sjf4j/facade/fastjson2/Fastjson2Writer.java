@@ -8,6 +8,9 @@ import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * Streaming writer backed by Fastjson2's {@link JSONWriter}.
+ */
 public class Fastjson2Writer implements StreamingWriter {
 
     private final JSONWriter writer;

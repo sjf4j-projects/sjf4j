@@ -13,6 +13,9 @@ import java.util.Objects;
 import java.util.Set;
 
 
+/**
+ * Registry for compiled schema documents indexed by URI.
+ */
 public class SchemaStore {
     private final Map<URI, ObjectSchema> mixedUriSchemas = new HashMap<>();
 //    private final ArrayList<ObjectSchema> schemas = new ArrayList<>();

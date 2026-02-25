@@ -13,6 +13,9 @@ import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Schema validation entry point for POJOs annotated with {@link ValidJsonSchema}.
+ */
 public final class SchemaValidator {
     private static final URI DEFAULT_BASE_URI = URI.create("classpath:///json-schemas/");
     private static final String SCHEMA_FILE_SUFFIX = ".schema.json";

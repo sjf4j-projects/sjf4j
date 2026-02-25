@@ -21,6 +21,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+/**
+ * Gson adapters for JsonObject/JsonArray and @NodeValue types.
+ */
 public interface GsonModule {
 
     class MyTypeAdapterFactory implements TypeAdapterFactory {

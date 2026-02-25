@@ -10,6 +10,9 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Mutable validation state shared across evaluator invocations.
+ */
 public class ValidationContext {
     private final ObjectSchema targetSchema;
     private final ValidationOptions options;
