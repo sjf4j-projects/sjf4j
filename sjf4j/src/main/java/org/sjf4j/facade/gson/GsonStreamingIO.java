@@ -32,6 +32,9 @@ public class GsonStreamingIO {
 
     /// Read
 
+    /**
+     * Reads one node from Gson reader into target type.
+     */
     public static Object readNode(JsonReader reader, Type type) throws IOException {
         return _readNode(
                 reader,
@@ -41,6 +44,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next null token into target type.
+     */
     public static Object readNull(JsonReader reader, Type type) throws IOException {
         return _readNull(
                 reader,
@@ -49,6 +55,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next boolean token into target type.
+     */
     public static Object readBoolean(JsonReader reader, Type type) throws IOException {
         return _readBoolean(
                 reader,
@@ -57,6 +66,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next number token into target type.
+     */
     public static Object readNumber(JsonReader reader, Type type) throws IOException {
         return _readNumber(
                 reader,
@@ -65,6 +77,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next string token into target type.
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readString(JsonReader reader, Type type) throws IOException {
         return _readString(
@@ -74,6 +89,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next object token into target type.
+     */
     public static Object readObject(JsonReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
         return _readObject(
@@ -84,6 +102,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next array token into target type.
+     */
     public static Object readArray(JsonReader reader, Type type) throws IOException {
         Class<?> rawClazz = Types.rawBox(type);
         return _readArray(
@@ -94,6 +115,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Reads next token and dispatches to typed node readers.
+     */
     private static Object _readNode(JsonReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         try {
@@ -194,6 +218,9 @@ public class GsonStreamingIO {
         throw new BindingException("Cannot deserialize String value into type " + rawClazz.getName(), ps);
     }
 
+    /**
+     * Reads object token into Map/JsonObject/POJO target.
+     */
     private static Object _readObject(JsonReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
@@ -311,6 +338,9 @@ public class GsonStreamingIO {
         throw new BindingException("Cannot deserialize Object value into type " + rawClazz.getName(), ps);
     }
 
+    /**
+     * Reads array token into List/JsonArray/array/Set target.
+     */
     private static Object _readArray(JsonReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
@@ -457,6 +487,9 @@ public class GsonStreamingIO {
 
     /// Reader
 
+    /**
+     * Peeks token kind from current Gson reader state.
+     */
     public static StreamingReader.Token peekToken(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
@@ -483,6 +516,9 @@ public class GsonStreamingIO {
 
     /// Write
 
+    /**
+     * Writes one node to Gson writer.
+     */
     public static void writeNode(JsonWriter writer, Object node) throws IOException {
         Objects.requireNonNull(writer, "writer is null");
         _writeNode(
@@ -492,6 +528,9 @@ public class GsonStreamingIO {
         );
     }
 
+    /**
+     * Writes node recursively as JSON tokens.
+     */
     private static void _writeNode(JsonWriter writer, Object node, PathSegment ps) throws IOException {
         try {
             if (node == null) {

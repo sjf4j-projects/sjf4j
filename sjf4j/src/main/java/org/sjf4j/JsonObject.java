@@ -1311,6 +1311,9 @@ public class JsonObject extends JsonContainer {
 
     /// Stream
 
+    /**
+     * Returns a NodeStream starting from this object.
+     */
     public NodeStream<JsonObject> stream() {
         return NodeStream.of(this);
     }
@@ -1318,43 +1321,76 @@ public class JsonObject extends JsonContainer {
 
     /// builder
 
+    /**
+     * Returns a builder initialized from this object.
+     */
     public Builder toBuilder() {
         return new Builder(this);
     }
 
+    /**
+     * Returns a builder for a new JsonObject.
+     */
     public static Builder builder() {
         return new Builder(new JsonObject());
     }
 
+    /**
+     * Fluent builder for JsonObject updates.
+     */
     public static class Builder {
         private final JsonObject jo;
+        /**
+         * Creates a builder for the given target object.
+         */
         public Builder(JsonObject jo) {
             this.jo = jo;
         }
+        /**
+         * Puts key/value into target object.
+         */
         public Builder put(String key, Object value) {
             jo.put(key, value);
             return this;
         }
+        /**
+         * Puts key/value only when value is non-null.
+         */
         public Builder putNonNull(String key, Object value) {
             jo.putNonNull(key, value);
             return this;
         }
+        /**
+         * Puts key/value only when current value is absent.
+         */
         public Builder putIfAbsent(String key, Object value) {
             jo.putIfAbsent(key, value);
             return this;
         }
+        /**
+         * Ensures path containers and puts value by path.
+         */
         public Builder putByPath(String path, Object value) {
             jo.ensurePutByPath(path, value);
             return this;
         }
+        /**
+         * Ensures path and puts non-null value by path.
+         */
         public Builder putNonNullByPath(String path, Object value) {
             jo.ensurePutNonNullByPath(path, value);
             return this;
         }
+        /**
+         * Ensures path and puts value when absent by path.
+         */
         public Builder putIfAbsentByPath(String path, Object value) {
             jo.ensurePutIfAbsentByPath(path, value);
             return this;
         }
+        /**
+         * Returns the built JsonObject.
+         */
         public JsonObject build() {
             return jo;
         }

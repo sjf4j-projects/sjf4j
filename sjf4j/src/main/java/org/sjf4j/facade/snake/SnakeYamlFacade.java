@@ -20,22 +20,34 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
 
+    /**
+     * Creates SnakeYAML facade with default loader/dumper options.
+     */
     public SnakeYamlFacade() {
         this.loaderOptions = new LoaderOptions();
         this.dumperOptions = new DumperOptions();
     }
 
+    /**
+     * Creates SnakeYAML facade with custom loader/dumper options.
+     */
     public SnakeYamlFacade(LoaderOptions loaderOptions, DumperOptions dumperOptions) {
         this.loaderOptions = loaderOptions;
         this.dumperOptions = dumperOptions;
     }
 
+    /**
+     * Creates an event-based YAML reader.
+     */
     @Override
     public SnakeReader createReader(Reader input) {
         Parser parser = new ParserImpl(new StreamReader(input), loaderOptions);
         return new SnakeReader(parser);
     }
 
+    /**
+     * Creates an event-based YAML writer.
+     */
     @Override
     public SnakeWriter createWriter(Writer output) throws IOException {
         Emitter emitter = new Emitter(output, dumperOptions);

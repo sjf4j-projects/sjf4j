@@ -27,26 +27,41 @@ public class PatchOpRegistry {
 
     private static final Map<String, PatchOpHandler> PATCH_OP_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * Registers handler for operation name.
+     */
     public static void register(String opName, PatchOpHandler opHandler) {
         Objects.requireNonNull(opName, "opName");
         Objects.requireNonNull(opHandler, "opHandler");
         PATCH_OP_CACHE.put(opName, opHandler);
     }
 
+    /**
+     * Returns true when operation handler is registered.
+     */
     public static boolean exists(String opName) {
         return PATCH_OP_CACHE.containsKey(opName);
     }
 
+    /**
+     * Returns handler for operation name, or null.
+     */
     public static PatchOpHandler get(String opName) {
         return PATCH_OP_CACHE.get(opName);
     }
 
+    /**
+     * Returns handler for operation name, or throws.
+     */
     public static PatchOpHandler getOrElseThrow(String opName) {
         PatchOpHandler opHandler = PATCH_OP_CACHE.get(opName);
         if (opHandler == null) throw new JsonException("No PatchOpHandler for '" + opName + "'");
         return opHandler;
     }
 
+    /**
+     * Applies operation by looking up its registered handler.
+     */
     public static void apply(Object target, PatchOp op) {
         Objects.requireNonNull(target, "target");
         Objects.requireNonNull(op, "op");

@@ -14,6 +14,9 @@ public class ValidationResult {
     private final List<ValidationMessage> messages;
     private final ValidationMessage lastMessage;
 
+    /**
+     * Creates validation result with messages.
+     */
     public ValidationResult(boolean valid, List<ValidationMessage> messages, ValidationMessage lastMessage) {
         this.valid = valid;
         this.messages = messages;
@@ -55,6 +58,9 @@ public class ValidationResult {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Returns messages as debug string.
+     */
     @Override
     public String toString() {
         return Nodes.inspect(getMessages());

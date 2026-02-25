@@ -20,6 +20,9 @@ public class SimpleJsonReader implements StreamingReader {
     private int lastChar = -2; // -2 means unread
     private Token bufferedToken = null;
 
+    /**
+     * Creates reader over input characters.
+     */
     public SimpleJsonReader(Reader input) {
         if (!(input instanceof BufferedReader)) {
             input = new BufferedReader(input);
@@ -70,6 +73,9 @@ public class SimpleJsonReader implements StreamingReader {
     }
 
 
+    /**
+     * Peeks next token from current reader state.
+     */
     @Override
     public Token peekToken() throws IOException {
         if (bufferedToken != null) return bufferedToken;
@@ -95,6 +101,9 @@ public class SimpleJsonReader implements StreamingReader {
         }
     }
 
+    /**
+     * Consumes and enters object scope.
+     */
     @Override
     public void startObject() throws IOException {
         bufferedToken = null;
@@ -103,6 +112,9 @@ public class SimpleJsonReader implements StreamingReader {
         if (c != '{') throw error("Expected '{'", c);
     }
 
+    /**
+     * Consumes and exits object scope.
+     */
     @Override
     public void endObject() throws IOException {
         bufferedToken = null;
@@ -111,6 +123,9 @@ public class SimpleJsonReader implements StreamingReader {
         if (c != '}') throw error("Expected '}'", c);
     }
 
+    /**
+     * Consumes and enters array scope.
+     */
     @Override
     public void startArray() throws IOException {
         bufferedToken = null;
@@ -119,6 +134,9 @@ public class SimpleJsonReader implements StreamingReader {
         if (c != '[') throw error("Expected '['", c);
     }
 
+    /**
+     * Consumes and exits array scope.
+     */
     @Override
     public void endArray() throws IOException {
         bufferedToken = null;
@@ -127,6 +145,9 @@ public class SimpleJsonReader implements StreamingReader {
         if (c != ']') throw error("Expected ']'", c);
     }
 
+    /**
+     * Reads next field name.
+     */
     @Override
     public String nextName() throws IOException {
         skipWhitespace();
@@ -138,70 +159,109 @@ public class SimpleJsonReader implements StreamingReader {
         return s;
     }
 
+    /**
+     * Reads next scalar as string.
+     */
     @Override
     public String nextString() throws IOException {
         bufferedToken = null;
         return readString();
     }
 
+    /**
+     * Reads next scalar as number.
+     */
     @Override
     public Number nextNumber() throws IOException {
         bufferedToken = null;
         return Numbers.parseNumber(readNumberString());
     }
+    /**
+     * Reads next scalar as long.
+     */
     @Override
     public long nextLong() throws IOException {
         bufferedToken = null;
         return Long.parseLong(readNumberString());
     }
+    /**
+     * Reads next scalar as int.
+     */
     @Override
     public int nextInt() throws IOException {
         bufferedToken = null;
         return Integer.parseInt(readNumberString());
     }
+    /**
+     * Reads next scalar as short.
+     */
     @Override
     public short nextShort() throws IOException {
         bufferedToken = null;
         return Short.parseShort(readNumberString());
     }
+    /**
+     * Reads next scalar as byte.
+     */
     @Override
     public byte nextByte() throws IOException {
         bufferedToken = null;
         return Byte.parseByte(readNumberString());
     }
+    /**
+     * Reads next scalar as double.
+     */
     @Override
     public double nextDouble() throws IOException {
         bufferedToken = null;
         return Double.parseDouble(readNumberString());
     }
+    /**
+     * Reads next scalar as float.
+     */
     @Override
     public float nextFloat() throws IOException {
         bufferedToken = null;
         return Float.parseFloat(readNumberString());
     }
+    /**
+     * Reads next scalar as BigInteger.
+     */
     @Override
     public BigInteger nextBigInteger() throws IOException {
         bufferedToken = null;
         return new BigInteger(readNumberString());
     }
+    /**
+     * Reads next scalar as BigDecimal.
+     */
     @Override
     public BigDecimal nextBigDecimal() throws IOException {
         bufferedToken = null;
         return new BigDecimal(readNumberString());
     }
 
+    /**
+     * Reads next scalar as boolean.
+     */
     @Override
     public boolean nextBoolean() throws IOException {
         bufferedToken = null;
         return readBoolean();
     }
 
+    /**
+     * Consumes next null token.
+     */
     @Override
     public void nextNull() throws IOException {
         bufferedToken = null;
         readNull();
     }
 
+    /**
+     * Closes underlying reader.
+     */
     @Override
     public void close() throws IOException {
         reader.close();
@@ -324,6 +384,9 @@ public class SimpleJsonReader implements StreamingReader {
     }
 
     /// Skip
+    /**
+     * Skips next scalar or nested value.
+     */
     @Override
     public void nextSkip() throws IOException {
         bufferedToken = null;

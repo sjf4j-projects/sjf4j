@@ -17,6 +17,9 @@ import java.util.Map;
 public class JacksonWalker {
 
 
+    /**
+     * Walks next JSON value into Map/List based tree.
+     */
     public static Object walk2Map(JsonParser p) throws IOException {
         JsonToken token = p.currentToken();
         if (token == null) token = p.nextToken();
@@ -70,6 +73,9 @@ public class JacksonWalker {
         }
     }
 
+    /**
+     * Walks next JSON value into JsonObject/JsonArray tree.
+     */
     public static Object walk2Jo(JsonParser p) throws IOException {
         JsonToken token = p.currentToken();
         if (token == null) token = p.nextToken();

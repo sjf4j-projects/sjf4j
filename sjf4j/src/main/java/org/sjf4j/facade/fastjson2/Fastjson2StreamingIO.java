@@ -30,6 +30,9 @@ public class Fastjson2StreamingIO {
 
     /// Read
 
+    /**
+     * Reads one node from Fastjson2 reader into target type.
+     */
     public static Object readNode(JSONReader reader, Type type) throws IOException {
         return _readNode(
                 reader,
@@ -39,6 +42,9 @@ public class Fastjson2StreamingIO {
         );
     }
 
+    /**
+     * Reads next token and dispatches to typed node readers.
+     */
     private static Object _readNode(JSONReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         try {
@@ -139,6 +145,9 @@ public class Fastjson2StreamingIO {
         throw new BindingException("Cannot read string value into type " + rawClazz.getName(), ps);
     }
 
+    /**
+     * Reads object token into Map/JsonObject/POJO target.
+     */
     private static Object _readObject(JSONReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
@@ -258,6 +267,9 @@ public class Fastjson2StreamingIO {
         throw new BindingException("Cannot read object value into type " + rawClazz.getName(), ps);
     }
 
+    /**
+     * Reads array token into List/JsonArray/array/Set target.
+     */
     private static Object _readArray(JSONReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
@@ -407,6 +419,9 @@ public class Fastjson2StreamingIO {
 
     /// Reader
 
+    /**
+     * Peeks token kind from current Fastjson2 reader state.
+     */
     public static StreamingReader.Token peekToken(JSONReader reader) throws IOException {
         switch (reader.current()) {
             case '{':
@@ -463,6 +478,9 @@ public class Fastjson2StreamingIO {
 
     /// Write
 
+    /**
+     * Writes one node to Fastjson2 writer.
+     */
     public static void writeNode(JSONWriter writer, Object node) throws IOException {
         Objects.requireNonNull(writer, "writer is null");
         _writeNode(
@@ -472,6 +490,9 @@ public class Fastjson2StreamingIO {
         );
     }
 
+    /**
+     * Writes node recursively as JSON tokens.
+     */
     private static void _writeNode(JSONWriter writer, Object node, PathSegment ps) throws IOException {
         try {
             if (node == null) {
@@ -618,6 +639,9 @@ public class Fastjson2StreamingIO {
         }
     }
 
+    /**
+     * Writes numeric value with precise Fastjson2 API mapping.
+     */
     public static void writeNumber(JSONWriter writer, Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer || value instanceof Short || value instanceof Byte) {
             writer.writeInt64(value.longValue());

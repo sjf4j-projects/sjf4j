@@ -22,6 +22,9 @@ import java.util.regex.Pattern;
  */
 public class Paths {
 
+    /**
+     * Converts a segment chain to rooted debug inspect text.
+     */
     public static String rootedInspect(PathSegment lastSegment) {
         if (lastSegment == null) return "";
         return inspect(linearize(lastSegment));

@@ -31,6 +31,9 @@ public class JacksonStreamingIO {
 
     /// Read
 
+    /**
+     * Skips next scalar or nested value from parser.
+     */
     public static void skipNode(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
         if (tk.isScalarValue()) {
@@ -41,6 +44,9 @@ public class JacksonStreamingIO {
         }
     }
 
+    /**
+     * Reads one node from Jackson parser into target type.
+     */
     public static Object readNode(JsonParser parser, Type type) throws IOException {
         return _readNode(
                 parser,
@@ -50,6 +56,9 @@ public class JacksonStreamingIO {
         );
     }
 
+    /**
+     * Reads next token and dispatches to typed node readers.
+     */
     private static Object _readNode(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         try {
@@ -193,6 +202,9 @@ public class JacksonStreamingIO {
         throw new BindingException("Cannot read string value into type " + rawClazz.getName(), ps);
     }
 
+    /**
+     * Reads object token into Map/JsonObject/POJO target.
+     */
     private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
@@ -312,6 +324,9 @@ public class JacksonStreamingIO {
         throw new BindingException("Cannot read object value into type " + rawClazz.getName(), ps);
     }
 
+    /**
+     * Reads array token into List/JsonArray/array/Set target.
+     */
     private static Object _readArray(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
@@ -459,6 +474,9 @@ public class JacksonStreamingIO {
 
     /// Reader
 
+    /**
+     * Peeks token kind from current parser state.
+     */
     public static StreamingReader.Token peekToken(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
         if (tk == null) {
@@ -490,6 +508,9 @@ public class JacksonStreamingIO {
 
     /// Write
 
+    /**
+     * Writes one node to Jackson generator.
+     */
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
         Objects.requireNonNull(gen, "gen is null");
         _writeNode(
@@ -499,6 +520,9 @@ public class JacksonStreamingIO {
         );
     }
 
+    /**
+     * Writes node recursively as JSON tokens.
+     */
     private static void _writeNode(JsonGenerator gen, Object node, PathSegment ps) throws IOException {
         try {
             if (node == null) {
@@ -627,6 +651,9 @@ public class JacksonStreamingIO {
         }
     }
 
+    /**
+     * Writes numeric value using matching Jackson overload.
+     */
     public static void writeValue(JsonGenerator gen, Number value) throws IOException {
         if (value instanceof Long) {
             gen.writeNumber((Long) value);

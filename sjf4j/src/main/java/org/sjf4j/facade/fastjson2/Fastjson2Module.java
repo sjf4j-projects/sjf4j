@@ -29,7 +29,13 @@ import java.lang.reflect.Type;
  */
 public interface Fastjson2Module {
 
+    /**
+     * Reader module for JsonArray and @NodeValue decoding.
+     */
     class MyReaderModule implements ObjectReaderModule {
+        /**
+         * Returns custom reader for supported framework types.
+         */
         @Override
         public ObjectReader<?> getObjectReader(Type type) {
             Class<?> rawClazz = Types.rawClazz(type);
@@ -43,6 +49,9 @@ public interface Fastjson2Module {
             return null;
         }
 
+        /**
+         * Applies NodeProperty renaming and aliases on fields.
+         */
         @Override
         public void getFieldInfo(FieldInfo fieldInfo, Class objectClass, Field field) {
             ObjectReaderAnnotationProcessor annotationProcessor = getAnnotationProcessor();
@@ -64,6 +73,9 @@ public interface Fastjson2Module {
             }
         }
 
+        /**
+         * Detects NodeCreator constructor for object creation.
+         */
         @Override
         public void getBeanInfo(BeanInfo beanInfo, Class<?> objectClass) {
             for (Constructor<?> ctor : objectClass.getDeclaredConstructors()) {
@@ -74,6 +86,9 @@ public interface Fastjson2Module {
             }
         }
 
+        /**
+         * Returns annotation processor for constructor/method parameters.
+         */
         @Override
         public ObjectReaderAnnotationProcessor getAnnotationProcessor() {
             return new ObjectReaderAnnotationProcessor() {
@@ -154,10 +169,16 @@ public interface Fastjson2Module {
 
     class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
         private final NodeRegistry.PojoInfo pi;
+        /**
+         * Creates reader for JsonArray or JsonArray subclass.
+         */
         public JsonArrayReader(Class<?> clazz) {
             this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
         }
 
+        /**
+         * Reads one JSON array into framework JsonArray type.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
@@ -174,10 +195,16 @@ public interface Fastjson2Module {
 
     class NodeValueReader<T> implements ObjectReader<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        /**
+         * Creates reader backed by ValueCodec metadata.
+         */
         public NodeValueReader(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
+        /**
+         * Reads raw value and decodes via ValueCodec.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
@@ -188,7 +215,13 @@ public interface Fastjson2Module {
 
 
     /// Write
+    /**
+     * Writer module for JsonObject/JsonArray and @NodeValue encoding.
+     */
     class MyWriterModule implements ObjectWriterModule {
+        /**
+         * Returns custom writer for supported framework types.
+         */
         @Override
         public ObjectWriter<?> getObjectWriter(Type objectType, Class objectClass) {
             if (JsonObject.class.isAssignableFrom(objectClass)) {
@@ -243,6 +276,9 @@ public interface Fastjson2Module {
     }
 
     class JsonObjectWriter implements ObjectWriter<JsonObject> {
+        /**
+         * Writes JsonObject entries as object fields.
+         */
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
@@ -258,6 +294,9 @@ public interface Fastjson2Module {
     }
 
     class JsonArrayWriter implements ObjectWriter<JsonArray> {
+        /**
+         * Writes JsonArray elements as JSON array.
+         */
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
@@ -273,10 +312,16 @@ public interface Fastjson2Module {
 
     class NodeValueWriter<T> implements ObjectWriter<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        /**
+         * Creates writer backed by ValueCodec metadata.
+         */
         public NodeValueWriter(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
+        /**
+         * Encodes value via codec and writes raw form.
+         */
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
             Object raw = valueCodecInfo.encode(object);

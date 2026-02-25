@@ -10,6 +10,9 @@ import org.sjf4j.JsonObject;
 public class Fastjson2Walker {
 
 
+    /**
+     * Walks and consumes next JSON value without building containers.
+     */
     public static Object walk2Null(JSONReader reader) {
         if (reader.nextIfNull()) {
             return null;
@@ -36,6 +39,9 @@ public class Fastjson2Walker {
     }
 
 
+    /**
+     * Walks next JSON value into JsonObject/JsonArray tree.
+     */
     public static Object walk2Jo(JSONReader reader) {
         if (reader.nextIfNull()) {
             return null;

@@ -13,6 +13,9 @@ public class SimpleJsonWriter implements StreamingWriter {
 
     private final Writer writer;
 
+    /**
+     * Creates writer over output characters.
+     */
     public SimpleJsonWriter(Writer output) {
         if (output == null) throw new IllegalArgumentException("Output writer must not be null");
 
@@ -22,26 +25,41 @@ public class SimpleJsonWriter implements StreamingWriter {
         this.writer = output;
     }
 
+    /**
+     * Starts object scope.
+     */
     @Override
     public void startObject() throws IOException {
         writer.write('{');
     }
 
+    /**
+     * Ends object scope.
+     */
     @Override
     public void endObject() throws IOException {
         writer.write('}');
     }
 
+    /**
+     * Starts array scope.
+     */
     @Override
     public void startArray() throws IOException {
         writer.write('[');
     }
 
+    /**
+     * Ends array scope.
+     */
     @Override
     public void endArray() throws IOException {
         writer.write(']');
     }
 
+    /**
+     * Writes object field name.
+     */
     @Override
     public void writeName(String name) throws IOException {
         if (name == null) throw new IOException("Name must not be null");
@@ -49,39 +67,60 @@ public class SimpleJsonWriter implements StreamingWriter {
         writer.write(':');
     }
 
+    /**
+     * Writes string value.
+     */
     @Override
     public void writeString(String value) throws IOException {
         if (value == null) writeNull();
         else nativeWrite(value);
     }
 
+    /**
+     * Writes numeric value.
+     */
     @Override
     public void writeNumber(Number value) throws IOException {
         if (value == null) writeNull();
         else writer.write(value.toString());
     }
 
+    /**
+     * Writes boolean value.
+     */
     @Override
     public void writeBoolean(Boolean value) throws IOException {
         if (value == null) writeNull();
         else writer.write(value ? "true" : "false");
     }
 
+    /**
+     * Writes null value.
+     */
     @Override
     public void writeNull() throws IOException {
         writer.write("null");
     }
 
+    /**
+     * Writes array comma separator.
+     */
     @Override
     public void writeArrayComma() throws IOException {
         writer.write(',');
     }
 
+    /**
+     * Writes object comma separator.
+     */
     @Override
     public void writeObjectComma() throws IOException {
         writer.write(',');
     }
 
+    /**
+     * Flushes writer output.
+     */
     @Override
     public void flush() throws IOException {
         writer.flush();
@@ -116,6 +155,9 @@ public class SimpleJsonWriter implements StreamingWriter {
     }
 
 
+    /**
+     * Closes underlying writer.
+     */
     @Override
     public void close() throws IOException {
         writer.close();

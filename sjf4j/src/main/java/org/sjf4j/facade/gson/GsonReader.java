@@ -16,11 +16,17 @@ public class GsonReader implements StreamingReader {
 
     private final JsonReader reader;
 
+    /**
+     * Creates reader adapter from Gson JsonReader.
+     */
     public GsonReader(JsonReader reader) {
         if (reader == null) throw new IllegalArgumentException("Reader must not be null");
         this.reader = reader;
     }
 
+    /**
+     * Peeks next token from current reader state.
+     */
     @Override
     public Token peekToken() throws IOException {
         JsonToken token = reader.peek();
@@ -46,88 +52,153 @@ public class GsonReader implements StreamingReader {
         }
     }
 
+    /**
+     * Consumes and enters object scope.
+     */
     @Override
     public void startObject() throws IOException {
         reader.beginObject();
     }
 
+    /**
+     * Consumes and exits object scope.
+     */
     @Override
     public void endObject() throws IOException {
         reader.endObject();
     }
 
+    /**
+     * Consumes and enters array scope.
+     */
     @Override
     public void startArray() throws IOException {
         reader.beginArray();
     }
 
+    /**
+     * Consumes and exits array scope.
+     */
     @Override
     public void endArray() throws IOException {
         reader.endArray();
     }
 
+    /**
+     * Reads next field name.
+     */
     @Override
     public String nextName() throws IOException {
         return reader.nextName();
     }
 
+    /**
+     * Reads next scalar as string.
+     */
     @Override
     public String nextString() throws IOException {
         return reader.nextString();
     }
 
+    /**
+     * Reads next scalar as number.
+     */
     @Override
     public Number nextNumber() throws IOException {
         return Numbers.parseNumber(reader.nextString());
     }
+
+    /**
+     * Reads next scalar as long.
+     */
     @Override
     public long nextLong() throws IOException {
         return reader.nextLong();
     }
+
+    /**
+     * Reads next scalar as int.
+     */
     @Override
     public int nextInt() throws IOException {
         return reader.nextInt();
     }
+
+    /**
+     * Reads next scalar as short.
+     */
     @Override
     public short nextShort() throws IOException {
         return Short.parseShort(reader.nextString());
     }
+
+    /**
+     * Reads next scalar as byte.
+     */
     @Override
     public byte nextByte() throws IOException {
         return Byte.parseByte(reader.nextString());
     }
+
+    /**
+     * Reads next scalar as double.
+     */
     @Override
     public double nextDouble() throws IOException {
         return reader.nextDouble();
     }
+
+    /**
+     * Reads next scalar as float.
+     */
     @Override
     public float nextFloat() throws IOException {
         return Float.parseFloat(reader.nextString());
     }
+
+    /**
+     * Reads next scalar as BigInteger.
+     */
     @Override
     public BigInteger nextBigInteger() throws IOException {
         return new BigInteger(reader.nextString());
     }
+
+    /**
+     * Reads next scalar as BigDecimal.
+     */
     @Override
     public BigDecimal nextBigDecimal() throws IOException {
         return new BigDecimal(reader.nextString());
     }
 
+    /**
+     * Reads next scalar as boolean.
+     */
     @Override
     public boolean nextBoolean() throws IOException {
         return reader.nextBoolean();
     }
 
+    /**
+     * Consumes next null token.
+     */
     @Override
     public void nextNull() throws IOException {
         reader.nextNull();
     }
 
+    /**
+     * Closes underlying reader.
+     */
     @Override
     public void close() throws IOException {
         reader.close();
     }
 
+    /**
+     * Skips next scalar or nested value.
+     */
     @Override
     public void nextSkip() throws IOException {
         reader.skipValue();

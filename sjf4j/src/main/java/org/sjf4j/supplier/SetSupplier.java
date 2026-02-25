@@ -30,14 +30,23 @@ public interface SetSupplier {
     /// Build-in List Suppliers
 
     SetSupplier HashSetSupplier = new SetSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Set<T> create() {
             return new HashSet<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Set<T> create(int initialCapacity) {
             return new HashSet<>(initialCapacity);
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Set<T> create(Collection<T> target) {
             return new HashSet<>(target);
@@ -45,14 +54,23 @@ public interface SetSupplier {
     };
 
     SetSupplier LinkedHashSetSupplier = new SetSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Set<T> create() {
             return new LinkedHashSet<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Set<T> create(int initialCapacity) {
             return new LinkedHashSet<>(initialCapacity);
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Set<T> create(Collection<T> target) {
             return new LinkedHashSet<>(target);

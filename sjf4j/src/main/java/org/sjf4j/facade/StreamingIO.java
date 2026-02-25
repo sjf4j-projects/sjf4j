@@ -27,19 +27,16 @@ public class StreamingIO {
 
     /// Read
 
+    /**
+     * Reads one node from streaming reader into target type.
+     */
     public static Object readNode(StreamingReader reader, Type type) {
         return _readNode(reader, type, Types.rawBox(type),
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
     }
 
     /**
-     * Reads a JSON node from the provided {@link StreamingReader} and converts it to the appropriate
-     * Java object based on the token type and optional target type.
-     *
-     * @param reader the FacadeReader to read from
-     * @param type the target type for conversion (may be null)
-     * @return the parsed and converted JSON node
-     * @throws JsonException if an unexpected token is encountered
+     * Reads next token and dispatches to typed node readers.
      */
     private static Object _readNode(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps) {
         try {
@@ -67,6 +64,9 @@ public class StreamingIO {
         }
     }
 
+    /**
+     * Reads null token and decodes via value codec when needed.
+     */
     private static Object _readNull(StreamingReader reader, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         reader.nextNull();
@@ -78,6 +78,9 @@ public class StreamingIO {
         return null;
     }
 
+    /**
+     * Reads boolean token into target type.
+     */
     private static Object _readBoolean(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
         if (rawClazz == Object.class || rawClazz == Boolean.class) {
             return reader.nextBoolean();
@@ -91,6 +94,9 @@ public class StreamingIO {
         throw new BindingException("Cannot read boolean value into type '" + rawClazz.getName() + "'", ps);
     }
 
+    /**
+     * Reads number token into target numeric or codec type.
+     */
     private static Object _readNumber(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
         if (rawClazz == Object.class || rawClazz == Number.class) {
             return reader.nextNumber();
@@ -112,6 +118,9 @@ public class StreamingIO {
         throw new BindingException("Cannot read number value into type '" + rawClazz.getName() + "'", ps);
     }
 
+    /**
+     * Reads string token into target scalar or codec type.
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object _readString(StreamingReader reader, Class<?> rawClazz, PathSegment ps) throws IOException {
         if (rawClazz == Object.class || rawClazz == String.class) {
@@ -135,13 +144,7 @@ public class StreamingIO {
     }
 
     /**
-     * Reads a JSON object from the provided {@link StreamingReader} and converts it to the appropriate
-     * Java object based on the target type.
-     *
-     * @param reader the FacadeReader to read from
-     * @param type the target type for conversion
-     * @return the parsed and converted JSON object
-     * @throws IOException if an I/O error occurs during reading
+     * Reads object token into Map/JsonObject/POJO target.
      */
     private static Object _readObject(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
@@ -256,6 +259,9 @@ public class StreamingIO {
         throw new BindingException("Cannot read object value into type '" + rawClazz.getName() + "'", ps);
     }
 
+    /**
+     * Reads array token into List/JsonArray/array/Set target.
+     */
     private static Object _readArray(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
@@ -329,6 +335,9 @@ public class StreamingIO {
         throw new BindingException("Cannot read array value into type '" + rawClazz.getName() + "'", ps);
     }
 
+    /**
+     * Reads one object field based on field container metadata.
+     */
     private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
             throws IOException {
         switch (fi.containerKind) {
@@ -343,8 +352,11 @@ public class StreamingIO {
         }
     }
 
+    /**
+     * Reads object token into map with typed values.
+     */
     private static Map<String, Object> _readMapWithValueType(StreamingReader reader, Class<?> rawClazz,
-                                                             Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                              Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
         if (reader.peekToken() == StreamingReader.Token.NULL) {
             reader.nextNull();
@@ -362,6 +374,9 @@ public class StreamingIO {
         return map;
     }
 
+    /**
+     * Reads array token into list with typed elements.
+     */
     private static List<Object> _readListWithElementType(StreamingReader reader, Class<?> rawClazz,
                                                          Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
@@ -381,6 +396,9 @@ public class StreamingIO {
         return list;
     }
 
+    /**
+     * Reads array token into set with typed elements.
+     */
     private static Set<Object> _readSetWithElementType(StreamingReader reader, Class<?> rawClazz,
                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
@@ -403,12 +421,18 @@ public class StreamingIO {
 
     /// Write
 
+    /**
+     * Writes one node to streaming writer.
+     */
     public static void writeNode(StreamingWriter writer, Object node) throws IOException {
         Objects.requireNonNull(writer, "writer is null");
         _writeNode(writer, node,
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
     }
 
+    /**
+     * Writes node recursively as streaming tokens.
+     */
     private static void _writeNode(StreamingWriter writer, Object node, PathSegment ps) throws IOException {
         try {
             if (node == null) {

@@ -26,6 +26,9 @@ public final class SchemaValidator {
     private final ValidationOptions defaultOptions;
     private final Map<Class<?>, JsonSchema> pojoSchemaMapping = new ConcurrentHashMap<>();
 
+    /**
+     * Creates validator with default configuration.
+     */
     public SchemaValidator() {
         this(null, null, null);
     }

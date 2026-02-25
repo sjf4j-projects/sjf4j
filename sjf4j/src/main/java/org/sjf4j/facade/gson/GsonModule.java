@@ -26,7 +26,13 @@ import java.util.Map;
  */
 public interface GsonModule {
 
+    /**
+     * Adapter factory for JsonObject/JsonArray and @NodeValue types.
+     */
     class MyTypeAdapterFactory implements TypeAdapterFactory {
+        /**
+         * Returns adapter for supported framework types.
+         */
         @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
@@ -51,12 +57,18 @@ public interface GsonModule {
         private final NodeRegistry.PojoInfo pi;
         private final TypeAdapter<?> objectAdapter;
 
+        /**
+         * Creates adapter for JsonObject or subclass.
+         */
         public JsonObjectAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
             this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
             this.objectAdapter = gson.getAdapter(Object.class);
         }
 
+        /**
+         * Reads JSON object into JsonObject/JOJO instance.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
@@ -144,6 +156,9 @@ public interface GsonModule {
             return (T) pojo;
         }
 
+        /**
+         * Writes JsonObject entries as JSON object fields.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public void write(JsonWriter out, JsonObject jo) throws IOException {
@@ -167,11 +182,17 @@ public interface GsonModule {
         private final Gson gson;
         private final NodeRegistry.PojoInfo pi;
 
+        /**
+         * Creates adapter for JsonArray or subclass.
+         */
         public JsonArrayAdapter(Gson gson, Class<?> clazz) {
             this.gson = gson;
             this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
         }
 
+        /**
+         * Reads JSON array into JsonArray/JAJO instance.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
@@ -186,6 +207,9 @@ public interface GsonModule {
             return ja;
         }
 
+        /**
+         * Writes JsonArray elements as JSON array items.
+         */
         @Override
         public void write(JsonWriter out, JsonArray ja) throws IOException {
             out.beginArray();
@@ -203,11 +227,17 @@ public interface GsonModule {
         private final Gson gson;
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
 
+        /**
+         * Creates adapter backed by ValueCodec metadata.
+         */
         public NodeValueAdapter(Gson gson, NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.gson = gson;
             this.valueCodecInfo = valueCodecInfo;
         }
 
+        /**
+         * Reads raw value and decodes via ValueCodec.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T read(JsonReader in) throws IOException {
@@ -216,6 +246,9 @@ public interface GsonModule {
             return (T) valueCodecInfo.decode(raw);
         }
 
+        /**
+         * Encodes value via ValueCodec and writes raw value.
+         */
         @Override
         public void write(JsonWriter out, T node) throws IOException {
             Object raw = valueCodecInfo.encode(node);
@@ -225,7 +258,13 @@ public interface GsonModule {
     }
 
     /// To Number
+    /**
+     * Number strategy that preserves integer/decimal intent.
+     */
     class MyToNumberStrategy implements ToNumberStrategy {
+        /**
+         * Reads next number token as framework Number type.
+         */
         @Override
         public Number readNumber(JsonReader in) throws IOException {
             return Numbers.parseNumber(in.nextString());
@@ -233,7 +272,13 @@ public interface GsonModule {
     }
 
     /// NodeProperty
+    /**
+     * Field naming strategy honoring @NodeProperty names.
+     */
     class NodeFieldNamingStrategy implements FieldNamingStrategy {
+        /**
+         * Resolves serialized field name.
+         */
         @Override
         public String translateName(Field field) {
             NodeProperty nf = field.getAnnotation(NodeProperty.class);

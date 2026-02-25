@@ -13,6 +13,9 @@ import java.io.IOException;
  */
 public class GsonWalker {
 
+    /**
+     * Walks and consumes next JSON value without building containers.
+     */
     public static void walk2Null(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
@@ -49,6 +52,9 @@ public class GsonWalker {
     }
 
 
+    /**
+     * Walks next JSON value into JsonObject/JsonArray tree.
+     */
     public static Object walk2Jo(JsonReader reader) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {

@@ -31,14 +31,23 @@ public interface MapSupplier {
     /// Build-in Map Suppliers
 
     MapSupplier HashMapSupplier = new MapSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create() {
             return new HashMap<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(int initialCapacity) {
             return new HashMap<>(initialCapacity);
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(Map<String, T> target) {
             return new HashMap<>(target);
@@ -46,14 +55,23 @@ public interface MapSupplier {
     };
 
     MapSupplier LinkedHashMapSupplier = new MapSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create() {
             return new LinkedHashMap<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(int initialCapacity) {
             return new LinkedHashMap<>(initialCapacity);
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(Map<String, T> target) {
             return new LinkedHashMap<>(target);
@@ -62,14 +80,23 @@ public interface MapSupplier {
 
     MapSupplier TreeMapSupplier = new MapSupplier() {
 
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create() {
             return new TreeMap<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(int initialCapacity) {
             return new TreeMap<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(Map<String, T> target) {
             return new TreeMap<>(target);
@@ -77,14 +104,23 @@ public interface MapSupplier {
     };
 
     MapSupplier ConcurrentHashMapSupplier = new MapSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create() {
             return new ConcurrentHashMap<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(int initialCapacity) {
             return new ConcurrentHashMap<>(initialCapacity);
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> Map<String, T> create(Map<String, T> target) {
             return new ConcurrentHashMap<>(target);

@@ -272,27 +272,42 @@ public class Types {
         private final Type[] actualTypeArguments;
         private final Type ownerType;
 
+        /**
+         * Creates a parameterized type wrapper.
+         */
         public ParameterizedTypeImpl(Type rawType, Type[] actualTypeArguments, Type ownerType) {
             this.rawType = rawType;
             this.actualTypeArguments = actualTypeArguments != null ? actualTypeArguments.clone() : new Type[0];
             this.ownerType = ownerType;
         }
 
+        /**
+         * Returns actual type arguments.
+         */
         @Override
         public Type[] getActualTypeArguments() {
             return actualTypeArguments.clone();
         }
 
+        /**
+         * Returns raw type.
+         */
         @Override
         public Type getRawType() {
             return rawType;
         }
 
+        /**
+         * Returns owner type.
+         */
         @Override
         public Type getOwnerType() {
             return ownerType;
         }
 
+        /**
+         * Compares parameterized type structure.
+         */
         @Override
         public boolean equals(Object other) {
             if (!(other instanceof ParameterizedType)) return false;
@@ -302,6 +317,9 @@ public class Types {
                     && Arrays.equals(actualTypeArguments, that.getActualTypeArguments());
         }
 
+        /**
+         * Computes hash for parameterized type structure.
+         */
         @Override
         public int hashCode() {
             return Arrays.hashCode(actualTypeArguments)
@@ -309,6 +327,9 @@ public class Types {
                     ^ Objects.hashCode(ownerType);
         }
 
+        /**
+         * Returns Java-like type name.
+         */
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
@@ -334,26 +355,41 @@ public class Types {
     public static class GenericArrayTypeImpl implements GenericArrayType {
         private final Type componentType;
 
+        /**
+         * Creates a generic array type wrapper.
+         */
         public GenericArrayTypeImpl(Type componentType) {
             this.componentType = componentType;
         }
 
+        /**
+         * Returns generic component type.
+         */
         @Override
         public Type getGenericComponentType() {
             return componentType;
         }
 
+        /**
+         * Compares generic array type structure.
+         */
         @Override
         public boolean equals(Object other) {
             return other instanceof GenericArrayType
                     && Objects.equals(componentType, ((GenericArrayType) other).getGenericComponentType());
         }
 
+        /**
+         * Computes hash for generic array type.
+         */
         @Override
         public int hashCode() {
             return Objects.hashCode(componentType);
         }
 
+        /**
+         * Returns Java-like array type name.
+         */
         @Override
         public String toString() {
             return componentType.getTypeName() + "[]";
@@ -367,21 +403,33 @@ public class Types {
         private final Type[] upperBounds;
         private final Type[] lowerBounds;
 
+        /**
+         * Creates a wildcard type wrapper.
+         */
         public WildcardTypeImpl(Type[] upperBounds, Type[] lowerBounds) {
             this.upperBounds = upperBounds != null ? upperBounds.clone() : new Type[]{Object.class};
             this.lowerBounds = lowerBounds != null ? lowerBounds.clone() : new Type[0];
         }
 
+        /**
+         * Returns upper bounds.
+         */
         @Override
         public Type[] getUpperBounds() {
             return upperBounds.clone();
         }
 
+        /**
+         * Returns lower bounds.
+         */
         @Override
         public Type[] getLowerBounds() {
             return lowerBounds.clone();
         }
 
+        /**
+         * Compares wildcard bound structure.
+         */
         @Override
         public boolean equals(Object other) {
             if (!(other instanceof WildcardType)) return false;
@@ -390,11 +438,17 @@ public class Types {
                     && Arrays.equals(lowerBounds, that.getLowerBounds());
         }
 
+        /**
+         * Computes hash for wildcard bounds.
+         */
         @Override
         public int hashCode() {
             return Arrays.hashCode(upperBounds) ^ Arrays.hashCode(lowerBounds);
         }
 
+        /**
+         * Returns Java-like wildcard type name.
+         */
         @Override
         public String toString() {
             if (lowerBounds.length > 0) {

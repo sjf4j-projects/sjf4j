@@ -29,16 +29,25 @@ public class SnakeReader implements StreamingReader {
     private final Parser parser;
 //    private Object cachedValue;
 
+    /**
+     * Creates a SnakeYAML event-based reader.
+     */
     public SnakeReader(Parser parser) {
         this.parser = parser;
     }
 
+    /**
+     * Consumes stream/document start events.
+     */
     @Override
     public void startDocument() {
         if (!(parser.getEvent() instanceof StreamStartEvent)) throw new IllegalStateException("Malformed YAML");
         if (!(parser.getEvent() instanceof DocumentStartEvent)) throw new IllegalStateException("Malformed YAML");
     }
 
+    /**
+     * Consumes document/stream end events.
+     */
     @Override
     public void endDocument() {
         if (!(parser.getEvent() instanceof DocumentEndEvent)) throw new IllegalStateException("Malformed YAML");
@@ -46,6 +55,9 @@ public class SnakeReader implements StreamingReader {
     }
 
 
+    /**
+     * Peeks the next token from current YAML event.
+     */
     @Override
     public Token peekToken() {
         Event event = parser.peekEvent();
@@ -87,76 +99,132 @@ public class SnakeReader implements StreamingReader {
         }
     }
 
+    /**
+     * Starts object scope.
+     */
     @Override
     public void startObject() {
         parser.getEvent(); // consume start
     }
 
+    /**
+     * Ends object scope.
+     */
     @Override
     public void endObject() {
         parser.getEvent(); // consume end
     }
 
+    /**
+     * Starts array scope.
+     */
     @Override
     public void startArray() {
         parser.getEvent(); // consume start
     }
 
+    /**
+     * Ends array scope.
+     */
     @Override
     public void endArray() {
         parser.getEvent(); // consume end
     }
 
+    /**
+     * Reads next object field name.
+     */
     @Override
     public String nextName() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         return se.getValue();
     }
 
+    /**
+     * Reads next scalar as string.
+     */
     @Override
     public String nextString() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         return se.getValue();
     }
 
+    /**
+     * Reads next scalar as parsed number.
+     */
     @Override
     public Number nextNumber() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         return Numbers.parseNumber(se.getValue());
     }
+
+    /**
+     * Reads next scalar as long.
+     */
     @Override
     public long nextLong() {
         return Numbers.toLong(nextNumber());
     }
+
+    /**
+     * Reads next scalar as int.
+     */
     @Override
     public int nextInt() {
         return Numbers.toInt(nextNumber());
     }
+
+    /**
+     * Reads next scalar as short.
+     */
     @Override
     public short nextShort() {
         return Numbers.toShort(nextNumber());
     }
+
+    /**
+     * Reads next scalar as byte.
+     */
     @Override
     public byte nextByte() {
         return Numbers.toByte(nextNumber());
     }
+
+    /**
+     * Reads next scalar as double.
+     */
     @Override
     public double nextDouble() {
         return Numbers.toDouble(nextNumber());
     }
+
+    /**
+     * Reads next scalar as float.
+     */
     @Override
     public float nextFloat() {
         return Numbers.toFloat(nextNumber());
     }
+
+    /**
+     * Reads next scalar as BigInteger.
+     */
     @Override
     public BigInteger nextBigInteger() {
         return Numbers.toBigInteger(nextNumber());
     }
+
+    /**
+     * Reads next scalar as BigDecimal.
+     */
     @Override
     public BigDecimal nextBigDecimal() {
         return Numbers.toBigDecimal(nextNumber());
     }
 
+    /**
+     * Reads next scalar as boolean.
+     */
     @Override
     public boolean nextBoolean() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
@@ -171,6 +239,9 @@ public class SnakeReader implements StreamingReader {
         throw new JsonException("Expect a Boolean but got '" + value + "'");
     }
 
+    /**
+     * Consumes next scalar expecting null-like value.
+     */
     @Override
     public void nextNull() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
@@ -183,11 +254,17 @@ public class SnakeReader implements StreamingReader {
         throw new JsonException("Expect a Null but got '" + value + "'");
     }
 
+    /**
+     * Closes this reader.
+     */
     @Override
     public void close() throws IOException {
         // Nothing
     }
 
+    /**
+     * Skips the next scalar or nested structure.
+     */
     @Override
     public void nextSkip() throws IOException {
         Event event = parser.peekEvent();

@@ -75,6 +75,9 @@ public interface FormatValidator {
         // RFC 5322-ish
         private final Pattern pattern = Pattern.compile( "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 
+        /**
+         * Validates RFC 5322-like email format.
+         */
         @Override
         public boolean validate(String value) {
             return pattern.matcher(value).matches();
@@ -85,6 +88,9 @@ public interface FormatValidator {
     class IdnEmailValidator implements FormatValidator {
         private final Pattern pattern = Pattern.compile( "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$");
 
+        /**
+         * Validates internationalized email format.
+         */
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
@@ -105,6 +111,9 @@ public interface FormatValidator {
 
     // date
     class DateValidator implements FormatValidator {
+        /**
+         * Validates ISO local date format.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -118,6 +127,9 @@ public interface FormatValidator {
 
     // date-time
     class DateTimeValidator implements FormatValidator {
+        /**
+         * Validates ISO offset date-time format.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -131,6 +143,9 @@ public interface FormatValidator {
 
     // time
     class TimeValidator implements FormatValidator {
+        /**
+         * Validates ISO offset time format.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -147,6 +162,9 @@ public interface FormatValidator {
         private static final Pattern DURATION_PATTERN =
                 Pattern.compile("^P(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+(\\.\\d+)?S)?)?$");
 
+        /**
+         * Validates ISO-8601 duration syntax.
+         */
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
@@ -159,6 +177,9 @@ public interface FormatValidator {
         private final Pattern pattern = Pattern.compile(
                 "^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$");
 
+        /**
+         * Validates DNS hostname format.
+         */
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
@@ -170,6 +191,9 @@ public interface FormatValidator {
     class IdnHostnameValidator implements FormatValidator {
         private final Pattern labelPattern = Pattern.compile("^[a-zA-Z0-9-]+$");
 
+        /**
+         * Validates internationalized DNS hostname format.
+         */
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
@@ -195,6 +219,9 @@ public interface FormatValidator {
         private final Pattern pattern = Pattern.compile(
                 "^((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)(\\.|$)){4}$"
         );
+        /**
+         * Validates IPv4 address format.
+         */
         @Override
         public boolean validate(String value) {
             return pattern.matcher(value).matches();
@@ -206,6 +233,9 @@ public interface FormatValidator {
         private final Pattern pattern = Pattern.compile(
                 "^(?:[\\da-fA-F]{1,4}:){7}[\\da-fA-F]{1,4}$"
         );
+        /**
+         * Validates IPv6 address format.
+         */
         @Override
         public boolean validate(String value) {
             return pattern.matcher(value).matches();
@@ -217,6 +247,9 @@ public interface FormatValidator {
         private final Pattern pattern = Pattern.compile(
                 "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
         );
+        /**
+         * Validates UUID string format.
+         */
         @Override
         public boolean validate(String value) {
             return pattern.matcher(value).matches();
@@ -225,6 +258,9 @@ public interface FormatValidator {
 
     // uri
     class UriValidator implements FormatValidator {
+        /**
+         * Validates absolute URI format.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -238,6 +274,9 @@ public interface FormatValidator {
 
     // uri-reference (rough)
     class UriReferenceValidator implements FormatValidator {
+        /**
+         * Validates URI-reference format.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -252,6 +291,9 @@ public interface FormatValidator {
     // uri-template (very simple check for braces)
     class UriTemplateValidator implements FormatValidator {
         private final Pattern pattern = Pattern.compile("\\{[^}]*}");
+        /**
+         * Validates URI-template placeholder syntax.
+         */
         @Override
         public boolean validate(String value) {
             return pattern.matcher(value).find();
@@ -260,6 +302,9 @@ public interface FormatValidator {
 
     // iri
     class IriValidator implements FormatValidator {
+        /**
+         * Validates IRI format using ASCII conversion.
+         */
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
@@ -277,6 +322,9 @@ public interface FormatValidator {
 
     // iri-reference
     class IriReferenceValidator implements FormatValidator {
+        /**
+         * Validates IRI-reference format.
+         */
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
@@ -325,6 +373,9 @@ public interface FormatValidator {
 
     // json-pointer
     class JsonPointerValidator implements FormatValidator {
+        /**
+         * Validates JSON Pointer syntax.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -339,6 +390,9 @@ public interface FormatValidator {
 
     // relative-json-pointer
     class RelativeJsonPointerValidator implements FormatValidator {
+        /**
+         * Validates relative JSON Pointer syntax.
+         */
         @Override
         public boolean validate(String value) {
             try {
@@ -355,6 +409,9 @@ public interface FormatValidator {
 
     // regex (valid regex)
     class RegexValidator implements FormatValidator {
+        /**
+         * Validates regular-expression syntax.
+         */
         @Override
         public boolean validate(String value) {
             try {

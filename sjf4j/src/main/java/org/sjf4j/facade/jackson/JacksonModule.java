@@ -38,7 +38,13 @@ import java.util.Map;
  */
 public interface JacksonModule {
 
+    /**
+     * SimpleModule that wires framework serializers/deserializers.
+     */
     class MySimpleModule extends SimpleModule {
+        /**
+         * Creates module and installs reader/writer modifiers.
+         */
         public MySimpleModule() {
 
             setDeserializerModifier(new BeanDeserializerModifier() {
@@ -96,27 +102,45 @@ public interface JacksonModule {
 
 
     /// Extra
+    /**
+     * Any-setter bridge for dynamic fields in JsonObject.
+     */
     class JsonObjectAnySetter extends SettableAnyProperty {
 
+        /**
+         * Creates setter with target value type.
+         */
         public JsonObjectAnySetter(JavaType type) {
             super(null, null, type, null, null, null);
         }
 
+        /**
+         * Creates setter with explicit value deserializer.
+         */
         public JsonObjectAnySetter(JavaType type, JsonDeserializer<Object> deser) {
             super(null, null, type, null, deser, null);
         }
 
+        /**
+         * Returns a copy bound to resolved value deserializer.
+         */
         @Override
         public SettableAnyProperty withValueDeserializer(JsonDeserializer<Object> deser) {
             // A JsonDeserializer cannot be resolved during the initialization phase of JsonObjectModule
             return new JsonObjectAnySetter(this.getType(), deser);
         }
 
+        /**
+         * Writes unknown property into JsonObject dynamic map.
+         */
         @Override
         protected void _set(Object instance, Object propName, Object value) throws Exception {
             ((JsonObject) instance).put((String) propName, value);
         }
 
+        /**
+         * No access fix is needed for JsonObject any-setter.
+         */
         @Override
         public void fixAccess(DeserializationConfig config) {
             // Do nothing
@@ -126,11 +150,17 @@ public interface JacksonModule {
 
     class JsonArrayDeserializer<T extends JsonArray> extends JsonDeserializer<T> {
         private final NodeRegistry.PojoInfo pi;
+        /**
+         * Creates deserializer for JsonArray or subclass.
+         */
         public JsonArrayDeserializer(Class<?> clazz) {
             super();
             this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
         }
 
+        /**
+         * Deserializes one JSON array into framework JsonArray type.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
@@ -154,10 +184,16 @@ public interface JacksonModule {
 
     class NodeValueDeserializer<T> extends JsonDeserializer<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        /**
+         * Creates deserializer backed by ValueCodec metadata.
+         */
         public NodeValueDeserializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
+        /**
+         * Deserializes raw value then decodes via ValueCodec.
+         */
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
@@ -168,7 +204,13 @@ public interface JacksonModule {
 
 
     /// Write
+    /**
+     * Serializer for JsonObject preserving framework semantics.
+     */
     class JsonObjectSerializer extends JsonSerializer<JsonObject> {
+        /**
+         * Serializes JsonObject entries as fields.
+         */
         @Override
         public void serialize(JsonObject jo, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
@@ -180,7 +222,13 @@ public interface JacksonModule {
         }
     }
 
+    /**
+     * Serializer for JsonArray preserving framework semantics.
+     */
     class JsonArraySerializer extends JsonSerializer<JsonArray> {
+        /**
+         * Serializes JsonArray elements as array items.
+         */
         @Override
         public void serialize(JsonArray ja, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
@@ -195,10 +243,16 @@ public interface JacksonModule {
 
     class NodeValueSerializer<T> extends JsonSerializer<T> {
         private final NodeRegistry.ValueCodecInfo valueCodecInfo;
+        /**
+         * Creates serializer backed by ValueCodec metadata.
+         */
         public NodeValueSerializer(NodeRegistry.ValueCodecInfo valueCodecInfo) {
             this.valueCodecInfo = valueCodecInfo;
         }
 
+        /**
+         * Encodes value via codec and serializes raw value.
+         */
         @Override
         public void serialize(T value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
             Object raw = valueCodecInfo.encode(value);
@@ -207,7 +261,13 @@ public interface JacksonModule {
     }
 
     /// NodeProperty
+    /**
+     * Annotation introspector mapping NodeProperty/NodeCreator to Jackson metadata.
+     */
     class NodePropertyAnnotationIntrospector extends JacksonAnnotationIntrospector {
+        /**
+         * Resolves serialization name from @NodeProperty.
+         */
         @Override
         public PropertyName findNameForSerialization(Annotated ann) {
             NodeProperty nf = ann.getAnnotation(NodeProperty.class);
@@ -217,6 +277,9 @@ public interface JacksonModule {
             return super.findNameForSerialization(ann);
         }
 
+        /**
+         * Resolves deserialization name from @NodeProperty.
+         */
         @Override
         public PropertyName findNameForDeserialization(Annotated ann) {
             NodeProperty nf = ann.getAnnotation(NodeProperty.class);
@@ -226,6 +289,9 @@ public interface JacksonModule {
             return super.findNameForDeserialization(ann);
         }
 
+        /**
+         * Resolves field aliases from @NodeProperty aliases.
+         */
         @Override
         public List<PropertyName> findPropertyAliases(Annotated ann) {
             NodeProperty nf = ann.getAnnotation(NodeProperty.class);

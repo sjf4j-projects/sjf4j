@@ -33,6 +33,9 @@ public class Nodes {
 
     /// Type-safe access and cross-type conversion
 
+    /**
+     * Converts a node to enum using strict conversion.
+     */
     @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
         if (node == null) return null;
@@ -41,6 +44,9 @@ public class Nodes {
         return Enum.valueOf(enumClazz, s);
     }
 
+    /**
+     * Converts a node to enum using lenient conversion.
+     */
     @SuppressWarnings("unchecked")
     public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
         if (node == null) return null;
@@ -74,6 +80,9 @@ public class Nodes {
         return node.toString();
     }
 
+    /**
+     * Converts a node to Character using strict conversion.
+     */
     public static Character toCharacter(Object node) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
@@ -81,6 +90,9 @@ public class Nodes {
         return s.length() > 0 ? s.charAt(0) : null;
     }
 
+    /**
+     * Converts a node to Character using lenient conversion.
+     */
     public static Character asCharacter(Object node) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
@@ -170,66 +182,99 @@ public class Nodes {
         return Numbers.toShort(n);
     }
 
+    /**
+     * Converts a node to Byte using strict conversion.
+     */
     public static Byte toByte(Object node) {
         Number n = toNumber(node);
         if (n == null) return null;
         return Numbers.toByte(n);
     }
 
+    /**
+     * Converts a node to Byte using lenient conversion.
+     */
     public static Byte asByte(Object node) {
         Number n = asNumber(node);
         if (n == null) return null;
         return Numbers.toByte(n);
     }
 
+    /**
+     * Converts a node to Double using strict conversion.
+     */
     public static Double toDouble(Object node) {
         Number n = toNumber(node);
         if (n == null) return null;
         return Numbers.toDouble(n);
     }
 
+    /**
+     * Converts a node to Double using lenient conversion.
+     */
     public static Double asDouble(Object node) {
         Number n = asNumber(node);
         if (n == null) return null;
         return Numbers.toDouble(n);
     }
 
+    /**
+     * Converts a node to Float using strict conversion.
+     */
     public static Float toFloat(Object node) {
         Number n = toNumber(node);
         if (n == null) return null;
         return Numbers.toFloat(n);
     }
 
+    /**
+     * Converts a node to Float using lenient conversion.
+     */
     public static Float asFloat(Object node) {
         Number n = asNumber(node);
         if (n == null) return null;
         return Numbers.toFloat(n);
     }
 
+    /**
+     * Converts a node to BigInteger using strict conversion.
+     */
     public static BigInteger toBigInteger(Object node) {
         Number n = toNumber(node);
         if (n == null) return null;
         return Numbers.toBigInteger(n);
     }
 
+    /**
+     * Converts a node to BigInteger using lenient conversion.
+     */
     public static BigInteger asBigInteger(Object node) {
         Number n = asNumber(node);
         if (n == null) return null;
         return Numbers.toBigInteger(n);
     }
 
+    /**
+     * Converts a node to BigDecimal using strict conversion.
+     */
     public static BigDecimal toBigDecimal(Object node) {
         Number n = toNumber(node);
         if (n == null) return null;
         return Numbers.toBigDecimal(n);
     }
 
+    /**
+     * Converts a node to BigDecimal using lenient conversion.
+     */
     public static BigDecimal asBigDecimal(Object node) {
         Number n = asNumber(node);
         if (n == null) return null;
         return Numbers.toBigDecimal(n);
     }
 
+    /**
+     * Converts a node to Boolean using strict conversion.
+     */
     public static Boolean toBoolean(Object node) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
@@ -237,6 +282,9 @@ public class Nodes {
         throw new JsonException("Expected Boolean, but got " + Types.name(node));
     }
 
+    /**
+     * Converts a node to Boolean using lenient conversion.
+     */
     public static Boolean asBoolean(Object node) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
@@ -258,6 +306,9 @@ public class Nodes {
         return null;
     }
 
+    /**
+     * Converts a node to JsonObject.
+     */
     public static JsonObject toJsonObject(Object node) {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
@@ -265,6 +316,9 @@ public class Nodes {
         return new JsonObject(node);
     }
 
+    /**
+     * Converts a node to Map with Object values.
+     */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
         if (node == null) return null;
@@ -283,6 +337,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Map");
     }
 
+    /**
+     * Converts a node to typed Map.
+     */
     @SuppressWarnings("unchecked")
     public static <T> Map<String, T> toMap(Object node, Class<T> clazz) {
         if (node == null) return null;
@@ -292,6 +349,9 @@ public class Nodes {
         return map;
     }
 
+    /**
+     * Converts a node to JsonArray.
+     */
     public static JsonArray toJsonArray(Object node) {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
@@ -299,6 +359,9 @@ public class Nodes {
         return new JsonArray(node);
     }
 
+    /**
+     * Converts a node to List with Object values.
+     */
     @SuppressWarnings("unchecked")
     public static List<Object> toList(Object node) {
         if (node == null) return null;
@@ -317,6 +380,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to List");
     }
 
+    /**
+     * Converts a node to typed List.
+     */
     @SuppressWarnings("unchecked")
     public static <T> List<T> toList(Object node, Class<T> clazz) {
         if (node == null) return null;
@@ -326,6 +392,9 @@ public class Nodes {
         return list;
     }
 
+    /**
+     * Converts a node to Object array.
+     */
     @SuppressWarnings("unchecked")
     public static Object[] toArray(Object node) {
         if (node == null) return null;
@@ -348,6 +417,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Array");
     }
 
+    /**
+     * Converts a node to typed array.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T[] toArray(Object node, Class<T> clazz) {
         if (node == null) return null;
@@ -369,6 +441,9 @@ public class Nodes {
         return (T[]) arr;
     }
 
+    /**
+     * Converts a node to Set with Object values.
+     */
     @SuppressWarnings("unchecked")
     public static Set<Object> toSet(Object node) {
         if (node == null) return null;
@@ -385,6 +460,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to Set");
     }
 
+    /**
+     * Converts a node to typed Set.
+     */
     @SuppressWarnings("unchecked")
     public static <T> Set<T> toSet(Object node, Class<T> clazz) {
         if (node == null) return null;
@@ -394,6 +472,9 @@ public class Nodes {
         return set;
     }
 
+    /**
+     * Converts a node to JOJO subtype.
+     */
     public static <T> T toJojo(Object node, Class<T> clazz) {
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
             throw new JsonException("Type mismatch: expected <JOJO>, but was " + clazz.getName());
@@ -401,6 +482,9 @@ public class Nodes {
         return toPojo(node, clazz);
     }
 
+    /**
+     * Converts a node to JAJO subtype.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T toJajo(Object node, Class<T> clazz) {
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
@@ -413,6 +497,9 @@ public class Nodes {
     }
 
 
+    /**
+     * Converts a node to POJO/JOJO/JAJO type.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
@@ -492,6 +579,9 @@ public class Nodes {
         return (T) pojo;
     }
 
+    /**
+     * Internal conversion with strict/lenient flag.
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object _to(Object node, Type type, boolean cross) {
         if (type == null || type == Object.class) return node;
@@ -549,11 +639,17 @@ public class Nodes {
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + clazz.getName());
     }
 
+    /**
+     * Converts a node to target type using strict conversion.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz) {
         return (T) _to(node, clazz, false);
     }
 
+    /**
+     * Converts a node to target type using lenient conversion.
+     */
     @SuppressWarnings({"unchecked"})
     public static <T> T as(Object node, Class<T> clazz) {
         return (T) _to(node, clazz, true);
@@ -601,6 +697,9 @@ public class Nodes {
         return false;
     }
 
+    /**
+     * Computes node-semantic hash code.
+     */
     public static int hash(Object node) {
         if (node == null) return 0;
         JsonType jt = JsonType.of(node);
@@ -1264,6 +1363,9 @@ public class Nodes {
     }
 
 
+    /**
+     * Returns true when object-like node contains the key.
+     */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
         Objects.requireNonNull(node, "node is null");
@@ -1284,6 +1386,9 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Returns true when array-like node contains index.
+     */
     public static boolean containsInArray(Object node, int idx) {
         int len = sizeInArray(node);
         idx = idx < 0 ? len + idx : idx;
@@ -1371,11 +1476,17 @@ public class Nodes {
          */
         public boolean insertable;
 
+        /**
+         * Resets access payload to defaults.
+         */
         public void reset() {
             node = null;
             type = Object.class;
             insertable = false;
         }
+        /**
+         * Sets access payload values.
+         */
         public void set(Object node, Type type, boolean insertable) {
             this.node = node;
             this.type = type;

@@ -25,6 +25,9 @@ import java.util.Set;
  */
 public class SimpleNodeFacade implements NodeFacade {
 
+    /**
+     * Converts node into target type.
+     */
     @Override
     public Object readNode(Object node, Type type) {
         try {
@@ -35,6 +38,9 @@ public class SimpleNodeFacade implements NodeFacade {
         }
     }
 
+    /**
+     * Deep-copies node into framework node representation.
+     */
     @Override
     public Object deepNode(Object node) {
         try {
@@ -45,6 +51,9 @@ public class SimpleNodeFacade implements NodeFacade {
         }
     }
 
+    /**
+     * Internal read conversion with binding path support.
+     */
     @SuppressWarnings("unchecked")
     public Object _readNode(Object node, Type type, PathSegment ps) {
         try {
@@ -120,6 +129,9 @@ public class SimpleNodeFacade implements NodeFacade {
     }
 
     // Object -> deep copied Object
+    /**
+     * Internal deep copy with binding path support.
+     */
     @SuppressWarnings("unchecked")
     public Object _deepNode(Object node, PathSegment ps) {
         try {
@@ -862,12 +874,18 @@ public class SimpleNodeFacade implements NodeFacade {
 
     /// Write
 
+    /**
+     * Converts runtime object into writable node tree.
+     */
     @Override
     public Object writeNode(Object node) {
         return _writeNode(node,
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
     }
 
+    /**
+     * Internal write conversion with binding path support.
+     */
     @SuppressWarnings("unchecked")
     public Object _writeNode(Object node, PathSegment ps) {
         try {

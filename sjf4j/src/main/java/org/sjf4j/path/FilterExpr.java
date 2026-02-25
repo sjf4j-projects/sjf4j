@@ -49,6 +49,9 @@ public interface FilterExpr {
         @Override
         public Object eval(Object rootNode, Object currentNode) { return value; }
 
+        /**
+         * Returns source-like literal rendering.
+         */
         @Override
         public String toString() {
             if (value == null) return "null";
@@ -72,6 +75,9 @@ public interface FilterExpr {
             this.path = JsonPath.compile(path);
         }
 
+        /**
+         * Evaluates this path against root or current context.
+         */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             if (path.head() instanceof PathSegment.Current) {
@@ -81,6 +87,9 @@ public interface FilterExpr {
             }
         }
 
+        /**
+         * Returns source-like path rendering.
+         */
         @Override
         public String toString() {
             return path.toString();
@@ -102,12 +111,18 @@ public interface FilterExpr {
             this.unary = unary;
         }
 
+        /**
+         * Evaluates unary truthiness operation.
+         */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             Object v = unary.eval(rootNode, currentNode);
             return truth == truth(v);
         }
 
+        /**
+         * Returns source-like unary rendering.
+         */
         @Override
         public String toString() {
             if (truth) return unary.toString();
@@ -132,6 +147,9 @@ public interface FilterExpr {
             this.op = o;
         }
 
+        /**
+         * Evaluates binary operator over both operands.
+         */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             Object a = left.eval(rootNode, currentNode);
@@ -150,6 +168,9 @@ public interface FilterExpr {
             return false;
         }
 
+        /**
+         * Returns source-like binary rendering.
+         */
         @Override
         public String toString() {
             return "(" + left + " " + op + " " + right + ")";
@@ -172,6 +193,9 @@ public interface FilterExpr {
             this.args = args;
         }
 
+        /**
+         * Evaluates function with evaluated argument values.
+         */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             Object[] values = new Object[args.size()];
@@ -194,11 +218,17 @@ public interface FilterExpr {
             this.pattern = pattern;
         }
 
+        /**
+         * Evaluates to compiled regex pattern.
+         */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             return pattern;
         }
 
+        /**
+         * Returns original regex literal source.
+         */
         @Override
         public String toString() {
             return source;

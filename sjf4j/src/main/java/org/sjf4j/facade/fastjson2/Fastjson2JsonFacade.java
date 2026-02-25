@@ -32,18 +32,30 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     private final JSONReader.Context readerContext;
     private final JSONWriter.Context writerContext;
 
+    /**
+     * Creates facade with default reader/writer features.
+     */
     public Fastjson2JsonFacade() {
         this(new JSONReader.Feature[0], new JSONWriter.Feature[0]);
     }
 
+    /**
+     * Creates facade with custom writer features.
+     */
     public Fastjson2JsonFacade(JSONWriter.Feature... writerFeatures) {
         this(new JSONReader.Feature[0], writerFeatures);
     }
 
+    /**
+     * Creates facade with custom reader features.
+     */
     public Fastjson2JsonFacade(JSONReader.Feature... readerFeatures) {
         this(readerFeatures, new JSONWriter.Feature[0]);
     }
 
+    /**
+     * Creates facade with custom reader and writer features.
+     */
     public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures,
                                JSONWriter.Feature[] writerFeatures) {
         Objects.requireNonNull(readerFeatures, "readerFeatures is null");
@@ -72,6 +84,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     }
 
 
+    /**
+     * Creates a streaming reader from Reader.
+     */
     @Override
     public Fastjson2Reader createReader(Reader input) {
         Objects.requireNonNull(input, "input is null");
@@ -79,6 +94,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         return new Fastjson2Reader(reader);
     }
 
+    /**
+     * Creates a streaming reader from InputStream.
+     */
     @Override
     public Fastjson2Reader createReader(InputStream input) {
         Objects.requireNonNull(input, "input is null");
@@ -86,6 +104,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         return new Fastjson2Reader(reader);
     }
 
+    /**
+     * Creates a streaming reader from JSON string.
+     */
     @Override
     public Fastjson2Reader createReader(String input) {
         Objects.requireNonNull(input, "input is null");
@@ -93,6 +114,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         return new Fastjson2Reader(reader);
     }
 
+    /**
+     * Creates a streaming reader from JSON bytes.
+     */
     @Override
     public Fastjson2Reader createReader(byte[] input) {
         Objects.requireNonNull(input, "input is null");
@@ -100,6 +124,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         return new Fastjson2Reader(reader);
     }
 
+    /**
+     * Reads JSON from reader into target type.
+     */
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -128,6 +155,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
     }
 
+    /**
+     * Reads JSON from input stream into target type.
+     */
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -156,6 +186,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
     }
 
+    /**
+     * Reads JSON from string into target type.
+     */
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -183,6 +216,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
     }
 
+    /**
+     * Reads JSON from bytes into target type.
+     */
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -213,6 +249,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
 
     /// Write
 
+    /**
+     * Creates a streaming writer to Writer.
+     */
     @Override
     public Fastjson2Writer createWriter(Writer output) {
         Objects.requireNonNull(output, "output is null");
@@ -220,6 +259,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         return new Fastjson2Writer(writer);     // Fake writer
     }
 
+    /**
+     * Creates a streaming writer to OutputStream.
+     */
     @Override
     public Fastjson2Writer createWriter(OutputStream output) {
         Objects.requireNonNull(output, "output is null");
@@ -228,6 +270,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     }
 
 
+    /**
+     * Writes node as JSON to writer.
+     */
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
@@ -261,6 +306,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     }
 
 
+    /**
+     * Writes node as JSON to output stream.
+     */
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output is null");
@@ -293,6 +341,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
     }
 
+    /**
+     * Serializes node as JSON string.
+     */
     @Override
     public String writeNodeAsString(Object node) {
         switch (streamingMode) {
@@ -320,6 +371,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
     }
 
+    /**
+     * Serializes node as JSON bytes.
+     */
     @Override
     public byte[] writeNodeAsBytes(Object node) {
         switch (streamingMode) {

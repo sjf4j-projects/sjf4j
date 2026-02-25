@@ -13,6 +13,10 @@ import java.util.List;
 public abstract class PathSegment {
     protected final PathSegment parent;
     protected final Class<?> clazz;
+
+    /**
+     * Creates a path segment with parent and container type.
+     */
     public PathSegment(PathSegment parent, Class<?> clazz) {
         this.parent = parent;
         this.clazz = clazz;
@@ -82,6 +86,10 @@ public abstract class PathSegment {
      */
     public static final class Name extends PathSegment {
         public final String name;
+
+        /**
+         * Creates a property-name segment.
+         */
         public Name(PathSegment parent, Class<?> clazz, String name) {
             super(parent, clazz);
             this.name = name;
@@ -103,10 +111,18 @@ public abstract class PathSegment {
      */
     public static final class Index extends PathSegment {
         public final int index;
+
+        /**
+         * Creates an array-index segment.
+         */
         public Index(PathSegment parent, Class<?> clazz, int index) {
             super(parent, clazz);
             this.index = index;
         }
+
+        /**
+         * Matches index with support for negative offsets.
+         */
         @Override
         public boolean matchIndex(int idx, int size) {
             int pindex = index < 0 ? size + index : index;
@@ -121,6 +137,9 @@ public abstract class PathSegment {
      * Represents a wildcard token (*) in a JSON path expression.
      */
     public static final class Wildcard extends PathSegment {
+        /**
+         * Creates a wildcard segment.
+         */
         public Wildcard(PathSegment parent, Class<?> clazz) {
             super(parent, clazz);
         }
@@ -136,10 +155,17 @@ public abstract class PathSegment {
         public final Integer start; // null allowed
         public final Integer end;   // null allowed
         public final Integer step;  // null allowed
+        /**
+         * Creates an array-slice segment.
+         */
         public Slice(PathSegment parent, Class<?> clazz, Integer s, Integer e, Integer st) {
             super(parent, clazz);
             start = s; end = e; step = st;
         }
+
+        /**
+         * Matches index against slice bounds and step.
+         */
         @Override
         public boolean matchIndex(int idx, int size) {
             if (start != null) {
@@ -156,6 +182,10 @@ public abstract class PathSegment {
             }
             return true;
         }
+
+        /**
+         * Returns slice expression without brackets.
+         */
         public String toExpr() {
             if (start == null) {
                 if (end == null) {
@@ -187,6 +217,10 @@ public abstract class PathSegment {
      */
     public static final class Union extends PathSegment {
         public final PathSegment[] union;
+
+        /**
+         * Creates a union segment.
+         */
         public Union(PathSegment parent, Class<?> clazz, PathSegment[] union) {
             super(parent, clazz);
             this.union = union;
@@ -223,6 +257,9 @@ public abstract class PathSegment {
     }
 
     public static final class Descendant extends PathSegment {
+        /**
+         * Creates a descendant segment.
+         */
         public Descendant(PathSegment parent, Class<?> clazz) {
             super(parent, clazz);
         }
@@ -237,6 +274,10 @@ public abstract class PathSegment {
     public static final class Function extends PathSegment {
         public final String name;
         public final List<String> args;
+
+        /**
+         * Creates a function-call segment.
+         */
         public Function(PathSegment parent, Class<?> clazz, String name, List<String> args) {
             super(parent, clazz);
             this.name = name;
@@ -253,6 +294,10 @@ public abstract class PathSegment {
      */
     public static final class Filter extends PathSegment {
         public final FilterExpr filterExpr;
+
+        /**
+         * Creates a filter-expression segment.
+         */
         public Filter(PathSegment parent, Class<?> clazz, FilterExpr filterExpr) {
             super(parent, clazz);
             this.filterExpr = filterExpr;
@@ -264,6 +309,9 @@ public abstract class PathSegment {
      * JSON Patch append token "-" used only in JSON Pointer paths.
      */
     public static final class Append extends PathSegment {
+        /**
+         * Creates an append segment for JSON Pointer '-'.
+         */
         public Append(PathSegment parent, Class<?> clazz) {
             super(parent, clazz);
         }

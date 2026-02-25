@@ -28,6 +28,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
 
     private transient SchemaStore outerStore;
 
+    /**
+     * Creates an empty ObjectSchema.
+     */
     public ObjectSchema() {
         super();
     }
@@ -318,6 +321,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
 
 
     // validate
+    /**
+     * Validates node and returns aggregated validation result.
+     */
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {
         InstancedNode instance = InstancedNode.infer(node);
@@ -328,6 +334,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // evaluate
+    /**
+     * Evaluates compiled keyword evaluators against instance.
+     */
     @Override
     public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
         if (evaluators == null)

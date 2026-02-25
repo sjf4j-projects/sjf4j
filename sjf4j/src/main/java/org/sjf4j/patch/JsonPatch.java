@@ -15,35 +15,56 @@ import java.util.Objects;
  */
 public class JsonPatch extends JsonArray {
 
+    /**
+     * Returns patch operation element type.
+     */
     @Override
     public Class<?> elementType() {
         return PatchOp.class;
     }
 
+    /**
+     * Creates an empty patch document.
+     */
     public JsonPatch() {
         super();
     }
 
+    /**
+     * Creates a patch document from operation list.
+     */
     public JsonPatch(List<PatchOp> ops) {
         super(ops);
     }
 
+    /**
+     * Parses patch document from JSON string.
+     */
     public static JsonPatch fromJson(String json) {
         return JsonPatch.fromJson(json, JsonPatch.class);
     }
 
+    /**
+     * Computes patch operations that transform source into target.
+     */
     public static JsonPatch diff(Object source, Object target) {
         List<PatchOp> ops = Patches.diff(source, target);
         return new JsonPatch(ops);
     }
 
 
+    /**
+     * Adds one patch operation.
+     */
     public void add(PatchOp op) {
         Objects.requireNonNull(op, "op is null");
         super.add(op);
     }
 
 
+    /**
+     * Applies all operations to target in order.
+     */
     public void apply(Object target) {
         Objects.requireNonNull(target, "target is null");
         forEach(v -> {

@@ -44,14 +44,23 @@ public interface ListSupplier {
     /// Build-in List Suppliers
 
     ListSupplier ArrayListSupplier = new ListSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create() {
             return new ArrayList<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create(int initialCapacity) {
             return new ArrayList<>(initialCapacity);
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create(Collection<T> target) {
             return new ArrayList<>(target);
@@ -59,14 +68,23 @@ public interface ListSupplier {
     };
 
     ListSupplier LinkedListSupplier = new ListSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create() {
             return new LinkedList<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create(int initialCapacity) {
             return new LinkedList<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create(Collection<T> target) {
             return new LinkedList<>(target);
@@ -74,14 +92,23 @@ public interface ListSupplier {
     };
 
     ListSupplier CopyOnWriteArrayListSupplier = new ListSupplier() {
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create() {
             return new CopyOnWriteArrayList<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create(int initialCapacity) {
             return new CopyOnWriteArrayList<>();
         }
+        /**
+         * Creates container instance from this supplier.
+         */
         @Override
         public <T> List<T> create(Collection<T> target) {
             return new CopyOnWriteArrayList<>(target);

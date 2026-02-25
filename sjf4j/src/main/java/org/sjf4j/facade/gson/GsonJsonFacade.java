@@ -29,6 +29,9 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
 
     private final Gson gson;
 
+    /**
+     * Creates facade with configured GsonBuilder and optional plugin module.
+     */
     public GsonJsonFacade(GsonBuilder gsonBuilder) {
         if (gsonBuilder == null) throw new IllegalArgumentException("GsonBuilder must not be null");
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
@@ -43,12 +46,18 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
 
     /// Read
 
+    /**
+     * Creates a streaming reader from java.io.Reader.
+     */
     @Override
     public GsonReader createReader(Reader input) throws IOException {
         Objects.requireNonNull(input, "input is null");
         return new GsonReader(gson.newJsonReader(input));
     }
 
+    /**
+     * Reads JSON from reader into target type.
+     */
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -76,6 +85,9 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         }
     }
 
+    /**
+     * Reads JSON from input stream into target type.
+     */
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -103,6 +115,9 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         }
     }
 
+    /**
+     * Reads JSON from string into target type.
+     */
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -130,6 +145,9 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         }
     }
 
+    /**
+     * Reads JSON from bytes into target type.
+     */
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -161,12 +179,18 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
 
     /// Write
 
+    /**
+     * Creates a streaming writer to java.io.Writer.
+     */
     @Override
     public GsonWriter createWriter(Writer output) throws IOException {
         Objects.requireNonNull(output, "output is null");
         return new GsonWriter(gson.newJsonWriter(output));
     }
 
+    /**
+     * Writes node as JSON to writer.
+     */
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");

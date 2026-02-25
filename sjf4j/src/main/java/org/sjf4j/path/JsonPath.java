@@ -83,6 +83,9 @@ public class JsonPath {
     }
 
 
+    /**
+     * Creates JsonPath from the last segment in a chain.
+     */
     public static JsonPath fromLast(PathSegment lastSegment) {
         Objects.requireNonNull(lastSegment, "lastSegment is null");
         PathSegment[] segments = Paths.linearize(lastSegment);
@@ -973,6 +976,9 @@ public class JsonPath {
         }
     }
 
+    /**
+     * Ensures path and writes value only when value is non-null.
+     */
     public Object ensurePutNonNull(Object container, Object value) {
         if (null != value) {
             return ensurePut(container, value);
@@ -991,6 +997,9 @@ public class JsonPath {
         return old;
     }
 
+    /**
+     * Computes and stores value when absent at this path.
+     */
     @SuppressWarnings("unchecked")
     public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
         Objects.requireNonNull(container, "container is null");

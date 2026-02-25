@@ -38,21 +38,33 @@ public class JsonArray extends JsonContainer {
         super();
     }
 
+    /**
+     * Creates JsonArray from existing list.
+     */
     public JsonArray(List<Object> nodeList) {
         this();
         setNodeList(nodeList);
     }
 
+    /**
+     * Creates JsonArray by copying another JsonArray.
+     */
     public JsonArray(JsonArray ja) {
         this();
         setNodeList(ja.nodeList);
     }
 
+    /**
+     * Creates JsonArray from set elements.
+     */
     public JsonArray(Set<Object> set) {
         this();
         setNodeList(Sjf4jConfig.global().listSupplier.create(set));
     }
 
+    /**
+     * Creates JsonArray from array elements.
+     */
     public JsonArray(Object[] array) {
         this();
         setNodeList(Sjf4jConfig.global().listSupplier.create(array));
@@ -107,6 +119,9 @@ public class JsonArray extends JsonContainer {
         return nodeList == null || nodeList.isEmpty() ? 0 : nodeList.hashCode();
     }
 
+    /**
+     * Compares arrays by runtime type and element sequence.
+     */
     @Override
     public boolean equals(Object target) {
 //        return Nodes.equals(this, target);

@@ -13,6 +13,9 @@ import java.util.TreeSet;
  */
 public class SimplePropertiesFacade implements PropertiesFacade {
 
+    /**
+     * Reads flat properties into JsonObject by path expansion.
+     */
     @Override
     public JsonObject readNode(Properties properties) {
         if (properties == null) throw new IllegalArgumentException("Properties must not be null");
@@ -26,6 +29,9 @@ public class SimplePropertiesFacade implements PropertiesFacade {
         return jo;
     }
 
+    /**
+     * Writes scalar nodes as flattened properties.
+     */
     @Override
     public void writeNode(Properties properties, Object node) {
         if (properties == null) throw new IllegalArgumentException("Properties must not be null");

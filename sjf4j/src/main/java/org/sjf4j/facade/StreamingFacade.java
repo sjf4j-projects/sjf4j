@@ -32,20 +32,12 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     /// Reader
 
     /**
-     * Creates a new FacadeReader from the provided Reader.
-     *
-     * @param input the Reader to read from
-     * @return a new FacadeReader instance
-     * @throws IOException if an I/O error occurs
+     * Creates a streaming reader from java.io.Reader.
      */
     R createReader(Reader input) throws IOException;
 
     /**
-     * Creates a new FacadeReader from the provided InputStream, using UTF-8 charset.
-     *
-     * @param input the InputStream to read from
-     * @return a new FacadeReader instance
-     * @throws IOException if an I/O error occurs
+     * Creates a streaming reader from InputStream using UTF-8.
      */
     default R createReader(InputStream input) throws IOException {
         Objects.requireNonNull(input, "input is null");
@@ -53,11 +45,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     }
 
     /**
-     * Creates a new FacadeReader from the provided String.
-     *
-     * @param input the String to read from
-     * @return a new FacadeReader instance
-     * @throws IOException if an I/O error occurs
+     * Creates a streaming reader from input string.
      */
     default R createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input is null");
@@ -65,11 +53,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     }
 
     /**
-     * Creates a new FacadeReader from the provided byte array, using UTF-8 charset.
-     *
-     * @param input the byte array to read from
-     * @return a new FacadeReader instance
-     * @throws IOException if an I/O error occurs
+     * Creates a streaming reader from UTF-8 bytes.
      */
     default R createReader(byte[] input) throws IOException {
         Objects.requireNonNull(input, "input is null");
@@ -77,13 +61,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     }
 
     /**
-     * Reads a JSON node of the specified type from the provided Reader.
-     *
-     * @param input the Reader to read from
-     * @param type the target type of the node
-     * @return the read JSON node
-     * @throws IllegalArgumentException if input is null
-     * @throws JsonException if reading fails
+     * Reads one node from reader into target type.
      */
     default Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -99,13 +77,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     }
 
     /**
-     * Reads a JSON node of the specified type from the provided InputStream.
-     *
-     * @param input the InputStream to read from
-     * @param type the target type of the node
-     * @return the read JSON node
-     * @throws IllegalArgumentException if input is null
-     * @throws JsonException if reading fails
+     * Reads one node from input stream into target type.
      */
     default Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -121,13 +93,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     }
 
     /**
-     * Reads a JSON node of the specified type from the provided String.
-     *
-     * @param input the String to read from
-     * @param type the target type of the node
-     * @return the read JSON node
-     * @throws IllegalArgumentException if input is null
-     * @throws JsonException if reading fails
+     * Reads one node from string into target type.
      */
     default Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -142,6 +108,9 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         }
     }
 
+    /**
+     * Reads one node from bytes into target type.
+     */
     default Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
         try {
@@ -159,26 +128,21 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     /// Writer
 
     /**
-     * Creates a new FacadeWriter from the provided Writer.
-     *
-     * @param output the Writer to write to
-     * @return a new FacadeWriter instance
-     * @throws IOException if an I/O error occurs
+     * Creates a streaming writer to java.io.Writer.
      */
     W createWriter(Writer output) throws IOException;
 
     /**
-     * Creates a new FacadeWriter from the provided OutputStream, using UTF-8 charset.
-     *
-     * @param output the OutputStream to write to
-     * @return a new FacadeWriter instance
-     * @throws IOException if an I/O error occurs
+     * Creates a streaming writer to OutputStream using UTF-8.
      */
     default W createWriter(OutputStream output) throws IOException {
         return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
 
+    /**
+     * Writes one node to writer.
+     */
     default void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
         try {
@@ -193,17 +157,26 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         }
     }
 
+    /**
+     * Writes one node to output stream.
+     */
     default void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output is null");
         writeNode(new OutputStreamWriter(output, StandardCharsets.UTF_8), node);
     }
 
+    /**
+     * Serializes one node to string.
+     */
     default String writeNodeAsString(Object node) {
         StringWriter output = new StringWriter();
         writeNode(output, node);
         return output.toString();
     }
 
+    /**
+     * Serializes one node to bytes.
+     */
     default byte[] writeNodeAsBytes(Object node) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         writeNode(output, node);

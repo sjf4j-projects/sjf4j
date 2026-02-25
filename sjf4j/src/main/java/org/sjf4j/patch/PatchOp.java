@@ -29,8 +29,14 @@ public final class PatchOp {
     private Object value;             // Optional
     private JsonPointer from;         // Optional
 
+    /**
+     * Creates an empty patch operation.
+     */
     public PatchOp() {}
 
+    /**
+     * Creates a patch operation with all fields.
+     */
     public PatchOp(String op, JsonPointer path, Object value, JsonPointer from) {
         this.op = op;
         this.path = path;
@@ -38,22 +44,37 @@ public final class PatchOp {
         this.from = from;
     }
 
+    /**
+     * Returns operation name.
+     */
     public String getOp() {
         return op;
     }
 
+    /**
+     * Returns target path.
+     */
     public JsonPointer getPath() {
         return path;
     }
 
+    /**
+     * Returns operation value payload.
+     */
     public Object getValue() {
         return value;
     }
 
+    /**
+     * Returns source path for move/copy operations.
+     */
     public JsonPointer getFrom() {
         return from;
     }
 
+    /**
+     * Applies this operation to target node.
+     */
     public void apply(Object target) {
         PatchOpRegistry.apply(target, this);
     }

@@ -33,7 +33,9 @@ public abstract class JsonContainer {
      */
     public abstract int size();
 
-
+    /**
+     * Compares this container with node-semantic equality.
+     */
     public boolean nodeEquals(Object target) {
         return Nodes.equals(this, target);
     }
@@ -46,16 +48,16 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Returns a string representation of this container for debugging purposes.
-     * Uses {@link Nodes#inspect(Object)} to generate the string.
-     *
-     * @return a debug string representation of the container
+     * Returns a debug string using node inspection output.
      */
     public String inspect() {
         return Nodes.inspect(this);
     }
 
 
+    /**
+     * Removes null-valued object entries recursively.
+     */
     public void deepPruneNulls() {
         NodeWalker.walk(this, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
                 (path, node) -> {
@@ -81,10 +83,7 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Checks if a value is null at the specified JSON path.
-     *
-     * @param path the JSON path to check
-     * @return true if a non-null value exists at the path, false otherwise
+     * Returns true when the path exists and points to a non-null value.
      */
     public boolean hasNonNullByPath(String path) {
         return JsonPath.compile(path).hasNonNull(this);
@@ -771,18 +770,30 @@ public abstract class JsonContainer {
     }
 
     // Set
+    /**
+     * Returns a Set value by path using strict conversion.
+     */
     public Set<Object> getSetByPath(String path) {
         return JsonPath.compile(path).getSet(this);
     }
 
+    /**
+     * Returns a Set value by path with default.
+     */
     public Set<Object> getSetByPath(String path, Set<Object> defaultValue) {
         return JsonPath.compile(path).getSet(this, defaultValue);
     }
 
+    /**
+     * Returns a typed Set value by path using strict conversion.
+     */
     public <T> Set<T> getSetByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).getSet(this, clazz);
     }
 
+    /**
+     * Returns a typed Set value by path with default.
+     */
     public <T> Set<T> getSetByPath(String path, Class<T> clazz, Set<T> defaultValue) {
         return JsonPath.compile(path).getSet(this, clazz, defaultValue);
     }
@@ -791,12 +802,7 @@ public abstract class JsonContainer {
     // Clazz
 
     /**
-     * Gets the value at the specified JSON path and converts it to the specified class type.
-     *
-     * @param <T> the type to convert to
-     * @param path the JSON path to get the value from
-     * @param clazz the class to convert the value to
-     * @return the value at the path converted to the specified class, or null if it doesn't exist or can't be converted
+     * Returns a path value converted to the target type.
      */
     public <T> T getByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).get(this, clazz);
@@ -804,13 +810,7 @@ public abstract class JsonContainer {
 
 
     /**
-     * Gets the value at the specified JSON path and converts it to the inferred class type.
-     * This is a convenience method that uses reified type parameters for type inference.
-     *
-     * @param <T> the type to convert to
-     * @param path the JSON path to get the value from
-     * @param reified an empty array of the target type (used for type inference only)
-     * @return the value at the path converted to the specified class, or null if it doesn't exist or can't be converted
+     * Returns a path value converted to the inferred type.
      */
     @SafeVarargs
     public final <T> T getByPath(String path, T... reified) {
@@ -818,26 +818,14 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Converts the value at the specified JSON path to the specified class type.
-     *
-     * @param <T> the type to convert to
-     * @param path the JSON path to get the value from
-     * @param clazz the class to convert the value to
-     * @return the value at the path converted to the specified class, or null if it doesn't exist
+     * Returns a path value converted to target type leniently.
      */
     public <T> T getAsByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).getAs(this, clazz);
     }
 
     /**
-     * Converts the value at the specified JSON path to the inferred class type.
-     * This is a convenience method that uses reified type parameters for type inference.
-     *
-     * @param <T> the type to convert to
-     * @param path the JSON path to get the value from
-     * @param reified an empty array of the target type (used for type inference only)
-     * @return the value at the path converted to the specified class, or null if it doesn't exist
-     * @throws IllegalArgumentException if reified is not empty
+     * Returns a path value converted to inferred type leniently.
      */
     @SafeVarargs
     public final <T> T getAsByPath(String path, T... reified) {
@@ -847,72 +835,88 @@ public abstract class JsonContainer {
     // Put by path
 
     /**
-     * Puts a value at the specified JSON path, creating intermediate objects/arrays if needed.
-     *
-     * @param path the JSON path to put the value at
-     * @param value the value to put
+     * Ensures path containers exist and puts value.
      */
     public void ensurePutByPath(String path, Object value) {
         JsonPath.compile(path).ensurePut(this, value);
     }
 
     /**
-     * Puts a value at the specified JSON path only if the value is non-null,
-     * creating intermediate objects/arrays if needed.
-     *
-     * @param path the JSON path to put the value at
-     * @param value the value to put (must be non-null)
+     * Ensures path and puts value only when non-null.
      */
     public void ensurePutNonNullByPath(String path, Object value) {
         JsonPath.compile(path).ensurePutNonNull(this, value);
     }
 
     /**
-     * Puts a value at the specified JSON path only if no value exists at that path,
-     * creating intermediate objects/arrays if needed.
-     *
-     * @param path the JSON path to put the value at
-     * @param value the value to put
+     * Ensures path and puts value when absent.
      */
     public void ensurePutIfAbsentByPath(String path, Object value) {
         JsonPath.compile(path).ensurePutIfAbsent(this, value);
     }
 
+    /**
+     * Adds value at path using JSON Patch add semantics.
+     */
     public void addByPath(String path, Object value) {
         JsonPath.compile(path).add(this, value);
     }
 
+    /**
+     * Replaces value at path using JSON Patch replace semantics.
+     */
     public void replaceByPath(String path, Object value) {
         JsonPath.compile(path).replace(this, value);
     }
 
+    /**
+     * Removes value at path using JSON Patch remove semantics.
+     */
     public void removeByPath(String path) {
         JsonPath.compile(path).remove(this);
     }
 
     /// Find
 
+    /**
+     * Finds all path matches.
+     */
     public List<Object> findByPath(String path) {
         return JsonPath.compile(path).find(this);
     }
 
+    /**
+     * Finds all path matches converted to target type.
+     */
     public <T> List<T> findByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).find(this, clazz);
     }
 
+    /**
+     * Finds all path matches converted leniently.
+     */
     public <T> List<T> findAsByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).findAs(this, clazz);
     }
 
     /// Eval
+    /**
+     * Evaluates path and returns scalar or list result.
+     */
     public Object evalByPath(String path) {
         return JsonPath.compile(path).eval(this);
     }
 
+    /**
+     * Evaluates path and converts result to target type.
+     */
     public <T> T evalByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).eval(this, clazz);
     }
 
+    /**
+     * Evaluates path and converts result leniently.
+     */
     public <T> T evalAsByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).evalAs(this, clazz);
     }
@@ -921,19 +925,14 @@ public abstract class JsonContainer {
     /// Walk
 
     /**
-     * Traverses the JSON container using the specified visitor function.
-     *
-     * @param visitor the function to apply to each node during traversal
+     * Walks all nodes with default traversal options.
      */
     public void walk(BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
         NodeWalker.walk(this, visitor);
     }
 
     /**
-     * Traverses the JSON container using the specified visitor function and target.
-     *
-     * @param target the target nodes to visit (objects, arrays, values, or all)
-     * @param visitor the function to apply to each node during traversal
+     * Walks nodes filtered by target kind.
      */
     public void walk(NodeWalker.Target target,
                      BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
@@ -941,11 +940,7 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Traverses the JSON container using the specified visitor function, target, and order.
-     *
-     * @param target the target nodes to visit (objects, arrays, values, or all)
-     * @param order the traversal order (depth-first or breadth-first)
-     * @param visitor the function to apply to each node during traversal
+     * Walks nodes with specified target and order.
      */
     public void walk(NodeWalker.Target target, NodeWalker.Order order,
                      BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
@@ -953,12 +948,7 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Traverses the JSON container using the specified visitor function, target, order, and maximum depth.
-     *
-     * @param target the target nodes to visit (objects, arrays, values, or all)
-     * @param order the traversal order (depth-first or breadth-first)
-     * @param maxDepth the maximum depth to traverse
-     * @param visitor the function to apply to each node during traversal
+     * Walks nodes with specified target, order, and max depth.
      */
     public void walk(NodeWalker.Target target, NodeWalker.Order order, int maxDepth,
                      BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
@@ -967,62 +957,39 @@ public abstract class JsonContainer {
 
     /// Patch
 
+    /**
+     * Applies a JSON Patch document to this container.
+     */
     public void apply(JsonPatch patch) {
         patch.apply(this);
     }
 
     /**
-     * Merges the specified {@code mergePatch} into this {@code JsonObject}.
-     *
-     * <p>The merge is applied in place. Objects and arrays are merged recursively
-     * according to {@link Patches#merge(Object, Object, boolean, boolean)}.
-     *
-     * @param mergePatch    the patch object to merge
-     * @param overwrite     whether existing non-null values should be replaced
-     * @param deepCopy      whether composite values from the patch should be deep-copied
+     * Merges patch into this container using custom deep-merge semantics (not RFC 7386).
+     * overwrite controls replacement of existing non-null values; deepCopy controls copying of
+     * composite values taken from patch.
      */
     public void merge(Object mergePatch, boolean overwrite, boolean deepCopy) {
         Patches.merge(this, mergePatch, overwrite, deepCopy);
     }
 
     /**
-     * Merges the specified {@code mergePatch} into this {@code JsonObject}.
-     *
-     * <p>This is equivalent to {@link #merge(Object, boolean, boolean)} with
-     * {@code overwrite=true} and {@code deepCopy=false}.
-     *
-     * @param mergePatch    the patch object to merge
+     * Merges patch with overwrite=true and deepCopy=false.
      */
     public void merge(Object mergePatch) {
         merge(mergePatch, true, false);
     }
 
     /**
-     * Merges the specified {@code mergePatch} into this {@code JsonObject},
-     * making deep copies of any composite values from the patch.
-     *
-     * <p>This is equivalent to {@link #merge(Object, boolean, boolean)} with
-     * {@code overwrite=true} and {@code deepCopy=true}.
-     *
-     * @param mergePatch    the patch object to merge
+     * Merges patch with overwrite=true and deepCopy=true.
      */
     public void mergeWithCopy(Object mergePatch) {
         merge(mergePatch, true, true);
     }
 
     /**
-     * Applies a <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386 (JSON Merge Patch)</a>
-     * to this {@code JsonObject}.
-     *
-     * <p>Strictly follows the semantics defined in RFC 7386:
-     * <ul>
-     *     <li>Objects are merged by key recursively</li>
-     *     <li>Arrays are replaced as a whole</li>
-     *     <li>A {@code null} value deletes the corresponding target member</li>
-     *     <li>No deep copy is performed</li>
-     * </ul>
-     *
-     * @param mergePatch the JSON Merge Patch to apply
+     * Applies RFC 7386 JSON Merge Patch semantics.
+     * Use this when null means delete and arrays should be replaced as a whole.
      */
     public void mergeRfc7386(Object mergePatch) {
         Patches.mergeRfc7386(this, mergePatch);

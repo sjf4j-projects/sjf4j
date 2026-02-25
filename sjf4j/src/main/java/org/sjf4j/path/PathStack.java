@@ -19,6 +19,9 @@ public final class PathStack {
     private Class<?>[] clazzes;
     private int size;
 
+    /**
+     * Creates a PathStack with default capacity.
+     */
     public PathStack() {
         this(16);
     }
@@ -34,6 +37,9 @@ public final class PathStack {
         this.clazzes = new Class<?>[capacity];
     }
 
+    /**
+     * Returns number of pushed segments.
+     */
     public int size() {
         return size;
     }
@@ -64,6 +70,9 @@ public final class PathStack {
         size++;
     }
 
+    /**
+     * Pushes an index segment with optional owning class.
+     */
     public void pushIndex(Class<?> clazz, int index) {
         ensureCapacity(size + 1);
         kinds[size] = KIND_INDEX;

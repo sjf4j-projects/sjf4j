@@ -71,6 +71,9 @@ public interface Evaluator {
         private final URI uri;
         private final JsonPointer refPath;
         private final String anchor;
+        /**
+         * Creates evaluator for $ref target.
+         */
         public RefEvaluator(URI uri, JsonPointer refPath, String anchor) {
             this.uri = uri;
             this.refPath = refPath;
@@ -110,6 +113,9 @@ public interface Evaluator {
         private final URI uri;
         private final JsonPointer refPath;
         private final String dynamicAnchor;
+        /**
+         * Creates evaluator for $dynamicRef target.
+         */
         public DynamicRefEvaluator(URI uri, JsonPointer refPath, String dynamicAnchor) {
             this.uri = uri;
             this.refPath = refPath;
@@ -155,6 +161,9 @@ public interface Evaluator {
         private final String[] types;
         private final JsonType[] jsonTypes;
 
+        /**
+         * Creates evaluator for type keyword value.
+         */
         public TypeEvaluator(Object type) {
             Objects.requireNonNull(type, "type is null");
             JsonType jt = JsonType.of(type);
@@ -218,6 +227,9 @@ public interface Evaluator {
     // const
     final class ConstEvaluator implements Evaluator {
         private final Object constValue;
+        /**
+         * Creates evaluator for const keyword.
+         */
         public ConstEvaluator(Object constValue) {
             this.constValue = constValue;
         }
@@ -239,6 +251,9 @@ public interface Evaluator {
     // enum
     final class EnumEvaluator implements Evaluator {
         private final Object[] enumValues;
+        /**
+         * Creates evaluator for enum keyword values.
+         */
         public EnumEvaluator(Object[] enumValues) {
             this.enumValues = Objects.requireNonNull(enumValues);
         }
@@ -313,6 +328,9 @@ public interface Evaluator {
         private final boolean isIntegerDivisor;
         private final long divisorLong;
         private final double divisorDouble;
+        /**
+         * Creates evaluator for multipleOf divisor.
+         */
         public MultipleOfEvaluator(Number multipleOf) {
             this.multipleOf = multipleOf;
             this.divisor = Numbers.normalizeDecimal(multipleOf);
@@ -361,6 +379,9 @@ public interface Evaluator {
     final class StringEvaluator implements Evaluator {
         private final Integer minLength;
         private final Integer maxLength;
+        /**
+         * Creates evaluator for string length constraints.
+         */
         public StringEvaluator(Integer minLength, Integer maxLength) {
             this.minLength = minLength;
             this.maxLength = maxLength;
@@ -390,6 +411,9 @@ public interface Evaluator {
     final class PatternEvaluator implements Evaluator {
         private final String pattern;
         private final Pattern pn;
+        /**
+         * Creates evaluator for pattern keyword.
+         */
         public PatternEvaluator(String pattern) {
             this.pattern = Objects.requireNonNull(pattern);
             this.pn = Pattern.compile(pattern);
@@ -415,6 +439,9 @@ public interface Evaluator {
     final class FormatEvaluator implements Evaluator {
         private final String format;
         private final FormatValidator formatValidator;
+        /**
+         * Creates evaluator for format keyword.
+         */
         public FormatEvaluator(String format) {
             this.format = Objects.requireNonNull(format, "format is null");
             this.formatValidator = FormatValidator.of(format);
@@ -441,6 +468,9 @@ public interface Evaluator {
     final class ObjectEvaluator implements Evaluator {
         private final Integer minProperties;
         private final Integer maxProperties;
+        /**
+         * Creates evaluator for object size constraints.
+         */
         public ObjectEvaluator(Integer minProperties, Integer maxProperties) {
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
@@ -556,6 +586,9 @@ public interface Evaluator {
     final class RequiredEvaluator implements Evaluator {
         private final String[] required;
         private final Map<String, String[]> dependentRequired;
+        /**
+         * Creates evaluator for required/dependentRequired.
+         */
         public RequiredEvaluator(String[] required, Map<String, String[]> dependentRequired) {
             this.required = required;
             this.dependentRequired = dependentRequired;
@@ -602,6 +635,9 @@ public interface Evaluator {
     // dependentSchemas
     final class DependentSchemasEvaluator implements Evaluator {
         private final Map<String, JsonSchema> dependentSchemas;
+        /**
+         * Creates evaluator for dependentSchemas.
+         */
         public DependentSchemasEvaluator(Map<String, JsonSchema> dependentSchemas) {
             this.dependentSchemas = dependentSchemas;
         }
@@ -630,6 +666,9 @@ public interface Evaluator {
     // propertyNames
     final class PropertyNamesEvaluator implements Evaluator {
         private final JsonSchema propertyNamesSchema;
+        /**
+         * Creates evaluator for propertyNames schema.
+         */
         public PropertyNamesEvaluator(JsonSchema propertyNamesSchema) {
             this.propertyNamesSchema = propertyNamesSchema;
         }
@@ -661,6 +700,9 @@ public interface Evaluator {
         private final Integer minItems;
         private final Integer maxItems;
         private final Boolean uniqueItems;
+        /**
+         * Creates evaluator for array size/uniqueness constraints.
+         */
         public ArrayEvaluator(Integer minItems, Integer maxItems, Boolean uniqueItems) {
             this.minItems = minItems;
             this.maxItems = maxItems;
@@ -706,6 +748,9 @@ public interface Evaluator {
     final class ItemsEvaluator implements Evaluator {
         private final JsonSchema itemsSchema;
         private final JsonSchema[] prefixItemsSchemas;
+        /**
+         * Creates evaluator for items/prefixItems schemas.
+         */
         public ItemsEvaluator(JsonSchema itemsSchema, JsonSchema[] prefixItemsSchemas) {
             this.itemsSchema = itemsSchema;
             this.prefixItemsSchemas = prefixItemsSchemas;
@@ -751,6 +796,9 @@ public interface Evaluator {
         private final JsonSchema containsSchema;
         private final Integer minContains;
         private final Integer maxContains;
+        /**
+         * Creates evaluator for contains/minContains/maxContains.
+         */
         public ContainsEvaluator(JsonSchema containsSchema, Integer minContains, Integer maxContains) {
             this.containsSchema = containsSchema;
             this.minContains = minContains == null ? 1 : minContains;
@@ -808,6 +856,9 @@ public interface Evaluator {
         private final JsonSchema ifSchema;
         private final JsonSchema thenSchema;
         private final JsonSchema elseSchema;
+        /**
+         * Creates evaluator for if/then/else keywords.
+         */
         public IfThenElseEvaluator(JsonSchema ifSchema, JsonSchema thenSchema, JsonSchema elseSchema) {
             this.ifSchema = ifSchema;
             this.thenSchema = thenSchema;
@@ -852,6 +903,9 @@ public interface Evaluator {
     // allOf
     final class AllOfEvaluator implements Evaluator {
         private final JsonSchema[] allOfSchemas;
+        /**
+         * Creates evaluator for allOf keyword.
+         */
         public AllOfEvaluator(JsonSchema[] allOfSchemas) {
             this.allOfSchemas = allOfSchemas;
         }
@@ -889,6 +943,9 @@ public interface Evaluator {
     // anyOf
     final class AnyOfEvaluator implements Evaluator {
         private final JsonSchema[] anyOfSchemas;
+        /**
+         * Creates evaluator for anyOf keyword.
+         */
         public AnyOfEvaluator(JsonSchema[] anyOfSchemas) {
             this.anyOfSchemas = anyOfSchemas;
         }
@@ -932,6 +989,9 @@ public interface Evaluator {
     // oneOf
     final class OneOfEvaluator implements Evaluator {
         private final JsonSchema[] oneOfSchemas;
+        /**
+         * Creates evaluator for oneOf keyword.
+         */
         public OneOfEvaluator(JsonSchema[] oneOfSchemas) {
             this.oneOfSchemas = oneOfSchemas;
         }
@@ -974,6 +1034,9 @@ public interface Evaluator {
     // not
     final class NotEvaluator implements Evaluator {
         private final JsonSchema notSchema;
+        /**
+         * Creates evaluator for not keyword.
+         */
         public NotEvaluator(JsonSchema notSchema) {
             this.notSchema = notSchema;
         }

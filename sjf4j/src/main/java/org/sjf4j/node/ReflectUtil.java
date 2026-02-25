@@ -48,6 +48,9 @@ public class ReflectUtil {
 
     /// POJO
 
+    /**
+     * Returns true when class can be treated as a POJO node type.
+     */
     public static boolean  isPojoCandidate(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
                 Number.class.isAssignableFrom(clazz) || clazz == Boolean.class) {
@@ -160,6 +163,9 @@ public class ReflectUtil {
         return new NodeRegistry.PojoInfo(clazz, creatorInfo, fields, aliasFields);
     }
 
+    /**
+     * Resolves effective field name from supported annotations.
+     */
     public static String getFieldName(Field field) {
         String fname = getNodeProperty(field);
         if (fname != null && !fname.isEmpty()) return fname;
@@ -170,6 +176,9 @@ public class ReflectUtil {
         return field.getName();
     }
 
+    /**
+     * Resolves field aliases from supported annotations.
+     */
     public static String[] getFieldAliases(Field field) {
         String[] aliases = getNodeAliases(field);
         if (aliases != null && aliases.length > 0) return aliases;
@@ -180,6 +189,9 @@ public class ReflectUtil {
         return null;
     }
 
+    /**
+     * Resolves constructor/method parameter name.
+     */
     public static String getParameterName(Parameter parameter) {
         String fname = getNodeProperty(parameter);
         if (fname != null && !fname.isEmpty()) return fname;
@@ -191,6 +203,9 @@ public class ReflectUtil {
         return null;
     }
 
+    /**
+     * Resolves constructor/method parameter aliases.
+     */
     public static String[] getParameterAliases(Parameter parameter) {
         String[] aliases = getNodeAliases(parameter);
         if (aliases != null && aliases.length > 0) return aliases;
@@ -623,6 +638,9 @@ public class ReflectUtil {
         METHOD_RECORD_COMPONENT_GET_ANNOTATION = recordComponentGetAnnotation;
     }
 
+    /**
+     * Returns true if class is a Java record.
+     */
     public static boolean isRecord(Class<?> clazz) {
         if (METHOD_IS_RECORD == null) return false;
         try {

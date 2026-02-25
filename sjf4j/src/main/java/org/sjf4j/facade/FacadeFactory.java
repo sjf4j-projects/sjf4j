@@ -44,10 +44,7 @@ public class FacadeFactory {
     private static final boolean SNAKE_PRESENT;
 
     /**
-     * Static initialization block that detects the presence of supported libraries in the classpath.
-     * <p>
-     * This block attempts to load key classes from each supported library to determine
-     * which libraries are available for use.
+     * Detects optional facade dependencies available in classpath.
      */
     static {
         ClassLoader loader = FacadeFactory.class.getClassLoader();
@@ -82,12 +79,7 @@ public class FacadeFactory {
     }
 
     /**
-     * Gets the default JSON facade implementation based on the available libraries.
-     * <p>
-     * The method follows this priority order: Jackson > Gson > Fastjson2.
-     *
-     * @return The default JSON facade implementation
-     * @throws JsonException If no supported JSON library is found in the classpath
+     * Returns default JSON facade by priority: Jackson > Gson > Fastjson2 > Simple.
      */
     public static JsonFacade<?, ?> getDefaultJsonFacade() {
         if (JACKSON_PRESENT) {
@@ -104,40 +96,43 @@ public class FacadeFactory {
     }
 
     /**
-     * Creates a new Jackson JSON facade instance.
-     *
-     * @return A new Jackson JSON facade instance
+     * Creates Jackson JSON facade with default ObjectMapper.
      */
     public static JsonFacade<?, ?> createJacksonFacade() {
         return createJacksonFacade(new ObjectMapper());
     }
 
+    /**
+     * Creates Jackson JSON facade with provided ObjectMapper.
+     */
     public static JsonFacade<?, ?> createJacksonFacade(ObjectMapper objectMapper) {
         return new JacksonJsonFacade(objectMapper);
     }
 
     /**
-     * Creates a new Gson JSON facade instance.
-     *
-     * @return A new Gson JSON facade instance
+     * Creates Gson JSON facade with default GsonBuilder.
      */
     public static JsonFacade<?, ?> createGsonFacade() {
         return createGsonFacade(new GsonBuilder());
     }
 
+    /**
+     * Creates Gson JSON facade with provided GsonBuilder.
+     */
     public static JsonFacade<?, ?> createGsonFacade(GsonBuilder gsonBuilder) {
         return new GsonJsonFacade(gsonBuilder);
     }
 
     /**
-     * Creates a new Fastjson2 JSON facade instance.
-     *
-     * @return A new Fastjson2 JSON facade instance
+     * Creates Fastjson2 JSON facade with default features.
      */
     public static JsonFacade<?, ?> createFastjson2Facade() {
         return new Fastjson2JsonFacade();
     }
 
+    /**
+     * Creates Fastjson2 JSON facade with reader/writer features.
+     */
     public static JsonFacade<?, ?> createFastjson2Facade(
             JSONReader.Feature[] readerFeatures,
             JSONWriter.Feature[] writerFeatures) {
@@ -145,9 +140,7 @@ public class FacadeFactory {
     }
 
     /**
-     * Creates a new Simple build-in JSON facade instance.
-     *
-     * @return A new Simple build-in JSON facade instance
+     * Creates built-in simple JSON facade.
      */
     public static JsonFacade<?, ?> createSimpleJsonFacade() {
         return new SimpleJsonFacade();
@@ -156,12 +149,7 @@ public class FacadeFactory {
 
 
     /**
-     * Gets the default YAML facade implementation based on the available libraries.
-     * <p>
-     * Currently, this method only checks for SnakeYAML.
-     *
-     * @return The default YAML facade implementation
-     * @throws JsonException If no supported YAML library is found in the classpath
+     * Returns default YAML facade (SnakeYAML).
      */
     public static YamlFacade<?, ?> getDefaultYamlFacade() {
         if (SNAKE_PRESENT) {
@@ -172,14 +160,15 @@ public class FacadeFactory {
     }
 
     /**
-     * Creates a new SnakeYAML facade instance.
-     *
-     * @return A new SnakeYAML facade instance
+     * Creates SnakeYAML facade with default options.
      */
     public static YamlFacade<?, ?> createSnakeFacade() {
         return new SnakeYamlFacade();
     }
 
+    /**
+     * Creates SnakeYAML facade with custom loader/dumper options.
+     */
     public static YamlFacade<?, ?> createSnakeFacade(
             LoaderOptions loaderOptions,
             DumperOptions dumperOptions) {
@@ -188,18 +177,14 @@ public class FacadeFactory {
 
 
     /**
-     * Gets the default Properties facade implementation.
-     *
-     * @return The default Properties facade implementation
+     * Returns default properties facade.
      */
     public static PropertiesFacade getDefaultPropertiesFacade() {
         return new SimplePropertiesFacade();
     }
 
     /**
-     * Gets the default Node facade implementation.
-     *
-     * @return The default Node facade implementation
+     * Returns default node facade.
      */
     public static NodeFacade getDefaultNodeFacade() {
         return new SimpleNodeFacade();

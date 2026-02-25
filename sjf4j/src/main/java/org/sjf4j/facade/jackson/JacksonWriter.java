@@ -14,40 +14,64 @@ public class JacksonWriter implements StreamingWriter {
 
     private final JsonGenerator gen;
 
+    /**
+     * Creates writer adapter from Jackson JsonGenerator.
+     */
     public JacksonWriter(JsonGenerator gen) {
         this.gen = gen;
     }
 
+    /**
+     * Starts object scope.
+     */
     @Override
     public void startObject() throws IOException {
         gen.writeStartObject();
     }
 
+    /**
+     * Ends object scope.
+     */
     @Override
     public void endObject() throws IOException {
         gen.writeEndObject();
     }
 
+    /**
+     * Starts array scope.
+     */
     @Override
     public void startArray() throws IOException {
         gen.writeStartArray();
     }
 
+    /**
+     * Ends array scope.
+     */
     @Override
     public void endArray() throws IOException {
         gen.writeEndArray();
     }
 
+    /**
+     * Writes object field name.
+     */
     @Override
     public void writeName(String name) throws IOException {
         gen.writeFieldName(name);
     }
 
+    /**
+     * Writes string value.
+     */
     @Override
     public void writeString(String value) throws IOException {
         gen.writeString(value);
     }
 
+    /**
+     * Writes numeric value using Jackson numeric APIs.
+     */
     @Override
     public void writeNumber(Number value) throws IOException {
         if (value instanceof Long || value instanceof Integer) {
@@ -63,21 +87,33 @@ public class JacksonWriter implements StreamingWriter {
         }
     }
 
+    /**
+     * Writes boolean value.
+     */
     @Override
     public void writeBoolean(Boolean value) throws IOException {
         gen.writeBoolean(value);
     }
 
+    /**
+     * Writes null value.
+     */
     @Override
     public void writeNull() throws IOException {
         gen.writeNull();
     }
 
+    /**
+     * Flushes generator output.
+     */
     @Override
     public void flush() throws IOException {
         gen.flush();
     }
 
+    /**
+     * Closes underlying generator.
+     */
     @Override
     public void close() throws IOException {
         gen.close();

@@ -58,6 +58,9 @@ public class ValidationMessage {
         return message;
     }
 
+    /**
+     * Formats message for logs and diagnostics.
+     */
     @Override
     public String toString() {
         return "[" + severity + "] Keyword '" + keyword + "' failed at path '" + Paths.rootedPointerExpr(ps) +

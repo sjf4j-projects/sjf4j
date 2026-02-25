@@ -196,10 +196,16 @@ public enum NodeKind {
 //        return isObject() || isArray();
 //    }
 
+    /**
+     * Returns true for unknown/unclassified kind.
+     */
     public boolean isUnknown() {
         return this == UNKNOWN;
     }
 
+    /**
+     * Returns true for raw JSON-compatible kinds.
+     */
     public boolean isRaw() {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_NULL ||
                 this == OBJECT_MAP || this == ARRAY_LIST;

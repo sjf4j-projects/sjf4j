@@ -32,6 +32,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     private final ObjectMapper objectMapper;
     private final JacksonModule.MySimpleModule module;
 
+    /**
+     * Creates facade with configured ObjectMapper and SJF4J module.
+     */
     public JacksonJsonFacade(ObjectMapper objectMapper) {
         Objects.requireNonNull(objectMapper, "objectMapper is null");
 
@@ -47,30 +50,45 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
     /// Reader
 
+    /**
+     * Creates a streaming reader from java.io.Reader.
+     */
     @Override
     public JacksonReader createReader(Reader input) throws IOException {
         Objects.requireNonNull(input, "input is null");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
+    /**
+     * Creates a streaming reader from InputStream.
+     */
     @Override
     public JacksonReader createReader(InputStream input) throws IOException {
         Objects.requireNonNull(input, "input is null");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
+    /**
+     * Creates a streaming reader from JSON string.
+     */
     @Override
     public JacksonReader createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input is null");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
+    /**
+     * Creates a streaming reader from JSON bytes.
+     */
     @Override
     public JacksonReader createReader(byte[] input) throws IOException {
         Objects.requireNonNull(input, "input is null");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
+    /**
+     * Reads JSON from reader into target type.
+     */
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -98,6 +116,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    /**
+     * Reads JSON from input stream into target type.
+     */
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -125,6 +146,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    /**
+     * Reads JSON from string into target type.
+     */
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -152,6 +176,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    /**
+     * Reads JSON from bytes into target type.
+     */
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
@@ -182,16 +209,25 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
     /// Writer
 
+    /**
+     * Creates a streaming writer to java.io.Writer.
+     */
     @Override
     public JacksonWriter createWriter(Writer output) throws IOException {
         return new JacksonWriter(objectMapper.getFactory().createGenerator(output));
     }
 
+    /**
+     * Creates a streaming writer to OutputStream.
+     */
     @Override
     public JacksonWriter createWriter(OutputStream output) throws IOException {
         return new JacksonWriter(objectMapper.getFactory().createGenerator(output, JsonEncoding.UTF8));
     }
 
+    /**
+     * Writes node as JSON to writer.
+     */
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
@@ -223,6 +259,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    /**
+     * Writes node as JSON to output stream.
+     */
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output is null");
@@ -254,6 +293,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    /**
+     * Serializes node as JSON string.
+     */
     @Override
     public String writeNodeAsString(Object node) {
         switch (streamingMode) {
@@ -284,6 +326,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         }
     }
 
+    /**
+     * Serializes node as JSON bytes.
+     */
     @Override
     public byte[] writeNodeAsBytes(Object node) {
         switch (streamingMode) {
