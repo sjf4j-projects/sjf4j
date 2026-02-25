@@ -23,6 +23,9 @@ import java.util.regex.Pattern;
  */
 public interface Evaluator {
 
+    /**
+     * Evaluates a keyword against the given instance.
+     */
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
 //    default boolean evaluate(JsonSchema subSchema, String keyword, InstancedNode instance,

@@ -17,29 +17,25 @@ import java.util.Objects;
 public class Patches {
 
     /**
-     * Recursively merges {@code mergePatch} into {@code target}.
+     * Recursively merges a patch into target with custom overwrite rules.
      *
-     * <p>The merge is performed in place and proceeds depth-first:
-     * objects are merged by key and arrays by index. When both corresponding
-     * nodes are composite (object or array), the merge continues recursively;
-     * otherwise the patch value may replace the target value depending on
-     * the {@code overwrite} rule.</p>
+     * <p>This is a practical deep-merge utility (not RFC 7386):
+     * object fields merge by key, array values merge by index, and scalar
+     * values are assigned according to {@code overwrite}.</p>
      *
-     * <p>If {@code overwrite} is {@code false}, existing non-{@code null} target
-     * values are preserved. If the target value is {@code null}, the patch value
-     * is always applied.</p>
+     * <p>Main usage:
+     * use {@code overwrite=true} to let patch values replace existing values,
+     * use {@code overwrite=false} to fill only missing/null target values.
+     * Use {@code deepCopy=true} when patch nodes may be reused elsewhere and
+     * should not be shared by reference.</p>
      *
-     * <p>If {@code deepCopy} is {@code true}, composite values taken from
-     * {@code mergePatch} are deep-copied before assignment; otherwise they are
-     * inserted directly.</p>
+     * <p>Example: merge defaults into request data with
+     * {@code merge(target, defaults, false, true)}.
+     * Example: apply an update payload over current data with
+     * {@code merge(target, update, true, false)}.</p>
      *
-     * <p><strong>Note:</strong> This method does not follow RFC 7386.
-     * Arrays are merged element-wise and {@code null} does not imply deletion.</p>
-     *
-     * @param target     the target object or array to be modified in place
-     * @param mergePatch the patch object or array
-     * @param overwrite  whether existing non-{@code null} values may be replaced
-     * @param deepCopy   whether values from the patch should be deep-copied
+     * <p>If you need standards-compliant JSON Merge Patch behavior
+     * (array replace + {@code null} means delete), use {@link #mergeRfc7386(Object, Object)}.</p>
      */
     public static void merge(Object target, Object mergePatch, boolean overwrite, boolean deepCopy) {
         if (target == null || mergePatch == null) return;
@@ -107,18 +103,10 @@ public class Patches {
     }
 
     /**
-     * This method strictly follows the semantics defined in
-     * <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386 (JSON Merge Patch)</a>.
+     * Merges a patch into target using RFC 7386 semantics.
      *
-     * <p>Differences from {@link #merge(Object, Object, boolean, boolean)}:
-     * <ul>
-     *   <li>Arrays are always replaced as a whole</li>
-     *   <li>A {@code null} value in the patch deletes the corresponding target member</li>
-     *   <li>{@code deepCopy} is implicitly disabled</li>
-     * </ul>
-     *
-     * @param target        the target object to be merged
-     * @param mergePatch    the JSON Merge Patch (RFC 7386)
+     * <p>Use this when you need standard JSON Merge Patch behavior instead of
+     * custom deep merge from {@link #merge(Object, Object, boolean, boolean)}.</p>
      */
     public static void mergeRfc7386(Object target, Object mergePatch) {
         if (target == null || mergePatch == null) return;
@@ -148,7 +136,7 @@ public class Patches {
 
 
     /**
-     * Computes a JSON Patch that transforms {@code source} into {@code target}.
+     * Computes a JSON Patch that transforms source into target.
      */
     public static List<PatchOp> diff(Object source, Object target) {
         List<PatchOp> ops = new ArrayList<>();
@@ -156,6 +144,9 @@ public class Patches {
         return ops;
     }
 
+    /**
+     * Recursively builds JSON Patch ops for the diff.
+     */
     private static void _diff(List<PatchOp> ops, PathSegment ps, Object source, Object target) {
         if (source == null && target == null) return;
         if (null == source) {

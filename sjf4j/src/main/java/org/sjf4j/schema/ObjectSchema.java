@@ -31,16 +31,28 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     public ObjectSchema() {
         super();
     }
+    /**
+     * Creates an ObjectSchema from an object-like node.
+     */
     public ObjectSchema(Object node) {
         super(node);
     }
 
 
     // uri
+    /**
+     * Returns the schema URI for this resource.
+     */
     public URI getUri() {
         return uri;
     }
+    /**
+     * Sets the resolved schema URI.
+     */
     void setUri(URI uri) {this.uri = uri;}
+    /**
+     * Returns resolved URI using $id when explicit URI is missing.
+     */
     URI getResolvedUri() {
         if (uri == null) {
             return CompileUtil.resolveUri(getId(), null);
@@ -49,11 +61,23 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // Schema keywords
+    /**
+     * Returns the $id keyword value.
+     */
     String getId() {return getString("$id");}
+    /**
+     * Returns the $dynamicAnchor keyword value.
+     */
     String getDynamicAnchor() {return getString("$dynamicAnchor");}
+    /**
+     * Returns declared vocabulary permissions.
+     */
     Map<String, Boolean> getVocabulary() {return getMap("$vocabulary", Boolean.class);}
 
     // schemaStore
+    /**
+     * Exports compiled absolute resources to a new SchemaStore.
+     */
     public SchemaStore toStore() {
         if (innerStore == null) throw new SchemaException("Schema has not been compiled yet");
         SchemaStore store = new SchemaStore();
@@ -64,12 +88,18 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // anchor
+    /**
+     * Registers a static anchor within current schema resource.
+     */
     void putAnchor(String anchor, ObjectSchema schema) {
         if (anchors == null) anchors = new HashMap<>();
         if (anchors.containsKey(anchor)) throw new SchemaException("Duplicate $anchor '" + anchor +
                 "' in the same schema resource (implementation restriction)");
         anchors.put(anchor, schema);
     }
+    /**
+     * Resolves schema by anchor in current id scope.
+     */
     ObjectSchema getSchemaByAnchor(String anchor) {
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
@@ -80,6 +110,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             return idSchema.getSchemaByAnchor(anchor);
         }
     }
+    /**
+     * Resolves schema by URI plus anchor.
+     */
     ObjectSchema getSchemaByAnchor(URI uri, String anchor) {
         Objects.requireNonNull(anchor);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
@@ -98,6 +131,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             return idSchema.getSchemaByAnchor(uri, anchor);
         }
     }
+    /**
+     * Resolves schema by JSON Pointer in current id scope.
+     */
     JsonSchema getSchemaByPath(JsonPointer path) {
         Objects.requireNonNull(path, "path is null");
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
@@ -112,6 +148,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             return idSchema.getSchemaByPath(path);
         }
     }
+    /**
+     * Resolves schema by URI plus JSON Pointer.
+     */
     JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
         Objects.requireNonNull(path);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
@@ -132,10 +171,16 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // dynamicAnchor
+    /**
+     * Registers a dynamic anchor within current schema resource.
+     */
     void putDynamicAnchor(String dynamicAnchor, ObjectSchema schema) {
         if (dynamicAnchors == null) dynamicAnchors = new HashMap<>();
         dynamicAnchors.computeIfAbsent(dynamicAnchor, k -> schema);
     }
+    /**
+     * Resolves schema by dynamic anchor in current id scope.
+     */
     ObjectSchema getSchemaByDynamicAnchor(String dynamicAnchor) {
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
@@ -146,6 +191,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             return idSchema.getSchemaByDynamicAnchor(dynamicAnchor);
         }
     }
+    /**
+     * Resolves schema by URI plus dynamic anchor.
+     */
     ObjectSchema getSchemaByDynamicAnchor(URI uri, String dynamicAnchor) {
         Objects.requireNonNull(dynamicAnchor);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
@@ -166,6 +214,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // allowedVocabulary
+    /**
+     * Returns true when the keyword is allowed by active vocabulary.
+     */
     boolean keywordAllowed(String keyword) {
         if (allowedVocabulary != null) {
             String vocab = VocabularyRegistry.getVocabUri(keyword);
@@ -176,6 +227,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         return true;
     }
     // allowedVocabulary
+    /**
+     * Returns true when the vocabulary URI is allowed.
+     */
     boolean vocabAllowed(String vocab) {
         if (allowedVocabulary != null) {
             return allowedVocabulary.containsKey(vocab);
@@ -184,10 +238,16 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     // compile
+    /**
+     * Returns true when this schema is already compiled.
+     */
     public boolean isCompiled() {
         return evaluators != null;
     }
 
+    /**
+     * Compiles this schema with optional outer store for references.
+     */
     public void compile(SchemaStore outer) {
         outerStore = outer;
         innerStore = new HashMap<>();
@@ -195,6 +255,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         compile(PathSegment.Root.INSTANCE, this, this);
     }
 
+    /**
+     * Compiles this schema resource in the given id/root scopes.
+     */
     void compile(PathSegment ps, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
             if (uri == null) uri = CompileUtil.resolveUri(getId(), idSchema.getUri());
@@ -208,6 +271,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         }
     }
 
+    /**
+     * Loads and applies meta-schema vocabulary constraints.
+     */
     void compileMeta() {
         URI metaUri = CompileUtil.resolveUri(getString("$schema"), null);
         if (metaUri != null) {
@@ -218,6 +284,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         }
     }
 
+    /**
+     * Imports and compiles a referenced schema resource.
+     */
     ObjectSchema importAndCompile(URI uri) {
         if (uri == null || uri.equals(this.uri)) return this;
         ObjectSchema schema = innerStore.get(uri);
@@ -239,6 +308,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         return schema;
     }
 
+    /**
+     * Adds an already compiled referenced schema to inner store.
+     */
     void importSchema(URI ref, ObjectSchema compiledSchema) {
         if (innerStore == null) innerStore = new HashMap<>();
         if (compiledSchema != this) innerStore.put(ref, compiledSchema);

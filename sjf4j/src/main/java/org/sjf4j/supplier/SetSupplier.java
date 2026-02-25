@@ -11,10 +11,19 @@ import java.util.Set;
  */
 public interface SetSupplier {
 
+    /**
+     * Creates an empty set.
+     */
     <T> Set<T> create();
 
+    /**
+     * Creates an empty set with initial capacity hint.
+     */
     <T> Set<T> create(int initialCapacity);
 
+    /**
+     * Creates a set initialized from target elements.
+     */
     <T> Set<T> create(Collection<T> target);
 
 

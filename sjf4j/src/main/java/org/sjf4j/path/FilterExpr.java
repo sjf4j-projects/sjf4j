@@ -19,23 +19,12 @@ import java.util.regex.Pattern;
 public interface FilterExpr {
 
     /**
-     * Evaluates this expression against the given root and current nodes.
-     * 
-     * @param rootNode the root JSON node for absolute path evaluations
-     * @param currentNode the current JSON node being evaluated
-     * @return the result of the expression evaluation
+     * Evaluates this expression against root and current nodes.
      */
     Object eval(Object rootNode, Object currentNode);
 
     /**
-     * Evaluates this expression and returns its boolean truth value.
-     * <p>
-     * This default method evaluates the expression and then converts the result
-     * to a boolean using the {@link #truth(Object)} method.
-     * 
-     * @param rootNode the root JSON node for absolute path evaluations
-     * @param currentNode the current JSON node being evaluated
-     * @return the boolean truth value of the expression result
+     * Evaluates this expression and converts the result to boolean.
      */
     default boolean evalTruth(Object rootNode, Object currentNode) {
         Object v = eval(rootNode, currentNode);
@@ -45,17 +34,13 @@ public interface FilterExpr {
     /// Implements: LiteralExpr, PathExpr, UnaryExpr, FunctionExpr
 
     /**
-     * A filter expression representing a literal value (constant).
-     * <p>
-     * Literal expressions evaluate to their fixed value regardless of the context nodes.
+     * Filter expression for a constant literal value.
      */
     class LiteralExpr implements FilterExpr {
         private final Object value;
 
         /**
-         * Creates a new literal expression with the given value.
-         * 
-         * @param value the literal value to represent
+         * Creates a literal expression.
          */
         public LiteralExpr(Object value) {
             this.value = value;
@@ -75,18 +60,13 @@ public interface FilterExpr {
     }
 
     /**
-     * A filter expression representing a JSON Path that evaluates against the context nodes.
-     * <p>
-     * Path expressions can evaluate either relative to the current node (for paths starting with @)
-     * or absolute to the root node (for paths starting with $).
+     * Filter expression that evaluates a JSONPath.
      */
     class PathExpr implements FilterExpr {
         private final JsonPath path;
 
         /**
-         * Creates a new path expression from the given JSON Path string.
-         * 
-         * @param path the JSON Path string to compile
+         * Creates a path expression from a JSONPath string.
          */
         public PathExpr(String path) {
             this.path = JsonPath.compile(path);
@@ -108,19 +88,14 @@ public interface FilterExpr {
     }
 
     /**
-     * A filter expression representing a unary boolean operation.
-     * <p>
-     * Used for negation operations where the truth value of another expression is inverted.
+     * Filter expression for unary boolean operations.
      */
     class UnaryExpr implements FilterExpr {
         private final boolean truth;
         private final FilterExpr unary;
 
         /**
-         * Creates a new unary expression.
-         * 
-         * @param truth if true, the expression's truth value is preserved; if false, it's inverted
-         * @param unary the expression to apply the unary operation to
+         * Creates a unary expression.
          */
         public UnaryExpr(boolean truth, FilterExpr unary) {
             this.truth = truth;
@@ -141,13 +116,7 @@ public interface FilterExpr {
     }
 
     /**
-     * A filter expression representing a binary operation.
-     * <p>
-     * Binary expressions combine two sub-expressions using an operator, including:
-     * <ul>
-     *   <li>Comparison operators: ==, !=, &gt;, &lt;, &gt;=, &lt;=</li>
-     *   <li>Logical operators: &amp;&amp;, ||</li>
-     * </ul>
+     * Filter expression for binary comparison and logical operations.
      */
     class BinaryExpr implements FilterExpr {
         private final FilterExpr left;
@@ -155,11 +124,7 @@ public interface FilterExpr {
         private final Op op;
 
         /**
-         * Creates a new binary expression.
-         * 
-         * @param l the left-hand side expression
-         * @param r the right-hand side expression
-         * @param o the operator to apply
+         * Creates a binary expression.
          */
         public BinaryExpr(FilterExpr l, FilterExpr r, Op o) {
             this.left = l;
@@ -193,20 +158,14 @@ public interface FilterExpr {
     }
 
     /**
-     * A filter expression representing a function call.
-     * <p>
-     * Function expressions invoke registered functions with the given arguments,
-     * allowing for custom operations in filter expressions.
+     * Filter expression for a function call.
      */
     class FunctionExpr implements FilterExpr {
         final String name;
         final List<FilterExpr> args;
 
         /**
-         * Creates a new function expression.
-         * 
-         * @param name the name of the function to call
-         * @param args the arguments to pass to the function
+         * Creates a function expression.
          */
         public FunctionExpr(String name, List<FilterExpr> args) {
             this.name = name;
@@ -227,6 +186,9 @@ public interface FilterExpr {
         private final String source;
         private final Pattern pattern;
 
+        /**
+         * Creates a regex literal expression.
+         */
         public RegexExpr(String source, Pattern pattern) {
             this.source = source;
             this.pattern = pattern;
@@ -247,9 +209,7 @@ public interface FilterExpr {
     /// Default
 
     /**
-     * Enum defining all supported binary operators for filter expressions.
-     * <p>
-     * Operators are categorized into comparison operators and logical operators.
+     * Supported binary operators for filter expressions.
      */
     enum Op {
         EQ("=="), NE("!="), GT(">"), GE(">="),
@@ -260,10 +220,16 @@ public interface FilterExpr {
         @Override public String toString() { return symbol; }
     }
 
+    /**
+     * Returns true when two values are node-equivalent.
+     */
     static boolean eq(Object a, Object b) {
         return Nodes.equals(a, b);
     }
 
+    /**
+     * Returns true when a is greater than b.
+     */
     static boolean gt(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -276,6 +242,9 @@ public interface FilterExpr {
         return false;
     }
 
+    /**
+     * Returns true when a is greater than or equal to b.
+     */
     static boolean ge(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -288,6 +257,9 @@ public interface FilterExpr {
         return false;
     }
 
+    /**
+     * Returns true when a is less than b.
+     */
     static boolean lt(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -300,6 +272,9 @@ public interface FilterExpr {
         return false;
     }
 
+    /**
+     * Returns true when a is less than or equal to b.
+     */
     static boolean le(Object a, Object b) {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
@@ -312,6 +287,9 @@ public interface FilterExpr {
         return false;
     }
 
+    /**
+     * Returns true when value a matches regex b.
+     */
     static boolean match(Object a, Object b) {
         if (!(b instanceof Pattern)) return false;
         if (a == null) return false;
@@ -332,25 +310,10 @@ public interface FilterExpr {
     }
 
     /**
-     * Converts an object to its boolean truth value according to JSON rules.
-     * <p>
-     * The truthiness follows these rules:
-     * <ul>
-     *   <li>null → false</li>
-     *   <li>false → false</li>
-     *   <li>true → true</li>
-     *   <li>0 → false (numeric zero)</li>
-     *   <li>other numbers → true</li>
-     *   <li>empty string → false</li>
-     *   <li>other strings → true</li>
-     *   <li>empty list → false</li>
-     *   <li>other lists → true</li>
-     *   <li>empty objects → true</li>
-     *   <li>other objects → true</li>
-     * </ul>
-     * 
-     * @param x the object to evaluate for truthiness
-     * @return the boolean truth value according to JSON rules
+     * Converts a value to boolean using JSONPath truthiness rules.
+     *
+     * <p>Falsy values are: null, false, numeric zero, empty string,
+     * and empty array. Objects are treated as truthy.</p>
      */
     static boolean truth(Object x) {
         if (x == null) return false;

@@ -11,6 +11,9 @@ import java.util.Objects;
  */
 public class ValidationMessage {
 
+    /**
+     * Message severity level.
+     */
     public enum Severity { ERROR, WARN, INFO, DEBUG }
 
     private final Severity severity;
@@ -18,6 +21,9 @@ public class ValidationMessage {
     private final String keyword;
     private final String message;
 
+    /**
+     * Creates a validation message entry.
+     */
     public ValidationMessage(Severity severity, PathSegment ps, String keyword, String message) {
         Objects.requireNonNull(severity, "Severity is null");
         this.severity = severity;
@@ -26,16 +32,28 @@ public class ValidationMessage {
         this.message = message;
     }
 
+    /**
+     * Returns message severity.
+     */
     public Severity getSeverity() {
         return severity;
     }
+    /**
+     * Returns the path segment where validation ran.
+     */
     public PathSegment getPs() { return ps; }
 //    public JsonPointer getPath() {
 //        return JsonPointer.fromLast(ps);
 //    }
+    /**
+     * Returns the schema keyword that produced this message.
+     */
     public String getKeyword() {
         return keyword;
     }
+    /**
+     * Returns message text.
+     */
     public String getMessage() {
         return message;
     }

@@ -56,6 +56,9 @@ public final class SchemaValidator {
         return schema.validate(pojo, options);
     }
 
+    /**
+     * Preloads and compiles schemas by relative references.
+     */
     public SchemaValidator preload(String... refs) {
         if (refs == null) return this;
         for (String ref : refs) {
@@ -67,6 +70,9 @@ public final class SchemaValidator {
         return this;
     }
 
+    /**
+     * Preloads and compiles all schema files in a directory.
+     */
     public SchemaValidator preloadDirectory(String dir) {
         URI dirUri = resolveBaseUri(dir);
         String scheme = dirUri.getScheme();
@@ -99,12 +105,18 @@ public final class SchemaValidator {
         throw new SchemaException("Unsupported preload directory uri: " + dirUri);
     }
 
+    /**
+     * Resolves user base directory against default schema base URI.
+     */
     private URI resolveBaseUri(String baseDir) {
         if (baseDir == null) return DEFAULT_BASE_URI;
         if (!baseDir.endsWith("/")) baseDir += "/";
         return DEFAULT_BASE_URI.resolve(baseDir);
     }
 
+    /**
+     * Merges annotation options with validator defaults.
+     */
     private ValidationOptions optionsFrom(ValidJsonSchema anno) {
         boolean failFast = anno.failFast() || defaultOptions.isFailFast();
         boolean strictFormat = anno.strictFormat() || defaultOptions.isStrictFormat();
@@ -117,6 +129,9 @@ public final class SchemaValidator {
                 .build();
     }
 
+    /**
+     * Loads a schema for the given POJO from inline, ref, or naming convention.
+     */
     private JsonSchema loadPojoSchema(Class<?> clazz, ValidJsonSchema anno) {
         // From value
         String inline = anno.value();
@@ -157,12 +172,18 @@ public final class SchemaValidator {
         }
     }
 
+    /**
+     * Compiles a schema and registers it in the store.
+     */
     private JsonSchema compileAndRegister(JsonSchema schema) {
         schema.compile(schemaStore);
         schemaStore.register(schema);
         return schema;
     }
 
+    /**
+     * Recursively preloads schema files from a local directory path.
+     */
     private void preloadDirectory(Path dir) {
         try {
             if (!Files.exists(dir) || !Files.isDirectory(dir)) {
@@ -180,6 +201,9 @@ public final class SchemaValidator {
         }
     }
 
+    /**
+     * Resolves an optional fragment to an anchor, dynamic anchor, or pointer.
+     */
     private JsonSchema findInSchema(JsonSchema schema, String fragment) {
         if (fragment == null || fragment.isEmpty()) return schema;
         if (!(schema instanceof ObjectSchema)) {

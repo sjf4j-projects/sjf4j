@@ -12,12 +12,18 @@ import org.sjf4j.exception.JsonException;
 public class IRegexpUtil {
 
 
+    /**
+     * Returns true when input fully matches the I-Regexp pattern.
+     */
     public static boolean match(String pattern, String input) {
         if (input == null) return false;
         if (input.length() != patternLength(pattern)) return false;
         return matchesAt(pattern, input, 0);
     }
 
+    /**
+     * Returns true when input contains a substring that matches the pattern.
+     */
     public static boolean search(String pattern, String input) {
         if (input == null) return false;
 
@@ -35,6 +41,9 @@ public class IRegexpUtil {
 
     /// Private
 
+    /**
+     * Matches pattern against input starting from the given position.
+     */
     private static boolean matchesAt(String pattern, String input, int si) {
         int pi = 0;
         int start = si;
@@ -75,6 +84,9 @@ public class IRegexpUtil {
         return true;
     }
 
+    /**
+     * Finds the closing bracket for a character class.
+     */
     private static int findClassEnd(String p, int start) {
         for (int i = start + 1; i < p.length(); i++) {
             if (p.charAt(i) == ']') return i;
@@ -82,6 +94,9 @@ public class IRegexpUtil {
         throw new JsonException("Unclosed character class '['");
     }
 
+    /**
+     * Matches one character against a character class.
+     */
     private static boolean matchClass(String p, int from, int to, char ch) {
         for (int i = from; i < to; i++) {
             char c = p.charAt(i);
@@ -101,6 +116,9 @@ public class IRegexpUtil {
         return false;
     }
 
+    /**
+     * Returns the logical character length represented by the pattern.
+     */
     private static int patternLength(String pattern) {
         int len = 0;
         int i = 0;

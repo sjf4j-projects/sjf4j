@@ -32,6 +32,10 @@ public class PathFunctionRegistry {
     public static class FunctionDescriptor {
         private final String name;
         private final PathFunction func;
+
+        /**
+         * Creates a function descriptor with name and implementation.
+         */
         public FunctionDescriptor(String name, PathFunction func) {
             if (name == null || name.isEmpty()) throw new JsonException("Name must not be empty");
             if (func == null) throw new JsonException("Func must not be null");
@@ -39,10 +43,16 @@ public class PathFunctionRegistry {
             this.func = func;
         }
 
+        /**
+         * Invokes the function with raw argument values.
+         */
         public Object invoke(Object[] args) {
             return func.apply(args);
         }
 
+        /**
+         * Returns the function name.
+         */
         public String getName() { return name; }
     }
 
@@ -50,6 +60,9 @@ public class PathFunctionRegistry {
 
     private static final Map<String, FunctionDescriptor> FUNCTION_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * Registers or replaces a function descriptor.
+     */
     public static void register(FunctionDescriptor descriptor) {
         FUNCTION_CACHE.put(descriptor.getName(), descriptor);
     }
@@ -81,6 +94,9 @@ public class PathFunctionRegistry {
         }
     }
 
+    /**
+     * Returns all registered function names.
+     */
     public static Set<String> getFunctionNames() {
         return FUNCTION_CACHE.keySet();
     }

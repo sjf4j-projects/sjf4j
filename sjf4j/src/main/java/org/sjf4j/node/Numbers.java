@@ -130,6 +130,9 @@ public class Numbers {
         return (int) longValue;
     }
 
+    /**
+     * Converts a Number to a short with range checking.
+     */
     public static short toShort(Number number) {
         long longValue = toLong(number);
         if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
@@ -138,6 +141,9 @@ public class Numbers {
         return (short) longValue;
     }
 
+    /**
+     * Converts a Number to a byte with range checking.
+     */
     public static byte toByte(Number number) {
         long longValue = toLong(number);
         if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
@@ -181,6 +187,9 @@ public class Numbers {
         return f;
     }
 
+    /**
+     * Converts a Number to BigInteger.
+     */
     public static BigInteger toBigInteger(Number number) {
         Objects.requireNonNull(number, "number is null");
         if (number instanceof BigInteger) return (BigInteger) number;
@@ -195,6 +204,9 @@ public class Numbers {
         return BigInteger.valueOf(number.longValue());
     }
 
+    /**
+     * Converts a Number to BigDecimal.
+     */
     public static BigDecimal toBigDecimal(Number number) {
         Objects.requireNonNull(number, "number is null");
         if (number instanceof BigDecimal) return (BigDecimal) number;
@@ -205,6 +217,9 @@ public class Numbers {
         return BigDecimal.valueOf(number.longValue());
     }
 
+    /**
+     * Converts a Number to the requested numeric target type.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T to(Number number, Class<T> clazz) {
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
@@ -248,6 +263,9 @@ public class Numbers {
 //        }
 //    }
 
+    /**
+     * Parses a numeric string into an appropriate Number implementation.
+     */
     public static Number parseNumber(String text) {
         if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
         text = text.replace("_", "").trim();
@@ -301,19 +319,7 @@ public class Numbers {
 
 
     /**
-     * Checks if a given string represents a numeric number.
-     * <p>
-     * This method supports:
-     * - Integers (e.g., "42", "-7", "+8")
-     * - Floating-point numbers (e.g., "3.14", "-0.5", ".5")
-     * - Scientific notation (e.g., "1e3", "-2.5E-4")
-     * - Underscore separators in numbers (YAML style, e.g., "1_000_000")
-     * <p>
-     * Rules:
-     * - Leading '+' or '-' is allowed at the start or immediately after 'e'/'E'
-     * - Only one decimal point is allowed, and it must appear before any 'e'/'E'
-     * - Only one 'e'/'E' is allowed for scientific notation
-     *
+     * Returns true when the text is a valid numeric literal.
      */
     public static boolean isNumeric(String text) {
         if (text == null || text.isEmpty()) return false;
@@ -339,6 +345,9 @@ public class Numbers {
         return digitSeen;
     }
 
+    /**
+     * Returns true when the number is mathematically an integer.
+     */
     public static boolean isSemanticInteger(Number number) {
         if (number == null) return false;
         if (isIntegralType(number)) return true;
@@ -349,6 +358,9 @@ public class Numbers {
         return d % 1 == 0 && Double.isFinite(d);
     }
 
+    /**
+     * Normalizes a number to stripped BigDecimal form.
+     */
     public static BigDecimal normalizeDecimal(Number number) {
         if (number instanceof BigDecimal) {
             return ((BigDecimal) number).stripTrailingZeros();
@@ -356,6 +368,9 @@ public class Numbers {
         return new BigDecimal(number.toString()).stripTrailingZeros();
     }
 
+    /**
+     * Compares two numbers with cross-type numeric semantics.
+     */
     public static int compare(Number source, Number target) {
         Objects.requireNonNull(source, "source is null");
         Objects.requireNonNull(target, "target is null");
@@ -368,6 +383,9 @@ public class Numbers {
         return toBigDecimal(source).compareTo(toBigDecimal(target));
     }
 
+    /**
+     * Computes a stable numeric hash across number implementations.
+     */
     public static int hash(Number n) {
         if (n instanceof Integer || n instanceof Long || n instanceof Short || n instanceof Byte) {
             long v = n.longValue();

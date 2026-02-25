@@ -120,6 +120,9 @@ public class NodeStream<T> {
         return new NodeStream<>(ns);
     }
 
+    /**
+     * Evaluates a path per element and flattens results with strict conversion.
+     */
     public <R> NodeStream<R> evalByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);
         Stream<R> ns = stream.flatMap(node -> {
@@ -140,6 +143,9 @@ public class NodeStream<T> {
         return new NodeStream<>(ns);
     }
 
+    /**
+     * Evaluates a path per element and flattens results with lenient conversion.
+     */
     public <R> NodeStream<R> evalAsByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);
         Stream<R> ns = stream.flatMap(node -> {
@@ -288,22 +294,37 @@ public class NodeStream<T> {
         return stream.noneMatch(predicate);
     }
 
+    /**
+     * Collects stream elements to a list.
+     */
     public List<T> toList() {
         return stream.collect(Collectors.toList());
     }
 
+    /**
+     * Collects stream elements to a JsonArray.
+     */
     public JsonArray toJsonArray() {
         return new JsonArray(toList());
     }
 
+    /**
+     * Returns the first element if present.
+     */
     public Optional<T> findFirst() {
         return stream.findFirst();
     }
 
+    /**
+     * Returns any element if present.
+     */
     public Optional<T> findAny() {
         return stream.findAny();
     }
 
+    /**
+     * Performs a terminal collect operation.
+     */
     public <R, A> R collect(Collector<? super T, A, R> collector) {
         return stream.collect(collector);
     }

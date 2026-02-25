@@ -20,6 +20,9 @@ public class ValidationResult {
         this.lastMessage = lastMessage;
     }
 
+    /**
+     * Returns whether validation passed.
+     */
     public boolean isValid() {
         return valid;
     }
@@ -33,6 +36,9 @@ public class ValidationResult {
         return 0;
     }
 
+    /**
+     * Returns all validation messages.
+     */
     public List<ValidationMessage> getMessages() {
         if (messages == null) {
             return lastMessage == null ? Collections.emptyList() : Collections.singletonList(lastMessage);
@@ -40,6 +46,9 @@ public class ValidationResult {
         return messages;
     }
 
+    /**
+     * Returns only error messages.
+     */
     public List<ValidationMessage> getErrors() {
         return getMessages().stream()
                 .filter(m -> m.getSeverity() == ValidationMessage.Severity.ERROR)
@@ -51,6 +60,9 @@ public class ValidationResult {
         return Nodes.inspect(getMessages());
     }
 
+    /**
+     * Returns the latest message if present.
+     */
     public ValidationMessage getLastMessage() {
         if (lastMessage == null) {
             if (messages == null || messages.isEmpty()) {
@@ -62,6 +74,9 @@ public class ValidationResult {
         return lastMessage;
     }
 
+    /**
+     * Shared successful validation result.
+     */
     public static final ValidationResult VALID = new ValidationResult(true, null, null);
 
 }

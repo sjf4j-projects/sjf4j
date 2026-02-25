@@ -27,10 +27,16 @@ public final class NodeRegistry {
     // All in TypeInfo
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * Registers and returns type metadata for a class.
+     */
     public static TypeInfo registerTypeInfo(Class<?> clazz) {
         return registerTypeInfo(clazz, false);
     }
 
+    /**
+     * Registers type metadata and optionally requires POJO analysis.
+     */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
         if (hitRawType(clazz)) return NONE_INFO;
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
@@ -60,6 +66,9 @@ public final class NodeRegistry {
         return NONE_INFO;
     }
 
+    /**
+     * Returns true for raw framework types that skip metadata analysis.
+     */
     private static boolean hitRawType(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || clazz == Map.class || clazz == List.class || clazz.isPrimitive();
@@ -94,6 +103,9 @@ public final class NodeRegistry {
         registerValueCodec(new ValueCodec.CalendarValueCodec());
     }
 
+    /**
+     * Registers a custom ValueCodec and returns codec metadata.
+     */
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueCodec, "valueCodec is null");
         Class<R> rawClazz = valueCodec.getRawClass();
@@ -108,14 +120,23 @@ public final class NodeRegistry {
         return vci;
     }
 
+    /**
+     * Registers value codec metadata from @NodeValue or existing codec.
+     */
     public static ValueCodecInfo registerValueCodec(Class<?> clazz) {
         return registerTypeInfo(clazz).valueCodecInfo;
     }
 
+    /**
+     * Returns value codec metadata for a class.
+     */
     public static ValueCodecInfo getValueCodecInfo(Class<?> clazz) {
         return registerValueCodec(clazz);
     }
 
+    /**
+     * Re-registers Instant codec based on current time format setting.
+     */
     public static void refreshInstantValueCodec(Sjf4jConfig.InstantFormat instantFormat) {
         if (instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
             registerValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
@@ -127,22 +148,37 @@ public final class NodeRegistry {
 
     /// POJO
 
+    /**
+     * Registers and returns POJO metadata for a class.
+     */
     public static PojoInfo registerPojo(Class<?> clazz) {
         return registerTypeInfo(clazz).pojoInfo;
     }
 
+    /**
+     * Registers POJO metadata or throws if class is not a POJO.
+     */
     public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
         return registerTypeInfo(clazz, true).pojoInfo;
     }
 
+    /**
+     * Returns cached POJO metadata for a class.
+     */
     public static PojoInfo getPojoInfo(Class<?> clazz) {
         return registerPojo(clazz);
     }
 
+    /**
+     * Returns metadata for a named POJO field.
+     */
     public static FieldInfo getFieldInfo(Class<?> clazz, String fieldName) {
         return registerPojoOrElseThrow(clazz).fields.get(fieldName);
     }
 
+    /**
+     * Returns true when class is recognized as POJO.
+     */
     public static boolean isPojo(Class<?> clazz) {
         return registerTypeInfo(clazz).pojoInfo != null;
     }
@@ -156,14 +192,24 @@ public final class NodeRegistry {
         public final Class<?> clazz;
         public final PojoInfo pojoInfo;
         public final ValueCodecInfo valueCodecInfo;
+
+        /**
+         * Creates immutable type metadata holder.
+         */
         public TypeInfo(Class<?> clazz, PojoInfo pojoInfo, ValueCodecInfo valueCodecInfo) {
             this.clazz = clazz;
             this.pojoInfo = pojoInfo;
             this.valueCodecInfo = valueCodecInfo;
         }
+        /**
+         * Returns true when this type has POJO metadata.
+         */
         public boolean isPojo() {
             return pojoInfo != null;
         }
+        /**
+         * Returns true when this type has value codec metadata.
+         */
         public boolean isNodeValue() {
             return valueCodecInfo != null;
         }
@@ -178,6 +224,9 @@ public final class NodeRegistry {
         public final Map<String, FieldInfo> aliasFields;
         public final boolean isJojo;
         public final boolean isJajo;
+        /**
+         * Creates immutable POJO metadata holder.
+         */
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
                         Map<String, FieldInfo> fields,
                         Map<String, FieldInfo> aliasFields) {
@@ -202,6 +251,9 @@ public final class NodeRegistry {
         public final Type[] argTypes;
         public final Map<String, Integer> argIndexes;
         public final Map<String, String> aliasMap;
+        /**
+         * Creates immutable creator metadata holder.
+         */
         public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
                            Executable argsCreator, MethodHandle argsCreatorHandle,
                            String[] argNames, Type[] argTypes, Map<String, Integer> argIndexes,
@@ -217,6 +269,9 @@ public final class NodeRegistry {
             this.aliasMap = aliasMap;
         }
 
+        /**
+         * Returns argument index by name, or -1.
+         */
         public int getArgIndex(String name) {
             if (argIndexes != null) {
                 Integer idx = argIndexes.get(name);
@@ -225,6 +280,9 @@ public final class NodeRegistry {
             return -1;
         }
 
+        /**
+         * Creates a POJO using no-args constructor path.
+         */
         public Object newPojoNoArgs() {
             if (noArgsCtorLambda != null) {
                 return noArgsCtorLambda.get();
@@ -238,6 +296,9 @@ public final class NodeRegistry {
             throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
         }
 
+        /**
+         * Creates a POJO using argument creator path.
+         */
         public Object newPojoWithArgs(Object[] args) {
             Objects.requireNonNull(args, "args is null");
             if (argsCreatorHandle == null) {
@@ -256,12 +317,18 @@ public final class NodeRegistry {
             }
         }
 
+        /**
+         * Creates a POJO preferring no-args constructor, then args creator.
+         */
         public Object forceNewPojo() {
             if (noArgsCtorHandle != null) return newPojoNoArgs();
             Object[] args = new Object[argNames.length];
             return newPojoWithArgs(args);
         }
 
+        /**
+         * Returns default missing value for primitive classes.
+         */
         private static Object missingValueOfClass(Class<?> clazz) {
             if (clazz == null) return null;
             if (!clazz.isPrimitive()) return null;
@@ -286,6 +353,9 @@ public final class NodeRegistry {
         public final String[] compNames;
         public final Class<?>[] compClasses;
         public final Type[] compTypes;
+        /**
+         * Creates immutable record metadata holder.
+         */
         public RecordInfo(Class<?> clazz, Constructor<?> compCtor, MethodHandle compCtorHandle,
                           int compCount, String[] compNames, Class<?>[] compClasses, Type[] compTypes) {
             this.clazz = clazz;
@@ -317,6 +387,9 @@ public final class NodeRegistry {
         public final Function<Object, Object> lambdaGetter;
         public final MethodHandle setter;
         public final BiConsumer<Object, Object> lambdaSetter;
+        /**
+         * Creates immutable field metadata holder.
+         */
         public FieldInfo(String name, Type type,
                          MethodHandle getter, Function<Object, Object> lambdaGetter,
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter) {
@@ -348,14 +421,23 @@ public final class NodeRegistry {
             this.lambdaSetter = lambdaSetter;
         }
 
+        /**
+         * Returns true when a getter is available.
+         */
         public boolean hasGetter() {
             return getter != null;
         }
+        /**
+         * Returns true when a setter is available.
+         */
         public boolean hasSetter() {
             return setter != null;
         }
 
 
+        /**
+         * Invokes field getter.
+         */
         public Object invokeGetter(Object receiver) {
             if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
             if (lambdaGetter != null) {
@@ -371,6 +453,9 @@ public final class NodeRegistry {
             }
         }
 
+        /**
+         * Invokes field getter using method handle only.
+         */
         public Object invokeGetter2(Object receiver) {
             if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
             if (getter == null) throw new JsonException("No getter available for field '" + name + "' of " + type);
@@ -382,12 +467,18 @@ public final class NodeRegistry {
             }
         }
 
+        /**
+         * Invokes setter when present and reports success.
+         */
         public boolean invokeSetterIfPresent(Object receiver, Object value) {
             if (setter == null) return false;
             invokeSetter(receiver, value);
             return true;
         }
 
+        /**
+         * Invokes field setter.
+         */
         public void invokeSetter(Object receiver, Object value) {
             if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
             if (setter == null)
@@ -404,6 +495,9 @@ public final class NodeRegistry {
             }
         }
 
+        /**
+         * Invokes setter with numeric pre-conversion fallback.
+         */
         public void invokeSetter2(Object receiver, Object value) {
             if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
             if (setter == null) {
@@ -433,6 +527,9 @@ public final class NodeRegistry {
         final MethodHandle encodeHandle;
         final MethodHandle decodeHandle;
         final MethodHandle copyHandle;
+        /**
+         * Creates immutable value-codec metadata holder.
+         */
         @SuppressWarnings("unchecked")
         public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
                               MethodHandle encodeHandle, MethodHandle decodeHandle, MethodHandle copyHandle) {
@@ -443,10 +540,16 @@ public final class NodeRegistry {
             this.decodeHandle = decodeHandle;
             this.copyHandle = copyHandle;
         }
+        /**
+         * Creates value-codec metadata from codec instance.
+         */
         public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec) {
             this(valueClazz, rawClazz, valueCodec, null, null, null);
         }
 
+        /**
+         * Encodes value to raw representation.
+         */
         public Object encode(Object value) {
             if (valueCodec != null) {
                 try {
@@ -467,6 +570,9 @@ public final class NodeRegistry {
                     ": missing @NodeValue annotation and no ValueCodec registered");
         }
 
+        /**
+         * Decodes raw value to value representation.
+         */
         public Object decode(Object raw) {
             if (raw != null && !rawClazz.isInstance(raw))
                 throw new JsonException("Cannot decode raw of type " + raw.getClass().getName() +
@@ -490,6 +596,9 @@ public final class NodeRegistry {
                     ": missing @NodeValue annotation and no ValueCodec registered");
         }
 
+        /**
+         * Copies value using codec-defined semantics.
+         */
         public Object copy(Object value) {
             if (valueCodec != null) {
                 try {

@@ -17,10 +17,16 @@ import java.util.Objects;
 @NodeValue
 public class JsonPointer extends JsonPath {
 
+    /**
+     * Creates a pointer by copying another pointer.
+     */
     protected JsonPointer(JsonPointer pointer) {
         super(pointer);
     }
 
+    /**
+     * Creates a pointer from raw expression and parsed segments.
+     */
     protected JsonPointer(String raw, PathSegment[] segments) {
         super(raw, segments);
     }
@@ -44,6 +50,9 @@ public class JsonPointer extends JsonPath {
         return new JsonPointer(expr, segments);
     }
 
+    /**
+     * Creates a pointer from the last segment in a chain.
+     */
     public static JsonPointer fromLast(PathSegment lastSegment) {
         Objects.requireNonNull(lastSegment, "lastSegment is null");
         PathSegment[] segments = Paths.linearize(lastSegment);
@@ -54,12 +63,18 @@ public class JsonPointer extends JsonPath {
 //        NodeRegistry.registerValueCodec(JsonPointer.class);
 //    }
 
+    /**
+     * Returns this pointer as an RFC 6901 expression.
+     */
     @ValueToRaw
     @Override
     public String toExpr() {
         return toPointerExpr();
     }
 
+    /**
+     * Returns this pointer as an RFC 6901 expression.
+     */
     @Override
     public String toString() {
         return toPointerExpr();

@@ -19,15 +19,15 @@ import java.util.Objects;
 public class Types {
 
     /**
-     * Gets the fully qualified class name of an object.
-     *
-     * @param object the object to get the class name from
-     * @return the fully qualified class name, or "null" if the object is null
+     * Returns the class name of an object, or "null".
      */
     public static String name(Object object) {
         return (object == null) ? "null" : object.getClass().getName();
     }
 
+    /**
+     * Boxes a primitive class type.
+     */
     public static Class<?> box(Class<?> clazz) {
         if (clazz == null) return Object.class;
         if (!clazz.isPrimitive()) return clazz;
@@ -43,11 +43,7 @@ public class Types {
     }
 
     /**
-     * Gets the raw class for a given type, resolving generics as necessary.
-     *
-     * @param type the type to get the raw class from
-     * @return the raw Class object for the given type
-     * @throws IllegalArgumentException if the raw class cannot be determined
+     * Resolves the raw class from a Type.
      */
     public static Class<?> rawClazz(Type type) {
         if (type == null) return Object.class;
@@ -77,10 +73,16 @@ public class Types {
         throw new IllegalArgumentException("Cannot get raw class from type: " + type);
     }
 
+    /**
+     * Resolves and boxes the raw class from a Type.
+     */
     public static Class<?> rawBox(Type type) {
         return box(rawClazz(type));
     }
 
+    /**
+     * Resolves a generic type argument for a target supertype.
+     */
     public static Type resolveTypeArgument(Type type, Class<?> target, int index) {
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = ((ParameterizedType) type);
@@ -96,6 +98,9 @@ public class Types {
         return resolve(type, target, index, typeVarMap);
     }
 
+    /**
+     * Recursively resolves type arguments through inheritance.
+     */
     private static Type resolve(Type type, Class<?> target, int index, Map<TypeVariable<?>, Type> typeVarMap) {
         if (type instanceof Class<?>) {
             Class<?> clazz = (Class<?>) type;
@@ -161,6 +166,9 @@ public class Types {
         return Object.class;
     }
 
+    /**
+     * Substitutes type variables using current mapping.
+     */
     private static Type substitute(Type type, Map<TypeVariable<?>, Type> map) {
         if (type instanceof TypeVariable<?>) {
             return map.getOrDefault(type, Object.class);
@@ -188,7 +196,9 @@ public class Types {
         return type;
     }
 
-    // Used to construct a new ParameterizedType
+    /**
+     * Creates a resolved ParameterizedType instance.
+     */
     private static ParameterizedType newResolvedParameterizedType(Class<?> raw, Type[] args, Type owner) {
         return new ParameterizedType() {
             @Override public Type[] getActualTypeArguments() { return args; }
@@ -198,6 +208,9 @@ public class Types {
     }
 
 
+    /**
+     * Resolves a field generic type within a concrete owner type.
+     */
     public static Type fieldType(Type type, Field field) {
         if (type == null || field == null) return Object.class;
 
@@ -219,6 +232,9 @@ public class Types {
         return field.getGenericType();
     }
 
+    /**
+     * Resolves nested type variables in a Type tree.
+     */
     private static Type resolveType(Type type, Map<TypeVariable<?>, Type> typeMap) {
         if (type instanceof TypeVariable<?>) {
             Type replacement = typeMap.get(type);
@@ -248,6 +264,9 @@ public class Types {
 
     /// Class
 
+    /**
+     * Simple immutable implementation of ParameterizedType.
+     */
     public static class ParameterizedTypeImpl implements ParameterizedType {
         private final Type rawType;
         private final Type[] actualTypeArguments;
@@ -309,6 +328,9 @@ public class Types {
         }
     }
 
+    /**
+     * Simple immutable implementation of GenericArrayType.
+     */
     public static class GenericArrayTypeImpl implements GenericArrayType {
         private final Type componentType;
 
@@ -338,6 +360,9 @@ public class Types {
         }
     }
 
+    /**
+     * Simple immutable implementation of WildcardType.
+     */
     public static class WildcardTypeImpl implements WildcardType {
         private final Type[] upperBounds;
         private final Type[] lowerBounds;

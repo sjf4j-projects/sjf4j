@@ -25,12 +25,18 @@ public class VocabularyRegistry {
 //        public boolean contains(String keyword) {return keywords.contains(keyword);}
 //    }
 
+    /**
+     * Registers one keyword-to-vocabulary mapping.
+     */
     public static void registerKeyword(String keyword, String vocabUri) {
         Objects.requireNonNull(keyword);
         Objects.requireNonNull(vocabUri);
         KEYWORD_VOCAB_CACHE.put(keyword, vocabUri);
     }
 
+    /**
+     * Returns vocabulary URI for a keyword, or null.
+     */
     public static String getVocabUri(String keyword) {
         return KEYWORD_VOCAB_CACHE.get(keyword);
     }

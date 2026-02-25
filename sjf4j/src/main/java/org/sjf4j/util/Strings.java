@@ -5,6 +5,9 @@ package org.sjf4j.util;
  */
 public class Strings {
 
+    /**
+     * Returns the string when non-null and non-empty after trim.
+     */
     public static String requireNonEmpty(String string, String message) {
         if (string == null)
             throw new NullPointerException(message);
@@ -13,14 +16,23 @@ public class Strings {
         return string;
     }
 
+    /**
+     * Truncates to default length using trailing ellipsis.
+     */
     public static String truncate(String str) {
         return truncate(str, 43, "...");
     }
 
+    /**
+     * Truncates to max length using trailing ellipsis.
+     */
     public static String truncate(String str, int maxLen) {
         return truncate(str, maxLen, "...");
     }
 
+    /**
+     * Truncates to max length using a custom trailing marker.
+     */
     public static String truncate(String str, int maxLen, String ellipsis) {
         if (str == null) return null;
         if (maxLen <= 0) return "";
@@ -34,14 +46,23 @@ public class Strings {
         return str.substring(0, maxLen - ellipsis.length()) + ellipsis;
     }
 
+    /**
+     * Truncates in the middle with default ellipsis.
+     */
     public static String truncateMiddle(String str) {
         return truncateMiddle(str, 43, "...");
     }
 
+    /**
+     * Truncates in the middle to max length.
+     */
     public static String truncateMiddle(String str, int maxLen) {
         return truncateMiddle(str, maxLen, "...");
     }
 
+    /**
+     * Truncates in the middle using a custom marker.
+     */
     public static String truncateMiddle(String str, int maxLen, String ellipsis) {
         if (str == null) return null;
         if (str.length() <= maxLen) return str;

@@ -32,14 +32,29 @@ import java.util.regex.Pattern;
  */
 public interface ValueCodec<N, R> {
 
+    /**
+     * Encodes a value object to raw JSON-friendly form.
+     */
     R encode(N value);
 
+    /**
+     * Decodes a raw JSON-friendly value to value object.
+     */
     N decode(R raw);
 
+    /**
+     * Returns value type handled by this codec.
+     */
     Class<N> getValueClass();
 
+    /**
+     * Returns raw type produced/consumed by this codec.
+     */
     Class<R> getRawClass();
 
+    /**
+     * Returns a copy of value when codec needs custom copy semantics.
+     */
     default N copy(N value) {return value;}
 
 

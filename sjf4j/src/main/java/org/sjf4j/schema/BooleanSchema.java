@@ -22,14 +22,23 @@ public final class BooleanSchema implements JsonSchema {
         this.booleanValue = booleanValue;
     }
 
+    /**
+     * Boolean schema has no compile step.
+     */
     @Override
     public void compile(SchemaStore outer) {}
 
+    /**
+     * Encodes BooleanSchema to raw boolean.
+     */
     @ValueToRaw
     public boolean value2Raw() {
         return booleanValue;
     }
 
+    /**
+     * Decodes raw boolean to shared BooleanSchema instance.
+     */
     @RawToValue
     public static BooleanSchema raw2Value(boolean booleanValue) {
         return booleanValue ? TRUE : FALSE;
@@ -37,6 +46,9 @@ public final class BooleanSchema implements JsonSchema {
 
 
     // validate
+    /**
+     * Validates using boolean-schema semantics.
+     */
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {
         if (booleanValue) {
@@ -49,6 +61,9 @@ public final class BooleanSchema implements JsonSchema {
     }
 
     // evaluate
+    /**
+     * Evaluates using boolean-schema semantics.
+     */
     @Override
     public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
         if (booleanValue) {

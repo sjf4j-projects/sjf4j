@@ -12,10 +12,19 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public interface MapSupplier {
 
+    /**
+     * Creates an empty map.
+     */
     <T> Map<String, T> create();
 
+    /**
+     * Creates an empty map with initial capacity hint.
+     */
     <T> Map<String, T> create(int initialCapacity);
 
+    /**
+     * Creates a map initialized from target entries.
+     */
     <T> Map<String, T> create(Map<String, T> target);
 
 

@@ -16,12 +16,24 @@ import org.sjf4j.path.PathSegment;
  */
 public interface JsonSchema {
 
+    /**
+     * Compiles this schema into runtime evaluators.
+     */
     void compile(SchemaStore outer);
+    /**
+     * Validates a node with the given options.
+     */
     ValidationResult validate(Object node, ValidationOptions options);
+    /**
+     * Evaluates this schema against an instance during validation.
+     */
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
     /// Default
 
+    /**
+     * Compiles this schema using a fresh default store.
+     */
     default void compile() {
         compile(null);
     }
@@ -34,21 +46,33 @@ public interface JsonSchema {
         if (!result.isValid()) throw new ValidationException(result);
     }
 
+    /**
+     * Returns true when the node is valid.
+     */
     default boolean isValid(Object node) {
         ValidationResult result = validate(node, ValidationOptions.FAIL_FAST);
         return result.isValid();
     }
 
+    /**
+     * Validates with fail-fast options.
+     */
     default ValidationResult validateFailFast(Object node) {
         return validate(node, ValidationOptions.FAIL_FAST);
     }
 
+    /**
+     * Validates with default options.
+     */
     default ValidationResult validate(Object node) {
         return validate(node, ValidationOptions.DEFAULT);
     }
 
     /// Static
 
+    /**
+     * Parses JSON text and creates a schema instance.
+     */
     static JsonSchema fromJson(String json) {
         Object node = Sjf4j.fromJson(json) ;
         return fromNode(node);

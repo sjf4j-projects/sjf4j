@@ -18,13 +18,17 @@ public class Sjf4j {
 
     /// JSON
 
+    /**
+     * Parses JSON from reader into target class.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(Reader input, Class<T> clazz) {
         Objects.requireNonNull(input, "input is null");
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
-
-
+    /**
+     * Parses JSON from reader into target type reference.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(Reader input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input is null");
@@ -32,17 +36,24 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
+    /**
+     * Parses JSON from reader to generic object node.
+     */
     public static Object fromJson(Reader input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Parses JSON from string into target class.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(String input, Class<T> clazz) {
         Objects.requireNonNull(input, "input is null");
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
-
-
+    /**
+     * Parses JSON from string into target type reference.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(String input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input is null");
@@ -50,16 +61,25 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
+    /**
+     * Parses JSON from string to generic object node.
+     */
     public static Object fromJson(String input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Parses JSON from input stream into target class.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(InputStream input, Class<T> clazz) {
         Objects.requireNonNull(input, "input is null");
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
+    /**
+     * Parses JSON from input stream into target type reference.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(InputStream input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input is null");
@@ -67,16 +87,25 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
+    /**
+     * Parses JSON from input stream to generic object node.
+     */
     public static Object fromJson(InputStream input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Parses JSON bytes into target class.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(byte[] input, Class<T> clazz) {
         Objects.requireNonNull(input, "input is null");
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
     }
 
+    /**
+     * Parses JSON bytes into target type reference.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromJson(byte[] input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input is null");
@@ -84,24 +113,39 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
     }
 
+    /**
+     * Parses JSON bytes to generic object node.
+     */
     public static Object fromJson(byte[] input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Writes node as JSON to writer.
+     */
     public static void toJson(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
         Sjf4jConfig.global().getJsonFacade().writeNode(output, node);
     }
 
+    /**
+     * Writes node as JSON to output stream.
+     */
     public static void toJson(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output is null");
         Sjf4jConfig.global().getJsonFacade().writeNode(output, node);
     }
 
+    /**
+     * Serializes node to JSON string.
+     */
     public static String toJsonString(Object node) {
         return Sjf4jConfig.global().getJsonFacade().writeNodeAsString(node);
     }
 
+    /**
+     * Serializes node to JSON bytes.
+     */
     public static byte[] toJsonBytes(Object node) {
         return Sjf4jConfig.global().getJsonFacade().writeNodeAsBytes(node);
     }
@@ -109,12 +153,18 @@ public class Sjf4j {
 
     /// YAML
 
+    /**
+     * Parses YAML from reader into target class.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromYaml(Reader input, Class<T> clazz) {
         Objects.requireNonNull(input, "input is null");
         return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, clazz);
     }
 
+    /**
+     * Parses YAML from reader into target type reference.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromYaml(Reader input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input is null");
@@ -122,10 +172,16 @@ public class Sjf4j {
         return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, type.getType());
     }
 
+    /**
+     * Parses YAML from reader to generic object node.
+     */
     public static Object fromYaml(Reader input) {
         return fromYaml(input, Object.class);
     }
 
+    /**
+     * Parses YAML from string into target class.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromYaml(String input, Class<T> clazz) {
         Objects.requireNonNull(input, "input is null");
@@ -133,12 +189,7 @@ public class Sjf4j {
     }
 
     /**
-     * Parses YAML from a string into an object of the specified type using TypeReference.
-     *
-     * @param <T> The type of the object to parse
-     * @param input The string containing the YAML input
-     * @param type The type reference of the object to parse
-     * @return The parsed object
+     * Parses YAML from string into target type reference.
      */
     @SuppressWarnings("unchecked")
     public static <T> T fromYaml(String input, TypeReference<T> type) {
@@ -148,20 +199,14 @@ public class Sjf4j {
     }
 
     /**
-     * Parses YAML from a string into a JsonObject.
-     *
-     * @param input The string containing the YAML input
-     * @return The parsed JsonObject
+     * Parses YAML from string to generic object node.
      */
     public static Object fromYaml(String input) {
         return fromYaml(input, Object.class);
     }
 
     /**
-     * Writes an object as YAML to the given writer.
-     *
-     * @param output The writer to write the YAML to
-     * @param node The object to write as YAML
+     * Writes node as YAML to writer.
      */
     public static void toYaml(Writer output, Object node) {
         Objects.requireNonNull(output, "output is null");
@@ -169,37 +214,49 @@ public class Sjf4j {
     }
 
     /**
-     * Converts an object to its YAML string representation.
-     *
-     * @param node The object to convert to YAML
-     * @return The YAML string representation of the object
+     * Serializes node to YAML string.
      */
     public static String toYamlString(Object node) {
         return Sjf4jConfig.global().getYamlFacade().writeNodeAsString(node);
     }
 
+    /**
+     * Serializes node to YAML bytes.
+     */
     public static byte[] toYamlBytes(Object node) {
         return Sjf4jConfig.global().getYamlFacade().writeNodeAsBytes(node);
     }
 
     /// Node
 
+    /**
+     * Converts a node to target class via node facade.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);
     }
 
+    /**
+     * Converts a node to target type reference via node facade.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, TypeReference<T> type) {
         Objects.requireNonNull(type, "type is null");
         return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType());
     }
 
+    /**
+     * Deep-copies a node through node facade.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T deepNode(T node) {
         return (T) Sjf4jConfig.global().getNodeFacade().deepNode(node);
     }
 
+    /**
+     * Converts node to raw Java structures.
+     */
     public static Object toRaw(Object node) {
         return Sjf4jConfig.global().getNodeFacade().writeNode(node);
     }
@@ -207,22 +264,25 @@ public class Sjf4j {
     /// Properties
 
     /**
-     * Converts a Properties object to a JsonObject.
-     *
-     * @param props The Properties object to convert from
-     * @return The converted JsonObject
+     * Converts properties to generic object node.
      */
     public static Object fromProperties(Properties props) {
         Objects.requireNonNull(props, "props is null");
         return Sjf4jConfig.global().getPropertiesFacade().readNode(props);
     }
 
+    /**
+     * Converts properties to target class.
+     */
     public static <T> T fromProperties(Properties props, Class<T> clazz) {
         Objects.requireNonNull(props, "props is null");
         JsonObject jo = Sjf4jConfig.global().getPropertiesFacade().readNode(props);
         return fromNode(jo, clazz);
     }
 
+    /**
+     * Converts properties to target type reference.
+     */
     public static <T> T fromProperties(Properties props, TypeReference<T> type) {
         Objects.requireNonNull(props, "props is null");
         Objects.requireNonNull(type, "type is null");
@@ -231,9 +291,7 @@ public class Sjf4j {
     }
 
     /**
-     * Converts a JsonObject to a Properties object.
-     *
-     * @param node The JsonObject to convert from
+     * Converts node to java.util.Properties.
      */
     public static Properties toProperties(Object node) {
         Properties props = new Properties();

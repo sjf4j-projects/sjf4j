@@ -9,11 +9,17 @@ import org.sjf4j.exception.SchemaException;
 public class ValidationException extends SchemaException {
     private final ValidationResult result;
 
+    /**
+     * Creates an exception from a validation result.
+     */
     public ValidationException(ValidationResult result) {
         super(buildMessage(result));
         this.result = result;
     }
 
+    /**
+     * Builds a concise exception message from result state.
+     */
     private static String buildMessage(ValidationResult result) {
         ValidationMessage lastOne = result.getLastMessage();
         if (lastOne == null) {
@@ -23,6 +29,9 @@ public class ValidationException extends SchemaException {
         }
     }
 
+    /**
+     * Returns the underlying validation result.
+     */
     public ValidationResult getResult() {
         return result;
     }

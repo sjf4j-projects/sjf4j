@@ -15,6 +15,9 @@ public enum JsonType {
     NULL,
     UNKNOWN;
 
+    /**
+     * Resolves JsonType from low-level NodeKind.
+     */
     public static JsonType of(NodeKind nodeKind) {
         switch (nodeKind) {
             case OBJECT_MAP:
@@ -49,11 +52,17 @@ public enum JsonType {
         }
     }
 
+    /**
+     * Resolves JsonType from runtime node object.
+     */
     public static JsonType of(Object node) {
         NodeKind nodeKind = NodeKind.of(node);
         return of(nodeKind);
     }
 
+    /**
+     * Resolves JsonType from JSON Schema type keyword.
+     */
     public static JsonType ofSchema(String type) {
         switch (type) {
             case "object": return JsonType.OBJECT;
@@ -67,27 +76,51 @@ public enum JsonType {
         }
     }
 
+    /**
+     * Returns true when this type is object.
+     */
     public boolean isObject() {
         return this == OBJECT;
     }
+    /**
+     * Returns true when this type is array.
+     */
     public boolean isArray() {
         return this == ARRAY;
     }
+    /**
+     * Returns true when this type is a JSON primitive/value.
+     */
     public boolean isValue() {
         return this == STRING || this == NUMBER || this == INTEGER || this == BOOLEAN || this == NULL;
     }
+    /**
+     * Returns true when this type is string.
+     */
     public boolean isString() {
         return this == STRING;
     }
+    /**
+     * Returns true when this type is numeric.
+     */
     public boolean isNumber() {
         return this == NUMBER || this == INTEGER;
     }
+    /**
+     * Returns true when this type is boolean.
+     */
     public boolean isBoolean() {
         return this == BOOLEAN;
     }
+    /**
+     * Returns true when this type is null.
+     */
     public boolean isNull() {
         return this == NULL;
     }
+    /**
+     * Returns true when this type is unknown.
+     */
     public boolean isUnknown() {
         return this == UNKNOWN;
     }

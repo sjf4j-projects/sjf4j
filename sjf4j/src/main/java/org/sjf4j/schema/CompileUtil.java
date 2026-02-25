@@ -23,6 +23,9 @@ import java.util.Objects;
 public class CompileUtil {
 
 
+    /**
+     * Validates that all schema keywords are claimed by active vocabularies.
+     */
     static void checkVocabulary(PathSegment ps, ObjectSchema schema, Map<String, Boolean> vocabulary) {
         for (String property : schema.keySet()) {
             String vocabUri = VocabularyRegistry.getVocabUri(property);
@@ -43,10 +46,13 @@ public class CompileUtil {
     // schema: sub-schema within a document
     // idSchema: schema document that owns the current $id scope
     // rootSchema: root schema document being compiled
+    /**
+     * Compiles one schema object into an ordered evaluator list.
+     */
     static Evaluator[] compile(PathSegment ps,
-                                      ObjectSchema schema,
-                                      ObjectSchema idSchema,
-                                      ObjectSchema rootSchema) {
+                                       ObjectSchema schema,
+                                       ObjectSchema idSchema,
+                                       ObjectSchema rootSchema) {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(idSchema);
         Objects.requireNonNull(rootSchema);
@@ -279,9 +285,9 @@ public class CompileUtil {
 
         return evaluators.toArray(new Evaluator[0]);
     }
-
-
-
+    /**
+     * Compiles a map of subschemas from the given keyword.
+     */
     static Map<String, JsonSchema> compileSchemaMapByKey(String key, PathSegment ps,
                                                          ObjectSchema schema, ObjectSchema idSchema,
                                                          ObjectSchema rootSchema) {
@@ -304,6 +310,9 @@ public class CompileUtil {
         return schemaMap;
     }
 
+    /**
+     * Compiles an array of subschemas from the given keyword.
+     */
     static JsonSchema[] compileSchemaArrayByKey(String key, PathSegment ps,
                                             ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object schemaArrayNode = schema.getNode(key);
@@ -327,6 +336,9 @@ public class CompileUtil {
         return schemaArr;
     }
 
+    /**
+     * Compiles one subschema from the given keyword.
+     */
     static JsonSchema compileSchemaByKey(String key, PathSegment ps,
                                      ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object subNode = schema.getNode(key);
@@ -337,6 +349,9 @@ public class CompileUtil {
         return subSchema;
     }
 
+    /**
+     * Compiles a schema node into a JsonSchema implementation.
+     */
     static JsonSchema compileSchema(Object node, PathSegment ps,
                                 ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (node instanceof JsonSchema) {
@@ -357,6 +372,9 @@ public class CompileUtil {
         }
     }
 
+    /**
+     * Returns the URI without its fragment part.
+     */
     public static URI dropFragment(URI uri) {
         try {
             if (uri.getFragment() != null) {
@@ -373,6 +391,9 @@ public class CompileUtil {
     }
 
 
+    /**
+     * Resolves an $id or $ref value against a base URI.
+     */
     static URI resolveUri(String idOrRef, URI baseUri) {
         if (idOrRef == null) return null;
 

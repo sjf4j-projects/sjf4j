@@ -30,19 +30,37 @@ public class ValidationContext {
         this.messages = options.isFailFast() ? null : new ArrayList<>();
     }
 
+    /**
+     * Returns validation options.
+     */
     public ValidationOptions getOptions() {return this.options;}
+    /**
+     * Builds an immutable result snapshot from current context state.
+     */
     public ValidationResult toResult() {
         return new ValidationResult(valid, messages, lastMessage);
     }
+    /**
+     * Returns true when no validation error was added.
+     */
     public boolean isValid() {
         return valid;
     }
+    /**
+     * Returns true when validation should abort early.
+     */
     public boolean shouldAbort() {
         return options.isFailFast() && !valid;
     }
 
     // Ignore
+    /**
+     * Pushes an error-ignore frame.
+     */
     public void pushIgnoreError() {ignoreErrorAdding++;}
+    /**
+     * Pops an error-ignore frame.
+     */
     public void popIgnoreError() {ignoreErrorAdding--;}
 //    public void pushIgnoreEvaluated() {ignoreEvaluatedTracking++;}
 //    public void popIgnoreEvaluated() {ignoreEvaluatedTracking--;}
@@ -59,11 +77,17 @@ public class ValidationContext {
         if (found == null && !anchor.isEmpty()) found = targetSchema.getSchemaByDynamicAnchor(anchor);
         return found;
     }
+    /**
+     * Resolves a schema by URI and JSON Pointer path.
+     */
     JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
         return targetSchema.getSchemaByPath(uri, path);
     }
 
     // dynamicAnchor
+    /**
+     * Pushes a schema scope used for dynamicAnchor resolution.
+     */
     boolean pushIdSchema(ObjectSchema schema) {
         if (idSchemaStack.peek() != schema) {
             idSchemaStack.push(schema);
@@ -71,9 +95,15 @@ public class ValidationContext {
         }
         return false;
     }
+    /**
+     * Pops the current schema scope.
+     */
     ObjectSchema popIdSchema() {
         return idSchemaStack.pop();
     }
+    /**
+     * Resolves a schema by dynamic anchor with scope fallback.
+     */
     ObjectSchema getSchemaByDynamicAnchor(URI uri, String dynamicAnchor) {
         ObjectSchema schema = targetSchema.getSchemaByDynamicAnchor(uri, dynamicAnchor);
         if (schema != null) {
@@ -87,6 +117,9 @@ public class ValidationContext {
     }
 
     // message
+    /**
+     * Adds a validation error message.
+     */
     void addError(PathSegment ps, String keyword, String message) {
         if (ignoreErrorAdding < 1) {
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR, ps, keyword, message);
@@ -98,6 +131,9 @@ public class ValidationContext {
             valid = false;
         }
     }
+    /**
+     * Adds a validation warning message.
+     */
     void addWarn(PathSegment ps, String keyword, String message) {
         if (messages != null) {
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN, ps, keyword, message);

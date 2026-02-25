@@ -88,60 +88,99 @@ public final class Sjf4jConfig {
 
     private static Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
 
+    /**
+     * Replaces global configuration and refreshes dependent codecs.
+     */
     public static void global(Sjf4jConfig sjf4jConfig) {
         if (sjf4jConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
         GLOBAL = sjf4jConfig;
         NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
     }
+    /**
+     * Returns the current global configuration.
+     */
     public static Sjf4jConfig global() {
         return GLOBAL;
     }
 
+    /**
+     * Switches global JSON facade to Jackson.
+     */
     public static void useJacksonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createJacksonFacade()).build());
     }
+    /**
+     * Switches global JSON facade to Gson.
+     */
     public static void useGsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createGsonFacade()).build());
     }
+    /**
+     * Switches global JSON facade to Fastjson2.
+     */
     public static void useFastjson2AsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
     }
+    /**
+     * Uses shared IO streaming mode globally.
+     */
     public static void useStreamingSharedIOAsGlobal() {
         Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
                 .streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
     }
+    /**
+     * Uses exclusive IO streaming mode globally.
+     */
     public static void useStreamingExclusiveIOAsGlobal() {
         Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
                 .streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
     }
+    /**
+     * Uses plugin-module streaming mode globally.
+     */
     public static void useStreamingPluginModuleAsGlobal() {
         Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
                 .streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
     }
 
+    /**
+     * Switches global JSON facade to built-in simple implementation.
+     */
     public static void useSimpleJsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
     }
 
+    /**
+     * Enables or disables binding path tracking globally.
+     */
     public static void useBindingPath(boolean bindingPath) {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .bindingPath(bindingPath).build());
     }
 
+    /**
+     * Uses epoch-millis format for Instant globally.
+     */
     public static void useInstantEpochMillisAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .instantFormat(InstantFormat.EPOCH_MILLIS).build());
     }
 
+    /**
+     * Uses ISO string format for Instant globally.
+     */
     public static void useInstantIsoAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .instantFormat(InstantFormat.ISO_STRING).build());
     }
 
+    /**
+     * Returns JSON facade, lazily resolving default when needed.
+     */
     public JsonFacade<?, ?> getJsonFacade() {
         if (jsonFacade == null) {
             jsonFacade = FacadeFactory.getDefaultJsonFacade();
@@ -149,6 +188,9 @@ public final class Sjf4jConfig {
         return jsonFacade;
     }
 
+    /**
+     * Returns YAML facade, lazily resolving default when needed.
+     */
     public YamlFacade<?, ?> getYamlFacade() {
         if (yamlFacade == null) {
             yamlFacade = FacadeFactory.getDefaultYamlFacade();
@@ -156,6 +198,9 @@ public final class Sjf4jConfig {
         return yamlFacade;
     }
 
+    /**
+     * Returns Properties facade, lazily resolving default when needed.
+     */
     public PropertiesFacade getPropertiesFacade() {
         if (propertiesFacade == null) {
             propertiesFacade = FacadeFactory.getDefaultPropertiesFacade();
@@ -163,6 +208,9 @@ public final class Sjf4jConfig {
         return propertiesFacade;
     }
 
+    /**
+     * Returns node facade, lazily resolving default when needed.
+     */
     public NodeFacade getNodeFacade() {
         if (nodeFacade == null) {
             nodeFacade = FacadeFactory.getDefaultNodeFacade();
@@ -170,6 +218,9 @@ public final class Sjf4jConfig {
         return nodeFacade;
     }
 
+    /**
+     * Returns whether binding path is enabled.
+     */
     public boolean isBindingPath() {
         return bindingPath;
     }
@@ -192,8 +243,14 @@ public final class Sjf4jConfig {
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
         private boolean bindingPath = true;
 
+        /**
+         * Creates a builder with default settings.
+         */
         public Builder() {}
 
+        /**
+         * Creates a builder initialized from existing config.
+         */
         public Builder(Sjf4jConfig config) {
             if (config == null) throw new IllegalArgumentException("JsonConfig must not be null");
             this.jsonFacade = config.jsonFacade;
@@ -208,54 +265,87 @@ public final class Sjf4jConfig {
             this.bindingPath = config.bindingPath;
         }
 
+        /**
+         * Builds an immutable configuration.
+         */
         public Sjf4jConfig build() {
             return new Sjf4jConfig(this);
         }
 
+        /**
+         * Sets JSON facade.
+         */
         public Builder jsonFacade(JsonFacade<?, ?> jsonFacade) {
             if (jsonFacade == null) throw new IllegalArgumentException("jsonFacade must not be null");
             this.jsonFacade = jsonFacade;
             return this;
         }
+        /**
+         * Sets YAML facade.
+         */
         public Builder yamlFacade(YamlFacade<?, ?> yamlFacade) {
             if (yamlFacade == null) throw new IllegalArgumentException("yamlFacade must not be null");
             this.yamlFacade = yamlFacade;
             return this;
         }
+        /**
+         * Sets properties facade.
+         */
         public Builder propertiesFacade(PropertiesFacade propertiesFacade) {
             if (propertiesFacade == null) throw new IllegalArgumentException("propertiesFacade must not be null");
             this.propertiesFacade = propertiesFacade;
             return this;
         }
+        /**
+         * Sets node facade.
+         */
         public Builder nodeFacade(NodeFacade nodeFacade) {
             if (nodeFacade == null) throw new IllegalArgumentException("nodeFacade must not be null");
             this.nodeFacade = nodeFacade;
             return this;
         }
+        /**
+         * Sets map supplier.
+         */
         public Builder mapSupplier(MapSupplier mapSupplier) {
             if (mapSupplier == null) throw new IllegalArgumentException("mapSupplier must not be null");
             this.mapSupplier = mapSupplier;
             return this;
         }
+        /**
+         * Sets list supplier.
+         */
         public Builder listSupplier(ListSupplier listSupplier) {
             if (listSupplier == null) throw new IllegalArgumentException("listSupplier must not be null");
             this.listSupplier = listSupplier;
             return this;
         }
+        /**
+         * Sets set supplier.
+         */
         public Builder setSupplier(SetSupplier setSupplier) {
             if (setSupplier == null) throw new IllegalArgumentException("setSupplier must not be null");
             this.setSupplier = setSupplier;
             return this;
         }
+        /**
+         * Sets streaming mode.
+         */
         public Builder streamingMode(StreamingFacade.StreamingMode streamingMode) {
             this.streamingMode = streamingMode;
             return this;
         }
+        /**
+         * Sets Instant format.
+         */
         public Builder instantFormat(InstantFormat instantFormat) {
             if (instantFormat == null) throw new IllegalArgumentException("instantFormat must not be null");
             this.instantFormat = instantFormat;
             return this;
         }
+        /**
+         * Sets binding path behavior.
+         */
         public Builder bindingPath(boolean bindingPath) {
             this.bindingPath = bindingPath;
             return this;

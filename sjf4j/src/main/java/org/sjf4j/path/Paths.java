@@ -27,17 +27,26 @@ public class Paths {
         return inspect(linearize(lastSegment));
     }
 
+    /**
+     * Converts a segment chain to a rooted JSONPath expression.
+     */
     public static String rootedPathExpr(PathSegment lastSegment) {
         if (lastSegment == null) return "";
         return toPathExpr(linearize(lastSegment));
     }
 
+    /**
+     * Converts a segment chain to a rooted JSON Pointer expression.
+     */
     public static String rootedPointerExpr(PathSegment lastSegment) {
         if (lastSegment == null) return "";
         return toPointerExpr(linearize(lastSegment));
     }
 
     /// Inspect
+    /**
+     * Linearizes a segment chain into an ordered array.
+     */
     static PathSegment[] linearize(PathSegment lastSegment) {
         Objects.requireNonNull(lastSegment, "lastSegment is null");
         int size = 0;
@@ -50,6 +59,9 @@ public class Paths {
         return segments;
     }
 
+    /**
+     * Builds a debug-friendly representation of the path segments.
+     */
     public static String inspect(PathSegment[] segments) {
         Objects.requireNonNull(segments, "segments is null");
         StringBuilder sb = new StringBuilder();
@@ -83,6 +95,9 @@ public class Paths {
 
     /// JSON Pointer
 
+    /**
+     * Parses a JSON Pointer expression into path segments.
+     */
     public static PathSegment[] parsePointer(String expr) {
         Objects.requireNonNull(expr, "expr is null");
         if (!expr.isEmpty() && !expr.startsWith("/"))
@@ -138,6 +153,9 @@ public class Paths {
         return segments.toArray(new PathSegment[0]);
     }
 
+    /**
+     * Formats segments as a JSON Pointer expression.
+     */
     public static String toPointerExpr(PathSegment[] segments) {
         Objects.requireNonNull(segments, "segments is null");
         StringBuilder sb = new StringBuilder();
@@ -180,6 +198,9 @@ public class Paths {
 
     ///  JSON Path
 
+    /**
+     * Formats segments as a JSONPath expression.
+     */
     public static String toPathExpr(PathSegment[] segments) {
         Objects.requireNonNull(segments, "segments is null");
         StringBuilder sb = new StringBuilder();
@@ -200,6 +221,9 @@ public class Paths {
         return sb.toString();
     }
 
+    /**
+     * Parses a JSONPath expression into path segments.
+     */
     public static PathSegment[] parsePath(String expr) {
         if (expr == null || expr.isEmpty()) throw new JsonException("expr is empty");
 
@@ -373,13 +397,18 @@ public class Paths {
 
     /// private
 
+    /**
+     * Returns true if the char can continue a dot-name token.
+     */
     private static boolean isNextTokenChar(char c) {
 //        return Character.isLetterOrDigit(c) || c == '_' || c == '-';
         return c != '.' && c != '[' && c != '(';
     }
 
 
-    // Helper method: parse single quoted name
+    /**
+     * Parses a single-quoted or double-quoted name.
+     */
     private static String parseSingleQuotedName(String content) {
         if (content.length() < 2) {
             throw new JsonException("Invalid quoted name '" + content + "'");
@@ -421,7 +450,9 @@ public class Paths {
     }
 
 
-    // Helper method: parse slice part (can be null for default value)
+    /**
+     * Parses a slice part value or returns null when blank.
+     */
     private static Integer parseSlicePart(String part) {
         if (part == null || part.trim().isEmpty()) {
             return null;
@@ -433,7 +464,9 @@ public class Paths {
         }
     }
 
-    // Helper method: parse quoted name in Union
+    /**
+     * Parses a quoted name in a union expression.
+     */
     private static String parseQuotedUnionName(String content, int start, int[] end) {
         char quote = content.charAt(start);
         StringBuilder sb = new StringBuilder();
@@ -469,7 +502,9 @@ public class Paths {
         return sb.toString();
     }
 
-    // Helper method: parse multiple segments in Union
+    /**
+     * Parses union elements into segment tokens.
+     */
     private static PathSegment[] parseUnionTokens(String content) {
         List<PathSegment> segments = new ArrayList<>();
         int i = 0;
@@ -592,7 +627,9 @@ public class Paths {
         throw new IllegalArgumentException("No matching ')' found for '(' at position " + start);
     }
 
-    // Function at last token, not in Filter
+    /**
+     * Parses function arguments at the last token.
+     */
     static List<String> parseFunctionArgs(String s) {
         List<String> args = new ArrayList<>();
         if (s == null || s.isEmpty()) return args;
@@ -645,6 +682,9 @@ public class Paths {
 
     /// Path Filter
 
+    /**
+     * Parses a filter expression into an AST.
+     */
     public static FilterExpr parseFilter(String s) {
         int[] pos = {0};
         skipWs(s, pos);
@@ -656,7 +696,9 @@ public class Paths {
         return expr;
     }
 
-    // or := and ('||' and)*
+    /**
+     * Parses an OR expression.
+     */
     private static FilterExpr parseOr(String s, int[] pos) {
         FilterExpr left = parseAnd(s, pos);
         while (true) {
@@ -669,7 +711,9 @@ public class Paths {
         return left;
     }
 
-    // and := compare ('&&' compare)*
+    /**
+     * Parses an AND expression.
+     */
     private static FilterExpr parseAnd(String s, int[] pos) {
         FilterExpr left = parseCompare(s, pos);
         while (true) {
@@ -682,7 +726,9 @@ public class Paths {
         return left;
     }
 
-    // compare := unary (op unary)?
+    /**
+     * Parses a comparison expression.
+     */
     private static FilterExpr parseCompare(String s, int[] pos) {
         FilterExpr left = parseUnary(s, pos);
         skipWs(s, pos);
@@ -705,7 +751,9 @@ public class Paths {
         return left;
     }
 
-    // unary := '!' unary | primary
+    /**
+     * Parses a unary expression.
+     */
     private static FilterExpr parseUnary(String s, int[] pos) {
         skipWs(s, pos);
         if (match(s, pos, "!")) {
@@ -715,7 +763,9 @@ public class Paths {
         return parsePrimary(s, pos);
     }
 
-    // primary := literal | path | '(' expr ')'
+    /**
+     * Parses a primary expression.
+     */
     private static FilterExpr parsePrimary(String s, int[] pos) {
         skipWs(s, pos);
         char c = peekLast(s, pos);
@@ -761,7 +811,9 @@ public class Paths {
         throw new JsonException("Unexpected char '" + c + "' at pos " + pos[0]);
     }
 
-    // function := name '(' [ expr (',' expr)* ] ')'
+    /**
+     * Parses a function call expression.
+     */
     private static FilterExpr parseFunction(String s, int[] pos) {
         // function name
         int start = pos[0];
@@ -809,16 +861,25 @@ public class Paths {
         return new FilterExpr.FunctionExpr(name, args);
     }
 
+    /**
+     * Returns true if the char is valid in function names.
+     */
     private static boolean isNamePart(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
     }
 
+    /**
+     * Advances the cursor over whitespace.
+     */
     private static void skipWs(String s, int[] pos) {
         while (pos[0] < s.length() && Character.isWhitespace(s.charAt(pos[0]))) {
             pos[0]++;
         }
     }
 
+    /**
+     * Matches and consumes the given operator token.
+     */
     private static boolean match(String s, int[] pos, String op) {
         if (s.startsWith(op, pos[0])) {
             pos[0] += op.length();
@@ -827,10 +888,16 @@ public class Paths {
         return false;
     }
 
+    /**
+     * Returns the current character or '\0' when out of range.
+     */
     private static char peekLast(String s, int[] pos) {
         return pos[0] < s.length() ? s.charAt(pos[0]) : '\0';
     }
 
+    /**
+     * Parses a quoted string literal.
+     */
     private static String parseString(String s, int[] pos) {
         char quote = s.charAt(pos[0]++);
         int start = pos[0];
@@ -863,6 +930,9 @@ public class Paths {
         throw new JsonException("Unterminated string literal starting at position " + start);
     }
 
+    /**
+     * Parses a numeric literal.
+     */
     private static Number parseNumber(String s, int[] pos) {
         int start = pos[0];
         while (pos[0] < s.length() &&
@@ -873,6 +943,9 @@ public class Paths {
         return Double.valueOf(s.substring(start, pos[0]));
     }
 
+    /**
+     * Parses a path literal within a filter expression.
+     */
     private static String parsePath(String s, int[] pos) {
         int start = pos[0];
         boolean inStr = false, escape = false, inBracket = false, inParen = false;
@@ -922,6 +995,9 @@ public class Paths {
         return s.substring(start, pos[0]);
     }
 
+    /**
+     * Parses a regex literal with optional flags.
+     */
     @SuppressWarnings("MagicConstant")
     private static FilterExpr.RegexExpr parseRegex(String s, int[] pos) {
         int start = pos[0];
@@ -966,6 +1042,9 @@ public class Paths {
         throw new JsonException("Unterminated regex starting at pos " + start);
     }
 
+    /**
+     * Converts regex flag letters to Pattern flags.
+     */
     private static int toFlags(String flags) {
         int f = 0;
         for (char c : flags.toCharArray()) {

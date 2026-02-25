@@ -14,9 +14,7 @@ public abstract class TypeReference<T> {
     private final Type type;
 
     /**
-     * Constructs a TypeReference and captures the generic type information.
-     *
-     * @throws IllegalArgumentException if the type parameter is missing
+     * Captures the generic type argument from subclass declaration.
      */
     protected TypeReference() {
         Type superclass = getClass().getGenericSuperclass();
@@ -29,17 +27,13 @@ public abstract class TypeReference<T> {
 
     /**
      * Returns the captured generic type.
-     *
-     * @return the captured generic type
      */
     public Type getType() {
         return type;
     }
 
     /**
-     * Returns a string representation of the captured type.
-     *
-     * @return a string representation of the captured type
+     * Returns the captured type as string.
      */
     @Override
     public String toString() {

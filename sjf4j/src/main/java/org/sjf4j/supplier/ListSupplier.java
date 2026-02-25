@@ -16,12 +16,24 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public interface ListSupplier {
 
+    /**
+     * Creates an empty list.
+     */
     <T> List<T> create();
 
+    /**
+     * Creates an empty list with initial capacity hint.
+     */
     <T> List<T> create(int initialCapacity);
 
+    /**
+     * Creates a list initialized from target elements.
+     */
     <T> List<T> create(Collection<T> target);
 
+    /**
+     * Creates a list initialized from target array.
+     */
     default <T> List<T> create(T[] target) {
         List<T> list = create(target.length);
         Collections.addAll(list, target);

@@ -16,8 +16,14 @@ import java.util.regex.PatternSyntaxException;
  */
 public interface FormatValidator {
 
+    /**
+     * Returns true when the value satisfies the format.
+     */
     boolean validate(String value);
 
+    /**
+     * Returns the validator implementation for a format name.
+     */
     static FormatValidator of(String format) {
         switch (format) {
             case "email": return EMAIL;
@@ -287,6 +293,9 @@ public interface FormatValidator {
             }
         }
 
+        /**
+         * Converts IRI host parts to ASCII for URI parsing.
+         */
         private String convertIriToAscii(String iri) {
             int schemeEnd = iri.indexOf(':') + 1;
             String rest = iri.substring(schemeEnd);

@@ -25,10 +25,16 @@ public class StringUtil {
 
     @FunctionalInterface
     private interface Counter {
+        /**
+         * Counts visible text units in the given string.
+         */
         int count(String s);
     }
 
     private static final Counter COUNTER = init();
+    /**
+     * Initializes the best available string length counter.
+     */
     private static Counter init() {
         try {
             Class.forName("com.ibm.icu.text.BreakIterator");
@@ -47,6 +53,9 @@ public class StringUtil {
         private static final ThreadLocal<BreakIterator> TL =
                 ThreadLocal.withInitial(() -> BreakIterator.getCharacterInstance(Locale.ROOT));
 
+        /**
+         * Counts grapheme clusters using ICU BreakIterator.
+         */
         static int count(String s) {
             BreakIterator it = TL.get();
             it.setText(s);

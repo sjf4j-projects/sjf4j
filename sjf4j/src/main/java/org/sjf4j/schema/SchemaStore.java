@@ -20,16 +20,28 @@ public class SchemaStore {
     private final Map<URI, ObjectSchema> mixedUriSchemas = new HashMap<>();
 //    private final ArrayList<ObjectSchema> schemas = new ArrayList<>();
 
+    /**
+     * Creates an empty schema store.
+     */
     public SchemaStore() {}
+    /**
+     * Creates a store by importing another store.
+     */
     public SchemaStore(SchemaStore other) {
         importFrom(other);
     }
+    /**
+     * Creates a store and registers initial schemas.
+     */
     public SchemaStore(JsonSchema... initialSchemas) {
         for (JsonSchema schema : initialSchemas) {
             register(schema);
         }
     }
 
+    /**
+     * Registers a schema using its resolved URI.
+     */
     public boolean register(JsonSchema schema) {
         if (!(schema instanceof ObjectSchema)) return false;
         ObjectSchema os = (ObjectSchema) schema;
@@ -43,6 +55,9 @@ public class SchemaStore {
 //        throw new SchemaException("Cannot register schema: no available uri");
     }
 
+    /**
+     * Registers a schema with an explicit URI alias.
+     */
     public boolean register(URI uri, JsonSchema schema) {
         if (!(schema instanceof ObjectSchema)) return false;
         ObjectSchema os = (ObjectSchema) schema;
@@ -64,6 +79,9 @@ public class SchemaStore {
         return false;
     }
 
+    /**
+     * Registers one URI mapping after validation checks.
+     */
     private void _register(URI uri, JsonSchema schema) {
         Objects.requireNonNull(uri);
         Objects.requireNonNull(schema);
@@ -87,6 +105,9 @@ public class SchemaStore {
         }
     }
 
+    /**
+     * Imports all schema mappings from another store.
+     */
     public void importFrom(SchemaStore other) {
         if (other != null) {
             for (Map.Entry<URI, ObjectSchema> entry : other.mixedUriSchemas.entrySet()) {
@@ -99,14 +120,23 @@ public class SchemaStore {
         }
     }
 
+    /**
+     * Resolves a schema by absolute URI.
+     */
     public ObjectSchema resolve(URI uri) {
         return mixedUriSchemas.get(uri);
     }
 
+    /**
+     * Returns true if the URI exists in this store.
+     */
     public boolean contains(URI uri) {
         return mixedUriSchemas.containsKey(uri);
     }
 
+    /**
+     * Returns all registered URIs.
+     */
     public Set<URI> uris() {
         return mixedUriSchemas.keySet();
     }
@@ -114,6 +144,9 @@ public class SchemaStore {
 
     /// Global Schemas
     private static final SchemaStore GLOBAL_STORE = new SchemaStore();
+    /**
+     * Resolves a schema from the global built-in store.
+     */
     public static ObjectSchema globalResolve(URI uri) {
         return GLOBAL_STORE.resolve(uri);
     }
@@ -130,6 +163,9 @@ public class SchemaStore {
         registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/schema.json");
     }
 
+    /**
+     * Loads and registers one built-in global schema resource.
+     */
     private static void registerGlobalSchema(String resourcePath) {
         ObjectSchema schema = loadSchemaFromResource(resourcePath);
         if (schema == null) throw new SchemaException("Not found global schema: " + resourcePath);
@@ -174,6 +210,9 @@ public class SchemaStore {
 //    }
 
 
+    /**
+     * Loads a schema from a local file/classpath URI.
+     */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
         Objects.requireNonNull(uri, "uri is null");
         if ("file".equalsIgnoreCase(uri.getScheme())) {
@@ -189,6 +228,9 @@ public class SchemaStore {
         throw new SchemaException("Unsupported local schema uri: " + uri);
     }
 
+    /**
+     * Loads a schema from a file path.
+     */
     public static ObjectSchema loadSchemaFromFile(String filePath) {
         try (InputStream in = Files.newInputStream(Paths.get(filePath))) {
             return Sjf4j.fromJson(in, ObjectSchema.class);
@@ -197,6 +239,9 @@ public class SchemaStore {
         }
     }
 
+    /**
+     * Loads a schema from a classpath resource path.
+     */
     public static ObjectSchema loadSchemaFromResource(String resourcePath) {
         if (resourcePath.startsWith("/")) resourcePath = resourcePath.substring(1);
         try (InputStream in = SchemaStore.class.getClassLoader().getResourceAsStream(resourcePath)) {

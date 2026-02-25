@@ -36,6 +36,9 @@ public final class InstancedNode {
         this.encoded = encoded;
     }
 
+    /**
+     * Resets runtime validation state for reuse.
+     */
     public InstancedNode reset() {
         this.evaluatedStack = null;
         this.refSchemaTimes = 0;
@@ -46,6 +49,9 @@ public final class InstancedNode {
     // NULL
     public static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, null, false);
 
+    /**
+     * Infers node metadata and wraps it as an InstancedNode.
+     */
     public static InstancedNode infer(Object node) {
         if (node == null) return NULL.reset();
         NodeKind nodeKind = NodeKind.of(node);
@@ -58,44 +64,83 @@ public final class InstancedNode {
         return new InstancedNode(node, JsonType.of(nodeKind), nodeKind, encoded);
     }
 
+    /**
+     * Returns the wrapped runtime node.
+     */
     public Object getNode() {return node;}
+    /**
+     * Returns the runtime object type.
+     */
     public Class<?> getObjectType() {return objectType;}
+    /**
+     * Returns the inferred JSON type.
+     */
     public JsonType getJsonType() {return jsonType;}
+    /**
+     * Returns the inferred node kind.
+     */
     public NodeKind getNodeType() {return nodeKind;}
+    /**
+     * Returns true when value codec encoding was applied.
+     */
     public boolean isEncoded() {return encoded;}
 
+    /**
+     * Marks one property/item index as evaluated.
+     */
     public void markEvaluated(int propIdx) {
         if (evaluatedStack == null) return;
         BitSet evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(propIdx);
     }
+    /**
+     * Marks a range of property/item indexes as evaluated.
+     */
     public void markEvaluated(int fromIdx, int toIdx) {
         if (evaluatedStack == null) return;
         BitSet evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(fromIdx, toIdx);
     }
+    /**
+     * Initializes evaluated tracking with a fresh frame.
+     */
     public void createEvaluated() {
         if (evaluatedStack == null) evaluatedStack = new ArrayDeque<>();
         evaluatedStack.push(new BitSet());
     }
+    /**
+     * Pushes an empty evaluated frame.
+     */
     public void pushEvaluated() {
         if (evaluatedStack == null) return;
         evaluatedStack.push(new BitSet());
     }
+    /**
+     * Pushes an existing evaluated frame.
+     */
     public void pushEvaluated(BitSet evaluated) {
         if (evaluatedStack == null) return;
         evaluatedStack.push(evaluated);
     }
+    /**
+     * Pops the current evaluated frame.
+     */
     public BitSet popEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.pop();
     }
+    /**
+     * Returns the current evaluated frame.
+     */
     public BitSet peekEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.peek();
     }
+    /**
+     * Merges all evaluated frames into one BitSet.
+     */
     public BitSet mergedEvaluated() {
         BitSet merged = new BitSet();
         if (evaluatedStack != null) {
