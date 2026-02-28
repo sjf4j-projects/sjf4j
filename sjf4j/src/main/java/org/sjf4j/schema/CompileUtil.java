@@ -18,13 +18,18 @@ import java.util.Objects;
 
 
 /**
- * Compilation helpers that translate schema keywords into evaluators.
+ * Compilation helpers that translate schema keywords into evaluator pipelines.
+ * <p>
+ * These utilities normalize subschema nodes, resolve references, and build the
+ * ordered evaluator list executed at validation time.
  */
 public class CompileUtil {
 
 
     /**
-     * Validates that all schema keywords are claimed by active vocabularies.
+     * Validates that schema keywords are recognized and allowed by vocabulary.
+     *
+     * @throws SchemaException when a keyword is unknown or explicitly disallowed
      */
     static void checkVocabulary(PathSegment ps, ObjectSchema schema, Map<String, Boolean> vocabulary) {
         for (String property : schema.keySet()) {
@@ -48,6 +53,9 @@ public class CompileUtil {
     // rootSchema: root schema document being compiled
     /**
      * Compiles one schema object into an ordered evaluator list.
+     * <p>
+     * Order matters because some keywords produce evaluated-location marks that
+     * are consumed by later keywords (for example unevaluated*).
      */
     static Evaluator[] compile(PathSegment ps,
                                        ObjectSchema schema,
@@ -287,6 +295,9 @@ public class CompileUtil {
     }
     /**
      * Compiles a map of subschemas from the given keyword.
+     * <p>
+     * Source object is rewritten in-place so compiled JsonSchema instances can be
+     * reused directly during evaluation.
      */
     static Map<String, JsonSchema> compileSchemaMapByKey(String key, PathSegment ps,
                                                          ObjectSchema schema, ObjectSchema idSchema,
@@ -312,6 +323,8 @@ public class CompileUtil {
 
     /**
      * Compiles an array of subschemas from the given keyword.
+     * <p>
+     * Source array is rewritten in-place with compiled JsonSchema values.
      */
     static JsonSchema[] compileSchemaArrayByKey(String key, PathSegment ps,
                                             ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
@@ -337,7 +350,7 @@ public class CompileUtil {
     }
 
     /**
-     * Compiles one subschema from the given keyword.
+     * Compiles one subschema from the given keyword and writes back if needed.
      */
     static JsonSchema compileSchemaByKey(String key, PathSegment ps,
                                      ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
@@ -351,6 +364,9 @@ public class CompileUtil {
 
     /**
      * Compiles a schema node into a JsonSchema implementation.
+     * <p>
+     * Boolean nodes become boolean schemas; object nodes become compiled
+     * ObjectSchema instances; null/other types are invalid for schema positions.
      */
     static JsonSchema compileSchema(Object node, PathSegment ps,
                                 ObjectSchema idSchema, ObjectSchema rootSchema) {
@@ -373,7 +389,7 @@ public class CompileUtil {
     }
 
     /**
-     * Returns the URI without its fragment part.
+     * Returns URI without fragment while preserving other components.
      */
     public static URI dropFragment(URI uri) {
         try {
@@ -392,7 +408,10 @@ public class CompileUtil {
 
 
     /**
-     * Resolves an $id or $ref value against a base URI.
+     * Resolves an {@code $id}/{@code $ref} value against base URI.
+     * <p>
+     * Fragment-only refs on opaque base URI keep the base resource; other
+     * relative refs on opaque bases are rejected.
      */
     static URI resolveUri(String idOrRef, URI baseUri) {
         if (idOrRef == null) return null;

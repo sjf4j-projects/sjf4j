@@ -9,7 +9,9 @@ import org.sjf4j.path.PathSegment;
 import java.util.Collections;
 
 /**
- * Boolean schema representation (true/false).
+ * Boolean schema representation ({@code true}/{@code false}).
+ * <p>
+ * {@code true} accepts any instance; {@code false} rejects every instance.
  */
 @NodeValue
 public final class BooleanSchema implements JsonSchema {
@@ -22,9 +24,7 @@ public final class BooleanSchema implements JsonSchema {
         this.booleanValue = booleanValue;
     }
 
-    /**
-     * Boolean schema has no compile step.
-     */
+    /** Boolean schema has no compile step. */
     @Override
     public void compile(SchemaStore outer) {}
 
@@ -48,6 +48,8 @@ public final class BooleanSchema implements JsonSchema {
     // validate
     /**
      * Validates using boolean-schema semantics.
+     * <p>
+     * For {@code false}, returns an invalid result with one synthetic error.
      */
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {

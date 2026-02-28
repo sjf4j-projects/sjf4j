@@ -14,7 +14,9 @@ import java.util.Set;
 
 
 /**
- * Registry for compiled schema documents indexed by URI.
+ * Registry for compiled schema resources indexed by absolute URI.
+ * <p>
+ * Supports canonical URI and alias mappings pointing to the same ObjectSchema.
  */
 public class SchemaStore {
     private final Map<URI, ObjectSchema> mixedUriSchemas = new HashMap<>();
@@ -41,6 +43,8 @@ public class SchemaStore {
 
     /**
      * Registers a schema using its resolved URI.
+     *
+     * @return true when schema was registrable (object schema with non-empty URI)
      */
     public boolean register(JsonSchema schema) {
         if (!(schema instanceof ObjectSchema)) return false;
@@ -56,7 +60,9 @@ public class SchemaStore {
     }
 
     /**
-     * Registers a schema with an explicit URI alias.
+     * Registers a schema with explicit URI alias.
+     * <p>
+     * If alias differs from canonical URI, both mappings are inserted.
      */
     public boolean register(URI uri, JsonSchema schema) {
         if (!(schema instanceof ObjectSchema)) return false;
@@ -81,6 +87,8 @@ public class SchemaStore {
 
     /**
      * Registers one URI mapping after validation checks.
+     *
+     * @throws SchemaException on invalid URI shape or duplicate/conflicting map
      */
     private void _register(URI uri, JsonSchema schema) {
         Objects.requireNonNull(uri);
@@ -107,6 +115,8 @@ public class SchemaStore {
 
     /**
      * Imports all schema mappings from another store.
+     * <p>
+     * Existing mappings must resolve to the same canonical schema resource.
      */
     public void importFrom(SchemaStore other) {
         if (other != null) {
@@ -121,7 +131,7 @@ public class SchemaStore {
     }
 
     /**
-     * Resolves a schema by absolute URI.
+     * Resolves schema by absolute URI (canonical or alias).
      */
     public ObjectSchema resolve(URI uri) {
         return mixedUriSchemas.get(uri);
@@ -211,7 +221,9 @@ public class SchemaStore {
 
 
     /**
-     * Loads a schema from a local file/classpath URI.
+     * Loads a schema from local URI.
+     * <p>
+     * Supported schemes: {@code file}, {@code classpath}.
      */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
         Objects.requireNonNull(uri, "uri is null");

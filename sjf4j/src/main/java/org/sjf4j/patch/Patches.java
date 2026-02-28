@@ -105,7 +105,10 @@ public class Patches {
     /**
      * Merges a patch into target using RFC 7386 semantics.
      *
-     * <p>Use this when you need standard JSON Merge Patch behavior instead of
+     * <p>Object members are merged recursively. A {@code null} patch member means
+     * remove that member from target. Non-object patch values replace the target
+     * value at that member.
+     * Use this when you need standards-compliant merge behavior instead of
      * custom deep merge from {@link #merge(Object, Object, boolean, boolean)}.</p>
      */
     public static void mergeRfc7386(Object target, Object mergePatch) {
@@ -136,7 +139,8 @@ public class Patches {
 
 
     /**
-     * Computes a JSON Patch that transforms source into target.
+     * Computes a JSON Patch operation list that transforms {@code source} into
+     * {@code target}.
      */
     public static List<PatchOp> diff(Object source, Object target) {
         List<PatchOp> ops = new ArrayList<>();
@@ -146,6 +150,9 @@ public class Patches {
 
     /**
      * Recursively builds JSON Patch ops for the diff.
+     * <p>
+     * Array growth emits {@code add} with append path ({@code /-}); array shrink
+     * emits {@code remove} from tail to head to keep indexes stable.
      */
     private static void _diff(List<PatchOp> ops, PathSegment ps, Object source, Object target) {
         if (source == null && target == null) return;

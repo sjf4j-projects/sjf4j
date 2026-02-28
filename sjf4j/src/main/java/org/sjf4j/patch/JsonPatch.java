@@ -63,7 +63,9 @@ public class JsonPatch extends JsonArray {
 
 
     /**
-     * Applies all operations to target in order.
+     * Applies all operations to target in document order.
+     * <p>
+     * Execution is stateful: each op observes mutations produced by previous ops.
      */
     public void apply(Object target) {
         Objects.requireNonNull(target, "target is null");

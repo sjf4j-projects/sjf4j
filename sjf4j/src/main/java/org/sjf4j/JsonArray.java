@@ -88,6 +88,9 @@ public class JsonArray extends JsonContainer {
         return Object.class;
     }
 
+    /**
+     * Replaces internal list storage with optional runtime element type check.
+     */
     protected void setNodeList(List<Object> nodeList) {
         if (nodeList != null) {
             Class<?> elemClazz = elementType();
@@ -231,6 +234,8 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Returns true if the index is within bounds.
+     * <p>
+     * Negative indexes are normalized from array tail.
      */
     public boolean containsIndex(int idx) {
         idx = pos(idx);
@@ -358,7 +363,9 @@ public class JsonArray extends JsonContainer {
     /// Getter
 
     /**
-     * Returns the node at the given index or null.
+     * Returns the node at the given index or {@code null} when out of range.
+     * <p>
+     * Supports negative indexes ({@code -1} means last element).
      */
     public Object getNode(int idx) {
         int pidx = pos(idx);
@@ -1015,6 +1022,9 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Inserts an element at the given index.
+     * <p>
+     * Supports negative indexes after normalization. Valid insertion range is
+     * {@code [0, size]}.
      */
     public void add(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
@@ -1032,6 +1042,9 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Replaces the element at the given index.
+     * <p>
+     * Supports negative indexes after normalization. Valid replacement range is
+     * {@code [0, size-1]}.
      */
     public Object set(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
@@ -1058,7 +1071,7 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Appends all values, flattening array arguments.
+     * Appends all values, flattening direct Java array arguments one level.
      */
     public void addAll(Object... values) {
         for (Object v : values) {
@@ -1140,6 +1153,8 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Removes the element at the given index.
+     * <p>
+     * Supports negative indexes after normalization.
      */
     public Object remove(int idx) {
         if (nodeList == null) return null;

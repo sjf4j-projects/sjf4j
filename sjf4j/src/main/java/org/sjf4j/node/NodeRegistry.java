@@ -28,14 +28,19 @@ public final class NodeRegistry {
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
     /**
-     * Registers and returns type metadata for a class.
+     * Registers (or returns cached) metadata for a class.
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz) {
         return registerTypeInfo(clazz, false);
     }
 
     /**
-     * Registers type metadata and optionally requires POJO analysis.
+     * Registers type metadata and optionally enforces POJO availability.
+     * <p>
+     * Resolution order is: cache hit, {@code @NodeValue}/registered codec,
+     * POJO analysis, then NONE marker.
+     *
+     * @param mustPojo when true, non-POJO results are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
         if (hitRawType(clazz)) return NONE_INFO;
@@ -104,15 +109,18 @@ public final class NodeRegistry {
     }
 
     /**
-     * Registers a custom ValueCodec and returns codec metadata.
+     * Registers a custom {@link ValueCodec} and returns codec metadata.
+     * <p>
+     * The codec raw type must be a supported raw node type (String, Number,
+     * Boolean, Map, List, or Object).
      */
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueCodec, "valueCodec is null");
-        Class<R> rawClazz = valueCodec.getRawClass();
+        Class<R> rawClazz = valueCodec.rawClass();
         if (rawClazz != Object.class && !NodeKind.of(rawClazz).isRaw())
             throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
-        Class<N> valueClazz = valueCodec.getValueClass();
+        Class<N> valueClazz = valueCodec.valueClass();
         Objects.requireNonNull(valueClazz, "clazz is null");
 
         ValueCodecInfo vci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec);
@@ -135,7 +143,9 @@ public final class NodeRegistry {
     }
 
     /**
-     * Re-registers Instant codec based on current time format setting.
+     * Re-registers the Instant codec according to current instant format.
+     * <p>
+     * Existing Instant mappings are overwritten in the type metadata cache.
      */
     public static void refreshInstantValueCodec(Sjf4jConfig.InstantFormat instantFormat) {
         if (instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
@@ -553,7 +563,7 @@ public final class NodeRegistry {
         public Object encode(Object value) {
             if (valueCodec != null) {
                 try {
-                    return valueCodec.encode(value);
+                    return valueCodec.valueToRaw(value);
                 } catch (Exception e) {
                     throw new JsonException("Failed to encode value of type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
@@ -579,7 +589,7 @@ public final class NodeRegistry {
                         " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
             if (valueCodec != null) {
                 try {
-                    return valueCodec.decode(raw);
+                    return valueCodec.rawToValue(raw);
                 } catch (Exception e) {
                     throw new JsonException("Failed to decode raw to value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
@@ -602,7 +612,7 @@ public final class NodeRegistry {
         public Object copy(Object value) {
             if (valueCodec != null) {
                 try {
-                    return valueCodec.copy(value);
+                    return valueCodec.valueCopy(value);
                 } catch (Exception e) {
                     throw new JsonException("Failed to copy value of type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);

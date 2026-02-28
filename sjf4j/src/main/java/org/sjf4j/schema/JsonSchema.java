@@ -18,21 +18,27 @@ public interface JsonSchema {
 
     /**
      * Compiles this schema into runtime evaluators.
+     * <p>
+     * Compilation resolves references, anchors, and keyword evaluators against
+     * the provided store context.
      */
     void compile(SchemaStore outer);
     /**
-     * Validates a node with the given options.
+     * Validates a node with the given options and returns structured result.
      */
     ValidationResult validate(Object node, ValidationOptions options);
     /**
      * Evaluates this schema against an instance during validation.
+     * <p>
+     * Implementations should append messages into {@link ValidationContext} and
+     * return whether the current schema branch succeeds.
      */
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
     /// Default
 
     /**
-     * Compiles this schema using a fresh default store.
+     * Compiles this schema using default resolution context.
      */
     default void compile() {
         compile(null);
@@ -72,6 +78,8 @@ public interface JsonSchema {
 
     /**
      * Parses JSON text and creates a schema instance.
+     * <p>
+     * Valid schema roots are object schemas and boolean schemas.
      */
     static JsonSchema fromJson(String json) {
         Object node = Sjf4j.fromJson(json) ;
@@ -80,6 +88,8 @@ public interface JsonSchema {
 
     /**
      * Creates a schema instance from a parsed JSON node.
+     *
+     * @throws SchemaException when root node is not object/boolean
      */
     static JsonSchema fromNode(Object node) {
         if (node == null) return null;

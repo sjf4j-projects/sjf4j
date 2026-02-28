@@ -67,6 +67,9 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Creates a JsonObject from a Map, JsonObject, or POJO.
+     * <p>
+     * Map input is used as dynamic backing map directly. POJO input is copied by
+     * exposed node fields into this container.
      */
     @SuppressWarnings("unchecked")
     public JsonObject(Object node) {
@@ -202,7 +205,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Computes the hash code from field and dynamic entries.
+     * Computes hash code from both declared fields and dynamic entries.
      */
     @Override
     public int hashCode() {
@@ -218,7 +221,10 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Compares JsonObject values within the same concrete type.
+     * Compares JsonObject values within the same concrete runtime type.
+     * <p>
+     * Equality requires equal size and equal per-key values across declared
+     * fields and dynamic entries.
      */
     @Override
     public boolean equals(Object target) {
@@ -483,7 +489,9 @@ public class JsonObject extends JsonContainer {
     /// Getter
 
     /**
-     * Returns the node for the given key or null.
+     * Returns the node for the given key or {@code null}.
+     * <p>
+     * Declared field values have priority over dynamic entries with the same key.
      */
     public Object getNode(String key) {
         if (key == null) return null;
@@ -1146,6 +1154,9 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Puts a key/value pair and returns the previous value.
+     * <p>
+     * When key matches a declared field, the field setter is used; otherwise the
+     * value is stored in dynamic map.
      */
     public Object put(String key, Object object) {
         Objects.requireNonNull(key, "key is null");
@@ -1234,6 +1245,9 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Puts all entries from a Map, JsonObject, or POJO.
+     * <p>
+     * POJO inputs are expanded by registered node fields and written through
+     * {@link #put(String, Object)} semantics.
      */
     @SuppressWarnings("unchecked")
     public void putAll(Object node) {
@@ -1261,6 +1275,8 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Removes a dynamic key and returns its previous value.
+     * <p>
+     * Declared JOJO/POJO fields are not removable.
      */
     public Object remove(String key) {
         Objects.requireNonNull(key, "key is null");
@@ -1275,7 +1291,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Clears all dynamic nodes while keeping the map container.
+     * Clears dynamic entries only, keeping declared field values intact.
      */
     public void clear() {
         if (dynamicMap != null) {
@@ -1284,7 +1300,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Drops the dynamic map and keeps only POJO fields.
+     * Drops the dynamic map reference and keeps only declared field values.
      */
     public void prune() {
         dynamicMap = null;

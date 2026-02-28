@@ -12,7 +12,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Wrapper around a runtime JSON node with cached type information.
+ * Runtime wrapper around a validating node with cached type metadata.
+ * <p>
+ * Also carries mutable per-validation state such as evaluated-location marks
+ * and recursion-detection stack.
  */
 public final class InstancedNode {
     private final Object node;
@@ -37,7 +40,9 @@ public final class InstancedNode {
     }
 
     /**
-     * Resets runtime validation state for reuse.
+     * Resets mutable validation state for wrapper reuse.
+     * <p>
+     * Node/type metadata is preserved.
      */
     public InstancedNode reset() {
         this.evaluatedStack = null;
@@ -51,6 +56,9 @@ public final class InstancedNode {
 
     /**
      * Infers node metadata and wraps it as an InstancedNode.
+     * <p>
+     * Registered value-node types are first encoded to raw values for schema
+     * validation against JSON-compatible representation.
      */
     public static InstancedNode infer(Object node) {
         if (node == null) return NULL.reset();
@@ -81,7 +89,7 @@ public final class InstancedNode {
      */
     public NodeKind getNodeType() {return nodeKind;}
     /**
-     * Returns true when value codec encoding was applied.
+     * Returns true when value-codec encoding was applied in {@link #infer(Object)}.
      */
     public boolean isEncoded() {return encoded;}
 
@@ -105,6 +113,8 @@ public final class InstancedNode {
     }
     /**
      * Initializes evaluated tracking with a fresh frame.
+     * <p>
+     * Called only when unevaluated* keywords are present.
      */
     public void createEvaluated() {
         if (evaluatedStack == null) evaluatedStack = new ArrayDeque<>();
@@ -139,7 +149,7 @@ public final class InstancedNode {
         return evaluatedStack.peek();
     }
     /**
-     * Merges all evaluated frames into one BitSet.
+     * Merges all evaluated frames into one BitSet snapshot.
      */
     public BitSet mergedEvaluated() {
         BitSet merged = new BitSet();
@@ -171,7 +181,9 @@ public final class InstancedNode {
 //    public BitSet getEvaluatedItems() {return evaluatedItems;}
 
     /**
-     * Returns a cached child instance for an object key when available.
+     * Returns child instance for an object key.
+     * <p>
+     * Encoded children are cached by key to avoid repeated value-codec encoding.
      */
     public InstancedNode getSubByKey(String key) {
         if (jsonType != JsonType.OBJECT) return NULL.reset();
@@ -191,7 +203,9 @@ public final class InstancedNode {
     }
 
     /**
-     * Returns a cached child instance for an array index when available.
+     * Returns child instance for an array index.
+     * <p>
+     * Encoded children are cached by index key to avoid repeated encoding.
      */
     public InstancedNode getSubByIndex(int idx) {
         if (jsonType != JsonType.ARRAY) return NULL.reset();
@@ -213,7 +227,10 @@ public final class InstancedNode {
 
     // refSchema
     /**
-     * Returns true when a recursive schema reference is detected.
+     * Returns true when recursive schema-reference cycle is detected.
+     * <p>
+     * First invocation initializes tracking; subsequent invocations check whether
+     * the same schema object appears again in current reference chain.
      */
     public boolean isRecursiveRef(Object schema) {
         if (refSchemaTimes++ > 0) {

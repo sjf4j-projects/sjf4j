@@ -16,7 +16,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Stream wrapper for JSON nodes with JSONPath helpers.
+ * Stream wrapper for node processing with JSONPath helpers.
+ * <p>
+ * Wraps a single-use Java {@link Stream}; terminal operations consume it.
  */
 public class NodeStream<T> {
 
@@ -26,10 +28,9 @@ public class NodeStream<T> {
     private final Stream<T> stream;
 
     /**
-     * Creates a JsonStream from an existing Stream of JSON nodes.
+     * Creates a NodeStream from an existing stream.
      *
-     * @param stream the stream of JSON nodes to wrap
-     * @throws IllegalArgumentException if nodeStream is null
+     * @throws IllegalArgumentException if stream is null
      */
     protected NodeStream(Stream<T> stream) {
         if (stream == null) throw new IllegalArgumentException("NodeStream must not be null");
@@ -37,12 +38,7 @@ public class NodeStream<T> {
     }
 
     /**
-     * Creates a JsonStream from a list of JSON nodes.
-     *
-     * @param nodes the list of JSON nodes
-     * @param <T> the type of JSON nodes
-     * @return a new JsonStream containing the nodes
-     * @throws IllegalArgumentException if nodes is null
+     * Creates a NodeStream from list elements.
      */
     public static <T> NodeStream<T> of(List<T> nodes) {
         if (nodes == null) throw new IllegalArgumentException("Nodes must not be null");
@@ -50,12 +46,7 @@ public class NodeStream<T> {
     }
 
     /**
-     * Creates a JsonStream from a single JSON node.
-     *
-     * @param node the JSON node (= Object)
-     * @param <T> the type of the JSON node
-     * @return a new JsonStream containing the single node
-     * @throws IllegalArgumentException if node is null
+     * Creates a NodeStream from a single element.
      */
     public static <T> NodeStream<T> of(T node) {
         if (node == null) throw new IllegalArgumentException("Node must not be null");
@@ -63,12 +54,9 @@ public class NodeStream<T> {
     }
 
     /**
-     * Finds a value at the specified path in each node of the stream and returns a new stream of found values.
-     *
-     * @param path the JSON path expression
-     * @param clazz the class type of the returned values
-     * @param <R> the type of the returned values
-     * @return a new JsonStream containing the found values
+     * Reads one value by path per element using strict conversion.
+     * <p>
+     * Missing paths map to {@code null} elements.
      */
     public <R> NodeStream<R> getByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);
@@ -77,13 +65,7 @@ public class NodeStream<T> {
     }
 
     /**
-     * Finds a value at the specified path in each node of the stream, converts it to the specified type,
-     * and returns a new stream of found values.
-     *
-     * @param path the JSON path expression
-     * @param clazz the class type to convert the found values to
-     * @param <R> the type of the returned values
-     * @return a new JsonStream containing the found and converted values
+     * Reads one value by path per element using lenient conversion.
      */
     public <R> NodeStream<R> asByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);
@@ -92,12 +74,7 @@ public class NodeStream<T> {
     }
 
     /**
-     * Finds all values at the specified path in each node of the stream and returns a new stream of all found values.
-     *
-     * @param path the JSON path expression
-     * @param clazz the class type of the returned values
-     * @param <R> the type of the returned values
-     * @return a new JsonStream containing all found values
+     * Finds all matched values per element and flattens them (strict conversion).
      */
     public <R> NodeStream<R> findByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);
@@ -106,13 +83,7 @@ public class NodeStream<T> {
     }
 
     /**
-     * Finds all values at the specified path in each node of the stream, converts them to the specified type,
-     * and returns a new stream of all found values.
-     *
-     * @param path the JSON path expression
-     * @param clazz the class type to convert the found values to
-     * @param <R> the type of the returned values
-     * @return a new JsonStream containing all found and converted values
+     * Finds all matched values per element and flattens them (lenient conversion).
      */
     public <R> NodeStream<R> findAsByPath(String path, Class<R> clazz) {
         JsonPath jp = JsonPath.compile(path);

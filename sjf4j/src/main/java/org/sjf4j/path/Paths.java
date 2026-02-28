@@ -100,6 +100,9 @@ public class Paths {
 
     /**
      * Parses a JSON Pointer expression into path segments.
+     * <p>
+     * Supports RFC 6901 escaping ({@code ~0} for {@code ~}, {@code ~1} for
+     * {@code /}) and RFC 6902 append token ({@code -}) when used in patch paths.
      */
     public static PathSegment[] parsePointer(String expr) {
         Objects.requireNonNull(expr, "expr is null");
@@ -158,6 +161,9 @@ public class Paths {
 
     /**
      * Formats segments as a JSON Pointer expression.
+     * <p>
+     * Name tokens are escaped using RFC 6901 rules. Append token ({@code -}) is
+     * only valid as the last token.
      */
     public static String toPointerExpr(PathSegment[] segments) {
         Objects.requireNonNull(segments, "segments is null");
@@ -226,6 +232,9 @@ public class Paths {
 
     /**
      * Parses a JSONPath expression into path segments.
+     * <p>
+     * Supports root/current selectors, dot and bracket notation, wildcard,
+     * descendant, union, slice, filter, and terminal function calls.
      */
     public static PathSegment[] parsePath(String expr) {
         if (expr == null || expr.isEmpty()) throw new JsonException("expr is empty");
@@ -687,6 +696,10 @@ public class Paths {
 
     /**
      * Parses a filter expression into an AST.
+     * <p>
+     * Supported operators include logical ({@code &&}, {@code ||}, {@code !}),
+     * comparison ({@code == != < <= > >= =~}), literals, path references,
+     * regex literals, and function calls.
      */
     public static FilterExpr parseFilter(String s) {
         int[] pos = {0};

@@ -61,7 +61,10 @@ public class JsonPath {
     }
 
     /**
-     * Compiles a JSONPath or JSON Pointer expression into tokens.
+     * Compiles a JSONPath or JSON Pointer expression into executable segments.
+     * <p>
+     * Empty input resolves to root. Expressions starting with {@code /} are
+     * parsed as JSON Pointer; others are parsed as JSONPath.
      */
     public static JsonPath compile(String expr) {
         Objects.requireNonNull(expr, "expr is null");
@@ -179,10 +182,10 @@ public class JsonPath {
     /// Find
 
     /**
-     * Finds an object at this path in the given container.
+     * Returns the node at this path, or {@code null} when any segment is missing.
      *
      * @param container the JSON container to search
-     * @return the object found at the path, or null if not found
+     * @return the matched node, or {@code null} when unresolved
      * @throws IllegalArgumentException if container is null
      */
     public Object getNode(Object container) {
@@ -907,7 +910,11 @@ public class JsonPath {
 
     // eval() is more powerful than get() / find()
     /**
-     * Evaluates the path and returns either a single result, a list, or a function result.
+     * Evaluates the path and returns either a single value, a list of values,
+     * or a function result.
+     * <p>
+     * When the last segment is a function token, the function is invoked with
+     * the matched value(s) as first argument plus parsed literal arguments.
      */
     public Object eval(Object container) {
         Objects.requireNonNull(container, "container is null");
@@ -957,7 +964,11 @@ public class JsonPath {
     /// ensurePut
 
     /**
-     * Ensures all intermediate containers exist and writes the value at the last token.
+     * Ensures intermediate containers exist and writes the value at the last
+     * segment.
+     * <p>
+     * Auto-creation is only supported for single paths made of root/name/index
+     * segments. Missing containers are created based on inferred static type.
      */
     public Object ensurePut(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
@@ -1025,7 +1036,10 @@ public class JsonPath {
     }
 
     /**
-     * Returns true if the path exists, regardless of null value.
+     * Returns true if the final path location exists, regardless of stored value.
+     * <p>
+     * For object segments this checks key presence; for array segments it checks
+     * index validity after negative-index normalization.
      */
     public boolean contains(Object container) {
         Objects.requireNonNull(container, "container is null");
@@ -1049,7 +1063,10 @@ public class JsonPath {
     /// JSON Patch: add, replace, remove
 
     /**
-     * JSON Patch add operation semantics.
+     * Applies JSON Patch {@code add} semantics at this pointer path.
+     * <p>
+     * Name targets upsert object fields. Index targets insert into arrays. Append
+     * targets ({@code -}) append to arrays.
      */
     public void add(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
@@ -1073,7 +1090,9 @@ public class JsonPath {
     }
 
     /**
-     * JSON Patch replace operation semantics (path must exist).
+     * Applies JSON Patch {@code replace} semantics (target must already exist).
+     *
+     * @return previous value at the replaced location
      */
     public Object replace(Object container, Object value) {
         Objects.requireNonNull(container, "container is null");
@@ -1101,7 +1120,9 @@ public class JsonPath {
     }
 
     /**
-     * JSON Patch remove operation semantics.
+     * Applies JSON Patch {@code remove} semantics.
+     *
+     * @return removed value, or {@code null} when parent path is absent
      */
     public Object remove(Object container) {
         Objects.requireNonNull(container, "container is null");
@@ -1274,7 +1295,8 @@ public class JsonPath {
     }
 
     /**
-     * Ensures intermediate containers exist for a single-name/index path.
+     * Ensures intermediate containers exist for single-path traversal and
+     * returns the parent container of the final segment.
      */
     private Object _ensureContainersInPath(Object container) {
         if (!_isSingle()) {
@@ -1337,7 +1359,8 @@ public class JsonPath {
 
 
     /**
-     * Creates an object or array container based on the next path segment.
+     * Creates a missing container based on the next segment kind and declared
+     * static type.
      */
     private Object _createContainer(PathSegment ps, Class<?> clazz) {
         if (ps instanceof PathSegment.Name) {

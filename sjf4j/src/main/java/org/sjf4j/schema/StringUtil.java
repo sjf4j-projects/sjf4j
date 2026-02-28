@@ -5,7 +5,10 @@ import com.ibm.icu.text.BreakIterator;
 import java.util.Locale;
 
 /**
- * String length helpers for JSON Schema (grapheme cluster-aware when possible).
+ * String length helpers for JSON Schema length keywords.
+ * <p>
+ * Uses grapheme-cluster counting when ICU4J is available; otherwise falls back
+ * to Unicode code-point counting.
  */
 public class StringUtil {
 

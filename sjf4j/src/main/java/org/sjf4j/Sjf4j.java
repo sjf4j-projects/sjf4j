@@ -12,7 +12,9 @@ import java.util.Properties;
 
 
 /**
- * Static entry point for JSON/YAML/properties IO and node conversion.
+ * Static facade for JSON/YAML/properties IO and node conversion.
+ * <p>
+ * All operations delegate to facades from global {@link Sjf4jConfig}.
  */
 public class Sjf4j {
 
@@ -231,6 +233,8 @@ public class Sjf4j {
 
     /**
      * Converts a node to target class via node facade.
+     * <p>
+     * Uses strict conversion semantics.
      */
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
@@ -239,6 +243,8 @@ public class Sjf4j {
 
     /**
      * Converts a node to target type reference via node facade.
+     * <p>
+     * Uses strict conversion semantics.
      */
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, TypeReference<T> type) {
@@ -248,6 +254,8 @@ public class Sjf4j {
 
     /**
      * Deep-copies a node through node facade.
+     * <p>
+     * Container nodes and nested children are recursively copied.
      */
     @SuppressWarnings("unchecked")
     public static <T> T deepNode(T node) {
@@ -256,6 +264,8 @@ public class Sjf4j {
 
     /**
      * Converts node to raw Java structures.
+     * <p>
+     * Result consists of JSON-friendly primitives plus Map/List containers.
      */
     public static Object toRaw(Object node) {
         return Sjf4jConfig.global().getNodeFacade().writeNode(node);
@@ -291,7 +301,7 @@ public class Sjf4j {
     }
 
     /**
-     * Converts node to java.util.Properties.
+     * Converts node to {@link Properties} via properties facade.
      */
     public static Properties toProperties(Object node) {
         Properties props = new Properties();

@@ -73,7 +73,7 @@ public final class PatchOp {
     }
 
     /**
-     * Applies this operation to target node.
+     * Applies this operation to target node via {@link PatchOpRegistry}.
      */
     public void apply(Object target) {
         PatchOpRegistry.apply(target, this);

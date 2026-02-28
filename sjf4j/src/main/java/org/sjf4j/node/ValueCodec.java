@@ -8,7 +8,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -28,34 +27,40 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Codec for mapping custom value types to JSON-friendly raw types.
+ * Codec contract for mapping domain value types to raw node values.
+ * <p>
+ * Raw values should be JSON-friendly types supported by SJF4J node model
+ * (typically String/Number/Boolean/Map/List/Object). Implementations should be
+ * deterministic and reversible for stable serialization/deserialization.
  */
-public interface ValueCodec<N, R> {
+public interface ValueCodec<V, R> {
 
     /**
-     * Encodes a value object to raw JSON-friendly form.
+     * Encodes a domain value to raw node value.
      */
-    R encode(N value);
+    R valueToRaw(V value);
 
     /**
-     * Decodes a raw JSON-friendly value to value object.
+     * Decodes a raw node value back to domain value.
      */
-    N decode(R raw);
+    V rawToValue(R raw);
 
     /**
      * Returns value type handled by this codec.
      */
-    Class<N> getValueClass();
+    Class<V> valueClass();
 
     /**
      * Returns raw type produced/consumed by this codec.
      */
-    Class<R> getRawClass();
+    Class<R> rawClass();
 
     /**
-     * Returns a copy of value when codec needs custom copy semantics.
+     * Returns a copy of value when custom copy semantics are needed.
+     * <p>
+     * Default implementation returns the input reference unchanged.
      */
-    default N copy(N value) {return value;}
+    default V valueCopy(V value) {return value;}
 
 
     /// Built-in values
@@ -67,7 +72,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(URI value) {
+        public String valueToRaw(URI value) {
             return value == null ? null : value.toString();
         }
 
@@ -75,7 +80,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public URI decode(String raw) {
+        public URI rawToValue(String raw) {
             return raw == null ? null : URI.create(raw);
         }
 
@@ -83,7 +88,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<URI> getValueClass() {
+        public Class<URI> valueClass() {
             return URI.class;
         }
 
@@ -91,7 +96,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -103,7 +108,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(URL value) {
+        public String valueToRaw(URL value) {
             return value == null ? null : value.toString();
         }
 
@@ -111,7 +116,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public URL decode(String raw) {
+        public URL rawToValue(String raw) {
             if (raw == null) {
                 return null;
             }
@@ -126,7 +131,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<URL> getValueClass() {
+        public Class<URL> valueClass() {
             return URL.class;
         }
 
@@ -134,7 +139,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -146,7 +151,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(UUID value) {
+        public String valueToRaw(UUID value) {
             return value == null ? null : value.toString();
         }
 
@@ -154,7 +159,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public UUID decode(String raw) {
+        public UUID rawToValue(String raw) {
             return raw == null ? null : UUID.fromString(raw);
         }
 
@@ -162,7 +167,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<UUID> getValueClass() {
+        public Class<UUID> valueClass() {
             return UUID.class;
         }
 
@@ -170,7 +175,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -182,7 +187,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Locale value) {
+        public String valueToRaw(Locale value) {
             return value == null ? null : value.toLanguageTag();
         }
 
@@ -190,7 +195,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Locale decode(String raw) {
+        public Locale rawToValue(String raw) {
             return raw == null ? null : Locale.forLanguageTag(raw);
         }
 
@@ -198,7 +203,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Locale> getValueClass() {
+        public Class<Locale> valueClass() {
             return Locale.class;
         }
 
@@ -206,7 +211,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -218,7 +223,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Currency value) {
+        public String valueToRaw(Currency value) {
             return value == null ? null : value.getCurrencyCode();
         }
 
@@ -226,7 +231,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Currency decode(String raw) {
+        public Currency rawToValue(String raw) {
             return raw == null ? null : Currency.getInstance(raw);
         }
 
@@ -234,7 +239,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Currency> getValueClass() {
+        public Class<Currency> valueClass() {
             return Currency.class;
         }
 
@@ -242,7 +247,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -254,7 +259,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(ZoneId value) {
+        public String valueToRaw(ZoneId value) {
             return value == null ? null : value.getId();
         }
 
@@ -262,7 +267,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public ZoneId decode(String raw) {
+        public ZoneId rawToValue(String raw) {
             return raw == null ? null : ZoneId.of(raw);
         }
 
@@ -270,7 +275,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<ZoneId> getValueClass() {
+        public Class<ZoneId> valueClass() {
             return ZoneId.class;
         }
 
@@ -278,7 +283,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -290,7 +295,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Instant value) {
+        public String valueToRaw(Instant value) {
             return value == null ? null : value.toString();
         }
 
@@ -298,7 +303,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Instant decode(String raw) {
+        public Instant rawToValue(String raw) {
             return raw == null ? null : Instant.parse(raw);
         }
 
@@ -306,7 +311,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Instant> getValueClass() {
+        public Class<Instant> valueClass() {
             return Instant.class;
         }
 
@@ -314,7 +319,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -326,7 +331,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public Long encode(Instant value) {
+        public Long valueToRaw(Instant value) {
             return value == null ? null : value.toEpochMilli();
         }
 
@@ -334,7 +339,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Instant decode(Long raw) {
+        public Instant rawToValue(Long raw) {
             return raw == null ? null : Instant.ofEpochMilli(raw);
         }
 
@@ -342,7 +347,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Instant> getValueClass() {
+        public Class<Instant> valueClass() {
             return Instant.class;
         }
 
@@ -350,7 +355,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<Long> getRawClass() {
+        public Class<Long> rawClass() {
             return Long.class;
         }
     }
@@ -362,7 +367,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(LocalDate value) {
+        public String valueToRaw(LocalDate value) {
             return value == null ? null : value.toString();
         }
 
@@ -370,7 +375,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public LocalDate decode(String raw) {
+        public LocalDate rawToValue(String raw) {
             return raw == null ? null : LocalDate.parse(raw);
         }
 
@@ -378,7 +383,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<LocalDate> getValueClass() {
+        public Class<LocalDate> valueClass() {
             return LocalDate.class;
         }
 
@@ -386,7 +391,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -398,7 +403,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(LocalDateTime value) {
+        public String valueToRaw(LocalDateTime value) {
             return value == null ? null : value.toString();
         }
 
@@ -406,7 +411,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public LocalDateTime decode(String raw) {
+        public LocalDateTime rawToValue(String raw) {
             return raw == null ? null : LocalDateTime.parse(raw);
         }
 
@@ -414,7 +419,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<LocalDateTime> getValueClass() {
+        public Class<LocalDateTime> valueClass() {
             return LocalDateTime.class;
         }
 
@@ -422,7 +427,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -434,7 +439,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(OffsetDateTime value) {
+        public String valueToRaw(OffsetDateTime value) {
             return value == null ? null : value.toString();
         }
 
@@ -442,7 +447,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public OffsetDateTime decode(String raw) {
+        public OffsetDateTime rawToValue(String raw) {
             return raw == null ? null : OffsetDateTime.parse(raw);
         }
 
@@ -450,7 +455,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<OffsetDateTime> getValueClass() {
+        public Class<OffsetDateTime> valueClass() {
             return OffsetDateTime.class;
         }
 
@@ -458,7 +463,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -470,7 +475,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(ZonedDateTime value) {
+        public String valueToRaw(ZonedDateTime value) {
             return value == null ? null : value.toString();
         }
 
@@ -478,7 +483,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public ZonedDateTime decode(String raw) {
+        public ZonedDateTime rawToValue(String raw) {
             return raw == null ? null : ZonedDateTime.parse(raw);
         }
 
@@ -486,7 +491,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<ZonedDateTime> getValueClass() {
+        public Class<ZonedDateTime> valueClass() {
             return ZonedDateTime.class;
         }
 
@@ -494,7 +499,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -506,7 +511,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Duration value) {
+        public String valueToRaw(Duration value) {
             return value == null ? null : value.toString();
         }
 
@@ -514,7 +519,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Duration decode(String raw) {
+        public Duration rawToValue(String raw) {
             return raw == null ? null : Duration.parse(raw);
         }
 
@@ -522,7 +527,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Duration> getValueClass() {
+        public Class<Duration> valueClass() {
             return Duration.class;
         }
 
@@ -530,7 +535,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -542,7 +547,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Period value) {
+        public String valueToRaw(Period value) {
             return value == null ? null : value.toString();
         }
 
@@ -550,7 +555,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Period decode(String raw) {
+        public Period rawToValue(String raw) {
             return raw == null ? null : Period.parse(raw);
         }
 
@@ -558,7 +563,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Period> getValueClass() {
+        public Class<Period> valueClass() {
             return Period.class;
         }
 
@@ -566,7 +571,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -578,7 +583,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Path value) {
+        public String valueToRaw(Path value) {
             return value == null ? null : value.toString();
         }
 
@@ -586,7 +591,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Path decode(String raw) {
+        public Path rawToValue(String raw) {
             return raw == null ? null : Paths.get(raw);
         }
 
@@ -594,7 +599,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Path> getValueClass() {
+        public Class<Path> valueClass() {
             return Path.class;
         }
 
@@ -602,7 +607,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -614,7 +619,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(File value) {
+        public String valueToRaw(File value) {
             return value == null ? null : value.toString();
         }
 
@@ -622,7 +627,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public File decode(String raw) {
+        public File rawToValue(String raw) {
             return raw == null ? null : new File(raw);
         }
 
@@ -630,7 +635,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<File> getValueClass() {
+        public Class<File> valueClass() {
             return File.class;
         }
 
@@ -638,7 +643,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -650,7 +655,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Pattern value) {
+        public String valueToRaw(Pattern value) {
             return value == null ? null : value.pattern();
         }
 
@@ -658,7 +663,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Pattern decode(String raw) {
+        public Pattern rawToValue(String raw) {
             return raw == null ? null : Pattern.compile(raw);
         }
 
@@ -666,7 +671,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Pattern> getValueClass() {
+        public Class<Pattern> valueClass() {
             return Pattern.class;
         }
 
@@ -674,7 +679,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -686,7 +691,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(InetAddress value) {
+        public String valueToRaw(InetAddress value) {
             return value == null ? null : value.getHostAddress();
         }
 
@@ -694,7 +699,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public InetAddress decode(String raw) {
+        public InetAddress rawToValue(String raw) {
             if (raw == null) {
                 return null;
             }
@@ -709,7 +714,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<InetAddress> getValueClass() {
+        public Class<InetAddress> valueClass() {
             return InetAddress.class;
         }
 
@@ -717,7 +722,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -729,7 +734,7 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Date value) {
+        public String valueToRaw(Date value) {
             return value == null ? null : value.toInstant().toString();
         }
 
@@ -737,7 +742,7 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Date decode(String raw) {
+        public Date rawToValue(String raw) {
             return raw == null ? null : Date.from(Instant.parse(raw));
         }
 
@@ -745,7 +750,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Date> getValueClass() {
+        public Class<Date> valueClass() {
             return Date.class;
         }
 
@@ -753,7 +758,7 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
@@ -765,10 +770,8 @@ public interface ValueCodec<N, R> {
          * Encodes value into raw representation.
          */
         @Override
-        public String encode(Calendar value) {
-            if (value == null) {
-                return null;
-            }
+        public String valueToRaw(Calendar value) {
+            if (value == null) return null;
             ZoneId zoneId = value.getTimeZone().toZoneId();
             ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(value.toInstant(), zoneId);
             return zonedDateTime.toString();
@@ -778,10 +781,8 @@ public interface ValueCodec<N, R> {
          * Decodes raw representation into value.
          */
         @Override
-        public Calendar decode(String raw) {
-            if (raw == null) {
-                return null;
-            }
+        public Calendar rawToValue(String raw) {
+            if (raw == null) return null;
             ZonedDateTime zonedDateTime = ZonedDateTime.parse(raw);
             Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zonedDateTime.getZone()));
             calendar.setTimeInMillis(zonedDateTime.toInstant().toEpochMilli());
@@ -792,7 +793,7 @@ public interface ValueCodec<N, R> {
          * Returns value class handled by this codec.
          */
         @Override
-        public Class<Calendar> getValueClass() {
+        public Class<Calendar> valueClass() {
             return Calendar.class;
         }
 
@@ -800,10 +801,10 @@ public interface ValueCodec<N, R> {
          * Returns raw class handled by this codec.
          */
         @Override
-        public Class<String> getRawClass() {
+        public Class<String> rawClass() {
             return String.class;
         }
     }
 
-    // Set
+
 }

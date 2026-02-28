@@ -61,7 +61,9 @@ public class PathFunctionRegistry {
     private static final Map<String, FunctionDescriptor> FUNCTION_CACHE = new ConcurrentHashMap<>();
 
     /**
-     * Registers or replaces a function descriptor.
+     * Registers or replaces a function descriptor by name.
+     * <p>
+     * Registration is global to the current JVM and is thread-safe.
      */
     public static void register(FunctionDescriptor descriptor) {
         FUNCTION_CACHE.put(descriptor.getName(), descriptor);
@@ -83,6 +85,8 @@ public class PathFunctionRegistry {
 
     /**
      * Invokes a registered function by name.
+     *
+     * @throws JsonException when function is missing or invocation fails
      */
     public static Object invoke(String name, Object[] args) {
         FunctionDescriptor fd = get(name);

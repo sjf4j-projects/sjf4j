@@ -498,7 +498,15 @@ public class Nodes {
 
 
     /**
-     * Converts a node to POJO/JOJO/JAJO type.
+     * Converts a node to a registered POJO type (including JOJO/JAJO subclasses).
+     * <p>
+     * For regular POJO targets, fields are mapped by declared field names, with
+     * alias support from {@code @NodeProperty}. Constructor-arg mapping is used
+     * when required by {@code @NodeCreator}; unmatched values are applied later
+     * through setters when available.
+     * <p>
+     * For JOJO targets ({@link JsonObject} subclasses), dynamic keys that are not
+     * declared fields are preserved in the dynamic map.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
@@ -641,6 +649,10 @@ public class Nodes {
 
     /**
      * Converts a node to target type using strict conversion.
+     * <p>
+     * Strict mode does not coerce incompatible values across logical domains
+     * (for example arbitrary string to number/boolean). Type mismatch throws
+     * {@link JsonException}.
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz) {
@@ -649,6 +661,10 @@ public class Nodes {
 
     /**
      * Converts a node to target type using lenient conversion.
+     * <p>
+     * Lenient mode allows cross-type coercion when possible (for example string
+     * to number/boolean). Failed coercions generally yield {@code null} in the
+     * lower-level converters.
      */
     @SuppressWarnings({"unchecked"})
     public static <T> T as(Object node, Class<T> clazz) {
@@ -659,7 +675,11 @@ public class Nodes {
     /// Basic
 
     /**
-     * Compares two nodes using object-based node semantics.
+     * Compares two values using node semantics instead of Java type identity.
+     * <p>
+     * Object-like nodes are compared by key/value pairs, array-like nodes are
+     * compared by order and element values, and number values are compared by
+     * numeric value (not boxed type).
      */
     public static boolean equals(Object source, Object target) {
         if (target == source) return true;
@@ -698,7 +718,10 @@ public class Nodes {
     }
 
     /**
-     * Computes node-semantic hash code.
+     * Computes a hash code aligned with {@link #equals(Object, Object)} node semantics.
+     * <p>
+     * Object-like nodes are hashed in key/value form (order-insensitive for object
+     * members), while array-like nodes are hashed in iteration order.
      */
     public static int hash(Object node) {
         if (node == null) return 0;
@@ -733,6 +756,10 @@ public class Nodes {
 
     /**
      * Returns a shallow copy of the given node.
+     * <p>
+     * Container nodes copy only the outer container; nested child nodes are shared.
+     * For POJO/JOJO/JAJO targets, a new instance is created and direct field/item
+     * values are transferred without deep recursion.
      */
     @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     public static <T> T copy(T node) {
@@ -897,7 +924,33 @@ public class Nodes {
     }
 
     /**
-     * Returns a compact, human-readable representation of the given node.
+     * Returns a compact, human-readable representation of the given object.
+     * <p>
+     * This method is mainly used for debugging and logging. It prints objects
+     * in a deterministic, structure-oriented format instead of relying on
+     * {@link Object#toString()}.
+     *
+     * <h3>Type Notation</h3>
+     * <ul>
+     *   <li>{@code {..}}       - Map</li>
+     *   <li>{@code J{..}}      - JsonObject</li>
+     *   <li>{@code @Type{..}}  - POJO / JOJO</li>
+     *   <li>{@code [..]}       - List</li>
+     *   <li>{@code J[..]}      - JsonArray</li>
+     *   <li>{@code @Type[..]}  - JAJO</li>
+     *   <li>{@code A[..]}      - Array</li>
+     *   <li>{@code S[..]}      - Set</li>
+     *   <li>{@code @Type#raw}  - NodeValue</li>
+     *   <li>{@code !node}      - Unknown</li>
+     * </ul>
+     *
+     * <h3>Example</h3>
+     * <pre>{@code
+     * J{email=.com, user=@User{*id=1, name={a=b, c=d}}, arr=A[haha, xi, 1], date=@LocalDate#2025-12-29}
+     * }</pre>
+     *
+     * @param node the object to inspect
+     * @return a compact structural string
      */
     public static String inspect(Object node) {
         StringBuilder sb = new StringBuilder();
@@ -1387,7 +1440,9 @@ public class Nodes {
     }
 
     /**
-     * Returns true when array-like node contains index.
+     * Returns whether an index is valid for an array-like node.
+     * <p>
+     * Negative indexes are normalized against current size.
      */
     public static boolean containsInArray(Object node, int idx) {
         int len = sizeInArray(node);
@@ -1421,6 +1476,10 @@ public class Nodes {
 
     /**
      * Gets a value by index from an array-like node.
+     * <p>
+     * Negative indexes are supported ({@code -1} means last element). For List,
+     * Array, and Set, out-of-range access returns {@code null}. JsonArray behavior
+     * follows {@link JsonArray#get(int)}.
      */
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
@@ -1495,7 +1554,10 @@ public class Nodes {
     }
 
     /**
-     * Accesses a child in an object node with type metadata and insertable flag.
+     * Resolves object-child access and fills {@link Access} with node/type metadata.
+     * <p>
+     * The output describes the current child value, inferred static type, and
+     * whether writing/inserting at this location is allowed.
      */
     @SuppressWarnings("unchecked")
     public static void accessInObject(Object node, Type type, String key, Access out) {
@@ -1544,7 +1606,10 @@ public class Nodes {
     }
 
     /**
-     * Accesses a child in an array node with type metadata and insertable flag.
+     * Resolves array-child access and fills {@link Access} with node/type metadata.
+     * <p>
+     * Negative indexes are normalized. {@code idx == size} is treated as appendable
+     * for List/JsonArray/Set, and reported as insertable with {@code node == null}.
      */
     @SuppressWarnings("unchecked")
     public static void accessInArray(Object node, Type type, int idx, Access out) {
@@ -1628,6 +1693,8 @@ public class Nodes {
 
     /**
      * Puts a value into an object-like node and returns the previous value.
+     * <p>
+     * For POJO nodes, only declared fields are writable; unknown keys fail.
      */
     @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
@@ -1659,6 +1726,10 @@ public class Nodes {
 
     /**
      * Sets or appends a value in an array-like node by index.
+     * <p>
+     * For List/JsonArray/Set: {@code idx < size} updates, {@code idx == size}
+     * appends, other indexes fail. For Java arrays: only in-range replacement is
+     * allowed (no append). Negative indexes are supported.
      */
     @SuppressWarnings("unchecked")
     public static Object setInArray(Object node, int idx, Object value) {
@@ -1720,6 +1791,8 @@ public class Nodes {
 
     /**
      * Appends a value to an array-like node.
+     * <p>
+     * Java arrays are fixed-size and therefore not appendable.
      */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, Object value) {
@@ -1747,6 +1820,9 @@ public class Nodes {
 
     /**
      * Inserts a value at the given index of an array-like node.
+     * <p>
+     * Indexed insert is supported by List/JsonArray only. Set and Java array
+     * inputs are rejected because they are unordered or fixed-size.
      */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, int idx, Object value) {
@@ -1775,6 +1851,9 @@ public class Nodes {
 
     /**
      * Removes a key from an object-like node and returns the previous value.
+     * <p>
+     * Removal is supported for Map/JsonObject. POJO fields are structural and
+     * cannot be removed.
      */
     @SuppressWarnings("unchecked")
     public static Object removeInObject(Object node, String key) {
@@ -1798,6 +1877,9 @@ public class Nodes {
 
     /**
      * Removes an element by index from an array-like node.
+     * <p>
+     * Negative indexes are supported for List. Java arrays and Set do not support
+     * index-based removal.
      */
     @SuppressWarnings("unchecked")
     public static Object removeInArray(Object node, int idx) {

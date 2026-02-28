@@ -8,11 +8,15 @@ import java.util.Objects;
 
 /**
  * Single validation message produced during schema evaluation.
+ * <p>
+ * Captures severity, instance path, source keyword, and human-readable detail.
  */
 public class ValidationMessage {
 
     /**
      * Message severity level.
+     * <p>
+     * ERROR contributes to invalid result; WARN/INFO/DEBUG are diagnostic only.
      */
     public enum Severity { ERROR, WARN, INFO, DEBUG }
 
@@ -39,7 +43,9 @@ public class ValidationMessage {
         return severity;
     }
     /**
-     * Returns the path segment where validation ran.
+     * Returns path segment where the message was emitted.
+     * <p>
+     * Can be {@code null} in fail-fast mode when root path tracking is skipped.
      */
     public PathSegment getPs() { return ps; }
 //    public JsonPointer getPath() {

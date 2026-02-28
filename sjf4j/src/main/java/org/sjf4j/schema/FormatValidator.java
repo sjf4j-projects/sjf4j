@@ -12,7 +12,9 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * Format validation for JSON Schema "format" keyword.
+ * Format validators for JSON Schema {@code format} keyword.
+ * <p>
+ * Validators are stateless and shared as singleton instances.
  */
 public interface FormatValidator {
 
@@ -22,7 +24,9 @@ public interface FormatValidator {
     boolean validate(String value);
 
     /**
-     * Returns the validator implementation for a format name.
+     * Returns validator implementation for a standard format name.
+     *
+     * @throws IllegalArgumentException when format is not supported
      */
     static FormatValidator of(String format) {
         switch (format) {
@@ -275,7 +279,7 @@ public interface FormatValidator {
     // uri-reference (rough)
     class UriReferenceValidator implements FormatValidator {
         /**
-         * Validates URI-reference format.
+         * Validates URI-reference format (absolute or relative).
          */
         @Override
         public boolean validate(String value) {
@@ -292,7 +296,9 @@ public interface FormatValidator {
     class UriTemplateValidator implements FormatValidator {
         private final Pattern pattern = Pattern.compile("\\{[^}]*}");
         /**
-         * Validates URI-template placeholder syntax.
+         * Validates URI-template placeholder presence.
+         * <p>
+         * This is a lightweight check and does not fully implement RFC 6570.
          */
         @Override
         public boolean validate(String value) {
@@ -303,7 +309,9 @@ public interface FormatValidator {
     // iri
     class IriValidator implements FormatValidator {
         /**
-         * Validates IRI format using ASCII conversion.
+         * Validates IRI format using ASCII conversion fallback.
+         * <p>
+         * This is pragmatic validation, not a full RFC 3987 parser.
          */
         @Override
         public boolean validate(String value) {
@@ -324,6 +332,9 @@ public interface FormatValidator {
     class IriReferenceValidator implements FormatValidator {
         /**
          * Validates IRI-reference format.
+         * <p>
+         * For absolute IRIs, authority host is normalized via IDN before URI
+         * parsing.
          */
         @Override
         public boolean validate(String value) {
@@ -342,7 +353,7 @@ public interface FormatValidator {
         }
 
         /**
-         * Converts IRI host parts to ASCII for URI parsing.
+         * Converts authority host parts to ASCII for URI parsing.
          */
         private String convertIriToAscii(String iri) {
             int schemeEnd = iri.indexOf(':') + 1;
@@ -392,6 +403,8 @@ public interface FormatValidator {
     class RelativeJsonPointerValidator implements FormatValidator {
         /**
          * Validates relative JSON Pointer syntax.
+         * <p>
+         * Accepts non-negative leading level and optional tail pointer.
          */
         @Override
         public boolean validate(String value) {

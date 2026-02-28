@@ -249,7 +249,10 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     /**
-     * Compiles this schema with optional outer store for references.
+     * Compiles this schema with optional outer store for reference resolution.
+     * <p>
+     * Compilation initializes inner resource store, applies meta-schema
+     * vocabulary constraints, and compiles this schema as root resource.
      */
     public void compile(SchemaStore outer) {
         outerStore = outer;
@@ -259,7 +262,10 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     /**
-     * Compiles this schema resource in the given id/root scopes.
+     * Compiles this schema resource in provided id/root scopes.
+     * <p>
+     * Each schema object is compiled at most once. When a new resource URI is
+     * resolved, id-scope is switched to this schema resource.
      */
     void compile(PathSegment ps, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
@@ -289,6 +295,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
 
     /**
      * Imports and compiles a referenced schema resource.
+     * <p>
+     * Resolution order: current inner store, outer store, then global store.
      */
     ObjectSchema importAndCompile(URI uri) {
         if (uri == null || uri.equals(this.uri)) return this;
@@ -322,7 +330,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
 
     // validate
     /**
-     * Validates node and returns aggregated validation result.
+     * Validates node and returns validation result under given options.
+     * <p>
+     * Root path is omitted in fail-fast mode to reduce allocation.
      */
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {
@@ -336,6 +346,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     // evaluate
     /**
      * Evaluates compiled keyword evaluators against instance.
+     * <p>
+     * Dynamic id-scope is pushed for this resource during evaluation and popped
+     * afterward. Unevaluated-tracking state is initialized when required.
      */
     @Override
     public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {

@@ -5,7 +5,9 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Registry of schema keywords mapped to vocabularies.
+ * Registry mapping schema keywords to vocabulary URIs.
+ * <p>
+ * Used during compilation to reject unsupported/disallowed keywords.
  */
 public class VocabularyRegistry {
 
@@ -27,6 +29,8 @@ public class VocabularyRegistry {
 
     /**
      * Registers one keyword-to-vocabulary mapping.
+     * <p>
+     * Later registrations for the same keyword overwrite previous mapping.
      */
     public static void registerKeyword(String keyword, String vocabUri) {
         Objects.requireNonNull(keyword);
@@ -35,7 +39,7 @@ public class VocabularyRegistry {
     }
 
     /**
-     * Returns vocabulary URI for a keyword, or null.
+     * Returns vocabulary URI for a keyword, or {@code null} if unknown.
      */
     public static String getVocabUri(String keyword) {
         return KEYWORD_VOCAB_CACHE.get(keyword);

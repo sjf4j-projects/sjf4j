@@ -4,7 +4,9 @@ import org.sjf4j.exception.SchemaException;
 
 
 /**
- * Exception wrapper for validation results.
+ * Exception wrapper carrying a {@link ValidationResult}.
+ * <p>
+ * Thrown by convenience APIs such as {@code validateOrThrow()}.
  */
 public class ValidationException extends SchemaException {
     private final ValidationResult result;
@@ -18,7 +20,7 @@ public class ValidationException extends SchemaException {
     }
 
     /**
-     * Builds a concise exception message from result state.
+     * Builds concise exception message from result state.
      */
     private static String buildMessage(ValidationResult result) {
         ValidationMessage lastOne = result.getLastMessage();

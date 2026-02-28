@@ -8,6 +8,9 @@ import java.util.stream.Collectors;
 
 /**
  * Result of schema validation.
+ * <p>
+ * Supports both aggregated-message mode and fail-fast mode where only the last
+ * message may be retained.
  */
 public class ValidationResult {
     private final boolean valid;
@@ -41,6 +44,8 @@ public class ValidationResult {
 
     /**
      * Returns all validation messages.
+     * <p>
+     * Returned list can be synthesized from fail-fast last message.
      */
     public List<ValidationMessage> getMessages() {
         if (messages == null) {
@@ -68,6 +73,8 @@ public class ValidationResult {
 
     /**
      * Returns the latest message if present.
+     * <p>
+     * In non fail-fast mode this is the tail of collected messages.
      */
     public ValidationMessage getLastMessage() {
         if (lastMessage == null) {

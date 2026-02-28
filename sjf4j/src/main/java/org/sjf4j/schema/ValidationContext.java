@@ -12,6 +12,9 @@ import java.util.List;
 
 /**
  * Mutable validation state shared across evaluator invocations.
+ * <p>
+ * Holds message aggregation, fail-fast control, temporary ignore-error scopes,
+ * and dynamic-anchor resolution stack for nested schema evaluation.
  */
 public class ValidationContext {
     private final ObjectSchema targetSchema;
@@ -35,7 +38,7 @@ public class ValidationContext {
      */
     public ValidationOptions getOptions() {return this.options;}
     /**
-     * Builds an immutable result snapshot from current context state.
+     * Builds a result snapshot from current context state.
      */
     public ValidationResult toResult() {
         return new ValidationResult(valid, messages, lastMessage);
@@ -48,6 +51,8 @@ public class ValidationContext {
     }
     /**
      * Returns true when validation should abort early.
+     * <p>
+     * This is true only in fail-fast mode after the first non-ignored error.
      */
     public boolean shouldAbort() {
         return options.isFailFast() && !valid;
@@ -56,6 +61,8 @@ public class ValidationContext {
     // Ignore
     /**
      * Pushes an error-ignore frame.
+     * <p>
+     * Errors added while ignore-depth is positive are suppressed.
      */
     public void pushIgnoreError() {ignoreErrorAdding++;}
     /**
@@ -103,6 +110,9 @@ public class ValidationContext {
     }
     /**
      * Resolves a schema by dynamic anchor with scope fallback.
+     * <p>
+     * Resolution starts from referenced resource, then walks current dynamic
+     * scope stack from nearest to farthest.
      */
     ObjectSchema getSchemaByDynamicAnchor(URI uri, String dynamicAnchor) {
         ObjectSchema schema = targetSchema.getSchemaByDynamicAnchor(uri, dynamicAnchor);
@@ -119,6 +129,8 @@ public class ValidationContext {
     // message
     /**
      * Adds a validation error message.
+     * <p>
+     * In fail-fast mode only the last error is retained.
      */
     void addError(PathSegment ps, String keyword, String message) {
         if (ignoreErrorAdding < 1) {
@@ -133,6 +145,8 @@ public class ValidationContext {
     }
     /**
      * Adds a validation warning message.
+     * <p>
+     * Warnings are collected only when message list is enabled (non fail-fast).
      */
     void addWarn(PathSegment ps, String keyword, String message) {
         if (messages != null) {

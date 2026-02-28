@@ -18,21 +18,33 @@ import java.util.function.BiFunction;
 public class NodeWalker {
 
     /// Walk
+    /** Traversal order relative to child nodes. */
     public enum Order { TOP_DOWN, BOTTOM_UP }
+    /** Node selection mode for visitor callbacks. */
     public enum Target { ANY, CONTAINER, VALUE }
+    /** Visitor flow control. */
     public enum Control { CONTINUE, STOP }
 
+    /**
+     * Walks the node tree in top-down order and visits both containers and values.
+     */
     public static void walk(Object container,
                             BiFunction<PathSegment, Object, Control> visitor) {
         walk(container, Target.ANY, Order.TOP_DOWN, -1, visitor);
     }
 
+    /**
+     * Walks the node tree in top-down order with explicit target selection.
+     */
     public static void walk(Object container,
                             Target target,
                             BiFunction<PathSegment, Object, Control> visitor) {
         walk(container, target, Order.TOP_DOWN, -1, visitor);
     }
 
+    /**
+     * Walks the node tree with explicit target and traversal order.
+     */
     public static void walk(Object container,
                             Target target,
                             NodeWalker.Order order,
@@ -40,6 +52,12 @@ public class NodeWalker {
         walk(container, target, order, -1, visitor);
     }
 
+    /**
+     * Walks a node tree with full traversal controls.
+     * <p>
+     * {@code maxDepth < 0} means unlimited depth. Traversal starts at root path.
+     * Returning {@link Control#STOP} stops traversal of the current branch.
+     */
     public static void walk(Object container,
                             Target target,
                             NodeWalker.Order order,
@@ -53,6 +71,9 @@ public class NodeWalker {
     }
 
 
+    /**
+     * Walk variant based on {@link BiConsumer}, without stop-control support.
+     */
     public static void walk2(Object container, Target target, NodeWalker.Order order, int maxDepth,
                              BiConsumer<PathSegment, Object> consumer) {
         _walk2(container, new PathSegment.Root(null, container.getClass()), consumer, target, order, maxDepth);

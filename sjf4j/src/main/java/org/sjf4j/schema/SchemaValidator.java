@@ -44,6 +44,9 @@ public final class SchemaValidator {
 
     /**
      * Validates a POJO annotated with {@link ValidJsonSchema}.
+     * <p>
+     * Unannotated types are treated as valid and skipped. Resolved schemas are
+     * cached per POJO class.
      */
     public ValidationResult validate(Object pojo) {
         if (pojo == null) return ValidationResult.VALID;
@@ -61,6 +64,8 @@ public final class SchemaValidator {
 
     /**
      * Preloads and compiles schemas by relative references.
+     * <p>
+     * References are resolved against validator base URI.
      */
     public SchemaValidator preload(String... refs) {
         if (refs == null) return this;
@@ -133,7 +138,10 @@ public final class SchemaValidator {
     }
 
     /**
-     * Loads a schema for the given POJO from inline, ref, or naming convention.
+     * Loads schema for a POJO from annotation value/ref or naming convention.
+     * <p>
+     * Resolution order: inline schema text, explicit ref, then
+     * {@code <full-class-name>.schema.json}, then {@code <simple-name>.schema.json}.
      */
     private JsonSchema loadPojoSchema(Class<?> clazz, ValidJsonSchema anno) {
         // From value

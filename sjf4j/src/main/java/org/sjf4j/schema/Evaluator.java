@@ -20,11 +20,16 @@ import java.util.regex.Pattern;
 
 /**
  * Per-keyword evaluator used by compiled schemas.
+ * <p>
+ * Implementations validate one keyword (or tightly related keyword group)
+ * against current instance node and report messages via context.
  */
 public interface Evaluator {
 
     /**
      * Evaluates a keyword against the given instance.
+     *
+     * @return true when keyword validation succeeds for current instance branch
      */
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
 
@@ -527,6 +532,9 @@ public interface Evaluator {
 
         /**
          * Validates properties, patternProperties, and additionalProperties.
+         * <p>
+         * Successful property validations mark indices as evaluated for later
+         * unevaluatedProperties processing.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
@@ -806,6 +814,9 @@ public interface Evaluator {
         }
         /**
          * Validates contains/minContains/maxContains for arrays.
+         * <p>
+         * Per-item contains failures are probed in ignore-error mode; only final
+         * aggregate cardinality errors are reported.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
@@ -911,6 +922,8 @@ public interface Evaluator {
         }
         /**
          * Requires all subschemas to match.
+         * <p>
+         * Evaluated-location marks are merged only when all branches succeed.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
@@ -951,6 +964,9 @@ public interface Evaluator {
         }
         /**
          * Requires at least one subschema to match.
+         * <p>
+         * Branch errors are probed in ignore-error mode; a single aggregate error
+         * is emitted when no branch matches.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
@@ -997,6 +1013,9 @@ public interface Evaluator {
         }
         /**
          * Requires exactly one subschema to match.
+         * <p>
+         * Branch errors are probed in ignore-error mode; evaluated-location marks
+         * are merged only for successful single-match result.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
@@ -1069,7 +1088,10 @@ public interface Evaluator {
             this.unevaluatedItemsSchema = unevaluatedItemsSchema;
         }
         /**
-         * Validates unevaluated properties or items against fallback schemas.
+         * Validates unevaluated properties/items against fallback schemas.
+         * <p>
+         * Uses merged evaluated bitset from prior keywords and propagates newly
+         * evaluated marks back to parent scope.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
