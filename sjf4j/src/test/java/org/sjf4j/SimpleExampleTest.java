@@ -3,9 +3,6 @@ package org.sjf4j;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.NodeWalker.Target;
-import org.sjf4j.node.NodeWalker.Order;
-import org.sjf4j.node.NodeWalker.Control;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.node.TypeReference;
@@ -134,11 +131,11 @@ public class SimpleExampleTest {
 
         /// Walk and stream
 
-        jo.walk(Target.CONTAINER, Order.BOTTOM_UP, (path, node) -> {
+        jo.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, (path, node) -> {
             // Target: CONTAINER or VALUE
             // Order: BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf)
             System.out.println("path=" + path + ", node=" + node);
-            return Control.CONTINUE; // CONTINUE to proceed, or STOP if needed
+            return true;            // CONTINUE to proceed, or STOP if needed
         });
 
         List<String> tags2 = jo.stream()                    // Follows Java Stream syntax

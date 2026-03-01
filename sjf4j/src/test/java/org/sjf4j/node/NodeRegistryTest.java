@@ -217,22 +217,22 @@ public class NodeRegistryTest {
     public void testNodeValue2() {
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
-            public String encode(LocalDate node) {
+            public String valueToRaw(LocalDate node) {
                 return node.toString();
             }
 
             @Override
-            public LocalDate decode(String raw) {
+            public LocalDate rawToValue(String raw) {
                 return LocalDate.parse(raw);
             }
 
             @Override
-            public Class<LocalDate> getValueClass() {
+            public Class<LocalDate> valueClass() {
                 return LocalDate.class;
             }
 
             @Override
-            public Class<String> getRawClass() {
+            public Class<String> rawClass() {
                 return String.class;
             }
         });

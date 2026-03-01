@@ -1,6 +1,5 @@
 package org.sjf4j;
 
-import org.sjf4j.node.NodeWalker;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.path.JsonPath;
@@ -59,14 +58,14 @@ public abstract class JsonContainer {
      * Removes null-valued object entries recursively.
      */
     public void deepPruneNulls() {
-        NodeWalker.walk(this, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
+        Nodes.walk(this, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP,
                 (path, node) -> {
                     if (node instanceof JsonObject) {
                         ((JsonObject) node).removeIf(e -> e.getValue() == null);
                     } else if (node instanceof Map) {
                         ((Map<?, ?>) node).entrySet().removeIf(e -> e.getValue() == null);
                     }
-                    return NodeWalker.Control.CONTINUE;
+                    return true;
                 });
     }
 
@@ -927,32 +926,32 @@ public abstract class JsonContainer {
     /**
      * Walks all nodes with default traversal options.
      */
-    public void walk(BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
-        NodeWalker.walk(this, visitor);
+    public void walk(BiFunction<PathSegment, Object, Boolean> visitor) {
+        Nodes.walk(this, visitor);
     }
 
     /**
      * Walks nodes filtered by target kind.
      */
-    public void walk(NodeWalker.Target target,
-                     BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
-        NodeWalker.walk(this, target, visitor);
+    public void walk(Nodes.WalkTarget target,
+                     BiFunction<PathSegment, Object, Boolean> visitor) {
+        Nodes.walk(this, target, visitor);
     }
 
     /**
      * Walks nodes with specified target and order.
      */
-    public void walk(NodeWalker.Target target, NodeWalker.Order order,
-                     BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
-        NodeWalker.walk(this, target, order, visitor);
+    public void walk(Nodes.WalkTarget target, Nodes.WalkOrder order,
+                     BiFunction<PathSegment, Object, Boolean> visitor) {
+        Nodes.walk(this, target, order, visitor);
     }
 
     /**
      * Walks nodes with specified target, order, and max depth.
      */
-    public void walk(NodeWalker.Target target, NodeWalker.Order order, int maxDepth,
-                     BiFunction<PathSegment, Object, NodeWalker.Control> visitor) {
-        NodeWalker.walk(this, target, order, maxDepth, visitor);
+    public void walk(Nodes.WalkTarget target, Nodes.WalkOrder order, int maxDepth,
+                     BiFunction<PathSegment, Object, Boolean> visitor) {
+        Nodes.walk(this, target, order, maxDepth, visitor);
     }
 
     /// Patch

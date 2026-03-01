@@ -26,10 +26,10 @@ public class NodeWalkerTest {
         List<String> paths = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         
-        NodeWalker.walk(jo, NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk(jo, Nodes.WalkTarget.VALUE, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             values.add(value);
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("Paths: {}", paths);
@@ -53,11 +53,11 @@ public class NodeWalkerTest {
         
         List<String> containerPaths = new ArrayList<>();
         
-        NodeWalker.walk(jo, NodeWalker.Target.CONTAINER, NodeWalker.Order.BOTTOM_UP,
+        Nodes.walk(jo, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP,
                 (ps, container) -> {
-            containerPaths.add(Paths.rootedPathExpr(ps));
+            containerPaths.add(ps.rootedPathExpr());
             assertNotNull(container);
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("Container paths: {}", containerPaths);
@@ -74,10 +74,10 @@ public class NodeWalkerTest {
         AtomicInteger count = new AtomicInteger(0);
         List<String> paths = new ArrayList<>();
         
-        NodeWalker.walk(ja, NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk(ja, Nodes.WalkTarget.VALUE, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             count.incrementAndGet();
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("Array paths: {}", paths);
@@ -100,9 +100,9 @@ public class NodeWalkerTest {
         map.put("nested", nested);
         
         List<String> paths = new ArrayList<>();
-        NodeWalker.walk(map, NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk(map, Nodes.WalkTarget.VALUE, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("Map paths: {}", paths);
@@ -120,9 +120,9 @@ public class NodeWalkerTest {
         list.add(nested);
         
         List<String> paths = new ArrayList<>();
-        NodeWalker.walk(list, NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk(list, Nodes.WalkTarget.VALUE, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("List paths: {}", paths);
@@ -136,9 +136,9 @@ public class NodeWalkerTest {
         int[] array = {1, 2, 3};
         
         List<String> paths = new ArrayList<>();
-        NodeWalker.walk(array, NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk(array, Nodes.WalkTarget.VALUE, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("Array object paths: {}", paths);
@@ -151,10 +151,10 @@ public class NodeWalkerTest {
     public void testWalkPrimitive() {
         AtomicInteger count = new AtomicInteger(0);
         
-        NodeWalker.walk("test", NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk("test", Nodes.WalkTarget.VALUE, (ps, value) -> {
             count.incrementAndGet();
             assertEquals("test", value);
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         assertEquals(1, count.get());
@@ -174,10 +174,10 @@ public class NodeWalkerTest {
                 "}");
         
         AtomicInteger count = new AtomicInteger(0);
-        NodeWalker.walk(jo, NodeWalker.Target.VALUE, (ps, value) -> {
+        Nodes.walk(jo, Nodes.WalkTarget.VALUE, (ps, value) -> {
             count.incrementAndGet();
             log.debug("PathSegment: {}, Value: {}", ps, value);
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         
         log.info("Total values walked: {}", count.get());
@@ -214,18 +214,18 @@ public class NodeWalkerTest {
         log.info("person={}", person);
 
         List<String> values1 = new ArrayList<>();
-        NodeWalker.walk(person, NodeWalker.Target.VALUE, (ps, node) -> {
+        Nodes.walk(person, Nodes.WalkTarget.VALUE, (ps, node) -> {
             log.info("walk1 ps={}, node={}", ps, node);
             values1.add(Paths.rootedPathExpr(ps));
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         assertTrue(values1.contains("$.babies[1].name"));
 
         List<String> values2 = new ArrayList<>();
-        NodeWalker.walk(person, NodeWalker.Target.ANY, NodeWalker.Order.BOTTOM_UP, (ps, node) -> {
+        Nodes.walk(person, Nodes.WalkTarget.ANY, Nodes.WalkOrder.BOTTOM_UP, (ps, node) -> {
             log.info("walk2 ps={}, node={}", ps, node);
             values2.add(Paths.rootedPathExpr(ps));
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
         assertEquals(16, values2.size());
         assertEquals("$.name", values2.get(0));

@@ -7,6 +7,7 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.facade.FacadeNodes;
+import org.sjf4j.path.PathSegment;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -23,6 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
@@ -1479,7 +1481,7 @@ public class Nodes {
      * <p>
      * Negative indexes are supported ({@code -1} means last element). For List,
      * Array, and Set, out-of-range access returns {@code null}. JsonArray behavior
-     * follows {@link JsonArray#get(int)}.
+     * follows {@link JsonArray#getNode(int)}.
      */
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
@@ -1905,5 +1907,97 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+
+    /// Walk
+
+    /** Traversal order relative to child nodes. */
+    public enum WalkOrder { TOP_DOWN, BOTTOM_UP }
+    /** Node selection mode for visitor callbacks. */
+    public enum WalkTarget { ANY, CONTAINER, VALUE }
+
+
+    /**
+     * Walks the node tree in top-down order and visits both containers and values.
+     */
+    public static void walk(Object container,
+                            BiFunction<PathSegment, Object, Boolean> visitor) {
+        walk(container, WalkTarget.ANY, WalkOrder.TOP_DOWN, -1, visitor);
+    }
+
+    /**
+     * Walks the node tree in top-down order with explicit target selection.
+     */
+    public static void walk(Object container,
+                            WalkTarget target,
+                            BiFunction<PathSegment, Object, Boolean> visitor) {
+        walk(container, target, WalkOrder.TOP_DOWN, -1, visitor);
+    }
+
+    /**
+     * Walks the node tree with explicit target and traversal order.
+     */
+    public static void walk(Object container,
+                            WalkTarget target,
+                            WalkOrder order,
+                            BiFunction<PathSegment, Object, Boolean> visitor) {
+        walk(container, target, order, -1, visitor);
+    }
+
+    /**
+     * Walks a node tree with full traversal controls.
+     * <p>
+     * {@code maxDepth < 0} means unlimited depth. Traversal starts at root path.
+     * Returning {@link Boolean} stops traversal of the current branch.
+     */
+    public static void walk(Object container, WalkTarget target,
+                            WalkOrder order, int maxDepth,
+                            BiFunction<PathSegment, Object, Boolean> visitor) {
+        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(target, "target is null");
+        Objects.requireNonNull(order, "order is null");
+        Objects.requireNonNull(visitor, "visitor is null");
+        _walk(container, new PathSegment.Root(null, container.getClass()), visitor, target, order, maxDepth);
+    }
+
+    private static void _walk(Object container, PathSegment path,
+                              BiFunction<PathSegment, Object, Boolean> visitor,
+                              WalkTarget target, WalkOrder order, int remainingDepth) {
+        if (remainingDepth == 0) return;
+
+        JsonType jt = JsonType.of(container);
+        if (jt.isObject()) {
+            if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
+                boolean continued = visitor.apply(path, container);
+                if (!continued) return;
+            }
+            Nodes.visitObject(container, (key, node) -> {
+                PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
+                _walk(node, childPath, visitor, target, order, remainingDepth - 1);
+            });
+            if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
+                boolean continued = visitor.apply(path, container);
+                if (!continued) return;
+            }
+        } else if (jt.isArray()) {
+            if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
+                boolean continued = visitor.apply(path, container);
+                if (!continued) return;
+            }
+            Nodes.visitArray(container, (idx, node) -> {
+                PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
+                _walk(node, childPath, visitor, target, order, remainingDepth - 1);
+            });
+            if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
+                boolean continued = visitor.apply(path, container);
+                if (!continued) return;
+            }
+        } else {
+            if (target == WalkTarget.VALUE || target == WalkTarget.ANY) {
+                boolean continued = visitor.apply(path, container);
+                if (!continued) return;
+            }
+        }
+
+    }
 
 }

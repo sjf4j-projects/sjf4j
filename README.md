@@ -39,24 +39,26 @@ Unlike traditional JSON libraries that rely on dedicated AST node hierarchies,
 
 ```mermaid
 graph BT
-    node(("&lt;Object&gt; <br/> Object-Based Node Tree"))
-    node --> object(("JSON Object <br/> { }"))
-        object --> map("Map")
-        object --> jo("JsonObject")
-            jo --> jojo(" &lt;JOJO&gt; <br/> (extends JsonObject)")
-        object --> pojo(" &lt;POJO&gt; ")
-    node --> array(("JSON Array <br/> [ ]"))
-        array --> list("List")
-        array --> ja("JsonArray")
-            ja --> jajo(" &lt;JAJO&gt; <br/> (extends JsonArray)")
-        array --> arr("Array")
-        array ---> set("Set")
-    node --> value(("JSON Value <br/> ..."))
-        value --> string("String")
-        value --> number("Number")
-        value --> boolean("Boolean")
-        value ---> nodeValue("&lt;NodeValue&gt;")
+  node(("Object <br/> Based Node Tree"))
+  node --> object(("JSON Object <br/> { }"))
+    object --> map("* Map")
+    object --> jo("JsonObject")
+    object ---> jojo(" &lt;JOJO&gt; <br/> (extends JsonObject)")
+    object --> pojo(" &lt;POJO&gt; ")
+  node --> array(("JSON Array <br/> [ ]"))
+    array --> list("* List")
+    array --> ja("JsonArray")
+    array ---> jajo(" &lt;JAJO&gt; <br/> (extends JsonArray)")
+    array --> arr("Array")
+    array ---> set("Set")
+
+  node --> value(("JSON Value <br/> ..."))
+    value --> string("* String")
+    value --> number("* Number")
+    value --> boolean("* Boolean")
+    value ---> nodeValue("&lt;NodeValue&gt;")
 ```
+
 
 **JSON Object (`{}`)**
 - **`Map`**  

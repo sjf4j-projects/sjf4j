@@ -64,7 +64,7 @@ public final class InstancedNode {
         if (node == null) return NULL.reset();
         NodeKind nodeKind = NodeKind.of(node);
         boolean encoded = false;
-        if (nodeKind == NodeKind.VALUE_REGISTERED) {
+        if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
             node = NodeRegistry.getValueCodecInfo(node.getClass()).encode(node);
             nodeKind = NodeKind.of(node);
             encoded = true;

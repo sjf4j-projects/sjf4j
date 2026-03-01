@@ -27,7 +27,7 @@ public enum NodeKind {
     VALUE_BOOLEAN,
     VALUE_BOOLEAN_FACADE,
     /** Represents a registered @NodeValue with custom codec. */
-    VALUE_REGISTERED,
+    VALUE_NODE_VALUE,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -93,7 +93,7 @@ public enum NodeKind {
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (ti.isNodeValue()) {
-            return VALUE_REGISTERED;
+            return VALUE_NODE_VALUE;
         } else if (ti.isPojo()) {
             return OBJECT_POJO;
         }
@@ -154,7 +154,7 @@ public enum NodeKind {
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (ti.isNodeValue()) {
-            return VALUE_REGISTERED;
+            return VALUE_NODE_VALUE;
         } else if (ti.isPojo()) {
             return OBJECT_POJO;
         }

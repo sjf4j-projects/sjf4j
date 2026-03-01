@@ -1,8 +1,8 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeWalker;
 import org.sjf4j.facade.PropertiesFacade;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.path.Paths;
 
 import java.util.Properties;
@@ -35,11 +35,11 @@ public class SimplePropertiesFacade implements PropertiesFacade {
     @Override
     public void writeNode(Properties properties, Object node) {
         if (properties == null) throw new IllegalArgumentException("Properties must not be null");
-        NodeWalker.walk(node, NodeWalker.Target.VALUE, NodeWalker.Order.TOP_DOWN, (ps, value) -> {
+        Nodes.walk(node, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, (ps, value) -> {
             if (value != null) {
                 properties.setProperty(jsonPath2PropKey(Paths.rootedPathExpr(ps)), value.toString());
             }
-            return NodeWalker.Control.CONTINUE;
+            return true;
         });
     }
 
