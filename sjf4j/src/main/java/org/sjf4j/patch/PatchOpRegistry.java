@@ -3,6 +3,7 @@ package org.sjf4j.patch;
 
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.path.JsonPointer;
 
 import java.util.Map;
 import java.util.Objects;
@@ -92,7 +93,11 @@ public class PatchOpRegistry {
 
         // remove
         PatchOpRegistry.register(PatchOp.STD_REMOVE, (target, op) -> {
-            op.getPath().remove(target);
+            JsonPointer path = op.getPath();
+            if (!path.contains(target)) {
+                throw new JsonException("'remove' operation failed at path " + path + ": no value exist");
+            }
+            path.remove(target);
         });
 
         // replace
@@ -104,15 +109,16 @@ public class PatchOpRegistry {
         PatchOpRegistry.register(PatchOp.STD_COPY, (target, op) -> {
             Object value = op.getFrom().getNode(target);
             if (value == null) throw new JsonException("'copy' operation failed at from " + op.getFrom() +
-                    ": value is not exist");
+                    ": no value exist");
             op.getPath().add(target, value);
         });
 
         // move
         PatchOpRegistry.register(PatchOp.STD_MOVE, (target, op) -> {
             Object value = op.getFrom().remove(target);
-            if (value == null) throw new JsonException("'move' operation failed at from " + op.getFrom() +
-                    ": value is not exist");
+            if (value == null) {
+                throw new JsonException("'move' operation failed at from " + op.getFrom() + ": no value exist");
+            }
             op.getPath().add(target, value);
         });
 

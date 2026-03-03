@@ -254,9 +254,11 @@ public class JsonPatchTest {
     @Test
     public void testDiffAndApply2() {
         List<Integer> a = Arrays.asList(1, 2, 3);
-        List<Integer> b = Arrays.asList(1, 20, 3, 4);
+        List<Integer> b = Arrays.asList(1, 5, 3, 4);
 
         JsonPatch patch = JsonPatch.diff(a, b);
+        System.out.println("patch=" + patch.toJson());
+
         List<Integer> c = Sjf4j.deepNode(a);
         patch.apply(c);
 

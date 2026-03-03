@@ -135,7 +135,7 @@ public class SimpleExampleTest {
             // Target: CONTAINER or VALUE
             // Order: BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf)
             System.out.println("path=" + path + ", node=" + node);
-            return true;            // CONTINUE to proceed, or STOP if needed
+            return true;
         });
 
         List<String> tags2 = jo.stream()                    // Follows Java Stream syntax

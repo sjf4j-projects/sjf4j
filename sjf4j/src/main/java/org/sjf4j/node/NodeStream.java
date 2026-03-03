@@ -7,6 +7,7 @@ import org.sjf4j.path.JsonPath;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -33,7 +34,6 @@ public class NodeStream<T> {
      * @throws IllegalArgumentException if stream is null
      */
     protected NodeStream(Stream<T> stream) {
-        if (stream == null) throw new IllegalArgumentException("NodeStream must not be null");
         this.stream = stream;
     }
 
@@ -41,7 +41,7 @@ public class NodeStream<T> {
      * Creates a NodeStream from list elements.
      */
     public static <T> NodeStream<T> of(List<T> nodes) {
-        if (nodes == null) throw new IllegalArgumentException("Nodes must not be null");
+        Objects.requireNonNull(nodes, "nodes is null");
         return new NodeStream<>(nodes.stream());
     }
 
@@ -49,7 +49,7 @@ public class NodeStream<T> {
      * Creates a NodeStream from a single element.
      */
     public static <T> NodeStream<T> of(T node) {
-        if (node == null) throw new IllegalArgumentException("Node must not be null");
+        Objects.requireNonNull(node, "nodes is null");
         return new NodeStream<>(Stream.of(node));
     }
 

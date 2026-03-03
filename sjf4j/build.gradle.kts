@@ -73,6 +73,7 @@ tasks.test {
 }
 
 tasks.withType<Javadoc> {
+    options.locale = "en_US"
     (options as? StandardJavadocDocletOptions)?.apply {
         addStringOption("Xdoclint:none", "-quiet")
     }

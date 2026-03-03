@@ -698,18 +698,19 @@ public class Nodes {
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
             for (Map.Entry<String, Object> entry : entrySetInObject(source)) {
-                if (!containsInObject(target, entry.getKey())) return false;
                 Object subSource = entry.getValue();
                 Object subTarget = getInObject(target, entry.getKey());
+                if (subTarget == null && !containsInObject(target, entry.getKey())) return false;
                 if (!equals(subSource, subTarget)) return false;
             }
             return true;
         } else if (jtSource.isArray() && jtTarget.isArray()) {
             if (sizeInArray(source) != sizeInArray(target)) return false;
-            int size = sizeInArray(source);
-            for (int i = 0; i < size; i++) {
-                Object subSource = getInArray(source, i);
-                Object subTarget = getInArray(target, i);
+            Iterator<Object> itSource = iteratorInArray(source);
+            Iterator<Object> itTarget = iteratorInArray(target);
+            while (itSource.hasNext() && itTarget.hasNext()) {
+                Object subSource = itSource.next();
+                Object subTarget = itTarget.next();
                 if (!equals(subSource, subTarget)) return false;
             }
             return true;
@@ -744,9 +745,9 @@ public class Nodes {
             return hash;
         } else if (jt.isArray()) {
             int hash = 1;
-            int size = sizeInArray(node);
-            for (int i = 0; i < size; i++) {
-                Object item = getInArray(node, i);
+            Iterator<Object> it = iteratorInArray(node);
+            while (it.hasNext()) {
+                Object item = it.next();
                 hash = 31 * hash + hash(item);
             }
             return hash;
@@ -1177,7 +1178,7 @@ public class Nodes {
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
-                if (predicate.test(i, ja.get(i))) return true;
+                if (predicate.test(i, ja.getNode(i))) return true;
             }
             return false;
         }
@@ -1219,7 +1220,7 @@ public class Nodes {
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
-                if (!predicate.test(i, ja.get(i))) return false;
+                if (!predicate.test(i, ja.getNode(i))) return false;
             }
             return true;
         }
@@ -1261,7 +1262,7 @@ public class Nodes {
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
             for (int i = 0; i < ja.size(); i++) {
-                if (predicate.test(i, ja.get(i))) return false;
+                if (predicate.test(i, ja.getNode(i))) return false;
             }
             return true;
         }
@@ -1462,7 +1463,7 @@ public class Nodes {
             return ((Map<?, ?>) node).get(key);
         }
         if (node instanceof JsonObject) {
-            return ((JsonObject) node).get(key);
+            return ((JsonObject) node).getNode(key);
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
@@ -1496,7 +1497,7 @@ public class Nodes {
             }
         }
         if (node instanceof JsonArray) {
-            return ((JsonArray) node).get(idx);
+            return ((JsonArray) node).getNode(idx);
         }
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
@@ -1640,7 +1641,7 @@ public class Nodes {
             JsonArray ja = (JsonArray) node;
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx <= ja.size()) {
-                out.node = ja.get(idx);
+                out.node = ja.getNode(idx);
                 out.type = Object.class;
                 out.insertable = true;
                 return;
@@ -1915,7 +1916,6 @@ public class Nodes {
     /** Node selection mode for visitor callbacks. */
     public enum WalkTarget { ANY, CONTAINER, VALUE }
 
-
     /**
      * Walks the node tree in top-down order and visits both containers and values.
      */
@@ -1967,34 +1967,29 @@ public class Nodes {
         JsonType jt = JsonType.of(container);
         if (jt.isObject()) {
             if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                boolean continued = visitor.apply(path, container);
-                if (!continued) return;
+                if (!visitor.apply(path, container)) return;
             }
             Nodes.visitObject(container, (key, node) -> {
                 PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                boolean continued = visitor.apply(path, container);
-                if (!continued) return;
+                if (!visitor.apply(path, container)) return;
             }
         } else if (jt.isArray()) {
             if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                boolean continued = visitor.apply(path, container);
-                if (!continued) return;
+                if (!visitor.apply(path, container)) return;
             }
             Nodes.visitArray(container, (idx, node) -> {
                 PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                boolean continued = visitor.apply(path, container);
-                if (!continued) return;
+                if (!visitor.apply(path, container)) return;
             }
         } else {
             if (target == WalkTarget.VALUE || target == WalkTarget.ANY) {
-                boolean continued = visitor.apply(path, container);
-                if (!continued) return;
+                if (!visitor.apply(path, container)) return;
             }
         }
 

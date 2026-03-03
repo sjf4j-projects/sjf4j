@@ -216,7 +216,7 @@ public class NodeWalkerTest {
         List<String> values1 = new ArrayList<>();
         Nodes.walk(person, Nodes.WalkTarget.VALUE, (ps, node) -> {
             log.info("walk1 ps={}, node={}", ps, node);
-            values1.add(Paths.rootedPathExpr(ps));
+            values1.add(ps.rootedPathExpr());
             return true;
         });
         assertTrue(values1.contains("$.babies[1].name"));
