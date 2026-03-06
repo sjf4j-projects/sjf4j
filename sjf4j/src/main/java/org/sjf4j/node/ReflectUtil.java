@@ -2,6 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -38,7 +39,7 @@ import java.util.function.Supplier;
  * Reflection helpers for POJO and @NodeValue analysis.
  */
 @SuppressWarnings("unchecked")
-public class ReflectUtil {
+public final class ReflectUtil {
 
     /**
      * Flag indicating if the current JVM is running JDK 8.
@@ -367,7 +368,7 @@ public class ReflectUtil {
     public static NodeRegistry.ValueCodecInfo analyzeNodeValue(Class<?> clazz) {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
-        MethodHandle encodeHandle = null, decodeHandle = null, copyHandle = null;
+        MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
         MethodHandles.Lookup lookup = ROOT_LOOKUP;
         if (!IS_JDK8) {
             try {
@@ -377,14 +378,15 @@ public class ReflectUtil {
 
         Class<?> current = clazz;
         while (current != null && current != Object.class &&
-                (encodeHandle == null || decodeHandle == null || copyHandle == null)) {
+                (valueToRawHandle == null || rawToValueHandle == null || valueCopyHandle == null)) {
             for (Constructor<?> ctor : current.getDeclaredConstructors()) {
                 // Decode
                 if (ctor.isAnnotationPresent(NodeValue.class)) {
-                    if (decodeHandle != null)
-                        throw new JsonException("Multiple @Deocde definitions found in " + clazz.getName());
+                    if (rawToValueHandle != null)
+                        throw new JsonException("Multiple @" + NodeValue.class.getName() +
+                                " definitions found in " + clazz.getName());
                     try {
-                        decodeHandle = lookup.unreflectConstructor(ctor);
+                        rawToValueHandle = lookup.unreflectConstructor(ctor);
                     } catch (IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
@@ -395,16 +397,18 @@ public class ReflectUtil {
                 if (m.isBridge()) continue;
                 // Encode
                 if (m.isAnnotationPresent(ValueToRaw.class)) {
-                    if (encodeHandle != null)
-                        throw new JsonException("Multiple @Enocde definitions found in " + clazz.getName());
+                    if (valueToRawHandle != null)
+                        throw new JsonException("Multiple @" + ValueToRaw.class.getName() +
+                                " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Cannot use @Encode on static methods in " + clazz.getName());
+                        throw new JsonException("Cannot use @" + ValueToRaw.class.getName() +
+                                " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
-                        encodeHandle = lookup.unreflect(m);
+                        valueToRawHandle = lookup.unreflect(m);
                         continue;
                     } catch (IllegalAccessException e) {
                         throw new JsonException(e);
@@ -412,32 +416,36 @@ public class ReflectUtil {
                 }
                 // Decode
                 if (m.isAnnotationPresent(RawToValue.class)) {
-                    if (decodeHandle != null)
-                        throw new JsonException("Multiple @Deocde definitions found in " + clazz.getName());
+                    if (rawToValueHandle != null)
+                        throw new JsonException("Multiple @" + RawToValue.class.getName() +
+                                " definitions found in " + clazz.getName());
                     if (!Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Must use @Decode on constructor or static methods in " + clazz.getName());
+                        throw new JsonException("Must use @" + RawToValue.class.getName() +
+                                " on constructor or static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
-                        decodeHandle = lookup.unreflect(m);
+                        rawToValueHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
                 }
                 // Copy
                 if (m.isAnnotationPresent(ValueCopy.class)) {
-                    if (copyHandle != null)
-                        throw new JsonException("Multiple @Copy definitions found in " + clazz.getName());
+                    if (valueCopyHandle != null)
+                        throw new JsonException("Multiple @" + ValueCopy.class.getName() +
+                                " definitions found in " + clazz.getName());
                     if (Modifier.isStatic(m.getModifiers()))
-                        throw new JsonException("Cannot use @Copy on static methods in " + clazz.getName());
+                        throw new JsonException("Cannot use @" + ValueCopy.class.getName() +
+                                " on static methods in " + clazz.getName());
                     if (current != clazz) {
                         Method override = findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
-                        copyHandle = lookup.unreflect(m);
+                        valueCopyHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
@@ -446,44 +454,45 @@ public class ReflectUtil {
             current = current.getSuperclass();
         }
 
-        if (encodeHandle == null)
-            throw new JsonException("Missing @Encode method in " + clazz.getName());
-        if (encodeHandle.type().parameterCount() != 1) {
-            throw new JsonException("@Encode method must have no parameters, but found " +
-                    (encodeHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
+        if (valueToRawHandle == null)
+            throw new JsonException("Missing @" + ValueToRaw.class.getName() + " method in " + clazz.getName());
+        if (valueToRawHandle.type().parameterCount() != 1) {
+            throw new JsonException("@" + ValueToRaw.class.getName() + " method must have no parameters, but found " +
+                    (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
-        Class<?> encodeReturnClazz = encodeHandle.type().returnType();
-        if (!NodeKind.of(encodeReturnClazz).isRaw())
-            throw new JsonException("@Encode method return invalid type " + encodeReturnClazz.getName() +
-                    " in " + clazz.getName() +
+        Class<?> returnRawClazz = valueToRawHandle.type().returnType();
+        if (!NodeKind.plainOf(returnRawClazz).isRaw())
+            throw new JsonException("@" + ValueToRaw.class.getName() + " method return invalid type " +
+                    returnRawClazz.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
-        if (decodeHandle == null)
-            throw new JsonException("Missing @Decode method in " + clazz.getName());
-        if (decodeHandle.type().parameterCount() != 1)
-            throw new JsonException("@Decode method must have exactly one parameter, but found " +
-                    decodeHandle.type().parameterCount());
-        Class<?> decodeParamClazz = decodeHandle.type().parameterType(0);
-        Class<?> decodeReturnClazz = decodeHandle.type().returnType();
-        if (decodeParamClazz != encodeReturnClazz)
-            throw new JsonException("@Decode method parameter type must match @Encode return type. " +
-                    "Expected: " + encodeReturnClazz.getName() + ", Found: " + decodeParamClazz.getName());
+        if (rawToValueHandle == null)
+            throw new JsonException("Missing @" + RawToValue.class.getName() + " method in " + clazz.getName());
+        if (rawToValueHandle.type().parameterCount() != 1)
+            throw new JsonException("@" + RawToValue.class.getName() +
+                    " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
+        Class<?> decodeParamClazz = rawToValueHandle.type().parameterType(0);
+        Class<?> decodeReturnClazz = rawToValueHandle.type().returnType();
+        if (decodeParamClazz != returnRawClazz)
+            throw new JsonException("@" + RawToValue.class.getName() + " method parameter type must match @" +
+                    ValueToRaw.class.getName() + " return type. " + "Expected: " + returnRawClazz.getName() +
+                    ", Found: " + decodeParamClazz.getName());
         if (decodeReturnClazz != clazz)
-            throw new JsonException("@Decode method return type must be " + clazz.getName() +
-                    ", but found " + decodeReturnClazz.getName());
+            throw new JsonException("@" + RawToValue.class.getName() + " method return type must be " +
+                    clazz.getName() + ", but found " + decodeReturnClazz.getName());
 
-        if (copyHandle != null) {
-            if (copyHandle.type().parameterCount() != 1)
-                throw new JsonException("@Copy method must have no parameters, but found " +
-                        (copyHandle.type().parameterCount() + 1));
-            Class<?> copyReturnClazz = copyHandle.type().returnType();
+        if (valueCopyHandle != null) {
+            if (valueCopyHandle.type().parameterCount() != 1)
+                throw new JsonException("@" + ValueCopy.class.getName() + " method must have no parameters, but found " +
+                        (valueCopyHandle.type().parameterCount() + 1));
+            Class<?> copyReturnClazz = valueCopyHandle.type().returnType();
             if (copyReturnClazz != clazz)
-                throw new JsonException("@Copy method return type must be " + clazz.getName() +
+                throw new JsonException("@" + ValueCopy.class.getName() + " method return type must be " + clazz.getName() +
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new NodeRegistry.ValueCodecInfo(clazz, encodeReturnClazz, null,
-                encodeHandle, decodeHandle, copyHandle);
+        return new NodeRegistry.ValueCodecInfo(clazz, returnRawClazz, null,
+                valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 
     private static Method findOverride(Method baseMethod, Class<?> clazz) {
@@ -795,6 +804,32 @@ public class ReflectUtil {
     }
 
 
+    /// AnyOf
+
+    public static NodeRegistry.AnyOfInfo analyzeAnyOf(Class<?> clazz, AnyOf ann) {
+        AnyOf.Mapping[] mappings = ann.value();
+        if (mappings == null || mappings.length == 0) {
+            throw new JsonException("Empty mappings in @" + AnyOf.class.getName() + " of class " + clazz.getName());
+        }
+
+        boolean hasDiscriminator = !ann.key().isEmpty() || !ann.path().isEmpty();
+        for (AnyOf.Mapping mapping : mappings) {
+            Class<?> subClazz = mapping.value();
+            if (!clazz.isAssignableFrom(subClazz)) {
+                throw new JsonException("Mapping class " + subClazz.getName() + " in @" + AnyOf.class.getName() +
+                        " is not assignable from " + clazz.getName());
+            }
+            if (hasDiscriminator) {
+                if (mapping.when().length == 0) {
+                    throw new JsonException("Given a discriminator but has empty 'when' in mapping " +
+                            subClazz.getName() + " in @" + AnyOf.class.getName() + " of class " + clazz.getName());
+                }
+            } else {
+
+            }
+        }
+        return new NodeRegistry.AnyOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
+    }
 
 
 }

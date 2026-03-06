@@ -180,7 +180,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as long.
      */
     @Override
-    public long nextLong() throws IOException {
+    public Long nextLong() throws IOException {
         bufferedToken = null;
         return Long.parseLong(readNumberString());
     }
@@ -188,7 +188,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as int.
      */
     @Override
-    public int nextInt() throws IOException {
+    public Integer nextInt() throws IOException {
         bufferedToken = null;
         return Integer.parseInt(readNumberString());
     }
@@ -196,7 +196,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as short.
      */
     @Override
-    public short nextShort() throws IOException {
+    public Short nextShort() throws IOException {
         bufferedToken = null;
         return Short.parseShort(readNumberString());
     }
@@ -204,7 +204,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as byte.
      */
     @Override
-    public byte nextByte() throws IOException {
+    public Byte nextByte() throws IOException {
         bufferedToken = null;
         return Byte.parseByte(readNumberString());
     }
@@ -212,7 +212,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as double.
      */
     @Override
-    public double nextDouble() throws IOException {
+    public Double nextDouble() throws IOException {
         bufferedToken = null;
         return Double.parseDouble(readNumberString());
     }
@@ -220,7 +220,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as float.
      */
     @Override
-    public float nextFloat() throws IOException {
+    public Float nextFloat() throws IOException {
         bufferedToken = null;
         return Float.parseFloat(readNumberString());
     }
@@ -245,7 +245,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Reads next scalar as boolean.
      */
     @Override
-    public boolean nextBoolean() throws IOException {
+    public Boolean nextBoolean() throws IOException {
         bufferedToken = null;
         return readBoolean();
     }

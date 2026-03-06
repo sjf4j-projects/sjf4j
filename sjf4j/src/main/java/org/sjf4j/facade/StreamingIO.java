@@ -2,6 +2,7 @@ package org.sjf4j.facade;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.BindingException;
@@ -23,7 +24,7 @@ import java.util.Set;
 /**
  * Streaming read/write helpers used by facade implementations.
  */
-public class StreamingIO {
+public final class StreamingIO {
 
     /// Read
 
@@ -38,22 +39,22 @@ public class StreamingIO {
     /**
      * Reads next token and dispatches to typed node readers.
      */
-    private static Object _readNode(StreamingReader reader, Type type, Class<?> rawClazz, PathSegment ps) {
+    private static Object _readNode(StreamingReader reader, Type type, Class<?> rawBoxed, PathSegment ps) {
         try {
             StreamingReader.Token token = reader.peekToken();
             switch (token) {
                 case START_OBJECT:
-                    return _readObject(reader, type, rawClazz, ps);
+                    return _readObject(reader, type, rawBoxed, ps);
                 case START_ARRAY:
-                    return _readArray(reader, type, rawClazz, ps);
+                    return _readArray(reader, type, rawBoxed, ps);
                 case STRING:
-                    return _readString(reader, rawClazz, ps);
+                    return _readString(reader, rawBoxed, ps);
                 case NUMBER:
-                    return _readNumber(reader, rawClazz, ps);
+                    return _readNumber(reader, rawBoxed, ps);
                 case BOOLEAN:
-                    return _readBoolean(reader, rawClazz, ps);
+                    return _readBoolean(reader, rawBoxed, ps);
                 case NULL:
-                    return _readNull(reader, rawClazz, ps);
+                    return _readNull(reader, rawBoxed, ps);
                 default:
                     throw new JsonException("Unexpected token '" + token + "'");
             }
@@ -73,7 +74,7 @@ public class StreamingIO {
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            return vci.decode(null);
+            return vci.rawToValue(null);
         }
         return null;
     }
@@ -89,7 +90,7 @@ public class StreamingIO {
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
             boolean b = reader.nextBoolean();
-            return vci.decode(b);
+            return vci.rawToValue(b);
         }
         throw new BindingException("Cannot read boolean value into type '" + rawClazz.getName() + "'", ps);
     }
@@ -113,7 +114,7 @@ public class StreamingIO {
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
             Number n = reader.nextNumber();
-            return vci.decode(n);
+            return vci.rawToValue(n);
         }
         throw new BindingException("Cannot read number value into type '" + rawClazz.getName() + "'", ps);
     }
@@ -138,7 +139,7 @@ public class StreamingIO {
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
             String s = reader.nextString();
-            return vci.decode(s);
+            return vci.rawToValue(s);
         }
         throw new BindingException("Cannot read string value into type '" + rawClazz.getName() + "'", ps);
     }
@@ -168,11 +169,12 @@ public class StreamingIO {
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        if (ti.valueCodecInfo != null) {
+        NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+        if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
             Map<String, Object> map = _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
-            return ti.valueCodecInfo.decode(map);
+            return vci.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
@@ -329,7 +331,7 @@ public class StreamingIO {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             List<Object> list = _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
-            return vci.decode(list);
+            return vci.rawToValue(list);
         }
 
         throw new BindingException("Cannot read array value into type '" + rawClazz.getName() + "'", ps);
@@ -342,13 +344,13 @@ public class StreamingIO {
             throws IOException {
         switch (fi.containerKind) {
             case MAP:
-                return _readMapWithValueType(reader, fi.rawType, fi.argType, fi.argRawType, ps);
+                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case LIST:
-                return _readListWithElementType(reader, fi.rawType, fi.argType, fi.argRawType, ps);
+                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case SET:
-                return _readSetWithElementType(reader, fi.rawType, fi.argType, fi.argRawType, ps);
+                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
-                return _readNode(reader, fi.type, fi.rawType, ps);
+                return _readNode(reader, fi.type, fi.rawClazz, ps);
         }
     }
 
@@ -545,7 +547,7 @@ public class StreamingIO {
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.valueCodecInfo != null) {
-                Object raw = ti.valueCodecInfo.encode(node);
+                Object raw = ti.valueCodecInfo.valueToRaw(node);
                 _writeNode(writer, raw, ps);
                 return;
             }

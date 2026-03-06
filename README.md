@@ -62,7 +62,7 @@ SJF4J is built around a single structural model: the **Object-Based Node Tree (O
 - All APIs follow -- and extend -- standard JSON semantics.
 
 The following example, while slightly more elaborate, 
-demonstrates the complete lifecycle:
+demonstrates the whole lifecycle:
 > **Modeling → Parsing → Navigation → Transformation → Validation**
 
 ### Modeling with JOJO
@@ -73,13 +73,15 @@ between typed Java models and dynamic JSON structures.
 > JOJO extends `JsonObject`, unifying typed Java fields and dynamic JSON properties within a single object model.
 
 ```java
-@Data
 public class Student extends JsonObject {
     private String name;
     private Map<String, Integer> scores;
     private List<Student> friends;
+    // Getters and setters
 }
 ```
+Define a JOJO: `Student`.
+
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 ### Parsing from JSON
@@ -179,7 +181,6 @@ Declare JSON Schema constraints with `@ValidJsonSchema` (Jakarta Bean Validation
   }
 }
 """)
-@Data
 public class Student extends JsonObject {
     private String name;
     private Map<String, Integer> scores;
@@ -214,10 +215,10 @@ Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
 Given that JSON has evolved into a well-defined and widely adopted specification,
-SJF4J began as an exploration of what JSON-oriented development might look like in Java.
+SJF4J began as an exploration of what JSON-Oriented Development might look like in Java.
 
-If this idea resonates with you, 
-contributions of all kinds — codes, docs, bugs, discussions, examples, or benchmarks — are welcome~!
+If you find the project interesting,
+contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~!
 
 
 

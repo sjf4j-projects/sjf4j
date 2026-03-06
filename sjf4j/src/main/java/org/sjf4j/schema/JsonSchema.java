@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.PathSegment;
@@ -14,6 +15,10 @@ import org.sjf4j.path.PathSegment;
  * <p>Schema instances are compiled against a {@link SchemaStore} and then
  * evaluated against JSON nodes via {@link #validate} or {@link #evaluate}.
  */
+@AnyOf({
+        @AnyOf.Mapping(BooleanSchema.class),
+        @AnyOf.Mapping(ObjectSchema.class),
+})
 public interface JsonSchema {
 
     /**
@@ -78,18 +83,15 @@ public interface JsonSchema {
 
     /**
      * Parses JSON text and creates a schema instance.
-     * <p>
-     * Valid schema roots are object schemas and boolean schemas.
      */
     static JsonSchema fromJson(String json) {
         Object node = Sjf4j.fromJson(json) ;
         return fromNode(node);
+//        return Sjf4j.fromJson(json, JsonSchema.class);
     }
 
     /**
      * Creates a schema instance from a parsed JSON node.
-     *
-     * @throws SchemaException when root node is not object/boolean
      */
     static JsonSchema fromNode(Object node) {
         if (node == null) return null;
@@ -97,6 +99,7 @@ public interface JsonSchema {
         if (jt.isBoolean()) return Nodes.toBoolean(node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
         if (jt.isObject()) return Nodes.as(node, ObjectSchema.class);
         throw new SchemaException("Invalid JSON Schema: expected object or boolean, but was " + jt);
+//        return Sjf4j.fromNode(node, JsonSchema.class);
     }
 
 }

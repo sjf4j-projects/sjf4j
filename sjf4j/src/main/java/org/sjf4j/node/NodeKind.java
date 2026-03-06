@@ -7,6 +7,7 @@ import org.sjf4j.facade.FacadeNodes;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -54,66 +55,42 @@ public enum NodeKind {
     /** Represents an unknown node type. */
     UNKNOWN;
 
+    public static NodeKind of(Object node) {
+        if (node == null) return VALUE_NULL;
+        Class<? extends Object> clazz = node.getClass();
+        NodeKind kind = plainOf(clazz);
+        if (kind != NodeKind.UNKNOWN) return kind;
+
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        if (ti.valueCodecInfo != null) {
+            return NodeKind.VALUE_NODE_VALUE;
+        } else if (ti.anyOfInfo != null) {
+            return NodeKind.UNKNOWN;
+        } else if (ti.pojoInfo != null) {
+            return NodeKind.OBJECT_POJO;
+        }
+
+        if (FacadeNodes.isNode(node)) {
+            return FacadeNodes.kindOf(node);
+        }
+        return NodeKind.UNKNOWN;
+    }
+
     /**
      * Determines the {@link NodeKind} of a given object.
      *
      * @param node the object to determine the type of
      * @return the corresponding NodeType enum value
      */
-    public static NodeKind of(Object node) {
+    public static NodeKind plainOf(Object node) {
         if (node == null) return VALUE_NULL;
         Class<?> clazz = node.getClass();
-        if (node instanceof String) {
-            return VALUE_STRING;
-        } else if (node instanceof Character) {
-            return VALUE_STRING_CHARACTER;
-        } else if (clazz.isEnum()) {
-            return VALUE_STRING_ENUM;
-        } else if (node instanceof Number) {
-            return VALUE_NUMBER;
-        } else if (node instanceof Boolean) {
-            return VALUE_BOOLEAN;
-        } else if (node instanceof Map) {
-            return OBJECT_MAP;
-        } else if (clazz == JsonObject.class) {
-            return OBJECT_JSON_OBJECT;
-        } else if (node instanceof JsonObject) {
-            return OBJECT_JOJO;
-        } else if (node instanceof List) {
-            return ARRAY_LIST;
-        } else if (clazz == JsonArray.class) {
-            return ARRAY_JSON_ARRAY;
-        } else if (node instanceof JsonArray) {
-            return ARRAY_JAJO;
-        } else if (clazz.isArray()) {
-            return ARRAY_ARRAY;
-        } else if (node instanceof Set) {
-            return ARRAY_SET;
-        }
-
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        if (ti.isNodeValue()) {
-            return VALUE_NODE_VALUE;
-        } else if (ti.isPojo()) {
-            return OBJECT_POJO;
-        }
-
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.kindOf(node);
-        }
-
-        return UNKNOWN;
+        return plainOf(clazz);
     }
 
-    /**
-     * Determines the {@link NodeKind} from a given {@link Type}.
-     *
-     * @param type the Type to determine the NodeType from
-     * @return the corresponding NodeType enum value
-     */
-    public static NodeKind of(Type type) {
-        Class<?> clazz = Types.rawClazz(type);
 
+    public static NodeKind plainOf(Class<?> clazz) {
+        Objects.requireNonNull(clazz);
         if (clazz == Object.class) {
             return UNKNOWN;
         } else if (clazz.isPrimitive()) {
@@ -151,18 +128,6 @@ public enum NodeKind {
         } else if (clazz == Void.class) {
             return VALUE_NULL;
         }
-
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        if (ti.isNodeValue()) {
-            return VALUE_NODE_VALUE;
-        } else if (ti.isPojo()) {
-            return OBJECT_POJO;
-        }
-
-        if (FacadeNodes.isNode(clazz)) {
-            return FacadeNodes.kindOf(clazz);
-        }
-
         return UNKNOWN;
     }
 
@@ -210,4 +175,5 @@ public enum NodeKind {
         return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN || this == VALUE_NULL ||
                 this == OBJECT_MAP || this == ARRAY_LIST;
     }
+
 }

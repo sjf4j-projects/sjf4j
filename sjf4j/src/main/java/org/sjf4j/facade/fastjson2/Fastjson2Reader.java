@@ -168,7 +168,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as long.
      */
     @Override
-    public long nextLong() throws IOException {
+    public Long nextLong() throws IOException {
         peeked = null;
         return reader.readInt64Value();
     }
@@ -177,7 +177,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as int.
      */
     @Override
-    public int nextInt() throws IOException {
+    public Integer nextInt() throws IOException {
         peeked = null;
         return reader.readInt32Value();
     }
@@ -186,7 +186,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as short.
      */
     @Override
-    public short nextShort() throws IOException {
+    public Short nextShort() throws IOException {
         peeked = null;
         return reader.readInt16Value();
     }
@@ -195,7 +195,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as byte.
      */
     @Override
-    public byte nextByte() throws IOException {
+    public Byte nextByte() throws IOException {
         peeked = null;
         return reader.readInt8Value();
     }
@@ -204,7 +204,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as double.
      */
     @Override
-    public double nextDouble() throws IOException {
+    public Double nextDouble() throws IOException {
         peeked = null;
         return reader.readDoubleValue();
     }
@@ -213,7 +213,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as float.
      */
     @Override
-    public float nextFloat() throws IOException {
+    public Float nextFloat() throws IOException {
         peeked = null;
         return reader.readFloatValue();
     }
@@ -240,7 +240,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Reads next scalar as boolean.
      */
     @Override
-    public boolean nextBoolean() throws IOException {
+    public Boolean nextBoolean() throws IOException {
         peeked = null;
         return reader.readBoolValue();
     }

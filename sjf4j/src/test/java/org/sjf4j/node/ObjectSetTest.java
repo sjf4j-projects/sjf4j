@@ -36,7 +36,7 @@ public class ObjectSetTest {
         Nodes.visitArray(set, (i, v) -> {
             assertEquals("a", v);
         });
-        assertEquals("a", Nodes.getInArray(set, 0));
+        assertThrows(JsonException.class, () -> Nodes.getInArray(set, 0));
     }
 
     @Test
@@ -48,8 +48,7 @@ public class ObjectSetTest {
         assertEquals(2, Nodes.sizeInArray(set));
         assertEquals("[\"a\",\"b\"]", Sjf4j.toJsonString(set));
 
-        JsonException e = assertThrows(JsonException.class, () -> Nodes.removeInArray(set, 0));
-        assertTrue(e.getMessage().contains("Cannot remove"));
+        assertThrows(JsonException.class, () -> Nodes.removeInArray(set, 0));
     }
 
     @Test

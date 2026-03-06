@@ -2,6 +2,7 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import org.sjf4j.Sjf4jConfig;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
@@ -68,6 +70,9 @@ public final class GsonNodes {
         }
         if (JsonArray.class.isAssignableFrom(clazz)) {
             return NodeKind.ARRAY_FACADE;
+        }
+        if (JsonNull.class.isAssignableFrom(clazz)) {
+            return NodeKind.VALUE_NULL;
         }
         return NodeKind.UNKNOWN;
     }
@@ -353,6 +358,34 @@ public final class GsonNodes {
                 visitor.accept(entry.getKey(), entry.getValue());
             }
             return;
+        }
+        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+    }
+
+    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (node instanceof JsonObject) {
+            for (Map.Entry<String, JsonElement> entry : ((JsonObject) node).entrySet()) {
+                if (predicate.test(entry.getKey(), entry.getValue())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+    }
+
+    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+        if (node instanceof JsonObject) {
+            boolean changed = false;
+            for (Map.Entry<String, JsonElement> entry : ((JsonObject) node).entrySet()) {
+                JsonElement oldValue = entry.getValue();
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (newValue != oldValue) {
+                    entry.setValue((JsonElement) newValue);
+                    changed = true;
+                }
+            }
+            return changed;
         }
         throw new JsonException("Expected JsonObject but was " + Types.name(node));
     }

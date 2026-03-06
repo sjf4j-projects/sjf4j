@@ -309,15 +309,14 @@ public class CompileUtil {
         if (!JsonType.of(schemaMapNode).isObject())
             throw new SchemaException("Schema node at " + JsonPointer.fromLast(cps) + " must be a JSON Object");
         Map<String, JsonSchema> schemaMap = new HashMap<>();
-        for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(schemaMapNode)) {
-            Object subNode = entry.getValue();
-            PathSegment ccps = new PathSegment.Name(cps, null, entry.getKey());
+        Nodes.transformInObject(schemaMapNode, (k, subNode) -> {
+            PathSegment ccps = new PathSegment.Name(cps, null, k);
             if (subNode == null) throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ccps) +
                     "': null is not allowed");
             JsonSchema subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
-            if (subSchema != subNode) entry.setValue(subSchema);
-            schemaMap.put(entry.getKey(), subSchema);
-        }
+            schemaMap.put(k, subSchema);
+            return subSchema;
+        });
         return schemaMap;
     }
 

@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 /**
@@ -215,6 +216,14 @@ public class JsonArray extends JsonContainer {
         for (int i = 0; i < nodeList.size(); i++) {
             action.accept(i, nodeList.get(i));
         }
+    }
+
+    public boolean anyMatch(BiPredicate<Integer, Object> predicate) {
+        if (nodeList == null) return false;
+        for (int i = 0; i < nodeList.size(); i++) {
+            if (predicate.test(i, nodeList.get(i))) return true;
+        }
+        return false;
     }
 
     /**

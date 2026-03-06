@@ -545,11 +545,12 @@ public interface Evaluator {
             int propIdx = 0;
             for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
                 String key = entry.getKey();
+                Object value = entry.getValue();
                 boolean matched = false;
                 if (properties != null) {
                     JsonSchema subSchema = properties.get(key);
                     if (subSchema != null) {
-                        InstancedNode subInstance = instance.getSubByKey(key);
+                        InstancedNode subInstance = instance.inferSubByKey(key, value);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, instance.getObjectType(), key);
                         boolean subResult = subSchema.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
@@ -564,7 +565,7 @@ public interface Evaluator {
                         if (patternPns[i].matcher(key).find()) {
                             JsonSchema subSchema = patternSchemas[i];
                             if (subSchema != null) {
-                                InstancedNode subInstance = instance.getSubByKey(key);
+                                InstancedNode subInstance = instance.inferSubByKey(key, value);
                                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, instance.getObjectType(), key);
                                 boolean subResult = subSchema.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
@@ -577,7 +578,7 @@ public interface Evaluator {
                 }
 
                 if (additionalPropertiesSchema != null && !matched) {
-                    InstancedNode subInstance = instance.getSubByKey(key);
+                    InstancedNode subInstance = instance.inferSubByKey(key, value);
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, instance.getObjectType(), key);
                     boolean subResult = additionalPropertiesSchema.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
@@ -735,7 +736,6 @@ public interface Evaluator {
                 result = false;
             }
             if (ctx.shouldAbort()) return result;
-
             if (Boolean.TRUE.equals(uniqueItems)) {
                 Set<Object> set = new HashSet<>();
                 for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
@@ -776,7 +776,7 @@ public interface Evaluator {
             int i = 0;
             if (prefixItemsSchemas != null) {
                 for (; i < size && i < prefixItemsSchemas.length; i++) {
-                    InstancedNode subInstance = instance.getSubByIndex(i);
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i));
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, instance.getObjectType(), i);
                     boolean subResult = prefixItemsSchemas[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -786,7 +786,7 @@ public interface Evaluator {
             }
             if (itemsSchema != null) {
                 for (; i < size; i++) {
-                    InstancedNode subInstance = instance.getSubByIndex(i);
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i));
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, instance.getObjectType(), i);
                     boolean subResult = itemsSchema.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -825,27 +825,17 @@ public interface Evaluator {
 
             Object actual = instance.getNode();
             int matches = 0;
-            int size = Nodes.sizeInArray(actual);
-            for (int i = 0; i < size; i++) {
+            Iterator<Object> it = Nodes.iteratorInArray(actual);
+            for (int i = 0; it.hasNext(); i++) {
+                Object subActual = it.next();
                 ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.getSubByIndex(i);
+                InstancedNode subInstance = instance.inferSubByIndex(i, subActual);
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, instance.getObjectType(), i);
                 boolean result = containsSchema.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
                 if (result) {
                     instance.markEvaluated(i);
                     matches++;
-//                    if (maxContains != null) {
-//                        if (matches > maxContains) {
-//                            ctx.addError(ps, "maxContains", "Array contains more than " +
-//                                    maxContains + " matching items");
-//                            return false;
-//                        }
-//                    } else {
-//                        if (matches >= minContains) {
-//                            return true;
-//                        }
-//                    }
                 }
             }
             if (matches < minContains) {
@@ -1097,33 +1087,35 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;
             BitSet merged = instance.mergedEvaluated();
+            Object actual = instance.getNode();
             if (unevaluatedPropertiesSchema != null) {
                 if (instance.getJsonType() != JsonType.OBJECT) return true;
                 int propIdx = 0;
-                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(instance.getNode())) {
+                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
-                        InstancedNode subInstance = instance.getSubByKey(key);
+                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, instance.getObjectType(), key);
                         boolean subResult = unevaluatedPropertiesSchema.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
-                        if (ctx.shouldAbort()) return result;
+                        if (ctx.shouldAbort()) return false;
                     }
                     propIdx++;
                 }
             }
             if (unevaluatedItemsSchema != null) {
                 if (instance.getJsonType() != JsonType.ARRAY) return true;
-                int size = Nodes.sizeInArray(instance.getNode());
-                for (int i = 0; i < size; i++) {
+                Iterator<Object> it = Nodes.iteratorInArray(actual);
+                for (int i = 0; it.hasNext(); i++) {
+                    Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.getSubByIndex(i);
+                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual);
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, instance.getObjectType(), i);
                         boolean subResult = unevaluatedItemsSchema.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);
                         result = result && subResult;
-                        if (ctx.shouldAbort()) return result;
+                        if (ctx.shouldAbort()) return false;
                     }
                 }
             }

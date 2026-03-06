@@ -162,7 +162,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as long.
      */
     @Override
-    public long nextLong() {
+    public Long nextLong() {
         return Numbers.toLong(nextNumber());
     }
 
@@ -170,7 +170,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as int.
      */
     @Override
-    public int nextInt() {
+    public Integer nextInt() {
         return Numbers.toInt(nextNumber());
     }
 
@@ -178,7 +178,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as short.
      */
     @Override
-    public short nextShort() {
+    public Short nextShort() {
         return Numbers.toShort(nextNumber());
     }
 
@@ -186,7 +186,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as byte.
      */
     @Override
-    public byte nextByte() {
+    public Byte nextByte() {
         return Numbers.toByte(nextNumber());
     }
 
@@ -194,7 +194,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as double.
      */
     @Override
-    public double nextDouble() {
+    public Double nextDouble() {
         return Numbers.toDouble(nextNumber());
     }
 
@@ -202,7 +202,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as float.
      */
     @Override
-    public float nextFloat() {
+    public Float nextFloat() {
         return Numbers.toFloat(nextNumber());
     }
 
@@ -226,7 +226,7 @@ public class SnakeReader implements StreamingReader {
      * Reads next scalar as boolean.
      */
     @Override
-    public boolean nextBoolean() {
+    public Boolean nextBoolean() {
         ScalarEvent se = (ScalarEvent) parser.getEvent();
         String value = se.getValue();
         String low = value.toLowerCase();

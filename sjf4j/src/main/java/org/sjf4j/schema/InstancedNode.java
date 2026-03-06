@@ -9,6 +9,7 @@ import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 
 /**
@@ -22,8 +23,8 @@ public final class InstancedNode {
     private final Class<?> objectType;
     private final JsonType jsonType;
     private final NodeKind nodeKind;
-    private final boolean encoded;
-    private Map<String, InstancedNode> subInstanceCache;
+    private final boolean converted;
+    private Map<Object, InstancedNode> subInstanceCache;
 
     // runtime state
     private Deque<BitSet> evaluatedStack;
@@ -31,12 +32,12 @@ public final class InstancedNode {
     private Deque<Object> refSchemaStack;
 
 
-    private InstancedNode(Object node, JsonType jsonType, NodeKind nodeKind, boolean encoded) {
+    private InstancedNode(Object node, JsonType jsonType, NodeKind nodeKind, boolean converted) {
         this.node = node;
         this.objectType = node == null ? null : node.getClass();
         this.jsonType = jsonType;
         this.nodeKind = nodeKind;
-        this.encoded = encoded;
+        this.converted = converted;
     }
 
     /**
@@ -65,7 +66,7 @@ public final class InstancedNode {
         NodeKind nodeKind = NodeKind.of(node);
         boolean encoded = false;
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
-            node = NodeRegistry.getValueCodecInfo(node.getClass()).encode(node);
+            node = NodeRegistry.getValueCodecInfo(node.getClass()).valueToRaw(node);
             nodeKind = NodeKind.of(node);
             encoded = true;
         }
@@ -91,7 +92,7 @@ public final class InstancedNode {
     /**
      * Returns true when value-codec encoding was applied in {@link #infer(Object)}.
      */
-    public boolean isEncoded() {return encoded;}
+    public boolean isConverted() {return converted;}
 
     /**
      * Marks one property/item index as evaluated.
@@ -185,15 +186,14 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by key to avoid repeated value-codec encoding.
      */
-    public InstancedNode getSubByKey(String key) {
-        if (jsonType != JsonType.OBJECT) return NULL.reset();
+    public InstancedNode inferSubByKey(String key, Object subNode) {
+        if (jsonType != JsonType.OBJECT) throw new IllegalArgumentException("Cannot inferSubByKey: jsonType != OBJECT");
         InstancedNode subInstance = null;
         if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
         if (subInstance == null) {
-            Object subNode = Nodes.getInObject(node, key);
             if (subNode != null) {
                 subInstance = InstancedNode.infer(subNode);
-                if (subInstance.isEncoded()) {
+                if (subInstance.isConverted()) {
                     if (subInstanceCache == null) subInstanceCache = new HashMap<>();
                     subInstanceCache.put(key, subInstance);
                 }
@@ -207,18 +207,16 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by index key to avoid repeated encoding.
      */
-    public InstancedNode getSubByIndex(int idx) {
-        if (jsonType != JsonType.ARRAY) return NULL.reset();
+    public InstancedNode inferSubByIndex(int idx, Object subNode) {
+        if (jsonType != JsonType.ARRAY) throw new IllegalArgumentException("Cannot inferSubByIndex: jsonType != ARRAY");
         InstancedNode subInstance = null;
-        String key = String.valueOf(idx);
-        if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
+        if (subInstanceCache != null) subInstance = subInstanceCache.get(idx);
         if (subInstance == null) {
-            Object subNode = Nodes.getInArray(node, idx);
             if (subNode != null) {
                 subInstance = InstancedNode.infer(subNode);
-                if (subInstance.isEncoded()) {
+                if (subInstance.isConverted()) {
                     if (subInstanceCache == null) subInstanceCache = new HashMap<>();
-                    subInstanceCache.put(key, subInstance);
+                    subInstanceCache.put(idx, subInstance);
                 }
             }
         }

@@ -1,6 +1,13 @@
 package org.sjf4j;
 
+import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.NodeKind;
+import org.sjf4j.node.NodeRegistry;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * High-level JSON node classification used across the library.
@@ -48,7 +55,6 @@ public enum JsonType {
                 return NULL;
             default:
                 return UNKNOWN;
-//                throw new IllegalArgumentException("Cannot resolve JsonType from NodeType '" + nodeType + "'");
         }
     }
 
@@ -56,8 +62,26 @@ public enum JsonType {
      * Resolves JsonType from runtime node object.
      */
     public static JsonType of(Object node) {
-        NodeKind nodeKind = NodeKind.of(node);
-        return of(nodeKind);
+        return of(NodeKind.of(node));
+    }
+
+    public static JsonType rawOf(Object node) {
+        NodeKind kind = NodeKind.plainOf(node);
+        if (kind != NodeKind.UNKNOWN) return of(kind);
+
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(node.getClass());
+        if (ti.valueCodecInfo != null) {
+            return of(NodeKind.plainOf(ti.valueCodecInfo.getRawClazz()));
+        } else if (ti.anyOfInfo != null) {
+            return JsonType.UNKNOWN;
+        } else if (ti.pojoInfo != null) {
+            return OBJECT;
+        }
+
+        if (FacadeNodes.isNode(node)) {
+            return of(FacadeNodes.kindOf(node));
+        }
+        return UNKNOWN;
     }
 
     /**

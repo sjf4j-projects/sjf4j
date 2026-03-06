@@ -209,7 +209,7 @@ public interface Fastjson2Module {
         @Override
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             Object raw = reader.readAny();
-            return (T) valueCodecInfo.decode(raw);
+            return (T) valueCodecInfo.rawToValue(raw);
         }
     }
 
@@ -324,7 +324,7 @@ public interface Fastjson2Module {
          */
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
-            Object raw = valueCodecInfo.encode(object);
+            Object raw = valueCodecInfo.valueToRaw(object);
             writer.writeAny(raw);
         }
     }

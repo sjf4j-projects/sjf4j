@@ -243,7 +243,7 @@ public interface GsonModule {
         public T read(JsonReader in) throws IOException {
             TypeAdapter<?> adapter = gson.getAdapter(Object.class);
             Object raw = adapter.read(in);
-            return (T) valueCodecInfo.decode(raw);
+            return (T) valueCodecInfo.rawToValue(raw);
         }
 
         /**
@@ -251,7 +251,7 @@ public interface GsonModule {
          */
         @Override
         public void write(JsonWriter out, T node) throws IOException {
-            Object raw = valueCodecInfo.encode(node);
+            Object raw = valueCodecInfo.valueToRaw(node);
             TypeAdapter<Object> adapter = gson.getAdapter(Object.class);
             adapter.write(out, raw);
         }

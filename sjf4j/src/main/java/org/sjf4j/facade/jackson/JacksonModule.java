@@ -198,7 +198,7 @@ public interface JacksonModule {
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
             Object raw = ctxt.readValue(p, Object.class);
-            return (T) valueCodecInfo.decode(raw);
+            return (T) valueCodecInfo.rawToValue(raw);
         }
     }
 
@@ -255,7 +255,7 @@ public interface JacksonModule {
          */
         @Override
         public void serialize(T value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-            Object raw = valueCodecInfo.encode(value);
+            Object raw = valueCodecInfo.valueToRaw(value);
             serializers.defaultSerializeValue(raw, gen);
         }
     }

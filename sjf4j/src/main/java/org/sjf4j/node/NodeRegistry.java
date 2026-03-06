@@ -1,6 +1,8 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
@@ -27,6 +29,9 @@ public final class NodeRegistry {
     // All in TypeInfo
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
+    private static final TypeInfo NONE_INFO = new TypeInfo(Object.class, null, null, null);
+
+
     /**
      * Registers (or returns cached) metadata for a class.
      */
@@ -43,7 +48,7 @@ public final class NodeRegistry {
      * @param mustPojo when true, non-POJO results are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
-        if (hitRawType(clazz)) return NONE_INFO;
+        if (fastNoType(clazz)) return NONE_INFO;
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
             if (mustPojo && ti.pojoInfo == null) {
@@ -57,26 +62,34 @@ public final class NodeRegistry {
             if (mustPojo) {
                 throw new JsonException("Class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
             }
-            ti = new TypeInfo(clazz, null, vci);
+            ti = new TypeInfo(clazz, vci, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
+
+        AnyOf ann = clazz.getAnnotation(AnyOf.class);
+        if (ann != null) {
+            AnyOfInfo aoi = ReflectUtil.analyzeAnyOf(clazz, ann);
+            ti = new TypeInfo(clazz, null, aoi, null);
+            TYPE_INFO_CACHE.put(clazz, ti);
+            return ti;
+        }
+
         PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
-            ti = new TypeInfo(clazz, pi, null);
+            ti = new TypeInfo(clazz, null, null, pi);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
+
         TYPE_INFO_CACHE.put(clazz, NONE_INFO);
         return NONE_INFO;
     }
 
-    /**
-     * Returns true for raw framework types that skip metadata analysis.
-     */
-    private static boolean hitRawType(Class<?> clazz) {
+    private static boolean fastNoType(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
-                || clazz == Map.class || clazz == List.class || clazz.isPrimitive();
+                || clazz == Map.class || clazz == List.class || clazz == Set.class || clazz.isPrimitive()
+                || clazz == JsonObject.class || clazz == JsonArray.class;
     }
 
     /// NodeValue
@@ -117,14 +130,14 @@ public final class NodeRegistry {
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
         Objects.requireNonNull(valueCodec, "valueCodec is null");
         Class<R> rawClazz = valueCodec.rawClass();
-        if (rawClazz != Object.class && !NodeKind.of(rawClazz).isRaw())
+        if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
             throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = valueCodec.valueClass();
         Objects.requireNonNull(valueClazz, "clazz is null");
 
         ValueCodecInfo vci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec);
-        TYPE_INFO_CACHE.put(valueClazz, new TypeInfo(valueClazz, null, vci));
+        TYPE_INFO_CACHE.put(valueClazz, new TypeInfo(valueClazz, vci, null, null));
         return vci;
     }
 
@@ -195,21 +208,21 @@ public final class NodeRegistry {
 
     /// Info
 
-    private static final TypeInfo NONE_INFO = new TypeInfo(Object.class, null, null);
-
     // TypeInfo
     public static class TypeInfo {
         public final Class<?> clazz;
-        public final PojoInfo pojoInfo;
         public final ValueCodecInfo valueCodecInfo;
+        public final AnyOfInfo anyOfInfo;
+        public final PojoInfo pojoInfo;
 
         /**
          * Creates immutable type metadata holder.
          */
-        public TypeInfo(Class<?> clazz, PojoInfo pojoInfo, ValueCodecInfo valueCodecInfo) {
+        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, AnyOfInfo anyOfInfo, PojoInfo pojoInfo) {
             this.clazz = clazz;
-            this.pojoInfo = pojoInfo;
             this.valueCodecInfo = valueCodecInfo;
+            this.anyOfInfo = anyOfInfo;
+            this.pojoInfo = pojoInfo;
         }
         /**
          * Returns true when this type has POJO metadata.
@@ -222,6 +235,9 @@ public final class NodeRegistry {
          */
         public boolean isNodeValue() {
             return valueCodecInfo != null;
+        }
+        public boolean isAnyOf() {
+            return anyOfInfo != null;
         }
     }
 
@@ -389,10 +405,10 @@ public final class NodeRegistry {
 
         public final String name;
         public final Type type;
-        public final Class<?> rawType;
+        public final Class<?> rawClazz;
         public final ContainerKind containerKind;
         public final Type argType;
-        public final Class<?> argRawType;
+        public final Class<?> argRawClazz;
         public final MethodHandle getter;
         public final Function<Object, Object> lambdaGetter;
         public final MethodHandle setter;
@@ -405,26 +421,26 @@ public final class NodeRegistry {
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter) {
             this.name = name;
             this.type = type;
-            this.rawType = Types.rawBox(type);
+            this.rawClazz = Types.rawBox(type);
             ContainerKind kind = ContainerKind.NONE;
             Type argType = null;
             Class<?> argRawType = null;
-            if (this.rawType == List.class) {
+            if (this.rawClazz == List.class) {
                 kind = ContainerKind.LIST;
                 argType = Types.resolveTypeArgument(type, List.class, 0);
                 argRawType = Types.rawBox(argType);
-            } else if (this.rawType == Set.class) {
+            } else if (this.rawClazz == Set.class) {
                 kind = ContainerKind.SET;
                 argType = Types.resolveTypeArgument(type, Set.class, 0);
                 argRawType = Types.rawBox(argType);
-            } else if (this.rawType == Map.class) {
+            } else if (this.rawClazz == Map.class) {
                 kind = ContainerKind.MAP;
                 argType = Types.resolveTypeArgument(type, Map.class, 1);
                 argRawType = Types.rawBox(argType);
             }
             this.containerKind = kind;
             this.argType = argType;
-            this.argRawType = argRawType;
+            this.argRawClazz = argRawType;
             this.getter = getter;
             this.lambdaGetter = lambdaGetter;
             this.setter = setter;
@@ -530,25 +546,26 @@ public final class NodeRegistry {
     }
 
     // ValueCodecInfo
+
     public static class ValueCodecInfo {
         final Class<?> valueClazz;
         final Class<?> rawClazz;
         final ValueCodec<Object, Object> valueCodec;
-        final MethodHandle encodeHandle;
-        final MethodHandle decodeHandle;
-        final MethodHandle copyHandle;
+        final MethodHandle valueToRawHandle;
+        final MethodHandle rawToValueHandle;
+        final MethodHandle valueCopyHandle;
         /**
          * Creates immutable value-codec metadata holder.
          */
         @SuppressWarnings("unchecked")
         public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
-                              MethodHandle encodeHandle, MethodHandle decodeHandle, MethodHandle copyHandle) {
+                              MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
             this.valueClazz = valueClazz;
             this.rawClazz = rawClazz;
             this.valueCodec = (ValueCodec<Object, Object>) valueCodec;
-            this.encodeHandle = encodeHandle;
-            this.decodeHandle = decodeHandle;
-            this.copyHandle = copyHandle;
+            this.valueToRawHandle = valueToRawHandle;
+            this.rawToValueHandle = rawToValueHandle;
+            this.valueCopyHandle = valueCopyHandle;
         }
         /**
          * Creates value-codec metadata from codec instance.
@@ -557,78 +574,109 @@ public final class NodeRegistry {
             this(valueClazz, rawClazz, valueCodec, null, null, null);
         }
 
+        public Class<?> getValueClazz() {
+            return valueClazz;
+        }
+        public Class<?> getRawClazz() {
+            return rawClazz;
+        }
+
         /**
          * Encodes value to raw representation.
          */
-        public Object encode(Object value) {
+        public Object valueToRaw(Object value) {
             if (valueCodec != null) {
                 try {
                     return valueCodec.valueToRaw(value);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to encode value of type " + valueClazz.getName() +
+                    throw new JsonException("Failed to valueToRaw() for value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
-            } else if (encodeHandle != null) {
+            } else if (valueToRawHandle != null) {
                 try {
-                    return encodeHandle.invoke(value);
+                    return valueToRawHandle.invoke(value);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to encode value of type " + valueClazz.getName() +
-                            " using @Encode method " + encodeHandle, e);
+                    throw new JsonException("Failed to valueToRaw() for value type " + valueClazz.getName() +
+                            " using annotated method " + valueToRawHandle, e);
                 }
             }
             throw new JsonException("No value binding found for type " + valueClazz.getName() +
-                    ": missing @NodeValue annotation and no ValueCodec registered");
+                    ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
         }
 
         /**
          * Decodes raw value to value representation.
          */
-        public Object decode(Object raw) {
+        public Object rawToValue(Object raw) {
             if (raw != null && !rawClazz.isInstance(raw))
-                throw new JsonException("Cannot decode raw of type " + raw.getClass().getName() +
+                throw new JsonException("Cannot rawToValue() from raw type " + raw.getClass().getName() +
                         " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
             if (valueCodec != null) {
                 try {
                     return valueCodec.rawToValue(raw);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to decode raw to value type " + valueClazz.getName() +
+                    throw new JsonException("Failed to rawToValue() to value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
-            } else if (decodeHandle != null) {
+            } else if (rawToValueHandle != null) {
                 try {
-                    return decodeHandle.invoke(raw);
+                    return rawToValueHandle.invoke(raw);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to decode raw to value type " + valueClazz.getName() +
-                            " using @Decode method " + decodeHandle, e);
+                    throw new JsonException("Failed to rawToValue() to value type " + valueClazz.getName() +
+                            " using annotated method " + rawToValueHandle, e);
                 }
             }
             throw new JsonException("No value binding found for type " + valueClazz.getName() +
-                    ": missing @NodeValue annotation and no ValueCodec registered");
+                    ": missing @" + NodeValue.class.getName()+ " annotation and no ValueCodec registered");
         }
 
         /**
          * Copies value using codec-defined semantics.
          */
-        public Object copy(Object value) {
+        public Object valueCopy(Object value) {
             if (valueCodec != null) {
                 try {
                     return valueCodec.valueCopy(value);
                 } catch (Exception e) {
-                    throw new JsonException("Failed to copy value of type " + valueClazz.getName() +
+                    throw new JsonException("Failed to valueCopy() for value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
-            } else if (copyHandle != null) {
+            } else if (valueCopyHandle != null) {
                 try {
-                    return copyHandle.invoke(value);
+                    return valueCopyHandle.invoke(value);
                 } catch (Throwable e) {
-                    throw new JsonException("Failed to copy value of type " + valueClazz.getName() +
-                            " using @Copy method " + copyHandle, e);
+                    throw new JsonException("Failed to valueCopy() for value type " + valueClazz.getName() +
+                            " using annotated method " + valueCopyHandle, e);
                 }
             }
             throw new JsonException("No value binding found for type " + valueClazz.getName() +
-                    ": missing @NodeValue annotation and no ValueCodec registered");
+                    ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
         }
 
     }
+
+    // AnyOfInfo
+
+    public static class AnyOfInfo {
+        final Class<?> clazz;
+        final AnyOf.Mapping[] mappings;
+        final String key;
+        final String path;
+        final AnyOf.Scope scope;
+        final AnyOf.OnNoMatch onNoMatch;
+
+        public AnyOfInfo(Class<?> clazz, AnyOf.Mapping[] mappings, String key,
+                         String path, AnyOf.Scope scope, AnyOf.OnNoMatch onNoMatch) {
+            this.clazz = clazz;
+            this.mappings = mappings;
+            this.key = key;
+            this.path = path;
+            this.scope = scope;
+            this.onNoMatch = onNoMatch;
+        }
+
+
+    }
+
 
 }

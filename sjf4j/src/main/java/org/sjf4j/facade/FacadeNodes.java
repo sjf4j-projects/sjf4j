@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
@@ -217,6 +218,26 @@ public class FacadeNodes {
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             GsonNodes.visitObject(node, visitor);
             return;
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            return JacksonNodes.anyMatchInObject(node, predicate);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.anyMatchInObject(node, predicate);
+        }
+        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+    }
+
+    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+        if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
+            return JacksonNodes.transformInObject(node, mapper);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.transformInObject(node, mapper);
         }
         throw new JsonException("Unknown node type '" + Types.name(node) + "'");
     }

@@ -112,7 +112,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as long.
      */
     @Override
-    public long nextLong() throws IOException {
+    public Long nextLong() throws IOException {
         return reader.nextLong();
     }
 
@@ -120,7 +120,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as int.
      */
     @Override
-    public int nextInt() throws IOException {
+    public Integer nextInt() throws IOException {
         return reader.nextInt();
     }
 
@@ -128,7 +128,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as short.
      */
     @Override
-    public short nextShort() throws IOException {
+    public Short nextShort() throws IOException {
         return Short.parseShort(reader.nextString());
     }
 
@@ -136,7 +136,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as byte.
      */
     @Override
-    public byte nextByte() throws IOException {
+    public Byte nextByte() throws IOException {
         return Byte.parseByte(reader.nextString());
     }
 
@@ -144,7 +144,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as double.
      */
     @Override
-    public double nextDouble() throws IOException {
+    public Double nextDouble() throws IOException {
         return reader.nextDouble();
     }
 
@@ -152,7 +152,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as float.
      */
     @Override
-    public float nextFloat() throws IOException {
+    public Float nextFloat() throws IOException {
         return Float.parseFloat(reader.nextString());
     }
 
@@ -176,7 +176,7 @@ public class GsonReader implements StreamingReader {
      * Reads next scalar as boolean.
      */
     @Override
-    public boolean nextBoolean() throws IOException {
+    public Boolean nextBoolean() throws IOException {
         return reader.nextBoolean();
     }
 

@@ -1,7 +1,6 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.node.NodeRegistry;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -41,19 +40,19 @@ public class ValueCodecTest {
         assertNotNull(uuidCodec);
 
         URI uri = URI.create("https://example.com/a?b=1");
-        String uriRaw = (String) uriCodec.encode(uri);
+        String uriRaw = (String) uriCodec.valueToRaw(uri);
         assertEquals(uri.toString(), uriRaw);
-        assertEquals(uri, uriCodec.decode(uriRaw));
+        assertEquals(uri, uriCodec.rawToValue(uriRaw));
 
         URL url = new URL("https://example.com/p?q=1");
-        String urlRaw = (String) urlCodec.encode(url);
+        String urlRaw = (String) urlCodec.valueToRaw(url);
         assertEquals(url.toString(), urlRaw);
-        assertEquals(url, urlCodec.decode(urlRaw));
+        assertEquals(url, urlCodec.rawToValue(urlRaw));
 
         UUID uuid = UUID.randomUUID();
-        String uuidRaw = (String) uuidCodec.encode(uuid);
+        String uuidRaw = (String) uuidCodec.valueToRaw(uuid);
         assertEquals(uuid.toString(), uuidRaw);
-        assertEquals(uuid, uuidCodec.decode(uuidRaw));
+        assertEquals(uuid, uuidCodec.rawToValue(uuidRaw));
     }
 
     @Test
@@ -67,19 +66,19 @@ public class ValueCodecTest {
         assertNotNull(zoneIdCodec);
 
         Locale locale = Locale.forLanguageTag("zh-CN");
-        String localeRaw = (String) localeCodec.encode(locale);
+        String localeRaw = (String) localeCodec.valueToRaw(locale);
         assertEquals(locale.toLanguageTag(), localeRaw);
-        assertEquals(locale, localeCodec.decode(localeRaw));
+        assertEquals(locale, localeCodec.rawToValue(localeRaw));
 
         Currency currency = Currency.getInstance("USD");
-        String currencyRaw = (String) currencyCodec.encode(currency);
+        String currencyRaw = (String) currencyCodec.valueToRaw(currency);
         assertEquals(currency.getCurrencyCode(), currencyRaw);
-        assertEquals(currency, currencyCodec.decode(currencyRaw));
+        assertEquals(currency, currencyCodec.rawToValue(currencyRaw));
 
         ZoneId zoneId = ZoneId.of("Asia/Shanghai");
-        String zoneIdRaw = (String) zoneIdCodec.encode(zoneId);
+        String zoneIdRaw = (String) zoneIdCodec.valueToRaw(zoneId);
         assertEquals(zoneId.getId(), zoneIdRaw);
-        assertEquals(zoneId, zoneIdCodec.decode(zoneIdRaw));
+        assertEquals(zoneId, zoneIdCodec.rawToValue(zoneIdRaw));
     }
 
     @Test
@@ -101,38 +100,38 @@ public class ValueCodecTest {
         assertNotNull(periodCodec);
 
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        Object instantRaw = instantCodec.encode(instant);
-        assertEquals(instant, instantCodec.decode(instantRaw));
+        Object instantRaw = instantCodec.valueToRaw(instant);
+        assertEquals(instant, instantCodec.rawToValue(instantRaw));
 
         LocalDate localDate = LocalDate.parse("2024-01-01");
-        String localDateRaw = (String) localDateCodec.encode(localDate);
+        String localDateRaw = (String) localDateCodec.valueToRaw(localDate);
         assertEquals(localDate.toString(), localDateRaw);
-        assertEquals(localDate, localDateCodec.decode(localDateRaw));
+        assertEquals(localDate, localDateCodec.rawToValue(localDateRaw));
 
         LocalDateTime localDateTime = LocalDateTime.parse("2024-01-01T10:00:00");
-        String localDateTimeRaw = (String) localDateTimeCodec.encode(localDateTime);
+        String localDateTimeRaw = (String) localDateTimeCodec.valueToRaw(localDateTime);
         assertEquals(localDateTime.toString(), localDateTimeRaw);
-        assertEquals(localDateTime, localDateTimeCodec.decode(localDateTimeRaw));
+        assertEquals(localDateTime, localDateTimeCodec.rawToValue(localDateTimeRaw));
 
         OffsetDateTime offsetDateTime = OffsetDateTime.parse("2024-01-01T10:00:00+08:00");
-        String offsetDateTimeRaw = (String) offsetDateTimeCodec.encode(offsetDateTime);
+        String offsetDateTimeRaw = (String) offsetDateTimeCodec.valueToRaw(offsetDateTime);
         assertEquals(offsetDateTime.toString(), offsetDateTimeRaw);
-        assertEquals(offsetDateTime, offsetDateTimeCodec.decode(offsetDateTimeRaw));
+        assertEquals(offsetDateTime, offsetDateTimeCodec.rawToValue(offsetDateTimeRaw));
 
         ZonedDateTime zonedDateTime = ZonedDateTime.parse("2024-01-01T10:00:00+08:00[Asia/Shanghai]");
-        String zonedDateTimeRaw = (String) zonedDateTimeCodec.encode(zonedDateTime);
+        String zonedDateTimeRaw = (String) zonedDateTimeCodec.valueToRaw(zonedDateTime);
         assertEquals(zonedDateTime.toString(), zonedDateTimeRaw);
-        assertEquals(zonedDateTime, zonedDateTimeCodec.decode(zonedDateTimeRaw));
+        assertEquals(zonedDateTime, zonedDateTimeCodec.rawToValue(zonedDateTimeRaw));
 
         Duration duration = Duration.parse("PT10S");
-        String durationRaw = (String) durationCodec.encode(duration);
+        String durationRaw = (String) durationCodec.valueToRaw(duration);
         assertEquals(duration.toString(), durationRaw);
-        assertEquals(duration, durationCodec.decode(durationRaw));
+        assertEquals(duration, durationCodec.rawToValue(durationRaw));
 
         Period period = Period.parse("P1Y2M3D");
-        String periodRaw = (String) periodCodec.encode(period);
+        String periodRaw = (String) periodCodec.valueToRaw(period);
         assertEquals(period.toString(), periodRaw);
-        assertEquals(period, periodCodec.decode(periodRaw));
+        assertEquals(period, periodCodec.rawToValue(periodRaw));
     }
 
     @Test
@@ -148,24 +147,24 @@ public class ValueCodecTest {
         assertNotNull(inetAddressCodec);
 
         Path path = Paths.get("/tmp/test.txt");
-        String pathRaw = (String) pathCodec.encode(path);
+        String pathRaw = (String) pathCodec.valueToRaw(path);
         assertEquals(path.toString(), pathRaw);
-        assertEquals(path, pathCodec.decode(pathRaw));
+        assertEquals(path, pathCodec.rawToValue(pathRaw));
 
         File file = new File("/tmp/test.txt");
-        String fileRaw = (String) fileCodec.encode(file);
+        String fileRaw = (String) fileCodec.valueToRaw(file);
         assertEquals(file.toString(), fileRaw);
-        assertEquals(file, fileCodec.decode(fileRaw));
+        assertEquals(file, fileCodec.rawToValue(fileRaw));
 
         Pattern pattern = Pattern.compile("[a-z]+\\d?");
-        String patternRaw = (String) patternCodec.encode(pattern);
+        String patternRaw = (String) patternCodec.valueToRaw(pattern);
         assertEquals(pattern.pattern(), patternRaw);
-        assertEquals(pattern.pattern(), ((Pattern) patternCodec.decode(patternRaw)).pattern());
+        assertEquals(pattern.pattern(), ((Pattern) patternCodec.rawToValue(patternRaw)).pattern());
 
         InetAddress inetAddress = InetAddress.getByName("127.0.0.1");
-        String inetRaw = (String) inetAddressCodec.encode(inetAddress);
+        String inetRaw = (String) inetAddressCodec.valueToRaw(inetAddress);
         assertEquals(inetAddress.getHostAddress(), inetRaw);
-        assertEquals(inetAddress, inetAddressCodec.decode(inetRaw));
+        assertEquals(inetAddress, inetAddressCodec.rawToValue(inetRaw));
     }
 
     @Test
@@ -177,14 +176,14 @@ public class ValueCodecTest {
         assertNotNull(calendarCodec);
 
         Date date = new Date(1704103200000L);
-        String dateRaw = (String) dateCodec.encode(date);
+        String dateRaw = (String) dateCodec.valueToRaw(date);
         assertEquals(date.toInstant().toString(), dateRaw);
-        assertEquals(date, dateCodec.decode(dateRaw));
+        assertEquals(date, dateCodec.rawToValue(dateRaw));
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Shanghai"));
         calendar.setTimeInMillis(1704103200000L);
-        String calendarRaw = (String) calendarCodec.encode(calendar);
-        Calendar decoded = (Calendar) calendarCodec.decode(calendarRaw);
+        String calendarRaw = (String) calendarCodec.valueToRaw(calendar);
+        Calendar decoded = (Calendar) calendarCodec.rawToValue(calendarRaw);
         assertEquals(calendar.getTimeInMillis(), decoded.getTimeInMillis());
         assertEquals(calendar.getTimeZone().getID(), decoded.getTimeZone().getID());
     }

@@ -59,16 +59,16 @@ public interface StreamingReader extends Closeable {
     String nextString() throws IOException;
 
     Number nextNumber() throws IOException;
-    long nextLong() throws IOException;
-    int nextInt() throws IOException;
-    short nextShort() throws IOException;
-    byte nextByte() throws IOException;
-    double nextDouble() throws IOException;
-    float nextFloat() throws IOException;
+    Long nextLong() throws IOException;
+    Integer nextInt() throws IOException;
+    Short nextShort() throws IOException;
+    Byte nextByte() throws IOException;
+    Double nextDouble() throws IOException;
+    Float nextFloat() throws IOException;
     BigInteger nextBigInteger() throws IOException;
     BigDecimal nextBigDecimal() throws IOException;
 
-    boolean nextBoolean() throws IOException;
+    Boolean nextBoolean() throws IOException;
     void nextNull() throws IOException;
 
     void nextSkip() throws IOException;

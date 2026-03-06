@@ -96,7 +96,9 @@ class GsonNodesTest {
         assertEquals("v", JsonPath.compile("$.b.x").getString(root));
         assertEquals(2, JsonPath.compile("$.a[1]").getInteger(root));
         assertTrue(JsonPath.compile("$.c").getBoolean(root));
-        assertEquals(NodeKind.VALUE_NULL, NodeKind.of(JsonPath.compile("$.d").getNode(root)));
+
+        Object node = JsonPath.compile("$.d").getNode(root);
+        assertEquals(NodeKind.VALUE_NULL, NodeKind.of(node));
 
         List<Object> numbers = JsonPath.compile("$.a[*]").find(root);
         assertEquals(3, numbers.size());

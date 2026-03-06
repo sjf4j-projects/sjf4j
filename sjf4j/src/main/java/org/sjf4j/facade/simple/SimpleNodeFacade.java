@@ -16,7 +16,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 
@@ -66,7 +65,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
             if (vci != null) {
-                return rawClazz.isInstance(node) ? vci.copy(node) : vci.decode(node);
+                return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
             }
 
             if (node instanceof String || node instanceof Character) {
@@ -978,7 +977,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
             if (vci != null) {
-                return vci.encode(node);
+                return vci.valueToRaw(node);
             }
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;

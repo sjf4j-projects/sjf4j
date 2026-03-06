@@ -92,7 +92,7 @@ public class JacksonStreamingIO {
 
         NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
         if (vci != null) {
-            return vci.decode(null);
+            return vci.rawToValue(null);
         }
         return null;
     }
@@ -109,7 +109,7 @@ public class JacksonStreamingIO {
         if (vci != null) {
             boolean b = parser.getBooleanValue();
             parser.nextToken();
-            return vci.decode(b);
+            return vci.rawToValue(b);
         }
 
         throw new BindingException("Cannot read boolean value into type " + rawClazz.getName(), ps);
@@ -167,7 +167,7 @@ public class JacksonStreamingIO {
         if (vci != null) {
             Number n = parser.getNumberValue();
             parser.nextToken();
-            return vci.decode(n);
+            return vci.rawToValue(n);
         }
 
         throw new BindingException("Cannot read number value into type " + rawClazz.getName(), ps);
@@ -196,7 +196,7 @@ public class JacksonStreamingIO {
         if (vci != null) {
             String s = parser.getText();
             parser.nextToken();
-            return vci.decode(s);
+            return vci.rawToValue(s);
         }
 
         throw new BindingException("Cannot read string value into type " + rawClazz.getName(), ps);
@@ -232,7 +232,7 @@ public class JacksonStreamingIO {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
             Map<String, Object> map = _readMapWithValueType(parser, rawClazz, valueType, valueClazz, ps);
-            return ti.valueCodecInfo.decode(map);
+            return ti.valueCodecInfo.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
@@ -394,7 +394,7 @@ public class JacksonStreamingIO {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             List<Object> list = _readListWithElementType(parser, rawClazz, valueType, valueClazz, ps);
-            return vci.decode(list);
+            return vci.rawToValue(list);
         }
 
         throw new BindingException("Cannot read array value into type " + rawClazz.getName(), ps);
@@ -404,13 +404,13 @@ public class JacksonStreamingIO {
             throws IOException {
         switch (fi.containerKind) {
             case MAP:
-                return _readMapWithValueType(parser, fi.rawType, fi.argType, fi.argRawType, ps);
+                return _readMapWithValueType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case LIST:
-                return _readListWithElementType(parser, fi.rawType, fi.argType, fi.argRawType, ps);
+                return _readListWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case SET:
-                return _readSetWithElementType(parser, fi.rawType, fi.argType, fi.argRawType, ps);
+                return _readSetWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
-                return _readNode(parser, fi.type, fi.rawType, ps);
+                return _readNode(parser, fi.type, fi.rawClazz, ps);
         }
     }
 
@@ -624,7 +624,7 @@ public class JacksonStreamingIO {
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.valueCodecInfo != null) {
-                Object raw = ti.valueCodecInfo.encode(node);
+                Object raw = ti.valueCodecInfo.valueToRaw(node);
                 _writeNode(gen, raw, ps);
                 return;
             }

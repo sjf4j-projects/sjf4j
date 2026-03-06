@@ -9,16 +9,20 @@ import org.sjf4j.node.TypeReference;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
 
 /**
  * JSON object container with both dynamic fields and POJO-backed fields.
@@ -37,7 +41,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Stores field information for POJO mapping.
      */
-    protected transient Map<String, NodeRegistry.FieldInfo> fieldMap =
+    protected final transient Map<String, NodeRegistry.FieldInfo> fieldMap =
             this.getClass() == JsonObject.class
             ? null
             : NodeRegistry.registerPojoOrElseThrow(this.getClass()).fields;
@@ -271,9 +275,33 @@ public class JsonObject extends JsonContainer {
         } else if (dynamicMap == null) {
             return fieldMap.keySet();
         } else {
-            Set<String> merged = new LinkedHashSet<>(fieldMap.keySet());
-            merged.addAll(dynamicMap.keySet());
-            return merged;
+            return new AbstractSet<String>() {
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public Iterator<String> iterator() {
+                    return new Iterator<String>() {
+                        private final Iterator<String> fieldIterator = fieldMap.keySet().iterator();
+                        private final Iterator<String> dynamicIterator = dynamicMap.keySet().iterator();
+
+                        @Override
+                        public boolean hasNext() {
+                            if (fieldIterator.hasNext()) return true;
+                            return dynamicIterator.hasNext();
+                        }
+
+                        @Override
+                        public String next() {
+                            if (fieldIterator.hasNext()) return fieldIterator.next();
+                            return dynamicIterator.next();
+                        }
+                    };
+                }
+
+                @Override
+                public int size() {
+                    return fieldMap.size() + dynamicMap.size();
+                }
+            };
         }
     }
 
@@ -294,22 +322,68 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Performs the given action for each entry.
+     * Performs the given visitor for each entry.
      */
-    public void forEach(BiConsumer<String, Object> action) {
-        Objects.requireNonNull(action, "action is null");
+    public void forEach(BiConsumer<String, Object> visitor) {
+        Objects.requireNonNull(visitor, "visitor is null");
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
-                action.accept(entry.getKey(), entry.getValue().invokeGetter(this));
+                visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
         if (dynamicMap != null) {
             for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
-                action.accept(entry.getKey(), entry.getValue());
+                visitor.accept(entry.getKey(), entry.getValue());
             }
         }
     }
 
+
+    public boolean anyMatch(BiPredicate<String, Object> predicate) {
+        Objects.requireNonNull(predicate, "predicate is null");
+        if (fieldMap != null) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
+                if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
+                    return true;
+                }
+            }
+        }
+        if (dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
+                if (predicate.test(entry.getKey(), entry.getValue())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean transform(BiFunction<String, Object, Object> mapper) {
+        Objects.requireNonNull(mapper, "mapper is null");
+        boolean changed = false;
+        if (fieldMap != null) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                Object oldValue = fi.invokeGetter(this);
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (newValue != oldValue) {
+                    fi.invokeSetter(this, newValue);
+                    changed = true;
+                }
+            }
+        }
+        if (dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
+                Object oldValue = entry.getValue();
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (newValue != oldValue) {
+                    entry.setValue(newValue);
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
 
     /**
      * Returns a merged Map view of fields and dynamic entries.
@@ -345,18 +419,70 @@ public class JsonObject extends JsonContainer {
      * Returns a merged entry set of fields and dynamic entries.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
-        Set<Map.Entry<String, Object>> set = new LinkedHashSet<>(size());
-        if (fieldMap != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue().invokeGetter(this);
-                set.add(new AbstractMap.SimpleEntry<>(key, value));
-            }
+        if (fieldMap == null) {
+            return dynamicMap == null ? Collections.emptySet() : dynamicMap.entrySet();
+        } else if (dynamicMap == null) {
+            return new AbstractSet<Map.Entry<String, Object>>() {
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public Iterator<Map.Entry<String, Object>> iterator() {
+                    final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
+                            fieldMap.entrySet().iterator();
+                    return new Iterator<Map.Entry<String, Object>>() {
+                        @Override
+                        public boolean hasNext() {
+                            return fieldIterator.hasNext();
+                        }
+
+                        @Override
+                        public Map.Entry<String, Object> next() {
+                            Map.Entry<String, NodeRegistry.FieldInfo> entry = fieldIterator.next();
+                            Object value = entry.getValue().invokeGetter(JsonObject.this);
+                            return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
+                        }
+                    };
+                }
+
+                @Override
+                public int size() {
+                    return fieldMap.size();
+                }
+            };
+        } else {
+            return new AbstractSet<Map.Entry<String, Object>>() {
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public Iterator<Map.Entry<String, Object>> iterator() {
+                    return new Iterator<Map.Entry<String, Object>>() {
+                        private final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
+                                fieldMap.entrySet().iterator();
+                        private final Iterator<Map.Entry<String, Object>> dynamicIterator =
+                                dynamicMap.entrySet().iterator();
+
+                        @Override
+                        public boolean hasNext() {
+                            if (fieldIterator.hasNext()) return true;
+                            return dynamicIterator.hasNext();
+                        }
+
+                        @Override
+                        public Map.Entry<String, Object> next() {
+                            if (fieldIterator.hasNext()) {
+                                Map.Entry<String, NodeRegistry.FieldInfo> entry = fieldIterator.next();
+                                Object value = entry.getValue().invokeGetter(JsonObject.this);
+                                return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
+                            }
+                            return dynamicIterator.next();
+                        }
+                    };
+                }
+
+                @Override
+                public int size() {
+                    return fieldMap.size() + dynamicMap.size();
+                }
+            };
         }
-        if (dynamicMap != null) {
-            set.addAll(dynamicMap.entrySet());
-        }
-        return set;
     }
 
     /**

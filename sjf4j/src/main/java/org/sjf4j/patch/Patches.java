@@ -17,7 +17,7 @@ import java.util.Objects;
 public class Patches {
 
     /**
-     * Recursively merges a patch into source with custom overwrite rules.
+     * Recursively merges a patch into target with custom overwrite rules.
      *
      * <p>This is a practical deep-merge utility (not RFC 7386):
      * object fields merge by key, array values merge by index, and scalar
@@ -25,25 +25,25 @@ public class Patches {
      *
      * <p>Main usage:
      * use {@code overwrite=true} to let patch values replace existing values,
-     * use {@code overwrite=false} to fill only missing/null source values.
+     * use {@code overwrite=false} to fill only missing/null target values.
      * Use {@code deepCopy=true} when patch nodes may be reused elsewhere and
      * should not be shared by reference.</p>
      *
      * <p>Example: merge defaults into request data with
-     * {@code merge(source, defaults, false, true)}.
+     * {@code merge(target, defaults, false, true)}.
      * Example: apply an update payload over current data with
-     * {@code merge(source, update, true, false)}.</p>
+     * {@code merge(target, update, true, false)}.</p>
      *
      * <p>If you need standards-compliant JSON Merge Patch behavior
      * (array replace + {@code null} means delete), use {@link #mergeRfc7386(Object, Object)}.</p>
      */
-    public static void merge(Object source, Object patch, boolean overwrite, boolean deepCopy) {
-        if (source == null || patch == null) return;
-        JsonType sourceJt = JsonType.of(source);
+    public static void merge(Object target, Object patch, boolean overwrite, boolean deepCopy) {
+        if (target == null || patch == null) return;
+        JsonType targetJt = JsonType.of(target);
         JsonType patchJt = JsonType.of(patch);
-        if (sourceJt.isObject() && patchJt.isObject()) {
+        if (targetJt.isObject() && patchJt.isObject()) {
             Nodes.visitObject(patch, (key, subPatch) -> {
-                Object subTarget = Nodes.getInObject(source, key);
+                Object subTarget = Nodes.getInObject(target, key);
                 JsonType subTargetJt = JsonType.of(subTarget);
                 JsonType subPatchJt = JsonType.of(subPatch);
                 if (subPatchJt.isObject()) {
@@ -51,9 +51,9 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.putInObject(source, key, Sjf4j.deepNode(subPatch));
+                            Nodes.putInObject(target, key, Sjf4j.deepNode(subPatch));
                         } else {
-                            Nodes.putInObject(source, key, subPatch);
+                            Nodes.putInObject(target, key, subPatch);
                         }
                     }
                 } else if (subPatchJt.isArray()) {
@@ -61,18 +61,18 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.putInObject(source, key, Sjf4j.deepNode(subPatch));
+                            Nodes.putInObject(target, key, Sjf4j.deepNode(subPatch));
                         } else {
-                            Nodes.putInObject(source, key, subPatch);
+                            Nodes.putInObject(target, key, subPatch);
                         }
                     }
                 } else if (overwrite || subTarget == null) {
-                    Nodes.putInObject(source, key, subPatch);
+                    Nodes.putInObject(target, key, subPatch);
                 }
             });
-        } else if (sourceJt.isArray() && patchJt.isArray()) {
+        } else if (targetJt.isArray() && patchJt.isArray()) {
             Nodes.visitArray(patch, (i, subPatch) -> {
-                Object subTarget = Nodes.getInArray(source, i);
+                Object subTarget = Nodes.getInArray(target, i);
                 JsonType subTargetJt = JsonType.of(subTarget);
                 JsonType subPatchJt = JsonType.of(subPatch);
                 if (subPatchJt.isObject()) {
@@ -80,9 +80,9 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.setInArray(source, i, Sjf4j.deepNode(subPatch));
+                            Nodes.setInArray(target, i, Sjf4j.deepNode(subPatch));
                         } else {
-                            Nodes.setInArray(source, i, subPatch);
+                            Nodes.setInArray(target, i, subPatch);
                         }
                     }
                 } else if (subPatchJt.isArray()) {
@@ -90,48 +90,48 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.setInArray(source, i, Sjf4j.deepNode(subPatch));
+                            Nodes.setInArray(target, i, Sjf4j.deepNode(subPatch));
                         } else {
-                            Nodes.setInArray(source, i, subPatch);
+                            Nodes.setInArray(target, i, subPatch);
                         }
                     }
                 } else if (overwrite || subTarget == null) {
-                    Nodes.setInArray(source, i, subPatch);
+                    Nodes.setInArray(target, i, subPatch);
                 }
             });
         }
     }
 
     /**
-     * Merges a patch into source using RFC 7386 semantics.
+     * Merges a patch into target using RFC 7386 semantics.
      *
      * <p>Object members are merged recursively. A {@code null} patch member means
-     * remove that member from source. Non-object patch values replace the source
+     * remove that member from target. Non-object patch values replace the target
      * value at that member.
      * Use this when you need standards-compliant merge behavior instead of
      * custom deep merge from {@link #merge(Object, Object, boolean, boolean)}.</p>
      */
-    public static void mergeRfc7386(Object source, Object patch) {
-        if (source == null || patch == null) return;
-        JsonType sourceJt = JsonType.of(source);
+    public static void mergeRfc7386(Object target, Object patch) {
+        if (target == null || patch == null) return;
+        JsonType targetJt = JsonType.of(target);
         JsonType patchJt = JsonType.of(patch);
-        if (sourceJt.isObject() && patchJt.isObject()) {
+        if (targetJt.isObject() && patchJt.isObject()) {
             Nodes.visitObject(patch, (key, subPatch) -> {
-                Object subTarget = Nodes.getInObject(source, key);
+                Object subTarget = Nodes.getInObject(target, key);
                 JsonType subTargetJt = JsonType.of(subTarget);
                 JsonType subPatchJt = JsonType.of(subPatch);
                 if (subPatch == null) {
                     if (subTarget != null) {
-                        Nodes.removeInObject(source, key);
+                        Nodes.removeInObject(target, key);
                     }
                 } else if (subPatchJt.isObject()) {
                     if (subTargetJt.isObject()) {
                         mergeRfc7386(subTarget, subPatch);
                     } else {
-                        Nodes.putInObject(source, key, subPatch);
+                        Nodes.putInObject(target, key, subPatch);
                     }
                 } else {
-                    Nodes.putInObject(source, key, subPatch);
+                    Nodes.putInObject(target, key, subPatch);
                 }
             });
         }

@@ -199,11 +199,11 @@ public class NodeRegistryTest {
 
         LocalDate now = LocalDate.now();
         BigDay day = new BigDay(now);
-        Object raw = vci.encode(day);
+        Object raw = vci.valueToRaw(day);
         log.info("raw={}", raw);
         assertEquals(now.toString(), raw);
 
-        BigDay day2 = (BigDay) vci.decode(raw);
+        BigDay day2 = (BigDay) vci.rawToValue(raw);
         log.info("day2={}", day2);
         assertEquals(day.localDate, day2.localDate);
 
@@ -240,11 +240,11 @@ public class NodeRegistryTest {
         assertNotNull(vci);
 
         LocalDate now = LocalDate.now();
-        String raw = (String) vci.encode(now);
+        String raw = (String) vci.valueToRaw(now);
         log.info("raw={} type={}", raw, raw.getClass());
         assertEquals(now.toString(), raw);
 
-        LocalDate now2 = (LocalDate) vci.decode(raw);
+        LocalDate now2 = (LocalDate) vci.rawToValue(raw);
         log.info("now2={}", now2);
         assertEquals(now, now2);
     }

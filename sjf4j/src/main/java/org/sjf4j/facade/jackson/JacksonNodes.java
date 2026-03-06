@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
@@ -350,6 +351,35 @@ public final class JacksonNodes {
         }
         throw new JsonException("Expected ObjectNode but was " + Types.name(node));
     }
+
+    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (node instanceof ObjectNode) {
+            for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
+                if (predicate.test(entry.getKey(), entry.getValue())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+    }
+
+    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+        if (node instanceof ObjectNode) {
+            boolean changed = false;
+            for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
+                Object oldValue = entry.getValue();
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (newValue != oldValue) {
+                    entry.setValue((JsonNode) newValue);
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+    }
+
 
     /**
      * Visits items of Jackson array node.

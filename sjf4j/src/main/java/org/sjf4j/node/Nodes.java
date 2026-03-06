@@ -27,11 +27,11 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
+
 /**
  * Core node utilities: type conversion, inspection, and container access.
  */
 public class Nodes {
-
 
     /// Type-safe access and cross-type conversion
 
@@ -556,7 +556,7 @@ public class Nodes {
 
             NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
             if (fi != null) {
-                Object vv = to(entry.getValue(), fi.rawType);
+                Object vv = to(entry.getValue(), fi.rawClazz);
                 if (pojo != null) {
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else {
@@ -697,13 +697,11 @@ public class Nodes {
             return source.equals(target);
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
-            for (Map.Entry<String, Object> entry : entrySetInObject(source)) {
-                Object subSource = entry.getValue();
-                Object subTarget = getInObject(target, entry.getKey());
-                if (subTarget == null && !containsInObject(target, entry.getKey())) return false;
-                if (!equals(subSource, subTarget)) return false;
-            }
-            return true;
+            return !anyMatchInObject(source, (k, subSource) -> {
+                Object subTarget = getInObject(target, k);
+                if (subTarget == null && !containsInObject(target, k)) return true;
+                return !equals(subSource, subTarget);
+            });
         } else if (jtSource.isArray() && jtTarget.isArray()) {
             if (sizeInArray(source) != sizeInArray(target)) return false;
             Iterator<Object> itSource = iteratorInArray(source);
@@ -734,15 +732,12 @@ public class Nodes {
         } else if (jt.isValue()) {
             return node.hashCode();
         } else if (jt.isObject()) {
-            int hash = 1;
-            for (Map.Entry<String, Object> entry : entrySetInObject(node)) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                int entryHash = 31 * key.hashCode() + hash(value);
+            final int[] hash = {1};
+            visitObject(node, (k, v) -> {
                 // disorder
-                hash += entryHash;
-            }
-            return hash;
+                hash[0] += 31 * k.hashCode() + hash(v);
+            });
+            return hash[0];
         } else if (jt.isArray()) {
             int hash = 1;
             Iterator<Object> it = iteratorInArray(node);
@@ -857,7 +852,7 @@ public class Nodes {
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         if (ti.isNodeValue()) {
-            return (T) ti.valueCodecInfo.copy(node);
+            return (T) ti.valueCodecInfo.valueCopy(node);
         } else if (ti.isPojo()) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(node.getClass());
             NodeRegistry.CreatorInfo ci = pi.creatorInfo;
@@ -1065,7 +1060,7 @@ public class Nodes {
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         if (ti.isNodeValue()) {
-            Object raw = ti.valueCodecInfo.encode(node);
+            Object raw = ti.valueCodecInfo.valueToRaw(node);
             sb.append("@").append(rawClazz.getSimpleName()).append("#");
             _inspect(raw, sb);
             return;
@@ -1122,6 +1117,78 @@ public class Nodes {
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.visitObject(node, visitor);
             return;
+        }
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(predicate, "predicate is null");
+        if (node instanceof Map) {
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
+                if (predicate.test(entry.getKey(), entry.getValue())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).anyMatch(predicate);
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        if (pi != null) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                Object value = entry.getValue().invokeGetter(node);
+                if (predicate.test(entry.getKey(), value)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (FacadeNodes.isNode(node)) {
+            return FacadeNodes.anyMatchInObject(node, predicate);
+        }
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(mapper, "mapper is null");
+        if (node instanceof Map) {
+            boolean changed = false;
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
+                Object oldValue = entry.getValue();
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (oldValue != newValue) {
+                    entry.setValue(newValue);
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).transform(mapper);
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        if (pi != null) {
+            boolean changed = false;
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                Object oldValue = fi.invokeGetter(node);
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (oldValue != newValue) {
+                    fi.invokeSetter(node, newValue);
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+        if (FacadeNodes.isNode(node)) {
+            return FacadeNodes.transformInObject(node, mapper);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
@@ -1509,17 +1576,18 @@ public class Nodes {
             }
         }
         if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            idx = idx < 0 ? set.size() + idx : idx;
-            if (idx < 0 || idx >= set.size()) {
-                return null;
-            } else {
-                int i = 0;
-                for (Object v : set) {
-                    if (i++ == idx) return v;
-                }
-                return null;
-            }
+            throw new JsonException("Cannot call getInArray() on an unordered Java Set");
+//            Set<Object> set = (Set<Object>) node;
+//            idx = idx < 0 ? set.size() + idx : idx;
+//            if (idx < 0 || idx >= set.size()) {
+//                return null;
+//            } else {
+//                int i = 0;
+//                for (Object v : set) {
+//                    if (i++ == idx) return v;
+//                }
+//                return null;
+//            }
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.getInArray(node, idx);
@@ -1663,28 +1731,29 @@ public class Nodes {
             return;
         }
         if (node instanceof Set) {
-            out.type = Types.resolveTypeArgument(type, Set.class, 0);
-            Set<Object> set = (Set<Object>) node;
-            idx = idx < 0 ? set.size() + idx : idx;
-            if (idx >= 0 && idx < set.size()) {
-                int i = 0;
-                for (Object v : set) {
-                    if (i++ == idx) {
-                        out.node = v;
-                        out.insertable = true;
-                        return;
-                    }
-                }
-                throw new AssertionError("Unreachable");
-            }
-            if (idx == set.size()){
-                out.node = null;
-                out.insertable = true;
-                return;
-            }
-            out.node = null;
-            out.insertable = false;
-            return;
+            throw new JsonException("Cannot call accessInArray() on an unordered Java Set");
+//            out.type = Types.resolveTypeArgument(type, Set.class, 0);
+//            Set<Object> set = (Set<Object>) node;
+//            idx = idx < 0 ? set.size() + idx : idx;
+//            if (idx >= 0 && idx < set.size()) {
+//                int i = 0;
+//                for (Object v : set) {
+//                    if (i++ == idx) {
+//                        out.node = v;
+//                        out.insertable = true;
+//                        return;
+//                    }
+//                }
+//                throw new AssertionError("Unreachable");
+//            }
+//            if (idx == set.size()){
+//                out.node = null;
+//                out.insertable = true;
+//                return;
+//            }
+//            out.node = null;
+//            out.insertable = false;
+//            return;
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.accessInArray(node, type, idx, out);
@@ -1722,7 +1791,7 @@ public class Nodes {
             }
         }
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'putInObject' is not supported for node '" + Types.name(node) + "'");
+            return FacadeNodes.putInObject(node, key, value);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
@@ -1775,19 +1844,20 @@ public class Nodes {
             }
         }
         if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            idx = idx < 0 ? set.size() + idx : idx;
-            if (idx == set.size()) {
-                set.add(value);
-                return null;
-            } else if (idx >= 0 && idx < set.size()) {
-                throw new JsonException("Cannot set an element at a given index in an unordered Java Set");
-            } else {
-                throw new JsonException("Cannot set/add index " + idx + " in Set of size " + set.size());
-            }
+            throw new JsonException("Cannot call setInArray() on an unordered Java Set");
+//            Set<Object> set = (Set<Object>) node;
+//            idx = idx < 0 ? set.size() + idx : idx;
+//            if (idx == set.size()) {
+//                set.add(value);
+//                return null;
+//            } else if (idx >= 0 && idx < set.size()) {
+//                throw new JsonException("Cannot set an element at a given index in an unordered Java Set");
+//            } else {
+//                throw new JsonException("Cannot set/add index " + idx + " in Set of size " + set.size());
+//            }
         }
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'setInArray' is not supported for node '" + Types.name(node) + "'");
+            FacadeNodes.setInArray(node, idx, value);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1809,14 +1879,14 @@ public class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("Cannot add element to a Java array");
+            throw new JsonException("Cannot call getInArray() on a Java array");
         }
         if (node instanceof Set) {
             ((Set<Object>) node).add(value);
             return;
         }
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'addInArray' is not supported for node '" + Types.name(node) + "'");
+            FacadeNodes.addInArray(node, value);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1841,13 +1911,13 @@ public class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("Cannot add element to a Java array");
+            throw new JsonException("Cannot call getInArray() on a Java array");
         }
         if (node instanceof Set) {
-            throw new JsonException("Cannot add element at a given index in an unordered Java Set");
+            throw new JsonException("Cannot call addInArray() at a given index on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'addInArray' is not supported for node '" + Types.name(node) + "'");
+            FacadeNodes.addInArray(node, idx, value);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1873,7 +1943,7 @@ public class Nodes {
                     node.getClass() + "'");
         }
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'removeInObject' is not supported for node '" + Types.name(node) + "'");
+            FacadeNodes.removeInObject(node, key);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
@@ -1900,10 +1970,10 @@ public class Nodes {
                     node.getClass().getComponentType() + "'");
         }
         if (node instanceof Set) {
-            throw new JsonException("Cannot remove element at a given index in an unordered Java Set");
+            throw new JsonException("Cannot call removeInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'removeInArray' is not supported for node '" + Types.name(node) + "'");
+            FacadeNodes.removeInArray(node, idx);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
