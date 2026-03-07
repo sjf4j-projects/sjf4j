@@ -401,7 +401,7 @@ public class CompileUtil {
             }
             return uri;
         } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(e);
+            throw new SchemaException("Invalid URI while dropping fragment: " + uri, e);
         }
     }
 

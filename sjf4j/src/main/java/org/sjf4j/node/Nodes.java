@@ -915,7 +915,7 @@ public class Nodes {
         }
 
         if (FacadeNodes.isNode(node)) {
-            throw new JsonException("'copy' is not supported for node '" + Types.name(node) + "'");
+            throw new JsonException("Operation not supported: cannot copy facade node '" + Types.name(node) + "'");
         }
 
         return node;
@@ -1786,8 +1786,8 @@ public class Nodes {
                 fi.invokeSetter(node, value);
                 return old;
             } else {
-                throw new JsonException("Not found field '" + key + "' in POJO node " +
-                        node.getClass().getName());
+                throw new JsonException("Unknown field '" + key + "' in POJO node '" +
+                        node.getClass().getName() + "'");
             }
         }
         if (FacadeNodes.isNode(node)) {
@@ -1879,7 +1879,7 @@ public class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("Cannot call getInArray() on a Java array");
+            throw new JsonException("Cannot call addInArray() on a Java array");
         }
         if (node instanceof Set) {
             ((Set<Object>) node).add(value);
@@ -1911,7 +1911,7 @@ public class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("Cannot call getInArray() on a Java array");
+            throw new JsonException("Cannot call addInArray() with index on a Java array");
         }
         if (node instanceof Set) {
             throw new JsonException("Cannot call addInArray() at a given index on an unordered Java Set");
@@ -1940,7 +1940,7 @@ public class Nodes {
         }
         if (NodeRegistry.registerPojo(node.getClass()) != null) {
             throw new JsonException("Cannot remove field '" + key + "' in POJO node '" +
-                    node.getClass() + "'");
+                    node.getClass().getName() + "'");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.removeInObject(node, key);
@@ -1966,8 +1966,8 @@ public class Nodes {
             return ((JsonArray) node).remove(idx);
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("Cannot remove index " + idx + " in Array node '" +
-                    node.getClass().getComponentType() + "'");
+            throw new JsonException("Operation not supported: cannot remove index " + idx +
+                    " from Java array of component type '" + node.getClass().getComponentType().getName() + "'");
         }
         if (node instanceof Set) {
             throw new JsonException("Cannot call removeInArray() on an unordered Java Set");

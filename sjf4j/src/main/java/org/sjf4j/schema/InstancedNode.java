@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
@@ -187,7 +188,8 @@ public final class InstancedNode {
      * Encoded children are cached by key to avoid repeated value-codec encoding.
      */
     public InstancedNode inferSubByKey(String key, Object subNode) {
-        if (jsonType != JsonType.OBJECT) throw new IllegalArgumentException("Cannot inferSubByKey: jsonType != OBJECT");
+        if (jsonType != JsonType.OBJECT)
+            throw new JsonException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         InstancedNode subInstance = null;
         if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
         if (subInstance == null) {
@@ -208,7 +210,8 @@ public final class InstancedNode {
      * Encoded children are cached by index key to avoid repeated encoding.
      */
     public InstancedNode inferSubByIndex(int idx, Object subNode) {
-        if (jsonType != JsonType.ARRAY) throw new IllegalArgumentException("Cannot inferSubByIndex: jsonType != ARRAY");
+        if (jsonType != JsonType.ARRAY)
+            throw new JsonException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         InstancedNode subInstance = null;
         if (subInstanceCache != null) subInstance = subInstanceCache.get(idx);
         if (subInstance == null) {

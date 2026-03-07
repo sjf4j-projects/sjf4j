@@ -1,5 +1,7 @@
 package org.sjf4j.util;
 
+import org.sjf4j.exception.JsonException;
+
 /**
  * String utility helpers.
  */
@@ -10,9 +12,9 @@ public class Strings {
      */
     public static String requireNonEmpty(String string, String message) {
         if (string == null)
-            throw new NullPointerException(message);
+            throw new JsonException(message);
         if (string.trim().isEmpty())
-            throw new IllegalArgumentException(message);
+            throw new JsonException(message);
         return string;
     }
 

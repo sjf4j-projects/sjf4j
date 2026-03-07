@@ -413,12 +413,16 @@ public final class NodeRegistry {
         public final Function<Object, Object> lambdaGetter;
         public final MethodHandle setter;
         public final BiConsumer<Object, Object> lambdaSetter;
+
+        public final AnyOfInfo anyOfInfo;
+
         /**
          * Creates immutable field metadata holder.
          */
         public FieldInfo(String name, Type type,
                          MethodHandle getter, Function<Object, Object> lambdaGetter,
-                         MethodHandle setter, BiConsumer<Object, Object> lambdaSetter) {
+                         MethodHandle setter, BiConsumer<Object, Object> lambdaSetter,
+                         AnyOfInfo anyOfInfo) {
             this.name = name;
             this.type = type;
             this.rawClazz = Types.rawBox(type);
@@ -445,6 +449,7 @@ public final class NodeRegistry {
             this.lambdaGetter = lambdaGetter;
             this.setter = setter;
             this.lambdaSetter = lambdaSetter;
+            this.anyOfInfo = anyOfInfo;
         }
 
         /**
@@ -465,7 +470,7 @@ public final class NodeRegistry {
          * Invokes field getter.
          */
         public Object invokeGetter(Object receiver) {
-            if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
+            if (receiver == null) throw new JsonException("receiver is null");
             if (lambdaGetter != null) {
                 return lambdaGetter.apply(receiver);
             }
@@ -483,7 +488,7 @@ public final class NodeRegistry {
          * Invokes field getter using method handle only.
          */
         public Object invokeGetter2(Object receiver) {
-            if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
+            if (receiver == null) throw new JsonException("receiver is null");
             if (getter == null) throw new JsonException("No getter available for field '" + name + "' of " + type);
             try {
                 return getter.invoke(receiver);
@@ -506,7 +511,7 @@ public final class NodeRegistry {
          * Invokes field setter.
          */
         public void invokeSetter(Object receiver, Object value) {
-            if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
+            if (receiver == null) throw new JsonException("receiver is null");
             if (setter == null)
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             try {
@@ -525,7 +530,7 @@ public final class NodeRegistry {
          * Invokes setter with numeric pre-conversion fallback.
          */
         public void invokeSetter2(Object receiver, Object value) {
-            if (receiver == null) throw new IllegalArgumentException("Receiver must not be null");
+            if (receiver == null) throw new JsonException("receiver is null");
             if (setter == null) {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             }

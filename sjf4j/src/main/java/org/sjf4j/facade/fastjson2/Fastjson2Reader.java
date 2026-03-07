@@ -19,7 +19,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Creates reader adapter from Fastjson2 JSONReader.
      */
     public Fastjson2Reader(JSONReader reader) {
-        if (reader == null) throw new IllegalArgumentException("JSONReader must not be null");
+        if (reader == null) throw new JsonException("reader is null");
         this.reader = reader;
     }
 

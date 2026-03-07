@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
@@ -28,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -128,9 +130,15 @@ public final class ReflectUtil {
                 if (getter == null && lambdaGetter == null) {
                     // log.warn("No accessible getter or setter found for field '{}' of {}", field.getName(), curClazz);
                 } else {
+                    NodeRegistry.AnyOfInfo anyOfInfo = null;
+                    AnyOf ann = field.getAnnotation(AnyOf.class);
+                    if (ann != null) {
+                        anyOfInfo = ReflectUtil.analyzeAnyOf(field.getDeclaringClass(), ann);
+                    }
+
                     Type fieldType = Types.fieldType(curType, field);
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
-                            fieldType, getter, lambdaGetter, setter, lambdaSetter);
+                            fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
                     String fieldName = getFieldName(field);
                     fields.put(fieldName, fi);
 
@@ -813,6 +821,7 @@ public final class ReflectUtil {
         }
 
         boolean hasDiscriminator = !ann.key().isEmpty() || !ann.path().isEmpty();
+        EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
         for (AnyOf.Mapping mapping : mappings) {
             Class<?> subClazz = mapping.value();
             if (!clazz.isAssignableFrom(subClazz)) {
@@ -825,7 +834,13 @@ public final class ReflectUtil {
                             subClazz.getName() + " in @" + AnyOf.class.getName() + " of class " + clazz.getName());
                 }
             } else {
-
+                JsonType jt = JsonType.rawOf(mapping.value());
+                if (jt.isUnknown()) {
+                    throw new JsonException("Mapping raw JsonType must not be UNKNOWN in class " + clazz.getName());
+                }
+                if (!enumSet.add(jt)) {
+                    throw new JsonException("Mapping duplicated raw JsonType " + jt + " in class " + subClazz.getName());
+                }
             }
         }
         return new NodeRegistry.AnyOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());

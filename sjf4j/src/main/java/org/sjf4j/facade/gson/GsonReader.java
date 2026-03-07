@@ -2,6 +2,7 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 
@@ -20,7 +21,7 @@ public class GsonReader implements StreamingReader {
      * Creates reader adapter from Gson JsonReader.
      */
     public GsonReader(JsonReader reader) {
-        if (reader == null) throw new IllegalArgumentException("Reader must not be null");
+        if (reader == null) throw new JsonException("reader is null");
         this.reader = reader;
     }
 

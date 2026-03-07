@@ -218,7 +218,8 @@ public final class SchemaValidator {
     private JsonSchema findInSchema(JsonSchema schema, String fragment) {
         if (fragment == null || fragment.isEmpty()) return schema;
         if (!(schema instanceof ObjectSchema)) {
-            throw new IllegalArgumentException("Required ObjectSchema, but was " + schema.getClass());
+            throw new SchemaException("Invalid schema fragment lookup target: required ObjectSchema, but was " +
+                    schema.getClass().getName());
         }
         ObjectSchema idSchema = (ObjectSchema) schema;
         JsonSchema found = idSchema.getSchemaByAnchor(fragment);

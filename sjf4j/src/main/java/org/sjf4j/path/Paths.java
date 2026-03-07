@@ -107,7 +107,7 @@ public class Paths {
     public static PathSegment[] parsePointer(String expr) {
         Objects.requireNonNull(expr, "expr is null");
         if (!expr.isEmpty() && !expr.startsWith("/"))
-            throw new IllegalArgumentException("Invalid JSON pointer '" + expr + "': must start with '/'");
+            throw new JsonException("Invalid JSON Pointer expression '" + expr + "': must start with '/'");
 
         Deque<PathSegment> segments = new ArrayDeque<>();
         segments.addLast(PathSegment.Root.INSTANCE);
@@ -589,7 +589,7 @@ public class Paths {
      */
     static int findMatchingParen(String s, int start) {
         if (start < 0 || start >= s.length() || s.charAt(start) != '(') {
-            throw new IllegalArgumentException("start is not position of '('");
+            throw new JsonException("Invalid expression: start is not at '(' position");
         }
 
         boolean inString = false;
@@ -636,7 +636,7 @@ public class Paths {
             }
         }
 
-        throw new IllegalArgumentException("No matching ')' found for '(' at position " + start);
+        throw new JsonException("Invalid expression: no matching ')' found for '(' at position " + start);
     }
 
     /**
@@ -1073,7 +1073,7 @@ public class Paths {
                     // Not support global
                     break;
                 default:
-                    throw new IllegalArgumentException("Unsupported regex flag: " + c);
+                    throw new JsonException("Invalid regex flag '" + c + "' in JSONPath filter");
             }
         }
         return f;

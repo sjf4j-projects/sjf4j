@@ -93,7 +93,7 @@ public class PathsTest {
 
     @Test
     void testInvalidInputs() {
-        assertThrows(IllegalArgumentException.class, () -> Paths.parsePointer("users")); // missing '/'
+        assertThrows(JsonException.class, () -> Paths.parsePointer("users")); // missing '/'
     }
 
     @Test

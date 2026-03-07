@@ -5,7 +5,6 @@ import org.sjf4j.util.Strings;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
 
 /**
  * Numeric conversion helpers with range checks.
@@ -39,25 +38,17 @@ public class Numbers {
 
     /**
      * Checks if a BigInteger number is within the range of a Long.
-     *
-     * @param number the BigInteger number to check
-     * @return true if the number is within Long range, false otherwise
-     * @throws IllegalArgumentException if number is null
      */
     private static boolean inLongRange(BigInteger number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         return (number.compareTo(BI_MIN_LONG) >= 0) && (number.compareTo(BI_MAX_LONG) <= 0);
     }
 
     /**
      * Checks if a BigDecimal number is within the range of a Long.
-     *
-     * @param number the BigDecimal number to check
-     * @return true if the number is within Long range, false otherwise
-     * @throws IllegalArgumentException if number is null
      */
     private static boolean inLongRange(BigDecimal number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         return (number.compareTo(BD_MIN_LONG) >= 0) && (number.compareTo(BD_MAX_LONG) <= 0);
     }
 
@@ -95,13 +86,9 @@ public class Numbers {
 
     /**
      * Converts a Number to a Long with range checking.
-     *
-     * @param number the Number to convert
-     * @return the Long representation
-     * @throws IllegalArgumentException if the number is outside the Long range
      */
     public static long toLong(Number number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         if (number instanceof Long) return (long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
             throw new JsonException("Cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
@@ -117,10 +104,6 @@ public class Numbers {
 
     /**
      * Converts a Number to an Integer with range checking.
-     *
-     * @param number the Number to convert
-     * @return the Integer representation
-     * @throws IllegalArgumentException if the number is outside the Integer range
      */
     public static int toInt(Number number) {
         long longValue = toLong(number);
@@ -154,13 +137,9 @@ public class Numbers {
 
     /**
      * Converts a Number to a Double with range checking.
-     *
-     * @param number the Number to convert
-     * @return the Double representation
-     * @throws IllegalArgumentException if the number is not a finite Double
      */
     public static double toDouble(Number number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         if (number instanceof Double) return (double) number;
         double d = number.doubleValue();
         if (!Double.isFinite(d)) {
@@ -171,13 +150,9 @@ public class Numbers {
 
     /**
      * Converts a Number to a Float with range checking.
-     *
-     * @param number the Number to convert
-     * @return the Float representation
-     * @throws IllegalArgumentException if the number is not a finite Float
      */
     public static float toFloat(Number number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         if (number instanceof Float) return (float) number;
 
         float f = number.floatValue();
@@ -191,7 +166,7 @@ public class Numbers {
      * Converts a Number to BigInteger.
      */
     public static BigInteger toBigInteger(Number number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         if (number instanceof BigInteger) return (BigInteger) number;
         if (number instanceof BigDecimal) return ((BigDecimal) number).toBigInteger();
         if (number instanceof Double || number instanceof Float) {
@@ -208,7 +183,7 @@ public class Numbers {
      * Converts a Number to BigDecimal.
      */
     public static BigDecimal toBigDecimal(Number number) {
-        Objects.requireNonNull(number, "number is null");
+        if (number == null) throw new JsonException("number is null");
         if (number instanceof BigDecimal) return (BigDecimal) number;
         if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
         if (number instanceof Double || number instanceof Float) {
@@ -222,6 +197,7 @@ public class Numbers {
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Number number, Class<T> clazz) {
+        if (number == null) throw new JsonException("number is null");
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
         Class<?> boxed = Types.box(clazz);
         if (boxed == Long.class) return (T) Long.valueOf(Numbers.toLong(number));
@@ -267,12 +243,13 @@ public class Numbers {
      * Parses a numeric string into an appropriate Number implementation.
      */
     public static Number parseNumber(String text) {
-        if (text == null || text.isEmpty()) throw new IllegalArgumentException("text is null or empty");
+        if (text == null || text.isEmpty()) throw new JsonException("Invalid number text: value is null or empty");
         text = text.replace("_", "").trim();
+        if (text.isEmpty()) throw new JsonException("Invalid number text: value is empty");
 
         final int len = text.length();
         if (len > MAX_NUMBER_DIGITS) {
-            throw new IllegalArgumentException("Number too large (" + len + " digits): '" +
+            throw new JsonException("Invalid number text: too large (" + len + " digits): '" +
                     Strings.truncate(text) + "'");
         }
 
@@ -289,7 +266,11 @@ public class Numbers {
             try {
                 return Double.parseDouble(text);
             } catch (NumberFormatException e) {
-                return new BigDecimal(text);
+                try {
+                    return new BigDecimal(text);
+                } catch (NumberFormatException ex) {
+                    throw new JsonException("Invalid number text: '" + Strings.truncate(text) + "'", ex);
+                }
             }
         }
 
@@ -299,7 +280,11 @@ public class Numbers {
             return new BigInteger(text);
         }
         if (digits < 10) {
-            return Integer.parseInt(text);
+            try {
+                return Integer.parseInt(text);
+            } catch (NumberFormatException e) {
+                throw new JsonException("Invalid number text: '" + Strings.truncate(text) + "'", e);
+            }
         }
 
         if (len <= 11) {
@@ -313,7 +298,11 @@ public class Numbers {
         try {
             return Long.parseLong(text);
         } catch (NumberFormatException e) {
-            return new BigInteger(text);
+            try {
+                return new BigInteger(text);
+            } catch (NumberFormatException ex) {
+                throw new JsonException("Invalid number text: '" + Strings.truncate(text) + "'", ex);
+            }
         }
     }
 
@@ -372,8 +361,8 @@ public class Numbers {
      * Compares two numbers with cross-type numeric semantics.
      */
     public static int compare(Number source, Number target) {
-        Objects.requireNonNull(source, "source is null");
-        Objects.requireNonNull(target, "target is null");
+        if (source == null) throw new JsonException("source is null");
+        if (target == null) throw new JsonException("target is null");
         if (source instanceof BigInteger || target instanceof BigInteger) {
             return toBigInteger(source).compareTo(toBigInteger(target));
         }

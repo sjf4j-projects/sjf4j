@@ -400,7 +400,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String at index " + idx, e);
+            throw new JsonException("get failed: String at index " + idx, e);
         }
     }
     /**
@@ -419,7 +419,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to String", e);
+            throw new JsonException("as failed: value at index " + idx + " to String", e);
         }
     }
     /**
@@ -438,7 +438,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Number at index " + idx, e);
+            throw new JsonException("get failed: Number at index " + idx, e);
         }
     }
     /**
@@ -457,7 +457,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Number", e);
+            throw new JsonException("as failed: value at index " + idx + " to Number", e);
         }
     }
     /**
@@ -476,7 +476,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long at index " + idx, e);
+            throw new JsonException("get failed: Long at index " + idx, e);
         }
     }
     /**
@@ -495,7 +495,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Long", e);
+            throw new JsonException("as failed: value at index " + idx + " to Long", e);
         }
     }
     /**
@@ -514,7 +514,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer at index " + idx, e);
+            throw new JsonException("get failed: Integer at index " + idx, e);
         }
     }
     /**
@@ -533,7 +533,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Integer", e);
+            throw new JsonException("as failed: value at index " + idx + " to Integer", e);
         }
     }
     /**
@@ -552,7 +552,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short at index " + idx, e);
+            throw new JsonException("get failed: Short at index " + idx, e);
         }
     }
     /**
@@ -571,7 +571,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Short", e);
+            throw new JsonException("as failed: value at index " + idx + " to Short", e);
         }
     }
     /**
@@ -590,7 +590,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte at index " + idx, e);
+            throw new JsonException("get failed: Byte at index " + idx, e);
         }
     }
     /**
@@ -609,7 +609,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Byte", e);
+            throw new JsonException("as failed: value at index " + idx + " to Byte", e);
         }
     }
     /**
@@ -628,7 +628,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double at index " + idx, e);
+            throw new JsonException("get failed: Double at index " + idx, e);
         }
     }
     /**
@@ -647,7 +647,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Double", e);
+            throw new JsonException("as failed: value at index " + idx + " to Double", e);
         }
     }
     /**
@@ -666,7 +666,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float at index " + idx, e);
+            throw new JsonException("get failed: Float at index " + idx, e);
         }
     }
     /**
@@ -685,7 +685,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Float", e);
+            throw new JsonException("as failed: value at index " + idx + " to Float", e);
         }
     }
     /**
@@ -704,7 +704,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger at index " + idx, e);
+            throw new JsonException("get failed: BigInteger at index " + idx, e);
         }
     }
     /**
@@ -723,7 +723,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to BigInteger", e);
+            throw new JsonException("as failed: value at index " + idx + " to BigInteger", e);
         }
     }
     /**
@@ -742,7 +742,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal at index " + idx, e);
+            throw new JsonException("get failed: BigDecimal at index " + idx, e);
         }
     }
     /**
@@ -761,7 +761,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to BigDecimal", e);
+            throw new JsonException("as failed: value at index " + idx + " to BigDecimal", e);
         }
     }
     /**
@@ -780,7 +780,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean at index " + idx, e);
+            throw new JsonException("get failed: Boolean at index " + idx, e);
         }
     }
     /**
@@ -799,7 +799,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Boolean", e);
+            throw new JsonException("as failed: value at index " + idx + " to Boolean", e);
         }
     }
     /**
@@ -818,7 +818,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject at index " + idx, e);
+            throw new JsonException("get failed: JsonObject at index " + idx, e);
         }
     }
     /**
@@ -837,7 +837,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toMap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Map<String, Object> at index " + idx, e);
+            throw new JsonException("get failed: Map<String,Object> at index " + idx, e);
         }
     }
     /**
@@ -856,7 +856,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toMap(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to Map<String, " +
+            throw new JsonException("as failed: value at index " + idx + " to Map<String," +
                     clazz.getName() + ">", e);
         }
     }
@@ -876,7 +876,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray at index " + idx, e);
+            throw new JsonException("get failed: JsonArray at index " + idx, e);
         }
     }
     /**
@@ -895,7 +895,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toList(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get List<Object> at index " + idx, e);
+            throw new JsonException("get failed: List<Object> at index " + idx, e);
         }
     }
     /**
@@ -914,7 +914,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toList(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to List<" + clazz.getName() + ">", e);
+            throw new JsonException("as failed: value at index " + idx + " to List<" + clazz.getName() + ">", e);
         }
     }
     /**
@@ -933,7 +933,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Object[] at index " + idx, e);
+            throw new JsonException("get failed: Object[] at index " + idx, e);
         }
     }
     /**
@@ -952,7 +952,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toArray(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName() + "[]", e);
+            throw new JsonException("as failed: value at index " + idx + " to " + clazz.getName() + "[]", e);
         }
     }
     /**
@@ -972,7 +972,7 @@ public class JsonArray extends JsonContainer {
         try {
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to get " + clazz.getName() + " at index " + idx, e);
+            throw new JsonException("get failed: " + clazz.getName() + " at index " + idx, e);
         }
     }
     /**
@@ -980,7 +980,7 @@ public class JsonArray extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(int idx, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(idx, clazz);
     }
@@ -994,7 +994,7 @@ public class JsonArray extends JsonContainer {
         try {
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at index " + idx + " to " + clazz.getName(), e);
+            throw new JsonException("as failed: value at index " + idx + " to " + clazz.getName(), e);
         }
     }
     /**
@@ -1002,7 +1002,7 @@ public class JsonArray extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(int idx, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(idx, clazz);
     }
@@ -1015,7 +1015,7 @@ public class JsonArray extends JsonContainer {
      */
     public void add(Object object) {
         if (object != null && !elementType().isInstance(object))
-            throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
+            throw new JsonException("Type mismatch: cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
         if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
@@ -1037,7 +1037,7 @@ public class JsonArray extends JsonContainer {
      */
     public void add(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
-            throw new IllegalArgumentException("Cannot add element of type " + object.getClass().getName() +
+            throw new JsonException("Type mismatch: cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
         int pidx = pos(idx);
@@ -1057,8 +1057,8 @@ public class JsonArray extends JsonContainer {
      */
     public Object set(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
-            throw new IllegalArgumentException("Cannot set element of type " + object.getClass().getName() +
-                    " to JsonArray with elementType '" + elementType().getName() + "'");
+            throw new JsonException("Type mismatch: cannot set element of type '" + object.getClass().getName() +
+                    " in JsonArray with elementType '" + elementType().getName() + "'");
 
         int pidx = pos(idx);
         if (pidx < 0 || pidx >= size()) {
@@ -1167,7 +1167,11 @@ public class JsonArray extends JsonContainer {
      */
     public Object remove(int idx) {
         if (nodeList == null) return null;
-        return nodeList.remove(pos(idx));
+        int pidx = pos(idx);
+        if (pidx < 0 || pidx >= size()) {
+            throw new JsonException("Cannot remove index " + idx + " in JsonArray of size " + size());
+        }
+        return nodeList.remove(pidx);
     }
 
     /**

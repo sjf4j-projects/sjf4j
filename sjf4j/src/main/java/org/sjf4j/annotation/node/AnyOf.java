@@ -13,12 +13,12 @@ public @interface AnyOf {
     @Retention(RetentionPolicy.RUNTIME)
     @interface Mapping {
         Class<?> value();
-        String[] when() default {};         // "c" or {"a","b"}
+        String[] when() default {}; // "c" or {"a","b"}
     }
 
     String key() default "";
 
-    String path() default "";               // Only works in Scope.SELF
+    String path() default "";   // Only works in Scope.SELF
 
     Scope scope() default Scope.SELF;
     enum Scope { SELF, PARENT /*, ROOT*/ }

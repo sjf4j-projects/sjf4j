@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
@@ -184,7 +185,7 @@ public interface Evaluator {
                 this.jsonTypes = (JsonType[]) Array.newInstance(JsonType.class, types.length);
                 for (int i = 0; i < types.length; i++) this.jsonTypes[i] = JsonType.ofSchema(types[i]);
             } else {
-                throw new IllegalArgumentException("TypeEvaluator only supports String or Array, but found: " +
+                throw new SchemaException("Invalid 'type' keyword: expected String or Array, but found " +
                         type.getClass().getSimpleName());
             }
         }
@@ -340,7 +341,7 @@ public interface Evaluator {
             this.multipleOf = multipleOf;
             this.divisor = Numbers.normalizeDecimal(multipleOf);
             if (divisor.signum() <= 0)
-                throw new IllegalArgumentException("multipleOf must > 0");
+                throw new SchemaException("Invalid 'multipleOf' keyword: value must be > 0");
             this.isIntegerDivisor = divisor.scale() <= 0;
             this.divisorLong = isIntegerDivisor ? divisor.longValueExact() : 0L;
             this.divisorDouble = divisor.doubleValue();

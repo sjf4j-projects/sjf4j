@@ -1,5 +1,6 @@
 package org.sjf4j.node;
 
+import org.sjf4j.exception.JsonException;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -21,7 +22,7 @@ public abstract class TypeReference<T> {
         if (superclass instanceof ParameterizedType) {
             this.type = ((ParameterizedType) superclass).getActualTypeArguments()[0];
         } else {
-            throw new IllegalArgumentException("Missing type parameter.");
+            throw new JsonException("Invalid TypeReference declaration: missing type parameter");
         }
     }
 

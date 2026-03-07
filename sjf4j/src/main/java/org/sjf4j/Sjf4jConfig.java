@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
@@ -92,7 +93,7 @@ public final class Sjf4jConfig {
      * Replaces global configuration and refreshes dependent codecs.
      */
     public static void global(Sjf4jConfig sjf4jConfig) {
-        if (sjf4jConfig == null) throw new IllegalArgumentException("JsonConfig must not be null");
+        if (sjf4jConfig == null) throw new JsonException("config is null");
         GLOBAL = sjf4jConfig;
         NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
     }
@@ -252,7 +253,7 @@ public final class Sjf4jConfig {
          * Creates a builder initialized from existing config.
          */
         public Builder(Sjf4jConfig config) {
-            if (config == null) throw new IllegalArgumentException("JsonConfig must not be null");
+            if (config == null) throw new JsonException("config is null");
             this.jsonFacade = config.jsonFacade;
             this.yamlFacade = config.yamlFacade;
             this.propertiesFacade = config.propertiesFacade;
@@ -276,7 +277,7 @@ public final class Sjf4jConfig {
          * Sets JSON facade.
          */
         public Builder jsonFacade(JsonFacade<?, ?> jsonFacade) {
-            if (jsonFacade == null) throw new IllegalArgumentException("jsonFacade must not be null");
+            if (jsonFacade == null) throw new JsonException("jsonFacade is null");
             this.jsonFacade = jsonFacade;
             return this;
         }
@@ -284,7 +285,7 @@ public final class Sjf4jConfig {
          * Sets YAML facade.
          */
         public Builder yamlFacade(YamlFacade<?, ?> yamlFacade) {
-            if (yamlFacade == null) throw new IllegalArgumentException("yamlFacade must not be null");
+            if (yamlFacade == null) throw new JsonException("yamlFacade is null");
             this.yamlFacade = yamlFacade;
             return this;
         }
@@ -292,7 +293,7 @@ public final class Sjf4jConfig {
          * Sets properties facade.
          */
         public Builder propertiesFacade(PropertiesFacade propertiesFacade) {
-            if (propertiesFacade == null) throw new IllegalArgumentException("propertiesFacade must not be null");
+            if (propertiesFacade == null) throw new JsonException("propertiesFacade is null");
             this.propertiesFacade = propertiesFacade;
             return this;
         }
@@ -300,7 +301,7 @@ public final class Sjf4jConfig {
          * Sets node facade.
          */
         public Builder nodeFacade(NodeFacade nodeFacade) {
-            if (nodeFacade == null) throw new IllegalArgumentException("nodeFacade must not be null");
+            if (nodeFacade == null) throw new JsonException("nodeFacade is null");
             this.nodeFacade = nodeFacade;
             return this;
         }
@@ -308,7 +309,7 @@ public final class Sjf4jConfig {
          * Sets map supplier.
          */
         public Builder mapSupplier(MapSupplier mapSupplier) {
-            if (mapSupplier == null) throw new IllegalArgumentException("mapSupplier must not be null");
+            if (mapSupplier == null) throw new JsonException("mapSupplier is null");
             this.mapSupplier = mapSupplier;
             return this;
         }
@@ -316,7 +317,7 @@ public final class Sjf4jConfig {
          * Sets list supplier.
          */
         public Builder listSupplier(ListSupplier listSupplier) {
-            if (listSupplier == null) throw new IllegalArgumentException("listSupplier must not be null");
+            if (listSupplier == null) throw new JsonException("listSupplier is null");
             this.listSupplier = listSupplier;
             return this;
         }
@@ -324,7 +325,7 @@ public final class Sjf4jConfig {
          * Sets set supplier.
          */
         public Builder setSupplier(SetSupplier setSupplier) {
-            if (setSupplier == null) throw new IllegalArgumentException("setSupplier must not be null");
+            if (setSupplier == null) throw new JsonException("setSupplier is null");
             this.setSupplier = setSupplier;
             return this;
         }
@@ -339,7 +340,7 @@ public final class Sjf4jConfig {
          * Sets Instant format.
          */
         public Builder instantFormat(InstantFormat instantFormat) {
-            if (instantFormat == null) throw new IllegalArgumentException("instantFormat must not be null");
+            if (instantFormat == null) throw new JsonException("instantFormat is null");
             this.instantFormat = instantFormat;
             return this;
         }

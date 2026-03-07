@@ -1,5 +1,7 @@
 package org.sjf4j.path;
 
+import org.sjf4j.exception.JsonException;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -30,7 +32,7 @@ public final class PathStack {
      * Creates a PathStack with the given initial capacity.
      */
     public PathStack(int capacity) {
-        if (capacity <= 0) throw new IllegalArgumentException("capacity must be > 0");
+        if (capacity <= 0) throw new JsonException("capacity must be > 0");
         this.kinds = new byte[capacity];
         this.names = new String[capacity];
         this.indices = new int[capacity];

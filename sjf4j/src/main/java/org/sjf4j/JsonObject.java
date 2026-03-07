@@ -649,7 +649,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String for key '" + key + "'", e);
+            throw new JsonException("get failed: String for key '" + key + "'", e);
         }
     }
 
@@ -685,7 +685,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Number for key '" + key + "'", e);
+            throw new JsonException("get failed: Number for key '" + key + "'", e);
         }
     }
     
@@ -705,7 +705,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Number", e);
+            throw new JsonException("as failed: key '" + key + "' to Number", e);
         }
     }
     
@@ -725,7 +725,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long for key '" + key + "'", e);
+            throw new JsonException("get failed: Long for key '" + key + "'", e);
         }
     }
     
@@ -745,7 +745,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Long", e);
+            throw new JsonException("as failed: key '" + key + "' to Long", e);
         }
     }
     
@@ -765,7 +765,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer for key '" + key + "'", e);
+            throw new JsonException("get failed: Integer for key '" + key + "'", e);
         }
     }
     
@@ -785,7 +785,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Integer", e);
+            throw new JsonException("as failed: key '" + key + "' to Integer", e);
         }
     }
     
@@ -805,7 +805,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short for key '" + key + "'", e);
+            throw new JsonException("get failed: Short for key '" + key + "'", e);
         }
     }
     
@@ -825,7 +825,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Short", e);
+            throw new JsonException("as failed: key '" + key + "' to Short", e);
         }
     }
     
@@ -845,7 +845,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte for key '" + key + "'", e);
+            throw new JsonException("get failed: Byte for key '" + key + "'", e);
         }
     }
     
@@ -865,7 +865,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Byte", e);
+            throw new JsonException("as failed: key '" + key + "' to Byte", e);
         }
     }
     
@@ -885,7 +885,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double for key '" + key + "'", e);
+            throw new JsonException("get failed: Double for key '" + key + "'", e);
         }
     }
     
@@ -905,7 +905,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Double", e);
+            throw new JsonException("as failed: key '" + key + "' to Double", e);
         }
     }
     
@@ -925,7 +925,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float for key '" + key + "'", e);
+            throw new JsonException("get failed: Float for key '" + key + "'", e);
         }
     }
     
@@ -945,7 +945,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Float", e);
+            throw new JsonException("as failed: key '" + key + "' to Float", e);
         }
     }
     
@@ -965,7 +965,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger for key '" + key + "'", e);
+            throw new JsonException("get failed: BigInteger for key '" + key + "'", e);
         }
     }
     
@@ -985,7 +985,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to BigInteger", e);
+            throw new JsonException("as failed: key '" + key + "' to BigInteger", e);
         }
     }
     
@@ -1005,7 +1005,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal for key '" + key + "'", e);
+            throw new JsonException("get failed: BigDecimal for key '" + key + "'", e);
         }
     }
     
@@ -1025,7 +1025,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to BigDecimal", e);
+            throw new JsonException("as failed: key '" + key + "' to BigDecimal", e);
         }
     }
     
@@ -1045,7 +1045,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean for key '" + key + "'", e);
+            throw new JsonException("get failed: Boolean for key '" + key + "'", e);
         }
     }
     
@@ -1065,7 +1065,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Boolean", e);
+            throw new JsonException("as failed: key '" + key + "' to Boolean", e);
         }
     }
     
@@ -1085,7 +1085,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject for key '" + key + "'", e);
+            throw new JsonException("get failed: JsonObject for key '" + key + "'", e);
         }
     }
     
@@ -1105,7 +1105,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toMap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Map<String, Object> for key '" + key + "'", e);
+            throw new JsonException("get failed: Map<String,Object> for key '" + key + "'", e);
         }
     }
     /**
@@ -1124,7 +1124,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toMap(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to Map<String, " + clazz.getName() + ">", e);
+            throw new JsonException("as failed: key '" + key + "' to Map<String," + clazz.getName() + ">", e);
         }
     }
     /**
@@ -1143,7 +1143,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray for key '" + key + "'", e);
+            throw new JsonException("get failed: JsonArray for key '" + key + "'", e);
         }
     }
     
@@ -1163,7 +1163,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toList(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get List<Object> for key '" + key + "'", e);
+            throw new JsonException("get failed: List<Object> for key '" + key + "'", e);
         }
     }
     /**
@@ -1182,7 +1182,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toList(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to List<" + clazz.getName() + ">", e);
+            throw new JsonException("as failed: key '" + key + "' to List<" + clazz.getName() + ">", e);
         }
     }
     /**
@@ -1201,7 +1201,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Object[] for key '" + key + "'", e);
+            throw new JsonException("get failed: Object[] for key '" + key + "'", e);
         }
     }
     /**
@@ -1220,7 +1220,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toArray(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName() + "[]", e);
+            throw new JsonException("as failed: key '" + key + "' to " + clazz.getName() + "[]", e);
         }
     }
     /**
@@ -1239,7 +1239,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to get " + clazz.getName() + " for key '" + key + "'", e);
+            throw new JsonException("get failed: " + clazz.getName() + " for key '" + key + "'", e);
         }
     }
     
@@ -1248,7 +1248,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(String key, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(key, clazz);
     }
@@ -1261,7 +1261,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert key '" + key + "' to " + clazz.getName(), e);
+            throw new JsonException("as failed: key '" + key + "' to " + clazz.getName(), e);
         }
     }
     
@@ -1270,7 +1270,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(String key, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(key, clazz);
     }
@@ -1407,7 +1407,7 @@ public class JsonObject extends JsonContainer {
     public Object remove(String key) {
         Objects.requireNonNull(key, "key is null");
         if (fieldMap != null && fieldMap.containsKey(key)) {
-            throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass() +
+            throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }
         if (dynamicMap != null) {

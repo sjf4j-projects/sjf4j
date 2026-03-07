@@ -214,7 +214,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get String by path '" + this + "'", e);
+            throw new JsonException("get failed: String by path '" + this + "'", e);
         }
     }
     /**
@@ -233,7 +233,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asString(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to String", e);
+            throw new JsonException("as failed: value at path '" + this + "' to String", e);
         }
     }
     /**
@@ -253,7 +253,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Number by path '" + this + "'", e);
+            throw new JsonException("get failed: Number by path '" + this + "'", e);
         }
     }
     /**
@@ -272,7 +272,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asNumber(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Number", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Number", e);
         }
     }
     /**
@@ -292,7 +292,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Long by path '" + this + "'", e);
+            throw new JsonException("get failed: Long by path '" + this + "'", e);
         }
     }
     /**
@@ -311,7 +311,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Long", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Long", e);
         }
     }
     /**
@@ -331,7 +331,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Integer by path '" + this + "'", e);
+            throw new JsonException("get failed: Integer by path '" + this + "'", e);
         }
     }
     /**
@@ -350,7 +350,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Integer", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Integer", e);
         }
     }
     /**
@@ -370,7 +370,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Short by path '" + this + "'", e);
+            throw new JsonException("get failed: Short by path '" + this + "'", e);
         }
     }
     /**
@@ -389,7 +389,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Short", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Short", e);
         }
     }
     /**
@@ -409,7 +409,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Byte by path '" + this + "'", e);
+            throw new JsonException("get failed: Byte by path '" + this + "'", e);
         }
     }
     /**
@@ -428,7 +428,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Byte", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Byte", e);
         }
     }
     /**
@@ -448,7 +448,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Double by path '" + this + "'", e);
+            throw new JsonException("get failed: Double by path '" + this + "'", e);
         }
     }
     /**
@@ -467,7 +467,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Double", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Double", e);
         }
     }
     /**
@@ -487,7 +487,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Float by path '" + this + "'", e);
+            throw new JsonException("get failed: Float by path '" + this + "'", e);
         }
     }
     /**
@@ -506,7 +506,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Float", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Float", e);
         }
     }
     /**
@@ -526,7 +526,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigInteger by path '" + this + "'", e);
+            throw new JsonException("get failed: BigInteger by path '" + this + "'", e);
         }
     }
     /**
@@ -545,7 +545,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to BigInteger", e);
+            throw new JsonException("as failed: value at path '" + this + "' to BigInteger", e);
         }
     }
     /**
@@ -565,7 +565,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get BigDecimal by path '" + this + "'", e);
+            throw new JsonException("get failed: BigDecimal by path '" + this + "'", e);
         }
     }
     /**
@@ -584,7 +584,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to BigDecimal", e);
+            throw new JsonException("as failed: value at path '" + this + "' to BigDecimal", e);
         }
     }
     /**
@@ -604,7 +604,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Boolean by path '" + this + "'", e);
+            throw new JsonException("get failed: Boolean by path '" + this + "'", e);
         }
     }
     /**
@@ -623,7 +623,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.asBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Boolean", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Boolean", e);
         }
     }
     /**
@@ -643,7 +643,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonObject by path '" + this + "'", e);
+            throw new JsonException("get failed: JsonObject by path '" + this + "'", e);
         }
     }
     /**
@@ -663,7 +663,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toMap(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Map<String, Object> by path '" + this + "'", e);
+            throw new JsonException("get failed: Map<String,Object> by path '" + this + "'", e);
         }
     }
     /**
@@ -682,7 +682,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toMap(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Map<String, " +
+            throw new JsonException("as failed: value at path '" + this + "' to Map<String," +
                     clazz.getName() + ">", e);
         }
     }
@@ -703,7 +703,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get JsonArray by path '" + this + "'", e);
+            throw new JsonException("get failed: JsonArray by path '" + this + "'", e);
         }
     }
     /**
@@ -723,7 +723,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toList(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get List<Object> by path '" + this + "'", e);
+            throw new JsonException("get failed: List<Object> by path '" + this + "'", e);
         }
     }
     /**
@@ -742,7 +742,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toList(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to List<" + clazz.getName() + ">", e);
+            throw new JsonException("as failed: value at path '" + this + "' to List<" + clazz.getName() + ">", e);
         }
     }
     /**
@@ -762,7 +762,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toArray(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Object[] by path '" + this + "'", e);
+            throw new JsonException("get failed: Object[] by path '" + this + "'", e);
         }
     }
     /**
@@ -781,7 +781,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toArray(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName() + "[]", e);
+            throw new JsonException("as failed: value at path '" + this + "' to " + clazz.getName() + "[]", e);
         }
     }
     /**
@@ -801,7 +801,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toSet(value);
         } catch (Exception e) {
-            throw new JsonException("Failed to get Set<Object> by path '" + this + "'", e);
+            throw new JsonException("get failed: Set<Object> by path '" + this + "'", e);
         }
     }
     /**
@@ -820,7 +820,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.toSet(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to Set<" + clazz.getName() + ">", e);
+            throw new JsonException("as failed: value at path '" + this + "' to Set<" + clazz.getName() + ">", e);
         }
     }
     /**
@@ -839,7 +839,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to get " + clazz.getName() + " by path '" + this + "'", e);
+            throw new JsonException("get failed: " + clazz.getName() + " by path '" + this + "'", e);
         }
     }
 
@@ -848,7 +848,7 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(Object container, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(container, clazz);
     }
@@ -861,7 +861,7 @@ public class JsonPath {
             Object value = getNode(container);
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert value at path '" + this + "' to " + clazz.getName(), e);
+            throw new JsonException("as failed: value at path '" + this + "' to " + clazz.getName(), e);
         }
     }
     /**
@@ -869,7 +869,7 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(Object container, T... reified) {
-        if (reified.length > 0) throw new IllegalArgumentException("`reified` should be empty.");
+        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(container, clazz);
     }
@@ -945,7 +945,7 @@ public class JsonPath {
             Object value = eval(container);
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to eval " + clazz.getName() + " by path '" + this + "'", e);
+            throw new JsonException("eval failed: " + clazz.getName() + " by path '" + this + "'", e);
         }
     }
 
@@ -957,7 +957,7 @@ public class JsonPath {
             Object value = eval(container);
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("Failed to convert eval-value at path '" + this + "' to " + clazz.getName(), e);
+            throw new JsonException("eval-as failed: value at path '" + this + "' to " + clazz.getName(), e);
         }
     }
 

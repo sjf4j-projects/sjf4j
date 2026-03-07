@@ -1,6 +1,7 @@
 package org.sjf4j;
 
 import org.sjf4j.facade.FacadeNodes;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.NodeRegistry;
 
@@ -65,11 +66,11 @@ public enum JsonType {
         return of(NodeKind.of(node));
     }
 
-    public static JsonType rawOf(Object node) {
-        NodeKind kind = NodeKind.plainOf(node);
+    public static JsonType rawOf(Class<?> clazz) {
+        NodeKind kind = NodeKind.plainOf(clazz);
         if (kind != NodeKind.UNKNOWN) return of(kind);
 
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(node.getClass());
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (ti.valueCodecInfo != null) {
             return of(NodeKind.plainOf(ti.valueCodecInfo.getRawClazz()));
         } else if (ti.anyOfInfo != null) {
@@ -78,8 +79,8 @@ public enum JsonType {
             return OBJECT;
         }
 
-        if (FacadeNodes.isNode(node)) {
-            return of(FacadeNodes.kindOf(node));
+        if (FacadeNodes.isNode(clazz)) {
+            return of(FacadeNodes.kindOf(clazz));
         }
         return UNKNOWN;
     }
@@ -96,7 +97,7 @@ public enum JsonType {
             case "integer": return JsonType.INTEGER;
             case "boolean": return JsonType.BOOLEAN;
             case "null": return JsonType.NULL;
-            default: throw new IllegalArgumentException("Unknown type: " + type);
+            default: throw new JsonException("Unknown JSON Schema type: " + type);
         }
     }
 

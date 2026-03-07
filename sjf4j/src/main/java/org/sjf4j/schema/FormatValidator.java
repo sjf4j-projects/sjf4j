@@ -1,5 +1,6 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.Paths;
 
 import java.net.IDN;
@@ -49,7 +50,7 @@ public interface FormatValidator {
             case "json-pointer": return JSON_POINTER;
             case "relative-json-pointer": return RELATIVE_JSON_POINTER;
             case "regex": return REGEX;
-            default: throw new IllegalArgumentException("Unsupported format: " + format);
+            default: throw new JsonException("Unsupported schema format: " + format);
         }
     }
 

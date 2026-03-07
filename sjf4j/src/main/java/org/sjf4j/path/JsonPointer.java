@@ -5,6 +5,7 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.exception.JsonException;
 
 import java.util.Objects;
 
@@ -45,7 +46,7 @@ public class JsonPointer extends JsonPath {
         } else if (expr.startsWith("/")) {
             segments = Paths.parsePointer(expr);
         } else {
-            throw new IllegalArgumentException("JSON Pointer expr must start with '/'");
+            throw new JsonException("Invalid JSON Pointer expression '" + expr + "': must start with '/'");
         }
         return new JsonPointer(expr, segments);
     }

@@ -33,7 +33,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      * Creates facade with configured GsonBuilder and optional plugin module.
      */
     public GsonJsonFacade(GsonBuilder gsonBuilder) {
-        if (gsonBuilder == null) throw new IllegalArgumentException("GsonBuilder must not be null");
+        if (gsonBuilder == null) throw new JsonException("gsonBuilder is null");
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         if (streamingMode == StreamingMode.PLUGIN_MODULE) {
