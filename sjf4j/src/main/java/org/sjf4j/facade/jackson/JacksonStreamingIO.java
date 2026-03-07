@@ -357,21 +357,7 @@ public class JacksonStreamingIO {
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            List<Object> list = new ArrayList<>();
-            int i = 0;
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(parser, compType, valueClazz, cps);
-                list.add(value);
-            }
-            parser.nextToken();
-
-            Object array = Array.newInstance(compType, list.size());
-            for (int j = 0, len = list.size(); j < len; j++) {
-                Array.set(array, j, list.get(j));
-            }
-            return array;
+            return _readArrayWithElementType(parser, rawClazz, compType, valueClazz, ps);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
@@ -409,6 +395,8 @@ public class JacksonStreamingIO {
                 return _readListWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case SET:
                 return _readSetWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+            case ARRAY:
+                return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
                 return _readNode(parser, fi.type, fi.rawClazz, ps);
         }
@@ -470,6 +458,30 @@ public class JacksonStreamingIO {
         }
         parser.nextToken();
         return set;
+    }
+
+    private static Object _readArrayWithElementType(JsonParser parser, Class<?> rawClazz,
+                                                     Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
+        if (parser.currentToken() == JsonToken.VALUE_NULL) {
+            parser.nextToken();
+            return null;
+        }
+        List<Object> list = new ArrayList<>();
+        int i = 0;
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_ARRAY) {
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(parser, valueType, valueClazz, cps);
+            list.add(value);
+        }
+        parser.nextToken();
+
+        Object array = Array.newInstance(rawClazz.getComponentType(), list.size());
+        for (int j = 0, len = list.size(); j < len; j++) {
+            Array.set(array, j, list.get(j));
+        }
+        return array;
     }
 
     /// Reader

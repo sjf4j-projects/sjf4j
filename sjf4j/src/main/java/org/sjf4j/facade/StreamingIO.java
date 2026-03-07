@@ -294,21 +294,7 @@ public final class StreamingIO {
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            List<Object> list = new ArrayList<>();
-            int i = 0;
-            reader.startArray();
-            while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, compType, valueClazz, cps);
-                list.add(value);
-            }
-            reader.endArray();
-
-            Object array = Array.newInstance(compType, list.size());
-            for (int j = 0, len = list.size(); j < len; j++) {
-                Array.set(array, j, list.get(j));
-            }
-            return array;
+            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz, ps);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
@@ -349,6 +335,8 @@ public final class StreamingIO {
                 return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case SET:
                 return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+            case ARRAY:
+                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
                 return _readNode(reader, fi.type, fi.rawClazz, ps);
         }
@@ -402,7 +390,7 @@ public final class StreamingIO {
      * Reads array token into set with typed elements.
      */
     private static Set<Object> _readSetWithElementType(StreamingReader reader, Class<?> rawClazz,
-                                                       Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
         if (reader.peekToken() == StreamingReader.Token.NULL) {
             reader.nextNull();
@@ -418,6 +406,33 @@ public final class StreamingIO {
         }
         reader.endArray();
         return set;
+    }
+
+    /**
+     * Reads array token into Java array with typed elements.
+     */
+    private static Object _readArrayWithElementType(StreamingReader reader, Class<?> rawClazz,
+                                                    Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
+        if (reader.peekToken() == StreamingReader.Token.NULL) {
+            reader.nextNull();
+            return null;
+        }
+        List<Object> list = new ArrayList<>();
+        int i = 0;
+        reader.startArray();
+        while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(reader, valueType, valueClazz, cps);
+            list.add(value);
+        }
+        reader.endArray();
+
+        Object array = Array.newInstance(rawClazz.getComponentType(), list.size());
+        for (int j = 0, len = list.size(); j < len; j++) {
+            Array.set(array, j, list.get(j));
+        }
+        return array;
     }
 
 

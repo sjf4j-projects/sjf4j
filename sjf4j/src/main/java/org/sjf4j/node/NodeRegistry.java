@@ -400,7 +400,8 @@ public final class NodeRegistry {
             NONE,
             LIST,
             SET,
-            MAP
+            MAP,
+            ARRAY
         }
 
         public final String name;
@@ -441,6 +442,10 @@ public final class NodeRegistry {
                 kind = ContainerKind.MAP;
                 argType = Types.resolveTypeArgument(type, Map.class, 1);
                 argRawType = Types.rawBox(argType);
+            } else if (this.rawClazz.isArray()) {
+                kind = ContainerKind.ARRAY;
+                argType = this.rawClazz.getComponentType();
+                argRawType = Types.box((Class<?>) argType);
             }
             this.containerKind = kind;
             this.argType = argType;

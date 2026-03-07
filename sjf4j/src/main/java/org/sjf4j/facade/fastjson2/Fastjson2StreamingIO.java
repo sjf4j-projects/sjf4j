@@ -301,22 +301,7 @@ public class Fastjson2StreamingIO {
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            List<Object> list = new ArrayList<>();
-            int i = 0;
-            if (!reader.nextIfArrayStart()) {
-                throw new JsonException("Expected token '[', but was " + reader.current());
-            }
-            while (!reader.nextIfArrayEnd()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, compType, valueClazz, cps);
-                list.add(value);
-            }
-
-            Object array = Array.newInstance(compType, list.size());
-            for (int j = 0, len = list.size(); j < len; j++) {
-                Array.set(array, j, list.get(j));
-            }
-            return array;
+            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz, ps);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
@@ -355,6 +340,8 @@ public class Fastjson2StreamingIO {
                 return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             case SET:
                 return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+            case ARRAY:
+                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
                 return _readNode(reader, fi.type, fi.rawClazz, ps);
         }
@@ -415,6 +402,30 @@ public class Fastjson2StreamingIO {
             set.add(value);
         }
         return set;
+    }
+
+    private static Object _readArrayWithElementType(JSONReader reader, Class<?> rawClazz,
+                                                     Type valueType, Class<?> valueClazz, PathSegment ps)
+            throws IOException {
+        if (reader.nextIfNull()) {
+            return null;
+        }
+        List<Object> list = new ArrayList<>();
+        int i = 0;
+        if (!reader.nextIfArrayStart()) {
+            throw new JsonException("Expected token '[', but was " + reader.current());
+        }
+        while (!reader.nextIfArrayEnd()) {
+            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+            Object value = _readNode(reader, valueType, valueClazz, cps);
+            list.add(value);
+        }
+
+        Object array = Array.newInstance(rawClazz.getComponentType(), list.size());
+        for (int j = 0, len = list.size(); j < len; j++) {
+            Array.set(array, j, list.get(j));
+        }
+        return array;
     }
 
     /// Reader
