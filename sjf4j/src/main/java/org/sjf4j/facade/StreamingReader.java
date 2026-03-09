@@ -1,6 +1,8 @@
 package org.sjf4j.facade;
 
 
+import org.sjf4j.JsonType;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -26,6 +28,25 @@ public interface StreamingReader extends Closeable {
         NUMBER,         // JSON number value
         BOOLEAN,        // JSON boolean value (true/false)
         NULL;          // JSON null value
+
+        public JsonType jsonType() {
+            switch (this) {
+                case START_OBJECT:
+                    return JsonType.OBJECT;
+                case START_ARRAY:
+                    return JsonType.ARRAY;
+                case STRING:
+                    return JsonType.STRING;
+                case NUMBER:
+                    return JsonType.NUMBER;
+                case BOOLEAN:
+                    return JsonType.BOOLEAN;
+                case NULL:
+                    return JsonType.NULL;
+                default:
+                    return JsonType.UNKNOWN;
+            }
+        }
     }
 
 //    int ID_UNKNOWN = -1;

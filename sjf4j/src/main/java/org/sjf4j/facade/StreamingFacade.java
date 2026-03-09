@@ -24,6 +24,7 @@ import java.util.Objects;
 public interface StreamingFacade<R extends StreamingReader, W extends StreamingWriter> {
 
     enum StreamingMode {
+        AUTO,
         SHARED_IO,
         EXCLUSIVE_IO,
         PLUGIN_MODULE

@@ -9,6 +9,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 
 import java.io.IOException;
@@ -24,8 +25,7 @@ import java.util.Objects;
  * Fastjson2-based JSON facade with selectable streaming modes.
  */
 public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
-    private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
-            ? Sjf4jConfig.global().streamingMode : StreamingMode.PLUGIN_MODULE;
+    private final StreamingMode streamingMode;
 
 //    private final JSONReader.Feature[] readerFeatures;
 //    private final JSONWriter.Feature[] writerFeatures;
@@ -36,41 +36,44 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      * Creates facade with default reader/writer features.
      */
     public Fastjson2JsonFacade() {
-        this(new JSONReader.Feature[0], new JSONWriter.Feature[0]);
+        this(new JSONReader.Feature[0], new JSONWriter.Feature[0], null);
+    }
+
+    public Fastjson2JsonFacade(StreamingMode streamingMode) {
+        this(new JSONReader.Feature[0], new JSONWriter.Feature[0], streamingMode);
     }
 
     /**
      * Creates facade with custom writer features.
      */
     public Fastjson2JsonFacade(JSONWriter.Feature... writerFeatures) {
-        this(new JSONReader.Feature[0], writerFeatures);
+        this(new JSONReader.Feature[0], writerFeatures, null);
     }
 
     /**
      * Creates facade with custom reader features.
      */
     public Fastjson2JsonFacade(JSONReader.Feature... readerFeatures) {
-        this(readerFeatures, new JSONWriter.Feature[0]);
+        this(readerFeatures, new JSONWriter.Feature[0], null);
     }
 
     /**
      * Creates facade with custom reader and writer features.
      */
-    public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures,
-                               JSONWriter.Feature[] writerFeatures) {
+    public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures, JSONWriter.Feature[] writerFeatures,
+                               StreamingMode streamingMode) {
         Objects.requireNonNull(readerFeatures, "readerFeatures is null");
         Objects.requireNonNull(writerFeatures, "writerFeatures is null");
-//        this.readerFeatures = readerFeatures;
-//        this.writerFeatures = writerFeatures;
+        this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
+
         this.readerContext = JSONFactory.createReadContext(readerFeatures);
         this.writerContext = JSONFactory.createWriteContext(writerFeatures);
 
-        this.readerContext.config(
-                JSONReader.Feature.UseDoubleForDecimals
-        );
+        this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
+        this.writerContext.config(JSONWriter.Feature.WriteNulls);
 
         // With Module
-        if (streamingMode == StreamingMode.PLUGIN_MODULE) {
+        if (this.streamingMode == StreamingMode.PLUGIN_MODULE || this.streamingMode == StreamingMode.AUTO) {
             ObjectReaderProvider readProvider = JSONFactory.getDefaultObjectReaderProvider();
             readProvider.register(new Fastjson2Module.MyReaderModule());
             this.readerContext.setExtraProcessor((object, key, value) -> {
@@ -135,16 +138,15 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try {
-                    JSONReader reader = JSONReader.of(input, readerContext);
+                try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
-                try {
-                    JSONReader reader = JSONReader.of(input, readerContext);
+            case PLUGIN_MODULE:
+            case AUTO: {
+                try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
@@ -166,16 +168,15 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try {
-                    JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
+                try (JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext)) {
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
-                try {
-                    JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
+            case PLUGIN_MODULE:
+            case AUTO: {
+                try (JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
@@ -197,14 +198,14 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try {
-                    JSONReader reader = JSONReader.of(input, readerContext);
+                try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
@@ -227,14 +228,14 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try {
-                    JSONReader reader = JSONReader.of(input, readerContext);
+                try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON bytes into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
@@ -290,7 +291,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
                 break;
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try (JSONWriter writer = JSONWriter.of(writerContext)) {
                     writer.writeAny(node);
                     writer.flushTo(output);
@@ -326,7 +328,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
                 break;
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     writer.flushTo(output);
@@ -358,7 +361,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to write node type " + Types.name(node) + " to JSON string", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     return writer.toString();
@@ -388,7 +392,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                     throw new JsonException("Failed to write node type " + Types.name(node) + " to JSON bytes", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     return writer.getBytes();

@@ -130,13 +130,12 @@ public final class ReflectUtil {
                 if (getter == null && lambdaGetter == null) {
                     // log.warn("No accessible getter or setter found for field '{}' of {}", field.getName(), curClazz);
                 } else {
+                    Type fieldType = Types.fieldType(curType, field);
                     NodeRegistry.AnyOfInfo anyOfInfo = null;
                     AnyOf ann = field.getAnnotation(AnyOf.class);
                     if (ann != null) {
-                        anyOfInfo = ReflectUtil.analyzeAnyOf(field.getDeclaringClass(), ann);
+                        anyOfInfo = ReflectUtil.analyzeAnyOf(Types.rawClazz(fieldType), ann);
                     }
-
-                    Type fieldType = Types.fieldType(curType, field);
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
                     String fieldName = getFieldName(field);

@@ -7,6 +7,10 @@ import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.YamlFacade;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facade.gson.GsonJsonFacade;
+import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
@@ -39,8 +43,6 @@ public final class Sjf4jConfig {
      * The Object facade implementation to use for object conversion operations.
      */
     private NodeFacade nodeFacade;
-
-    public final StreamingFacade.StreamingMode streamingMode;
 
     /**
      * The supplier used to create map instances.
@@ -82,7 +84,6 @@ public final class Sjf4jConfig {
         this.mapSupplier = builder.mapSupplier;
         this.listSupplier = builder.listSupplier;
         this.setSupplier = builder.setSupplier;
-        this.streamingMode = builder.streamingMode;
         this.instantFormat = builder.instantFormat;
         this.bindingPath = builder.bindingPath;
     }
@@ -104,55 +105,46 @@ public final class Sjf4jConfig {
         return GLOBAL;
     }
 
+
     /**
      * Switches global JSON facade to Jackson.
      */
     public static void useJacksonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(FacadeFactory.createJacksonFacade()).build());
+                .jsonFacade(new JacksonJsonFacade()).build());
+    }
+    public static void useJacksonAsGlobal(StreamingFacade.StreamingMode streamingMode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new JacksonJsonFacade(streamingMode)).build());
     }
     /**
      * Switches global JSON facade to Gson.
      */
     public static void useGsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(FacadeFactory.createGsonFacade()).build());
+                .jsonFacade(new GsonJsonFacade()).build());
+    }
+    public static void useGsonAsGlobal(StreamingFacade.StreamingMode streamingMode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new GsonJsonFacade(streamingMode)).build());
     }
     /**
      * Switches global JSON facade to Fastjson2.
      */
     public static void useFastjson2AsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(FacadeFactory.createFastjson2Facade()).build());
+                .jsonFacade(new Fastjson2JsonFacade()).build());
     }
-    /**
-     * Uses shared IO streaming mode globally.
-     */
-    public static void useStreamingSharedIOAsGlobal() {
-        Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
-                .streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
+    public static void useFastjson2AsGlobal(StreamingFacade.StreamingMode streamingMode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new Fastjson2JsonFacade(streamingMode)).build());
     }
-    /**
-     * Uses exclusive IO streaming mode globally.
-     */
-    public static void useStreamingExclusiveIOAsGlobal() {
-        Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
-                .streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
-    }
-    /**
-     * Uses plugin-module streaming mode globally.
-     */
-    public static void useStreamingPluginModuleAsGlobal() {
-        Sjf4jConfig.global(new Builder(Sjf4jConfig.global())
-                .streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
-    }
-
     /**
      * Switches global JSON facade to built-in simple implementation.
      */
     public static void useSimpleJsonAsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(FacadeFactory.createSimpleJsonFacade()).build());
+                .jsonFacade(new SimpleJsonFacade()).build());
     }
 
     /**
@@ -226,6 +218,27 @@ public final class Sjf4jConfig {
         return bindingPath;
     }
 
+    /**
+     * Returns a compact, human-readable snapshot of current config.
+     */
+    public String inspect() {
+        return "Sjf4jConfig{" +
+                "jsonFacade=" + _simpleName(getJsonFacade()) +
+                ", yamlFacade=" + _simpleName(getYamlFacade()) +
+                ", propertiesFacade=" + _simpleName(getPropertiesFacade()) +
+                ", nodeFacade=" + _simpleName(getNodeFacade()) +
+                ", mapSupplier=" + mapSupplier +
+                ", listSupplier=" + listSupplier +
+                ", setSupplier=" + setSupplier +
+                ", instantFormat=" + instantFormat +
+                ", bindingPath=" + bindingPath +
+                '}';
+    }
+
+    private static String _simpleName(Object object) {
+        return object == null ? "null" : object.getClass().getSimpleName();
+    }
+
 
     /// Builder
 
@@ -240,7 +253,6 @@ public final class Sjf4jConfig {
         private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
         private SetSupplier setSupplier = SetSupplier.LinkedHashSetSupplier;
 
-        private StreamingFacade.StreamingMode streamingMode = null;
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
         private boolean bindingPath = true;
 
@@ -261,7 +273,6 @@ public final class Sjf4jConfig {
             this.mapSupplier = config.mapSupplier;
             this.listSupplier = config.listSupplier;
             this.setSupplier = config.setSupplier;
-            this.streamingMode = config.streamingMode;
             this.instantFormat = config.instantFormat;
             this.bindingPath = config.bindingPath;
         }
@@ -327,13 +338,6 @@ public final class Sjf4jConfig {
         public Builder setSupplier(SetSupplier setSupplier) {
             if (setSupplier == null) throw new JsonException("setSupplier is null");
             this.setSupplier = setSupplier;
-            return this;
-        }
-        /**
-         * Sets streaming mode.
-         */
-        public Builder streamingMode(StreamingFacade.StreamingMode streamingMode) {
-            this.streamingMode = streamingMode;
             return this;
         }
         /**

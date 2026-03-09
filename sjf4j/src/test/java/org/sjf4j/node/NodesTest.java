@@ -7,6 +7,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
@@ -255,6 +256,7 @@ public class NodesTest {
 
     @Test
     public void testEquals() {
+        Sjf4jConfig.useFastjson2AsGlobal();
         JsonObject jo = new JsonObject(
                 "name", "Bob",
                 "address", new JsonObject(
@@ -271,6 +273,7 @@ public class NodesTest {
         assertTrue(Nodes.equals(map1, jo1));
         assertTrue(Nodes.equals(jo1, map1));
 
+        log.info("map1={}", Nodes.toJsonObject(map1));
         assertEquals(jo1.toJson(), Sjf4j.toJsonString(map1));
         assertEquals(jo1.toJson(), p1.toJson());
         assertTrue(jo1.nodeEquals(map1));

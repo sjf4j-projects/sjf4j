@@ -1,16 +1,20 @@
 package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.path.JsonPath;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -674,6 +678,10 @@ public final class NodeRegistry {
         final String path;
         final AnyOf.Scope scope;
         final AnyOf.OnNoMatch onNoMatch;
+        final boolean hasDiscriminator;
+        final EnumMap<JsonType, Class<?>> byJsonType;
+        final Map<String, Class<?>> byWhen;
+        final JsonPath compiledPath;
 
         public AnyOfInfo(Class<?> clazz, AnyOf.Mapping[] mappings, String key,
                          String path, AnyOf.Scope scope, AnyOf.OnNoMatch onNoMatch) {
@@ -683,6 +691,43 @@ public final class NodeRegistry {
             this.path = path;
             this.scope = scope;
             this.onNoMatch = onNoMatch;
+            this.compiledPath = path.isEmpty() ? null : JsonPath.compile(path);
+            this.hasDiscriminator = !key.isEmpty() || !path.isEmpty();
+            if (hasDiscriminator) {
+                this.byJsonType = null;
+                this.byWhen = new HashMap<>();
+                for (AnyOf.Mapping mapping : mappings) {
+                    for (String when : mapping.when()) {
+                        byWhen.put(when, mapping.value());
+                    }
+                }
+            } else {
+                this.byWhen = null;
+                this.byJsonType = new EnumMap<>(JsonType.class);
+                for (AnyOf.Mapping mapping : mappings) {
+                    byJsonType.put(JsonType.rawOf(mapping.value()), mapping.value());
+                }
+            }
+        }
+
+        public boolean hasDiscriminator() {return hasDiscriminator;}
+        public AnyOf.Scope getScope() {return scope;}
+        public AnyOf.OnNoMatch getOnNoMatch() {return onNoMatch;}
+        public String getKey() {return key;}
+        public String getPath() {return path;}
+
+        public JsonPath getCompiledPath() {
+            return compiledPath;
+        }
+
+        public Class<?> resolveByJsonType(JsonType jsonType) {
+            if (byJsonType == null || jsonType == null) return null;
+            return byJsonType.get(jsonType);
+        }
+
+        public Class<?> resolveByWhen(Object when) {
+            if (byWhen == null || when == null) return null;
+            return byWhen.get(String.valueOf(when));
         }
 
 

@@ -53,24 +53,15 @@ public class ObjectSetTest {
 
     @Test
     public void testSetJsonStreamingGeneral() {
-        Sjf4jConfig old = Sjf4jConfig.global();
-        try {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder(old)
-                    .streamingMode(StreamingFacade.StreamingMode.SHARED_IO)
-                    .build());
+        Set<String> set = new LinkedHashSet<>();
+        set.add("a");
+        set.add("b");
 
-            Set<String> set = new LinkedHashSet<>();
-            set.add("a");
-            set.add("b");
+        String json = Sjf4j.toJsonString(set);
+        assertEquals("[\"a\",\"b\"]", json);
 
-            String json = Sjf4j.toJsonString(set);
-            assertEquals("[\"a\",\"b\"]", json);
-
-            Set<String> parsed = Sjf4j.fromJson(json, new TypeReference<Set<String>>() {});
-            assertEquals(set, parsed);
-        } finally {
-            Sjf4jConfig.global(old);
-        }
+        Set<String> parsed = Sjf4j.fromJson(json, new TypeReference<Set<String>>() {});
+        assertEquals(set, parsed);
     }
 
     @Test

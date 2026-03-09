@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
@@ -48,10 +50,13 @@ public class JacksonStreamingIO {
      * Reads one node from Jackson parser into target type.
      */
     public static Object readNode(JsonParser parser, Type type) throws IOException {
+        Class<?> rawBox = Types.rawBox(type);
+        NodeRegistry.AnyOfInfo anyOfInfo = _anyOfInfo(rawBox);
         return _readNode(
                 parser,
                 type,
-                Types.rawBox(type),
+                rawBox,
+                anyOfInfo,
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
         );
     }
@@ -59,9 +64,13 @@ public class JacksonStreamingIO {
     /**
      * Reads next token and dispatches to typed node readers.
      */
-    private static Object _readNode(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNode(JsonParser parser, Type type, Class<?> rawClazz,
+                                    NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
             throws IOException {
         try {
+            if (anyOfInfo != null) {
+                return _readAnyOf(parser, type, rawClazz, anyOfInfo, ps);
+            }
             StreamingReader.Token token = peekToken(parser);
             switch (token) {
                 case START_OBJECT:
@@ -220,7 +229,7 @@ public class JacksonStreamingIO {
                 String key = parser.currentName();
                 parser.nextToken();
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(parser, Object.class, Object.class, cps);
+                Object value = _readNode(parser, Object.class, Object.class, null, cps);
                 jo.put(key, value);
             }
             parser.nextToken();
@@ -265,7 +274,9 @@ public class JacksonStreamingIO {
                     Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    args[argIdx] = _readNode(parser, argType, Types.rawBox(argType), cps);
+                    Class<?> argRaw = Types.rawBox(argType);
+                    NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
+                    args[argIdx] = _readNode(parser, argType, argRaw, argAnyOf, cps);
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
@@ -301,7 +312,7 @@ public class JacksonStreamingIO {
                         dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     }
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(parser, Object.class, Object.class, cps);
+                    Object vv = _readNode(parser, Object.class, Object.class, null, cps);
                     dynamicMap.put(key, vv);
                 } else {
                     skipNode(parser);
@@ -341,7 +352,7 @@ public class JacksonStreamingIO {
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(parser, Object.class, Object.class, cps);
+                Object value = _readNode(parser, Object.class, Object.class, null, cps);
                 ja.add(value);
             }
             parser.nextToken();
@@ -368,7 +379,8 @@ public class JacksonStreamingIO {
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(parser, elemType, elemRaw, cps);
+                NodeRegistry.AnyOfInfo elemAnyOf = _anyOfInfo(elemRaw);
+                Object value = _readNode(parser, elemType, elemRaw, elemAnyOf, cps);
                 ja.add(value);
             }
             parser.nextToken();
@@ -388,6 +400,9 @@ public class JacksonStreamingIO {
 
     private static Object _readField(JsonParser parser, NodeRegistry.FieldInfo fi, PathSegment ps)
             throws IOException {
+        if (fi.anyOfInfo != null) {
+            return _readNode(parser, fi.type, fi.rawClazz, fi.anyOfInfo, ps);
+        }
         switch (fi.containerKind) {
             case MAP:
                 return _readMapWithValueType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
@@ -398,7 +413,8 @@ public class JacksonStreamingIO {
             case ARRAY:
                 return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
-                return _readNode(parser, fi.type, fi.rawClazz, ps);
+                NodeRegistry.AnyOfInfo typeAnyOf = _anyOfInfo(fi.rawClazz);
+                return _readNode(parser, fi.type, fi.rawClazz, typeAnyOf, ps);
         }
     }
 
@@ -410,12 +426,13 @@ public class JacksonStreamingIO {
             return null;
         }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_OBJECT) {
             String key = parser.currentName();
             parser.nextToken();
             PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-            Object value = _readNode(parser, valueType, valueClazz, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
             map.put(key, value);
         }
         parser.nextToken();
@@ -430,11 +447,12 @@ public class JacksonStreamingIO {
             return null;
         }
         List<Object> list = new ArrayList<>();
+        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
         int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(parser, valueType, valueClazz, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
             list.add(value);
         }
         parser.nextToken();
@@ -449,11 +467,12 @@ public class JacksonStreamingIO {
             return null;
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
         int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(parser, valueType, valueClazz, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
             set.add(value);
         }
         parser.nextToken();
@@ -461,18 +480,19 @@ public class JacksonStreamingIO {
     }
 
     private static Object _readArrayWithElementType(JsonParser parser, Class<?> rawClazz,
-                                                     Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                      Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
         }
         List<Object> list = new ArrayList<>();
+        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
         int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(parser, valueType, valueClazz, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
             list.add(value);
         }
         parser.nextToken();
@@ -482,6 +502,70 @@ public class JacksonStreamingIO {
             Array.set(array, j, list.get(j));
         }
         return array;
+    }
+
+    private static Object _readAnyOf(JsonParser parser, Type type, Class<?> rawClazz,
+                                     NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+            throws IOException {
+        Class<?> targetClazz;
+
+        if (anyOfInfo.hasDiscriminator()) {
+            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() +
+                        "' is not supported in streaming parser", ps);
+            }
+            Object rawNode = _readNode(parser, Object.class, Object.class, null, ps);
+            Object when = _resolveSelfDiscriminator(rawNode, anyOfInfo);
+            targetClazz = anyOfInfo.resolveByWhen(when);
+            if (targetClazz == null) {
+                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + when + "'", ps);
+            }
+            return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
+        }
+
+        JsonType jsonType = _peekJsonType(parser.currentToken());
+        targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+        if (targetClazz == null) {
+            if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                _readNode(parser, Object.class, Object.class, null, ps);
+                return null;
+            }
+            throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
+                    " for type '" + rawClazz.getName() + "'", ps);
+        }
+
+        return _readNode(parser, targetClazz, Types.rawBox(targetClazz), null, ps);
+    }
+
+    private static JsonType _peekJsonType(JsonToken token) {
+        if (token == JsonToken.START_OBJECT) return JsonType.OBJECT;
+        if (token == JsonToken.START_ARRAY) return JsonType.ARRAY;
+        if (token == JsonToken.VALUE_STRING) return JsonType.STRING;
+        if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) return JsonType.NUMBER;
+        if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
+        if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
+        return JsonType.UNKNOWN;
+    }
+
+    private static Object _resolveSelfDiscriminator(Object rawNode, NodeRegistry.AnyOfInfo anyOfInfo) {
+        if (!anyOfInfo.getKey().isEmpty()) {
+            if (rawNode == null) return null;
+            if (rawNode instanceof JsonObject) return ((JsonObject) rawNode).getNode(anyOfInfo.getKey());
+            if (rawNode instanceof Map) return ((Map<?, ?>) rawNode).get(anyOfInfo.getKey());
+            return null;
+        }
+        if (!anyOfInfo.getPath().isEmpty()) {
+            return anyOfInfo.getCompiledPath().getNode(rawNode);
+        }
+        return null;
+    }
+
+    private static NodeRegistry.AnyOfInfo _anyOfInfo(Class<?> rawClazz) {
+        if (rawClazz == null) {
+            return null;
+        }
+        return NodeRegistry.registerTypeInfo(rawClazz).anyOfInfo;
     }
 
     /// Reader

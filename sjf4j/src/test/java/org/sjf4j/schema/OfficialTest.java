@@ -5,8 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.facade.FacadeFactory;
-import org.sjf4j.facade.JsonFacade;
 
 import java.net.URI;
 import java.net.URL;
@@ -16,7 +14,6 @@ import java.util.*;
 public final class OfficialTest {
 
     private static SchemaStore _store;
-    private static JsonFacade<?, ?> facade = FacadeFactory.createFastjson2Facade();
 
     public static void main(String[] args) throws Exception {
         _store = loadRemotesToStore(locatePath("json-schema/remotes"));

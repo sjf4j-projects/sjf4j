@@ -7,8 +7,11 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -24,7 +27,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 public class Fastjson2FacadeTest {
@@ -33,9 +39,9 @@ public class Fastjson2FacadeTest {
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
+        log.info("jo1: {}", jo1);
 
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
@@ -48,8 +54,7 @@ public class Fastjson2FacadeTest {
     public void testSerDe2() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
 
         StringWriter sw = new StringWriter();
@@ -66,9 +71,8 @@ public class Fastjson2FacadeTest {
 
     @Test
     public void testReadModule1() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         log.info("jo1={}", jo1.inspect());
@@ -95,21 +99,22 @@ public class Fastjson2FacadeTest {
 
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
+        log.info("jo1={}", jo1.inspect());
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
+        facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.SHARED_IO);
         StringWriter output;
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json2 = output.toString();
         assertEquals(json1, json2);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
+        facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json3 = output.toString();
         assertEquals(json1, json3);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
+        facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json4 = output.toString();
@@ -260,10 +265,29 @@ public class Fastjson2FacadeTest {
         Map<String, Object> ext;
     }
 
+    interface Pet {}
+    static class Cat implements TypedPet { public String meow; }
+    static class Dog implements TypedPet { public String bark; }
+    @AnyOf(value = {
+            @AnyOf.Mapping(value = Cat.class, when = "cat"),
+            @AnyOf.Mapping(value = Dog.class, when = "dog")
+    }, key = "kind")
+    interface TypedPet extends Pet {}
+    static class PetHolder {
+        public TypedPet pet;
+    }
+    static class ParentPetHolder {
+        public String kind;
+        @AnyOf(value = {
+                @AnyOf.Mapping(value = Cat.class, when = "cat"),
+                @AnyOf.Mapping(value = Dog.class, when = "dog")
+        }, key = "kind", scope = AnyOf.Scope.PARENT)
+        public TypedPet pet;
+    }
+
     @Test
     void testSkipNode1() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +
@@ -280,6 +304,26 @@ public class Fastjson2FacadeTest {
         User pojo = (User) facade.readNode(json, User.class);
         log.info("pojo={}", Nodes.inspect(pojo));
         assertEquals("Jack", pojo.name);
+    }
+
+    @Test
+    void testPluginModuleAnyOfFailureMessage() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        String json = "{\"kind\":\"cat\",\"pet\":{\"meow\":\"m\"}}";
+
+        ParentPetHolder holder = (ParentPetHolder) facade.readNode(json, ParentPetHolder.class);
+        log.info("holder={}", Nodes.inspect(holder));
+        log.info("pet.class={}, pet={}", holder.pet.getClass(), holder.pet);
+//        assertEquals(json, facade.writeNodeAsString(holder));
+    }
+
+    @Test
+    void testPluginModuleNormalFailureMessageWithoutAnyOfHint() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+
+        JsonException ex = assertThrows(JsonException.class, () -> facade.readNode("{", Book.class));
+        assertTrue(ex.getMessage().contains("Failed to read JSON string into node type"));
+        assertFalse(ex.getMessage().contains("AnyOf is not supported in Fastjson2 PLUGIN_MODULE mode"));
     }
 
 }

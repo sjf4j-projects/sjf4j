@@ -4,8 +4,10 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
@@ -36,10 +38,13 @@ public class GsonStreamingIO {
      * Reads one node from Gson reader into target type.
      */
     public static Object readNode(JsonReader reader, Type type) throws IOException {
+        Class<?> rawBox = Types.rawBox(type);
+        NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
         return _readNode(
                 reader,
                 type,
-                Types.rawBox(type),
+                rawBox,
+                anyOfInfo,
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
         );
     }
@@ -118,9 +123,13 @@ public class GsonStreamingIO {
     /**
      * Reads next token and dispatches to typed node readers.
      */
-    private static Object _readNode(JsonReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNode(JsonReader reader, Type type, Class<?> rawClazz,
+                                    NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
             throws IOException {
         try {
+            if (anyOfInfo != null) {
+                return _readAnyOf(reader, type, rawClazz, anyOfInfo, ps);
+            }
             StreamingReader.Token token = peekToken(reader);
             switch (token) {
                 case START_OBJECT:
@@ -235,7 +244,7 @@ public class GsonStreamingIO {
             while (reader.hasNext()) {
                 String key = reader.nextName();
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, Object.class, Object.class, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null, cps);
                 jo.put(key, value);
             }
             reader.endObject();
@@ -279,7 +288,9 @@ public class GsonStreamingIO {
                     Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    args[argIdx] = _readNode(reader, argType, Types.rawBox(argType), cps);
+                    Class<?> argRaw = Types.rawBox(argType);
+                    NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
+                    args[argIdx] = _readNode(reader, argType, argRaw, argAnyOf, cps);
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
@@ -315,7 +326,7 @@ public class GsonStreamingIO {
                         dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     }
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, Object.class, Object.class, cps);
+                    Object vv = _readNode(reader, Object.class, Object.class, null, cps);
                     dynamicMap.put(key, vv);
                 } else {
                     reader.skipValue();
@@ -355,7 +366,7 @@ public class GsonStreamingIO {
             reader.beginArray();
             while (reader.hasNext()) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, Object.class, Object.class, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null, cps);
                 ja.add(value);
             }
             reader.endArray();
@@ -382,7 +393,8 @@ public class GsonStreamingIO {
             reader.beginArray();
             while (reader.hasNext()) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, elemType, elemRaw, cps);
+                NodeRegistry.AnyOfInfo elemAnyOf = NodeRegistry.registerTypeInfo(elemRaw).anyOfInfo;
+                Object value = _readNode(reader, elemType, elemRaw, elemAnyOf, cps);
                 ja.add(value);
             }
             reader.endArray();
@@ -402,6 +414,9 @@ public class GsonStreamingIO {
 
     private static Object _readField(JsonReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
             throws IOException {
+        if (fi.anyOfInfo != null) {
+            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo, ps);
+        }
         switch (fi.containerKind) {
             case MAP:
                 return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
@@ -412,7 +427,8 @@ public class GsonStreamingIO {
             case ARRAY:
                 return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
-                return _readNode(reader, fi.type, fi.rawClazz, ps);
+                NodeRegistry.AnyOfInfo typeAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
+                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf, ps);
         }
     }
 
@@ -424,11 +440,12 @@ public class GsonStreamingIO {
             return null;
         }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.beginObject();
         while (reader.hasNext()) {
             String key = reader.nextName();
             PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             map.put(key, value);
         }
         reader.endObject();
@@ -443,11 +460,12 @@ public class GsonStreamingIO {
             return null;
         }
         List<Object> list = new ArrayList<>();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         int i = 0;
         reader.beginArray();
         while (reader.hasNext()) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             list.add(value);
         }
         reader.endArray();
@@ -462,11 +480,12 @@ public class GsonStreamingIO {
             return null;
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         int i = 0;
         reader.beginArray();
         while (reader.hasNext()) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             set.add(value);
         }
         reader.endArray();
@@ -474,18 +493,19 @@ public class GsonStreamingIO {
     }
 
     private static Object _readArrayWithElementType(JsonReader reader, Class<?> rawClazz,
-                                                     Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                      Type valueType, Class<?> valueClazz, PathSegment ps)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
             return null;
         }
         List<Object> list = new ArrayList<>();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         int i = 0;
         reader.beginArray();
         while (reader.hasNext()) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             list.add(value);
         }
         reader.endArray();
@@ -495,6 +515,63 @@ public class GsonStreamingIO {
             Array.set(array, j, list.get(j));
         }
         return array;
+    }
+
+    private static Object _readAnyOf(JsonReader reader, Type type, Class<?> rawClazz,
+                                     NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+            throws IOException {
+        Class<?> targetClazz;
+
+        if (anyOfInfo.hasDiscriminator()) {
+            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() +
+                        "' is not supported in streaming parser", ps);
+            }
+            Object rawNode = _readNode(reader, Object.class, Object.class, null, ps);
+            Object when = _resolveSelfDiscriminator(rawNode, anyOfInfo);
+            targetClazz = anyOfInfo.resolveByWhen(when);
+            if (targetClazz == null) {
+                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + when + "'", ps);
+            }
+            return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
+        }
+
+        JsonType jsonType = _peekJsonType(reader.peek());
+        targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+        if (targetClazz == null) {
+            if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                _readNode(reader, Object.class, Object.class, null, ps);
+                return null;
+            }
+            throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
+                    " for type '" + rawClazz.getName() + "'", ps);
+        }
+
+        return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, ps);
+    }
+
+    private static JsonType _peekJsonType(JsonToken token) {
+        if (token == JsonToken.BEGIN_OBJECT) return JsonType.OBJECT;
+        if (token == JsonToken.BEGIN_ARRAY) return JsonType.ARRAY;
+        if (token == JsonToken.STRING) return JsonType.STRING;
+        if (token == JsonToken.NUMBER) return JsonType.NUMBER;
+        if (token == JsonToken.BOOLEAN) return JsonType.BOOLEAN;
+        if (token == JsonToken.NULL) return JsonType.NULL;
+        return JsonType.UNKNOWN;
+    }
+
+    private static Object _resolveSelfDiscriminator(Object rawNode, NodeRegistry.AnyOfInfo anyOfInfo) {
+        if (!anyOfInfo.getKey().isEmpty()) {
+            if (rawNode == null) return null;
+            if (rawNode instanceof JsonObject) return ((JsonObject) rawNode).getNode(anyOfInfo.getKey());
+            if (rawNode instanceof Map) return ((Map<?, ?>) rawNode).get(anyOfInfo.getKey());
+            return null;
+        }
+        if (!anyOfInfo.getPath().isEmpty()) {
+            return anyOfInfo.getCompiledPath().getNode(rawNode);
+        }
+        return null;
     }
 
     /// Reader

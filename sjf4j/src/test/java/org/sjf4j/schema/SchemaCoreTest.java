@@ -1,5 +1,6 @@
 package org.sjf4j.schema;
 
+import com.alibaba.fastjson2.schema.NumberSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -216,7 +218,20 @@ public class SchemaCoreTest {
         assertFalse(result2.isValid());
     }
 
+    @Test
+    public void testToJsonSchema1() {
+        JsonSchema schema1 = JsonSchema.fromJson("true");
+        log.info("schema1={}", schema1);
+        assertInstanceOf(BooleanSchema.class, schema1);
+        assertTrue(schema1.validate(100).isValid());
 
+        JsonSchema schema2 = JsonSchema.fromJson("{\"type\": \"number\"}");
+        schema2.compile();
+        log.info("schema2={}", schema2);
+        assertInstanceOf(ObjectSchema.class, schema2);
+        assertTrue(schema2.validate(100).isValid());
+        assertFalse(schema2.validate("100").isValid());
+    }
 
 
 }

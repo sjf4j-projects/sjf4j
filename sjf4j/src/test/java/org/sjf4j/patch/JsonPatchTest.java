@@ -2,6 +2,7 @@ package org.sjf4j.patch;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
@@ -298,9 +299,11 @@ public class JsonPatchTest {
                 "  { \"op\": \"replace\", \"path\": \"/meta/active\", \"value\": false }\n" +
                 "]";
 
+        Sjf4jConfig.useFastjson2AsGlobal();
         JsonObject jo1 = JsonObject.fromJson(json1);
-        JsonPatch patch = JsonPatch.fromJson(jsonPatch);
         log.info("jo1={}", jo1);
+        JsonPatch patch = JsonPatch.fromJson(jsonPatch);
+        log.info("patch={}", patch);
         patch.apply(jo1);
         log.info("jo1={}", jo1);
 

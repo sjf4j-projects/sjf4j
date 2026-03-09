@@ -26,24 +26,34 @@ import java.util.Objects;
  * Jackson-based JSON facade with selectable streaming modes.
  */
 public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWriter> {
-    private final StreamingMode streamingMode = Sjf4jConfig.global().streamingMode != null
-            ? Sjf4jConfig.global().streamingMode : StreamingMode.PLUGIN_MODULE;
+    private final StreamingMode streamingMode;
 
     private final ObjectMapper objectMapper;
-    private final JacksonModule.MySimpleModule module;
+
+    public JacksonJsonFacade() {
+        this(new ObjectMapper(), null);
+    }
+
+    public JacksonJsonFacade(ObjectMapper objectMapper) {
+        this(objectMapper, null);
+    }
+
+    public JacksonJsonFacade(StreamingMode streamingMode) {
+        this(new ObjectMapper(), streamingMode);
+    }
 
     /**
      * Creates facade with configured ObjectMapper and SJF4J module.
      */
-    public JacksonJsonFacade(ObjectMapper objectMapper) {
+    public JacksonJsonFacade(ObjectMapper objectMapper, StreamingMode streamingMode) {
         Objects.requireNonNull(objectMapper, "objectMapper is null");
+        this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 //        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         this.objectMapper = objectMapper;
-        this.module = new JacksonModule.MySimpleModule();
-        this.objectMapper.registerModule(this.module);
+        this.objectMapper.registerModule(new JacksonModule.MySimpleModule());
         this.objectMapper.setAnnotationIntrospector(new JacksonModule.NodePropertyAnnotationIntrospector());
     }
 
@@ -104,7 +114,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -134,7 +145,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -164,7 +176,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -194,7 +207,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -246,7 +260,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
                 break;
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
@@ -280,7 +295,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
                 break;
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
@@ -314,7 +330,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     br.releaseToPool();
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     return objectMapper.writeValueAsString(node);
                 } catch (IOException e) {
@@ -349,7 +366,8 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                     br.releaseToPool();
                 }
             }
-            case PLUGIN_MODULE: {
+            case PLUGIN_MODULE:
+            case AUTO: {
                 try {
                     return objectMapper.writeValueAsBytes(node);
                 } catch (IOException e) {

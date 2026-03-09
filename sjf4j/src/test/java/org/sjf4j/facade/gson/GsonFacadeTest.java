@@ -31,8 +31,7 @@ public class GsonFacadeTest {
     public void testSerDe1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
@@ -49,9 +48,7 @@ public class GsonFacadeTest {
 
     @Test
     public void testWithModule1() throws IOException {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
-
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         log.info("jo1={}", jo1.inspect());
@@ -74,25 +71,24 @@ public class GsonFacadeTest {
 
     @Test
     public void testWrite1() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
 
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.SHARED_IO).build());
         StringWriter output;
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json2 = output.toString();
         assertEquals(json1, json2);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
+        facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json3 = output.toString();
         assertEquals(json1, json3);
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.PLUGIN_MODULE).build());
+        facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         output = new StringWriter();
         facade.writeNode(output, jo1);
         String json4 = output.toString();
@@ -192,8 +188,7 @@ public class GsonFacadeTest {
 
     @Test
     void testSkipNode1() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(StreamingFacade.StreamingMode.EXCLUSIVE_IO).build());
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +

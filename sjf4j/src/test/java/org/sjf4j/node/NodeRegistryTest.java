@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
@@ -262,6 +263,13 @@ public class NodeRegistryTest {
     @Test
     public void testCreatorPojoMissingParamName() {
         String json = "{\"name\":\"Alice\"}";
+
+        Sjf4jConfig.useFastjson2AsGlobal();
+        CreatorPojoNoMatch obj1 = Sjf4j.fromJson(json, CreatorPojoNoMatch.class);
+        log.info("obj1={}", Nodes.inspect(obj1));
+        log.info("obj1.name={}", obj1.name);
+
+        Sjf4jConfig.useJacksonAsGlobal();
         assertThrows(JsonException.class, () -> Sjf4j.fromJson(json, CreatorPojoNoMatch.class));
     }
 

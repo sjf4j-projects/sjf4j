@@ -1,6 +1,7 @@
 package org.sjf4j.facade;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
@@ -26,21 +27,29 @@ import java.util.Set;
  */
 public final class StreamingIO {
 
+    private static final Object UNSET = new Object();
+
     /// Read
 
     /**
      * Reads one node from streaming reader into target type.
      */
     public static Object readNode(StreamingReader reader, Type type) {
-        return _readNode(reader, type, Types.rawBox(type),
+        Class<?> rawBox = Types.rawBox(type);
+        NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
+        return _readNode(reader, type, rawBox, anyOfInfo,
                 Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
     }
 
     /**
      * Reads next token and dispatches to typed node readers.
      */
-    private static Object _readNode(StreamingReader reader, Type type, Class<?> rawBoxed, PathSegment ps) {
+    private static Object _readNode(StreamingReader reader, Type type, Class<?> rawBoxed,
+                                    NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps) {
         try {
+            if (anyOfInfo != null) {
+                return _readAnyOf(reader, type, rawBoxed, anyOfInfo, ps);
+            }
             StreamingReader.Token token = reader.peekToken();
             switch (token) {
                 case START_OBJECT:
@@ -161,7 +170,7 @@ public final class StreamingIO {
             while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
                 String key = reader.nextName();
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, Object.class, Object.class, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null, cps);
                 jo.put(key, value);
             }
             reader.endObject();
@@ -187,6 +196,11 @@ public final class StreamingIO {
             NodeRegistry.FieldInfo[] pendingFields = null;
             Object[] pendingValues = null;
             Map<String, Object> dynamicMap = null;
+            NodeRegistry.FieldInfo deferredParentAnyOfFi = null;
+            Object deferredParentAnyOfRaw = null;
+            PathSegment deferredParentAnyOfPath = null;
+            String parentAnyOfKey = null;
+            Object parentAnyOfValue = UNSET;
 
             reader.startObject();
             while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
@@ -206,7 +220,13 @@ public final class StreamingIO {
                     Type argType = ci.argTypes[argIdx];
                     assert args != null;
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    args[argIdx] = _readNode(reader, argType, Types.rawBox(argType), cps);
+                    Class<?> argRaw = Types.rawBox(argType);
+                    NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
+                    Object argValue = _readNode(reader, argType, argRaw, argAnyOf, cps);
+                    args[argIdx] = argValue;
+                    if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                        parentAnyOfValue = argValue;
+                    }
                     remainingArgs--;
                     if (remainingArgs == 0) {
                         pojo = ci.newPojoWithArgs(args);
@@ -221,7 +241,72 @@ public final class StreamingIO {
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readField(reader, fi, cps);
+                    Object vv;
+                    NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+                    if (fieldAnyOf != null && fieldAnyOf.getScope() == AnyOf.Scope.PARENT) {
+                        if (!fieldAnyOf.getPath().isEmpty()) {
+                            throw new BindingException("AnyOf scope=PARENT does not support path discriminator", cps);
+                        }
+                        String parentKey = fieldAnyOf.getKey();
+                        if (parentAnyOfKey == null) {
+                            parentAnyOfKey = parentKey;
+                        } else if (!parentAnyOfKey.equals(parentKey)) {
+                            throw new BindingException("At most one AnyOf parent discriminator key is supported per class", cps);
+                        }
+                        if (parentAnyOfValue == UNSET) {
+                            Object discriminator = null;
+                            if (pojo != null) {
+                                NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
+                                        ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
+                                if (parentFi != null) discriminator = parentFi.invokeGetter(pojo);
+                                else if (pi.isJojo) discriminator = ((JsonObject) pojo).getNode(parentKey);
+                            }
+                            if (discriminator == null) {
+                                int idx = ci.getArgIndex(parentKey);
+                                if (idx >= 0 && args != null) discriminator = args[idx];
+                            }
+                            if (discriminator == null && ci.aliasMap != null) {
+                                String origin = ci.aliasMap.get(parentKey);
+                                if (origin != null) {
+                                    int idx = ci.getArgIndex(origin);
+                                    if (idx >= 0 && args != null) discriminator = args[idx];
+                                }
+                            }
+                            if (discriminator == null) {
+                                for (int i = 0; i < pendingSize; i++) {
+                                    if (pendingFields[i] != null && parentKey.equals(pendingFields[i].name)) {
+                                        discriminator = pendingValues[i];
+                                        break;
+                                    }
+                                }
+                            }
+                            if (discriminator == null && dynamicMap != null && dynamicMap.containsKey(parentKey)) {
+                                discriminator = dynamicMap.get(parentKey);
+                            }
+                            if (discriminator != null) {
+                                parentAnyOfValue = discriminator;
+                            }
+                        }
+                        Class<?> targetClazz = fieldAnyOf.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+                        if (targetClazz != null) {
+                            vv = _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, cps);
+                        } else {
+                            if (deferredParentAnyOfFi != null) {
+                                throw new BindingException("At most one AnyOf field with scope=PARENT is supported per class", cps);
+                            }
+                            deferredParentAnyOfFi = fi;
+                            deferredParentAnyOfRaw = _readNode(reader, Object.class, Object.class, null, cps);
+                            deferredParentAnyOfPath = cps;
+                            continue;
+                        }
+                    } else {
+                        vv = _readField(reader, fi, cps);
+                    }
+
+                    if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                        parentAnyOfValue = vv;
+                    }
+
                     if (pojo != null) {
                         fi.invokeSetterIfPresent(pojo, vv);
                     } else {
@@ -240,13 +325,77 @@ public final class StreamingIO {
                 if (pi.isJojo) {
                     if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, Object.class, Object.class, cps);
+                    Object vv = _readNode(reader, Object.class, Object.class, null, cps);
                     dynamicMap.put(key, vv);
+                    if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                        parentAnyOfValue = vv;
+                    }
                 } else {
                     reader.nextSkip();
                 }
             }
             reader.endObject();
+
+            // Handle deferred AnyOf
+            if (deferredParentAnyOfFi != null) {
+                NodeRegistry.AnyOfInfo aoi = deferredParentAnyOfFi.anyOfInfo;
+                String parentKey = aoi.getKey();
+                if (parentAnyOfValue == UNSET) {
+                    Object discriminator = null;
+                    if (pojo != null) {
+                        NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
+                                ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
+                        if (parentFi != null) discriminator = parentFi.invokeGetter(pojo);
+                        else if (pi.isJojo) discriminator = ((JsonObject) pojo).getNode(parentKey);
+                    }
+                    if (discriminator == null) {
+                        int idx = ci.getArgIndex(parentKey);
+                        if (idx >= 0 && args != null) discriminator = args[idx];
+                    }
+                    if (discriminator == null && ci.aliasMap != null) {
+                        String origin = ci.aliasMap.get(parentKey);
+                        if (origin != null) {
+                            int idx = ci.getArgIndex(origin);
+                            if (idx >= 0 && args != null) discriminator = args[idx];
+                        }
+                    }
+                    if (discriminator == null) {
+                        for (int i = 0; i < pendingSize; i++) {
+                            if (pendingFields[i] != null && parentKey.equals(pendingFields[i].name)) {
+                                discriminator = pendingValues[i];
+                                break;
+                            }
+                        }
+                    }
+                    if (discriminator == null && dynamicMap != null && dynamicMap.containsKey(parentKey)) {
+                        discriminator = dynamicMap.get(parentKey);
+                    }
+                    if (discriminator != null) parentAnyOfValue = discriminator;
+                }
+                Class<?> targetClazz = aoi.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+                Object vv;
+                if (targetClazz != null) {
+                    vv = Sjf4jConfig.global().getNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
+                } else if (aoi.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                    vv = null;
+                } else {
+                    throw new BindingException("AnyOf discriminator has no matching mapping: key='" +
+                            aoi.getKey() + "', value='" + (parentAnyOfValue == UNSET ? null : parentAnyOfValue) + "'", deferredParentAnyOfPath);
+                }
+
+                if (pojo != null) {
+                    deferredParentAnyOfFi.invokeSetterIfPresent(pojo, vv);
+                } else {
+                    if (pendingFields == null) {
+                        int cap = pi.fieldCount;
+                        pendingFields = new NodeRegistry.FieldInfo[cap];
+                        pendingValues = new Object[cap];
+                    }
+                    pendingFields[pendingSize] = deferredParentAnyOfFi;
+                    pendingValues[pendingSize] = vv;
+                    pendingSize++;
+                }
+            }
 
             if (pojo == null) {
                 pojo = ci.newPojoWithArgs(args);
@@ -278,7 +427,7 @@ public final class StreamingIO {
             reader.startArray();
             while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, Object.class, Object.class, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null, cps);
                 ja.add(value);
             }
             reader.endArray();
@@ -301,11 +450,12 @@ public final class StreamingIO {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
             Class<?> elemRaw = Types.box(elemType);
+            NodeRegistry.AnyOfInfo elemAnyOf = NodeRegistry.registerTypeInfo(elemRaw).anyOfInfo;
             int i = 0;
             reader.startArray();
             while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, elemType, elemRaw, cps);
+                Object value = _readNode(reader, elemType, elemRaw, elemAnyOf, cps);
                 ja.add(value);
             }
             reader.endArray();
@@ -328,6 +478,9 @@ public final class StreamingIO {
      */
     private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
             throws IOException {
+        if (fi.anyOfInfo != null) {
+            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo, ps);
+        }
         switch (fi.containerKind) {
             case MAP:
                 return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
@@ -338,7 +491,8 @@ public final class StreamingIO {
             case ARRAY:
                 return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
             default:
-                return _readNode(reader, fi.type, fi.rawClazz, ps);
+                NodeRegistry.AnyOfInfo typeAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
+                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf, ps);
         }
     }
 
@@ -353,11 +507,12 @@ public final class StreamingIO {
             return null;
         }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.startObject();
         while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
             String key = reader.nextName();
             PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             map.put(key, value);
         }
         reader.endObject();
@@ -375,11 +530,12 @@ public final class StreamingIO {
             return null;
         }
         List<Object> list = new ArrayList<>();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         int i = 0;
         reader.startArray();
         while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             list.add(value);
         }
         reader.endArray();
@@ -397,11 +553,12 @@ public final class StreamingIO {
             return null;
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         int i = 0;
         reader.startArray();
         while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             set.add(value);
         }
         reader.endArray();
@@ -419,11 +576,12 @@ public final class StreamingIO {
             return null;
         }
         List<Object> list = new ArrayList<>();
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         int i = 0;
         reader.startArray();
         while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
             list.add(value);
         }
         reader.endArray();
@@ -435,6 +593,55 @@ public final class StreamingIO {
         return array;
     }
 
+    /**
+     * Reads AnyOf target by discriminator or token kind.
+     */
+    private static Object _readAnyOf(StreamingReader reader, Type type, Class<?> rawClazz,
+                                     NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+            throws IOException {
+        Class<?> targetClazz;
+
+        if (anyOfInfo.hasDiscriminator()) {
+            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() + "' is not supported", ps);
+            }
+
+            Object rawNode = _readNode(reader, Object.class, Object.class, null, ps);
+            if (!(rawNode instanceof Map)) {
+                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator", ps);
+            }
+            Object discriminatorValue = null;
+            if (!anyOfInfo.getKey().isEmpty()) {
+                discriminatorValue = ((Map<?, ?>) rawNode).get(anyOfInfo.getKey());
+            } else if (!anyOfInfo.getPath().isEmpty()) {
+                discriminatorValue = anyOfInfo.getCompiledPath().getNode(rawNode);
+            }
+            if (discriminatorValue == null) {
+                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.getKey() + "'", ps);
+            }
+
+            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
+            if (targetClazz == null) {
+                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
+            }
+            return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
+        }
+
+        JsonType jsonType = reader.peekToken().jsonType();
+        targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+        if (targetClazz == null) {
+            if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                _readNode(reader, Object.class, Object.class, null, ps);
+                return null;
+            }
+            throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
+                    " for type '" + rawClazz.getName() + "'", ps);
+        }
+        return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, ps);
+    }
 
     /// Write
 

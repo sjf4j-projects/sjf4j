@@ -1,5 +1,7 @@
 package org.sjf4j.patch;
 
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.path.JsonPointer;
 
 
@@ -24,20 +26,22 @@ public final class PatchOp {
     public static final String EXT_ENSURE_PUT = "ensurePut";
 
 
-    private String op;
-    private JsonPointer path;
-    private Object value;             // Optional
-    private JsonPointer from;         // Optional
+    private final String op;
+    private final JsonPointer path;
+    private final Object value;             // Optional
+    private final JsonPointer from;         // Optional
 
-    /**
-     * Creates an empty patch operation.
-     */
-    public PatchOp() {}
+//    /**
+//     * Creates an empty patch operation.
+//     */
+//    public PatchOp() {}
 
     /**
      * Creates a patch operation with all fields.
      */
-    public PatchOp(String op, JsonPointer path, Object value, JsonPointer from) {
+    @NodeCreator
+    public PatchOp(@NodeProperty("op") String op, @NodeProperty("path") JsonPointer path,
+                   @NodeProperty("value") Object value, @NodeProperty("from") JsonPointer from) {
         this.op = op;
         this.path = path;
         this.value = value;

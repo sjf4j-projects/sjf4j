@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.GsonBuilder;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -83,69 +84,17 @@ public class FacadeFactory {
      */
     public static JsonFacade<?, ?> getDefaultJsonFacade() {
         if (JACKSON_PRESENT) {
-            return createJacksonFacade();
+            return new JacksonJsonFacade();
         } else if (GSON_PRESENT) {
-            return createGsonFacade();
+            return new GsonJsonFacade();
         } else if (FASTJSON2_PRESENT) {
-            return createFastjson2Facade();
+            return new Fastjson2JsonFacade();
         } else {
             System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson, Gson, Fastjson2).");
             System.err.println("SJF4J: Falling back to build-in slower JSON implementation.");
-            return createSimpleJsonFacade();
+            return new SimpleJsonFacade();
         }
     }
-
-    /**
-     * Creates Jackson JSON facade with default ObjectMapper.
-     */
-    public static JsonFacade<?, ?> createJacksonFacade() {
-        return createJacksonFacade(new ObjectMapper());
-    }
-
-    /**
-     * Creates Jackson JSON facade with provided ObjectMapper.
-     */
-    public static JsonFacade<?, ?> createJacksonFacade(ObjectMapper objectMapper) {
-        return new JacksonJsonFacade(objectMapper);
-    }
-
-    /**
-     * Creates Gson JSON facade with default GsonBuilder.
-     */
-    public static JsonFacade<?, ?> createGsonFacade() {
-        return createGsonFacade(new GsonBuilder());
-    }
-
-    /**
-     * Creates Gson JSON facade with provided GsonBuilder.
-     */
-    public static JsonFacade<?, ?> createGsonFacade(GsonBuilder gsonBuilder) {
-        return new GsonJsonFacade(gsonBuilder);
-    }
-
-    /**
-     * Creates Fastjson2 JSON facade with default features.
-     */
-    public static JsonFacade<?, ?> createFastjson2Facade() {
-        return new Fastjson2JsonFacade();
-    }
-
-    /**
-     * Creates Fastjson2 JSON facade with reader/writer features.
-     */
-    public static JsonFacade<?, ?> createFastjson2Facade(
-            JSONReader.Feature[] readerFeatures,
-            JSONWriter.Feature[] writerFeatures) {
-        return new Fastjson2JsonFacade(readerFeatures, writerFeatures);
-    }
-
-    /**
-     * Creates built-in simple JSON facade.
-     */
-    public static JsonFacade<?, ?> createSimpleJsonFacade() {
-        return new SimpleJsonFacade();
-    }
-
 
 
     /**
