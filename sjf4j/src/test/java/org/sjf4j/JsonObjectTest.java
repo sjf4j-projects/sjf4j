@@ -42,6 +42,10 @@ class JsonObjectTest {
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
                     Sjf4jConfig.useFastjson2AsGlobal();
                     testAll();
+                }),
+                DynamicTest.dynamicTest("Run with JSON-P", () -> {
+                    Sjf4jConfig.useJsonpAsGlobal();
+                    testAll();
                 })
         );
     }

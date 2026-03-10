@@ -35,6 +35,10 @@ class JsonArrayTest {
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
                     Sjf4jConfig.useFastjson2AsGlobal();
                     testAll();
+                }),
+                DynamicTest.dynamicTest("Run with JSON-P", () -> {
+                    Sjf4jConfig.useJsonpAsGlobal();
+                    testAll();
                 })
         );
     }
@@ -218,6 +222,9 @@ class JsonArrayTest {
         log.info("ya1: \n{}", ya1);
 
         JsonArray ja2 = JsonArray.fromYaml(ya1);
+        log.info("ja1: {}", ja1);
+        log.info("ja2: {}", ja2);
+
         assertEquals(ja1, ja2);
     }
 

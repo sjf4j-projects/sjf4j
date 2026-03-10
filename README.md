@@ -10,7 +10,8 @@
 **SJF4J** is a lightweight facade over multiple JSON libraries, 
 including [Jackson 2.x](https://github.com/FasterXML/jackson-databind), 
 [Gson](https://github.com/google/gson), 
-[Fastjson2](https://github.com/alibaba/fastjson2).  
+[Fastjson2](https://github.com/alibaba/fastjson2),
+[JSON-P](https://github.com/jakartaee/jsonp-api).  
 Beyond JSON, it also supports for YAML (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml))
 and Java Properties (built-in).
 
@@ -37,7 +38,7 @@ Maven
 SJF4J itself has no external runtime dependencies.  
 Format support is activated only when the corresponding libraries are present.
 
-- **JSON** — Include one of: `Jackson 2.x`, `Gson`, or `Fastjson2`.  
+- **JSON** — Include one of: `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or other).  
   SJF4J automatically detects and uses the first available implementation in that order.
   If none are detected, it falls back to a built-in minimal JSON parser (functional but slower).
 
@@ -59,7 +60,7 @@ SJF4J is built around a single structural model: the **Object-Based Node Tree (O
 - All structured data are mapped into OBNT.
 - All nodes in OBNT are represented as native Java objects -- no dedicated AST.
 - All APIs operate directly on native Java objects.
-- All APIs follow -- and extend -- standard JSON semantics.
+- All APIs follow -- or extend -- standard JSON semantics.
 
 The following example, while slightly more elaborate, 
 demonstrates the whole lifecycle:

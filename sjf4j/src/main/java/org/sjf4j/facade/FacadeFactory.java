@@ -1,15 +1,12 @@
 package org.sjf4j.facade;
 
 
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONWriter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.GsonBuilder;
-import org.sjf4j.Sjf4jConfig;
+import jakarta.json.spi.JsonProvider;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.facade.simple.SimplePropertiesFacade;
@@ -29,15 +26,19 @@ public class FacadeFactory {
     private static final boolean JACKSON_PRESENT;
 
     /**
+     * Flag indicating whether Gson library is present in the classpath.
+     */
+    private static final boolean GSON_PRESENT;
+
+    /**
      * Flag indicating whether Fastjson2 library is present in the classpath.
      */
     private static final boolean FASTJSON2_PRESENT;
 
-
     /**
-     * Flag indicating whether Gson library is present in the classpath.
+     * Flag indicating whether JSON-P and its implemented library is present in the classpath.
      */
-    private static final boolean GSON_PRESENT;
+    private static final boolean JSONP_PRESENT;
 
     /**
      * Flag indicating whether SnakeYAML library is present in the classpath.
@@ -71,6 +72,14 @@ public class FacadeFactory {
         } catch (Throwable ignored) {}
         FASTJSON2_PRESENT = fastjson2Present;
 
+        boolean jsonpPresent = false;
+        try {
+            loader.loadClass("jakarta.json.spi.JsonProvider");
+            JsonProvider.provider();
+            jsonpPresent = true;
+        } catch (Throwable ignored) {}
+        JSONP_PRESENT = jsonpPresent;
+
         boolean snakePresent = false;
         try {
             loader.loadClass("org.yaml.snakeyaml.Yaml");
@@ -80,7 +89,7 @@ public class FacadeFactory {
     }
 
     /**
-     * Returns default JSON facade by priority: Jackson > Gson > Fastjson2 > Simple.
+     * Returns default JSON facade by priority: Jackson > Gson > Fastjson2 > JSON-P > Simple.
      */
     public static JsonFacade<?, ?> getDefaultJsonFacade() {
         if (JACKSON_PRESENT) {
@@ -89,8 +98,10 @@ public class FacadeFactory {
             return new GsonJsonFacade();
         } else if (FASTJSON2_PRESENT) {
             return new Fastjson2JsonFacade();
+        } else if (JSONP_PRESENT) {
+            return new JsonpJsonFacade();
         } else {
-            System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson, Gson, Fastjson2).");
+            System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson, Gson, Fastjson2, JSON-P).");
             System.err.println("SJF4J: Falling back to build-in slower JSON implementation.");
             return new SimpleJsonFacade();
         }

@@ -10,6 +10,7 @@ import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.supplier.ListSupplier;
@@ -138,6 +139,13 @@ public final class Sjf4jConfig {
     public static void useFastjson2AsGlobal(StreamingFacade.StreamingMode streamingMode) {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(new Fastjson2JsonFacade(streamingMode)).build());
+    }
+    /**
+     * Switches global JSON facade to JSON-P.
+     */
+    public static void useJsonpAsGlobal() {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new JsonpJsonFacade()).build());
     }
     /**
      * Switches global JSON facade to built-in simple implementation.
