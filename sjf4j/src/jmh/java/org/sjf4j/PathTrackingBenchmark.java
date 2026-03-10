@@ -71,40 +71,40 @@ public class PathTrackingBenchmark {
         }
     }
 
-    @Benchmark
-    public PathSegment pathsegment_build(PathState state) {
-        return state.buildWithPathSegment();
-    }
-
-    @Benchmark
-    public String pathsegment_build_and_render(PathState state) {
-        return Paths.rootedInspect(state.buildWithPathSegment());
-    }
-
-    @Benchmark
-    public int pathstack_push_only(PathState state) {
-        state.pushToStack();
-        return state.stack.size();
-    }
-
-    @Benchmark
-    public int pathstack_push_pop_only(PathState state) {
-        state.pushToStack();
-        for (int i = 0; i < state.depth; i++) {
-            state.stack.pop();
-        }
-        return state.stack.size();
-    }
-
-    @Benchmark
-    public PathSegment pathstack_push_and_materialize(PathState state) {
-        state.pushToStack();
-        return state.stack.toPathSegment();
-    }
-
-    @Benchmark
-    public String pathstack_push_materialize_and_render(PathState state) {
-        state.pushToStack();
-        return Paths.rootedInspect(state.stack.toPathSegment());
-    }
+//    @Benchmark
+//    public PathSegment pathsegment_build(PathState state) {
+//        return state.buildWithPathSegment();
+//    }
+//
+//    @Benchmark
+//    public String pathsegment_build_and_render(PathState state) {
+//        return Paths.rootedInspect(state.buildWithPathSegment());
+//    }
+//
+//    @Benchmark
+//    public int pathstack_push_only(PathState state) {
+//        state.pushToStack();
+//        return state.stack.size();
+//    }
+//
+//    @Benchmark
+//    public int pathstack_push_pop_only(PathState state) {
+//        state.pushToStack();
+//        for (int i = 0; i < state.depth; i++) {
+//            state.stack.pop();
+//        }
+//        return state.stack.size();
+//    }
+//
+//    @Benchmark
+//    public PathSegment pathstack_push_and_materialize(PathState state) {
+//        state.pushToStack();
+//        return state.stack.toPathSegment();
+//    }
+//
+//    @Benchmark
+//    public String pathstack_push_materialize_and_render(PathState state) {
+//        state.pushToStack();
+//        return Paths.rootedInspect(state.stack.toPathSegment());
+//    }
 }

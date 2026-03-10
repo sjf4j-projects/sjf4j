@@ -34,33 +34,33 @@ public class GlobalConfigBenchmark {
         Sjf4jConfig.global(new Sjf4jConfig.Builder().build());
     }
 
-    @Benchmark
-    public void global_per_access(Blackhole bh) {
-        for (int i = 0; i < iters; i++) {
-            bh.consume(Sjf4jConfig.global());
-        }
-    }
-
-    @Benchmark
-    public void global_cached(Blackhole bh) {
-        Sjf4jConfig cfg = Sjf4jConfig.global();
-        for (int i = 0; i < iters; i++) {
-            bh.consume(cfg);
-        }
-    }
-
-    @Benchmark
-    public void global_mapSupplier(Blackhole bh) {
-        for (int i = 0; i < iters; i++) {
-            bh.consume(Sjf4jConfig.global().mapSupplier);
-        }
-    }
-
-    @Benchmark
-    public void global_mapSupplier_cached(Blackhole bh) {
-        Object ms = Sjf4jConfig.global().mapSupplier;
-        for (int i = 0; i < iters; i++) {
-            bh.consume(ms);
-        }
-    }
+//    @Benchmark
+//    public void global_per_access(Blackhole bh) {
+//        for (int i = 0; i < iters; i++) {
+//            bh.consume(Sjf4jConfig.global());
+//        }
+//    }
+//
+//    @Benchmark
+//    public void global_cached(Blackhole bh) {
+//        Sjf4jConfig cfg = Sjf4jConfig.global();
+//        for (int i = 0; i < iters; i++) {
+//            bh.consume(cfg);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void global_mapSupplier(Blackhole bh) {
+//        for (int i = 0; i < iters; i++) {
+//            bh.consume(Sjf4jConfig.global().mapSupplier);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void global_mapSupplier_cached(Blackhole bh) {
+//        Object ms = Sjf4jConfig.global().mapSupplier;
+//        for (int i = 0; i < iters; i++) {
+//            bh.consume(ms);
+//        }
+//    }
 }

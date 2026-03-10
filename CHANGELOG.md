@@ -8,9 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `JSON-P` facade integration with runtime auto-detection in `FacadeFactory`.
+- Added `AnyOf` resolution support in `StreamingFacade` and `NodeFacade`.
+
 ### Improved
+- Improved streaming read performance with an array container-kind fast path.
+- Improved node conversion internals and reduced duplicated conversion paths in `SimpleNodeFacade`.
+- Improved consistency of constructor discovery and AnyOf handling across streaming and node conversion pipelines.
 ### Changed
+- Changed `NodeFacade` conversion contract to support `readNode(node, type, deepCopy)` and route deep copy through a unified path.
+- Changed `Nodes.toPojo(...)` to delegate POJO materialization to `NodeFacade` for centralized conversion behavior.
+- Changed exception mapping to use more unified and compact binding/conversion error messages.
 ### Fixed
+- Fixed several semantic consistency issues across node/path/patch behavior.
+- Fixed edge-case conversion mismatches in POJO and dynamic-field binding flows.
 ### Removed
 
 ## [1.1.4] - 2026.02.24
@@ -119,4 +130,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
  - All this project.
-

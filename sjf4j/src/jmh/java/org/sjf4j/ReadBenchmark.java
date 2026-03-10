@@ -45,8 +45,8 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 15, time = 100, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
@@ -68,32 +68,32 @@ public class ReadBenchmark {
     private static final String JSON_DATA2 = "{\n" +
             "  \"name\": \"Alice\",\n" +
             "  \"friends\": [\n" +
-            "    {\"name\": \"Bill\", \"active\": true },\n" +
+            "    {\"name\": \"Bill\", \"active\": true, \"score\": 88.5 },\n" +
+            "    {\"name\": \"Eve\", \"active\": false, \"tags\": [\"x\",\"y\"] },\n" +
             "    {\n" +
             "      \"name\": \"Cindy\",\n" +
             "      \"friends\": [\n" +
             "        {\"name\": \"David\"},\n" +
-            "        {\"id\": 5, \"info\": \"blabla\"}\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ],\n" +
-            "  \"age\": 18\n" +
-            "}\n";
-
-    // Same structure as JSON_DATA2 but without unknown fields for User2 (no dynamic map).
-    private static final String JSON_DATA2_NO_DYN = "{\n" +
-            "  \"name\": \"Alice\",\n" +
-            "  \"friends\": [\n" +
-            "    {\"name\": \"Bill\"},\n" +
-            "    {\n" +
-            "      \"name\": \"Cindy\",\n" +
-            "      \"friends\": [\n" +
-            "        {\"name\": \"David\"},\n" +
+            "        {\"id\": 5, \"info\": \"blabla\"},\n" +
+            "        {\"name\": \"Frank\", \"friends\": [{\"name\": \"Gina\"}, {\"name\": \"Hank\"}]},\n" +
+            "        {\"name\": \"Ivy\", \"meta\": {\"a\":1,\"b\":2}},\n" +
             "        {}\n" +
             "      ]\n" +
-            "    }\n" +
-            "  ]\n" +
+            "    },\n" +
+            "    {\"name\": \"Jane\"},\n" +
+            "    {\"name\": \"Kyle\", \"friends\": [{\"name\": \"Liam\"}, {\"name\": \"Mia\"}]},\n" +
+            "    {\"name\": \"Nina\", \"age\": 19, \"city\": \"SG\"}\n" +
+            "  ],\n" +
+            "  \"age\": 18,\n" +
+            "  \"city\": \"Singapore\",\n" +
+            "  \"ext\": {\"k1\": 1, \"k2\": true, \"k3\": [1,2,3]},\n" +
+            "  \"extra1\": 12345,\n" +
+            "  \"extra2\": \"hello\",\n" +
+            "  \"extra3\": {\"nested\": {\"x\": 1, \"y\": [1,2,3,4]}}\n" +
             "}\n";
+
+    // Kept for compatibility with older benchmark variants.
+    private static final String JSON_DATA2_NO_DYN = JSON_DATA2;
 
     // Pure list of User2 to focus on array/collection parsing overhead.
     private static final String JSON_DATA2_LIST = "[\n" +
@@ -153,38 +153,38 @@ public class ReadBenchmark {
 
     @Benchmark
     public Object json_simple_facade_jojo() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2_NO_DYN, User2.class);
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User2.class);
     }
 
     // ----- Jackson baselines -----
     @Benchmark
     public Object json_jackson_native_pojo() throws IOException {
-        return JACKSON.readValue(JSON_DATA2_NO_DYN, UserPlain.class);
+        return JACKSON.readValue(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_jackson_facade_pojo(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2_NO_DYN, UserPlain.class);
+        return state.jacksonFacade.readNode(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_jackson_native_has_any() throws IOException {
-        return JACKSON.readValue(JSON_DATA2_NO_DYN, User.class);
+        return JACKSON.readValue(JSON_DATA2, User.class);
     }
 
     @Benchmark
     public Object json_jackson_native_map() throws IOException {
-        return JACKSON.readValue(JSON_DATA2_NO_DYN, Map.class);
+        return JACKSON.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_jackson_facade_map(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2_NO_DYN, Map.class);
+        return state.jacksonFacade.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_jackson_facade_jojo(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
+        return state.jacksonFacade.readNode(JSON_DATA2, User2.class);
     }
 
 //    @Benchmark
@@ -201,27 +201,27 @@ public class ReadBenchmark {
     // ----- Gson baselines -----
     @Benchmark
     public Object json_gson_native_pojo() {
-        return GSON.fromJson(JSON_DATA2_NO_DYN, UserPlain.class);
+        return GSON.fromJson(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_gson_facade_pojo(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2_NO_DYN, UserPlain.class);
+        return state.gsonFacade.readNode(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_gson_native_map() {
-        return GSON.fromJson(JSON_DATA2_NO_DYN, Map.class);
+        return GSON.fromJson(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_gson_facade_map(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2_NO_DYN, Map.class);
+        return state.gsonFacade.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_gson_facade_jojo(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
+        return state.gsonFacade.readNode(JSON_DATA2, User2.class);
     }
 
 //    @Benchmark
@@ -237,53 +237,53 @@ public class ReadBenchmark {
     // ----- Fastjson2 baselines -----
     @Benchmark
     public Object json_fastjson2_native_pojo() {
-        return JSON.parseObject(JSON_DATA2_NO_DYN, UserPlain.class);
+        return JSON.parseObject(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_fastjson2_facade_pojo(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, UserPlain.class);
+        return state.fastjson2Facade.readNode(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_fastjson2_native_has_any() {
-        return JSON.parseObject(JSON_DATA2_NO_DYN, User.class);
+        return JSON.parseObject(JSON_DATA2, User.class);
     }
 
     @Benchmark
     public Object json_fastjson2_native_map() {
-        return JSON.parseObject(JSON_DATA2_NO_DYN, Map.class);
+        return JSON.parseObject(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_fastjson2_facade_map(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, Map.class);
+        return state.fastjson2Facade.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_fastjson2_facade_jojo(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, User2.class);
+        return state.fastjson2Facade.readNode(JSON_DATA2, User2.class);
     }
 
     // ----- JSON-P baselines -----
     @Benchmark
     public Object json_jsonp_native_map() {
-        return Json.createReader(new StringReader(JSON_DATA2_NO_DYN)).readObject();
+        return Json.createReader(new StringReader(JSON_DATA2)).readObject();
     }
 
     @Benchmark
     public Object json_jsonp_facade_pojo(FacadeState state) {
-        return state.jsonpFacade.readNode(JSON_DATA2_NO_DYN, UserPlain.class);
+        return state.jsonpFacade.readNode(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
     public Object json_jsonp_facade_map(FacadeState state) {
-        return state.jsonpFacade.readNode(JSON_DATA2_NO_DYN, Map.class);
+        return state.jsonpFacade.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
     public Object json_jsonp_facade_jojo(FacadeState state) {
-        return state.jsonpFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
+        return state.jsonpFacade.readNode(JSON_DATA2, User2.class);
     }
 
 //    @Benchmark

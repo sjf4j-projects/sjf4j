@@ -212,17 +212,39 @@ public class JsonPath {
         return null == value ? defaultValue : value;
     }
 
+    private interface _PathAction<T> {
+        T apply(Object value) throws Exception;
+    }
+
+
+    private <T> T _getStrict(Object container, String target, _PathAction<T> action) {
+        Object value = null;
+        try {
+            value = getNode(container);
+            return action.apply(value);
+        } catch (Exception e) {
+            throw new JsonException("get '" + target + "' failed: path='" + this + "', containerType='" +
+                    Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
+        }
+    }
+
+    private <T> T _getLenient(Object container, String target, _PathAction<T> action) {
+        Object value = null;
+        try {
+            value = getNode(container);
+            return action.apply(value);
+        } catch (Exception e) {
+            throw new JsonException("getAs '" + target + "' failed: path='" + this + "', containerType='" +
+                    Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
+        }
+    }
+
     // String
     /**
      * Returns a String at this path using strict conversion.
      */
     public String getString(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toString(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: String by path '" + this + "'", e);
-        }
+        return _getStrict(container, "String", Nodes::toString);
     }
     /**
      * Returns a String at this path or the default value when missing.
@@ -236,12 +258,7 @@ public class JsonPath {
      * Returns a String at this path using lenient conversion.
      */
     public String getAsString(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asString(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to String", e);
-        }
+        return _getLenient(container, "String", Nodes::asString);
     }
     /**
      * Returns a String at this path using lenient conversion with default.
@@ -256,12 +273,7 @@ public class JsonPath {
      * Returns a Number at this path using strict conversion.
      */
     public Number getNumber(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toNumber(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Number by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Number", Nodes::toNumber);
     }
     /**
      * Returns a Number at this path or the default value when missing.
@@ -275,12 +287,7 @@ public class JsonPath {
      * Returns a Number at this path using lenient conversion.
      */
     public Number getAsNumber(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asNumber(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Number", e);
-        }
+        return _getLenient(container, "Number", Nodes::asNumber);
     }
     /**
      * Returns a Number at this path using lenient conversion with default.
@@ -295,12 +302,7 @@ public class JsonPath {
      * Returns a Long at this path using strict conversion.
      */
     public Long getLong(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toLong(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Long by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Long", Nodes::toLong);
     }
     /**
      * Returns a Long at this path or the default value when missing.
@@ -314,12 +316,7 @@ public class JsonPath {
      * Returns a Long at this path using lenient conversion.
      */
     public Long getAsLong(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asLong(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Long", e);
-        }
+        return _getLenient(container, "Long", Nodes::asLong);
     }
     /**
      * Returns a Long at this path using lenient conversion with default.
@@ -334,12 +331,7 @@ public class JsonPath {
      * Returns an Integer at this path using strict conversion.
      */
     public Integer getInteger(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Integer by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Integer", Nodes::toInteger);
     }
     /**
      * Returns an Integer at this path or the default value when missing.
@@ -353,12 +345,7 @@ public class JsonPath {
      * Returns an Integer at this path using lenient conversion.
      */
     public Integer getAsInteger(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Integer", e);
-        }
+        return _getLenient(container, "Integer", Nodes::asInteger);
     }
     /**
      * Returns an Integer at this path using lenient conversion with default.
@@ -373,12 +360,7 @@ public class JsonPath {
      * Returns a Short at this path using strict conversion.
      */
     public Short getShort(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toShort(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Short by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Short", Nodes::toShort);
     }
     /**
      * Returns a Short at this path or the default value when missing.
@@ -392,12 +374,7 @@ public class JsonPath {
      * Returns a Short at this path using lenient conversion.
      */
     public Short getAsShort(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asShort(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Short", e);
-        }
+        return _getLenient(container, "Short", Nodes::asShort);
     }
     /**
      * Returns a Short at this path using lenient conversion with default.
@@ -412,12 +389,7 @@ public class JsonPath {
      * Returns a Byte at this path using strict conversion.
      */
     public Byte getByte(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toByte(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Byte by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Byte", Nodes::toByte);
     }
     /**
      * Returns a Byte at this path or the default value when missing.
@@ -431,12 +403,7 @@ public class JsonPath {
      * Returns a Byte at this path using lenient conversion.
      */
     public Byte getAsByte(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asByte(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Byte", e);
-        }
+        return _getLenient(container, "Byte", Nodes::asByte);
     }
     /**
      * Returns a Byte at this path using lenient conversion with default.
@@ -451,12 +418,7 @@ public class JsonPath {
      * Returns a Double at this path using strict conversion.
      */
     public Double getDouble(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toDouble(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Double by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Double", Nodes::toDouble);
     }
     /**
      * Returns a Double at this path or the default value when missing.
@@ -470,12 +432,7 @@ public class JsonPath {
      * Returns a Double at this path using lenient conversion.
      */
     public Double getAsDouble(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asDouble(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Double", e);
-        }
+        return _getLenient(container, "Double", Nodes::asDouble);
     }
     /**
      * Returns a Double at this path using lenient conversion with default.
@@ -490,12 +447,7 @@ public class JsonPath {
      * Returns a Float at this path using strict conversion.
      */
     public Float getFloat(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toFloat(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Float by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Float", Nodes::toFloat);
     }
     /**
      * Returns a Float at this path or the default value when missing.
@@ -509,12 +461,7 @@ public class JsonPath {
      * Returns a Float at this path using lenient conversion.
      */
     public Float getAsFloat(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asFloat(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Float", e);
-        }
+        return _getLenient(container, "Float", Nodes::asFloat);
     }
     /**
      * Returns a Float at this path using lenient conversion with default.
@@ -529,12 +476,7 @@ public class JsonPath {
      * Returns a BigInteger at this path using strict conversion.
      */
     public BigInteger getBigInteger(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toBigInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: BigInteger by path '" + this + "'", e);
-        }
+        return _getStrict(container, "BigInteger", Nodes::toBigInteger);
     }
     /**
      * Returns a BigInteger at this path or the default value when missing.
@@ -548,12 +490,7 @@ public class JsonPath {
      * Returns a BigInteger at this path using lenient conversion.
      */
     public BigInteger getAsBigInteger(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asBigInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to BigInteger", e);
-        }
+        return _getLenient(container, "BigInteger", Nodes::asBigInteger);
     }
     /**
      * Returns a BigInteger at this path using lenient conversion with default.
@@ -568,12 +505,7 @@ public class JsonPath {
      * Returns a BigDecimal at this path using strict conversion.
      */
     public BigDecimal getBigDecimal(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toBigDecimal(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: BigDecimal by path '" + this + "'", e);
-        }
+        return _getStrict(container, "BigDecimal", Nodes::toBigDecimal);
     }
     /**
      * Returns a BigDecimal at this path or the default value when missing.
@@ -587,12 +519,7 @@ public class JsonPath {
      * Returns a BigDecimal at this path using lenient conversion.
      */
     public BigDecimal getAsBigDecimal(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asBigDecimal(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to BigDecimal", e);
-        }
+        return _getLenient(container, "BigDecimal", Nodes::asBigDecimal);
     }
     /**
      * Returns a BigDecimal at this path using lenient conversion with default.
@@ -607,12 +534,7 @@ public class JsonPath {
      * Returns a Boolean at this path using strict conversion.
      */
     public Boolean getBoolean(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toBoolean(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Boolean by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Boolean", Nodes::toBoolean);
     }
     /**
      * Returns a Boolean at this path or the default value when missing.
@@ -626,12 +548,7 @@ public class JsonPath {
      * Returns a Boolean at this path using lenient conversion.
      */
     public Boolean getAsBoolean(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.asBoolean(value);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Boolean", e);
-        }
+        return _getLenient(container, "Boolean", Nodes::asBoolean);
     }
     /**
      * Returns a Boolean at this path using lenient conversion with default.
@@ -646,12 +563,7 @@ public class JsonPath {
      * Returns a JsonObject at this path using strict conversion.
      */
     public JsonObject getJsonObject(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toJsonObject(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: JsonObject by path '" + this + "'", e);
-        }
+        return _getStrict(container, "JsonObject", Nodes::toJsonObject);
     }
     /**
      * Returns a JsonObject at this path or the default value when missing.
@@ -666,12 +578,7 @@ public class JsonPath {
      * Returns a Map at this path using strict conversion.
      */
     public Map<String, Object> getMap(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toMap(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Map<String,Object> by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Map<String,Object>", Nodes::toMap);
     }
     /**
      * Returns a Map at this path or the default value when missing.
@@ -685,13 +592,7 @@ public class JsonPath {
      * Returns a typed Map at this path using strict conversion.
      */
     public <T> Map<String, T> getMap(Object container, Class<T> clazz) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toMap(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Map<String," +
-                    clazz.getName() + ">", e);
-        }
+        return _getLenient(container, "Map<String," + clazz.getName() + ">", (value) -> Nodes.toMap(value, clazz));
     }
     /**
      * Returns a typed Map at this path or the default value when missing.
@@ -706,12 +607,7 @@ public class JsonPath {
      * Returns a JsonArray at this path using strict conversion.
      */
     public JsonArray getJsonArray(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toJsonArray(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: JsonArray by path '" + this + "'", e);
-        }
+        return _getStrict(container, "JsonArray", Nodes::toJsonArray);
     }
     /**
      * Returns a JsonArray at this path or the default value when missing.
@@ -726,12 +622,7 @@ public class JsonPath {
      * Returns a List at this path using strict conversion.
      */
     public List<Object> getList(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toList(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: List<Object> by path '" + this + "'", e);
-        }
+        return _getStrict(container, "List<Object>", Nodes::toList);
     }
     /**
      * Returns a List at this path or the default value when missing.
@@ -745,12 +636,7 @@ public class JsonPath {
      * Returns a typed List at this path using strict conversion.
      */
     public <T> List<T> getList(Object container, Class<T> clazz) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toList(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to List<" + clazz.getName() + ">", e);
-        }
+        return _getLenient(container, "List<" + clazz.getName() + ">", (value) -> Nodes.toList(value, clazz));
     }
     /**
      * Returns a typed List at this path or the default value when missing.
@@ -765,12 +651,7 @@ public class JsonPath {
      * Returns an Object array at this path using strict conversion.
      */
     public Object[] getArray(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toArray(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Object[] by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Object[]", Nodes::toArray);
     }
     /**
      * Returns an Object array at this path or the default value when missing.
@@ -784,12 +665,7 @@ public class JsonPath {
      * Returns a typed array at this path using strict conversion.
      */
     public <T> T[] getArray(Object container, Class<T> clazz) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toArray(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to " + clazz.getName() + "[]", e);
-        }
+        return _getLenient(container, clazz.getName() + "[]", (value) -> Nodes.toArray(value, clazz));
     }
     /**
      * Returns a typed array at this path or the default value when missing.
@@ -804,12 +680,7 @@ public class JsonPath {
      * Returns a Set at this path using strict conversion.
      */
     public Set<Object> getSet(Object container) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toSet(value);
-        } catch (Exception e) {
-            throw new JsonException("get failed: Set<Object> by path '" + this + "'", e);
-        }
+        return _getStrict(container, "Set<Object>", Nodes::toSet);
     }
     /**
      * Returns a Set at this path or the default value when missing.
@@ -823,12 +694,7 @@ public class JsonPath {
      * Returns a typed Set at this path using strict conversion.
      */
     public <T> Set<T> getSet(Object container, Class<T> clazz) {
-        try {
-            Object value = getNode(container);
-            return Nodes.toSet(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to Set<" + clazz.getName() + ">", e);
-        }
+        return _getLenient(container, "Set<" + clazz.getName() + ">", (value) -> Nodes.toSet(value, clazz));
     }
     /**
      * Returns a typed Set at this path or the default value when missing.
@@ -842,12 +708,7 @@ public class JsonPath {
      * Returns a value at this path converted to the given type.
      */
     public <T> T get(Object container, Class<T> clazz) {
-        try {
-            Object value = getNode(container);
-            return Nodes.to(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("get failed: " + clazz.getName() + " by path '" + this + "'", e);
-        }
+        return _getStrict(container, clazz.getName(), (value) -> Nodes.to(value, clazz));
     }
 
     /**
@@ -864,12 +725,7 @@ public class JsonPath {
      * Returns a value at this path using lenient conversion.
      */
     public <T> T getAs(Object container, Class<T> clazz) {
-        try {
-            Object value = getNode(container);
-            return Nodes.as(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("as failed: value at path '" + this + "' to " + clazz.getName(), e);
-        }
+        return _getLenient(container, clazz.getName(), (value) -> Nodes.as(value, clazz));
     }
     /**
      * Returns a value at this path using lenient conversion with inferred type.
@@ -948,11 +804,13 @@ public class JsonPath {
      * Evaluates the path and converts the result using strict conversion.
      */
     public <T> T eval(Object container, Class<T> clazz) {
+        Object value = null;
         try {
-            Object value = eval(container);
+            value = eval(container);
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("eval failed: " + clazz.getName() + " by path '" + this + "'", e);
+            throw new JsonException("eval failed: path='" + this + "', clazz='" + clazz.getName() +
+                    "', containerType='" +  Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
         }
     }
 
@@ -960,11 +818,13 @@ public class JsonPath {
      * Evaluates the path and converts the result using lenient conversion.
      */
     public <T> T evalAs(Object container, Class<T> clazz) {
+        Object value = null;
         try {
-            Object value = eval(container);
+            value = eval(container);
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("eval-as failed: value at path '" + this + "' to " + clazz.getName(), e);
+            throw new JsonException("evalAs failed: path='" + this + "', clazz='" + clazz.getName() +
+                    "', containerType='" +  Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
         }
     }
 
