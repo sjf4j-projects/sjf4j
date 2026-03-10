@@ -8,7 +8,6 @@ java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
     withSourcesJar()
-    withJavadocJar()
 }
 
 repositories {
@@ -118,6 +117,12 @@ mavenPublishing {
         }
     }
 }
+
+// Gradle 9 task validation: ensure metadata generation sees javadoc artifact producer.
+tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
+    .configureEach {
+        dependsOn(tasks.matching { it.name == "plainJavadocJar" })
+    }
 
 //publishing {
 //    publications {

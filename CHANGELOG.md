@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [1.1.5] - 2026.03.10
 ### Added
 - Added `JSON-P` facade integration with runtime auto-detection in `FacadeFactory`.
 - Added `AnyOf` resolution support in `StreamingFacade` and `NodeFacade`.
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed several semantic consistency issues across node/path/patch behavior.
 - Fixed edge-case conversion mismatches in POJO and dynamic-field binding flows.
-### Removed
+
 
 ## [1.1.4] - 2026.02.24
 

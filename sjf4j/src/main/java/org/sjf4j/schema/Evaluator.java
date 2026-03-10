@@ -400,7 +400,7 @@ public interface Evaluator {
             if (instance.getJsonType() != JsonType.STRING) return true;
 
             String actual = Nodes.toString(instance.getNode());
-            int length = StringUtil.length(actual);
+            int length = EvaluateUtil.stringIcuLength(actual);
             if (minLength != null && length < minLength) {
                 ctx.addError(ps, "minLength", "String length must >= " + minLength);
                 return false;
@@ -422,7 +422,7 @@ public interface Evaluator {
          */
         public PatternEvaluator(String pattern) {
             this.pattern = Objects.requireNonNull(pattern);
-            this.pn = Pattern.compile(pattern);
+            this.pn = EvaluateUtil.compileRegexPattern(pattern, "pattern");
         }
 
         /**
@@ -520,7 +520,7 @@ public interface Evaluator {
                 this.patternSchemas = new JsonSchema[patternProperties.size()];
                 int i = 0;
                 for (Map.Entry<String, JsonSchema> entry : patternProperties.entrySet()) {
-                    this.patternPns[i] = Pattern.compile(entry.getKey());
+                    this.patternPns[i] = EvaluateUtil.compileRegexPattern(entry.getKey(), "patternProperties");
                     this.patternSchemas[i] = entry.getValue();
                     i++;
                 }
