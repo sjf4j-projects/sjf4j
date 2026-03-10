@@ -2,10 +2,12 @@ package org.sjf4j.facade.simple;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -64,6 +67,21 @@ public class SimpleNodeFacadeTest {
 
         Object r5 = nodeFacade.readNode(samples[5], Object.class);
         assertInstanceOf(Student.class, r5);
+    }
+
+    @Test
+    void objectClassDeepCopySwitchWorks() {
+        JsonObject src = new JsonObject("name", "A", "meta", new JsonObject("age", 18));
+
+        Object same = nodeFacade.readNode(src, Object.class, false);
+        assertTrue(same == src);
+
+        JsonObject copied = (JsonObject) nodeFacade.readNode(src, Object.class, true);
+        assertNotSame(src, copied);
+        assertNotSame(src.getJsonObject("meta"), copied.getJsonObject("meta"));
+
+        copied.getJsonObject("meta").put("age", 20);
+        assertEquals(18, src.getJsonObject("meta").getInteger("age"));
     }
 
     @Data
@@ -109,6 +127,31 @@ public class SimpleNodeFacadeTest {
         // value2Object
         Object object = nodeFacade.readNode(value, User.class);
         log.info("object type={}, object={}", object.getClass(), object);
+    }
+
+    @Test
+    void testReadSamePojoWithDeepCopyTrue() {
+        User baby = new User();
+        baby.setName("Baby");
+        baby.setAge(1);
+        baby.setInfo(new JsonObject("k", "v"));
+
+        User lily = new User();
+        lily.setName("Lily");
+        lily.setAge(25);
+        lily.setInfo(new JsonObject("city", "NY"));
+        lily.setFriends(Collections.singletonList(baby));
+
+        User copied = (User) nodeFacade.readNode(lily, User.class, true);
+        assertNotSame(lily, copied);
+        assertNotSame(lily.getInfo(), copied.getInfo());
+        assertNotSame(lily.getFriends(), copied.getFriends());
+
+        copied.getInfo().put("city", "BJ");
+        copied.getFriends().get(0).setName("Kid");
+
+        assertEquals("NY", lily.getInfo().getString("city"));
+        assertEquals("Baby", lily.getFriends().get(0).getName());
     }
 
     @Test
@@ -215,6 +258,74 @@ public class SimpleNodeFacadeTest {
         public List<Student> students;
     }
 
+    @Data
+    @AnyOf(value = {
+            @AnyOf.Mapping(value = AnyOfCat.class, when = "cat"),
+            @AnyOf.Mapping(value = AnyOfDog.class, when = "dog")
+    }, key = "kind")
+    public static class AnyOfAnimal {
+        private String kind;
+        private String name;
+    }
+
+    @EqualsAndHashCode(callSuper = true)
+    @Data
+    public static class AnyOfCat extends AnyOfAnimal {
+        private int lives;
+    }
+
+    @EqualsAndHashCode(callSuper = true)
+    @Data
+    public static class AnyOfDog extends AnyOfAnimal {
+        private int bark;
+    }
+
+    public static class AnyOfZoo {
+        @AnyOf(value = {
+                @AnyOf.Mapping(value = AnyOfCat.class, when = "cat"),
+                @AnyOf.Mapping(value = AnyOfDog.class, when = "dog")
+        }, key = "kind")
+        public AnyOfAnimal pet;
+    }
+
+    @AnyOf(value = {
+            @AnyOf.Mapping(AnyOfPolyObj.class),
+            @AnyOf.Mapping(AnyOfPolyArr.class)
+    })
+    interface AnyOfPoly {}
+
+    static class AnyOfPolyObj extends JsonObject implements AnyOfPoly {}
+    static class AnyOfPolyArr extends JsonArray implements AnyOfPoly {}
+
+    @Test
+    void testAnyOfRootByDiscriminator() {
+        JsonObject jo = new JsonObject("kind", "cat", "name", "Nana", "lives", 7);
+
+        AnyOfAnimal animal = (AnyOfAnimal) nodeFacade.readNode(jo, AnyOfAnimal.class);
+        assertInstanceOf(AnyOfCat.class, animal);
+        assertEquals("Nana", animal.getName());
+        assertEquals(7, ((AnyOfCat) animal).getLives());
+    }
+
+    @Test
+    void testAnyOfFieldByDiscriminator() {
+        JsonObject jo = new JsonObject("pet", new JsonObject("kind", "dog", "name", "Bobo", "bark", 3));
+        AnyOfZoo zoo = (AnyOfZoo) nodeFacade.readNode(jo, AnyOfZoo.class);
+
+        assertInstanceOf(AnyOfDog.class, zoo.pet);
+        assertEquals("Bobo", zoo.pet.getName());
+        assertEquals(3, ((AnyOfDog) zoo.pet).getBark());
+    }
+
+    @Test
+    void testAnyOfRootByJsonType() {
+        AnyOfPoly p1 = (AnyOfPoly) nodeFacade.readNode(new JsonObject("k", 1), AnyOfPoly.class);
+        AnyOfPoly p2 = (AnyOfPoly) nodeFacade.readNode(new JsonArray(new Object[]{1, 2}), AnyOfPoly.class);
+
+        assertInstanceOf(AnyOfPolyObj.class, p1);
+        assertInstanceOf(AnyOfPolyArr.class, p2);
+    }
+
     @Test
     public void testListOfPojo() {
         JsonObject jo = new JsonObject();
@@ -223,8 +334,8 @@ public class SimpleNodeFacadeTest {
         list.add(new JsonObject("name", "Ben", "age", 12));
         jo.put("students", list);
 
-        ClassRoom c = (ClassRoom) nodeFacade.readNode(jo, ClassRoom.class);
-        log.info("c={}", c);
+        ClassRoom c = (ClassRoom) nodeFacade.readNode(jo, ClassRoom.class, true);
+        log.info("c={}", Nodes.inspect(c));
         assertEquals(2, c.students.size());
         assertEquals("Ann", c.students.get(0).name);
 

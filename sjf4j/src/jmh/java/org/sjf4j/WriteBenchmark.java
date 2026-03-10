@@ -28,6 +28,7 @@ import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.node.TypeReference;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -76,7 +77,7 @@ public class WriteBenchmark {
         try {
             USER_HAS_ANY = Sjf4j.fromJson(JSON_DATA2_NO_DYN, User.class);
             USER_PLAIN = Sjf4j.fromJson(JSON_DATA2_NO_DYN, UserPlain.class);
-            MAP_NODE = Sjf4j.fromJson(JSON_DATA2_NO_DYN, Map.class);
+            MAP_NODE = Sjf4j.fromJson(JSON_DATA2_NO_DYN, new TypeReference<Map<String, Object>>() {});
             JSONP_MAP_NODE = Json.createReader(new StringReader(JSON_DATA2_NO_DYN)).readObject();
             USER_JOJO = Sjf4j.fromJson(JSON_DATA2_NO_DYN, User2.class);
         } catch (Exception e) {

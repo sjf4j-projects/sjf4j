@@ -2,6 +2,7 @@ package org.sjf4j.facade;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 
 /**
@@ -103,6 +104,9 @@ public interface StreamingWriter extends Closeable {
     void flush() throws IOException;
 
     default void flushTo(Writer output) throws IOException {
+        // Only for Fastjson2
+    }
+    default void flushTo(OutputStream output) throws IOException {
         // Only for Fastjson2
     }
 }

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
@@ -224,6 +225,55 @@ public class NodesTest {
         assertEquals(123L, Nodes.to(123L, long.class));
     }
 
+    @Getter
+    @Setter
+    @AnyOf(value = {
+            @AnyOf.Mapping(value = Cat.class, when = "cat"),
+            @AnyOf.Mapping(value = Dog.class, when = "dog")
+    }, key = "kind")
+    public static class Animal {
+        private String kind;
+        private String name;
+    }
+
+    @Getter
+    @Setter
+    public static class Cat extends Animal {
+        private int lives;
+    }
+
+    @Getter
+    @Setter
+    public static class Dog extends Animal {
+        private int bark;
+    }
+
+    public static class Zoo {
+        @AnyOf(value = {
+                @AnyOf.Mapping(value = Cat.class, when = "cat"),
+                @AnyOf.Mapping(value = Dog.class, when = "dog")
+        }, key = "kind")
+        public Animal pet;
+    }
+
+    @Test
+    void testNodesToPojoAnyOfRoot() {
+        JsonObject src = new JsonObject("kind", "cat", "name", "Nana", "lives", 7);
+        Animal animal = Nodes.to(src, Animal.class);
+        assertInstanceOf(Cat.class, animal);
+        assertEquals("Nana", animal.getName());
+        assertEquals(7, ((Cat) animal).getLives());
+    }
+
+    @Test
+    void testNodesToPojoAnyOfField() {
+        JsonObject src = new JsonObject("pet", new JsonObject("kind", "dog", "name", "Bobo", "bark", 3));
+        Zoo zoo = Nodes.to(src, Zoo.class);
+        assertInstanceOf(Dog.class, zoo.pet);
+        assertEquals("Bobo", zoo.pet.getName());
+        assertEquals(3, ((Dog) zoo.pet).getBark());
+    }
+
 
 
 
@@ -397,4 +447,3 @@ public class NodesTest {
     }
 
 }
-

@@ -65,6 +65,25 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testJsonPointerParent() {
+        JsonPointer p = JsonPointer.compile("/a/b/0/c");
+        assertEquals("/a/b/0", p.parent().toString());
+        assertEquals("/a/b", p.parent().parent().toString());
+        assertEquals("/a", p.parent().parent().parent().toString());
+        assertEquals("", p.parent().parent().parent().parent().toString());
+        assertNull(p.parent().parent().parent().parent().parent());
+
+        JsonPointer root = JsonPointer.compile("");
+        JsonPointer child = root.childIndex(2);
+        assertEquals("/2", child.toString());
+        assertTrue(JsonPointer.compile("/a/-").isAppend());
+        assertFalse(JsonPointer.compile("/a/0").isAppend());
+        assertEquals(JsonPointer.compile("/a/1"), JsonPointer.compile("/a/1"));
+        assertEquals(JsonPointer.compile("/a/1").hashCode(), JsonPointer.compile("/a/1").hashCode());
+        assertFalse(JsonPointer.compile("/a/1").equals(JsonPointer.compile("/a/2")));
+    }
+
+    @Test
     public void testCompile3() {
         String s1 = "$..a['b'].c";
         JsonPath p1 = JsonPath.compile(s1);

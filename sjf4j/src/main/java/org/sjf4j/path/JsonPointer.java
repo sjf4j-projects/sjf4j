@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.exception.JsonException;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -60,10 +61,69 @@ public class JsonPointer extends JsonPath {
         return new JsonPointer(null, segments);
     }
 
-//    static {
-//        NodeRegistry.registerValueCodec(JsonPointer.class);
-//    }
+    /**
+     * Returns parent pointer, or {@code null} when this pointer is root.
+     */
+    public JsonPointer parent() {
+        if (segments.length <= 1) return null;
+        PathSegment[] parentSegs = new PathSegment[segments.length - 1];
+        System.arraycopy(segments, 0, parentSegs, 0, parentSegs.length);
+        return new JsonPointer(null, parentSegs);
+    }
 
+    /**
+     * Returns true when this pointer ends with append token {@code /-}.
+     */
+    public boolean isAppend() {
+        if (segments.length <= 1) return false;
+        return segments[segments.length - 1] instanceof PathSegment.Append;
+    }
+
+    /**
+     * Returns child pointer with one array index segment appended.
+     */
+    public JsonPointer childIndex(int index) {
+        PathSegment[] childSegs = Arrays.copyOf(segments, segments.length + 1);
+        PathSegment parent = segments[segments.length - 1];
+        childSegs[segments.length] = new PathSegment.Index(parent, null, index);
+        return new JsonPointer(null, childSegs);
+    }
+
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        JsonPointer other = (JsonPointer) obj;
+        if (segments.length != other.segments.length) return false;
+        for (int i = 0; i < segments.length; i++) {
+            PathSegment a = segments[i];
+            PathSegment b = other.segments[i];
+            if (a.getClass() != b.getClass()) return false;
+            if (a instanceof PathSegment.Name) {
+                if (!((PathSegment.Name) a).name.equals(((PathSegment.Name) b).name)) return false;
+            } else if (a instanceof PathSegment.Index) {
+                if (((PathSegment.Index) a).index != ((PathSegment.Index) b).index) return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 1;
+        for (PathSegment seg : segments) {
+            int segHash = seg.getClass().hashCode();
+            if (seg instanceof PathSegment.Name) {
+                segHash = 31 * segHash + ((PathSegment.Name) seg).name.hashCode();
+            } else if (seg instanceof PathSegment.Index) {
+                segHash = 31 * segHash + ((PathSegment.Index) seg).index;
+            }
+            hash = 31 * hash + segHash;
+        }
+        return hash;
+    }
+    
     /**
      * Returns this pointer as an RFC 6901 expression.
      */

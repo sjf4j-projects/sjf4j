@@ -10,6 +10,7 @@ import org.sjf4j.node.Nodes;
 
 import java.time.LocalDate;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -29,8 +30,8 @@ public class NodesTest {
         JsonObject jo = Sjf4j.fromJson(json, JsonObject.class);
         log.info("jo={}", Nodes.inspect(jo));
 
-        assertThrows(JsonException.class, () -> Nodes.toPojo(jo, User.class),
-                "Type mismatch: cannot convert java.lang.String to java.time.LocalDate");
+        User user1 = Nodes.toPojo(jo, User.class);
+        log.info("user1={}", Nodes.inspect(user1));
 
         JsonObject jo2 = new JsonObject("name", "yes");
         User user2 = Nodes.toPojo(jo2, User.class);

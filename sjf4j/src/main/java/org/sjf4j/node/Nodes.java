@@ -512,81 +512,11 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
-        if (node == null) return null;
-        if (clazz.isInstance(node)) return (T) node;
-        if (pi.isJajo) return toJajo(node, clazz);
-
-        NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-        Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-        Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-        int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-        int pendingSize = 0;
-        NodeRegistry.FieldInfo[] pendingFields = null;
-        Object[] pendingValues = null;
-        Map<String, Object> dynamicMap = null;
-
-        for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(node)) {
-            String key = entry.getKey();
-
-            int argIdx = -1;
-            if (pojo == null) {
-                argIdx = ci.getArgIndex(key);
-                if (argIdx < 0 && ci.aliasMap != null) {
-                    String origin = ci.aliasMap.get(key); // alias -> origin
-                    if (origin != null) {
-                        argIdx = ci.getArgIndex(origin);
-                    }
-                }
-            }
-            if (argIdx >= 0) {
-                assert args != null;
-                Type argType = ci.argTypes[argIdx];
-                args[argIdx] = to(entry.getValue(), Types.rawBox(argType));
-                remainingArgs--;
-                if (remainingArgs == 0) {
-                    pojo = ci.newPojoWithArgs(args);
-                    for (int i = 0; i < pendingSize; i++) {
-                        pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                    }
-                    pendingSize = 0;
-                }
-                continue;
-            }
-
-            NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
-            if (fi != null) {
-                Object vv = to(entry.getValue(), fi.rawClazz);
-                if (pojo != null) {
-                    fi.invokeSetterIfPresent(pojo, vv);
-                } else {
-                    if (pendingFields == null) {
-                        int cap = pi.fieldCount;
-                        pendingFields = new NodeRegistry.FieldInfo[cap];
-                        pendingValues = new Object[cap];
-                    }
-                    pendingFields[pendingSize] = fi;
-                    pendingValues[pendingSize] = vv;
-                    pendingSize++;
-                }
-                continue;
-            }
-
-            if (pi.isJojo) {
-                if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
-                Object vv = entry.getValue();
-                dynamicMap.put(key, vv);
-            }
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        if (ti.pojoInfo == null && ti.anyOfInfo == null) {
+            throw new JsonException("Class '" + clazz.getName() + "' is not a POJO");
         }
-
-        if (pojo == null) {
-            pojo = ci.newPojoWithArgs(args);
-            for (int i = 0; i < pendingSize; i++) {
-                pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-            }
-        }
-        if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
-        return (T) pojo;
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, false);
     }
 
     /**
@@ -643,8 +573,8 @@ public class Nodes {
             return toSet(node, vc);
         }
 
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
-        if (pi != null) return toPojo(node, clazz);
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        if (ti.pojoInfo != null || ti.anyOfInfo != null) return toPojo(node, clazz);
 
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + clazz.getName());
     }

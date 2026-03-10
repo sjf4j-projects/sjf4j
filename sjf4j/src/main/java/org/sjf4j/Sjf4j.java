@@ -238,7 +238,7 @@ public class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz);
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, true);
     }
 
     /**
@@ -249,7 +249,7 @@ public class Sjf4j {
     @SuppressWarnings("unchecked")
     public static <T> T fromNode(Object node, TypeReference<T> type) {
         Objects.requireNonNull(type, "type is null");
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType());
+        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), true);
     }
 
     /**

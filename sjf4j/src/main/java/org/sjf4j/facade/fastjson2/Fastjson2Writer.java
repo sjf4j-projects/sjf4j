@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.facade.StreamingWriter;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -129,6 +130,11 @@ public class Fastjson2Writer implements StreamingWriter {
     public void flushTo(Writer out) throws IOException {
         writer.flushTo(out);
     }
+    @Override
+    public void flushTo(OutputStream out) throws IOException {
+        writer.flushTo(out);
+    }
+
 
     /**
      * Closes underlying Fastjson2 writer.

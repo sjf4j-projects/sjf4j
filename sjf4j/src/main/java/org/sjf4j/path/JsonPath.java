@@ -40,9 +40,9 @@ public class JsonPath {
     /**
      * The raw path expression string.
      */
-    private final String raw;
+    protected final String raw;
 
-    private final PathSegment[] segments;
+    protected final PathSegment[] segments;
 
     /**
      * Creates a copy of an existing JsonPath instance.
@@ -86,14 +86,14 @@ public class JsonPath {
     }
 
 
-    /**
-     * Creates JsonPath from the last segment in a chain.
-     */
-    public static JsonPath fromLast(PathSegment lastSegment) {
-        Objects.requireNonNull(lastSegment, "lastSegment is null");
-        PathSegment[] segments = Paths.linearize(lastSegment);
-        return new JsonPath(null, segments);
-    }
+//    /**
+//     * Creates JsonPath from the last segment in a chain.
+//     */
+//    public static JsonPath fromLast(PathSegment lastSegment) {
+//        Objects.requireNonNull(lastSegment, "lastSegment is null");
+//        PathSegment[] segments = Paths.linearize(lastSegment);
+//        return new JsonPath(null, segments);
+//    }
 
     /**
      * Converts the path tokens back to a JSON Path expression string.
@@ -139,6 +139,13 @@ public class JsonPath {
      */
     public JsonPath copy() {
         return new JsonPath(this);
+    }
+
+    /**
+     * Returns internal parsed segments for subclass extensions.
+     */
+    protected PathSegment[] segments() {
+        return segments;
     }
 
     /**
