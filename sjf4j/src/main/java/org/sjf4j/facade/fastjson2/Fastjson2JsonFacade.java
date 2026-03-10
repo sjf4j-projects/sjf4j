@@ -138,7 +138,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try (JSONReader reader = JSONReader.of(input, readerContext)) {
+                try {
+                    JSONReader reader = JSONReader.of(input, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
@@ -146,7 +147,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             }
             case PLUGIN_MODULE:
             case AUTO: {
-                try (JSONReader reader = JSONReader.of(input, readerContext)) {
+                try {
+                    JSONReader reader = JSONReader.of(input, readerContext);
                     return reader.read(type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
@@ -168,7 +170,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try (JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext)) {
+                try {
+                    JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return Fastjson2StreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
@@ -176,7 +179,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             }
             case PLUGIN_MODULE:
             case AUTO: {
-                try (JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext)) {
+                try {
+                    JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return reader.read(type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);

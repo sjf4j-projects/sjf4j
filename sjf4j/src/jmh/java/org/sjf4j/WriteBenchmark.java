@@ -1,10 +1,12 @@
 package org.sjf4j;
 
-
 import com.alibaba.fastjson2.JSON;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import jakarta.json.Json;
 import lombok.Getter;
 import lombok.Setter;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -24,196 +26,225 @@ import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 
-import java.io.IOException;
+import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 
-//@BenchmarkMode(Mode.AverageTime)
-//@OutputTimeUnit(TimeUnit.MICROSECONDS)
-//@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-//@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-//@Fork(value = 1)
-//@Threads(1)
-//@State(Scope.Thread)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Warmup(iterations = 15, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 1)
+@Threads(1)
+@State(Scope.Thread)
 public class WriteBenchmark {
 
-//    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
-//    private static final String JSON_DATA = "{\"age\":25}";
-//    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30}";
-//    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"city\":\"Singapore\"}}";
-//    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"babies\":[{\"name\":\"Baby-0\",\"age\":1}]}";
-//    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"}}";
-    // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
-    private static final String JSON_DATA = "{\"name\":\"Alice\",\"no_way\":99,\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
-    private static final Person PERSON = Sjf4j.fromJson(JSON_DATA, Person.class);
+    private static final String JSON_DATA2_NO_DYN = "{\n" +
+            "  \"name\": \"Alice\",\n" +
+            "  \"friends\": [\n" +
+            "    {\"name\": \"Bill\"},\n" +
+            "    {\n" +
+            "      \"name\": \"Cindy\",\n" +
+            "      \"friends\": [\n" +
+            "        {\"name\": \"David\"},\n" +
+            "        {}\n" +
+            "      ]\n" +
+            "    }\n" +
+            "  ]\n" +
+            "}\n";
 
     private static final ObjectMapper JACKSON = new ObjectMapper();
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
 
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-    private static final JacksonJsonFacade JACKSON_FACADE = new JacksonJsonFacade(JACKSON);
-    private static final GsonJsonFacade GSON_FACADE = new GsonJsonFacade(GSON_BUILDER);
-    private static final Fastjson2JsonFacade FASTJSON2_FACADE = new Fastjson2JsonFacade();
 
+    private static final User USER_HAS_ANY;
+    private static final UserPlain USER_PLAIN;
+    private static final User2 USER_JOJO;
+    private static final Map<String, Object> MAP_NODE;
+    private static final jakarta.json.JsonObject JSONP_MAP_NODE;
 
-    @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
-    public String streamingMode;
+    static {
+        try {
+            USER_HAS_ANY = Sjf4j.fromJson(JSON_DATA2_NO_DYN, User.class);
+            USER_PLAIN = Sjf4j.fromJson(JSON_DATA2_NO_DYN, UserPlain.class);
+            MAP_NODE = Sjf4j.fromJson(JSON_DATA2_NO_DYN, Map.class);
+            JSONP_MAP_NODE = Json.createReader(new StringReader(JSON_DATA2_NO_DYN)).readObject();
+            USER_JOJO = Sjf4j.fromJson(JSON_DATA2_NO_DYN, User2.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-    @Setup(Level.Trial)
-    public void setup() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().streamingMode(
-                StreamingFacade.StreamingMode.valueOf(streamingMode)).build());
+    @State(Scope.Thread)
+    public static class FacadeState {
+        @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
+        public String streamingMode;
+
+        @Param({/*"true",*/ "false"})
+        public String useBindingPath;
+
+        public JacksonJsonFacade jacksonFacade;
+        public GsonJsonFacade gsonFacade;
+        public Fastjson2JsonFacade fastjson2Facade;
+        public JsonpJsonFacade jsonpFacade;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            Sjf4jConfig.global(new Sjf4jConfig.Builder()
+                    .bindingPath(Boolean.parseBoolean(useBindingPath))
+                    .build());
+            jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.valueOf(streamingMode));
+            gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.valueOf(streamingMode));
+            fastjson2Facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
+            jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
+        }
     }
 
 
     // ----- Simple JSON baselines -----
-//    @Benchmark
-//    public Object write_simple_jojo() throws IOException {
-//        StringWriter output = new StringWriter();
-//        SIMPLE_JSON_FACADE.writeNode(output, PERSON);
-//        return output.toString();
-//    }
-//
-//    // ----- Jackson baselines -----
-//    @Benchmark
-//    public Object write_jackson_native() throws IOException {
-//        StringWriter output = new StringWriter();
-//        JACKSON.writeValue(output, PERSON);
-//        return output.toString();
-//    }
-//
-//    @Benchmark
-//    public Object write_jackson_jojo() throws IOException {
-//        StringWriter output = new StringWriter();
-//        JACKSON_FACADE.writeNode(output, PERSON);
-//        return output.toString();
-//    }
-//
-//
-//    // ----- Gson baselines -----
-//    @Benchmark
-//    public Object write_gson_native() {
-//        StringWriter output = new StringWriter();
-//        GSON.toJson(PERSON);
-//        return output.toString();
-//    }
-//
-//    @Benchmark
-//    public Object write_gson_jojo() {
-//        StringWriter output = new StringWriter();
-//        GSON_FACADE.writeNode(output, PERSON);
-//        return output.toString();
-//    }
-//
-//    // ----- Fastjson2 baselines -----
-//    @Benchmark
-//    public Object write_fastjson2_native() {
-//        StringWriter output = new StringWriter();
-//        JSON.toJSONString(PERSON);
-//        return output.toString();
-//    }
-//
-//    @Benchmark
-//    public Object write_fastjson2_jojo() {
-//        StringWriter output = new StringWriter();
-//        FASTJSON2_FACADE.writeNode(output, PERSON);
-//        return output.toString();
-//    }
+    @Benchmark
+    public Object json_simple_facade_jojo() {
+        return SIMPLE_JSON_FACADE.writeNodeAsString(USER_JOJO);
+    }
+
+    // ----- Jackson baselines -----
+    @Benchmark
+    public Object json_jackson_native_pojo() throws Exception {
+        return JACKSON.writeValueAsString(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_jackson_facade_pojo(FacadeState state) {
+        return state.jacksonFacade.writeNodeAsString(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_jackson_native_has_any() throws Exception {
+        return JACKSON.writeValueAsString(USER_HAS_ANY);
+    }
+
+    @Benchmark
+    public Object json_jackson_native_map() throws Exception {
+        return JACKSON.writeValueAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_jackson_facade_map(FacadeState state) {
+        return state.jacksonFacade.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_jackson_facade_jojo(FacadeState state) {
+        return state.jacksonFacade.writeNodeAsString(USER_JOJO);
+    }
+
+    // ----- Gson baselines -----
+    @Benchmark
+    public Object json_gson_native_pojo() {
+        return GSON.toJson(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_gson_facade_pojo(FacadeState state) {
+        return state.gsonFacade.writeNodeAsString(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_gson_native_map() {
+        return GSON.toJson(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_gson_facade_map(FacadeState state) {
+        return state.gsonFacade.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_gson_facade_jojo(FacadeState state) {
+        return state.gsonFacade.writeNodeAsString(USER_JOJO);
+    }
+
+    // ----- Fastjson2 baselines -----
+    @Benchmark
+    public Object json_fastjson2_native_pojo() {
+        return JSON.toJSONString(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_facade_pojo(FacadeState state) {
+        return state.fastjson2Facade.writeNodeAsString(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_native_has_any() {
+        return JSON.toJSONString(USER_HAS_ANY);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_native_map() {
+        return JSON.toJSONString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_facade_map(FacadeState state) {
+        return state.fastjson2Facade.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_facade_jojo(FacadeState state) {
+        return state.fastjson2Facade.writeNodeAsString(USER_JOJO);
+    }
+
+    // ----- JSON-P baselines -----
+    @Benchmark
+    public Object json_jsonp_native_map() {
+        StringWriter sw = new StringWriter();
+        Json.createWriter(sw).write(JSONP_MAP_NODE);
+        return sw.toString();
+    }
+
+    @Benchmark
+    public Object json_jsonp_facade_pojo(FacadeState state) {
+        return state.jsonpFacade.writeNodeAsString(USER_PLAIN);
+    }
+
+    @Benchmark
+    public Object json_jsonp_facade_map(FacadeState state) {
+        return state.jsonpFacade.writeNodeAsString(MAP_NODE);
+    }
+
+    @Benchmark
+    public Object json_jsonp_facade_jojo(FacadeState state) {
+        return state.jsonpFacade.writeNodeAsString(USER_JOJO);
+    }
 
 
-
-    // --------- 模拟的 POJO ------------
-    // Extend JsonObject so every framework can reuse the same helper methods when populating nested structures.
-    public static class Person extends JsonObject {
+    @Getter @Setter
+    public static class User {
         public String name;
-        public String nick;
-        public int age;
-        public Info info;
-        public List<Baby> babies;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getNick() {
-            return nick;
-        }
-
-        public void setNick(String nick) {
-            this.nick = nick;
-        }
-
-        public int getAge() {
-            return age;
-        }
-
-        public void setAge(int age) {
-            this.age = age;
-        }
-
-        public Info getInfo() {
-            return info;
-        }
-
-        public void setInfo(Info info) {
-            this.info = info;
-        }
-
-        public List<Baby> getBabies() {
-            return babies;
-        }
-
-        public void setBabies(List<Baby> babies) {
-            this.babies = babies;
-        }
+        public List<User> friends;
+        @JsonAnySetter @JsonAnyGetter
+        public Map<String, Object> ext = new LinkedHashMap<>();
     }
 
     @Getter @Setter
-    public static class Info extends JsonObject {
-        public String email;
-        public String city;
+    public static class UserPlain {
+        public String name;
+        public List<UserPlain> friends;
     }
 
     @Getter @Setter
-    public static class Baby extends JsonObject {
+    public static class User2 extends JsonObject {
         public String name;
-//        public int age;
+        public List<User2> friends;
     }
-
-
-    ///
-
-//    @Benchmark
-//    public Object fastjson2_pojo2() {
-////        return JSONReader.of(new StringReader(JSON_DATA)).read(Person.class);
-//        final JSONReader.Context context = JSONFactory.createReadContext(new JSONReader.Feature[]{});
-//        final ObjectReader<Object> objectReader = context.getObjectReader(Person.class);
-//        JSONReader reader = JSONReader.of(new StringReader(JSON_DATA));
-//        Object object = objectReader.readObject(reader, Person.class, null, 0);
-//        return object;
-//
-//    }
-
-//    @Benchmark
-//    public Object fastjson2_pojo3() {
-//        final JSONReader.Context context = JSONFactory.createReadContext(new JSONReader.Feature[]{});
-//        final ObjectReader<Object> objectReader = context.getObjectReader(Person.class);
-//        try (JSONReader reader = JSONReader.of(new StringReader(JSON_DATA), context)) {
-//            if (reader.isEnd()) {
-//                return null;
-//            }
-//            Object object = objectReader.readObject(reader, Person.class, null, 0);
-//            return object;
-//        }
-//    }
-
 }

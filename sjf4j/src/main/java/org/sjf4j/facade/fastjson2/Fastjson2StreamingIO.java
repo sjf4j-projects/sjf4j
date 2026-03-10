@@ -42,7 +42,7 @@ public class Fastjson2StreamingIO {
                 type,
                 rawBox,
                 anyOfInfo,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -596,7 +596,7 @@ public class Fastjson2StreamingIO {
         _writeNode(
                 writer,
                 node,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 

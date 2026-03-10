@@ -1,5 +1,6 @@
 package org.sjf4j.facade;
 
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
 
@@ -98,8 +99,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      */
     default Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        try {
-            StreamingReader reader = createReader(input);
+        try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
@@ -114,8 +114,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      */
     default Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input is null");
-        try {
-            StreamingReader reader = createReader(input);
+        try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type);
             reader.endDocument();
@@ -170,18 +169,24 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Serializes one node to string.
      */
     default String writeNodeAsString(Object node) {
-        StringWriter output = new StringWriter();
-        writeNode(output, node);
-        return output.toString();
+        try (StringWriter output = new StringWriter()) {
+            writeNode(output, node);
+            return output.toString();
+        } catch (Exception e) {
+            throw new JsonException(e);
+        }
     }
 
     /**
      * Serializes one node to bytes.
      */
     default byte[] writeNodeAsBytes(Object node) {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        writeNode(output, node);
-        return output.toByteArray();
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            writeNode(output, node);
+            return output.toByteArray();
+        } catch (Exception e) {
+            throw new JsonException(e);
+        }
     }
 
 

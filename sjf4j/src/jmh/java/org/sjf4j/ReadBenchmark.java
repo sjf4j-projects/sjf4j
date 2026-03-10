@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import jakarta.json.Json;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.TypeReference;
 
@@ -127,16 +129,17 @@ public class ReadBenchmark {
         public JacksonJsonFacade jacksonFacade;
         public GsonJsonFacade gsonFacade;
         public Fastjson2JsonFacade fastjson2Facade;
+        public JsonpJsonFacade jsonpFacade;
 
         @Setup(Level.Trial)
         public void setup() {
             Sjf4jConfig.global(new Sjf4jConfig.Builder()
-                    .streamingMode(StreamingFacade.StreamingMode.valueOf(streamingMode))
                     .bindingPath(Boolean.parseBoolean(useBindingPath))
                     .build());
-            jacksonFacade = new JacksonJsonFacade(new ObjectMapper());
-            gsonFacade = new GsonJsonFacade(new GsonBuilder());
-            fastjson2Facade = new Fastjson2JsonFacade();
+            jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.valueOf(streamingMode));
+            gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.valueOf(streamingMode));
+            fastjson2Facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
+            jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
         }
     }
 
@@ -260,6 +263,27 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_fastjson2_facade_jojo(FacadeState state) throws IOException {
         return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, User2.class);
+    }
+
+    // ----- JSON-P baselines -----
+    @Benchmark
+    public Object json_jsonp_native_map() {
+        return Json.createReader(new StringReader(JSON_DATA2_NO_DYN)).readObject();
+    }
+
+    @Benchmark
+    public Object json_jsonp_facade_pojo(FacadeState state) {
+        return state.jsonpFacade.readNode(JSON_DATA2_NO_DYN, UserPlain.class);
+    }
+
+    @Benchmark
+    public Object json_jsonp_facade_map(FacadeState state) {
+        return state.jsonpFacade.readNode(JSON_DATA2_NO_DYN, Map.class);
+    }
+
+    @Benchmark
+    public Object json_jsonp_facade_jojo(FacadeState state) {
+        return state.jsonpFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
     }
 
 //    @Benchmark

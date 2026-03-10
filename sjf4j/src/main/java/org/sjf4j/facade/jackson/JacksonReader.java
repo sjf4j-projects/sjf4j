@@ -227,7 +227,7 @@ public class JacksonReader implements StreamingReader {
      * Skips next scalar or nested value.
      */
     @Override
-    public void nextSkip() throws IOException {
+    public void skipNext() throws IOException {
         JsonToken tk = parser.currentToken();
         if (tk.isScalarValue()) {
             parser.nextToken();

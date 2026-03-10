@@ -201,7 +201,7 @@ public class GsonReader implements StreamingReader {
      * Skips next scalar or nested value.
      */
     @Override
-    public void nextSkip() throws IOException {
+    public void skipNext() throws IOException {
         reader.skipValue();
     }
 

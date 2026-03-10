@@ -37,8 +37,7 @@ public final class StreamingIO {
     public static Object readNode(StreamingReader reader, Type type) {
         Class<?> rawBox = Types.rawBox(type);
         NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
-        return _readNode(reader, type, rawBox, anyOfInfo,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
+        return _readNode(reader, type, rawBox, anyOfInfo, null);
     }
 
     /**
@@ -331,7 +330,7 @@ public final class StreamingIO {
                         parentAnyOfValue = vv;
                     }
                 } else {
-                    reader.nextSkip();
+                    reader.skipNext();
                 }
             }
             reader.endObject();
@@ -650,8 +649,7 @@ public final class StreamingIO {
      */
     public static void writeNode(StreamingWriter writer, Object node) throws IOException {
         Objects.requireNonNull(writer, "writer is null");
-        _writeNode(writer, node,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
+        _writeNode(writer, node, null);
     }
 
     /**

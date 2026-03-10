@@ -57,7 +57,7 @@ public class JacksonStreamingIO {
                 type,
                 rawBox,
                 anyOfInfo,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -612,7 +612,7 @@ public class JacksonStreamingIO {
         _writeNode(
                 gen,
                 node,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 

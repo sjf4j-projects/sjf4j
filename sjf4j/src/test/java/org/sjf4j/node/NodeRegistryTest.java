@@ -254,6 +254,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testCreatorPojo() {
+        Sjf4jConfig.useJsonpAsGlobal();
         String json = "{\"name\":\"Alice\",\"age\":18}";
         CreatorPojo pojo = Sjf4j.fromJson(json, CreatorPojo.class);
         assertEquals("Alice", pojo.getName());

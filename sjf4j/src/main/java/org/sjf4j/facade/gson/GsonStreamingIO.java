@@ -45,7 +45,7 @@ public class GsonStreamingIO {
                 type,
                 rawBox,
                 anyOfInfo,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -56,7 +56,7 @@ public class GsonStreamingIO {
         return _readNull(
                 reader,
                 Types.rawBox(type),
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -67,7 +67,7 @@ public class GsonStreamingIO {
         return _readBoolean(
                 reader,
                 Types.rawBox(type),
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -78,7 +78,7 @@ public class GsonStreamingIO {
         return _readNumber(
                 reader,
                 Types.rawBox(type),
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -90,7 +90,7 @@ public class GsonStreamingIO {
         return _readString(
                 reader,
                 Types.rawBox(type),
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -103,7 +103,7 @@ public class GsonStreamingIO {
                 reader,
                 type,
                 rawClazz,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -116,7 +116,7 @@ public class GsonStreamingIO {
                 reader,
                 type,
                 rawClazz,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 
@@ -613,7 +613,7 @@ public class GsonStreamingIO {
         _writeNode(
                 writer,
                 node,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null
+                null
         );
     }
 

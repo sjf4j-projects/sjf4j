@@ -266,7 +266,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Skips next value.
      */
     @Override
-    public void nextSkip() throws IOException {
+    public void skipNext() throws IOException {
         peeked = null;
         reader.skipValue();
     }

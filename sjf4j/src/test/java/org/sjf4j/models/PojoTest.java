@@ -3,6 +3,8 @@ package org.sjf4j.models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 
 import java.math.BigDecimal;
@@ -28,13 +30,13 @@ public class PojoTest {
         @NodeProperty("polymorphicTypes")
         private final Set<Integer> polyTypes;
 
+        @NodeCreator
         public TestModel(
-                @JsonProperty(value = "name", required = true) final String name,
-                @JsonProperty(value = "decimal", required = true) final BigDecimal decimal,
-                @JsonProperty(value = "anEnum", required = true) final AnEnum anEnum,
-                @JsonProperty(value = "list", required = true) final List<String> list,
-                @JsonProperty(value = "polymorphicTypes", required = true)
-                final Set<Integer> polyTypes) {
+                @NodeProperty(value = "name") final String name,
+                @NodeProperty(value = "decimal") final BigDecimal decimal,
+                @NodeProperty(value = "anEnum") final AnEnum anEnum,
+                @NodeProperty(value = "list") final List<String> list,
+                @NodeProperty(value = "polymorphicTypes") final Set<Integer> polyTypes) {
             this.name = name;
             this.decimal = decimal;
             this.anEnum = anEnum;
@@ -66,6 +68,7 @@ public class PojoTest {
 
     @Test
     public void testCreatorPojoWithJsonProperty() {
+        Sjf4jConfig.useSimpleJsonAsGlobal();
         String json = "{\"name\":\"Alice\",\"decimal\":12.5,\"anEnum\":\"THIS\"," +
                 "\"list\":[\"a\",\"b\"],\"polymorphicTypes\":[1,2]}";
         TestModel model = Sjf4j.fromJson(json, TestModel.class);

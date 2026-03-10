@@ -388,7 +388,7 @@ public class SimpleJsonReader implements StreamingReader {
      * Skips next scalar or nested value.
      */
     @Override
-    public void nextSkip() throws IOException {
+    public void skipNext() throws IOException {
         bufferedToken = null;
         skipWhitespace();
         int c = peek();
@@ -474,7 +474,7 @@ public class SimpleJsonReader implements StreamingReader {
             skipWhitespace();
             c = read();
             if (c != ':') throw error("Expected ':'", c);
-            nextSkip();   // value
+            skipNext();   // value
             skipWhitespace();
             c = read();
             if (c == ',') {
@@ -496,7 +496,7 @@ public class SimpleJsonReader implements StreamingReader {
             return;
         }
         while (true) {
-            nextSkip();   // element
+            skipNext();   // element
             skipWhitespace();
             c = read();
             if (c == ',') {

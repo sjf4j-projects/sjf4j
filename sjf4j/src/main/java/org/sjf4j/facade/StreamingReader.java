@@ -92,7 +92,7 @@ public interface StreamingReader extends Closeable {
     Boolean nextBoolean() throws IOException;
     void nextNull() throws IOException;
 
-    void nextSkip() throws IOException;
+    void skipNext() throws IOException;
 
 //    Token nextToken() throws IOException;
 //

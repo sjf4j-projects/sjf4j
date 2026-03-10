@@ -169,8 +169,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try {
-                    JsonParser parser = objectMapper.getFactory().createParser(input);
+                try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
                     return JacksonStreamingIO.readNode(parser, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
@@ -200,8 +199,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO: {
-                try {
-                    JsonParser parser = objectMapper.getFactory().createParser(input);
+                try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
                     return JacksonStreamingIO.readNode(parser, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);

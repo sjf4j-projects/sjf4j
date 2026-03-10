@@ -266,7 +266,7 @@ public class SnakeReader implements StreamingReader {
      * Skips the next scalar or nested structure.
      */
     @Override
-    public void nextSkip() throws IOException {
+    public void skipNext() throws IOException {
         Event event = parser.peekEvent();
         if (event instanceof ScalarEvent) {
             parser.getEvent();

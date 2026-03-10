@@ -142,8 +142,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             }
             case EXCLUSIVE_IO:
             case AUTO: {
-                try {
-                    JsonReader reader = gson.newJsonReader(new StringReader(input));
+                try (JsonReader reader = gson.newJsonReader(new StringReader(input))) {
                     return GsonStreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON string into node type " + type, e);
@@ -173,9 +172,8 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             }
             case EXCLUSIVE_IO:
             case AUTO: {
-                try {
-                    JsonReader reader = gson.newJsonReader(new InputStreamReader(
-                            new ByteArrayInputStream(input), StandardCharsets.UTF_8));
+                try (JsonReader reader = gson.newJsonReader(new InputStreamReader(
+                        new ByteArrayInputStream(input), StandardCharsets.UTF_8))) {
                     return GsonStreamingIO.readNode(reader, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON byte[] into node type " + type, e);

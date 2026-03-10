@@ -25,23 +25,20 @@ public final class PatchOp {
     public static final String EXT_EXIST = "exist";
     public static final String EXT_ENSURE_PUT = "ensurePut";
 
-
     private final String op;
     private final JsonPointer path;
     private final Object value;             // Optional
     private final JsonPointer from;         // Optional
 
-//    /**
-//     * Creates an empty patch operation.
-//     */
-//    public PatchOp() {}
 
     /**
      * Creates a patch operation with all fields.
      */
     @NodeCreator
-    public PatchOp(@NodeProperty("op") String op, @NodeProperty("path") JsonPointer path,
-                   @NodeProperty("value") Object value, @NodeProperty("from") JsonPointer from) {
+    public PatchOp(@NodeProperty("op") String op,
+                   @NodeProperty("path") JsonPointer path,
+                   @NodeProperty("value") Object value,
+                   @NodeProperty("from") JsonPointer from) {
         this.op = op;
         this.path = path;
         this.value = value;

@@ -273,7 +273,8 @@ public final class ReflectUtil {
         Supplier<?> noArgsLambdaCtor = null;
 
         // 1. Find defined creator
-        for (Constructor<?> ctor : clazz.getDeclaredConstructors()) {
+        Constructor<?>[] ctors = clazz.getDeclaredConstructors();
+        for (Constructor<?> ctor : ctors) {
             if (ctor.isAnnotationPresent(NodeCreator.class)
                     || hasJacksonCreator(ctor) || hasFastjson2Creator(ctor)) {
                 if (creator != null) {
@@ -307,6 +308,16 @@ public final class ReflectUtil {
                     throw new JsonException("Cannot access creator method '" + method.getName() +
                             "' of " + clazz.getName(), e);
                 }
+            }
+        }
+
+        if (creator == null && ctors.length == 1) {
+            try {
+                try { ctors[0].setAccessible(true); } catch (RuntimeException ignored) {}
+                creatorHandle = lookup.unreflectConstructor(ctors[0]);
+                creator = ctors[0];
+            } catch (IllegalAccessException e) {
+                throw new JsonException("Cannot access creator constructor of " + clazz.getName(), e);
             }
         }
 
