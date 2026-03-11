@@ -28,7 +28,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.18.4")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.18.6")
     compileOnly("com.google.code.gson:gson:2.13.1")
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
     compileOnly("jakarta.json:jakarta.json-api:2.1.3")
