@@ -1,6 +1,5 @@
 package org.sjf4j.facade.snake;
 
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingWriter;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
@@ -16,6 +15,7 @@ import org.yaml.snakeyaml.events.StreamEndEvent;
 import org.yaml.snakeyaml.events.StreamStartEvent;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * Streaming writer backed by SnakeYAML emitter events.
@@ -28,7 +28,7 @@ public class SnakeWriter implements StreamingWriter {
      * Creates writer adapter from SnakeYAML emitter.
      */
     public SnakeWriter(Emitter emitter) throws IOException {
-        if (emitter == null) throw new JsonException("emitter is null");
+        Objects.requireNonNull(emitter, "emitter");
         this.emitter = emitter;
     }
 

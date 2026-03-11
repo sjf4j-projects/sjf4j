@@ -7,6 +7,7 @@ import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Types;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -37,8 +38,9 @@ public class PathFunctionRegistry {
          * Creates a function descriptor with name and implementation.
          */
         public FunctionDescriptor(String name, PathFunction func) {
-            if (name == null || name.isEmpty()) throw new JsonException("Name must not be empty");
-            if (func == null) throw new JsonException("Func must not be null");
+            Objects.requireNonNull(name, "name");
+            if (name.isEmpty()) throw new JsonException("Name must not be empty");
+            Objects.requireNonNull(func, "func");
             this.name = name;
             this.func = func;
         }

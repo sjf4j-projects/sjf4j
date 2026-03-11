@@ -967,7 +967,7 @@ public class JsonArray extends JsonContainer {
      * Returns a value converted to the given type.
      */
     public <T> T get(int idx, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz is null");
+        Objects.requireNonNull(clazz, "clazz");
         Object value = getNode(idx);
         try {
             return Nodes.to(value, clazz);
@@ -989,7 +989,7 @@ public class JsonArray extends JsonContainer {
      * Returns a value using lenient conversion.
      */
     public <T> T getAs(int idx, Class<T> clazz) {
-        Objects.requireNonNull(clazz, "clazz is null");
+        Objects.requireNonNull(clazz, "clazz");
         Object value = getNode(idx);
         try {
             return Nodes.as(value, clazz);

@@ -226,7 +226,7 @@ public class SchemaStore {
      * Supported schemes: {@code file}, {@code classpath}.
      */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
-        Objects.requireNonNull(uri, "uri is null");
+        Objects.requireNonNull(uri, "uri");
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             return loadSchemaFromFile(uri.getPath());
         }

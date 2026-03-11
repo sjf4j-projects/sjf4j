@@ -84,7 +84,7 @@ public class EvaluateUtil {
     private static final Pattern UNICODE_PROPERTY_PATTERN = Pattern.compile("\\\\([pP])\\{([^}]+)}");
 
     public static Pattern compileRegexPattern(String pattern, String keyword) {
-        Objects.requireNonNull(pattern, "pattern is null");
+        Objects.requireNonNull(pattern, "pattern");
         try {
             return Pattern.compile(pattern);
         } catch (PatternSyntaxException ignore) {

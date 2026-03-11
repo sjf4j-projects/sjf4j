@@ -57,7 +57,7 @@ public class JsonPatch extends JsonArray {
      * Adds one patch operation.
      */
     public void add(PatchOp op) {
-        Objects.requireNonNull(op, "op is null");
+        Objects.requireNonNull(op, "op");
         super.add(op);
     }
 
@@ -68,7 +68,7 @@ public class JsonPatch extends JsonArray {
      * Execution is stateful: each op observes mutations produced by previous ops.
      */
     public void apply(Object target) {
-        Objects.requireNonNull(target, "target is null");
+        Objects.requireNonNull(target, "target");
         forEach(v -> {
             if (v instanceof PatchOp) {
                 PatchOp op =  (PatchOp) v;

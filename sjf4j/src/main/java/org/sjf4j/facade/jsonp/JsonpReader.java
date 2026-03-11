@@ -18,7 +18,7 @@ public class JsonpReader implements StreamingReader {
 
     /** Creates reader adapter from JSON-P parser. */
     public JsonpReader(JsonParser parser) {
-        Objects.requireNonNull(parser, "parser is null");
+        Objects.requireNonNull(parser, "parser");
         this.parser = parser;
         this.current = parser.hasNext() ? parser.next() : null;
     }

@@ -171,7 +171,7 @@ public interface Evaluator {
          * Creates evaluator for type keyword value.
          */
         public TypeEvaluator(Object type) {
-            Objects.requireNonNull(type, "type is null");
+            Objects.requireNonNull(type, "type");
             JsonType jt = JsonType.of(type);
             if (jt.isString()) {
                 this.type = Nodes.toString(type);
@@ -449,7 +449,7 @@ public interface Evaluator {
          * Creates evaluator for format keyword.
          */
         public FormatEvaluator(String format) {
-            this.format = Objects.requireNonNull(format, "format is null");
+            this.format = Objects.requireNonNull(format, "format");
             this.formatValidator = FormatValidator.of(format);
         }
         /**

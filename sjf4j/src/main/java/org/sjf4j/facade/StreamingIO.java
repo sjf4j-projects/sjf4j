@@ -648,7 +648,7 @@ public final class StreamingIO {
      * Writes one node to streaming writer.
      */
     public static void writeNode(StreamingWriter writer, Object node) throws IOException {
-        Objects.requireNonNull(writer, "writer is null");
+        Objects.requireNonNull(writer, "writer");
         _writeNode(writer, node, null);
     }
 

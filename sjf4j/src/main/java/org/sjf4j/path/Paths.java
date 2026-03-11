@@ -51,7 +51,7 @@ public class Paths {
      * Linearizes a segment chain into an ordered array.
      */
     static PathSegment[] linearize(PathSegment lastSegment) {
-        Objects.requireNonNull(lastSegment, "lastSegment is null");
+        Objects.requireNonNull(lastSegment, "lastSegment");
         int size = 0;
         for (PathSegment p = lastSegment; p != null; p = p.parent()) size++;
         PathSegment[] segments = new PathSegment[size];
@@ -66,7 +66,7 @@ public class Paths {
      * Builds a debug-friendly representation of the path segments.
      */
     public static String inspect(PathSegment[] segments) {
-        Objects.requireNonNull(segments, "segments is null");
+        Objects.requireNonNull(segments, "segments");
         StringBuilder sb = new StringBuilder();
         for (int i = 1; i < segments.length; i++) {
             PathSegment ps = segments[i];
@@ -105,7 +105,7 @@ public class Paths {
      * {@code /}) and RFC 6902 append token ({@code -}) when used in patch paths.
      */
     public static PathSegment[] parsePointer(String expr) {
-        Objects.requireNonNull(expr, "expr is null");
+        Objects.requireNonNull(expr, "expr");
         if (!expr.isEmpty() && !expr.startsWith("/"))
             throw new JsonException("Invalid JSON Pointer expression '" + expr + "': must start with '/'");
 
@@ -166,7 +166,7 @@ public class Paths {
      * only valid as the last token.
      */
     public static String toPointerExpr(PathSegment[] segments) {
-        Objects.requireNonNull(segments, "segments is null");
+        Objects.requireNonNull(segments, "segments");
         StringBuilder sb = new StringBuilder();
 
         for (int i = 0, len = segments.length; i < len; i++) {
@@ -211,7 +211,7 @@ public class Paths {
      * Formats segments as a JSONPath expression.
      */
     public static String toPathExpr(PathSegment[] segments) {
-        Objects.requireNonNull(segments, "segments is null");
+        Objects.requireNonNull(segments, "segments");
         StringBuilder sb = new StringBuilder();
         PathSegment lastPt = null;
         for (PathSegment pt : segments) {

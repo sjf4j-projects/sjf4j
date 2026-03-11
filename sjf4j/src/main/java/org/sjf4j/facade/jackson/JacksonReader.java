@@ -20,7 +20,7 @@ public class JacksonReader implements StreamingReader {
      * Creates reader adapter from Jackson JsonParser.
      */
     public JacksonReader(JsonParser parser) {
-        Objects.requireNonNull(parser, "parser is null");
+        Objects.requireNonNull(parser, "parser");
         this.parser = parser;
     }
 

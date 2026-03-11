@@ -45,7 +45,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public JsonpReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(input));
     }
 
@@ -54,7 +54,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public JsonpReader createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(input));
     }
 
@@ -63,7 +63,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public JsonpReader createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(new StringReader(input)));
     }
 
@@ -72,7 +72,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public JsonpReader createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(new ByteArrayInputStream(input)));
     }
 
@@ -81,7 +81,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO:
             case AUTO: {
@@ -97,7 +97,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO:
             case AUTO: {
@@ -113,7 +113,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO:
             case AUTO: {
@@ -129,7 +129,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO:
             case AUTO: {
@@ -164,7 +164,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO:
             case AUTO: {
@@ -181,7 +181,7 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO:
             case AUTO: {

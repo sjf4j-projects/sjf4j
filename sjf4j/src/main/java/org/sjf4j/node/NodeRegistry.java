@@ -132,13 +132,13 @@ public final class NodeRegistry {
      * Boolean, Map, List, or Object).
      */
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
-        Objects.requireNonNull(valueCodec, "valueCodec is null");
+        Objects.requireNonNull(valueCodec, "valueCodec");
         Class<R> rawClazz = valueCodec.rawClass();
         if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
             throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = valueCodec.valueClass();
-        Objects.requireNonNull(valueClazz, "clazz is null");
+        Objects.requireNonNull(valueClazz, "valueClazz");
 
         ValueCodecInfo vci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec);
         TYPE_INFO_CACHE.put(valueClazz, new TypeInfo(valueClazz, vci, null, null));
@@ -330,7 +330,7 @@ public final class NodeRegistry {
          * Creates a POJO using argument creator path.
          */
         public Object newPojoWithArgs(Object[] args) {
-            Objects.requireNonNull(args, "args is null");
+            Objects.requireNonNull(args, "args");
             if (argsCreatorHandle == null) {
                 throw new JsonException("Failed to create instance of " + clazz + ": No creator constructor");
             }
@@ -479,7 +479,7 @@ public final class NodeRegistry {
          * Invokes field getter.
          */
         public Object invokeGetter(Object receiver) {
-            if (receiver == null) throw new JsonException("receiver is null");
+            Objects.requireNonNull(receiver, "receiver");
             if (lambdaGetter != null) {
                 return lambdaGetter.apply(receiver);
             }
@@ -497,7 +497,7 @@ public final class NodeRegistry {
          * Invokes field getter using method handle only.
          */
         public Object invokeGetter2(Object receiver) {
-            if (receiver == null) throw new JsonException("receiver is null");
+            Objects.requireNonNull(receiver, "receiver");
             if (getter == null) throw new JsonException("No getter available for field '" + name + "' of " + type);
             try {
                 return getter.invoke(receiver);
@@ -520,7 +520,7 @@ public final class NodeRegistry {
          * Invokes field setter.
          */
         public void invokeSetter(Object receiver, Object value) {
-            if (receiver == null) throw new JsonException("receiver is null");
+            Objects.requireNonNull(receiver, "receiver");
             if (setter == null)
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             try {
@@ -539,7 +539,7 @@ public final class NodeRegistry {
          * Invokes setter with numeric pre-conversion fallback.
          */
         public void invokeSetter2(Object receiver, Object value) {
-            if (receiver == null) throw new JsonException("receiver is null");
+            Objects.requireNonNull(receiver, "receiver");
             if (setter == null) {
                 throw new JsonException("No setter available for field '" + name + "' of " + type);
             }

@@ -20,6 +20,7 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.models.JojoTest;
 
 import java.time.LocalDate;
@@ -265,7 +266,7 @@ public class NodeRegistryTest {
     public void testCreatorPojoMissingParamName() {
         String json = "{\"name\":\"Alice\"}";
 
-        Sjf4jConfig.useFastjson2AsGlobal();
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         CreatorPojoNoMatch obj1 = Sjf4j.fromJson(json, CreatorPojoNoMatch.class);
         log.info("obj1={}", Nodes.inspect(obj1));
         log.info("obj1.name={}", obj1.name);

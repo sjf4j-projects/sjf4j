@@ -325,7 +325,7 @@ public class JsonObject extends JsonContainer {
      * Performs the given visitor for each entry.
      */
     public void forEach(BiConsumer<String, Object> visitor) {
-        Objects.requireNonNull(visitor, "visitor is null");
+        Objects.requireNonNull(visitor, "visitor");
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
@@ -340,7 +340,7 @@ public class JsonObject extends JsonContainer {
 
 
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
-        Objects.requireNonNull(predicate, "predicate is null");
+        Objects.requireNonNull(predicate, "predicate");
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
@@ -359,7 +359,7 @@ public class JsonObject extends JsonContainer {
     }
 
     public boolean transform(BiFunction<String, Object, Object> mapper) {
-        Objects.requireNonNull(mapper, "mapper is null");
+        Objects.requireNonNull(mapper, "mapper");
         boolean changed = false;
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
@@ -1285,7 +1285,7 @@ public class JsonObject extends JsonContainer {
      * value is stored in dynamic map.
      */
     public Object put(String key, Object object) {
-        Objects.requireNonNull(key, "key is null");
+        Objects.requireNonNull(key, "key");
         if (fieldMap != null) {
             NodeRegistry.FieldInfo fi = fieldMap.get(key);
             if (fi != null) {
@@ -1339,7 +1339,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T> T computeIfAbsent(String key, Function<String, T> computer) {
-        Objects.requireNonNull(computer, "computer is null");
+        Objects.requireNonNull(computer, "computer");
         T old = get(key);
         if (old == null) {
             T newNode = computer.apply(key);
@@ -1405,7 +1405,7 @@ public class JsonObject extends JsonContainer {
      * Declared JOJO/POJO fields are not removable.
      */
     public Object remove(String key) {
-        Objects.requireNonNull(key, "key is null");
+        Objects.requireNonNull(key, "key");
         if (fieldMap != null && fieldMap.containsKey(key)) {
             throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");

@@ -592,7 +592,7 @@ public class Fastjson2StreamingIO {
      * Writes one node to Fastjson2 writer.
      */
     public static void writeNode(JSONWriter writer, Object node) throws IOException {
-        Objects.requireNonNull(writer, "writer is null");
+        Objects.requireNonNull(writer, "writer");
         _writeNode(
                 writer,
                 node,

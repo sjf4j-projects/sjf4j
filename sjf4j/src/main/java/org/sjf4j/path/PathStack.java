@@ -64,7 +64,7 @@ public final class PathStack {
      * Pushes a name segment with optional owning class.
      */
     public void pushName(Class<?> clazz, String name) {
-        Objects.requireNonNull(name, "name is null");
+        Objects.requireNonNull(name, "name");
         ensureCapacity(size + 1);
         kinds[size] = KIND_NAME;
         names[size] = name;

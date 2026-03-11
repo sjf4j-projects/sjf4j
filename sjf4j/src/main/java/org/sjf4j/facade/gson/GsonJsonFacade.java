@@ -44,7 +44,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      * Creates facade with configured GsonBuilder and optional plugin module.
      */
     public GsonJsonFacade(GsonBuilder gsonBuilder, StreamingMode streamingMode) {
-        Objects.requireNonNull(gsonBuilder, "gsonBuilder is null");
+        Objects.requireNonNull(gsonBuilder, "gsonBuilder");
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
@@ -64,7 +64,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public GsonReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new GsonReader(gson.newJsonReader(input));
     }
 
@@ -73,7 +73,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -104,7 +104,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -135,7 +135,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -165,7 +165,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -199,7 +199,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public GsonWriter createWriter(Writer output) throws IOException {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         return new GsonWriter(gson.newJsonWriter(output));
     }
 
@@ -208,7 +208,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     @Override
     public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);

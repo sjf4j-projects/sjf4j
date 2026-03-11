@@ -38,7 +38,7 @@ public class JsonPointer extends JsonPath {
      */
     @RawToValue
     public static JsonPointer compile(String expr) {
-        Objects.requireNonNull(expr, "expr is null");
+        Objects.requireNonNull(expr, "expr");
         expr = expr.trim();
 
         PathSegment[] segments;
@@ -56,7 +56,7 @@ public class JsonPointer extends JsonPath {
      * Creates a pointer from the last segment in a chain.
      */
     public static JsonPointer fromLast(PathSegment lastSegment) {
-        Objects.requireNonNull(lastSegment, "lastSegment is null");
+        Objects.requireNonNull(lastSegment, "lastSegment");
         PathSegment[] segments = Paths.linearize(lastSegment);
         return new JsonPointer(null, segments);
     }

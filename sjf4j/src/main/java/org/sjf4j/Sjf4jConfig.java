@@ -1,6 +1,5 @@
 package org.sjf4j;
 
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
@@ -16,6 +15,8 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
 import org.sjf4j.supplier.SetSupplier;
+
+import java.util.Objects;
 
 /**
  * Global configuration for SJF4J.
@@ -95,7 +96,7 @@ public final class Sjf4jConfig {
      * Replaces global configuration and refreshes dependent codecs.
      */
     public static void global(Sjf4jConfig sjf4jConfig) {
-        if (sjf4jConfig == null) throw new JsonException("config is null");
+        Objects.requireNonNull(sjf4jConfig, "sjf4jConfig");
         GLOBAL = sjf4jConfig;
         NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
     }
@@ -273,7 +274,7 @@ public final class Sjf4jConfig {
          * Creates a builder initialized from existing config.
          */
         public Builder(Sjf4jConfig config) {
-            if (config == null) throw new JsonException("config is null");
+            Objects.requireNonNull(config, "config");
             this.jsonFacade = config.jsonFacade;
             this.yamlFacade = config.yamlFacade;
             this.propertiesFacade = config.propertiesFacade;
@@ -296,7 +297,7 @@ public final class Sjf4jConfig {
          * Sets JSON facade.
          */
         public Builder jsonFacade(JsonFacade<?, ?> jsonFacade) {
-            if (jsonFacade == null) throw new JsonException("jsonFacade is null");
+            Objects.requireNonNull(jsonFacade, "jsonFacade");
             this.jsonFacade = jsonFacade;
             return this;
         }
@@ -304,7 +305,7 @@ public final class Sjf4jConfig {
          * Sets YAML facade.
          */
         public Builder yamlFacade(YamlFacade<?, ?> yamlFacade) {
-            if (yamlFacade == null) throw new JsonException("yamlFacade is null");
+            Objects.requireNonNull(yamlFacade, "yamlFacade");
             this.yamlFacade = yamlFacade;
             return this;
         }
@@ -312,7 +313,7 @@ public final class Sjf4jConfig {
          * Sets properties facade.
          */
         public Builder propertiesFacade(PropertiesFacade propertiesFacade) {
-            if (propertiesFacade == null) throw new JsonException("propertiesFacade is null");
+            Objects.requireNonNull(propertiesFacade, "propertiesFacade");
             this.propertiesFacade = propertiesFacade;
             return this;
         }
@@ -320,7 +321,7 @@ public final class Sjf4jConfig {
          * Sets node facade.
          */
         public Builder nodeFacade(NodeFacade nodeFacade) {
-            if (nodeFacade == null) throw new JsonException("nodeFacade is null");
+            Objects.requireNonNull(nodeFacade, "nodeFacade");
             this.nodeFacade = nodeFacade;
             return this;
         }
@@ -328,7 +329,7 @@ public final class Sjf4jConfig {
          * Sets map supplier.
          */
         public Builder mapSupplier(MapSupplier mapSupplier) {
-            if (mapSupplier == null) throw new JsonException("mapSupplier is null");
+            Objects.requireNonNull(mapSupplier, "mapSupplier");
             this.mapSupplier = mapSupplier;
             return this;
         }
@@ -336,7 +337,7 @@ public final class Sjf4jConfig {
          * Sets list supplier.
          */
         public Builder listSupplier(ListSupplier listSupplier) {
-            if (listSupplier == null) throw new JsonException("listSupplier is null");
+            Objects.requireNonNull(listSupplier, "listSupplier");
             this.listSupplier = listSupplier;
             return this;
         }
@@ -344,7 +345,7 @@ public final class Sjf4jConfig {
          * Sets set supplier.
          */
         public Builder setSupplier(SetSupplier setSupplier) {
-            if (setSupplier == null) throw new JsonException("setSupplier is null");
+            Objects.requireNonNull(setSupplier, "setSupplier");
             this.setSupplier = setSupplier;
             return this;
         }
@@ -352,7 +353,7 @@ public final class Sjf4jConfig {
          * Sets Instant format.
          */
         public Builder instantFormat(InstantFormat instantFormat) {
-            if (instantFormat == null) throw new JsonException("instantFormat is null");
+            Objects.requireNonNull(instantFormat, "instantFormat");
             this.instantFormat = instantFormat;
             return this;
         }

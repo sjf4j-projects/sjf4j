@@ -62,8 +62,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures, JSONWriter.Feature[] writerFeatures,
                                StreamingMode streamingMode) {
-        Objects.requireNonNull(readerFeatures, "readerFeatures is null");
-        Objects.requireNonNull(writerFeatures, "writerFeatures is null");
+        Objects.requireNonNull(readerFeatures, "readerFeatures");
+        Objects.requireNonNull(writerFeatures, "writerFeatures");
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
         this.readerContext = JSONFactory.createReadContext(readerFeatures);
@@ -92,7 +92,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Fastjson2Reader createReader(Reader input) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         JSONReader reader = JSONReader.of(input, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -102,7 +102,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Fastjson2Reader createReader(InputStream input) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -112,7 +112,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Fastjson2Reader createReader(String input) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         JSONReader reader = JSONReader.of(input, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -122,7 +122,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Fastjson2Reader createReader(byte[] input) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         JSONReader reader = JSONReader.of(input, readerContext);
         return new Fastjson2Reader(reader);
     }
@@ -132,7 +132,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -164,7 +164,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -196,7 +196,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -226,7 +226,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -259,7 +259,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Fastjson2Writer createWriter(Writer output) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         JSONWriter writer = JSONWriter.of(writerContext);
         return new Fastjson2Writer(writer);     // Fake writer
     }
@@ -269,7 +269,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public Fastjson2Writer createWriter(OutputStream output) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         JSONWriter writer = JSONWriter.ofUTF8(writerContext);
         return new Fastjson2Writer(writer);     // Fake writer
     }
@@ -280,7 +280,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
@@ -317,7 +317,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);

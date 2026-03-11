@@ -1,11 +1,11 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.Paths;
 
+import java.util.Objects;
 import java.util.Properties;
 import java.util.TreeSet;
 
@@ -19,7 +19,7 @@ public class SimplePropertiesFacade implements PropertiesFacade {
      */
     @Override
     public JsonObject readNode(Properties properties) {
-        if (properties == null) throw new JsonException("properties is null");
+        Objects.requireNonNull(properties, "properties");
         JsonObject jo = new JsonObject();
         TreeSet<String> sortedKeys = new TreeSet<>(properties.stringPropertyNames());
         for (String key : sortedKeys) {
@@ -35,7 +35,7 @@ public class SimplePropertiesFacade implements PropertiesFacade {
      */
     @Override
     public void writeNode(Properties properties, Object node) {
-        if (properties == null) throw new JsonException("properties is null");
+        Objects.requireNonNull(properties, "properties");
         Nodes.walk(node, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, (ps, value) -> {
             if (value != null) {
                 properties.setProperty(jsonPath2PropKey(Paths.rootedPathExpr(ps)), value.toString());

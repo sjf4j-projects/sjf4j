@@ -41,7 +41,7 @@ public class NodeStream<T> {
      * Creates a NodeStream from list elements.
      */
     public static <T> NodeStream<T> of(List<T> nodes) {
-        Objects.requireNonNull(nodes, "nodes is null");
+        Objects.requireNonNull(nodes, "nodes");
         return new NodeStream<>(nodes.stream());
     }
 
@@ -49,7 +49,7 @@ public class NodeStream<T> {
      * Creates a NodeStream from a single element.
      */
     public static <T> NodeStream<T> of(T node) {
-        Objects.requireNonNull(node, "nodes is null");
+        Objects.requireNonNull(node, "node");
         return new NodeStream<>(Stream.of(node));
     }
 

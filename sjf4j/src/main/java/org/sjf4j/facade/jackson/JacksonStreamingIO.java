@@ -608,7 +608,7 @@ public class JacksonStreamingIO {
      * Writes one node to Jackson generator.
      */
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
-        Objects.requireNonNull(gen, "gen is null");
+        Objects.requireNonNull(gen, "gen");
         _writeNode(
                 gen,
                 node,

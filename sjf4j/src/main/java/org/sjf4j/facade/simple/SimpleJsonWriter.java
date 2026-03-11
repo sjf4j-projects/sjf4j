@@ -1,11 +1,11 @@
 package org.sjf4j.facade.simple;
 
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingWriter;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Objects;
 
 /**
  * Minimal JSON writer for the built-in facade.
@@ -18,7 +18,7 @@ public class SimpleJsonWriter implements StreamingWriter {
      * Creates writer over output characters.
      */
     public SimpleJsonWriter(Writer output) {
-        if (output == null) throw new JsonException("output is null");
+        Objects.requireNonNull(output, "output");
 
         if (!(output instanceof BufferedWriter)) {
             output = new BufferedWriter(output);

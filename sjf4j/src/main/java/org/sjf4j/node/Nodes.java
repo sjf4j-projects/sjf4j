@@ -1026,8 +1026,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(visitor, "visitor is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(visitor, "visitor");
         if (node instanceof Map) {
             ((Map<String, Object>) node).forEach(visitor);
             return;
@@ -1054,8 +1054,8 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(predicate, "predicate is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(predicate, "predicate");
         if (node instanceof Map) {
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
                 if (predicate.test(entry.getKey(), entry.getValue())) {
@@ -1086,8 +1086,8 @@ public class Nodes {
 
     @SuppressWarnings("unchecked")
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(mapper, "mapper is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(mapper, "mapper");
         if (node instanceof Map) {
             boolean changed = false;
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
@@ -1129,8 +1129,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(visitor, "visitor is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(visitor, "visitor");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             for (int i = 0; i < list.size(); i++) visitor.accept(i, list.get(i));
@@ -1163,8 +1163,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(predicate, "predicate is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             for (int i = 0; i < list.size(); i++) {
@@ -1205,8 +1205,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(predicate, "predicate is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             for (int i = 0; i < list.size(); i++) {
@@ -1247,8 +1247,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean noneMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(predicate, "predicate is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             for (int i = 0; i < list.size(); i++) {
@@ -1285,7 +1285,7 @@ public class Nodes {
      * Returns the number of entries in an object-like node.
      */
     public static int sizeInObject(Object node) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof Map) {
             return ((Map<?, ?>) node).size();
         }
@@ -1306,7 +1306,7 @@ public class Nodes {
      * Returns the number of elements in an array-like node.
      */
     public static int sizeInArray(Object node) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             return ((List<?>) node).size();
         }
@@ -1330,7 +1330,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).keySet();
         }
@@ -1352,7 +1352,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).entrySet();
         }
@@ -1379,7 +1379,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Iterator<Object> iteratorInArray(Object node) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             return ((List<Object>) node).iterator();
         }
@@ -1421,8 +1421,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(key, "key is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).containsKey(key);
         }
@@ -1454,8 +1454,8 @@ public class Nodes {
      * Gets a value by key from an object-like node.
      */
     public static Object getInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(key, "key is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
         if (node instanceof Map) {
             return ((Map<?, ?>) node).get(key);
         }
@@ -1483,7 +1483,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object getInArray(Object node, int idx) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1562,9 +1562,9 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void accessInObject(Object node, Type type, String key, Access out) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(key, "key is null");
-        Objects.requireNonNull(out, "out is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(out, "out");
 
         if (node instanceof Map) {
             out.node = ((Map<String, Object>) node).get(key);
@@ -1614,8 +1614,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void accessInArray(Object node, Type type, int idx, Access out) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(out, "out is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(out, "out");
 
         if (node instanceof List) {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
@@ -1700,8 +1700,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(key, "key is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
         if (node instanceof Map) {
             return ((Map<String, Object>) node).put(key, value);
         }
@@ -1735,7 +1735,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object setInArray(Object node, int idx, Object value) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1799,7 +1799,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, Object value) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             ((List<Object>) node).add(value);
             return;
@@ -1829,7 +1829,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static void addInArray(Object node, int idx, Object value) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1860,8 +1860,8 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object removeInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node is null");
-        Objects.requireNonNull(key, "key is null");
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
         if (node instanceof JsonObject) {
             return ((JsonObject) node).remove(key);
         }
@@ -1886,7 +1886,7 @@ public class Nodes {
      */
     @SuppressWarnings("unchecked")
     public static Object removeInArray(Object node, int idx) {
-        Objects.requireNonNull(node, "node is null");
+        Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1952,10 +1952,10 @@ public class Nodes {
     public static void walk(Object container, WalkTarget target,
                             WalkOrder order, int maxDepth,
                             BiFunction<PathSegment, Object, Boolean> visitor) {
-        Objects.requireNonNull(container, "container is null");
-        Objects.requireNonNull(target, "target is null");
-        Objects.requireNonNull(order, "order is null");
-        Objects.requireNonNull(visitor, "visitor is null");
+        Objects.requireNonNull(container, "container");
+        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(order, "order");
+        Objects.requireNonNull(visitor, "visitor");
         _walk(container, new PathSegment.Root(null, container.getClass()), visitor, target, order, maxDepth);
     }
 

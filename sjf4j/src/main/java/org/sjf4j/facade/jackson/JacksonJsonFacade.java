@@ -46,7 +46,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      * Creates facade with configured ObjectMapper and SJF4J module.
      */
     public JacksonJsonFacade(ObjectMapper objectMapper, StreamingMode streamingMode) {
-        Objects.requireNonNull(objectMapper, "objectMapper is null");
+        Objects.requireNonNull(objectMapper, "objectMapper");
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -65,7 +65,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public JacksonReader createReader(Reader input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
@@ -74,7 +74,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public JacksonReader createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
@@ -83,7 +83,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public JacksonReader createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
@@ -92,7 +92,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public JacksonReader createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return new JacksonReader(objectMapper.getFactory().createParser(input));
     }
 
@@ -101,7 +101,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -132,7 +132,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -163,7 +163,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -193,7 +193,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         switch (streamingMode) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
@@ -242,7 +242,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
@@ -277,7 +277,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         switch (streamingMode) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);

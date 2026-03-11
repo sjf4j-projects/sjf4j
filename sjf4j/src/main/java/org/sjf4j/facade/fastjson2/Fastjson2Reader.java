@@ -7,6 +7,7 @@ import org.sjf4j.facade.StreamingReader;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 /**
  * Streaming reader backed by Fastjson2's {@link JSONReader}.
@@ -19,7 +20,7 @@ public class Fastjson2Reader implements StreamingReader {
      * Creates reader adapter from Fastjson2 JSONReader.
      */
     public Fastjson2Reader(JSONReader reader) {
-        if (reader == null) throw new JsonException("reader is null");
+        Objects.requireNonNull(reader, "reader");
         this.reader = reader;
     }
 

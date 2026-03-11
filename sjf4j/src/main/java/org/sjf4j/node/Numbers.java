@@ -5,6 +5,7 @@ import org.sjf4j.util.Strings;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 /**
  * Numeric conversion helpers with range checks.
@@ -40,7 +41,7 @@ public class Numbers {
      * Checks if a BigInteger number is within the range of a Long.
      */
     private static boolean inLongRange(BigInteger number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         return (number.compareTo(BI_MIN_LONG) >= 0) && (number.compareTo(BI_MAX_LONG) <= 0);
     }
 
@@ -48,7 +49,7 @@ public class Numbers {
      * Checks if a BigDecimal number is within the range of a Long.
      */
     private static boolean inLongRange(BigDecimal number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         return (number.compareTo(BD_MIN_LONG) >= 0) && (number.compareTo(BD_MAX_LONG) <= 0);
     }
 
@@ -88,7 +89,7 @@ public class Numbers {
      * Converts a Number to a Long with range checking.
      */
     public static long toLong(Number number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         if (number instanceof Long) return (long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
             throw new JsonException("Cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
@@ -139,7 +140,7 @@ public class Numbers {
      * Converts a Number to a Double with range checking.
      */
     public static double toDouble(Number number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         if (number instanceof Double) return (double) number;
         double d = number.doubleValue();
         if (!Double.isFinite(d)) {
@@ -152,7 +153,7 @@ public class Numbers {
      * Converts a Number to a Float with range checking.
      */
     public static float toFloat(Number number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         if (number instanceof Float) return (float) number;
 
         float f = number.floatValue();
@@ -166,7 +167,7 @@ public class Numbers {
      * Converts a Number to BigInteger.
      */
     public static BigInteger toBigInteger(Number number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         if (number instanceof BigInteger) return (BigInteger) number;
         if (number instanceof BigDecimal) return ((BigDecimal) number).toBigInteger();
         if (number instanceof Double || number instanceof Float) {
@@ -183,7 +184,7 @@ public class Numbers {
      * Converts a Number to BigDecimal.
      */
     public static BigDecimal toBigDecimal(Number number) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         if (number instanceof BigDecimal) return (BigDecimal) number;
         if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
         if (number instanceof Double || number instanceof Float) {
@@ -197,7 +198,7 @@ public class Numbers {
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Number number, Class<T> clazz) {
-        if (number == null) throw new JsonException("number is null");
+        Objects.requireNonNull(number, "number");
         if (clazz == null || clazz.isAssignableFrom(number.getClass())) return (T) number;
         Class<?> boxed = Types.box(clazz);
         if (boxed == Long.class) return (T) Long.valueOf(Numbers.toLong(number));
@@ -361,8 +362,8 @@ public class Numbers {
      * Compares two numbers with cross-type numeric semantics.
      */
     public static int compare(Number source, Number target) {
-        if (source == null) throw new JsonException("source is null");
-        if (target == null) throw new JsonException("target is null");
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(target, "target");
         if (source instanceof BigInteger || target instanceof BigInteger) {
             return toBigInteger(source).compareTo(toBigInteger(target));
         }

@@ -29,7 +29,7 @@ public class ValidationMessage {
      * Creates a validation message entry.
      */
     public ValidationMessage(Severity severity, PathSegment ps, String keyword, String message) {
-        Objects.requireNonNull(severity, "Severity is null");
+        Objects.requireNonNull(severity, "severity");
         this.severity = severity;
         this.ps = ps;
         this.keyword = keyword;

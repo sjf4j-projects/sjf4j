@@ -609,7 +609,7 @@ public class GsonStreamingIO {
      * Writes one node to Gson writer.
      */
     public static void writeNode(JsonWriter writer, Object node) throws IOException {
-        Objects.requireNonNull(writer, "writer is null");
+        Objects.requireNonNull(writer, "writer");
         _writeNode(
                 writer,
                 node,

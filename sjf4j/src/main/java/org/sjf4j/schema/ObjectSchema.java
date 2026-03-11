@@ -138,7 +138,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * Resolves schema by JSON Pointer in current id scope.
      */
     JsonSchema getSchemaByPath(JsonPointer path) {
-        Objects.requireNonNull(path, "path is null");
+        Objects.requireNonNull(path, "path");
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
             Object node = path.getNode(this);

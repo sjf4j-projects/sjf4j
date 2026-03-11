@@ -42,7 +42,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Creates a streaming reader from InputStream using UTF-8.
      */
     default R createReader(InputStream input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
@@ -50,7 +50,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Creates a streaming reader from input string.
      */
     default R createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return createReader(new StringReader(input));
     }
 
@@ -58,7 +58,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Creates a streaming reader from UTF-8 bytes.
      */
     default R createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         return createReader(new ByteArrayInputStream(input));
     }
 
@@ -66,7 +66,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from reader into target type.
      */
     default Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
@@ -82,7 +82,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from input stream into target type.
      */
     default Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
@@ -98,7 +98,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from string into target type.
      */
     default Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type);
@@ -113,7 +113,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Reads one node from bytes into target type.
      */
     default Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input is null");
+        Objects.requireNonNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
             Object node = StreamingIO.readNode(reader, type);
@@ -144,7 +144,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Writes one node to writer.
      */
     default void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
@@ -161,7 +161,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      * Writes one node to output stream.
      */
     default void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output is null");
+        Objects.requireNonNull(output, "output");
         writeNode(new OutputStreamWriter(output, StandardCharsets.UTF_8), node);
     }
 

@@ -67,7 +67,7 @@ public class JsonPath {
      * parsed as JSON Pointer; others are parsed as JSONPath.
      */
     public static JsonPath compile(String expr) {
-        Objects.requireNonNull(expr, "expr is null");
+        Objects.requireNonNull(expr, "expr");
         expr = expr.trim();
 
         PathSegment[] segments;
@@ -90,7 +90,7 @@ public class JsonPath {
 //     * Creates JsonPath from the last segment in a chain.
 //     */
 //    public static JsonPath fromLast(PathSegment lastSegment) {
-//        Objects.requireNonNull(lastSegment, "lastSegment is null");
+//        Objects.requireNonNull(lastSegment, "lastSegment");
 //        PathSegment[] segments = Paths.linearize(lastSegment);
 //        return new JsonPath(null, segments);
 //    }
@@ -173,7 +173,7 @@ public class JsonPath {
 //     * @throws IllegalArgumentException if token is null
 //     */
 //    public void push(PathSegment token) {
-//        Objects.requireNonNull(token, "token is null");
+//        Objects.requireNonNull(token, "token");
 //        tokens.add(token);
 //    }
 //
@@ -196,7 +196,7 @@ public class JsonPath {
      * @throws IllegalArgumentException if container is null
      */
     public Object getNode(Object container) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         return _findOne(container, 0);
     }
 
@@ -743,7 +743,7 @@ public class JsonPath {
      * Finds all matching nodes for this path.
      */
     public List<Object> find(Object container) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);
         return result;
@@ -753,8 +753,8 @@ public class JsonPath {
      * Finds and converts all matches using strict conversion.
      */
     public <T> List<T> find(Object container, Class<T> clazz) {
-        Objects.requireNonNull(container, "container is null");
-        Objects.requireNonNull(clazz, "clazz is null");
+        Objects.requireNonNull(container, "container");
+        Objects.requireNonNull(clazz, "clazz");
         List<T> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> Nodes.to(n, clazz));
         return result;
@@ -764,8 +764,8 @@ public class JsonPath {
      * Finds and converts all matches using lenient conversion.
      */
     public <T> List<T> findAs(Object container, Class<T> clazz) {
-        Objects.requireNonNull(container, "container is null");
-        Objects.requireNonNull(clazz, "clazz is null");
+        Objects.requireNonNull(container, "container");
+        Objects.requireNonNull(clazz, "clazz");
         List<T> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> Nodes.as(n, clazz));
         return result;
@@ -780,7 +780,7 @@ public class JsonPath {
      * the matched value(s) as first argument plus parsed literal arguments.
      */
     public Object eval(Object container) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, result, (n) -> n);
         if (result.isEmpty()) return null;
@@ -838,7 +838,7 @@ public class JsonPath {
      * segments. Missing containers are created based on inferred static type.
      */
     public Object ensurePut(Object container, Object value) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         Object lastContainer = _ensureContainersInPath(container);
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
@@ -880,8 +880,8 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
-        Objects.requireNonNull(container, "container is null");
-        Objects.requireNonNull(computer, "computer is null");
+        Objects.requireNonNull(container, "container");
+        Objects.requireNonNull(computer, "computer");
         T old = get(container);
         if (old == null) {
             T newNode = computer.apply(this);
@@ -909,7 +909,7 @@ public class JsonPath {
      * index validity after negative-index normalization.
      */
     public boolean contains(Object container) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         Object penult = _findOne(container, -1);
         if (penult == null) return false;
         PathSegment lastToken = segments[segments.length - 1];
@@ -936,7 +936,7 @@ public class JsonPath {
      * targets ({@code -}) append to arrays.
      */
     public void add(Object container, Object value) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         Object penult = _findOne(container, -1);
         if  (penult == null)
             throw new JsonException("Parent container at the penultimate path token does not exist");
@@ -962,7 +962,7 @@ public class JsonPath {
      * @return previous value at the replaced location
      */
     public Object replace(Object container, Object value) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         Object penult = _findOne(container, -1);
         if  (penult == null)
             throw new JsonException("Parent container at the penultimate path token does not exist");
@@ -992,7 +992,7 @@ public class JsonPath {
      * @return removed value, or {@code null} when parent path is absent
      */
     public Object remove(Object container) {
-        Objects.requireNonNull(container, "container is null");
+        Objects.requireNonNull(container, "container");
         Object penult = _findOne(container, -1);
         if  (penult == null) return null;
 
