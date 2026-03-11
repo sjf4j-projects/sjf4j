@@ -52,6 +52,10 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class ReadBenchmark {
 
+    public static void main(String[] args) throws Exception {
+        org.openjdk.jmh.Main.main(new String[]{ReadBenchmark.class.getName()});
+    }
+
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
 //    private static final String JSON_DATA = "{\"age\":25}";
 //    private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30}";
@@ -123,8 +127,8 @@ public class ReadBenchmark {
         @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
         public String streamingMode;
 
-        @Param({/*"true",*/ "false"})
-        public String useBindingPath;
+//        @Param({/*"true",*/ "false"})
+//        public String useBindingPath;
 
         public JacksonJsonFacade jacksonFacade;
         public GsonJsonFacade gsonFacade;
@@ -134,7 +138,6 @@ public class ReadBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             Sjf4jConfig.global(new Sjf4jConfig.Builder()
-                    .bindingPath(Boolean.parseBoolean(useBindingPath))
                     .build());
             jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.valueOf(streamingMode));
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.valueOf(streamingMode));
@@ -154,6 +157,11 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_simple_facade_jojo() throws IOException {
         return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User2.class);
+    }
+
+    @Benchmark
+    public Object json_simple_facade_pojo() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPlain.class);
     }
 
     // ----- Jackson baselines -----
