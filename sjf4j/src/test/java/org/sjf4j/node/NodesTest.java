@@ -7,6 +7,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
@@ -304,6 +306,19 @@ public class NodesTest {
         public String street;
     }
 
+    public static class CtorOnlyPojo {
+        public final String id;
+        public final int level;
+        public String note;
+        public List<String> tags;
+
+        @NodeCreator
+        public CtorOnlyPojo(@NodeProperty("id") String id, @NodeProperty("level") int level) {
+            this.id = id;
+            this.level = level;
+        }
+    }
+
     @Test
     public void testEquals() {
         Sjf4jConfig.useFastjson2AsGlobal();
@@ -403,6 +418,27 @@ public class NodesTest {
 
         b1.name = "Bro";
         assertNotEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
+    }
+
+    @Test
+    public void testCopyCtorOnlyPojo() {
+        CtorOnlyPojo p1 = new CtorOnlyPojo("user-1", 7);
+        p1.note = "hello";
+        p1.tags = new ArrayList<>(Arrays.asList("a", "b"));
+
+        CtorOnlyPojo p2 = Nodes.copy(p1);
+
+        assertNotSame(p1, p2);
+        assertEquals(p1.id, p2.id);
+        assertEquals(p1.level, p2.level);
+        assertEquals(p1.note, p2.note);
+        assertSame(p1.tags, p2.tags);
+
+        p1.note = "changed";
+        assertEquals("hello", p2.note);
+
+        p1.tags.set(0, "z");
+        assertEquals("z", p2.tags.get(0));
     }
 
     @Test

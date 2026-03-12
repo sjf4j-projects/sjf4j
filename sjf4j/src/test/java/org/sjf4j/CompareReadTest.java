@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Slf4j
 public class CompareReadTest {
 
-    // --------- 模拟的 POJO ------------
+    // --------- Sample POJO ------------
     @ToString
     public static class Person {
         public String name;

@@ -16,7 +16,7 @@ Beyond JSON, it also supports YAML (via [SnakeYAML](https://github.com/snakeyaml
 and Java Properties (built-in).
 
 SJF4J provides **a unified JSON-semantic structural processing layer**,
-delivering consistent and expressive APIs for parsing, navigation, transformation, 
+delivering consistent APIs for parsing, navigation, transformation, 
 and validation across data formats and native object graphs.
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies.
@@ -83,7 +83,7 @@ Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 ### Parsing from JSON
 
-Use `Sjf4j` to encode and decode structured data across multiple formats through a unified facade.
+Use `Sjf4j` to encode and decode structured data across multiple formats.
 ```java
 String json = """
 {
@@ -194,12 +194,10 @@ validator.validate(student).isValid();                  // true
 
 Learn more → [Validation (JSON Schema)](https://sjf4j.org/docs/validation)
 
+---
+This simple example demonstrates how SJF4J unifies the entire lifecycle of structured data processing under a single JSON-semantic model.
 
-> This example demonstrates how SJF4J unifies the entire lifecycle of
-> structured data processing under a single JSON-semantic model.
-> 
-> Structured data — **whether from JSON, YAML, Java Properties, or native object graphs** — 
-> can be processed consistently using the same JSON-semantic APIs.
+More details: [sjf4j.org](https://sjf4j.org) 
 
 ## Benchmarks
 SJF4J delivers **high performance** with minimal overhead while providing a unified JSON-semantic processing model.

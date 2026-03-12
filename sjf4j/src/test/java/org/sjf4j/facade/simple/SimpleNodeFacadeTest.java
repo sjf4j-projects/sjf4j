@@ -170,7 +170,7 @@ public class SimpleNodeFacadeTest {
 
     /// AI generated
 
-    // ========== 基础类型 ==========
+    // ========== Primitive/basic types ==========
     public static class BasicTypes {
         public String name;
         public int age;
@@ -196,7 +196,7 @@ public class SimpleNodeFacadeTest {
         assertEquals("Alice", back.get("name"));
     }
 
-    // ========== 嵌套对象 ==========
+    // ========== Nested object ==========
     public static class Address {
         public String city;
         public String street;
@@ -225,7 +225,7 @@ public class SimpleNodeFacadeTest {
         assertEquals("Bob", back.get("name"));
     }
 
-    // ========== List 和 数组 ==========
+    // ========== List and array ==========
     public static class Team {
         public String teamName;
         public List<String> members;
@@ -446,7 +446,7 @@ public class SimpleNodeFacadeTest {
         jo.put("name", null);
         BasicTypes bt = (BasicTypes) nodeFacade.readNode(jo, BasicTypes.class);
         assertNull(bt.name);
-        assertEquals(0, bt.age); // 默认 int=0
+        assertEquals(0, bt.age); // default int=0
 
         jo.put("age", null);
         assertThrows(JsonException.class, () -> nodeFacade.readNode(jo, BasicTypes.class));

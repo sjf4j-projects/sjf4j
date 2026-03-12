@@ -65,10 +65,6 @@ public class ReadBenchmark {
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"no_way\":99,\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
-    //    private static final String JSON_DATA2 = "{\n" +
-//            "  \"name\": \"Alice\",\n" +
-//            "  \"friends\": []" +
-//            "}\n";
     private static final String JSON_DATA2 = "{\n" +
             "  \"name\": \"Alice\",\n" +
             "  \"friends\": [\n" +
@@ -115,8 +111,6 @@ public class ReadBenchmark {
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
 
-    private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
-
     static {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 //        Sjf4jConfig.useBindingPath(false);
@@ -134,6 +128,7 @@ public class ReadBenchmark {
         public GsonJsonFacade gsonFacade;
         public Fastjson2JsonFacade fastjson2Facade;
         public JsonpJsonFacade jsonpFacade;
+        public SimpleJsonFacade simpleFacade;
 
         @Setup(Level.Trial)
         public void setup() {
@@ -143,25 +138,21 @@ public class ReadBenchmark {
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.valueOf(streamingMode));
             fastjson2Facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
             jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
+            simpleFacade = new SimpleJsonFacade();
         }
     }
 
 
 
     // ----- Simple JSON baselines -----
-//    @Benchmark
-//    public Object json_simple_facade_pojo() throws IOException {
-//        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User.class);
-//    }
-
     @Benchmark
-    public Object json_simple_facade_jojo() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, User2.class);
+    public Object json_simple_facade_pojo(FacadeState state) throws IOException {
+        return state.simpleFacade.readNode(JSON_DATA2, UserPlain.class);
     }
 
     @Benchmark
-    public Object json_simple_facade_pojo() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPlain.class);
+    public Object json_simple_facade_jojo(FacadeState state) throws IOException {
+        return state.simpleFacade.readNode(JSON_DATA2, User2.class);
     }
 
     // ----- Jackson baselines -----
@@ -232,15 +223,6 @@ public class ReadBenchmark {
         return state.gsonFacade.readNode(JSON_DATA2, User2.class);
     }
 
-//    @Benchmark
-//    public Object json_gson_facade_jojo_no_dyn(FacadeState state) {
-//        return state.gsonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_gson_facade_jojo_list(FacadeState state) {
-//        return state.gsonFacade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
-//    }
 
     // ----- Fastjson2 baselines -----
     @Benchmark
@@ -292,78 +274,6 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_jsonp_facade_jojo(FacadeState state) {
         return state.jsonpFacade.readNode(JSON_DATA2, User2.class);
-    }
-
-//    @Benchmark
-//    public Object json_fastjson2_facade_jojo_no_dyn(FacadeState state) throws IOException {
-//        return state.fastjson2Facade.readNode(JSON_DATA2_NO_DYN, User2.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_fastjson2_facade_jojo_list(FacadeState state) throws IOException {
-//        return state.fastjson2Facade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
-//    }
-
-    // --------- 模拟的 POJO ------------
-    // Extend JsonObject so every framework can reuse the same helper methods when populating nested structures.
-    public static class Person extends JsonObject {
-        public String name;
-        public String nick;
-        public int age;
-        public Info info;
-        public List<Baby> babies;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getNick() {
-            return nick;
-        }
-
-        public void setNick(String nick) {
-            this.nick = nick;
-        }
-
-        public int getAge() {
-            return age;
-        }
-
-        public void setAge(int age) {
-            this.age = age;
-        }
-
-        public Info getInfo() {
-            return info;
-        }
-
-        public void setInfo(Info info) {
-            this.info = info;
-        }
-
-        public List<Baby> getBabies() {
-            return babies;
-        }
-
-        public void setBabies(List<Baby> babies) {
-            this.babies = babies;
-        }
-    }
-
-    @Getter @Setter
-    public static class Info extends JsonObject {
-        public String email;
-        public String city;
-    }
-
-    @Getter @Setter
-    public static class Baby extends JsonObject {
-        public String name;
-//        public int age;
     }
 
 

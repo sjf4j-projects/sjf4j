@@ -262,9 +262,9 @@ class ReflectUtilTest {
         int age;
     }
 
-    // ---- helpers: 访问 private 的 analyzeCreator / createLambdaSetter（如果它们是 private） ----
-    // 如果你愿意把 analyzeCreator/createLambdaSetter 改成 package-private，测试会干净很多。
-    // 这里用反射调用以不改源代码。
+    // ---- helpers: access private analyzeCreator/createLambdaSetter (if they are private) ----
+    // If analyzeCreator/createLambdaSetter are package-private, this test can be cleaner.
+    // Use reflection here to avoid changing production code.
 
     private static java.lang.reflect.Method getPrivateLookupIn() throws Exception {
         return MethodHandles.class.getMethod("privateLookupIn", Class.class, MethodHandles.Lookup.class);

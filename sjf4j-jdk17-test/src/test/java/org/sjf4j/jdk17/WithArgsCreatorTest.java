@@ -198,11 +198,11 @@ public class WithArgsCreatorTest {
     @Test
     void shouldExposeAliasConflictBehavior() throws Exception {
         AliasPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"n\":\"b\",\"age\":1}", AliasPojo.class);
-        // 具体行为取决于 Jackson 覆盖策略，这里只断言最终可解析
+        // Behavior depends on Jackson override strategy; assert only final parseability.
         assertNotNull(p.name);
     }
 
-    // ---------- 3) 边界/极端 ----------
+    // ---------- 3) Boundary/extreme ----------
 
     static class PrimitivePojo {
         public String name;

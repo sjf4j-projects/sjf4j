@@ -228,62 +228,26 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof JsonObject) {
                 JsonObject srcJo = (JsonObject) node;
-                NodeRegistry.CreatorInfo ci = NodeRegistry.registerPojoOrElseThrow(nodeClazz).creatorInfo;
-                JsonObject newJo = (JsonObject) (ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs());
-                Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-                int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-                int pendingSize = 0;
-                String[] pendingKeys = null;
-                Object[] pendingValues = null;
+                NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(nodeClazz);
+                NodeRegistry.CreatorInfo ci = pojoInfo.creatorInfo;
+                NodeRegistry.PojoCreationSession session = pojoInfo.newCreationSession(srcJo.size());
 
                 for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
                     String key = entry.getKey();
-                    int argIdx = -1;
-                    if (newJo == null) {
-                        argIdx = ci.getArgIndex(key);
-                        if (argIdx < 0 && ci.aliasMap != null) {
-                            String origin = ci.aliasMap.get(key); // alias -> origin
-                            if (origin != null) {
-                                argIdx = ci.getArgIndex(origin);
-                            }
-                        }
-                    }
+                    int argIdx = session.resolveArgIndex(key);
                     if (argIdx >= 0) {
-                        assert args != null;
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
-                        args[argIdx] = _deepNode(entry.getValue(), ci.argTypes[argIdx], cps);
-                        remainingArgs--;
-                        if (remainingArgs == 0) {
-                            newJo = (JsonObject) ci.newPojoWithArgs(args);
-                            for (int i = 0; i < pendingSize; i++) {
-                                newJo.put(pendingKeys[i], pendingValues[i]);
-                            }
-                        }
+                        Object vv = _deepNode(entry.getValue(), ci.argTypes[argIdx], cps);
+                        session.acceptResolvedJsonEntry(argIdx, key, vv);
                         continue;
                     }
 
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
                     Object vv = _deepNode(entry.getValue(), Object.class, cps);
-                    if (newJo != null) {
-                        newJo.put(key, vv);
-                    } else {
-                        if (pendingKeys == null) {
-                            int cap = srcJo.size();
-                            pendingKeys = new String[cap];
-                            pendingValues = new Object[cap];
-                        }
-                        pendingKeys[pendingSize] = key;
-                        pendingValues[pendingSize] = vv;
-                        pendingSize++;
-                    }
+                    session.acceptResolvedJsonEntry(argIdx, key, vv);
                 }
 
-                if (newJo == null) {
-                    newJo = (JsonObject) ci.newPojoWithArgs(args);
-                    for (int i = 0; i < pendingSize; i++) {
-                        newJo.put(pendingKeys[i], pendingValues[i]);
-                    }
-                }
+                JsonObject newJo = session.finishJsonObject();
                 return newJo;
             }
 
@@ -334,66 +298,26 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(nodeClazz);
             if (pi != null) {
                 NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-                Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-                Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-                int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-                int pendingSize = 0;
-                NodeRegistry.FieldInfo[] pendingFields = null;
-                Object[] pendingValues = null;
+                NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
 
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     String key = entry.getKey();
                     NodeRegistry.FieldInfo fi = entry.getValue();
 
-                    int argIdx = -1;
-                    if (pojo == null) {
-                        argIdx = ci.getArgIndex(key);
-                        if (argIdx < 0 && ci.aliasMap != null) {
-                            String origin = ci.aliasMap.get(key); // alias -> origin
-                            if (origin != null) {
-                                argIdx = ci.getArgIndex(origin);
-                            }
-                        }
-                    }
+                    int argIdx = session.resolveArgIndex(key);
                     if (argIdx >= 0) {
-                        assert args != null;
                         Object v = fi.invokeGetter(node);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
-                        Object vv = _deepNode(v, ci.argTypes[argIdx], cps);
-                        args[argIdx] = vv;
-                        remainingArgs--;
-                        if (remainingArgs == 0) {
-                            pojo = ci.newPojoWithArgs(args);
-                            for (int j = 0; j < pendingSize; j++) {
-                                pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
-                            }
-                            pendingSize = 0;
-                        }
+                        session.acceptResolvedField(argIdx, _deepNode(v, ci.argTypes[argIdx], cps), fi);
                         continue;
                     }
 
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
                     Object vv = _deepNode(v, fi.type, cps);
-                    if (pojo != null) {
-                        fi.invokeSetterIfPresent(pojo, vv);
-                    } else {
-                        if (pendingFields == null) {
-                            int cap = pi.fieldCount;
-                            pendingFields = new NodeRegistry.FieldInfo[cap];
-                            pendingValues = new Object[cap];
-                        }
-                        pendingFields[pendingSize] = fi;
-                        pendingValues[pendingSize] = vv;
-                        pendingSize++;
-                    }
+                    session.acceptResolvedField(argIdx, vv, fi);
                 }
-                if (pojo == null) {
-                    pojo = ci.newPojoWithArgs(args);
-                    for (int i = 0; i < pendingSize; i++) {
-                        pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                    }
-                }
+                Object pojo = session.finishField();
                 return pojo;
             }
 

@@ -311,10 +311,10 @@ public class SimpleExampleTest {
         User2 user2 = Sjf4j.fromJson(json, User2.class);
 
         assertEquals(user.getName(), user2.getName());
-        // user2 与 user 在已定义的字段上都是一样的
+        // user2 and user are the same on defined fields
 
         assertEquals(18, user2.getInteger("age"));
-        // 不同的是 user2 还能持有 age
+        // difference: user2 can also hold age
 
         System.out.println("user2=" + user2);
         // user2=@User2{*name=Alice, *friends=L[@User2{*name=Bill, *friends=null, active=true}, @User2{..}], age=18}

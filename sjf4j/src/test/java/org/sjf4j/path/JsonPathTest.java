@@ -219,13 +219,13 @@ public class JsonPathTest {
         path3.ensurePutNonNull(jo, "value");
         assertEquals("value", jo.getStringByPath("$.a.d"));
         path3.ensurePutNonNull(jo, null);
-        assertEquals("value", jo.getStringByPath("$.a.d")); // 不应该被覆盖
+        assertEquals("value", jo.getStringByPath("$.a.d")); // should not be overwritten
 
         JsonPath path4 = JsonPath.compile("$.a.e");
         path4.ensurePutIfAbsent(jo, "first");
         assertEquals("first", jo.getStringByPath("$.a.e"));
         path4.ensurePutIfAbsent(jo, "second");
-        assertEquals("first", jo.getStringByPath("$.a.e")); // 不应该被覆盖
+        assertEquals("first", jo.getStringByPath("$.a.e")); // should not be overwritten
 
         JsonPath path5 = JsonPath.compile("$.a.b");
         assertTrue(path5.hasNonNull(jo));
@@ -391,21 +391,21 @@ public class JsonPathTest {
         JsonObject jo = JsonObject.fromJson(json);
 
         assertEquals(2, JsonPath.compile("$.numbers[2]").getNode(jo));
-        assertEquals(7, JsonPath.compile("$.numbers[-3]").getNode(jo)); // 倒数第三个
+        assertEquals(7, JsonPath.compile("$.numbers[-3]").getNode(jo)); // third from the end
 
         List<Object> slice1 = JsonPath.compile("$.numbers[1:5]").find(jo);
         assertEquals(4, slice1.size());
         assertEquals(Arrays.asList(1, 2, 3, 4), slice1);
 
-        List<Object> slice2 = JsonPath.compile("$.numbers[::2]").find(jo); // 步长为2
+        List<Object> slice2 = JsonPath.compile("$.numbers[::2]").find(jo); // step is 2
         assertEquals(5, slice2.size());
         assertEquals(Arrays.asList(0, 2, 4, 6, 8), slice2);
 
-        List<Object> slice3 = JsonPath.compile("$.numbers[5:]").find(jo); // 从5开始到结束
+        List<Object> slice3 = JsonPath.compile("$.numbers[5:]").find(jo); // from 5 to end
         assertEquals(5, slice3.size());
         assertEquals(Arrays.asList(5, 6, 7, 8, 9), slice3);
 
-        List<Object> slice4 = JsonPath.compile("$.numbers[:3]").find(jo); // 前3个
+        List<Object> slice4 = JsonPath.compile("$.numbers[:3]").find(jo); // first 3
         assertEquals(3, slice4.size());
         assertEquals(Arrays.asList(0, 1, 2), slice4);
 
@@ -548,7 +548,7 @@ public class JsonPathTest {
                 "}";
         JsonObject jo = JsonObject.fromJson(json);
 
-        // 递归 + 切片 + 属性访问
+        // recursion + slicing + property access
         List<Object> firstSkills = JsonPath.compile("$..employees[0].skills[0]").find(jo);
         assertEquals(2, firstSkills.size());
         assertTrue(firstSkills.contains("Java"));

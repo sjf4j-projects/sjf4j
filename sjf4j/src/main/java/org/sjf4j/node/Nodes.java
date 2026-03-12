@@ -704,58 +704,16 @@ public class Nodes {
         }
         if (node instanceof JsonObject) {
             JsonObject srcJo = (JsonObject) node;
-            NodeRegistry.CreatorInfo ci = NodeRegistry.registerPojoOrElseThrow(node.getClass()).creatorInfo;
-            JsonObject newJo = (JsonObject) (ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs());
-            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-            int pendingSize = 0;
-            String[] pendingKeys = null;
-            Object[] pendingValues = null;
+            NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(node.getClass());
+            NodeRegistry.PojoCreationSession session = pojoInfo.newCreationSession(srcJo.size());
+            NodeRegistry.PojoPendingApplier applyJsonObject = (pojo, pendingKey, pendingValue) ->
+                    ((JsonObject) pojo).put((String) pendingKey, pendingValue);
 
             for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
                 String key = entry.getKey();
-                int argIdx = -1;
-                if (newJo == null) {
-                    argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.aliasMap != null) {
-                        String origin = ci.aliasMap.get(key); // alias -> origin
-                        if (origin != null) {
-                            argIdx = ci.getArgIndex(origin);
-                        }
-                    }
-                }
-                if (argIdx >= 0) {
-                    assert args != null;
-                    args[argIdx] = entry.getValue();
-                    remainingArgs--;
-                    if (remainingArgs == 0) {
-                        newJo = (JsonObject) ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            newJo.put(pendingKeys[i], pendingValues[i]);
-                        }
-                    }
-                    continue;
-                }
-
-                if (newJo != null) {
-                    newJo.put(key, entry.getValue());
-                } else {
-                    if (pendingKeys == null) {
-                        int cap = srcJo.size();
-                        pendingKeys = new String[cap];
-                        pendingValues = new Object[cap];
-                    }
-                    pendingKeys[pendingSize] = key;
-                    pendingValues[pendingSize] = entry.getValue();
-                    pendingSize++;
-                }
+                session.accept(key, entry.getValue(), key, applyJsonObject);
             }
-            if (newJo == null) {
-                newJo = (JsonObject) ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    newJo.put(pendingKeys[i], pendingValues[i]);
-                }
-            }
+            JsonObject newJo = (JsonObject) session.finish(applyJsonObject);
             return (T) newJo;
         }
         if (node instanceof List) {
@@ -785,62 +743,18 @@ public class Nodes {
             return (T) ti.valueCodecInfo.valueCopy(node);
         } else if (ti.isPojo()) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(node.getClass());
-            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-            int pendingSize = 0;
-            NodeRegistry.FieldInfo[] pendingFields = null;
-            Object[] pendingValues = null;
+            NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+            NodeRegistry.PojoPendingApplier applyPojoField = (target, pendingKey, pendingValue) ->
+                    ((NodeRegistry.FieldInfo) pendingKey).invokeSetterIfPresent(target, pendingValue);
 
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 String key = entry.getKey();
                 NodeRegistry.FieldInfo fi = entry.getValue();
 
-                int argIdx = -1;
-                if (pojo == null) {
-                    argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.aliasMap != null) {
-                        String origin = ci.aliasMap.get(key); // alias -> origin
-                        if (origin != null) {
-                            argIdx = ci.getArgIndex(origin);
-                        }
-                    }
-                }
-                if (argIdx >= 0) {
-                    assert args != null;
-                    args[argIdx] = fi.invokeGetter(node);
-                    remainingArgs--;
-                    if (remainingArgs == 0) {
-                        pojo = ci.newPojoWithArgs(args);
-                        for (int j = 0; j < pendingSize; j++) {
-                            pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
-                        }
-                        pendingSize = 0;
-                    }
-                    continue;
-                }
-
                 Object v = fi.invokeGetter(node);
-                if (pojo != null) {
-                    fi.invokeSetterIfPresent(pojo, v);
-                } else {
-                    if (pendingFields == null) {
-                        int cap = pi.fieldCount;
-                        pendingFields = new NodeRegistry.FieldInfo[cap];
-                        pendingValues = new Object[cap];
-                    }
-                    pendingFields[pendingSize] = fi;
-                    pendingValues[pendingSize] = v;
-                    pendingSize++;
-                }
+                session.accept(key, v, fi, applyPojoField);
             }
-            if (pojo == null) {
-                pojo = ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                }
-            }
+            Object pojo = session.finish(applyPojoField);
             return (T) pojo;
         }
 

@@ -70,12 +70,12 @@ public class TypesTest {
         System.out.println("list → " + Types.fieldType(t1, f2));  // List<String>
         System.out.println("array → " + Types.fieldType(t1, f3)); // String[]
 
-        // 嵌套泛型
+        // Nested generics
         Field nf1 = Nested.class.getSuperclass().getDeclaredField("value");
         Type t2 = Nested.class.getGenericSuperclass();
         System.out.println("Nested.value → " + Types.fieldType(t2, nf1));
 
-        // WrapperTwo 测试
+        // WrapperTwo test
         Field wf1 = WrapperTwo.class.getDeclaredField("value1");
         Field wf2 = WrapperTwo.class.getDeclaredField("value2");
         Type t3 = new TypeReference<WrapperTwo<Long, Number>>(){}.getType();

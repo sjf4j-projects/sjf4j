@@ -62,7 +62,7 @@ public class NodeWalkerTest {
         
         log.info("Container paths: {}", containerPaths);
         
-        // 应该包含所有容器，按自底向上顺序
+        // Should include all containers in bottom-up order
         assertTrue(containerPaths.contains("$"));
         assertTrue(containerPaths.contains("$.b"));
     }
@@ -185,7 +185,7 @@ public class NodeWalkerTest {
     }
 
 
-    // --------- 模拟的 POJO ------------
+    // --------- Sample POJO ------------
     @ToString
     public static class Person {
         public String name;

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class Sjf4jTest {
 
-    // --------- 模拟的 POJO ------------
+    // --------- Sample POJO ------------
     @ToString
     public static class Person {
         public String name;

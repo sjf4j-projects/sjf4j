@@ -11,18 +11,28 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.node.NodeRegistry;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-//@BenchmarkMode(Mode.AverageTime)
-//@OutputTimeUnit(TimeUnit.MICROSECONDS)
-//@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-//@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-//@Fork(value = 1)
-//@Threads(1)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 1)
+@Threads(1)
 public class ReflectionBenchmark {
 
-    // --------- 模拟的 POJO ------------
+    public static void main(String[] args) throws Exception {
+        org.openjdk.jmh.Main.main(new String[]{ReflectionBenchmark.class.getName()});
+    }
+
+    // --------- Sample POJO ------------
     public static class Person extends JsonObject {
         public String name;
         public String nick;
@@ -83,58 +93,129 @@ public class ReflectionBenchmark {
 
     // Cache PojoInfo/FieldInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
     private static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
-    private static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
+    private static MethodHandle ctorMethodHandler = pi.creatorInfo.noArgsCtorHandle;
+    private static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 
-//    // ----- Constructor pathways -----
-//    @Benchmark
-//    public Object reflection_ctor_native() {
-//        return new Person();
-//    }
-//
-//    @Benchmark
-//    public Object reflection_ctor_lambda() {
-//        return pi.creatorInfo.newPojoNoArgs();
-//    }
-//
-//    // ----- Getter pathways -----
-//    @Benchmark
-//    public Object reflection_getter_native() {
-//        Person p = new Person();
-//        return p.getName();
-//    }
-//
-//    @Benchmark
-//    public Object reflection_getter_methodHandler() {
-//        Person p = new Person();
-//        return fi.invokeGetter2(p);
-//    }
-//
-//    @Benchmark
-//    public Object reflection_getter_lambda() {
-//        Person p = new Person();
-//        return fi.invokeGetter(p);
-//    }
-//
-//    // ----- Setter pathways -----
-//    @Benchmark
-//    public Object reflection_setter_native() {
-//        Person p = new Person();
-//        p.setName("hahaha");
-//        return p;
-//    }
-//
-//    @Benchmark
-//    public Object reflection_setter_methodHandler() {
-//        Person p = new Person();
-//        fi.invokeSetter2(p, "hahaha");
-//        return p;
-//    }
-//
-//    @Benchmark
-//    public Object reflection_setter_lambda() {
-//        Person p = new Person();
-//        fi.invokeSetter(p, "hahaha");
-//        return p;
-//    }
+    private static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
+    private static MethodHandle getterMethodHandler = fi.getter;
+    private static Function<Object, Object> getterLambda = fi.lambdaGetter;
+    private static MethodHandle setterMethodHandler = fi.setter;
+    private static BiConsumer<Object, Object> setterLambda = fi.lambdaSetter;
+
+    private static Constructor<Person> personCtor;
+    private static Method getterMethod;
+    private static Method setterMethod;
+
+    static {
+        try {
+            personCtor = Person.class.getConstructor();
+            getterMethod = Person.class.getMethod("getName");
+            setterMethod = Person.class.getMethod("setName", String.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // ----- Constructor pathways -----
+    @Benchmark
+    public Object reflection_ctor_native() {
+        return new Person();
+    }
+
+    @Benchmark
+    public Object reflection_ctor_reflect() {
+        try {
+            return personCtor.newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Benchmark
+    public Object reflection_ctor_methodHandler() {
+        try {
+            return ctorMethodHandler.invoke();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Benchmark
+    public Object reflection_ctor_lambda() {
+        return ctorLambda.get();
+    }
+
+
+    // ----- Getter pathways -----
+    @Benchmark
+    public Object reflection_getter_native() {
+        Person p = new Person();
+        return p.getName();
+    }
+
+    @Benchmark
+    public Object reflection_getter_reflect() {
+        Person p = new Person();
+        try {
+            return getterMethod.invoke(p);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Benchmark
+    public Object reflection_getter_methodHandler() {
+        Person p = new Person();
+        try {
+            return getterMethodHandler.invoke(p);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Benchmark
+    public Object reflection_getter_lambda() {
+        Person p = new Person();
+        return getterLambda.apply(p);
+    }
+
+
+
+    // ----- Setter pathways -----
+    @Benchmark
+    public Object reflection_setter_native() {
+        Person p = new Person();
+        p.setName("hahaha");
+        return p;
+    }
+
+    @Benchmark
+    public Object reflection_setter_reflect() {
+        Person p = new Person();
+        try {
+            setterMethod.invoke(p, "hahaha");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return p;
+    }
+
+    @Benchmark
+    public Object reflection_setter_methodHandler() {
+        Person p = new Person();
+        try {
+            setterMethodHandler.invoke(p, "hahaha");
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+        return p;
+    }
+
+    @Benchmark
+    public Object reflection_setter_lambda() {
+        Person p = new Person();
+        setterLambda.accept(p, "hahaha");
+        return p;
+    }
 
 }

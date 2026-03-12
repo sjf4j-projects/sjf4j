@@ -211,9 +211,9 @@ class JsonObjectTest {
         System.out.println(jo1);
         assertEquals("{\"number\":5,\"duck\":[\"gaga\",\"haha\"]}", jo1.toJson());
 
-        jo1 = JsonObject.fromJson("{\"numb😃er\":5,\"duck\":[\"gaga\",\"ha我的锅ha\"]}");
+        jo1 = JsonObject.fromJson("{\"numb😃er\":5,\"duck\":[\"gaga\",\"haMyWokha\"]}");
         System.out.println(jo1);
-        assertEquals("{\"numb😃er\":5,\"duck\":[\"gaga\",\"ha我的锅ha\"]}", jo1.toJson());
+        assertEquals("{\"numb😃er\":5,\"duck\":[\"gaga\",\"haMyWokha\"]}", jo1.toJson());
 
         jo1 = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"],\"45\":32}");
         System.out.println(jo1);
@@ -526,7 +526,7 @@ class JsonObjectTest {
         assertEquals(jo1, jo2);
         assertNotEquals(jo1, jo3);
         assertNotEquals(jo1, null);
-        assertEquals(jo1, jo1); // 自反性
+        assertEquals(jo1, jo1); // reflexive
     }
 
     public void testClear() {
@@ -561,7 +561,7 @@ class JsonObjectTest {
         assertEquals(nested, jo.getJsonObject("nested"));
         
         JsonObject nested2 = jo.computeIfAbsent("nested", k -> new JsonObject());
-        assertEquals(nested, nested2); // 应该返回同一个对象
+        assertEquals(nested, nested2); // should return the same object
         
         JsonArray array = jo.computeIfAbsent("array", k -> new JsonArray());
         assertNotNull(array);
@@ -576,16 +576,16 @@ class JsonObjectTest {
                 .put("name", "Alice")
                 .put("age", 25)
                 .putNonNull("email", "alice@example.com")
-                .putIfAbsent("name", "Bob") // 已存在，不会覆盖
+                .putIfAbsent("name", "Bob") // already exists, no overwrite
                 .put("status", true)
                 .build();
         
-        assertEquals("Alice", jo.getString("name")); // 没有被覆盖
+        assertEquals("Alice", jo.getString("name")); // not overwritten
         assertEquals(25, jo.getInteger("age"));
         assertEquals("alice@example.com", jo.getString("email"));
         assertTrue(jo.getBoolean("status"));
         
-        // 测试路径操作
+        // test path operations
         JsonObject jo2 = JsonObject.builder()
                 .putByPath("$.user.name", "Bob")
                 .putNonNullByPath("$.user.age", 30)
@@ -611,7 +611,7 @@ class JsonObjectTest {
             assertNotNull(entry.getValue());
         });
         
-        // 测试keySet的顺序
+        // test keySet ordering
         List<String> keys = new java.util.ArrayList<>(jo.keySet());
         assertEquals("a", keys.get(0));
         assertEquals("b", keys.get(1));
@@ -624,7 +624,7 @@ class JsonObjectTest {
         assertTrue(jo.hasNonNullByPath("$.a.b.c"));
         jo.removeByPath("$.a.b.c");
         assertFalse(jo.hasNonNullByPath("$.a.b.c"));
-        assertTrue(jo.hasNonNullByPath("$.a.b")); // 父对象还在
+        assertTrue(jo.hasNonNullByPath("$.a.b")); // parent object still exists
         
         assertTrue(jo.hasNonNullByPath("$.array[1]"));
         jo.removeByPath("$.array[1]");
@@ -634,19 +634,19 @@ class JsonObjectTest {
     }
 
     public void testEdgeCases() {
-        // 测试空对象
+        // test empty object
         JsonObject empty = new JsonObject();
         assertTrue(empty.isEmpty());
         assertEquals(0, empty.size());
         assertNull(empty.getNode("nonexist"));
         
-        // 测试null值
+        // test null value
         JsonObject jo = new JsonObject();
         jo.put("nullKey", null);
         assertTrue(jo.containsKey("nullKey"));
         assertNull(jo.getNode("nullKey"));
         
-        // 测试特殊字符键
+        // test special-character keys
         jo.put("key.with.dots", "value1");
         jo.put("key-with-dashes", "value2");
         jo.put("key_with_underscores", "value3");
@@ -654,15 +654,15 @@ class JsonObjectTest {
         assertEquals("value2", jo.getString("key-with-dashes"));
         assertEquals("value3", jo.getString("key_with_underscores"));
         
-        // 测试空字符串键
+        // test empty-string key
         jo.put("", "emptyKey");
         assertEquals("emptyKey", jo.getString(""));
         
-        // 测试非常大的数字
+        // test very large number
         jo.put("bigInt", new BigInteger("999999999999999999999999999"));
         assertInstanceOf(BigInteger.class, jo.getNode("bigInt"));
         
-        // 测试嵌套深度
+        // test nesting depth
         JsonObject nested = new JsonObject();
         for (int i = 0; i < 10; i++) {
             JsonObject next = new JsonObject();

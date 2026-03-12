@@ -1,6 +1,5 @@
 package org.sjf4j.facade;
 
-import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
 

@@ -268,6 +268,246 @@ public final class NodeRegistry {
             this.isJojo = JsonObject.class.isAssignableFrom(clazz);
             this.isJajo = JsonArray.class.isAssignableFrom(clazz);
         }
+
+        public PojoCreationSession newCreationSession(int pendingCapacity) {
+            return new PojoCreationSession(creatorInfo, pendingCapacity);
+        }
+
+    }
+
+    @FunctionalInterface
+    public interface PojoPendingApplier {
+        void apply(Object pojo, Object key, Object value);
+    }
+
+    public static class PojoCreationSession {
+        private final CreatorInfo creatorInfo;
+        private Object pojo;
+        private Object[] args;
+        private int remainingArgs;
+        private Object[] pendingKeys;
+        private Object[] pendingValues;
+        private int pendingSize;
+        private FieldInfo[] pendingFields;
+        private Object[] pendingFieldValues;
+        private int pendingFieldSize;
+        private String[] pendingNames;
+        private Object[] pendingNameValues;
+        private int pendingNameSize;
+
+        public PojoCreationSession(CreatorInfo creatorInfo, int pendingCapacity) {
+            this.creatorInfo = creatorInfo;
+            if (creatorInfo.hasNoArgsCreator()) {
+                this.pojo = creatorInfo.newPojoNoArgs();
+                return;
+            }
+            int argCount = creatorInfo.argNames == null ? 0 : creatorInfo.argNames.length;
+            this.args = new Object[argCount];
+            this.remainingArgs = argCount;
+            int cap = Math.max(pendingCapacity, 4);
+            this.pendingKeys = new Object[cap];
+            this.pendingValues = new Object[cap];
+        }
+
+        public void accept(String name, Object value, Object pendingKey, PojoPendingApplier applier) {
+            int argIdx = resolveArgIndex(name);
+            acceptResolved(argIdx, value, pendingKey, applier);
+        }
+
+        public void acceptResolved(int argIdx, Object value, Object pendingKey, PojoPendingApplier applier) {
+            if (argIdx >= 0) {
+                setCtorArg(argIdx, value);
+                materializeIfReady(applier);
+                return;
+            }
+            if (pojo != null) {
+                applier.apply(pojo, pendingKey, value);
+            } else {
+                addPending(pendingKey, value);
+            }
+        }
+
+        public void acceptResolvedField(int argIdx, Object value, FieldInfo fieldInfo) {
+            if (argIdx >= 0) {
+                setCtorArg(argIdx, value);
+                materializeIfReadyField();
+                return;
+            }
+            if (pojo != null) {
+                fieldInfo.invokeSetterIfPresent(pojo, value);
+            } else {
+                addPendingField(fieldInfo, value);
+            }
+        }
+
+        public void acceptResolvedJsonEntry(int argIdx, String key, Object value) {
+            if (argIdx >= 0) {
+                setCtorArg(argIdx, value);
+                materializeIfReadyJsonObject();
+                return;
+            }
+            if (pojo != null) {
+                ((JsonObject) pojo).put(key, value);
+            } else {
+                addPendingName(key, value);
+            }
+        }
+
+        public int resolveArgIndex(String name) {
+            if (pojo != null || args == null) return -1;
+            return creatorInfo.getArgIndexOrAlias(name);
+        }
+
+        public void setCtorArg(int argIndex, Object value) {
+            if (args == null || argIndex < 0) return;
+            args[argIndex] = value;
+            remainingArgs--;
+        }
+
+        public void addPending(Object key, Object value) {
+            if (pojo != null) return;
+            ensurePendingCapacity();
+            pendingKeys[pendingSize] = key;
+            pendingValues[pendingSize] = value;
+            pendingSize++;
+        }
+
+        public void materializeIfReady(PojoPendingApplier applier) {
+            if (pojo == null && remainingArgs == 0) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+                replayPending(applier);
+            }
+        }
+
+        public Object finish(PojoPendingApplier applier) {
+            if (pojo == null) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+            }
+            replayPending(applier);
+            return pojo;
+        }
+
+        public Object finishField() {
+            if (pojo == null) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+            }
+            replayPendingFields();
+            return pojo;
+        }
+
+        public JsonObject finishJsonObject() {
+            if (pojo == null) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+            }
+            replayPendingJsonEntries();
+            return (JsonObject) pojo;
+        }
+
+        private void replayPending(PojoPendingApplier applier) {
+            if (pendingSize == 0) return;
+            for (int i = 0; i < pendingSize; i++) {
+                applier.apply(pojo, pendingKeys[i], pendingValues[i]);
+            }
+            pendingSize = 0;
+        }
+
+        private void materializeIfReadyField() {
+            if (pojo == null && remainingArgs == 0) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+                replayPendingFields();
+            }
+        }
+
+        private void addPendingField(FieldInfo fi, Object value) {
+            ensurePendingFieldCapacity();
+            pendingFields[pendingFieldSize] = fi;
+            pendingFieldValues[pendingFieldSize] = value;
+            pendingFieldSize++;
+        }
+
+        private void replayPendingFields() {
+            if (pendingFieldSize == 0) return;
+            for (int i = 0; i < pendingFieldSize; i++) {
+                pendingFields[i].invokeSetterIfPresent(pojo, pendingFieldValues[i]);
+            }
+            pendingFieldSize = 0;
+        }
+
+        private void materializeIfReadyJsonObject() {
+            if (pojo == null && remainingArgs == 0) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+                replayPendingJsonEntries();
+            }
+        }
+
+        private void addPendingName(String key, Object value) {
+            ensurePendingNameCapacity();
+            pendingNames[pendingNameSize] = key;
+            pendingNameValues[pendingNameSize] = value;
+            pendingNameSize++;
+        }
+
+        private void replayPendingJsonEntries() {
+            if (pendingNameSize == 0) return;
+            JsonObject jo = (JsonObject) pojo;
+            for (int i = 0; i < pendingNameSize; i++) {
+                jo.put(pendingNames[i], pendingNameValues[i]);
+            }
+            pendingNameSize = 0;
+        }
+
+        private void ensurePendingFieldCapacity() {
+            if (pendingFields == null || pendingFieldValues == null) {
+                int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
+                pendingFields = new FieldInfo[cap];
+                pendingFieldValues = new Object[cap];
+                return;
+            }
+            if (pendingFieldSize < pendingFields.length) return;
+            int newCap = pendingFields.length << 1;
+            if (newCap < 4) newCap = 4;
+            FieldInfo[] newFields = new FieldInfo[newCap];
+            Object[] newValues = new Object[newCap];
+            System.arraycopy(pendingFields, 0, newFields, 0, pendingFieldSize);
+            System.arraycopy(pendingFieldValues, 0, newValues, 0, pendingFieldSize);
+            pendingFields = newFields;
+            pendingFieldValues = newValues;
+        }
+
+        private void ensurePendingNameCapacity() {
+            if (pendingNames == null || pendingNameValues == null) {
+                int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
+                pendingNames = new String[cap];
+                pendingNameValues = new Object[cap];
+                return;
+            }
+            if (pendingNameSize < pendingNames.length) return;
+            int newCap = pendingNames.length << 1;
+            if (newCap < 4) newCap = 4;
+            String[] newNames = new String[newCap];
+            Object[] newValues = new Object[newCap];
+            System.arraycopy(pendingNames, 0, newNames, 0, pendingNameSize);
+            System.arraycopy(pendingNameValues, 0, newValues, 0, pendingNameSize);
+            pendingNames = newNames;
+            pendingNameValues = newValues;
+        }
+
+        private void ensurePendingCapacity() {
+            if (pendingKeys == null || pendingValues == null) {
+                pendingKeys = new Object[4];
+                pendingValues = new Object[4];
+                return;
+            }
+            if (pendingSize < pendingKeys.length) return;
+            int newCap = pendingKeys.length << 1;
+            if (newCap < 4) newCap = 4;
+            Object[] newKeys = new Object[newCap];
+            Object[] newValues = new Object[newCap];
+            System.arraycopy(pendingKeys, 0, newKeys, 0, pendingSize);
+            System.arraycopy(pendingValues, 0, newValues, 0, pendingSize);
+            pendingKeys = newKeys;
+            pendingValues = newValues;
+        }
     }
 
     // CreatorInfo
@@ -310,6 +550,22 @@ public final class NodeRegistry {
             return -1;
         }
 
+        public int getArgIndexOrAlias(String name) {
+            int idx = getArgIndex(name);
+            if (idx >= 0) return idx;
+            if (aliasMap != null) {
+                String origin = aliasMap.get(name);
+                if (origin != null) {
+                    return getArgIndex(origin);
+                }
+            }
+            return -1;
+        }
+
+        public boolean hasNoArgsCreator() {
+            return noArgsCtorLambda != null || noArgsCtorHandle != null;
+        }
+
         /**
          * Creates a POJO using no-args constructor path.
          */
@@ -325,6 +581,7 @@ public final class NodeRegistry {
             }
             throw new JsonException("Failed to create instance of " + clazz + ": Not found no-args constructor");
         }
+
 
         /**
          * Creates a POJO using argument creator path.
@@ -494,20 +751,6 @@ public final class NodeRegistry {
         }
 
         /**
-         * Invokes field getter using method handle only.
-         */
-        public Object invokeGetter2(Object receiver) {
-            Objects.requireNonNull(receiver, "receiver");
-            if (getter == null) throw new JsonException("No getter available for field '" + name + "' of " + type);
-            try {
-                return getter.invoke(receiver);
-            } catch (Throwable e) {
-                throw new JsonException("Failed to invoke getter for field '" + name + "' of type '" +
-                        type+ "' (node type: " + Types.name(receiver)+ ")", e);
-            }
-        }
-
-        /**
          * Invokes setter when present and reports success.
          */
         public boolean invokeSetterIfPresent(Object receiver, Object value) {
@@ -535,28 +778,6 @@ public final class NodeRegistry {
             }
         }
 
-        /**
-         * Invokes setter with numeric pre-conversion fallback.
-         */
-        public void invokeSetter2(Object receiver, Object value) {
-            Objects.requireNonNull(receiver, "receiver");
-            if (setter == null) {
-                throw new JsonException("No setter available for field '" + name + "' of " + type);
-            }
-            if (value instanceof Number && type instanceof Class) {
-                Class<?> clazz = (Class<?>) type;
-                if ((clazz.isPrimitive() && clazz != boolean.class && clazz != char.class) ||
-                        Number.class.isAssignableFrom(clazz)) {
-                    value = Numbers.to((Number) value, clazz);
-                }
-            }
-            try {
-                setter.invoke(receiver, value);
-            } catch (Throwable e) {
-                throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +
-                        "' with value " + (value == null ? "null" : value.getClass()), e);
-            }
-        }
     }
 
     // ValueCodecInfo

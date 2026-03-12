@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2026.02.24
 
 ### Added
-- Added `@ValidJsonSchema` and `SchemaValidator` for schema-based validation入口。
+- Added `@ValidJsonSchema` and `SchemaValidator` for schema-based validation.
 - Added `FacadeNodes` with backend adapters `JacksonNodes` and `GsonNodes`.
 - Added/expanded tests for schema/path/facade/JDK17 scenarios.
 
