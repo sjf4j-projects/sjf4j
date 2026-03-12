@@ -4,9 +4,13 @@ package org.sjf4j;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.node.NodeRegistry;
@@ -21,15 +25,26 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 @BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 1)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@Warmup(iterations = 8, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 12, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 2)
 @Threads(1)
 public class ReflectionBenchmark {
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(new String[]{ReflectionBenchmark.class.getName()});
+    }
+
+    @State(Scope.Thread)
+    public static class Holder {
+        Person person;
+
+        @Setup(Level.Iteration)
+        public void setup() {
+            person = new Person();
+            person.setName("hahaha");
+        }
     }
 
     // --------- Sample POJO ------------
@@ -148,74 +163,66 @@ public class ReflectionBenchmark {
 
     // ----- Getter pathways -----
     @Benchmark
-    public Object reflection_getter_native() {
-        Person p = new Person();
-        return p.getName();
+    public Object reflection_getter_native(Holder h) {
+        return h.person.getName();
     }
 
     @Benchmark
-    public Object reflection_getter_reflect() {
-        Person p = new Person();
+    public Object reflection_getter_reflect(Holder h) {
         try {
-            return getterMethod.invoke(p);
+            return getterMethod.invoke(h.person);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     @Benchmark
-    public Object reflection_getter_methodHandler() {
-        Person p = new Person();
+    public Object reflection_getter_methodHandler(Holder h) {
         try {
-            return getterMethodHandler.invoke(p);
+            return getterMethodHandler.invoke(h.person);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
 
     @Benchmark
-    public Object reflection_getter_lambda() {
-        Person p = new Person();
-        return getterLambda.apply(p);
+    public Object reflection_getter_lambda(Holder h) {
+        return getterLambda.apply(h.person);
     }
 
 
 
     // ----- Setter pathways -----
     @Benchmark
-    public Object reflection_setter_native() {
-        Person p = new Person();
-        p.setName("hahaha");
-        return p;
+    public Object reflection_setter_native(Holder h) {
+        h.person.setName("hahaha");
+        return h.person;
     }
 
     @Benchmark
-    public Object reflection_setter_reflect() {
-        Person p = new Person();
+    public Object reflection_setter_reflect(Holder h) {
         try {
-            setterMethod.invoke(p, "hahaha");
+            setterMethod.invoke(h.person, "hahaha");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return p;
+        return h.person;
     }
 
     @Benchmark
-    public Object reflection_setter_methodHandler() {
-        Person p = new Person();
+    public Object reflection_setter_methodHandler(Holder h) {
         try {
-            setterMethodHandler.invoke(p, "hahaha");
+            setterMethodHandler.invoke(h.person, "hahaha");
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
-        return p;
+        return h.person;
     }
 
     @Benchmark
-    public Object reflection_setter_lambda() {
-        Person p = new Person();
-        setterLambda.accept(p, "hahaha");
-        return p;
+    public Object reflection_setter_lambda(Holder h) {
+        setterLambda.accept(h.person, "hahaha");
+        return h.person;
     }
 
 }
