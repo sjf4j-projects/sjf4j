@@ -12,7 +12,6 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
-import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -29,58 +28,53 @@ import java.util.Set;
  * Fastjson2 streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
 public class Fastjson2StreamingIO {
+    private static final Object UNSET = new Object();
+
     /// Read
 
     /**
      * Reads one node from Fastjson2 reader into target type.
      */
-    public static Object readNode(JSONReader reader, Type type) throws IOException {
+    public static Object readNode(JSONReader reader, Type type) {
         Class<?> rawBox = Types.rawBox(type);
         NodeRegistry.AnyOfInfo anyOfInfo = _anyOfInfo(rawBox);
-        return _readNode(
-                reader,
-                type,
-                rawBox,
-                anyOfInfo,
-                null
-        );
+        return _readNode(reader, type, rawBox, anyOfInfo);
     }
 
     /**
      * Reads next token and dispatches to typed node readers.
      */
     private static Object _readNode(JSONReader reader, Type type, Class<?> rawClazz,
-                                    NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
-            throws IOException {
+                                    NodeRegistry.AnyOfInfo anyOfInfo) {
         try {
             if (anyOfInfo != null) {
-                return _readAnyOf(reader, type, rawClazz, anyOfInfo, ps);
+                return readAnyOf(reader, anyOfInfo);
             }
             StreamingReader.Token token = peekToken(reader);
             switch (token) {
                 case START_OBJECT:
-                    return _readObject(reader, type, rawClazz, ps);
+                    return _readObject(reader, type, rawClazz);
                 case START_ARRAY:
-                    return _readArray(reader, type, rawClazz, ps);
+                    return _readArray(reader, type, rawClazz);
                 case STRING:
-                    return _readString(reader, rawClazz, ps);
+                    return _readString(reader, rawClazz);
                 case NUMBER:
-                    return _readNumber(reader, rawClazz, ps);
+                    return _readNumber(reader, rawClazz);
                 case BOOLEAN:
-                    return _readBoolean(reader, rawClazz, ps);
+                    return _readBoolean(reader, rawClazz);
                 case NULL:
-                    return _readNull(reader, rawClazz, ps);
+                    return _readNull(reader, rawClazz);
                 default:
                     throw new JsonException("Unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into '" + type + "'", ps, e);
+            throw new BindingException("Failed to read streaming into '" + type + "'", null, e);
         }
     }
 
-    private static Object _readNull(JSONReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNull(JSONReader reader, Class<?> rawClazz)
             throws IOException {
         reader.readNull();
 
@@ -91,7 +85,7 @@ public class Fastjson2StreamingIO {
         return null;
     }
 
-    private static Object _readBoolean(JSONReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readBoolean(JSONReader reader, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Boolean.class) {
             return reader.readBoolValue();
@@ -103,10 +97,10 @@ public class Fastjson2StreamingIO {
             return vci.rawToValue(b);
         }
 
-        throw new BindingException("Cannot read boolean value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read boolean value into type " + rawClazz.getName());
     }
 
-    private static Object _readNumber(JSONReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNumber(JSONReader reader, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Number.class) {
             return reader.readNumber();
@@ -126,11 +120,11 @@ public class Fastjson2StreamingIO {
             return vci.rawToValue(n);
         }
 
-        throw new BindingException("Cannot read number value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read number value into type " + rawClazz.getName());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _readString(JSONReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readString(JSONReader reader, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == String.class) {
             return reader.readString();
@@ -150,18 +144,18 @@ public class Fastjson2StreamingIO {
             return vci.rawToValue(s);
         }
 
-        throw new BindingException("Cannot read string value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read string value into type " + rawClazz.getName());
     }
 
     /**
      * Reads object token into Map/JsonObject/POJO target.
      */
-    private static Object _readObject(JSONReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readObject(JSONReader reader, Type type, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
+            return _readMapWithValueType(reader, valueType, valueClazz);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -171,8 +165,7 @@ public class Fastjson2StreamingIO {
             }
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, Object.class, Object.class, null, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null);
                 jo.put(key, value);
             }
             return jo;
@@ -182,91 +175,42 @@ public class Fastjson2StreamingIO {
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
+            Map<String, Object> map = _readMapWithValueType(reader, valueType, valueClazz);
             return ti.valueCodecInfo.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
-            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+            return readPojo(reader, pi);
+        }
 
-            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-            int pendingSize = 0;
-            NodeRegistry.FieldInfo[] pendingFields = null;
-            Object[] pendingValues = null;
+        throw new BindingException("Cannot read object value into type " + rawClazz.getName());
+    }
+
+    public static Object readPojo(JSONReader reader, NodeRegistry.PojoInfo pi)
+            throws IOException {
+        NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+        boolean hasParentAnyOf = pi.hasParentScopeAnyOf;
+
+        if (!hasParentAnyOf && ci.hasNoArgsCreator() && (ci.argNames == null || ci.argNames.length == 0)) {
+            Object pojo = ci.newPojoNoArgs();
             Map<String, Object> dynamicMap = null;
-
             if (!reader.nextIfObjectStart()) {
                 throw new JsonException("Expected token '{', but got " + reader.current());
             }
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-
-                int argIdx = -1;
-                if (pojo == null) {
-                    argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.aliasMap != null) {
-                        String origin = ci.aliasMap.get(key);
-                        if (origin != null) {
-                            argIdx = ci.getArgIndex(origin);
-                        }
-                    }
-                }
-                if (argIdx >= 0) {
-                    Type argType = ci.argTypes[argIdx];
-                    assert args != null;
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Class<?> argRaw = Types.rawBox(argType);
-                    NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
-                    args[argIdx] = _readNode(reader, argType, argRaw, argAnyOf, cps);
-                    remainingArgs--;
-                    if (remainingArgs == 0) {
-                        pojo = ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                        }
-                        pendingSize = 0;
-                    }
-                    continue;
-                }
-
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readField(reader, fi, cps);
-                    if (pojo != null) {
-                        fi.invokeSetterIfPresent(pojo, vv);
-                    } else {
-                        if (pendingFields == null) {
-                            int cap = pi.fieldCount;
-                            pendingFields = new NodeRegistry.FieldInfo[cap];
-                            pendingValues = new Object[cap];
-                        }
-                        pendingFields[pendingSize] = fi;
-                        pendingValues[pendingSize] = vv;
-                        pendingSize++;
-                    }
-                    continue;
-                }
-
-                if (pi.isJojo) {
+                    Object vv = _readField(reader, fi);
+                    fi.invokeSetterIfPresent(pojo, vv);
+                } else if (pi.isJojo) {
                     if (dynamicMap == null) {
                         dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, Object.class, Object.class, null, cps);
-                    dynamicMap.put(key, vv);
+                    dynamicMap.put(key, _readNode(reader, Object.class, Object.class, null));
                 } else {
                     reader.skipValue();
-                }
-            }
-
-            if (pojo == null) {
-                pojo = ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
                 }
             }
             if (pi.isJojo) {
@@ -275,29 +219,127 @@ public class Fastjson2StreamingIO {
             return pojo;
         }
 
-        throw new BindingException("Cannot read object value into type " + rawClazz.getName(), ps);
+        NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+        NodeRegistry.FieldInfo deferredParentAnyOfFi = null;
+        Object deferredParentAnyOfRaw = null;
+        String parentAnyOfKey = null;
+        Object parentAnyOfValue = UNSET;
+
+        if (!reader.nextIfObjectStart()) {
+            throw new JsonException("Expected token '{', but got " + reader.current());
+        }
+        while (!reader.nextIfObjectEnd()) {
+            String key = reader.readFieldName();
+
+            int argIdx = session.resolveArgIndex(key);
+            if (argIdx >= 0) {
+                Type argType = ci.argTypes[argIdx];
+                Class<?> argRaw = Types.rawBox(argType);
+                NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
+                Object argValue = _readNode(reader, argType, argRaw, argAnyOf);
+                session.acceptResolvedField(argIdx, argValue, null);
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = argValue;
+                }
+                continue;
+            }
+
+            NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+            if (fi != null) {
+                Object vv;
+                NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+                if (hasParentAnyOf && fieldAnyOf != null && fieldAnyOf.scope == AnyOf.Scope.PARENT) {
+                    if (!fieldAnyOf.path.isEmpty()) {
+                        throw new BindingException("AnyOf scope=PARENT does not support path discriminator");
+                    }
+                    String parentKey = fieldAnyOf.key;
+                    if (parentAnyOfKey == null) {
+                        parentAnyOfKey = parentKey;
+                    } else if (!parentAnyOfKey.equals(parentKey)) {
+                        throw new BindingException("At most one AnyOf parent discriminator key is supported per class");
+                    }
+                    Class<?> targetClazz = fieldAnyOf.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+                    if (targetClazz != null) {
+                        vv = _readNode(reader, targetClazz, Types.rawBox(targetClazz), null);
+                    } else {
+                        if (deferredParentAnyOfFi != null) {
+                            throw new BindingException("At most one AnyOf field with scope=PARENT is supported per class");
+                        }
+                        deferredParentAnyOfFi = fi;
+                        deferredParentAnyOfRaw = _readNode(reader, Object.class, Object.class, null);
+                        continue;
+                    }
+                } else {
+                    vv = _readField(reader, fi);
+                }
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = vv;
+                }
+                session.acceptResolvedField(-1, vv, fi);
+                continue;
+            }
+
+            if (pi.isJojo) {
+                Object vv = _readNode(reader, Object.class, Object.class, null);
+                session.acceptResolvedJsonEntry(-1, key, vv);
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = vv;
+                }
+            } else {
+                reader.skipValue();
+            }
+        }
+
+        Object pojo = session.finishField();
+        if (deferredParentAnyOfFi != null) {
+            NodeRegistry.AnyOfInfo aoi = deferredParentAnyOfFi.anyOfInfo;
+            String parentKey = aoi.key;
+            if (parentAnyOfValue == UNSET) {
+                Object discriminator = null;
+                NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
+                        ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
+                if (parentFi != null) {
+                    discriminator = parentFi.invokeGetter(pojo);
+                } else if (pi.isJojo) {
+                    discriminator = ((JsonObject) pojo).getNode(parentKey);
+                }
+                if (discriminator != null) {
+                    parentAnyOfValue = discriminator;
+                }
+            }
+            Class<?> targetClazz = aoi.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+            Object vv;
+            if (targetClazz != null) {
+                vv = Sjf4jConfig.global().getNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
+            } else if (aoi.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                vv = null;
+            } else {
+                throw new BindingException("AnyOf discriminator has no matching mapping: key='" +
+                        aoi.key + "', value='" + (parentAnyOfValue == UNSET ? null : parentAnyOfValue) + "'");
+            }
+            deferredParentAnyOfFi.invokeSetterIfPresent(pojo, vv);
+        }
+        return pojo;
     }
 
     /**
      * Reads array token into List/JsonArray/array/Set target.
      */
-    private static Object _readArray(JSONReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readArray(JSONReader reader, Type type, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
+            return _readListWithElementType(reader, valueType, valueClazz);
         }
 
         if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
-            int i = 0;
             if (!reader.nextIfArrayStart()) {
                 throw new JsonException("Expected token '[', but was " + reader.current());
             }
             while (!reader.nextIfArrayEnd()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, Object.class, Object.class, null, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null);
                 ja.add(value);
             }
             return ja;
@@ -306,27 +348,25 @@ public class Fastjson2StreamingIO {
         if (rawClazz == Set.class) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz, ps);
+            return _readSetWithElementType(reader, valueType, valueClazz);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz, ps);
+            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
             Class<?> elemRaw = Types.box(elemType);
-            int i = 0;
             if (!reader.nextIfArrayStart()) {
                 throw new JsonException("Expected token '[', but was " + reader.current());
             }
             while (!reader.nextIfArrayEnd()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
                 NodeRegistry.AnyOfInfo elemAnyOf = _anyOfInfo(elemRaw);
-                Object value = _readNode(reader, elemType, elemRaw, elemAnyOf, cps);
+                Object value = _readNode(reader, elemType, elemRaw, elemAnyOf);
                 ja.add(value);
             }
             return ja;
@@ -336,35 +376,35 @@ public class Fastjson2StreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
+            List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
             return vci.rawToValue(list);
         }
 
-        throw new BindingException("Cannot read array value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read array value into type " + rawClazz.getName());
     }
 
-    private static Object _readField(JSONReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
+    private static Object _readField(JSONReader reader, NodeRegistry.FieldInfo fi)
             throws IOException {
         if (fi.anyOfInfo != null) {
-            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo, ps);
+            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo);
         }
         switch (fi.containerKind) {
             case MAP:
-                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readMapWithValueType(reader, fi.argType, fi.argRawClazz);
             case LIST:
-                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readListWithElementType(reader, fi.argType, fi.argRawClazz);
             case SET:
-                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readSetWithElementType(reader, fi.argType, fi.argRawClazz);
             case ARRAY:
-                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
                 NodeRegistry.AnyOfInfo typeAnyOf = _anyOfInfo(fi.rawClazz);
-                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf, ps);
+                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf);
         }
     }
 
-    private static Map<String, Object> _readMapWithValueType(JSONReader reader, Class<?> rawClazz,
-                                                              Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static Map<String, Object> _readMapWithValueType(JSONReader reader,
+                                                              Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
@@ -376,68 +416,61 @@ public class Fastjson2StreamingIO {
         }
         while (!reader.nextIfObjectEnd()) {
             String key = reader.readFieldName();
-            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             map.put(key, value);
         }
         return map;
     }
 
-    private static List<Object> _readListWithElementType(JSONReader reader, Class<?> rawClazz,
-                                                          Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static List<Object> _readListWithElementType(JSONReader reader,
+                                                          Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
         List<Object> list = new ArrayList<>();
         NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
-        int i = 0;
         if (!reader.nextIfArrayStart()) {
             throw new JsonException("Expected token '[', but was " + reader.current());
         }
         while (!reader.nextIfArrayEnd()) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             list.add(value);
         }
         return list;
     }
 
-    private static Set<Object> _readSetWithElementType(JSONReader reader, Class<?> rawClazz,
-                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static Set<Object> _readSetWithElementType(JSONReader reader,
+                                                        Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
-        int i = 0;
         if (!reader.nextIfArrayStart()) {
             throw new JsonException("Expected token '[', but was " + reader.current());
         }
         while (!reader.nextIfArrayEnd()) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             set.add(value);
         }
         return set;
     }
 
     private static Object _readArrayWithElementType(JSONReader reader, Class<?> rawClazz,
-                                                      Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                      Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
         List<Object> list = new ArrayList<>();
         NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
-        int i = 0;
         if (!reader.nextIfArrayStart()) {
             throw new JsonException("Expected token '[', but was " + reader.current());
         }
         while (!reader.nextIfArrayEnd()) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             list.add(value);
         }
 
@@ -448,22 +481,35 @@ public class Fastjson2StreamingIO {
         return array;
     }
 
-    private static Object _readAnyOf(JSONReader reader, Type type, Class<?> rawClazz,
-                                     NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
-            throws IOException {
+    public static Object readAnyOf(JSONReader reader, NodeRegistry.AnyOfInfo anyOfInfo) {
         Class<?> targetClazz;
 
-        if (anyOfInfo.hasDiscriminator()) {
-            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() +
-                        "' is not supported in streaming parser", ps);
+        if (anyOfInfo.hasDiscriminator) {
+            if (anyOfInfo.scope != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.scope +
+                        "' is not supported in streaming parser");
             }
-            Object rawNode = _readNode(reader, Object.class, Object.class, null, ps);
-            Object when = _resolveSelfDiscriminator(rawNode, anyOfInfo);
-            targetClazz = anyOfInfo.resolveByWhen(when);
+            Object rawNode = _readNode(reader, Object.class, Object.class, null);
+            if (!(rawNode instanceof Map)) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator");
+            }
+
+            Object discriminatorValue = null;
+            if (!anyOfInfo.key.isEmpty()) {
+                discriminatorValue = ((Map<?, ?>) rawNode).get(anyOfInfo.key);
+            } else if (!anyOfInfo.path.isEmpty()) {
+                discriminatorValue = anyOfInfo.compiledPath.getNode(rawNode);
+            }
+            if (discriminatorValue == null) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'");
+            }
+
+            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + when + "'", ps);
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
             }
             return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
         }
@@ -471,15 +517,15 @@ public class Fastjson2StreamingIO {
         JsonType jsonType = _peekJsonType(reader);
         targetClazz = anyOfInfo.resolveByJsonType(jsonType);
         if (targetClazz == null) {
-            if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
-                _readNode(reader, Object.class, Object.class, null, ps);
+            if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                _readNode(reader, Object.class, Object.class, null);
                 return null;
             }
             throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
-                    " for type '" + rawClazz.getName() + "'", ps);
+                    " for type '" + anyOfInfo.clazz.getName() + "'");
         }
 
-        return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, ps);
+        return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null);
     }
 
     private static JsonType _peekJsonType(JSONReader reader) {
@@ -487,7 +533,7 @@ public class Fastjson2StreamingIO {
         try {
             token = peekToken(reader);
         } catch (IOException e) {
-            throw new JsonException("Failed to peek token for AnyOf", e);
+            throw new BindingException("Failed to peek token for AnyOf", null, e);
         }
         switch (token) {
             case START_OBJECT:
@@ -505,19 +551,6 @@ public class Fastjson2StreamingIO {
             default:
                 return JsonType.UNKNOWN;
         }
-    }
-
-    private static Object _resolveSelfDiscriminator(Object rawNode, NodeRegistry.AnyOfInfo anyOfInfo) {
-        if (!anyOfInfo.getKey().isEmpty()) {
-            if (rawNode == null) return null;
-            if (rawNode instanceof JsonObject) return ((JsonObject) rawNode).getNode(anyOfInfo.getKey());
-            if (rawNode instanceof Map) return ((Map<?, ?>) rawNode).get(anyOfInfo.getKey());
-            return null;
-        }
-        if (!anyOfInfo.getPath().isEmpty()) {
-            return anyOfInfo.getCompiledPath().getNode(rawNode);
-        }
-        return null;
     }
 
     private static NodeRegistry.AnyOfInfo _anyOfInfo(Class<?> rawClazz) {
@@ -595,15 +628,14 @@ public class Fastjson2StreamingIO {
         Objects.requireNonNull(writer, "writer");
         _writeNode(
                 writer,
-                node,
-                null
+                node
         );
     }
 
     /**
      * Writes node recursively as JSON tokens.
      */
-    private static void _writeNode(JSONWriter writer, Object node, PathSegment ps) throws IOException {
+    private static void _writeNode(JSONWriter writer, Object node) throws IOException {
         try {
             if (node == null) {
                 writer.writeNull();
@@ -637,8 +669,7 @@ public class Fastjson2StreamingIO {
                     String key = entry.getKey().toString();
                     writer.writeName(key);
                     writer.writeColon();
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    _writeNode(writer, entry.getValue(), cps);
+                    _writeNode(writer, entry.getValue());
                 }
                 writer.endObject();
                 return;
@@ -651,8 +682,7 @@ public class Fastjson2StreamingIO {
                     if (i > 0) {
                         writer.writeComma();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(writer, list.get(i), cps);
+                    _writeNode(writer, list.get(i));
                 }
                 writer.endArray();
                 return;
@@ -664,10 +694,9 @@ public class Fastjson2StreamingIO {
                     try {
                         writer.writeName(k);
                         writer.writeColon();
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, k);
-                        _writeNode(writer, v, cps);
+                        _writeNode(writer, v);
                     } catch (IOException e) {
-                        throw new BindingException(e, ps);
+                        throw new BindingException(e);
                     }
                 });
                 writer.endObject();
@@ -681,8 +710,7 @@ public class Fastjson2StreamingIO {
                     if (i > 0) {
                         writer.writeComma();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(writer, ja.getNode(i), cps);
+                    _writeNode(writer, ja.getNode(i));
                 }
                 writer.endArray();
                 return;
@@ -695,8 +723,7 @@ public class Fastjson2StreamingIO {
                     if (i > 0) {
                         writer.writeComma();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(writer, Array.get(node, i), cps);
+                    _writeNode(writer, Array.get(node, i));
                 }
                 writer.endArray();
                 return;
@@ -705,15 +732,13 @@ public class Fastjson2StreamingIO {
             if (node instanceof Set) {
                 writer.startArray();
                 boolean veryStart = true;
-                int i = 0;
                 for (Object v : (Set<?>) node) {
                     if (veryStart) {
                         veryStart = false;
                     } else {
                         writer.writeComma();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                    _writeNode(writer, v, cps);
+                    _writeNode(writer, v);
                 }
                 writer.endArray();
                 return;
@@ -722,7 +747,7 @@ public class Fastjson2StreamingIO {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.valueCodecInfo != null) {
                 Object raw = ti.valueCodecInfo.valueToRaw(node);
-                _writeNode(writer, raw, ps);
+                _writeNode(writer, raw);
                 return;
             }
 
@@ -734,18 +759,17 @@ public class Fastjson2StreamingIO {
                     writer.writeName(key);
                     writer.writeColon();
                     Object vv = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    _writeNode(writer, vv, cps);
+                    _writeNode(writer, vv);
                 }
                 writer.endObject();
                 return;
             }
 
-            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'", ps);
+            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'");
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", ps, e);
+            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", null, e);
         }
     }
 

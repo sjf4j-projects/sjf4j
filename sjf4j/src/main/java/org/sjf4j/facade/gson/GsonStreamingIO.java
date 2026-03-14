@@ -14,7 +14,6 @@ import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
-import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -31,6 +30,7 @@ import java.util.Set;
  * Gson streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
 public class GsonStreamingIO {
+    private static final Object UNSET = new Object();
 
     /// Read
 
@@ -39,122 +39,45 @@ public class GsonStreamingIO {
      */
     public static Object readNode(JsonReader reader, Type type) throws IOException {
         Class<?> rawBox = Types.rawBox(type);
-        NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
-        return _readNode(
-                reader,
-                type,
-                rawBox,
-                anyOfInfo,
-                null
-        );
-    }
-
-    /**
-     * Reads next null token into target type.
-     */
-    public static Object readNull(JsonReader reader, Type type) throws IOException {
-        return _readNull(
-                reader,
-                Types.rawBox(type),
-                null
-        );
-    }
-
-    /**
-     * Reads next boolean token into target type.
-     */
-    public static Object readBoolean(JsonReader reader, Type type) throws IOException {
-        return _readBoolean(
-                reader,
-                Types.rawBox(type),
-                null
-        );
-    }
-
-    /**
-     * Reads next number token into target type.
-     */
-    public static Object readNumber(JsonReader reader, Type type) throws IOException {
-        return _readNumber(
-                reader,
-                Types.rawBox(type),
-                null
-        );
-    }
-
-    /**
-     * Reads next string token into target type.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Object readString(JsonReader reader, Type type) throws IOException {
-        return _readString(
-                reader,
-                Types.rawBox(type),
-                null
-        );
-    }
-
-    /**
-     * Reads next object token into target type.
-     */
-    public static Object readObject(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-        return _readObject(
-                reader,
-                type,
-                rawClazz,
-                null
-        );
-    }
-
-    /**
-     * Reads next array token into target type.
-     */
-    public static Object readArray(JsonReader reader, Type type) throws IOException {
-        Class<?> rawClazz = Types.rawBox(type);
-        return _readArray(
-                reader,
-                type,
-                rawClazz,
-                null
-        );
+        NodeRegistry.AnyOfInfo anyOfInfo = _anyOfInfo(rawBox);
+        return _readNode(reader, type, rawBox, anyOfInfo);
     }
 
     /**
      * Reads next token and dispatches to typed node readers.
      */
     private static Object _readNode(JsonReader reader, Type type, Class<?> rawClazz,
-                                    NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+                                    NodeRegistry.AnyOfInfo anyOfInfo)
             throws IOException {
         try {
             if (anyOfInfo != null) {
-                return _readAnyOf(reader, type, rawClazz, anyOfInfo, ps);
+                return readAnyOf(reader, anyOfInfo);
             }
             StreamingReader.Token token = peekToken(reader);
             switch (token) {
                 case START_OBJECT:
-                    return _readObject(reader, type, rawClazz, ps);
+                    return _readObject(reader, type, rawClazz);
                 case START_ARRAY:
-                    return _readArray(reader, type, rawClazz, ps);
+                    return _readArray(reader, type, rawClazz);
                 case STRING:
-                    return _readString(reader, rawClazz, ps);
+                    return _readString(reader, rawClazz);
                 case NUMBER:
-                    return _readNumber(reader, rawClazz, ps);
+                    return _readNumber(reader, rawClazz);
                 case BOOLEAN:
-                    return _readBoolean(reader, rawClazz, ps);
+                    return _readBoolean(reader, rawClazz);
                 case NULL:
-                    return _readNull(reader, rawClazz, ps);
+                    return _readNull(reader, rawClazz);
                 default:
                     throw new JsonException("Unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into '" + type + "'", ps, e);
+            throw new BindingException("Failed to read streaming into '" + type + "'", null, e);
         }
     }
 
-    private static Object _readNull(JsonReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNull(JsonReader reader, Class<?> rawClazz)
             throws IOException {
         reader.nextNull();
 
@@ -165,7 +88,7 @@ public class GsonStreamingIO {
         return null;
     }
 
-    private static Object _readBoolean(JsonReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readBoolean(JsonReader reader, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Boolean.class) {
             return reader.nextBoolean();
@@ -177,10 +100,10 @@ public class GsonStreamingIO {
             return vci.rawToValue(b);
         }
 
-        throw new BindingException("Cannot deserialize Boolean value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot deserialize Boolean value into type " + rawClazz.getName());
     }
 
-    private static Object _readNumber(JsonReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNumber(JsonReader reader, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Number.class) {
             return Numbers.parseNumber(reader.nextString());
@@ -200,11 +123,11 @@ public class GsonStreamingIO {
             return vci.rawToValue(n);
         }
 
-        throw new BindingException("Cannot deserialize Number value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot deserialize Number value into type " + rawClazz.getName());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _readString(JsonReader reader, Class<?> rawClazz, PathSegment ps)
+    private static Object _readString(JsonReader reader, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == String.class) {
             return reader.nextString();
@@ -224,18 +147,18 @@ public class GsonStreamingIO {
             return vci.rawToValue(s);
         }
 
-        throw new BindingException("Cannot deserialize String value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot deserialize String value into type " + rawClazz.getName());
     }
 
     /**
      * Reads object token into Map/JsonObject/POJO target.
      */
-    private static Object _readObject(JsonReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readObject(JsonReader reader, Type type, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
+            return _readMapWithValueType(reader, valueType, valueClazz);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -243,8 +166,7 @@ public class GsonStreamingIO {
             reader.beginObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(reader, Object.class, Object.class, null, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null);
                 jo.put(key, value);
             }
             reader.endObject();
@@ -255,118 +177,167 @@ public class GsonStreamingIO {
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, rawClazz, valueType, valueClazz, ps);
+            Map<String, Object> map = _readMapWithValueType(reader, valueType, valueClazz);
             return ti.valueCodecInfo.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
-            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-            int pendingSize = 0;
-            NodeRegistry.FieldInfo[] pendingFields = null;
-            Object[] pendingValues = null;
-            Map<String, Object> dynamicMap = null;
+            return readPojo(reader, pi);
+        }
 
+        throw new BindingException("Cannot deserialize Object value into type " + rawClazz.getName());
+    }
+
+    public static Object readPojo(JsonReader reader, NodeRegistry.PojoInfo pi)
+            throws IOException {
+        NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+        boolean hasParentAnyOf = pi.hasParentScopeAnyOf;
+
+        if (!hasParentAnyOf && ci.hasNoArgsCreator() && (ci.argNames == null || ci.argNames.length == 0)) {
+            Object pojo = ci.newPojoNoArgs();
+            Map<String, Object> dynamicMap = null;
             reader.beginObject();
             while (reader.hasNext()) {
                 String key = reader.nextName();
-
-                int argIdx = -1;
-                if (pojo == null) {
-                    argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.aliasMap != null) {
-                        String origin = ci.aliasMap.get(key);
-                        if (origin != null) {
-                            argIdx = ci.getArgIndex(origin);
-                        }
-                    }
-                }
-                if (argIdx >= 0) {
-                    Type argType = ci.argTypes[argIdx];
-                    assert args != null;
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Class<?> argRaw = Types.rawBox(argType);
-                    NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
-                    args[argIdx] = _readNode(reader, argType, argRaw, argAnyOf, cps);
-                    remainingArgs--;
-                    if (remainingArgs == 0) {
-                        pojo = ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                        }
-                        pendingSize = 0;
-                    }
-                    continue;
-                }
-
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readField(reader, fi, cps);
-                    if (pojo != null) {
-                        fi.invokeSetterIfPresent(pojo, vv);
-                    } else {
-                        if (pendingFields == null) {
-                            int cap = pi.fieldCount;
-                            pendingFields = new NodeRegistry.FieldInfo[cap];
-                            pendingValues = new Object[cap];
-                        }
-                        pendingFields[pendingSize] = fi;
-                        pendingValues[pendingSize] = vv;
-                        pendingSize++;
-                    }
-                    continue;
-                }
-
-                if (pi.isJojo) {
+                    Object vv = _readField(reader, fi);
+                    fi.invokeSetterIfPresent(pojo, vv);
+                } else if (pi.isJojo) {
                     if (dynamicMap == null) {
                         dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(reader, Object.class, Object.class, null, cps);
-                    dynamicMap.put(key, vv);
+                    dynamicMap.put(key, _readNode(reader, Object.class, Object.class, null));
                 } else {
                     reader.skipValue();
                 }
             }
             reader.endObject();
-
-            if (pojo == null) {
-                pojo = ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                }
-            }
             if (pi.isJojo) {
                 ((JsonObject) pojo).setDynamicMap(dynamicMap);
             }
             return pojo;
         }
 
-        throw new BindingException("Cannot deserialize Object value into type " + rawClazz.getName(), ps);
+        NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+        NodeRegistry.FieldInfo deferredParentAnyOfFi = null;
+        Object deferredParentAnyOfRaw = null;
+        String parentAnyOfKey = null;
+        Object parentAnyOfValue = UNSET;
+
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String key = reader.nextName();
+
+            int argIdx = session.resolveArgIndex(key);
+            if (argIdx >= 0) {
+                Type argType = ci.argTypes[argIdx];
+                Class<?> argRaw = Types.rawBox(argType);
+                NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
+                Object argValue = _readNode(reader, argType, argRaw, argAnyOf);
+                session.acceptResolvedField(argIdx, argValue, null);
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = argValue;
+                }
+                continue;
+            }
+
+            NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+            if (fi != null) {
+                Object vv;
+                NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+                if (hasParentAnyOf && fieldAnyOf != null && fieldAnyOf.scope == AnyOf.Scope.PARENT) {
+                    if (!fieldAnyOf.path.isEmpty()) {
+                        throw new BindingException("AnyOf scope=PARENT does not support path discriminator");
+                    }
+                    String parentKey = fieldAnyOf.key;
+                    if (parentAnyOfKey == null) {
+                        parentAnyOfKey = parentKey;
+                    } else if (!parentAnyOfKey.equals(parentKey)) {
+                        throw new BindingException("At most one AnyOf parent discriminator key is supported per class");
+                    }
+                    Class<?> targetClazz = fieldAnyOf.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+                    if (targetClazz != null) {
+                        vv = _readNode(reader, targetClazz, Types.rawBox(targetClazz), null);
+                    } else {
+                        if (deferredParentAnyOfFi != null) {
+                            throw new BindingException("At most one AnyOf field with scope=PARENT is supported per class");
+                        }
+                        deferredParentAnyOfFi = fi;
+                        deferredParentAnyOfRaw = _readNode(reader, Object.class, Object.class, null);
+                        continue;
+                    }
+                } else {
+                    vv = _readField(reader, fi);
+                }
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = vv;
+                }
+                session.acceptResolvedField(-1, vv, fi);
+                continue;
+            }
+
+            if (pi.isJojo) {
+                Object vv = _readNode(reader, Object.class, Object.class, null);
+                session.acceptResolvedJsonEntry(-1, key, vv);
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = vv;
+                }
+            } else {
+                reader.skipValue();
+            }
+        }
+        reader.endObject();
+
+        Object pojo = session.finishField();
+        if (deferredParentAnyOfFi != null) {
+            NodeRegistry.AnyOfInfo aoi = deferredParentAnyOfFi.anyOfInfo;
+            String parentKey = aoi.key;
+            if (parentAnyOfValue == UNSET) {
+                Object discriminator = null;
+                NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
+                        ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
+                if (parentFi != null) {
+                    discriminator = parentFi.invokeGetter(pojo);
+                } else if (pi.isJojo) {
+                    discriminator = ((JsonObject) pojo).getNode(parentKey);
+                }
+                if (discriminator != null) {
+                    parentAnyOfValue = discriminator;
+                }
+            }
+            Class<?> targetClazz = aoi.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+            Object vv;
+            if (targetClazz != null) {
+                vv = Sjf4jConfig.global().getNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
+            } else if (aoi.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                vv = null;
+            } else {
+                throw new BindingException("AnyOf discriminator has no matching mapping: key='" +
+                        aoi.key + "', value='" + (parentAnyOfValue == UNSET ? null : parentAnyOfValue) + "'");
+            }
+            deferredParentAnyOfFi.invokeSetterIfPresent(pojo, vv);
+        }
+        return pojo;
     }
 
     /**
      * Reads array token into List/JsonArray/array/Set target.
      */
-    private static Object _readArray(JsonReader reader, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readArray(JsonReader reader, Type type, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
+            return _readListWithElementType(reader, valueType, valueClazz);
         }
 
         if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
-            int i = 0;
             reader.beginArray();
             while (reader.hasNext()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(reader, Object.class, Object.class, null, cps);
+                Object value = _readNode(reader, Object.class, Object.class, null);
                 ja.add(value);
             }
             reader.endArray();
@@ -376,25 +347,23 @@ public class GsonStreamingIO {
         if (rawClazz == Set.class) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz, ps);
+            return _readSetWithElementType(reader, valueType, valueClazz);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz, ps);
+            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
             Class<?> elemRaw = Types.box(elemType);
-            int i = 0;
             reader.beginArray();
             while (reader.hasNext()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
                 NodeRegistry.AnyOfInfo elemAnyOf = NodeRegistry.registerTypeInfo(elemRaw).anyOfInfo;
-                Object value = _readNode(reader, elemType, elemRaw, elemAnyOf, cps);
+                Object value = _readNode(reader, elemType, elemRaw, elemAnyOf);
                 ja.add(value);
             }
             reader.endArray();
@@ -405,35 +374,35 @@ public class GsonStreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(reader, rawClazz, valueType, valueClazz, ps);
+            List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
             return vci.rawToValue(list);
         }
 
-        throw new BindingException("Cannot deserialize Array value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot deserialize Array value into type " + rawClazz.getName());
     }
 
-    private static Object _readField(JsonReader reader, NodeRegistry.FieldInfo fi, PathSegment ps)
+    private static Object _readField(JsonReader reader, NodeRegistry.FieldInfo fi)
             throws IOException {
         if (fi.anyOfInfo != null) {
-            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo, ps);
+            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo);
         }
         switch (fi.containerKind) {
             case MAP:
-                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readMapWithValueType(reader, fi.argType, fi.argRawClazz);
             case LIST:
-                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readListWithElementType(reader, fi.argType, fi.argRawClazz);
             case SET:
-                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readSetWithElementType(reader, fi.argType, fi.argRawClazz);
             case ARRAY:
-                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
                 NodeRegistry.AnyOfInfo typeAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
-                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf, ps);
+                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf);
         }
     }
 
-    private static Map<String, Object> _readMapWithValueType(JsonReader reader, Class<?> rawClazz,
-                                                              Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static Map<String, Object> _readMapWithValueType(JsonReader reader,
+                                                              Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
@@ -444,16 +413,15 @@ public class GsonStreamingIO {
         reader.beginObject();
         while (reader.hasNext()) {
             String key = reader.nextName();
-            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             map.put(key, value);
         }
         reader.endObject();
         return map;
     }
 
-    private static List<Object> _readListWithElementType(JsonReader reader, Class<?> rawClazz,
-                                                          Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static List<Object> _readListWithElementType(JsonReader reader,
+                                                          Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
@@ -461,19 +429,17 @@ public class GsonStreamingIO {
         }
         List<Object> list = new ArrayList<>();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
-        int i = 0;
         reader.beginArray();
         while (reader.hasNext()) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             list.add(value);
         }
         reader.endArray();
         return list;
     }
 
-    private static Set<Object> _readSetWithElementType(JsonReader reader, Class<?> rawClazz,
-                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static Set<Object> _readSetWithElementType(JsonReader reader,
+                                                        Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
@@ -481,11 +447,9 @@ public class GsonStreamingIO {
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
-        int i = 0;
         reader.beginArray();
         while (reader.hasNext()) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             set.add(value);
         }
         reader.endArray();
@@ -493,7 +457,7 @@ public class GsonStreamingIO {
     }
 
     private static Object _readArrayWithElementType(JsonReader reader, Class<?> rawClazz,
-                                                      Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                      Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
@@ -501,11 +465,9 @@ public class GsonStreamingIO {
         }
         List<Object> list = new ArrayList<>();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
-        int i = 0;
         reader.beginArray();
         while (reader.hasNext()) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
             list.add(value);
         }
         reader.endArray();
@@ -517,22 +479,36 @@ public class GsonStreamingIO {
         return array;
     }
 
-    private static Object _readAnyOf(JsonReader reader, Type type, Class<?> rawClazz,
-                                     NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+    public static Object readAnyOf(JsonReader reader, NodeRegistry.AnyOfInfo anyOfInfo)
             throws IOException {
         Class<?> targetClazz;
 
-        if (anyOfInfo.hasDiscriminator()) {
-            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() +
-                        "' is not supported in streaming parser", ps);
+        if (anyOfInfo.hasDiscriminator) {
+            if (anyOfInfo.scope != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.scope +
+                        "' is not supported in streaming parser");
             }
-            Object rawNode = _readNode(reader, Object.class, Object.class, null, ps);
-            Object when = _resolveSelfDiscriminator(rawNode, anyOfInfo);
-            targetClazz = anyOfInfo.resolveByWhen(when);
+            Object rawNode = _readNode(reader, Object.class, Object.class, null);
+            if (!(rawNode instanceof Map)) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator");
+            }
+
+            Object discriminatorValue = null;
+            if (!anyOfInfo.key.isEmpty()) {
+                discriminatorValue = ((Map<?, ?>) rawNode).get(anyOfInfo.key);
+            } else if (!anyOfInfo.path.isEmpty()) {
+                discriminatorValue = anyOfInfo.compiledPath.getNode(rawNode);
+            }
+            if (discriminatorValue == null) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'");
+            }
+
+            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + when + "'", ps);
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
             }
             return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
         }
@@ -540,15 +516,15 @@ public class GsonStreamingIO {
         JsonType jsonType = _peekJsonType(reader.peek());
         targetClazz = anyOfInfo.resolveByJsonType(jsonType);
         if (targetClazz == null) {
-            if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
-                _readNode(reader, Object.class, Object.class, null, ps);
+            if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                _readNode(reader, Object.class, Object.class, null);
                 return null;
             }
             throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
-                    " for type '" + rawClazz.getName() + "'", ps);
+                    " for type '" + anyOfInfo.clazz.getName() + "'");
         }
 
-        return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, ps);
+        return _readNode(reader, targetClazz, Types.rawBox(targetClazz), null);
     }
 
     private static JsonType _peekJsonType(JsonToken token) {
@@ -561,17 +537,11 @@ public class GsonStreamingIO {
         return JsonType.UNKNOWN;
     }
 
-    private static Object _resolveSelfDiscriminator(Object rawNode, NodeRegistry.AnyOfInfo anyOfInfo) {
-        if (!anyOfInfo.getKey().isEmpty()) {
-            if (rawNode == null) return null;
-            if (rawNode instanceof JsonObject) return ((JsonObject) rawNode).getNode(anyOfInfo.getKey());
-            if (rawNode instanceof Map) return ((Map<?, ?>) rawNode).get(anyOfInfo.getKey());
+    private static NodeRegistry.AnyOfInfo _anyOfInfo(Class<?> rawClazz) {
+        if (rawClazz == null) {
             return null;
         }
-        if (!anyOfInfo.getPath().isEmpty()) {
-            return anyOfInfo.getCompiledPath().getNode(rawNode);
-        }
-        return null;
+        return NodeRegistry.registerTypeInfo(rawClazz).anyOfInfo;
     }
 
     /// Reader
@@ -610,17 +580,13 @@ public class GsonStreamingIO {
      */
     public static void writeNode(JsonWriter writer, Object node) throws IOException {
         Objects.requireNonNull(writer, "writer");
-        _writeNode(
-                writer,
-                node,
-                null
-        );
+        _writeNode(writer, node);
     }
 
     /**
      * Writes node recursively as JSON tokens.
      */
-    private static void _writeNode(JsonWriter writer, Object node, PathSegment ps) throws IOException {
+    private static void _writeNode(JsonWriter writer, Object node) throws IOException {
         try {
             if (node == null) {
                 writer.nullValue();
@@ -653,8 +619,7 @@ public class GsonStreamingIO {
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
                     String key = entry.getKey().toString();
                     writer.name(key);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    _writeNode(writer, entry.getValue(), cps);
+                    _writeNode(writer, entry.getValue());
                 }
                 writer.endObject();
                 return;
@@ -664,8 +629,7 @@ public class GsonStreamingIO {
                 writer.beginArray();
                 List<?> list = (List<?>) node;
                 for (int i = 0, len = list.size(); i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(writer, list.get(i), cps);
+                    _writeNode(writer, list.get(i));
                 }
                 writer.endArray();
                 return;
@@ -676,10 +640,9 @@ public class GsonStreamingIO {
                 ((JsonObject) node).forEach((k, v) -> {
                     try {
                         writer.name(k);
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, k);
-                        _writeNode(writer, v, cps);
+                        _writeNode(writer, v);
                     } catch (IOException e) {
-                        throw new BindingException(e, ps);
+                        throw new BindingException(e);
                     }
                 });
                 writer.endObject();
@@ -690,8 +653,7 @@ public class GsonStreamingIO {
                 writer.beginArray();
                 JsonArray ja = (JsonArray) node;
                 for (int i = 0, len = ja.size(); i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(writer, ja.getNode(i), cps);
+                    _writeNode(writer, ja.getNode(i));
                 }
                 writer.endArray();
                 return;
@@ -701,8 +663,7 @@ public class GsonStreamingIO {
                 writer.beginArray();
                 int len = Array.getLength(node);
                 for (int i = 0; i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(writer, Array.get(node, i), cps);
+                    _writeNode(writer, Array.get(node, i));
                 }
                 writer.endArray();
                 return;
@@ -710,10 +671,8 @@ public class GsonStreamingIO {
 
             if (node instanceof Set) {
                 writer.beginArray();
-                int i = 0;
                 for (Object v : (Set<?>) node) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                    _writeNode(writer, v, cps);
+                    _writeNode(writer, v);
                 }
                 writer.endArray();
                 return;
@@ -722,7 +681,7 @@ public class GsonStreamingIO {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.valueCodecInfo != null) {
                 Object raw = ti.valueCodecInfo.valueToRaw(node);
-                _writeNode(writer, raw, ps);
+                _writeNode(writer, raw);
                 return;
             }
 
@@ -733,18 +692,17 @@ public class GsonStreamingIO {
                     String key = entry.getKey();
                     writer.name(key);
                     Object vv = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    _writeNode(writer, vv, cps);
+                    _writeNode(writer, vv);
                 }
                 writer.endObject();
                 return;
             }
 
-            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'", ps);
+            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'");
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", ps, e);
+            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", e);
         }
     }
 }

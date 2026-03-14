@@ -2,7 +2,9 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
@@ -20,23 +22,45 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 public class GsonFacadeTest {
 
-    @Test
-    public void testSerDe1() {
-        String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
+    private static Stream<StreamingFacade.StreamingMode> allModes() {
+        return Stream.of(
+                StreamingFacade.StreamingMode.SHARED_IO,
+                StreamingFacade.StreamingMode.EXCLUSIVE_IO,
+                StreamingFacade.StreamingMode.PLUGIN_MODULE
+        );
+    }
 
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
+    private static GsonJsonFacade newFacade(StreamingFacade.StreamingMode mode) {
+        return new GsonJsonFacade(new GsonBuilder(), mode);
+    }
+
+    @FunctionalInterface
+    private interface ModeCase {
+        void run(GsonJsonFacade facade) throws Exception;
+    }
+
+    private static Stream<DynamicTest> modeTests(String caseName, ModeCase caze) {
+        return allModes().map(mode -> DynamicTest.dynamicTest(caseName + " mode=" + mode, () -> {
+            GsonJsonFacade facade = newFacade(mode);
+            caze.run(facade);
+        }));
+    }
+
+    private static void assertSerDe(GsonJsonFacade facade) {
+        String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         String res1 = sw.toString();
-        log.info("res1: {}", res1);
         assertEquals(json1, res1);
     }
 
@@ -46,53 +70,32 @@ public class GsonFacadeTest {
         private String name;
     }
 
-    @Test
-    public void testWithModule1() throws IOException {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+    private static void assertReadModule(GsonJsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
-        log.info("jo1={}", jo1.inspect());
 
         Book jo2 = (Book) facade.readNode(new StringReader(json1), Book.class);
-        log.info("jo2={}", jo2.inspect());
         assertEquals(20, jo2.getIntegerByPath("/friends/rose/age/1"));
 
         String json2 = "[1,2,3]";
         JsonArray ja1 = (JsonArray) facade.readNode(new StringReader(json2), JsonArray.class);
-        log.info("ja1={}", ja1);
+        assertEquals(3, ja1.size());
 
         Object ja2 = facade.readNode(new StringReader(json2), Object.class);
-        log.info("ja2={}, type={}", ja2, ja2.getClass());
+        assertTrue(ja2 instanceof List);
 
         Object ja3 = facade.readNode(new StringReader(json2), int[].class);
-        log.info("ja3={}, type={}", ja3, ja3.getClass());
+        assertEquals(int[].class, ja3.getClass());
 
     }
 
-    @Test
-    public void testWrite1() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
-
+    private static void assertWrite(GsonJsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
-        StringWriter output;
-        output = new StringWriter();
+        StringWriter output = new StringWriter();
         facade.writeNode(output, jo1);
-        String json2 = output.toString();
-        assertEquals(json1, json2);
-
-        facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        output = new StringWriter();
-        facade.writeNode(output, jo1);
-        String json3 = output.toString();
-        assertEquals(json1, json3);
-
-        facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
-        output = new StringWriter();
-        facade.writeNode(output, jo1);
-        String json4 = output.toString();
-        assertEquals(json1, json4);
+        assertEquals(json1, output.toString());
     }
 
 
@@ -115,20 +118,16 @@ public class GsonFacadeTest {
     }
 
     @SuppressWarnings("unchecked")
-    @Test
-    public void testNodeValue1() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(Ops.class);
+    private static void assertNodeValue(GsonJsonFacade facade) {
+        NodeRegistry.registerValueCodec(Ops.class);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());
-        log.info("list={}", list);
-
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, list);
         String json2 = sw.toString();
-        log.info("json2={}", json2);
-        assertEquals(json1, json2);
+        List<Ops> list2 = (List<Ops>) facade.readNode(json2, new TypeReference<List<Ops>>() {}.getType());
+        assertEquals(2, list2.size());
     }
 
     public static class BookField extends JsonObject {
@@ -141,13 +140,9 @@ public class GsonFacadeTest {
         private transient int transientHeight;
     }
 
-    @Test
-    public void testNodeField1() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
-
+    private static void assertNodeField(GsonJsonFacade facade) {
         String json1 = "{\"id\":123,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
         BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
-        log.info("jo1={}", jo1.inspect());
         assertEquals("han", jo1.userName);
         assertEquals("han", jo1.getString("user_name"));
         assertNull(jo1.getString("userName"));
@@ -158,32 +153,24 @@ public class GsonFacadeTest {
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         String json2 = sw.toString();
-        log.info("json2={}", json2);
         assertEquals(json1, json2);
-    }
-
-    public static class Note {
-        @NodeProperty("user_name")
-        private String userName;
-        public String getUserName() {return userName;}
-    }
-
-    @Test
-    public void testNodeField2() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
-
-        Note note1 = new Note();
-        note1.userName = "gua";
-        StringWriter sw = new StringWriter();
-        facade.writeNode(sw, note1);
-        String json1 = sw.toString();
-        log.info("json1={}", json1);
     }
 
 
     static class User {
         String name;
         List<User> friends;
+    }
+
+    @TestFactory
+    Stream<DynamicTest> testSjf4jCasesAcrossModes() {
+        return Stream.of(
+                modeTests("serde", GsonFacadeTest::assertSerDe),
+                modeTests("read-module", GsonFacadeTest::assertReadModule),
+                modeTests("write", GsonFacadeTest::assertWrite),
+                modeTests("node-value", GsonFacadeTest::assertNodeValue),
+                modeTests("node-field", GsonFacadeTest::assertNodeField)
+        ).flatMap(s -> s);
     }
 
     @Test

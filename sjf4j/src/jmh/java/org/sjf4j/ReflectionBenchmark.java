@@ -107,19 +107,19 @@ public class ReflectionBenchmark {
     }
 
     // Cache PojoInfo/FieldInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
-    private static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
-    private static MethodHandle ctorMethodHandler = pi.creatorInfo.noArgsCtorHandle;
-    private static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
+    private final static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
+    private final static MethodHandle ctorMethodHandler = pi.creatorInfo.noArgsCtorHandle;
+    private final static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 
-    private static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
-    private static MethodHandle getterMethodHandler = fi.getter;
-    private static Function<Object, Object> getterLambda = fi.lambdaGetter;
-    private static MethodHandle setterMethodHandler = fi.setter;
-    private static BiConsumer<Object, Object> setterLambda = fi.lambdaSetter;
+    private final static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
+    private final static MethodHandle getterMethodHandler = fi.getter;
+    private final static Function<Object, Object> getterLambda = fi.lambdaGetter;
+    private final static MethodHandle setterMethodHandler = fi.setter;
+    private final static BiConsumer<Object, Object> setterLambda = fi.lambdaSetter;
 
-    private static Constructor<Person> personCtor;
-    private static Method getterMethod;
-    private static Method setterMethod;
+    private final static Constructor<Person> personCtor;
+    private final static Method getterMethod;
+    private final static Method setterMethod;
 
     static {
         try {

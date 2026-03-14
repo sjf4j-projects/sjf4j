@@ -3,7 +3,9 @@ package org.sjf4j.facade.fastjson2;
 import com.alibaba.fastjson2.annotation.JSONField;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
@@ -25,6 +27,7 @@ import java.io.StringWriter;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,33 +38,55 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class Fastjson2FacadeTest {
 
-    @Test
-    public void testSerDe1() {
-        String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
-
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
-        log.info("jo1: {}", jo1);
-
-        StringWriter sw = new StringWriter();
-        facade.writeNode(sw, jo1);
-        String res1 = sw.toString();
-        log.info("res1: {}", res1);
-        assertEquals(json1, res1);
+    private static Stream<StreamingFacade.StreamingMode> allModes() {
+        return Stream.of(
+                StreamingFacade.StreamingMode.SHARED_IO,
+                StreamingFacade.StreamingMode.EXCLUSIVE_IO,
+                StreamingFacade.StreamingMode.PLUGIN_MODULE
+        );
     }
 
-    @Test
-    public void testSerDe2() {
+    private static Fastjson2JsonFacade newFacade(StreamingFacade.StreamingMode mode) {
+        return new Fastjson2JsonFacade(mode);
+    }
+
+    @FunctionalInterface
+    private interface ModeCase {
+        void run(Fastjson2JsonFacade facade) throws Exception;
+    }
+
+    private static Stream<DynamicTest> modeTests(String caseName, ModeCase caze) {
+        return allModes().map(mode -> DynamicTest.dynamicTest(caseName + " mode=" + mode, () -> {
+            Fastjson2JsonFacade facade = newFacade(mode);
+            caze.run(facade);
+        }));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> testSjf4jCasesAcrossModes() {
+        return Stream.of(
+                modeTests("serde", Fastjson2FacadeTest::assertSerDe),
+                modeTests("read-module", Fastjson2FacadeTest::assertReadModule),
+                modeTests("write", Fastjson2FacadeTest::assertWrite),
+                modeTests("node-value", Fastjson2FacadeTest::assertNodeValue),
+                modeTests("node-field", Fastjson2FacadeTest::assertNodeField),
+                modeTests("creator-extra-field", Fastjson2FacadeTest::assertCreatorExtraField),
+                modeTests("creator-alias", Fastjson2FacadeTest::assertCreatorAlias),
+                modeTests("anyof", Fastjson2FacadeTest::assertAnyOf)
+        ).flatMap(s -> s);
+    }
+
+    private static void assertSerDe(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
+        JsonObject jo2 = (JsonObject) facade.readNode(json1, JsonObject.class);
 
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         String res1 = sw.toString();
-        log.info("res1: {}", res1);
         assertEquals(json1, res1);
+        assertEquals(json1, facade.writeNodeAsString(jo2));
     }
 
     public static class Book extends JsonObject {
@@ -69,56 +94,30 @@ public class Fastjson2FacadeTest {
         private String name;
     }
 
-    @Test
-    public void testReadModule1() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
-
+    private static void assertReadModule(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
-        JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
-        log.info("jo1={}", jo1.inspect());
+        JsonObject jo1 = (JsonObject) facade.readNode(json1, JsonObject.class);
 
-        Book jo2 = (Book) facade.readNode(new StringReader(json1), Book.class);
-        log.info("jo2={}", jo2.inspect());
+        Book jo2 = (Book) facade.readNode(json1, Book.class);
         assertEquals(20, jo2.getIntegerByPath("/friends/rose/age/1"));
 
         String json2 = "[1,2,3]";
-        JsonArray ja1 = (JsonArray) facade.readNode(new StringReader(json2), JsonArray.class);
-        log.info("ja1={}", ja1);
+        JsonArray ja1 = (JsonArray) facade.readNode(json2, JsonArray.class);
+        assertEquals(3, ja1.size());
 
         Object ja2 = facade.readNode(new StringReader(json2), Object.class);
-        log.info("ja2={}, type={}", ja2, ja2.getClass());
+        assertTrue(ja2 instanceof List);
 
         Object ja3 = facade.readNode(new StringReader(json2), int[].class);
-        log.info("ja3={}, type={}", ja3, ja3.getClass());
+        assertEquals(int[].class, ja3.getClass());
     }
 
-
-    @Test
-    public void testWrite1() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
-
+    private static void assertWrite(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
-        log.info("jo1={}", jo1.inspect());
-
-        facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.SHARED_IO);
-        StringWriter output;
-        output = new StringWriter();
+        StringWriter output = new StringWriter();
         facade.writeNode(output, jo1);
-        String json2 = output.toString();
-        assertEquals(json1, json2);
-
-        facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        output = new StringWriter();
-        facade.writeNode(output, jo1);
-        String json3 = output.toString();
-        assertEquals(json1, json3);
-
-        facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
-        output = new StringWriter();
-        facade.writeNode(output, jo1);
-        String json4 = output.toString();
-        assertEquals(json1, json4);
+        assertEquals(json1, output.toString());
     }
 
 
@@ -141,20 +140,16 @@ public class Fastjson2FacadeTest {
     }
 
     @SuppressWarnings("unchecked")
-    @Test
-    public void testNodeValue1() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(Ops.class);
+    private static void assertNodeValue(Fastjson2JsonFacade facade) {
+        NodeRegistry.registerValueCodec(Ops.class);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());
-        log.info("list={}", list);
-
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, list);
         String json2 = sw.toString();
-        log.info("json2={}", json2);
-        assertEquals(json1, json2);
+        List<Ops> list2 = (List<Ops>) facade.readNode(json2, new TypeReference<List<Ops>>() {}.getType());
+        assertEquals(2, list2.size());
     }
 
 
@@ -168,13 +163,9 @@ public class Fastjson2FacadeTest {
         private transient int transientHeight;
     }
 
-    @Test
-    public void testNodeField1() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
-
+    private static void assertNodeField(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":null,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
         BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
-        log.info("jo1={}", jo1.inspect());
         assertEquals("han", jo1.userName);
         assertEquals("han", jo1.getString("user_name"));
         assertNull(jo1.getString("userName"));
@@ -185,27 +176,7 @@ public class Fastjson2FacadeTest {
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         String json2 = sw.toString();
-        log.info("json2={}", json2);
         assertEquals(json1, json2);
-    }
-
-
-    public static class Note {
-        @NodeProperty("user_name")
-        private String userName;
-        public String getUserName() {return userName;}
-    }
-
-    @Test
-    public void testNodeField2() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
-
-        Note note1 = new Note();
-        note1.userName = "gua";
-        StringWriter sw = new StringWriter();
-        facade.writeNode(sw, note1);
-        String json1 = sw.toString();
-        log.info("json1={}", json1);
     }
 
 
@@ -225,12 +196,9 @@ public class Fastjson2FacadeTest {
         public void setCity(String city) { this.city = city; }
     }
 
-    @Test
-    void ctor_with_extra_field_should_fill_by_setter() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+    private static void assertCreatorExtraField(Fastjson2JsonFacade facade) {
         String json = "{\"name\":\"a\",\"age\":1,\"city\":\"sh\"}";
         Ctor2PlusField pojo = (Ctor2PlusField) facade.readNode(json, Ctor2PlusField.class);
-        log.info("pojo={}", Nodes.inspect(pojo));
         assertEquals("a", pojo.name);
     }
 
@@ -247,16 +215,11 @@ public class Fastjson2FacadeTest {
         }
     }
 
-    @Test
-    void ctor_with_alias_param_should_bind() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
+    private static void assertCreatorAlias(Fastjson2JsonFacade facade) {
         String json = "{\"n\":\"a\",\"age\":2}";
         CtorAlias pojo = (CtorAlias) facade.readNode(json, CtorAlias.class);
-        log.info("pojo={}", Nodes.inspect(pojo));
         assertEquals("a", pojo.name);
-
-        String json2 = facade.writeNodeAsString(pojo);
-        log.info("json2={}", json2);
+        assertTrue(facade.writeNodeAsString(pojo).contains("\"age\":2"));
     }
 
     static class User {
@@ -285,9 +248,7 @@ public class Fastjson2FacadeTest {
         public TypedPet pet;
     }
 
-    @Test
-    void testSkipNode1() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+    private static void assertSkipNode(Fastjson2JsonFacade facade) {
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +
@@ -302,8 +263,19 @@ public class Fastjson2FacadeTest {
                 "  \"name\": \"Jack\"\n" +
                 "}";
         User pojo = (User) facade.readNode(json, User.class);
-        log.info("pojo={}", Nodes.inspect(pojo));
         assertEquals("Jack", pojo.name);
+    }
+
+    @Test
+    void testSkipNode1() {
+        assertSkipNode(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO));
+    }
+
+    private static void assertAnyOf(Fastjson2JsonFacade facade) {
+        String anyOfJson = "{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}";
+        PetHolder holder = (PetHolder) facade.readNode(anyOfJson, PetHolder.class);
+        assertEquals(Cat.class, holder.pet.getClass());
+        assertTrue(facade.writeNodeAsString(holder).contains("meow"));
     }
 
     @Test

@@ -254,6 +254,7 @@ public final class NodeRegistry {
         public final Map<String, FieldInfo> aliasFields;
         public final boolean isJojo;
         public final boolean isJajo;
+        public final boolean hasParentScopeAnyOf;
         /**
          * Creates immutable POJO metadata holder.
          */
@@ -267,6 +268,15 @@ public final class NodeRegistry {
             this.aliasFields = aliasFields;
             this.isJojo = JsonObject.class.isAssignableFrom(clazz);
             this.isJajo = JsonArray.class.isAssignableFrom(clazz);
+            boolean hasParentScopeAnyOf = false;
+            for (FieldInfo fi : fields.values()) {
+                AnyOfInfo aoi = fi.anyOfInfo;
+                if (aoi != null && aoi.scope == AnyOf.Scope.PARENT) {
+                    hasParentScopeAnyOf = true;
+                    break;
+                }
+            }
+            this.hasParentScopeAnyOf = hasParentScopeAnyOf;
         }
 
         public PojoCreationSession newCreationSession(int pendingCapacity) {
@@ -511,12 +521,42 @@ public final class NodeRegistry {
     }
 
     // CreatorInfo
+    @FunctionalInterface
+    public interface Func1 {
+        Object apply(Object a1);
+    }
+
+    @FunctionalInterface
+    public interface Func2 {
+        Object apply(Object a1, Object a2);
+    }
+
+    @FunctionalInterface
+    public interface Func3 {
+        Object apply(Object a1, Object a2, Object a3);
+    }
+
+    @FunctionalInterface
+    public interface Func4 {
+        Object apply(Object a1, Object a2, Object a3, Object a4);
+    }
+
+    @FunctionalInterface
+    public interface Func5 {
+        Object apply(Object a1, Object a2, Object a3, Object a4, Object a5);
+    }
+
     public static class CreatorInfo {
         public final Class<?> clazz;
         public final MethodHandle noArgsCtorHandle;
         public final Supplier<?> noArgsCtorLambda;
         public final Executable argsCreator;
         public final MethodHandle argsCreatorHandle;
+        public final Func1 argsCreatorLambda1;
+        public final Func2 argsCreatorLambda2;
+        public final Func3 argsCreatorLambda3;
+        public final Func4 argsCreatorLambda4;
+        public final Func5 argsCreatorLambda5;
         public final String[] argNames;
         public final Type[] argTypes;
         public final Map<String, Integer> argIndexes;
@@ -526,6 +566,8 @@ public final class NodeRegistry {
          */
         public CreatorInfo(Class<?> clazz, MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda,
                            Executable argsCreator, MethodHandle argsCreatorHandle,
+                           Func1 argsCreatorLambda1, Func2 argsCreatorLambda2,
+                           Func3 argsCreatorLambda3, Func4 argsCreatorLambda4, Func5 argsCreatorLambda5,
                            String[] argNames, Type[] argTypes, Map<String, Integer> argIndexes,
                            Map<String, String> aliasMap) {
             this.clazz = clazz;
@@ -533,6 +575,11 @@ public final class NodeRegistry {
             this.noArgsCtorLambda = noArgsCtorLambda;
             this.argsCreator = argsCreator;
             this.argsCreatorHandle = argsCreatorHandle;
+            this.argsCreatorLambda1 = argsCreatorLambda1;
+            this.argsCreatorLambda2 = argsCreatorLambda2;
+            this.argsCreatorLambda3 = argsCreatorLambda3;
+            this.argsCreatorLambda4 = argsCreatorLambda4;
+            this.argsCreatorLambda5 = argsCreatorLambda5;
             this.argNames = argNames;
             this.argTypes = argTypes;
             this.argIndexes = argIndexes;
@@ -598,6 +645,23 @@ public final class NodeRegistry {
                         args[i] = missingValueOfClass(argClazz);
                     }
                 }
+
+                if (args.length == 1 && argsCreatorLambda1 != null) {
+                    return argsCreatorLambda1.apply(args[0]);
+                }
+                if (args.length == 2 && argsCreatorLambda2 != null) {
+                    return argsCreatorLambda2.apply(args[0], args[1]);
+                }
+                if (args.length == 3 && argsCreatorLambda3 != null) {
+                    return argsCreatorLambda3.apply(args[0], args[1], args[2]);
+                }
+                if (args.length == 4 && argsCreatorLambda4 != null) {
+                    return argsCreatorLambda4.apply(args[0], args[1], args[2], args[3]);
+                }
+                if (args.length == 5 && argsCreatorLambda5 != null) {
+                    return argsCreatorLambda5.apply(args[0], args[1], args[2], args[3], args[4]);
+                }
+
                 return argsCreatorHandle.invokeWithArguments(args);
             } catch (Throwable e) {
                 throw new JsonException("Failed to invoke creator constructor of " + clazz, e);
@@ -783,12 +847,12 @@ public final class NodeRegistry {
     // ValueCodecInfo
 
     public static class ValueCodecInfo {
-        final Class<?> valueClazz;
-        final Class<?> rawClazz;
-        final ValueCodec<Object, Object> valueCodec;
-        final MethodHandle valueToRawHandle;
-        final MethodHandle rawToValueHandle;
-        final MethodHandle valueCopyHandle;
+        public final Class<?> valueClazz;
+        public final Class<?> rawClazz;
+        public final ValueCodec<Object, Object> valueCodec;
+        public final MethodHandle valueToRawHandle;
+        public final MethodHandle rawToValueHandle;
+        public final MethodHandle valueCopyHandle;
         /**
          * Creates immutable value-codec metadata holder.
          */
@@ -807,13 +871,6 @@ public final class NodeRegistry {
          */
         public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec) {
             this(valueClazz, rawClazz, valueCodec, null, null, null);
-        }
-
-        public Class<?> getValueClazz() {
-            return valueClazz;
-        }
-        public Class<?> getRawClazz() {
-            return rawClazz;
         }
 
         /**
@@ -893,16 +950,16 @@ public final class NodeRegistry {
     // AnyOfInfo
 
     public static class AnyOfInfo {
-        final Class<?> clazz;
-        final AnyOf.Mapping[] mappings;
-        final String key;
-        final String path;
-        final AnyOf.Scope scope;
-        final AnyOf.OnNoMatch onNoMatch;
-        final boolean hasDiscriminator;
-        final EnumMap<JsonType, Class<?>> byJsonType;
-        final Map<String, Class<?>> byWhen;
-        final JsonPath compiledPath;
+        public final Class<?> clazz;
+        public final AnyOf.Mapping[] mappings;
+        public final String key;
+        public final String path;
+        public final AnyOf.Scope scope;
+        public final AnyOf.OnNoMatch onNoMatch;
+        public final boolean hasDiscriminator;
+        public final EnumMap<JsonType, Class<?>> byJsonType;
+        public final Map<String, Class<?>> byWhen;
+        public final JsonPath compiledPath;
 
         public AnyOfInfo(Class<?> clazz, AnyOf.Mapping[] mappings, String key,
                          String path, AnyOf.Scope scope, AnyOf.OnNoMatch onNoMatch) {
@@ -929,16 +986,6 @@ public final class NodeRegistry {
                     byJsonType.put(JsonType.rawOf(mapping.value()), mapping.value());
                 }
             }
-        }
-
-        public boolean hasDiscriminator() {return hasDiscriminator;}
-        public AnyOf.Scope getScope() {return scope;}
-        public AnyOf.OnNoMatch getOnNoMatch() {return onNoMatch;}
-        public String getKey() {return key;}
-        public String getPath() {return path;}
-
-        public JsonPath getCompiledPath() {
-            return compiledPath;
         }
 
         public Class<?> resolveByJsonType(JsonType jsonType) {

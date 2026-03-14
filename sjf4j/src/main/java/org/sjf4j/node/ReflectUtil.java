@@ -16,6 +16,7 @@ import org.sjf4j.annotation.node.RawToValue;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.AccessibleObject;
@@ -268,6 +269,11 @@ public final class ReflectUtil {
                                                           MethodHandles.Lookup lookup) {
         Executable creator = null;
         MethodHandle creatorHandle = null;
+        NodeRegistry.Func1 creatorLambda1 = null;
+        NodeRegistry.Func2 creatorLambda2 = null;
+        NodeRegistry.Func3 creatorLambda3 = null;
+        NodeRegistry.Func4 creatorLambda4 = null;
+        NodeRegistry.Func5 creatorLambda5 = null;
         String[] argNames = null;
         Type[] argTypes = null;
         Map<String, Integer> argIndexes = null;
@@ -334,6 +340,36 @@ public final class ReflectUtil {
 //            argIndexes = createArgIndexes(argNames);
         }
         if (creator != null && creator.getParameterCount() > 0) {
+            boolean hasPrimitiveArg = false;
+            for (Class<?> argType : creator.getParameterTypes()) {
+                if (argType.isPrimitive()) {
+                    hasPrimitiveArg = true;
+                    break;
+                }
+            }
+
+            if (!hasPrimitiveArg) {
+                switch (creator.getParameterCount()) {
+                    case 1:
+                        creatorLambda1 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func1.class, 1);
+                        break;
+                    case 2:
+                        creatorLambda2 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func2.class, 2);
+                        break;
+                    case 3:
+                        creatorLambda3 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func3.class, 3);
+                        break;
+                    case 4:
+                        creatorLambda4 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func4.class, 4);
+                        break;
+                    case 5:
+                        creatorLambda5 = createLambdaArgsCreator(lookup, creatorHandle, NodeRegistry.Func5.class, 5);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
             Parameter[] params = creator.getParameters();
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
@@ -381,7 +417,9 @@ public final class ReflectUtil {
         }
 
         return new NodeRegistry.CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
-                creator, creatorHandle, argNames, argTypes, argIndexes, aliasMap);
+                creator, creatorHandle,
+                creatorLambda1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
+                argNames, argTypes, argIndexes, aliasMap);
     }
 
     /// NodeValue
@@ -735,6 +773,35 @@ public final class ReflectUtil {
             ).getTarget().invoke();
         } catch (Throwable e) {
             return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T> T createLambdaArgsCreator(MethodHandles.Lookup lookup,
+                                         MethodHandle creator,
+                                         Class<T> funcType,
+                                         int arity) {
+        if (creator == null || funcType == null || arity <= 0 || arity > 5) return null;
+        Class<?>[] params = new Class<?>[arity];
+        for (int i = 0; i < arity; i++) params[i] = Object.class;
+        MethodType erasedSamType = MethodType.methodType(Object.class, params);
+        try {
+            MethodType instantiatedSamType = creator.type().changeReturnType(Object.class);
+            return (T) LambdaMetafactory.metafactory(
+                    lookup,
+                    "apply",
+                    MethodType.methodType(funcType),
+                    erasedSamType,
+                    creator,
+                    instantiatedSamType
+            ).getTarget().invoke();
+        } catch (Throwable e) {
+            try {
+                MethodHandle adapted = creator.asType(erasedSamType);
+                return (T) MethodHandleProxies.asInterfaceInstance(funcType, adapted);
+            } catch (Throwable ignored) {
+                return null;
+            }
         }
     }
 

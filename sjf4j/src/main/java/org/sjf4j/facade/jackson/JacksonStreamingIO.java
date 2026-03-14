@@ -13,7 +13,6 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
-import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -30,13 +29,14 @@ import java.util.Set;
  * Jackson streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
 public class JacksonStreamingIO {
+    private static final Object UNSET = new Object();
 
     /// Read
 
     /**
      * Skips next scalar or nested value from parser.
      */
-    public static void skipNode(JsonParser parser) throws IOException {
+    private static void skipNode(JsonParser parser) throws IOException {
         JsonToken tk = parser.currentToken();
         if (tk.isScalarValue()) {
             parser.nextToken();
@@ -52,50 +52,44 @@ public class JacksonStreamingIO {
     public static Object readNode(JsonParser parser, Type type) throws IOException {
         Class<?> rawBox = Types.rawBox(type);
         NodeRegistry.AnyOfInfo anyOfInfo = _anyOfInfo(rawBox);
-        return _readNode(
-                parser,
-                type,
-                rawBox,
-                anyOfInfo,
-                null
-        );
+        return _readNode(parser, type, rawBox, anyOfInfo);
     }
 
     /**
      * Reads next token and dispatches to typed node readers.
      */
     private static Object _readNode(JsonParser parser, Type type, Class<?> rawClazz,
-                                    NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+                                    NodeRegistry.AnyOfInfo anyOfInfo)
             throws IOException {
         try {
             if (anyOfInfo != null) {
-                return _readAnyOf(parser, type, rawClazz, anyOfInfo, ps);
+                return readAnyOf(parser, anyOfInfo);
             }
             StreamingReader.Token token = peekToken(parser);
             switch (token) {
                 case START_OBJECT:
-                    return _readObject(parser, type, rawClazz, ps);
+                    return _readObject(parser, type, rawClazz);
                 case START_ARRAY:
-                    return _readArray(parser, type, rawClazz, ps);
+                    return _readArray(parser, type, rawClazz);
                 case STRING:
-                    return _readString(parser, rawClazz, ps);
+                    return _readString(parser, rawClazz);
                 case NUMBER:
-                    return _readNumber(parser, rawClazz, ps);
+                    return _readNumber(parser, rawClazz);
                 case BOOLEAN:
-                    return _readBoolean(parser, rawClazz, ps);
+                    return _readBoolean(parser, rawClazz);
                 case NULL:
-                    return _readNull(parser, rawClazz, ps);
+                    return _readNull(parser, rawClazz);
                 default:
                     throw new JsonException("Unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into '" + type + "'", ps, e);
+            throw new BindingException("Failed to read streaming into '" + type + "'", null, e);
         }
     }
 
-    private static Object _readNull(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNull(JsonParser parser, Class<?> rawClazz)
             throws IOException {
         parser.nextToken();
 
@@ -106,7 +100,7 @@ public class JacksonStreamingIO {
         return null;
     }
 
-    private static Object _readBoolean(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+    private static Object _readBoolean(JsonParser parser, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Boolean.class) {
             boolean b = parser.getBooleanValue();
@@ -121,10 +115,10 @@ public class JacksonStreamingIO {
             return vci.rawToValue(b);
         }
 
-        throw new BindingException("Cannot read boolean value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read boolean value into type " + rawClazz.getName());
     }
 
-    private static Object _readNumber(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+    private static Object _readNumber(JsonParser parser, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Number.class) {
             Number n = parser.getNumberValue();
@@ -179,11 +173,11 @@ public class JacksonStreamingIO {
             return vci.rawToValue(n);
         }
 
-        throw new BindingException("Cannot read number value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read number value into type " + rawClazz.getName());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _readString(JsonParser parser, Class<?> rawClazz, PathSegment ps)
+    private static Object _readString(JsonParser parser, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == String.class) {
             String s = parser.getText();
@@ -208,18 +202,18 @@ public class JacksonStreamingIO {
             return vci.rawToValue(s);
         }
 
-        throw new BindingException("Cannot read string value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read string value into type " + rawClazz.getName());
     }
 
     /**
      * Reads object token into Map/JsonObject/POJO target.
      */
-    private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == Map.class) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(parser, rawClazz, valueType, valueClazz, ps);
+            return _readMapWithValueType(parser, valueType, valueClazz);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -228,8 +222,7 @@ public class JacksonStreamingIO {
             while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();
                 parser.nextToken();
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object value = _readNode(parser, Object.class, Object.class, null, cps);
+                Object value = _readNode(parser, Object.class, Object.class, null);
                 jo.put(key, value);
             }
             parser.nextToken();
@@ -240,119 +233,170 @@ public class JacksonStreamingIO {
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(parser, rawClazz, valueType, valueClazz, ps);
+            Map<String, Object> map = _readMapWithValueType(parser, valueType, valueClazz);
             return ti.valueCodecInfo.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
-            NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-            Object pojo = ci.noArgsCtorHandle == null ? null : ci.newPojoNoArgs();
-            Object[] args = ci.noArgsCtorHandle == null ? new Object[ci.argNames.length] : null;
-            int remainingArgs = ci.noArgsCtorHandle == null ? args.length : 0;
-            int pendingSize = 0;
-            NodeRegistry.FieldInfo[] pendingFields = null;
-            Object[] pendingValues = null;
-            Map<String, Object> dynamicMap = null;
+            return readPojo(parser, pi);
+        }
 
+        throw new BindingException("Cannot read object value into type " + rawClazz.getName());
+    }
+
+    public static Object readPojo(JsonParser parser, NodeRegistry.PojoInfo pi)
+            throws IOException {
+        NodeRegistry.CreatorInfo ci = pi.creatorInfo;
+        boolean hasParentAnyOf = pi.hasParentScopeAnyOf;
+
+        if (!hasParentAnyOf && ci.hasNoArgsCreator() && (ci.argNames == null || ci.argNames.length == 0)) {
+            Object pojo = ci.newPojoNoArgs();
+            Map<String, Object> dynamicMap = null;
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_OBJECT) {
                 String key = parser.currentName();
                 parser.nextToken();
 
-                int argIdx = -1;
-                if (pojo == null) {
-                    argIdx = ci.getArgIndex(key);
-                    if (argIdx < 0 && ci.aliasMap != null) {
-                        String origin = ci.aliasMap.get(key);
-                        if (origin != null) {
-                            argIdx = ci.getArgIndex(origin);
-                        }
-                    }
-                }
-                if (argIdx >= 0) {
-                    Type argType = ci.argTypes[argIdx];
-                    assert args != null;
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Class<?> argRaw = Types.rawBox(argType);
-                    NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
-                    args[argIdx] = _readNode(parser, argType, argRaw, argAnyOf, cps);
-                    remainingArgs--;
-                    if (remainingArgs == 0) {
-                        pojo = ci.newPojoWithArgs(args);
-                        for (int i = 0; i < pendingSize; i++) {
-                            pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                        }
-                        pendingSize = 0;
-                    }
-                    continue;
-                }
-
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readField(parser, fi, cps);
-                    if (pojo != null) {
-                        fi.invokeSetterIfPresent(pojo, vv);
-                    } else {
-                        if (pendingFields == null) {
-                            int cap = pi.fieldCount;
-                            pendingFields = new NodeRegistry.FieldInfo[cap];
-                            pendingValues = new Object[cap];
-                        }
-                        pendingFields[pendingSize] = fi;
-                        pendingValues[pendingSize] = vv;
-                        pendingSize++;
-                    }
-                    continue;
-                }
-
-                if (pi.isJojo) {
+                    Object vv = _readField(parser, fi);
+                    fi.invokeSetterIfPresent(pojo, vv);
+                } else if (pi.isJojo) {
                     if (dynamicMap == null) {
                         dynamicMap = Sjf4jConfig.global().mapSupplier.create();
                     }
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    Object vv = _readNode(parser, Object.class, Object.class, null, cps);
-                    dynamicMap.put(key, vv);
+                    dynamicMap.put(key, _readNode(parser, Object.class, Object.class, null));
                 } else {
                     skipNode(parser);
                 }
             }
             parser.nextToken();
-
-            if (pojo == null) {
-                pojo = ci.newPojoWithArgs(args);
-                for (int i = 0; i < pendingSize; i++) {
-                    pendingFields[i].invokeSetterIfPresent(pojo, pendingValues[i]);
-                }
-            }
             if (pi.isJojo) {
                 ((JsonObject) pojo).setDynamicMap(dynamicMap);
             }
             return pojo;
         }
 
-        throw new BindingException("Cannot read object value into type " + rawClazz.getName(), ps);
+        NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+        NodeRegistry.FieldInfo deferredParentAnyOfFi = null;
+        Object deferredParentAnyOfRaw = null;
+        String parentAnyOfKey = null;
+        Object parentAnyOfValue = UNSET;
+
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_OBJECT) {
+            String key = parser.currentName();
+            parser.nextToken();
+
+            int argIdx = session.resolveArgIndex(key);
+            if (argIdx >= 0) {
+                Type argType = ci.argTypes[argIdx];
+                Class<?> argRaw = Types.rawBox(argType);
+                NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
+                Object argValue = _readNode(parser, argType, argRaw, argAnyOf);
+                session.acceptResolvedField(argIdx, argValue, null);
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = argValue;
+                }
+                continue;
+            }
+
+            NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+            if (fi != null) {
+                Object vv;
+                NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+                if (hasParentAnyOf && fieldAnyOf != null && fieldAnyOf.scope == AnyOf.Scope.PARENT) {
+                    if (!fieldAnyOf.path.isEmpty()) {
+                        throw new BindingException("AnyOf scope=PARENT does not support path discriminator");
+                    }
+                    String parentKey = fieldAnyOf.key;
+                    if (parentAnyOfKey == null) {
+                        parentAnyOfKey = parentKey;
+                    } else if (!parentAnyOfKey.equals(parentKey)) {
+                        throw new BindingException("At most one AnyOf parent discriminator key is supported per class");
+                    }
+                    Class<?> targetClazz = fieldAnyOf.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+                    if (targetClazz != null) {
+                        vv = _readNode(parser, targetClazz, Types.rawBox(targetClazz), null);
+                    } else {
+                        if (deferredParentAnyOfFi != null) {
+                            throw new BindingException("At most one AnyOf field with scope=PARENT is supported per class");
+                        }
+                        deferredParentAnyOfFi = fi;
+                        deferredParentAnyOfRaw = _readNode(parser, Object.class, Object.class, null);
+                        continue;
+                    }
+                } else {
+                    vv = _readField(parser, fi);
+                }
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = vv;
+                }
+                session.acceptResolvedField(-1, vv, fi);
+                continue;
+            }
+
+            if (pi.isJojo) {
+                Object vv = _readNode(parser, Object.class, Object.class, null);
+                session.acceptResolvedJsonEntry(-1, key, vv);
+                if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
+                    parentAnyOfValue = vv;
+                }
+            } else {
+                skipNode(parser);
+            }
+        }
+        parser.nextToken();
+
+        Object pojo = session.finishField();
+        if (deferredParentAnyOfFi != null) {
+            NodeRegistry.AnyOfInfo aoi = deferredParentAnyOfFi.anyOfInfo;
+            String parentKey = aoi.key;
+            if (parentAnyOfValue == UNSET) {
+                Object discriminator = null;
+                NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
+                        ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
+                if (parentFi != null) {
+                    discriminator = parentFi.invokeGetter(pojo);
+                } else if (pi.isJojo) {
+                    discriminator = ((JsonObject) pojo).getNode(parentKey);
+                }
+                if (discriminator != null) {
+                    parentAnyOfValue = discriminator;
+                }
+            }
+            Class<?> targetClazz = aoi.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
+            Object vv;
+            if (targetClazz != null) {
+                vv = Sjf4jConfig.global().getNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
+            } else if (aoi.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                vv = null;
+            } else {
+                throw new BindingException("AnyOf discriminator has no matching mapping: key='" +
+                        aoi.key + "', value='" + (parentAnyOfValue == UNSET ? null : parentAnyOfValue) + "'");
+            }
+            deferredParentAnyOfFi.invokeSetterIfPresent(pojo, vv);
+        }
+        return pojo;
     }
 
     /**
      * Reads array token into List/JsonArray/array/Set target.
      */
-    private static Object _readArray(JsonParser parser, Type type, Class<?> rawClazz, PathSegment ps)
+    private static Object _readArray(JsonParser parser, Type type, Class<?> rawClazz)
             throws IOException {
         if (rawClazz == Object.class || rawClazz == List.class) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(parser, rawClazz, valueType, valueClazz, ps);
+            return _readListWithElementType(parser, valueType, valueClazz);
         }
 
         if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
-            int i = 0;
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                Object value = _readNode(parser, Object.class, Object.class, null, cps);
+                Object value = _readNode(parser, Object.class, Object.class, null);
                 ja.add(value);
             }
             parser.nextToken();
@@ -362,25 +406,23 @@ public class JacksonStreamingIO {
         if (rawClazz == Set.class) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(parser, rawClazz, valueType, valueClazz, ps);
+            return _readSetWithElementType(parser, valueType, valueClazz);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            return _readArrayWithElementType(parser, rawClazz, compType, valueClazz, ps);
+            return _readArrayWithElementType(parser, rawClazz, compType, valueClazz);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
             Class<?> elemRaw = Types.box(elemType);
-            int i = 0;
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
                 NodeRegistry.AnyOfInfo elemAnyOf = _anyOfInfo(elemRaw);
-                Object value = _readNode(parser, elemType, elemRaw, elemAnyOf, cps);
+                Object value = _readNode(parser, elemType, elemRaw, elemAnyOf);
                 ja.add(value);
             }
             parser.nextToken();
@@ -391,35 +433,35 @@ public class JacksonStreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(parser, rawClazz, valueType, valueClazz, ps);
+            List<Object> list = _readListWithElementType(parser, valueType, valueClazz);
             return vci.rawToValue(list);
         }
 
-        throw new BindingException("Cannot read array value into type " + rawClazz.getName(), ps);
+        throw new BindingException("Cannot read array value into type " + rawClazz.getName());
     }
 
-    private static Object _readField(JsonParser parser, NodeRegistry.FieldInfo fi, PathSegment ps)
+    private static Object _readField(JsonParser parser, NodeRegistry.FieldInfo fi)
             throws IOException {
         if (fi.anyOfInfo != null) {
-            return _readNode(parser, fi.type, fi.rawClazz, fi.anyOfInfo, ps);
+            return _readNode(parser, fi.type, fi.rawClazz, fi.anyOfInfo);
         }
         switch (fi.containerKind) {
             case MAP:
-                return _readMapWithValueType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readMapWithValueType(parser, fi.argType, fi.argRawClazz);
             case LIST:
-                return _readListWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readListWithElementType(parser, fi.argType, fi.argRawClazz);
             case SET:
-                return _readSetWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readSetWithElementType(parser, fi.argType, fi.argRawClazz);
             case ARRAY:
-                return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, ps);
+                return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
                 NodeRegistry.AnyOfInfo typeAnyOf = _anyOfInfo(fi.rawClazz);
-                return _readNode(parser, fi.type, fi.rawClazz, typeAnyOf, ps);
+                return _readNode(parser, fi.type, fi.rawClazz, typeAnyOf);
         }
     }
 
-    private static Map<String, Object> _readMapWithValueType(JsonParser parser, Class<?> rawClazz,
-                                                              Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static Map<String, Object> _readMapWithValueType(JsonParser parser,
+                                                              Type valueType, Class<?> valueClazz)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -431,16 +473,15 @@ public class JacksonStreamingIO {
         while (parser.currentToken() != JsonToken.END_OBJECT) {
             String key = parser.currentName();
             parser.nextToken();
-            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
             map.put(key, value);
         }
         parser.nextToken();
         return map;
     }
 
-    private static List<Object> _readListWithElementType(JsonParser parser, Class<?> rawClazz,
-                                                          Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static List<Object> _readListWithElementType(JsonParser parser,
+                                                          Type valueType, Class<?> valueClazz)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -448,19 +489,17 @@ public class JacksonStreamingIO {
         }
         List<Object> list = new ArrayList<>();
         NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
-        int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
             list.add(value);
         }
         parser.nextToken();
         return list;
     }
 
-    private static Set<Object> _readSetWithElementType(JsonParser parser, Class<?> rawClazz,
-                                                        Type valueType, Class<?> valueClazz, PathSegment ps)
+    private static Set<Object> _readSetWithElementType(JsonParser parser,
+                                                        Type valueType, Class<?> valueClazz)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -468,11 +507,9 @@ public class JacksonStreamingIO {
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
         NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
-        int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
             set.add(value);
         }
         parser.nextToken();
@@ -480,7 +517,7 @@ public class JacksonStreamingIO {
     }
 
     private static Object _readArrayWithElementType(JsonParser parser, Class<?> rawClazz,
-                                                      Type valueType, Class<?> valueClazz, PathSegment ps)
+                                                      Type valueType, Class<?> valueClazz)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -488,11 +525,9 @@ public class JacksonStreamingIO {
         }
         List<Object> list = new ArrayList<>();
         NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
-        int i = 0;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf, cps);
+            Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
             list.add(value);
         }
         parser.nextToken();
@@ -504,22 +539,36 @@ public class JacksonStreamingIO {
         return array;
     }
 
-    private static Object _readAnyOf(JsonParser parser, Type type, Class<?> rawClazz,
-                                     NodeRegistry.AnyOfInfo anyOfInfo, PathSegment ps)
+    public static Object readAnyOf(JsonParser parser, NodeRegistry.AnyOfInfo anyOfInfo)
             throws IOException {
         Class<?> targetClazz;
 
-        if (anyOfInfo.hasDiscriminator()) {
-            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() +
-                        "' is not supported in streaming parser", ps);
+        if (anyOfInfo.hasDiscriminator) {
+            if (anyOfInfo.scope != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.scope +
+                        "' is not supported in streaming parser");
             }
-            Object rawNode = _readNode(parser, Object.class, Object.class, null, ps);
-            Object when = _resolveSelfDiscriminator(rawNode, anyOfInfo);
-            targetClazz = anyOfInfo.resolveByWhen(when);
+            Object rawNode = _readNode(parser, Object.class, Object.class, null);
+            if (!(rawNode instanceof Map)) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator");
+            }
+
+            Object discriminatorValue = null;
+            if (!anyOfInfo.key.isEmpty()) {
+                discriminatorValue = ((Map<?, ?>) rawNode).get(anyOfInfo.key);
+            } else if (!anyOfInfo.path.isEmpty()) {
+                discriminatorValue = anyOfInfo.compiledPath.getNode(rawNode);
+            }
+            if (discriminatorValue == null) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'");
+            }
+
+            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + when + "'", ps);
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
             }
             return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
         }
@@ -527,15 +576,15 @@ public class JacksonStreamingIO {
         JsonType jsonType = _peekJsonType(parser.currentToken());
         targetClazz = anyOfInfo.resolveByJsonType(jsonType);
         if (targetClazz == null) {
-            if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) {
-                _readNode(parser, Object.class, Object.class, null, ps);
+            if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
+                _readNode(parser, Object.class, Object.class, null);
                 return null;
             }
             throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
-                    " for type '" + rawClazz.getName() + "'", ps);
+                    " for type '" + anyOfInfo.clazz.getName() + "'");
         }
 
-        return _readNode(parser, targetClazz, Types.rawBox(targetClazz), null, ps);
+        return _readNode(parser, targetClazz, Types.rawBox(targetClazz), null);
     }
 
     private static JsonType _peekJsonType(JsonToken token) {
@@ -546,19 +595,6 @@ public class JacksonStreamingIO {
         if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
         if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
         return JsonType.UNKNOWN;
-    }
-
-    private static Object _resolveSelfDiscriminator(Object rawNode, NodeRegistry.AnyOfInfo anyOfInfo) {
-        if (!anyOfInfo.getKey().isEmpty()) {
-            if (rawNode == null) return null;
-            if (rawNode instanceof JsonObject) return ((JsonObject) rawNode).getNode(anyOfInfo.getKey());
-            if (rawNode instanceof Map) return ((Map<?, ?>) rawNode).get(anyOfInfo.getKey());
-            return null;
-        }
-        if (!anyOfInfo.getPath().isEmpty()) {
-            return anyOfInfo.getCompiledPath().getNode(rawNode);
-        }
-        return null;
     }
 
     private static NodeRegistry.AnyOfInfo _anyOfInfo(Class<?> rawClazz) {
@@ -609,17 +645,13 @@ public class JacksonStreamingIO {
      */
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
         Objects.requireNonNull(gen, "gen");
-        _writeNode(
-                gen,
-                node,
-                null
-        );
+        _writeNode(gen, node);
     }
 
     /**
      * Writes node recursively as JSON tokens.
      */
-    private static void _writeNode(JsonGenerator gen, Object node, PathSegment ps) throws IOException {
+    private static void _writeNode(JsonGenerator gen, Object node) throws IOException {
         try {
             if (node == null) {
                 gen.writeNull();
@@ -652,8 +684,7 @@ public class JacksonStreamingIO {
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
                     String key = entry.getKey().toString();
                     gen.writeFieldName(key);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    _writeNode(gen, entry.getValue(), cps);
+                    _writeNode(gen, entry.getValue());
                 }
                 gen.writeEndObject();
                 return;
@@ -663,8 +694,7 @@ public class JacksonStreamingIO {
                 gen.writeStartArray();
                 List<?> list = (List<?>) node;
                 for (int i = 0, len = list.size(); i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(gen, list.get(i), cps);
+                    _writeNode(gen, list.get(i));
                 }
                 gen.writeEndArray();
                 return;
@@ -675,10 +705,9 @@ public class JacksonStreamingIO {
                 ((JsonObject) node).forEach((k, v) -> {
                     try {
                         gen.writeFieldName(k);
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, k);
-                        _writeNode(gen, v, cps);
+                        _writeNode(gen, v);
                     } catch (IOException e) {
-                        throw new BindingException(e, ps);
+                        throw new BindingException(e);
                     }
                 });
                 gen.writeEndObject();
@@ -689,8 +718,7 @@ public class JacksonStreamingIO {
                 gen.writeStartArray();
                 JsonArray ja = (JsonArray) node;
                 for (int i = 0, len = ja.size(); i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(gen, ja.getNode(i), cps);
+                    _writeNode(gen, ja.getNode(i));
                 }
                 gen.writeEndArray();
                 return;
@@ -700,8 +728,7 @@ public class JacksonStreamingIO {
                 gen.writeStartArray();
                 int len = Array.getLength(node);
                 for (int i = 0; i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
-                    _writeNode(gen, Array.get(node, i), cps);
+                    _writeNode(gen, Array.get(node, i));
                 }
                 gen.writeEndArray();
                 return;
@@ -709,10 +736,8 @@ public class JacksonStreamingIO {
 
             if (node instanceof Set) {
                 gen.writeStartArray();
-                int i = 0;
                 for (Object v : (Set<?>) node) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
-                    _writeNode(gen, v, cps);
+                    _writeNode(gen, v);
                 }
                 gen.writeEndArray();
                 return;
@@ -721,7 +746,7 @@ public class JacksonStreamingIO {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.valueCodecInfo != null) {
                 Object raw = ti.valueCodecInfo.valueToRaw(node);
-                _writeNode(gen, raw, ps);
+                _writeNode(gen, raw);
                 return;
             }
 
@@ -732,18 +757,17 @@ public class JacksonStreamingIO {
                     String key = entry.getKey();
                     gen.writeFieldName(key);
                     Object vv = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                    _writeNode(gen, vv, cps);
+                    _writeNode(gen, vv);
                 }
                 gen.writeEndObject();
                 return;
             }
 
-            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'", ps);
+            throw new BindingException("Unsupported node type '" + rawClazz.getName() + "'");
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", ps, e);
+            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", null, e);
         }
     }
 

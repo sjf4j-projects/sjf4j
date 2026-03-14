@@ -11,6 +11,30 @@ public class BindingException extends JsonException {
     private final PathSegment ps;
 
     /**
+     * Creates a binding exception without path context.
+     */
+    public BindingException(String message) {
+        super(message);
+        this.ps = null;
+    }
+
+    /**
+     * Creates a binding exception without path context and cause.
+     */
+    public BindingException(String message, Throwable cause) {
+        super(message, cause, false, false);
+        this.ps = null;
+    }
+
+    /**
+     * Creates a binding exception from cause without path context.
+     */
+    public BindingException(Throwable cause) {
+        super(cause);
+        this.ps = null;
+    }
+
+    /**
      * Creates a binding exception with path context.
      */
     public BindingException(String message, PathSegment ps) {

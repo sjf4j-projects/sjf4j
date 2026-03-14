@@ -149,40 +149,40 @@ public class SimpleNodeFacade implements NodeFacade {
         Class<?> targetClazz;
         NodeRegistry.AnyOfInfo anyOfInfo = ctx.anyOfInfo;
 
-        if (anyOfInfo.hasDiscriminator()) {
-            if (anyOfInfo.getScope() != AnyOf.Scope.SELF) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.getScope() + "' is not supported", ctx.ps);
+        if (anyOfInfo.hasDiscriminator) {
+            if (anyOfInfo.scope != AnyOf.Scope.SELF) {
+                throw new BindingException("AnyOf scope '" + anyOfInfo.scope + "' is not supported", ctx.ps);
             }
 
             if (!(node instanceof Map) && !(node instanceof JsonObject)) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator", ctx.ps);
             }
 
             Object discriminatorValue;
-            if (!anyOfInfo.getKey().isEmpty()) {
-                discriminatorValue = Nodes.getInObject(node, anyOfInfo.getKey());
-            } else if (!anyOfInfo.getPath().isEmpty()) {
-                discriminatorValue = anyOfInfo.getCompiledPath().getNode(node);
+            if (!anyOfInfo.key.isEmpty()) {
+                discriminatorValue = Nodes.getInObject(node, anyOfInfo.key);
+            } else if (!anyOfInfo.path.isEmpty()) {
+                discriminatorValue = anyOfInfo.compiledPath.getNode(node);
             } else {
                 discriminatorValue = null;
             }
 
             if (discriminatorValue == null) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.getKey() + "'", ctx.ps);
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'", ctx.ps);
             }
 
             targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ctx.ps);
             }
         } else {
             JsonType jsonType = JsonType.of(node);
             targetClazz = anyOfInfo.resolveByJsonType(jsonType);
             if (targetClazz == null) {
-                if (anyOfInfo.getOnNoMatch() == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
                         " for type '" + ctx.rawClazz.getName() + "'", ctx.ps);
             }

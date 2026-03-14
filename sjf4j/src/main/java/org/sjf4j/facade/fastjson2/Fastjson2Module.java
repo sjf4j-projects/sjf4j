@@ -12,11 +12,13 @@ import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.writer.ObjectWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -42,10 +44,24 @@ public interface Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return new JsonArrayReader<>(rawClazz);
             }
-            NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
-            if (vci != null) {
-                return new NodeValueReader<>(vci);
+            if (JsonObject.class.isAssignableFrom(rawClazz)) {
+                return new JsonObjectReader<>(rawClazz);
             }
+            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            if (ti.anyOfInfo != null) {
+                return new AnyOfReader<>(ti.anyOfInfo);
+            }
+            if (ti.valueCodecInfo != null) {
+                return new NodeValueReader<>(ti.valueCodecInfo);
+            }
+            if (ti.pojoInfo != null) {
+                for (NodeRegistry.FieldInfo fi : ti.pojoInfo.fields.values()) {
+                    if (fi.anyOfInfo != null && fi.anyOfInfo.scope == AnyOf.Scope.PARENT) {
+                        return new PojoReader<>(ti.pojoInfo);
+                    }
+                }
+            }
+
             return null;
         }
 
@@ -130,42 +146,41 @@ public interface Fastjson2Module {
         }
     }
 
-//    class MyObjectReaderAnnotationProcessor implements ObjectReaderAnnotationProcessor {
-//        @Override
-//        public void getFieldInfo(FieldInfo fieldInfo, Class objectClass, Constructor constructor,
-//                                 int paramIndex, Parameter parameter) {
-//            NodeProperty ann = parameter.getAnnotation(NodeProperty.class);
-//            if (ann != null) {
-//                String name = ann.value();
-//                if (name != null && name.length() > 0) {
-//                    fieldInfo.fieldName = ann.value();
-//                    fieldInfo.ignore = false; // Must false here
-//                }
-//                String[] aliases = ann.aliases();
-//                if (aliases != null && aliases.length > 0) {
-//                    fieldInfo.alternateNames = aliases;
-//                    fieldInfo.ignore = false; // Must false here
-//                }
-//            }
-//        }
-//        @Override
-//        public void getFieldInfo(FieldInfo fieldInfo, Class objectClass, Method method,
-//                                 int paramIndex, Parameter parameter) {
-//            NodeProperty ann = parameter.getAnnotation(NodeProperty.class);
-//            if (ann != null) {
-//                String name = ann.value();
-//                if (name != null && name.length() > 0) {
-//                    fieldInfo.fieldName = ann.value();
-//                    fieldInfo.ignore = false; // Must false here
-//                }
-//                String[] aliases = ann.aliases();
-//                if (aliases != null && aliases.length > 0) {
-//                    fieldInfo.alternateNames = aliases;
-//                    fieldInfo.ignore = false; // Must false here
-//                }
-//            }
-//        }
-//    }
+    class JsonObjectReader<T extends JsonObject> implements ObjectReader<T> {
+        private final NodeRegistry.PojoInfo pi;
+        /**
+         * Creates reader for JsonArray or JsonArray subclass.
+         */
+        public JsonObjectReader(Class<?> clazz) {
+            this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+        }
+
+        /**
+         * Reads one JSON array into framework JsonArray type.
+         */
+        @SuppressWarnings("unchecked")
+        @Override
+        public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
+            if (reader.nextIfNull()) return null;
+            if (pi != null) {
+                if (!reader.isObject()) throw new JSONException(reader.info("expect '{'"));
+                try {
+                    return (T) Fastjson2StreamingIO.readPojo(reader, pi);
+                } catch (IOException e) {
+                    throw new JSONException(reader.info("JsonObjectReader.readObject() failed"), e);
+                }
+            }
+            if (!reader.nextIfObjectStart()) throw new JSONException(reader.info("expect '{'"));
+            JsonObject jo = new JsonObject();
+            while (!reader.nextIfObjectEnd()) {
+                String key = reader.readFieldName();
+                Object value = reader.readAny();
+                jo.put(key, value);
+            }
+            return (T) jo;
+        }
+    }
+
 
     class JsonArrayReader<T extends JsonArray> implements ObjectReader<T> {
         private final NodeRegistry.PojoInfo pi;
@@ -182,8 +197,8 @@ public interface Fastjson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
+            if (reader.nextIfNull()) return null;
             if (!reader.nextIfArrayStart()) throw new JSONException(reader.info("expect '['"));
-
             T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             while (!reader.nextIfArrayEnd()) {
                 Object value = reader.read(ja.elementType());
@@ -212,6 +227,51 @@ public interface Fastjson2Module {
             return (T) valueCodecInfo.rawToValue(raw);
         }
     }
+
+    class AnyOfReader<T> implements ObjectReader<T> {
+        private final NodeRegistry.AnyOfInfo anyOfInfo;
+        /**
+         * Creates reader for JsonArray or JsonArray subclass.
+         */
+        public AnyOfReader(NodeRegistry.AnyOfInfo anyOfInfo) {
+            this.anyOfInfo = anyOfInfo;
+        }
+
+        /**
+         * Reads one JSON array into framework JsonArray type.
+         */
+        @SuppressWarnings("unchecked")
+        @Override
+        public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
+            if (reader.nextIfNull()) return null;
+            return (T) Fastjson2StreamingIO.readAnyOf(reader, anyOfInfo);
+        }
+    }
+
+    class PojoReader<T> implements ObjectReader<T> {
+        private final NodeRegistry.PojoInfo pi;
+        /**
+         * Creates reader for JsonArray or JsonArray subclass.
+         */
+        public PojoReader(NodeRegistry.PojoInfo pi) {
+            this.pi = pi;
+        }
+
+        /**
+         * Reads one JSON array into framework JsonArray type.
+         */
+        @SuppressWarnings("unchecked")
+        @Override
+        public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
+            if (reader.nextIfNull()) return null;
+            try {
+                return (T) Fastjson2StreamingIO.readPojo(reader, pi);
+            } catch (IOException e) {
+                throw new JSONException(reader.info("PojoReader.readObject() failed"), e);
+            }
+        }
+    }
+
 
 
     /// Write

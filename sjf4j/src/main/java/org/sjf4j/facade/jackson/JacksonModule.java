@@ -24,9 +24,12 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.fastjson2.Fastjson2Module;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.ReflectUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -69,9 +72,21 @@ public interface JacksonModule {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(clazz);
                     }
-                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(clazz);
-                    if (vci != null) {
-                        return new NodeValueDeserializer<>(vci);
+                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    if (ti.anyOfInfo != null) {
+                        return new AnyOfDeserializer<>(ti.anyOfInfo);
+                    }
+                    if (ti.valueCodecInfo != null) {
+                        return new NodeValueDeserializer<>(ti.valueCodecInfo);
+                    }
+                    if (ti.pojoInfo != null) {
+                        for (NodeRegistry.FieldInfo fi : ti.pojoInfo.fields.values()) {
+                            if (fi.anyOfInfo != null) {
+                                if (fi.anyOfInfo.scope == AnyOf.Scope.PARENT) {
+                                    return new PojoDeserializer<>(ti.pojoInfo);
+                                }
+                            }
+                        }
                     }
                     return deserializer;
                 }
@@ -89,10 +104,11 @@ public interface JacksonModule {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
-                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(clazz);
+                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(clazz);
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
                     }
+
                     return serializer;
                 }
             });
@@ -196,9 +212,47 @@ public interface JacksonModule {
          */
         @SuppressWarnings("unchecked")
         @Override
-        public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
+        public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
             Object raw = ctxt.readValue(p, Object.class);
             return (T) valueCodecInfo.rawToValue(raw);
+        }
+    }
+
+    class AnyOfDeserializer<T> extends JsonDeserializer<T> {
+        private final NodeRegistry.AnyOfInfo anyOfInfo;
+        /**
+         * Creates serializer backed by ValueCodec metadata.
+         */
+        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo) {
+            this.anyOfInfo = anyOfInfo;
+        }
+
+        /**
+         * Encodes value via codec and serializes raw value.
+         */
+        @SuppressWarnings("unchecked")
+        @Override
+        public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            return (T) JacksonStreamingIO.readAnyOf(p, anyOfInfo);
+        }
+    }
+
+    class PojoDeserializer<T> extends JsonDeserializer<T> {
+        private final NodeRegistry.PojoInfo pi;
+        /**
+         * Creates serializer backed by ValueCodec metadata.
+         */
+        public PojoDeserializer(NodeRegistry.PojoInfo pi) {
+            this.pi = pi;
+        }
+
+        /**
+         * Encodes value via codec and serializes raw value.
+         */
+        @SuppressWarnings("unchecked")
+        @Override
+        public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            return (T) JacksonStreamingIO.readPojo(p, pi);
         }
     }
 
@@ -259,6 +313,7 @@ public interface JacksonModule {
             serializers.defaultSerializeValue(raw, gen);
         }
     }
+
 
     /// NodeProperty
     /**

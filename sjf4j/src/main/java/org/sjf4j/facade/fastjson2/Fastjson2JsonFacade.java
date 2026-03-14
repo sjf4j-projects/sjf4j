@@ -7,9 +7,7 @@ import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.alibaba.fastjson2.writer.ObjectWriterProvider;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.JsonObject;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 
 import java.io.IOException;
@@ -76,11 +74,6 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         if (this.streamingMode == StreamingMode.PLUGIN_MODULE || this.streamingMode == StreamingMode.AUTO) {
             ObjectReaderProvider readProvider = JSONFactory.getDefaultObjectReaderProvider();
             readProvider.register(new Fastjson2Module.MyReaderModule());
-            this.readerContext.setExtraProcessor((object, key, value) -> {
-                if (object instanceof JsonObject) {
-                    ((JsonObject) object).put(key, value);
-                }
-            });
             ObjectWriterProvider writeProvider = JSONFactory.getDefaultObjectWriterProvider();
             writeProvider.register(new Fastjson2Module.MyWriterModule());
         }
@@ -409,6 +402,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
     }
+
 
 
 
