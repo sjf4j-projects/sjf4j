@@ -155,6 +155,11 @@ public class ReadBenchmark {
         return state.simpleFacade.readNode(JSON_DATA2, User2.class);
     }
 
+    @Benchmark
+    public Object json_simple_facade_pojo() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPlain.class);
+    }
+
     // ----- Jackson baselines -----
     @Benchmark
     public Object json_jackson_native_pojo() throws IOException {

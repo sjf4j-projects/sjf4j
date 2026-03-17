@@ -19,7 +19,6 @@ SJF4J provides **a unified JSON-semantic structural processing layer**,
 delivering consistent APIs for [modeling](https://sjf4j.org/docs/modeling), [parsing](https://sjf4j.org/docs/parsing), 
 [navigation (JSON Path)](https://sjf4j.org/docs/navigation), [transformation (JSON Patch)](https://sjf4j.org/docs/transformation), 
 and [validation (JSON Schema)](https://sjf4j.org/docs/validation) across data formats and native object graphs.
-
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies.
 
@@ -227,6 +226,5 @@ SJF4J began as an exploration of what JSON-Oriented Development might look like 
 
 If you find the project interesting,
 contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~!
-
 
 
