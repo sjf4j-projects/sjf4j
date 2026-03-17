@@ -10,6 +10,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
@@ -291,34 +292,14 @@ public class GsonStreamingIO {
         reader.endObject();
 
         Object pojo = session.finishField();
-        if (deferredParentAnyOfFi != null) {
-            NodeRegistry.AnyOfInfo aoi = deferredParentAnyOfFi.anyOfInfo;
-            String parentKey = aoi.key;
-            if (parentAnyOfValue == UNSET) {
-                Object discriminator = null;
-                NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
-                        ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
-                if (parentFi != null) {
-                    discriminator = parentFi.invokeGetter(pojo);
-                } else if (pi.isJojo) {
-                    discriminator = ((JsonObject) pojo).getNode(parentKey);
-                }
-                if (discriminator != null) {
-                    parentAnyOfValue = discriminator;
-                }
-            }
-            Class<?> targetClazz = aoi.resolveByWhen(parentAnyOfValue == UNSET ? null : parentAnyOfValue);
-            Object vv;
-            if (targetClazz != null) {
-                vv = Sjf4jConfig.global().getNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
-            } else if (aoi.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
-                vv = null;
-            } else {
-                throw new BindingException("AnyOf discriminator has no matching mapping: key='" +
-                        aoi.key + "', value='" + (parentAnyOfValue == UNSET ? null : parentAnyOfValue) + "'");
-            }
-            deferredParentAnyOfFi.invokeSetterIfPresent(pojo, vv);
-        }
+        StreamingIO.applyDeferredParentAnyOf(
+                pojo,
+                pi,
+                deferredParentAnyOfFi,
+                deferredParentAnyOfRaw,
+                parentAnyOfValue,
+                UNSET
+        );
         return pojo;
     }
 
@@ -457,20 +438,12 @@ public class GsonStreamingIO {
     }
 
     private static Object _readArrayWithElementType(JsonReader reader, Class<?> rawClazz,
-                                                      Type valueType, Class<?> valueClazz)
+                                                       Type valueType, Class<?> valueClazz)
             throws IOException {
-        if (reader.peek() == JsonToken.NULL) {
-            reader.nextNull();
+        List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+        if (list == null) {
             return null;
         }
-        List<Object> list = new ArrayList<>();
-        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
-        reader.beginArray();
-        while (reader.hasNext()) {
-            Object value = _readNode(reader, valueType, valueClazz, valueAnyOf);
-            list.add(value);
-        }
-        reader.endArray();
 
         Object array = Array.newInstance(rawClazz.getComponentType(), list.size());
         for (int j = 0, len = list.size(); j < len; j++) {
@@ -484,32 +457,9 @@ public class GsonStreamingIO {
         Class<?> targetClazz;
 
         if (anyOfInfo.hasDiscriminator) {
-            if (anyOfInfo.scope != AnyOf.Scope.SELF) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.scope +
-                        "' is not supported in streaming parser");
-            }
             Object rawNode = _readNode(reader, Object.class, Object.class, null);
-            if (!(rawNode instanceof Map)) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator");
-            }
-
-            Object discriminatorValue = null;
-            if (!anyOfInfo.key.isEmpty()) {
-                discriminatorValue = ((Map<?, ?>) rawNode).get(anyOfInfo.key);
-            } else if (!anyOfInfo.path.isEmpty()) {
-                discriminatorValue = anyOfInfo.compiledPath.getNode(rawNode);
-            }
-            if (discriminatorValue == null) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'");
-            }
-
-            targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
-            if (targetClazz == null) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
-            }
+            targetClazz = StreamingIO.resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
+            if (targetClazz == null) return null;
             return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
         }
 

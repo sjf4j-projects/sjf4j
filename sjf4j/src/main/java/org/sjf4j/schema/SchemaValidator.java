@@ -33,6 +33,10 @@ public final class SchemaValidator {
         this(null, null, null);
     }
 
+    public SchemaValidator(String baseDir) {
+        this(baseDir, null, null);
+    }
+
     /**
      * Creates a validator with base directory, options, and store.
      */
