@@ -198,7 +198,6 @@ Learn more → [Validation (JSON Schema)](https://sjf4j.org/docs/validation)
 ---
 This simple example demonstrates how SJF4J unifies the entire lifecycle of structured data processing under a single JSON-semantic model.
 
-More details: [sjf4j.org](https://sjf4j.org) 
 
 ## Benchmarks
 SJF4J delivers **high performance** with minimal overhead while providing a unified JSON-semantic processing model.
