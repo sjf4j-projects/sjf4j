@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.node.Nodes;
 
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -97,6 +99,29 @@ public class JsonPathTest {
         log.info("path1: {}", path1);
         assertEquals("a.b[0].c", path1.toString());
         assertEquals("$.a.b[0].c", path1.toExpr());
+    }
+
+    @Test
+    public void testCompileCachedDefaultChm() {
+        JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
+        JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
+        assertSame(p1, p2);
+    }
+
+    @Test
+    public void testCompileCachedWithHashMapCache() {
+        Sjf4jConfig previous = Sjf4jConfig.global();
+        try {
+            Sjf4jConfig.global(new Sjf4jConfig.Builder(previous)
+                    .pathCache(PathCache.HashMapPathCache)
+                    .build());
+
+            JsonPath p1 = JsonPath.compileCached("/book/1/title");
+            JsonPath p2 = JsonPath.compileCached("/book/1/title");
+            assertSame(p1, p2);
+        } finally {
+            Sjf4jConfig.global(previous);
+        }
     }
 
 

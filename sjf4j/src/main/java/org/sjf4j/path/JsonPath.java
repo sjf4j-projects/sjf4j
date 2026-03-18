@@ -61,6 +61,15 @@ public class JsonPath {
     }
 
     /**
+     * Compiles with global cache from {@link Sjf4jConfig#global()}.
+     * <p>
+     * Cache implementation is configurable via {@link Sjf4jConfig.Builder#pathCache(PathCache)}.
+     */
+    public static JsonPath compileCached(String expr) {
+        return Sjf4jConfig.global().pathCache.getOrCompile(expr, JsonPath::compile);
+    }
+
+    /**
      * Compiles a JSONPath or JSON Pointer expression into executable segments.
      * <p>
      * Empty input resolves to root. Expressions starting with {@code /} are
@@ -69,7 +78,6 @@ public class JsonPath {
     public static JsonPath compile(String expr) {
         Objects.requireNonNull(expr, "expr");
         expr = expr.trim();
-
         PathSegment[] segments;
         if (expr.isEmpty()) {
             segments = new PathSegment[]{PathSegment.Root.INSTANCE};

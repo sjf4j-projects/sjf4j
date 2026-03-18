@@ -12,6 +12,8 @@ import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.Types;
+import org.sjf4j.path.PathCache;
 import org.sjf4j.supplier.ListSupplier;
 import org.sjf4j.supplier.MapSupplier;
 import org.sjf4j.supplier.SetSupplier;
@@ -71,6 +73,11 @@ public final class Sjf4jConfig {
      */
     public final InstantFormat instantFormat;
 
+    /**
+     * Cache strategy used by {@link org.sjf4j.path.JsonPath#compileCached(String)}.
+     */
+    public final PathCache pathCache;
+
     public final boolean bindingPath;
 
     /**
@@ -87,6 +94,7 @@ public final class Sjf4jConfig {
         this.listSupplier = builder.listSupplier;
         this.setSupplier = builder.setSupplier;
         this.instantFormat = builder.instantFormat;
+        this.pathCache = builder.pathCache;
         this.bindingPath = builder.bindingPath;
     }
 
@@ -232,20 +240,17 @@ public final class Sjf4jConfig {
      */
     public String inspect() {
         return "Sjf4jConfig{" +
-                "jsonFacade=" + _simpleName(getJsonFacade()) +
-                ", yamlFacade=" + _simpleName(getYamlFacade()) +
-                ", propertiesFacade=" + _simpleName(getPropertiesFacade()) +
-                ", nodeFacade=" + _simpleName(getNodeFacade()) +
+                "jsonFacade=" + Types.name(getJsonFacade()) +
+                ", yamlFacade=" + Types.name(getYamlFacade()) +
+                ", propertiesFacade=" + Types.name(getPropertiesFacade()) +
+                ", nodeFacade=" + Types.name(getNodeFacade()) +
                 ", mapSupplier=" + mapSupplier +
                 ", listSupplier=" + listSupplier +
                 ", setSupplier=" + setSupplier +
                 ", instantFormat=" + instantFormat +
+                ", pathCache=" + Types.name(pathCache) +
                 ", bindingPath=" + bindingPath +
                 '}';
-    }
-
-    private static String _simpleName(Object object) {
-        return object == null ? "null" : object.getClass().getSimpleName();
     }
 
 
@@ -263,6 +268,7 @@ public final class Sjf4jConfig {
         private SetSupplier setSupplier = SetSupplier.LinkedHashSetSupplier;
 
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
+        private PathCache pathCache = PathCache.ConcurrentMapPathCache;
         private boolean bindingPath = true;
 
         /**
@@ -283,6 +289,7 @@ public final class Sjf4jConfig {
             this.listSupplier = config.listSupplier;
             this.setSupplier = config.setSupplier;
             this.instantFormat = config.instantFormat;
+            this.pathCache = config.pathCache;
             this.bindingPath = config.bindingPath;
         }
 
@@ -355,6 +362,14 @@ public final class Sjf4jConfig {
         public Builder instantFormat(InstantFormat instantFormat) {
             Objects.requireNonNull(instantFormat, "instantFormat");
             this.instantFormat = instantFormat;
+            return this;
+        }
+        /**
+         * Sets JSONPath compile cache strategy.
+         */
+        public Builder pathCache(PathCache pathCache) {
+            Objects.requireNonNull(pathCache, "pathCache");
+            this.pathCache = pathCache;
             return this;
         }
         /**
