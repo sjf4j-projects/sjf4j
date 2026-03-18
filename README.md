@@ -16,9 +16,9 @@ Beyond JSON, it also supports YAML (via [SnakeYAML](https://github.com/snakeyaml
 and Java Properties (built-in).
 
 SJF4J provides **a unified JSON-semantic structural processing layer**,
-delivering consistent APIs for [modeling](https://sjf4j.org/docs/modeling), [parsing](https://sjf4j.org/docs/parsing), 
-[navigation (JSON Path)](https://sjf4j.org/docs/navigation), [transformation (JSON Patch)](https://sjf4j.org/docs/transformation), 
-and [validation (JSON Schema)](https://sjf4j.org/docs/validation) across data formats and native object graphs.
+delivering consistent APIs for *modeling (OBNT)*, *parsing (JSON/YAML)*, 
+*navigation (JSON Path)*, *transformation (JSON Patch)*, 
+and *validation (JSON Schema)* across data formats and native object graphs.
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies.
 
@@ -65,7 +65,7 @@ The following example, while slightly more elaborate,
 demonstrates the full lifecycle:
 > **Modeling → Parsing → Navigation → Transformation → Validation**
 
-### Modeling in OBNT
+### Modeling
 
 **JOJO (JSON Object Java Object)** extends `JsonObject` and unifies typed Java fields 
 with dynamic JSON properties in a single object model.
@@ -82,7 +82,7 @@ public class Student extends JsonObject {
 
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
-### Parsing from JSON
+### Parsing
 
 Use `Sjf4j` to encode and decode structured data across multiple formats.
 ```java
@@ -112,7 +112,7 @@ student.getInteger("age");          // 18
 
 Learn more → [Parsing (Codec)](https://sjf4j.org/docs/parsing)
 
-### Navigating with JSON Path
+### Navigation
 
 Every OBNT node supports declarative structural navigation, expressive querying,
 and precise mutation via `JSON Path` (RFC 9535) or `JSON Pointer` (RFC 6901).
@@ -129,7 +129,7 @@ student.ensurePutByPath("/friends/0/scores/music", 100);
 
 Learn more → [Navigation (JSON Path)](https://sjf4j.org/docs/navigation)
 
-### Transforming with JSON Patch
+### Transformation
 
 Every OBNT node supports standard-compliant structural updates via `JSON Patch` (RFC 6902).
 ```java
@@ -151,9 +151,9 @@ student.getIntegerByPath("$.scores.physics");   // 91
 
 Learn more → [Transformation (JSON Patch)](https://sjf4j.org/docs/transformation)
 
-### Validating with JSON Schema
+### Validation
 
-Declare `JSON Schema` (Draft 2020-12) constraints with `@ValidJsonSchema` (like Jakarta Bean Validation).
+Declare `JSON Schema` (Draft 2020-12) constraints with `@ValidJsonSchema` (like Jakarta/Bean Validation).
 ```java
 @ValidJsonSchema("""
 {
