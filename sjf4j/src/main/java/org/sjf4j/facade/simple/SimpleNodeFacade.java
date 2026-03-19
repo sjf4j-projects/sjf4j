@@ -28,22 +28,6 @@ import java.util.Set;
  */
 public class SimpleNodeFacade implements NodeFacade {
 
-    private static final class ReadContext {
-        final Type type;
-        final Class<?> rawClazz;
-        final NodeRegistry.AnyOfInfo anyOfInfo;
-        final boolean deepCopy;
-        final PathSegment ps;
-
-        ReadContext(Type type, Class<?> rawClazz, NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
-            this.type = type;
-            this.rawClazz = rawClazz;
-            this.anyOfInfo = anyOfInfo;
-            this.deepCopy = deepCopy;
-            this.ps = ps;
-        }
-    }
-
     /**
      * Converts node into target type.
      */
@@ -52,9 +36,8 @@ public class SimpleNodeFacade implements NodeFacade {
         try {
             Class<?> rawBox = Types.rawBox(type);
             NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
-            ReadContext ctx = new ReadContext(type, rawBox, anyOfInfo, deepCopy,
+            return _readNode(node, type, rawBox, anyOfInfo, deepCopy,
                     Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
-            return _readNode(node, ctx);
         } catch (Exception e) {
             throw new JsonException("Failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
         }
@@ -63,100 +46,97 @@ public class SimpleNodeFacade implements NodeFacade {
     /**
      * Internal read conversion with binding path support.
      */
-    private Object _readNode(Object node, Type type, Class<?> rawClazz, NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
-        return _readNode(node, new ReadContext(type, rawClazz, anyOfInfo, deepCopy, ps));
-    }
-
     @SuppressWarnings("unchecked")
-    private Object _readNode(Object node, ReadContext ctx) {
+    private Object _readNode(Object node, Type type, Class<?> rawClazz,
+                             NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) return null;
 
-            if (ctx.anyOfInfo != null) {
-                return _readAnyOf(node, ctx);
+            if (anyOfInfo != null) {
+                return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
 
-            if (ctx.rawClazz == Object.class || ctx.rawClazz.isInstance(node)) {
-                return ctx.deepCopy ? _deepNode(node, ctx.type, ctx.ps) : node;
+            if (rawClazz == Object.class || rawClazz.isInstance(node)) {
+                return deepCopy ? _deepNode(node, type, ps) : node;
             }
 
-            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(ctx.rawClazz);
+            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
             if (vci != null) {
-                return ctx.rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
+                return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
             }
 
             if (node instanceof String || node instanceof Character) {
-                return _readString(node.toString(), ctx.rawClazz, ctx.ps);
+                return _readString(node.toString(), rawClazz, ps);
             }
             if (node instanceof Enum) {
-                return _readString(((Enum<?>) node).name(), ctx.rawClazz, ctx.ps);
+                return _readString(((Enum<?>) node).name(), rawClazz, ps);
             }
 
             if (node instanceof Number) {
-                if (Number.class.isAssignableFrom(ctx.rawClazz)) {
-                    return Numbers.to((Number) node, ctx.rawClazz);
+                if (Number.class.isAssignableFrom(rawClazz)) {
+                    return Numbers.to((Number) node, rawClazz);
                 }
-                throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + ctx.type + "'", ctx.ps);
+                throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
             }
 
             if (node instanceof Boolean) {
-                if (ctx.rawClazz == Boolean.class) {
+                if (rawClazz == Boolean.class) {
                     return node;
                 }
-                throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + ctx.type + "'", ctx.ps);
+                throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
             }
 
             if (node instanceof Map) {
-                return _readFromMap((Map<String, Object>) node, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromMap((Map<String, Object>) node, rawClazz, type, deepCopy, ps);
             }
 
             if (node instanceof JsonObject) {
-                return _readFromJsonObject((JsonObject) node, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromJsonObject((JsonObject) node, rawClazz, type, deepCopy, ps);
             }
 
             if (node instanceof List) {
-                return _readFromList((List<Object>) node, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromList((List<Object>) node, rawClazz, type, deepCopy, ps);
             }
 
             if (node instanceof JsonArray) {
-                return _readFromJsonArray((JsonArray) node, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromJsonArray((JsonArray) node, rawClazz, type, deepCopy, ps);
             }
 
             if (node.getClass().isArray()) {
-                return _readFromArray(node, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromArray(node, rawClazz, type, deepCopy, ps);
             }
 
             if (node instanceof Set) {
-                return _readFromSet((Set<Object>) node, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromSet((Set<Object>) node, rawClazz, type, deepCopy, ps);
             }
 
             NodeRegistry.PojoInfo oldPi = NodeRegistry.registerPojo(node.getClass()); // source pi
             if (oldPi != null) {
-                return _readFromPojo(node, oldPi, ctx.rawClazz, ctx.type, ctx.deepCopy, ctx.ps);
+                return _readFromPojo(node, oldPi, rawClazz, type, deepCopy, ps);
             }
 
-            throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + ctx.type + "'", ctx.ps);
+            throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
 
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + ctx.type + "'", ctx.ps, e);
+            throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps, e);
         }
     }
 
-    private Object _readAnyOf(Object node, ReadContext ctx) {
+    private Object _readAnyOf(Object node, Class<?> rawClazz,
+                              NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         Class<?> targetClazz;
-        NodeRegistry.AnyOfInfo anyOfInfo = ctx.anyOfInfo;
 
         if (anyOfInfo.hasDiscriminator) {
             if (anyOfInfo.scope != AnyOf.Scope.SELF) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.scope + "' is not supported", ctx.ps);
+                throw new BindingException("AnyOf scope '" + anyOfInfo.scope + "' is not supported", ps);
             }
 
             if (!(node instanceof Map) && !(node instanceof JsonObject)) {
                 if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator", ctx.ps);
+                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator", ps);
             }
 
             Object discriminatorValue;
@@ -170,13 +150,13 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (discriminatorValue == null) {
                 if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'", ctx.ps);
+                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'", ps);
             }
 
             targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
                 if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ctx.ps);
+                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
             }
         } else {
             JsonType jsonType = JsonType.of(node);
@@ -184,10 +164,10 @@ public class SimpleNodeFacade implements NodeFacade {
             if (targetClazz == null) {
                 if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
-                        " for type '" + ctx.rawClazz.getName() + "'", ctx.ps);
+                        " for type '" + rawClazz.getName() + "'", ps);
             }
         }
-        return _readNode(node, targetClazz, Types.rawBox(targetClazz), null, ctx.deepCopy, ctx.ps);
+        return _readNode(node, targetClazz, Types.rawBox(targetClazz), null, deepCopy, ps);
     }
 
     // Object -> deep copied Object
