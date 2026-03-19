@@ -35,8 +35,7 @@ public class SimpleNodeFacade implements NodeFacade {
     public Object readNode(Object node, Type type, boolean deepCopy) {
         try {
             Class<?> rawBox = Types.rawBox(type);
-            NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
-            return _readNode(node, type, rawBox, anyOfInfo, deepCopy,
+            return _readNode(node, type, rawBox, null, deepCopy,
                     Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
         } catch (Exception e) {
             throw new JsonException("Failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
@@ -64,6 +63,10 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
             if (vci != null) {
                 return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
+            }
+            anyOfInfo = ti.anyOfInfo;
+            if (anyOfInfo != null) {
+                return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
 
             if (node instanceof String || node instanceof Character) {
@@ -117,7 +120,6 @@ public class SimpleNodeFacade implements NodeFacade {
             }
 
             throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
-
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
