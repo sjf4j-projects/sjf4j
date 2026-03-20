@@ -117,7 +117,7 @@ public class SimpleExampleTest {
         jo.ensurePutByPath("/aa/bb", "cc");
         // Automatically creates intermediate nodes!! e.g., {"aa":{"bb":"cc"},..}
 
-        jo.ensurePutNonNullByPath("$.scores[3]", 100);
+        jo.ensurePutByPath("$.scores[3]", 100);
         // Supports array index insertion
 
         List<String> tags = jo.findByPath("$.tags[*]", String.class);

@@ -185,13 +185,13 @@ public final class StreamingIO {
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
-            return readPojo(reader, pi);
+            return readPojo(reader, type, rawClazz, pi);
         }
 
         throw new BindingException("Cannot read object value into type '" + rawClazz.getName() + "'");
     }
 
-    public static Object readPojo(StreamingReader reader, NodeRegistry.PojoInfo pi)
+    public static Object readPojo(StreamingReader reader, Type ownerType, Class<?> ownerRawClazz, NodeRegistry.PojoInfo pi)
             throws IOException {
         NodeRegistry.CreatorInfo ci = pi.creatorInfo;
         boolean hasParentAnyOf = pi.hasParentScopeAnyOf;
@@ -204,7 +204,7 @@ public final class StreamingIO {
                 String key = reader.nextName();
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = _readField(reader, fi);
+                    Object vv = _readField(reader, fi, ownerType, ownerRawClazz);
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else if (pi.isJojo) {
                     if (dynamicMap == null) {
@@ -234,7 +234,7 @@ public final class StreamingIO {
 
             int argIdx = session.resolveArgIndex(key);
             if (argIdx >= 0) {
-                Type argType = ci.argTypes[argIdx];
+                Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
                 NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
                 Object argValue = _readNode(reader, argType, argRaw, argAnyOf);
@@ -271,7 +271,7 @@ public final class StreamingIO {
                         continue;
                     }
                 } else {
-                    vv = _readField(reader, fi);
+                    vv = _readField(reader, fi, ownerType, ownerRawClazz);
                 }
 
                 if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
@@ -360,12 +360,21 @@ public final class StreamingIO {
     /**
      * Reads one object field based on field container metadata.
      */
-    private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi)
+    private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi,
+                                     Type ownerType, Class<?> ownerRawClazz)
             throws IOException {
-        if (fi.anyOfInfo != null) {
-            return _readNode(reader, fi.type, fi.rawClazz, fi.anyOfInfo);
+        Type fieldType = Types.resolveMemberType(ownerType, ownerRawClazz, fi.type);
+        Class<?> fieldRaw = fieldType == fi.type ? fi.rawClazz : Types.rawBox(fieldType);
+
+        NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+        if (fieldAnyOf == null && fieldRaw != fi.rawClazz) {
+            fieldAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
         }
-        switch (fi.containerKind) {
+        if (fieldAnyOf != null) {
+            return _readNode(reader, fieldType, fieldRaw, fieldAnyOf);
+        }
+
+        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMapWithValueType(reader, fi.argType, fi.argRawClazz);
             case LIST:
@@ -375,8 +384,7 @@ public final class StreamingIO {
             case ARRAY:
                 return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
-                NodeRegistry.AnyOfInfo typeAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
-                return _readNode(reader, fi.type, fi.rawClazz, typeAnyOf);
+                return _readNode(reader, fieldType, fieldRaw, null);
         }
     }
 

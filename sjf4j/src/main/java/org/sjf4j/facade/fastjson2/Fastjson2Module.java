@@ -45,7 +45,7 @@ public interface Fastjson2Module {
                 return new JsonArrayReader<>(rawClazz);
             }
             if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                return new JsonObjectReader<>(rawClazz);
+                return new JsonObjectReader<>(type, rawClazz);
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.anyOfInfo != null) {
@@ -147,11 +147,13 @@ public interface Fastjson2Module {
     }
 
     class JsonObjectReader<T extends JsonObject> implements ObjectReader<T> {
+        private final Type ownerType;
         private final NodeRegistry.PojoInfo pi;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonObjectReader(Class<?> clazz) {
+        public JsonObjectReader(Type ownerType, Class<?> clazz) {
+            this.ownerType = ownerType;
             this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
         }
 
@@ -165,7 +167,8 @@ public interface Fastjson2Module {
             if (pi != null) {
                 if (!reader.isObject()) throw new JSONException(reader.info("expect '{'"));
                 try {
-                    return (T) Fastjson2StreamingIO.readPojo(reader, pi);
+                    Type resolvedOwnerType = fieldType != null ? fieldType : (ownerType != null ? ownerType : pi.clazz);
+                    return (T) Fastjson2StreamingIO.readPojo(reader, resolvedOwnerType, Types.rawBox(resolvedOwnerType), pi);
                 } catch (IOException e) {
                     throw new JSONException(reader.info("JsonObjectReader.readObject() failed"), e);
                 }
@@ -265,7 +268,8 @@ public interface Fastjson2Module {
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (reader.nextIfNull()) return null;
             try {
-                return (T) Fastjson2StreamingIO.readPojo(reader, pi);
+                Type ownerType = fieldType != null ? fieldType : pi.clazz;
+                return (T) Fastjson2StreamingIO.readPojo(reader, ownerType, Types.rawBox(ownerType), pi);
             } catch (IOException e) {
                 throw new JSONException(reader.info("PojoReader.readObject() failed"), e);
             }

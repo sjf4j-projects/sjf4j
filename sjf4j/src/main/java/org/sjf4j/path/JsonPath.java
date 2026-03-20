@@ -836,7 +836,27 @@ public class JsonPath {
         }
     }
 
-    /// ensurePut
+    /// Put
+
+    public Object put(Object container, Object value) {
+        Objects.requireNonNull(container, "container");
+        Object lastContainer = _findOne(container, -1);
+        if (lastContainer == null) {
+            throw new JsonException("Cannot put value at path '" + this + "': parent container does not exist");
+        }
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
+            return Nodes.putInObject(lastContainer, name, value);
+        } else if (lastToken instanceof PathSegment.Index) {
+            int idx = ((PathSegment.Index) lastToken).index;
+            Nodes.setInArray(lastContainer, idx, value);
+            return null; // No need return old value in List/JsonArray
+        } else {
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; put() expected Name or Index token");
+        }
+    }
 
     /**
      * Ensures intermediate containers exist and writes the value at the last
@@ -863,43 +883,49 @@ public class JsonPath {
     }
 
     /**
-     * Ensures path and writes value only when value is non-null.
-     */
-    public Object ensurePutNonNull(Object container, Object value) {
-        if (null != value) {
-            return ensurePut(container, value);
-        }
-        return getNode(container);
-    }
-
-    /**
      * Ensures the value exists; writes only when current value is null.
      */
     public Object ensurePutIfAbsent(Object container, Object value) {
-        Object old = getNode(container);
-        if (old == null) {
+        Object lastContainer = _findOne(container, -1);
+        if (lastContainer == null) {
             return ensurePut(container, value);
         }
-        return old;
+        PathSegment lastToken = segments[segments.length - 1];
+        if (lastToken instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) lastToken).name;
+            if (!Nodes.containsInObject(lastContainer, name)) {
+                return Nodes.putInObject(lastContainer, name, value);
+            }
+            return null;
+        } else if (lastToken instanceof PathSegment.Index) {
+            int idx = ((PathSegment.Index) lastToken).index;
+            if (!Nodes.containsInArray(lastContainer, idx)) {
+                Nodes.setInArray(lastContainer, idx, value);
+            }
+            return null; // No need return old value in List/JsonArray
+        } else {
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; ensurePut() expected Name or Index token");
+        }
     }
 
-    /**
-     * Computes and stores value when absent at this path.
-     */
-    @SuppressWarnings("unchecked")
-    public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
-        Objects.requireNonNull(container, "container");
-        Objects.requireNonNull(computer, "computer");
-        T old = get(container);
-        if (old == null) {
-            T newNode = computer.apply(this);
-            if (newNode != null) {
-                ensurePut(container, newNode);
-                return newNode;
-            }
-        }
-        return old;
-    }
+//    /**
+//     * Computes and stores value when absent at this path.
+//     */
+//    @SuppressWarnings("unchecked")
+//    public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
+//        Objects.requireNonNull(container, "container");
+//        Objects.requireNonNull(computer, "computer");
+//        T old = get(container);
+//        if (old == null) {
+//            T newNode = computer.apply(this);
+//            if (newNode != null) {
+//                ensurePut(container, newNode);
+//                return newNode;
+//            }
+//        }
+//        return old;
+//    }
 
     /// has
 
@@ -918,15 +944,15 @@ public class JsonPath {
      */
     public boolean contains(Object container) {
         Objects.requireNonNull(container, "container");
-        Object penult = _findOne(container, -1);
-        if (penult == null) return false;
+        Object lastContainer = _findOne(container, -1);
+        if (lastContainer == null) return false;
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
-            return Nodes.containsInObject(penult, name);
+            return Nodes.containsInObject(lastContainer, name);
         } else if (lastToken instanceof PathSegment.Index) {
             int index = ((PathSegment.Index) lastToken).index;
-            return Nodes.containsInArray(penult, index);
+            return Nodes.containsInArray(lastContainer, index);
         } else if (lastToken instanceof PathSegment.Append) {
             return false;
         } else {
@@ -945,19 +971,19 @@ public class JsonPath {
      */
     public void add(Object container, Object value) {
         Objects.requireNonNull(container, "container");
-        Object penult = _findOne(container, -1);
-        if  (penult == null)
-            throw new JsonException("Parent container at the penultimate path token does not exist");
+        Object lastContainer = _findOne(container, -1);
+        if  (lastContainer == null)
+            throw new JsonException("Cannot add value at path '" + this + "': parent container does not exist");
 
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
-            Nodes.putInObject(penult, name, value);
+            Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             int idx = ((PathSegment.Index) lastToken).index;
-            Nodes.addInArray(penult, idx, value);
+            Nodes.addInArray(lastContainer, idx, value);
         } else if (lastToken instanceof PathSegment.Append) {
-            Nodes.addInArray(penult, value);
+            Nodes.addInArray(lastContainer, value);
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; add() expected Name, Index, or Append token");
@@ -971,23 +997,23 @@ public class JsonPath {
      */
     public Object replace(Object container, Object value) {
         Objects.requireNonNull(container, "container");
-        Object penult = _findOne(container, -1);
-        if  (penult == null)
-            throw new JsonException("Parent container at the penultimate path token does not exist");
+        Object lastContainer = _findOne(container, -1);
+        if  (lastContainer == null)
+            throw new JsonException("Cannot replace value at path '" + this + "': parent container does not exist");
 
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
-            if (!Nodes.containsInObject(penult, name)) {
+            if (!Nodes.containsInObject(lastContainer, name)) {
                 throw new JsonException("Cannot replace value at non-existent path '" + this + "'");
             }
-            return Nodes.putInObject(penult, name, value);
+            return Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             int idx = ((PathSegment.Index) lastToken).index;
-            if (!Nodes.containsInArray(penult, idx)) {
+            if (!Nodes.containsInArray(lastContainer, idx)) {
                 throw new JsonException("Cannot replace value at non-existent path '" + this + "'");
             }
-            return Nodes.setInArray(penult, idx, value);
+            return Nodes.setInArray(lastContainer, idx, value);
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; replace() expected Name or Index token");
@@ -1001,16 +1027,16 @@ public class JsonPath {
      */
     public Object remove(Object container) {
         Objects.requireNonNull(container, "container");
-        Object penult = _findOne(container, -1);
-        if  (penult == null) return null;
+        Object lastContainer = _findOne(container, -1);
+        if  (lastContainer == null) return null;
 
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
-            return Nodes.removeInObject(penult, name);
+            return Nodes.removeInObject(lastContainer, name);
         } else if (lastToken instanceof PathSegment.Index) {
             int index = ((PathSegment.Index) lastToken).index;
-            return Nodes.removeInArray(penult, index);
+            return Nodes.removeInArray(lastContainer, index);
         } else if (lastToken instanceof PathSegment.Append) {
             return null;
         } else {

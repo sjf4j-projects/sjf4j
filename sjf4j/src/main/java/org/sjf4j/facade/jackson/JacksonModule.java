@@ -1,7 +1,6 @@
 package org.sjf4j.facade.jackson;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -30,8 +29,10 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.fastjson2.Fastjson2Module;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,9 @@ public interface JacksonModule {
                                                               BeanDescription beanDesc,
                                                               JsonDeserializer<?> deserializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
+                    if (JsonObject.class.isAssignableFrom(clazz)) {
+                        return new JsonObjectDeserializer<>(beanDesc.getType());
+                    }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(clazz);
                     }
@@ -114,6 +118,45 @@ public interface JacksonModule {
             });
         }
 
+    }
+
+
+    class JsonObjectDeserializer<T extends JsonObject> extends JsonDeserializer<T> {
+        private final Type ownerType;
+        private final Class<?> ownerRawClazz;
+        private final NodeRegistry.PojoInfo pi;
+
+        public JsonObjectDeserializer(JavaType javaType) {
+            this.ownerType = _toType(javaType);
+            this.ownerRawClazz = Types.rawBox(ownerType);
+            this.pi = ownerRawClazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(ownerRawClazz);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            if (pi == null) {
+                Object value = ctxt.readValue(p, Object.class);
+                if (value == null) return null;
+                if (value instanceof JsonObject) return (T) value;
+                if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
+                throw new IOException("Expected object value for JsonObject, but got " + value.getClass().getName());
+            }
+            return (T) JacksonStreamingIO.readPojo(p, ownerType, ownerRawClazz, pi);
+        }
+
+        private static Type _toType(JavaType javaType) {
+            if (javaType == null) return Object.class;
+            Class<?> raw = javaType.getRawClass();
+            if (raw == null) return Object.class;
+            int n = javaType.containedTypeCount();
+            if (n <= 0) return raw;
+            Type[] args = new Type[n];
+            for (int i = 0; i < n; i++) {
+                args[i] = _toType(javaType.containedType(i));
+            }
+            return new Types.ParameterizedTypeImpl(raw, args, raw.getDeclaringClass());
+        }
     }
 
 
@@ -252,7 +295,7 @@ public interface JacksonModule {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) JacksonStreamingIO.readPojo(p, pi);
+            return (T) JacksonStreamingIO.readPojo(p, pi.clazz, pi.clazz, pi);
         }
     }
 

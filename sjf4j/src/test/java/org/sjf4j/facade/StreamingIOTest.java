@@ -15,11 +15,14 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.node.TypeReference;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,6 +66,34 @@ public class StreamingIOTest {
     static class UserJojo extends JsonObject {
         String name;
         List<UserJojo> friends;
+    }
+
+    @Getter
+    @Setter
+    static class GenericBody {
+        String name;
+        int age;
+    }
+
+    static class PatchResponse<T> extends JsonObject {
+        int code;
+        String msg;
+        T body;
+    }
+
+    static class PatchResponseWithCreator<T> extends JsonObject {
+        final int code;
+        final String msg;
+        final T body;
+
+        @NodeCreator
+        PatchResponseWithCreator(@NodeProperty("code") int code,
+                                 @NodeProperty("msg") String msg,
+                                 @NodeProperty("body") T body) {
+            this.code = code;
+            this.msg = msg;
+            this.body = body;
+        }
     }
 
     @Getter
@@ -273,6 +305,139 @@ public class StreamingIOTest {
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
         assertThrows(JsonException.class, () -> Sjf4j.fromJson(json, ParentZooPath.class));
+    }
+
+    private static void assertAnyOfByDiscriminatorOnField() {
+        String json = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}";
+        Zoo zoo = Sjf4j.fromJson(json, Zoo.class);
+        assertNotNull(zoo);
+        assertTrue(zoo.pet instanceof Cat);
+        assertEquals("Mimi", zoo.pet.getName());
+        assertEquals(9, ((Cat) zoo.pet).getLives());
+    }
+
+    private static void assertAnyOfByJsonTypeOnRoot() {
+        Poly p1 = Sjf4j.fromJson("{\"a\":1}", Poly.class);
+        Poly p2 = Sjf4j.fromJson("[1,2,3]", Poly.class);
+        assertTrue(p1 instanceof PolyObj);
+        assertTrue(p2 instanceof PolyArr);
+    }
+
+    private static void assertAnyOfParentDiscriminatorLateCase() {
+        String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
+        ParentZoo zoo = Sjf4j.fromJson(json, ParentZoo.class);
+        assertNotNull(zoo);
+        assertTrue(zoo.pet instanceof Dog);
+        assertEquals("Lucky", zoo.pet.getName());
+        assertEquals(3, ((Dog) zoo.pet).getBark());
+    }
+
+    @Test
+    void testAnyOfPluginModuleByDiscriminatorOnFieldAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByDiscriminatorOnField();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByDiscriminatorOnField();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByDiscriminatorOnField();
+    }
+
+    @Test
+    void testAnyOfPluginModuleByJsonTypeOnRootAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByJsonTypeOnRoot();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByJsonTypeOnRoot();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByJsonTypeOnRoot();
+    }
+
+    @Test
+    void testAnyOfPluginModuleParentDiscriminatorLateAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfParentDiscriminatorLateCase();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfParentDiscriminatorLateCase();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfParentDiscriminatorLateCase();
+    }
+
+    private static void assertGenericPatchResponse() {
+        String json = "{\"code\":200,\"msg\":\"ok\",\"body\":{\"name\":\"Han\",\"age\":18}}";
+        PatchResponse<GenericBody> response = Sjf4j.fromJson(json, new TypeReference<PatchResponse<GenericBody>>() {});
+        assertEquals(200, response.code);
+        assertEquals("ok", response.msg);
+        assertInstanceOf(GenericBody.class, response.body);
+        assertEquals("Han", response.body.name);
+        assertEquals(18, response.body.age);
+    }
+
+    private static void assertGenericPatchResponseWithCreator() {
+        String json = "{\"code\":200,\"msg\":\"ok\",\"body\":{\"name\":\"Han\",\"age\":18}}";
+        PatchResponseWithCreator<GenericBody> response = Sjf4j.fromJson(json,
+                new TypeReference<PatchResponseWithCreator<GenericBody>>() {});
+        assertEquals(200, response.code);
+        assertEquals("ok", response.msg);
+        assertInstanceOf(GenericBody.class, response.body);
+        assertEquals("Han", response.body.name);
+        assertEquals(18, response.body.age);
+    }
+
+    @Test
+    void testGenericJojoBindingSharedIo() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+    }
+
+    @Test
+    void testGenericJojoBindingExclusiveIo() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+    }
+
+    @Test
+    void testGenericJojoBindingPluginModuleJackson() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+    }
+
+    @Test
+    void testGenericJojoBindingPluginModuleGson() {
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
+    }
+
+    @Test
+    void testGenericJojoBindingPluginModuleFastjson2() {
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertGenericPatchResponse();
+        assertGenericPatchResponseWithCreator();
     }
 
 

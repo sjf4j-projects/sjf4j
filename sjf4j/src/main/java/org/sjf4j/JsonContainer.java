@@ -833,25 +833,22 @@ public abstract class JsonContainer {
     
     // Put by path
 
-    /**
-     * Ensures path containers exist and puts value.
-     */
-    public void ensurePutByPath(String path, Object value) {
-        JsonPath.compile(path).ensurePut(this, value);
+    public Object putByPath(String path, Object value) {
+        return JsonPath.compile(path).put(this, value);
     }
 
     /**
-     * Ensures path and puts value only when non-null.
+     * Ensures path containers exist and puts value.
      */
-    public void ensurePutNonNullByPath(String path, Object value) {
-        JsonPath.compile(path).ensurePutNonNull(this, value);
+    public Object ensurePutByPath(String path, Object value) {
+        return JsonPath.compile(path).ensurePut(this, value);
     }
 
     /**
      * Ensures path and puts value when absent.
      */
-    public void ensurePutIfAbsentByPath(String path, Object value) {
-        JsonPath.compile(path).ensurePutIfAbsent(this, value);
+    public Object ensurePutIfAbsentByPath(String path, Object value) {
+        return JsonPath.compile(path).ensurePutIfAbsent(this, value);
     }
 
     /**

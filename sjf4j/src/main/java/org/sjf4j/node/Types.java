@@ -234,6 +234,32 @@ public class Types {
     }
 
     /**
+     * Resolves a member-declared type (field/ctor arg) against the target owner type.
+     */
+    public static Type resolveMemberType(Type ownerType, Class<?> ownerRawClass, Type memberType) {
+        if (memberType == null) return Object.class;
+        if (memberType instanceof Class<?>) return memberType;
+        if (ownerType == null || ownerRawClass == null) return memberType;
+
+        TypeVariable<?>[] typeVars = ownerRawClass.getTypeParameters();
+        if (typeVars.length == 0) return memberType;
+
+        // Raw owner type (no concrete generic args): treat unresolved vars as Object.
+        if (!(ownerType instanceof ParameterizedType)) {
+            if (memberType instanceof TypeVariable<?>) return Object.class;
+            Map<TypeVariable<?>, Type> unresolved = new HashMap<>(typeVars.length);
+            for (TypeVariable<?> typeVar : typeVars) unresolved.put(typeVar, Object.class);
+            return resolveType(memberType, unresolved);
+        }
+
+        Map<TypeVariable<?>, Type> typeMap = new HashMap<>();
+        for (int i = 0; i < typeVars.length; i++) {
+            typeMap.put(typeVars[i], resolveTypeArgument(ownerType, ownerRawClass, i));
+        }
+        return resolveType(memberType, typeMap);
+    }
+
+    /**
      * Resolves nested type variables in a Type tree.
      */
     private static Type resolveType(Type type, Map<TypeVariable<?>, Type> typeMap) {

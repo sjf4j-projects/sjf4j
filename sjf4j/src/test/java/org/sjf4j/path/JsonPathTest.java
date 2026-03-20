@@ -241,9 +241,8 @@ public class JsonPathTest {
         assertEquals(999, jo.getIntegerByPath("$.array[1]"));
 
         JsonPath path3 = JsonPath.compile("$.a.d");
-        path3.ensurePutNonNull(jo, "value");
+        path3.ensurePut(jo, "value");
         assertEquals("value", jo.getStringByPath("$.a.d"));
-        path3.ensurePutNonNull(jo, null);
         assertEquals("value", jo.getStringByPath("$.a.d")); // should not be overwritten
 
         JsonPath path4 = JsonPath.compile("$.a.e");

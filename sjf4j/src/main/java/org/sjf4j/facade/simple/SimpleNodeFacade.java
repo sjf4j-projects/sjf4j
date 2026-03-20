@@ -399,12 +399,13 @@ public class SimpleNodeFacade implements NodeFacade {
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null && !pi.isJajo) {
-            return _readPojoFromObjectEntries(source.entries(), rawClazz, pi, deepCopy, ps);
+            return _readPojoFromObjectEntries(source.entries(), type, rawClazz, pi, deepCopy, ps);
         }
         throw new BindingException("Cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
     }
 
     private Object _readPojoFromObjectEntries(Iterable<Map.Entry<String, Object>> entries,
+                                              Type type,
                                               Class<?> rawClazz,
                                               NodeRegistry.PojoInfo pi,
                                               boolean deepCopy,
@@ -434,7 +435,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             if (argIdx >= 0) {
                 assert args != null;
-                Type argType = ci.argTypes[argIdx];
+                Type argType = Types.resolveMemberType(type, rawClazz, ci.argTypes[argIdx]);
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                 Class<?> argRaw = Types.rawBox(argType);
                 NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
@@ -453,7 +454,13 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
             if (fi != null) {
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
-                Object vv = _readNode(rawValue, fi.type, fi.rawClazz, fi.anyOfInfo, deepCopy, cps);
+                Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
+                Class<?> fieldRaw = Types.rawBox(fieldType);
+                NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+                if (fieldRaw != fi.rawClazz || fieldType != fi.type) {
+                    fieldAnyOf = NodeRegistry.registerTypeInfo(fieldRaw).anyOfInfo;
+                }
+                Object vv = _readNode(rawValue, fieldType, fieldRaw, fieldAnyOf, deepCopy, cps);
                 if (pojo != null) {
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else {
@@ -654,7 +661,7 @@ public class SimpleNodeFacade implements NodeFacade {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
                 sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
-            return _readPojoFromObjectEntries(sourceValues.entrySet(), rawClazz, pi, deepCopy, ps);
+            return _readPojoFromObjectEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
         }
         throw new BindingException("Cannot convert POJO to '" + rawClazz.getName() + "'", ps);
     }

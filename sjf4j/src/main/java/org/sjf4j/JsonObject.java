@@ -1513,23 +1513,21 @@ public class JsonObject extends JsonContainer {
          * Ensures path containers and puts value by path.
          */
         public Builder putByPath(String path, Object value) {
-            jo.ensurePutByPath(path, value);
+            jo.putByPath(path, value);
             return this;
         }
-        /**
-         * Ensures path and puts non-null value by path.
-         */
-        public Builder putNonNullByPath(String path, Object value) {
-            jo.ensurePutNonNullByPath(path, value);
-            return this;
-        }
-        /**
-         * Ensures path and puts value when absent by path.
-         */
-        public Builder putIfAbsentByPath(String path, Object value) {
+
+        public Builder ensurePutIfAbsentByPath(String path, Object value) {
             jo.ensurePutIfAbsentByPath(path, value);
             return this;
         }
+
+        public Builder ensurePutByPath(String path, Object value) {
+            jo.ensurePutByPath(path, value);
+            return this;
+        }
+
+
         /**
          * Returns the built JsonObject.
          */

@@ -587,9 +587,9 @@ class JsonObjectTest {
         
         // test path operations
         JsonObject jo2 = JsonObject.builder()
-                .putByPath("$.user.name", "Bob")
-                .putNonNullByPath("$.user.age", 30)
-                .putIfAbsentByPath("$.user.email", "bob@example.com")
+                .ensurePutByPath("$.user.name", "Bob")
+                .putByPath("$.user.age", 30)
+                .putByPath("$.user.email", "bob@example.com")
                 .build();
         
         assertEquals("Bob", jo2.getStringByPath("$.user.name"));

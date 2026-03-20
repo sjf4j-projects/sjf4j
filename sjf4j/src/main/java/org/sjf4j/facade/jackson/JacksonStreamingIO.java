@@ -52,7 +52,7 @@ public class JacksonStreamingIO {
      */
     public static Object readNode(JsonParser parser, Type type) throws IOException {
         Class<?> rawBox = Types.rawBox(type);
-        NodeRegistry.AnyOfInfo anyOfInfo = _anyOfInfo(rawBox);
+        NodeRegistry.AnyOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).anyOfInfo;
         return _readNode(parser, type, rawBox, anyOfInfo);
     }
 
@@ -240,13 +240,13 @@ public class JacksonStreamingIO {
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
         if (pi != null && !pi.isJajo) {
-            return readPojo(parser, pi);
+            return readPojo(parser, type, rawClazz, pi);
         }
 
         throw new BindingException("Cannot read object value into type " + rawClazz.getName());
     }
 
-    public static Object readPojo(JsonParser parser, NodeRegistry.PojoInfo pi)
+    public static Object readPojo(JsonParser parser, Type ownerType, Class<?> ownerRawClazz, NodeRegistry.PojoInfo pi)
             throws IOException {
         NodeRegistry.CreatorInfo ci = pi.creatorInfo;
         boolean hasParentAnyOf = pi.hasParentScopeAnyOf;
@@ -261,7 +261,7 @@ public class JacksonStreamingIO {
 
                 NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
                 if (fi != null) {
-                    Object vv = _readField(parser, fi);
+                    Object vv = _readField(parser, fi, ownerType, ownerRawClazz);
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else if (pi.isJojo) {
                     if (dynamicMap == null) {
@@ -292,9 +292,9 @@ public class JacksonStreamingIO {
 
             int argIdx = session.resolveArgIndex(key);
             if (argIdx >= 0) {
-                Type argType = ci.argTypes[argIdx];
+                Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
-                NodeRegistry.AnyOfInfo argAnyOf = _anyOfInfo(argRaw);
+                NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
                 Object argValue = _readNode(parser, argType, argRaw, argAnyOf);
                 session.acceptResolvedField(argIdx, argValue, null);
                 if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
@@ -329,7 +329,7 @@ public class JacksonStreamingIO {
                         continue;
                     }
                 } else {
-                    vv = _readField(parser, fi);
+                    vv = _readField(parser, fi, ownerType, ownerRawClazz);
                 }
                 if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
                     parentAnyOfValue = vv;
@@ -396,7 +396,7 @@ public class JacksonStreamingIO {
             Class<?> elemRaw = Types.box(elemType);
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                NodeRegistry.AnyOfInfo elemAnyOf = _anyOfInfo(elemRaw);
+                NodeRegistry.AnyOfInfo elemAnyOf = NodeRegistry.registerTypeInfo(elemRaw).anyOfInfo;
                 Object value = _readNode(parser, elemType, elemRaw, elemAnyOf);
                 ja.add(value);
             }
@@ -415,12 +415,21 @@ public class JacksonStreamingIO {
         throw new BindingException("Cannot read array value into type " + rawClazz.getName());
     }
 
-    private static Object _readField(JsonParser parser, NodeRegistry.FieldInfo fi)
+    private static Object _readField(JsonParser parser, NodeRegistry.FieldInfo fi,
+                                     Type ownerType, Class<?> ownerRawClazz)
             throws IOException {
-        if (fi.anyOfInfo != null) {
-            return _readNode(parser, fi.type, fi.rawClazz, fi.anyOfInfo);
+        Type fieldType = Types.resolveMemberType(ownerType, ownerRawClazz, fi.type);
+        Class<?> fieldRaw = fieldType == fi.type ? fi.rawClazz : Types.rawBox(fieldType);
+
+        NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
+        if (fieldAnyOf == null && fieldRaw != fi.rawClazz) {
+            fieldAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
         }
-        switch (fi.containerKind) {
+        if (fieldAnyOf != null) {
+            return _readNode(parser, fieldType, fieldRaw, fieldAnyOf);
+        }
+
+        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMapWithValueType(parser, fi.argType, fi.argRawClazz);
             case LIST:
@@ -430,8 +439,7 @@ public class JacksonStreamingIO {
             case ARRAY:
                 return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
-                NodeRegistry.AnyOfInfo typeAnyOf = _anyOfInfo(fi.rawClazz);
-                return _readNode(parser, fi.type, fi.rawClazz, typeAnyOf);
+                return _readNode(parser, fieldType, fieldRaw, null);
         }
     }
 
@@ -443,7 +451,7 @@ public class JacksonStreamingIO {
             return null;
         }
         Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_OBJECT) {
             String key = parser.currentName();
@@ -463,7 +471,7 @@ public class JacksonStreamingIO {
             return null;
         }
         List<Object> list = new ArrayList<>();
-        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
@@ -481,7 +489,7 @@ public class JacksonStreamingIO {
             return null;
         }
         Set<Object> set = Sjf4jConfig.global().setSupplier.create();
-        NodeRegistry.AnyOfInfo valueAnyOf = _anyOfInfo(valueClazz);
+        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
@@ -539,13 +547,6 @@ public class JacksonStreamingIO {
         if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
         if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
         return JsonType.UNKNOWN;
-    }
-
-    private static NodeRegistry.AnyOfInfo _anyOfInfo(Class<?> rawClazz) {
-        if (rawClazz == null) {
-            return null;
-        }
-        return NodeRegistry.registerTypeInfo(rawClazz).anyOfInfo;
     }
 
     /// Reader
