@@ -10,6 +10,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,8 +25,8 @@ public final class SchemaValidator {
 //    private final String baseDir;
     private final URI baseUri;
     private final SchemaStore schemaStore;
-    private final ValidationOptions defaultOptions;
-    private final Map<Class<?>, JsonSchema> pojoSchemaMapping = new ConcurrentHashMap<>();
+    private final ValidationOptions options;
+    private final Map<Class<?>, List<JsonSchema>> pojoSchemaChainMapping = new ConcurrentHashMap<>();
 
     /**
      * Creates validator with default configuration.
@@ -42,7 +44,7 @@ public final class SchemaValidator {
      */
     public SchemaValidator(String baseDir, ValidationOptions options, SchemaStore store) {
         this.baseUri = resolveBaseUri(baseDir);
-        this.defaultOptions = options == null ? ValidationOptions.DEFAULT : options;
+        this.options = options == null ? ValidationOptions.FAILFAST_STRICT : options;
         this.schemaStore = store == null ? new SchemaStore() : store;
     }
 
@@ -56,14 +58,38 @@ public final class SchemaValidator {
         if (pojo == null) return ValidationResult.VALID;
         Class<?> pojoClazz = pojo.getClass();
 
-        ValidJsonSchema anno = pojoClazz.getAnnotation(ValidJsonSchema.class);
-        if (anno == null) return ValidationResult.VALID;
+        List<JsonSchema> schemaChain = getOrLoadSchemaChain(pojoClazz);
+        if (schemaChain.isEmpty()) return ValidationResult.VALID;
 
-        JsonSchema schema = pojoSchemaMapping.computeIfAbsent(pojoClazz,
-                (k) -> loadPojoSchema(k, anno));
+        for (JsonSchema schema : schemaChain) {
+            ValidationResult result = schema.validate(pojo, options);
+            if (!result.isValid()) return result;
+        }
+        return ValidationResult.VALID;
+    }
 
-        ValidationOptions options = optionsFrom(anno);
-        return schema.validate(pojo, options);
+    private List<JsonSchema> getOrLoadSchemaChain(Class<?> pojoClazz) {
+        List<JsonSchema> chain = pojoSchemaChainMapping.get(pojoClazz);
+        if (chain != null) return chain;
+        List<JsonSchema> loaded = loadSchemaChain(pojoClazz);
+        pojoSchemaChainMapping.put(pojoClazz, loaded);
+        return loaded;
+    }
+
+    private List<JsonSchema> loadSchemaChain(Class<?> pojoClazz) {
+        List<JsonSchema> chain = new ArrayList<>();
+
+        Class<?> parent = pojoClazz.getSuperclass();
+        if (parent != null && parent != Object.class) {
+            chain.addAll(getOrLoadSchemaChain(parent));
+        }
+
+        ValidJsonSchema anno = pojoClazz.getDeclaredAnnotation(ValidJsonSchema.class);
+        if (anno != null) {
+            chain.add(loadPojoSchema(pojoClazz, anno));
+        }
+
+        return chain;
     }
 
     /**
@@ -124,21 +150,6 @@ public final class SchemaValidator {
         if (baseDir == null) return DEFAULT_BASE_URI;
         if (!baseDir.endsWith("/")) baseDir += "/";
         return DEFAULT_BASE_URI.resolve(baseDir);
-    }
-
-    /**
-     * Merges annotation options with validator defaults.
-     */
-    private ValidationOptions optionsFrom(ValidJsonSchema anno) {
-        boolean failFast = anno.failFast() || defaultOptions.isFailFast();
-        boolean strictFormat = anno.strictFormat() || defaultOptions.isStrictFormat();
-        if (failFast == defaultOptions.isFailFast() && strictFormat == defaultOptions.isStrictFormat()) {
-            return defaultOptions;
-        }
-        return new ValidationOptions.Builder()
-                .failFast(failFast)
-                .strictFormats(strictFormat)
-                .build();
     }
 
     /**

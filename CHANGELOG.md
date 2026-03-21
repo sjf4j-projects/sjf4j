@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `JsonPath.compileCached(String)` to provide an explicit cached compile path.
 - Added `PathCache` interface with built-in `ConcurrentHashMap` as default implementation.
 
+### Changed
+- Changed `SchemaValidator` to validate `@ValidJsonSchema` along class inheritance chains (parent and child annotations both applied).
+
 ## [1.1.5] - 2026.03.11
 ### Added
 - Added `JSON-P` facade integration with runtime auto-detection in `FacadeFactory`.

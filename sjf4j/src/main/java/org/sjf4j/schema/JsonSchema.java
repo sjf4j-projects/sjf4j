@@ -53,7 +53,7 @@ public interface JsonSchema {
      * Validates and throws if invalid.
      */
     default void validateOrThrow(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAIL_FAST);
+        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
         if (!result.isValid()) throw new ValidationException(result);
     }
 
@@ -61,7 +61,7 @@ public interface JsonSchema {
      * Returns true when the node is valid.
      */
     default boolean isValid(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAIL_FAST);
+        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
         return result.isValid();
     }
 
@@ -69,7 +69,7 @@ public interface JsonSchema {
      * Validates with fail-fast options.
      */
     default ValidationResult validateFailFast(Object node) {
-        return validate(node, ValidationOptions.FAIL_FAST);
+        return validate(node, ValidationOptions.FAILFAST);
     }
 
     /**

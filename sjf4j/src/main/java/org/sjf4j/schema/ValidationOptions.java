@@ -29,7 +29,8 @@ public final class ValidationOptions {
     public boolean isFailFast() {return failFast;}
 
     public static final ValidationOptions DEFAULT = new Builder().build();
-    public static final ValidationOptions FAIL_FAST = new Builder().failFast(true).build();
+    public static final ValidationOptions FAILFAST = new Builder().failFast(true).build();
+    public static final ValidationOptions FAILFAST_STRICT = new Builder().failFast(true).strictFormats(true).build();
 
 
     // ---------------------------

@@ -13,6 +13,4 @@ import java.lang.annotation.Target;
 public @interface ValidJsonSchema {
     String value() default "";
     String ref() default "";
-    boolean failFast() default true;
-    boolean strictFormat() default true;
 }

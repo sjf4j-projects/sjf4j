@@ -7,10 +7,10 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -19,7 +19,7 @@ import java.util.Set;
  * Supports canonical URI and alias mappings pointing to the same ObjectSchema.
  */
 public class SchemaStore {
-    private final Map<URI, ObjectSchema> mixedUriSchemas = new HashMap<>();
+    private final Map<URI, ObjectSchema> mixedUriSchemas = new ConcurrentHashMap<>();
 //    private final ArrayList<ObjectSchema> schemas = new ArrayList<>();
 
     /**
@@ -103,7 +103,7 @@ public class SchemaStore {
             throw new SchemaException("Invalid schema: schema must be object (not true or false)");
         ObjectSchema os = (ObjectSchema) schema;
         URI canonicalUri = os.getResolvedUri();
-        ObjectSchema oldOs = mixedUriSchemas.put(uri, os);
+        ObjectSchema oldOs = mixedUriSchemas.putIfAbsent(uri, os);
         if (oldOs != null) {
             if (uri.equals(canonicalUri)) {
                 throw new SchemaException("Duplicate schema uri: " + canonicalUri);
@@ -122,7 +122,7 @@ public class SchemaStore {
         if (other != null) {
             for (Map.Entry<URI, ObjectSchema> entry : other.mixedUriSchemas.entrySet()) {
                 ObjectSchema os = entry.getValue();
-                ObjectSchema oldOs = mixedUriSchemas.put(entry.getKey(), os);
+                ObjectSchema oldOs = mixedUriSchemas.putIfAbsent(entry.getKey(), os);
                 if (oldOs != null && !oldOs.getResolvedUri().equals(os.getResolvedUri())) {
                     throw new SchemaException("Duplicate schema uri: " + os.getResolvedUri());
                 }

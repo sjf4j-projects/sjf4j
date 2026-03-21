@@ -39,7 +39,7 @@ public class ValidJsonSchemaTest {
         public String code;
     }
 
-    @ValidJsonSchema(ref = "domain.schema.json#User", strictFormat = true)
+    @ValidJsonSchema(ref = "domain.schema.json#User")
     public static class AnchoredUser {
         public String name;
         public String email;
@@ -100,7 +100,9 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testAnchoredSchemaOnClass() {
-        SchemaValidator validator = new SchemaValidator();
+        SchemaValidator validator = new SchemaValidator(null,
+                new ValidationOptions.Builder().strictFormats(true).build(),
+                null);
         AnchoredUser ok = new AnchoredUser();
         ok.name = "han";
         ok.email = "han@example.com";
@@ -157,7 +159,9 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testPointerRefInSchema() {
-        SchemaValidator validator = new SchemaValidator();
+        SchemaValidator validator = new SchemaValidator(null,
+                new ValidationOptions.Builder().strictFormats(true).build(),
+                null);
         PointerRefUser ok = new PointerRefUser();
         ok.name = "han";
         ok.email = "han@example.com";
@@ -252,19 +256,70 @@ public class ValidJsonSchemaTest {
 
 
     @ValidJsonSchema(
-            value = "{\"type\":\"object\",\"properties\":{\"email\":{\"type\":\"string\",\"format\":\"email\"}}}",
-            strictFormat = false
+            value = "{\"type\":\"object\",\"properties\":{\"email\":{\"type\":\"string\",\"format\":\"email\"}}}"
     )
     public static class FormatUser {
         public String email;
     }
 
+    @ValidJsonSchema("{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"integer\"},\"b\":{\"type\":\"string\"}}}")
+    public static class ParentAnnotated {
+        public Integer a;
+        public String b;
+    }
+
+    public static class ChildInheritOnly extends ParentAnnotated {
+        public Boolean c;
+    }
+
+    @ValidJsonSchema("{\"type\":\"object\",\"required\":[\"c\"],\"properties\":{\"c\":{\"type\":\"boolean\"}}}")
+    public static class ChildAnnotated extends ParentAnnotated {
+        public Boolean c;
+    }
+
     @Test
     public void testDefaultStrictFormatDisabled() {
-        SchemaValidator validator = new SchemaValidator();
+        SchemaValidator validator = new SchemaValidator(null, ValidationOptions.DEFAULT, null);
         FormatUser user = new FormatUser();
         user.email = "not-email";
         assertTrue(validator.validate(user).isValid());
+    }
+
+    @Test
+    public void testInheritedSchemaFromParentClass() {
+        SchemaValidator validator = new SchemaValidator();
+
+        ChildInheritOnly ok = new ChildInheritOnly();
+        ok.a = 1;
+        ok.b = "x";
+        ok.c = true;
+        assertTrue(validator.validate(ok).isValid());
+
+        ChildInheritOnly bad = new ChildInheritOnly();
+        bad.b = "x";
+        bad.c = true;
+        assertFalse(validator.validate(bad).isValid());
+    }
+
+    @Test
+    public void testParentAndChildBothAnnotated() {
+        SchemaValidator validator = new SchemaValidator();
+
+        ChildAnnotated ok = new ChildAnnotated();
+        ok.a = 1;
+        ok.b = "x";
+        ok.c = true;
+        assertTrue(validator.validate(ok).isValid());
+
+        ChildAnnotated badParent = new ChildAnnotated();
+        badParent.b = "x";
+        badParent.c = true;
+        assertFalse(validator.validate(badParent).isValid());
+
+        ChildAnnotated badChild = new ChildAnnotated();
+        badChild.a = 1;
+        badChild.b = "x";
+        assertFalse(validator.validate(badChild).isValid());
     }
 
 }
