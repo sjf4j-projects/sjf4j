@@ -52,6 +52,14 @@ public class NodeRegistryTest {
         private List<JojoTest.Person> friends;
     }
 
+    public static class ParentSameKey {
+        public String key;
+    }
+
+    public static class ChildSameKey extends ParentSameKey {
+        public int key;
+    }
+
     @Test
     public void testRegisterPojo1() {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
@@ -69,6 +77,16 @@ public class NodeRegistryTest {
     @Test
     public void testIsPojo1() {
         assertTrue(NodeRegistry.isPojo(Role.class));
+    }
+
+    @Test
+    public void testInheritedFieldSameKeyChildWins() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
+        assertNotNull(pi.fields.get("key"));
+        assertEquals(int.class, pi.fields.get("key").type);
+
+        ChildSameKey pojo = Sjf4j.fromJson("{\"key\":123}", ChildSameKey.class);
+        assertEquals(123, pojo.key);
     }
 
     @Test

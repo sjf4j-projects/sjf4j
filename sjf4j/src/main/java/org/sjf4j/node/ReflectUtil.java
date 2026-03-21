@@ -143,7 +143,10 @@ public final class ReflectUtil {
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
                     String fieldName = getFieldName(field);
-                    fields.put(fieldName, fi);
+                    NodeRegistry.FieldInfo oldFi = fields.putIfAbsent(fieldName, fi);
+                    if (oldFi != null) {
+                        continue;
+                    }
 
                     String[] aliases = getFieldAliases(field);
                     if (aliases != null) {
