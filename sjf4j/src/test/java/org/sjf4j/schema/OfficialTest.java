@@ -16,8 +16,8 @@ public final class OfficialTest {
     private static SchemaStore _store;
 
     public static void main(String[] args) throws Exception {
-        _store = loadRemotesToStore(locatePath("json-schema/remotes"));
-        Path root = locatePath("json-schema/tests/draft2020-12");
+        _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
+        Path root = locatePath("json-schemas/tests/draft2020-12");
 
         runTestDir(root, false);
 //        runTestFile(root.resolve("ref.json"), "remote ref, containing refs itself", "");
@@ -26,8 +26,8 @@ public final class OfficialTest {
 
     @Test
     public void testSuite() throws Exception {
-        _store = loadRemotesToStore(locatePath("json-schema/remotes"));
-        Path root = locatePath("json-schema/tests/draft2020-12");
+        _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
+        Path root = locatePath("json-schemas/tests/draft2020-12");
 
         runTestDir(root, true);
     }

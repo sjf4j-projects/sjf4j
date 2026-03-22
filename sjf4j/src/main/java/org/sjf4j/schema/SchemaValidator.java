@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class SchemaValidator {
     private static final URI DEFAULT_BASE_URI = URI.create("classpath:///json-schemas/");
-    private static final String SCHEMA_FILE_SUFFIX = ".schema.json";
+    private static final String SCHEMA_FILE_SUFFIX = ".json";
 
 //    private final String baseDir;
     private final URI baseUri;
