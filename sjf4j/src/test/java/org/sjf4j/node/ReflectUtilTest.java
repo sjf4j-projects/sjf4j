@@ -58,13 +58,13 @@ class ReflectUtilTest {
     @Test
     void getFieldName_prefersNodeProperty_overOthers() throws Exception {
         Field f = FieldNamePriorityPojo.class.getDeclaredField("f");
-        assertEquals("nodeName", ReflectUtil.getFieldName(f));
+        assertEquals("nodeName", ReflectUtil.getFieldName(f, FieldNamePriorityPojo.class));
     }
 
     @Test
     void getFieldAliases_prefersNodePropertyAliases_overOthers() throws Exception {
         Field f = FieldNamePriorityPojo.class.getDeclaredField("f");
-        assertArrayEquals(new String[]{"na1", "na2"}, ReflectUtil.getFieldAliases(f));
+        assertArrayEquals(new String[]{"na1", "na2"}, ReflectUtil.getAliases(f));
     }
 
     static class FieldNamePriorityPojo {
@@ -82,10 +82,10 @@ class ReflectUtilTest {
         Constructor<CreatorCtorPojo> c = CreatorCtorPojo.class.getDeclaredConstructor(String.class, int.class);
 
         // p0: has JsonProperty
-        assertEquals("name2", ReflectUtil.getParameterName(c.getParameters()[0]));
+        assertEquals("name2", ReflectUtil.getParameterName(c.getParameters()[0], CreatorCtorPojo.class));
 
         // p1: no any annotation
-        String p1 = ReflectUtil.getParameterName(c.getParameters()[1]);
+        String p1 = ReflectUtil.getParameterName(c.getParameters()[1], CreatorCtorPojo.class);
         if (!c.getParameters()[1].isNamePresent()) {
             assertNull(p1);
         } else {
@@ -97,9 +97,9 @@ class ReflectUtilTest {
     void getParameterAliases_readsAliasAnnotations() throws Exception {
         Constructor<CreatorCtorPojo> c = CreatorCtorPojo.class.getDeclaredConstructor(String.class, int.class);
 
-        assertArrayEquals(new String[]{"aliasN1", "aliasN2"}, ReflectUtil.getParameterAliases(c.getParameters()[0]));
+        assertArrayEquals(new String[]{"aliasN1", "aliasN2"}, ReflectUtil.getAliases(c.getParameters()[0]));
 
-        assertNull(ReflectUtil.getParameterAliases(c.getParameters()[1]));
+        assertNull(ReflectUtil.getAliases(c.getParameters()[1]));
     }
 
     static class CreatorCtorPojo {

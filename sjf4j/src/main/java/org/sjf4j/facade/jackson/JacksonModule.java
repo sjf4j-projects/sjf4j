@@ -18,6 +18,8 @@ import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
 import com.fasterxml.jackson.databind.introspect.Annotated;
+import com.fasterxml.jackson.databind.introspect.AnnotatedField;
+import com.fasterxml.jackson.databind.introspect.AnnotatedParameter;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
@@ -25,13 +27,13 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.facade.fastjson2.Fastjson2Module;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
 
 import java.io.IOException;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,14 +85,8 @@ public interface JacksonModule {
                     if (ti.valueCodecInfo != null) {
                         return new NodeValueDeserializer<>(ti.valueCodecInfo);
                     }
-                    if (ti.pojoInfo != null) {
-                        for (NodeRegistry.FieldInfo fi : ti.pojoInfo.fields.values()) {
-                            if (fi.anyOfInfo != null) {
-                                if (fi.anyOfInfo.scope == AnyOf.Scope.PARENT) {
-                                    return new PojoDeserializer<>(ti.pojoInfo);
-                                }
-                            }
-                        }
+                    if (ti.usesStreamingPojoReader()) {
+                        return new PojoDeserializer<>(ti.pojoInfo);
                     }
                     return deserializer;
                 }
@@ -103,7 +99,7 @@ public interface JacksonModule {
                                                           JsonSerializer<?> serializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
                     if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new JsonObjectSerializer();
+                        return new StreamingSerializer();
                     }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
@@ -111,6 +107,10 @@ public interface JacksonModule {
                     NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(clazz);
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
+                    }
+                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    if (ti.usesStreamingPojoWriter()) {
+                        return new StreamingSerializer();
                     }
 
                     return serializer;
@@ -304,18 +304,10 @@ public interface JacksonModule {
     /**
      * Serializer for JsonObject preserving framework semantics.
      */
-    class JsonObjectSerializer extends JsonSerializer<JsonObject> {
-        /**
-         * Serializes JsonObject entries as fields.
-         */
+    class StreamingSerializer extends JsonSerializer<Object> {
         @Override
-        public void serialize(JsonObject jo, JsonGenerator gen, SerializerProvider serializers)
-                throws IOException {
-            gen.writeStartObject();
-            for (Map.Entry<String, Object> entry : jo.entrySet()) {
-                serializers.defaultSerializeField(entry.getKey(), entry.getValue(), gen);
-            }
-            gen.writeEndObject();
+        public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+            JacksonStreamingIO.writeNode(gen, value);
         }
     }
 
@@ -357,7 +349,6 @@ public interface JacksonModule {
         }
     }
 
-
     /// NodeProperty
     /**
      * Annotation introspector mapping NodeProperty/NodeCreator to Jackson metadata.
@@ -368,9 +359,11 @@ public interface JacksonModule {
          */
         @Override
         public PropertyName findNameForSerialization(Annotated ann) {
-            NodeProperty nf = ann.getAnnotation(NodeProperty.class);
-            if (nf != null && !nf.value().isEmpty()) {
-                return PropertyName.construct(nf.value());
+            if (ann instanceof AnnotatedField) {
+                String name = ReflectUtil.getExplicitName(((AnnotatedField) ann).getAnnotated());
+                if (name != null && !name.isEmpty()) {
+                    return PropertyName.construct(name);
+                }
             }
             return super.findNameForSerialization(ann);
         }
@@ -380,9 +373,19 @@ public interface JacksonModule {
          */
         @Override
         public PropertyName findNameForDeserialization(Annotated ann) {
-            NodeProperty nf = ann.getAnnotation(NodeProperty.class);
-            if (nf != null && !nf.value().isEmpty()) {
-                return PropertyName.construct(nf.value());
+            if (ann instanceof AnnotatedField) {
+                String name = ReflectUtil.getExplicitName(((AnnotatedField) ann).getAnnotated());
+                if (name != null && !name.isEmpty()) {
+                    return PropertyName.construct(name);
+                }
+            } else if (ann instanceof AnnotatedParameter) {
+                Parameter parameter = getJavaParameter((AnnotatedParameter) ann);
+                if (parameter != null) {
+                    String name = ReflectUtil.getExplicitName(parameter);
+                    if (name != null && !name.isEmpty()) {
+                        return PropertyName.construct(name);
+                    }
+                }
             }
             return super.findNameForDeserialization(ann);
         }
@@ -392,16 +395,19 @@ public interface JacksonModule {
          */
         @Override
         public List<PropertyName> findPropertyAliases(Annotated ann) {
-            NodeProperty nf = ann.getAnnotation(NodeProperty.class);
-            if (nf != null) {
-                String[] aliases = nf.aliases();
-                if (aliases != null && aliases.length > 0) {
-                    List<PropertyName> result = new ArrayList<>(aliases.length);
-                    for (int i = 0; i < aliases.length; ++i) {
-                        result.add(PropertyName.construct(aliases[i]));
-                    }
-                    return result;
+            String[] aliases = null;
+            if (ann instanceof AnnotatedField) {
+                aliases = ReflectUtil.getAliases(((AnnotatedField) ann).getAnnotated());
+            } else if (ann instanceof AnnotatedParameter) {
+                Parameter parameter = getJavaParameter((AnnotatedParameter) ann);
+                if (parameter != null) aliases = ReflectUtil.getAliases(parameter);
+            }
+            if (aliases != null && aliases.length > 0) {
+                List<PropertyName> result = new ArrayList<>(aliases.length);
+                for (int i = 0; i < aliases.length; ++i) {
+                    result.add(PropertyName.construct(aliases[i]));
                 }
+                return result;
             }
             return super.findPropertyAliases(ann);
         }
@@ -413,6 +419,14 @@ public interface JacksonModule {
                 return JsonCreator.Mode.PROPERTIES;
             }
             return super.findCreatorAnnotation(config, ann);
+        }
+
+        private Parameter getJavaParameter(AnnotatedParameter ann) {
+            if (!(ann.getOwner().getAnnotated() instanceof Executable)) return null;
+            Executable executable = (Executable) ann.getOwner().getAnnotated();
+            int index = ann.getIndex();
+            Parameter[] parameters = executable.getParameters();
+            return index >= 0 && index < parameters.length ? parameters[index] : null;
         }
 
     }

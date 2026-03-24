@@ -1,6 +1,5 @@
 package org.sjf4j.facade.gson;
 
-import com.google.gson.FieldNamingStrategy;
 import com.google.gson.Gson;
 import com.google.gson.ToNumberStrategy;
 import com.google.gson.TypeAdapter;
@@ -17,7 +16,6 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.Map;
 
@@ -54,12 +52,8 @@ public interface GsonModule {
                 return new NodeValueAdapter<>(gson, vci);
             }
 
-            if (ti.pojoInfo != null) {
-                for (NodeRegistry.FieldInfo fi : ti.pojoInfo.fields.values()) {
-                    if (fi.anyOfInfo != null && fi.anyOfInfo.scope == AnyOf.Scope.PARENT) {
-                        return new PojoAdapter<>(type.getType(), ti.pojoInfo);
-                    }
-                }
+            if (ti.usesStreamingPojoReader()) {
+                return new PojoAdapter<>(type.getType(), ti.pojoInfo);
             }
             return null;
         }
@@ -254,22 +248,5 @@ public interface GsonModule {
             return Numbers.parseNumber(in.nextString());
         }
     }
-
-    /// NodeProperty
-    /**
-     * Field naming strategy honoring @NodeProperty names.
-     */
-    class NodeFieldNamingStrategy implements FieldNamingStrategy {
-        /**
-         * Resolves serialized field name.
-         */
-        @Override
-        public String translateName(Field field) {
-            NodeProperty nf = field.getAnnotation(NodeProperty.class);
-            if (nf != null && !nf.value().isEmpty()) return nf.value();
-            return field.getName();
-        }
-    }
-
 
 }

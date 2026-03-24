@@ -9,8 +9,11 @@ import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Types;
 
 import java.io.IOException;
@@ -49,6 +52,9 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        if (Sjf4jConfig.global().namingStrategy == NamingStrategy.SNAKE_CASE) {
+            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        }
 //        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         this.objectMapper = objectMapper;

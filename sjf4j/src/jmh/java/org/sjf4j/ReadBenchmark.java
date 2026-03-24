@@ -110,6 +110,7 @@ public class ReadBenchmark {
     private static final ObjectMapper JACKSON = new ObjectMapper();
     private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
     private static final Gson GSON = GSON_BUILDER.create();
+    private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
 
     static {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -156,7 +157,7 @@ public class ReadBenchmark {
     }
 
     @Benchmark
-    public Object json_simple_facade_pojo() throws IOException {
+    public Object json_simple_facade_pojo_static() throws IOException {
         return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPlain.class);
     }
 

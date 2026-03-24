@@ -197,6 +197,18 @@ public final class NodeRegistry {
     }
 
     /**
+     * Clears cached POJO metadata while preserving codec and other type entries.
+     */
+    public static void clearPojoCache() {
+        for (Map.Entry<Class<?>, TypeInfo> entry : TYPE_INFO_CACHE.entrySet()) {
+            TypeInfo ti = entry.getValue();
+            if (ti != null && ti.pojoInfo != null) {
+                TYPE_INFO_CACHE.remove(entry.getKey(), ti);
+            }
+        }
+    }
+
+    /**
      * Returns metadata for a named POJO field.
      */
     public static FieldInfo getFieldInfo(Class<?> clazz, String fieldName) {
@@ -243,26 +255,39 @@ public final class NodeRegistry {
         public boolean isAnyOf() {
             return anyOfInfo != null;
         }
+
+        public boolean usesStreamingPojoReader() {
+            return pojoInfo != null && pojoInfo.usesStreamingReader;
+        }
+
+        public boolean usesStreamingPojoWriter() {
+            return pojoInfo != null && pojoInfo.usesStreamingWriter;
+        }
     }
 
     // PojoInfo
     public static class PojoInfo {
         public final Class<?> clazz;
         public final CreatorInfo creatorInfo;
+        public final NamingStrategy nodeNamingStrategy;
         public final Map<String, FieldInfo> fields;
         public final int fieldCount;
         public final Map<String, FieldInfo> aliasFields;
         public final boolean isJojo;
         public final boolean isJajo;
         public final boolean hasParentScopeAnyOf;
+        public final boolean usesStreamingReader;
+        public final boolean usesStreamingWriter;
         /**
          * Creates immutable POJO metadata holder.
          */
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
+                        NamingStrategy nodeNamingStrategy,
                         Map<String, FieldInfo> fields,
                         Map<String, FieldInfo> aliasFields) {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
+            this.nodeNamingStrategy = nodeNamingStrategy;
             this.fields = fields;
             this.fieldCount = fields.size();
             this.aliasFields = aliasFields;
@@ -277,6 +302,8 @@ public final class NodeRegistry {
                 }
             }
             this.hasParentScopeAnyOf = hasParentScopeAnyOf;
+            this.usesStreamingReader = nodeNamingStrategy != null || hasParentScopeAnyOf;
+            this.usesStreamingWriter = nodeNamingStrategy != null;
         }
 
         public PojoCreationSession newCreationSession(int pendingCapacity) {

@@ -11,10 +11,12 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeValue;
@@ -70,6 +72,7 @@ public class Fastjson2FacadeTest {
                 modeTests("write", Fastjson2FacadeTest::assertWrite),
                 modeTests("node-value", Fastjson2FacadeTest::assertNodeValue),
                 modeTests("node-field", Fastjson2FacadeTest::assertNodeField),
+                modeTests("node-naming", Fastjson2FacadeTest::assertNodeNaming),
                 modeTests("creator-extra-field", Fastjson2FacadeTest::assertCreatorExtraField),
                 modeTests("creator-alias", Fastjson2FacadeTest::assertCreatorAlias),
                 modeTests("anyof", Fastjson2FacadeTest::assertAnyOf)
@@ -177,6 +180,38 @@ public class Fastjson2FacadeTest {
         facade.writeNode(sw, jo1);
         String json2 = sw.toString();
         assertEquals(json1, json2);
+    }
+
+    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    public static class SnakeBook extends JsonObject {
+        private String userName;
+        private int loginCount;
+    }
+
+    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    public static class SnakePlainBook {
+        private String userName;
+        private int loginCount;
+    }
+
+    private static void assertNodeNaming(Fastjson2JsonFacade facade) {
+        String json = "{\"user_name\":\"han\",\"login_count\":2}";
+        SnakeBook jo1 = (SnakeBook) facade.readNode(new StringReader(json), SnakeBook.class);
+        assertEquals("han", jo1.userName);
+        assertEquals(2, jo1.loginCount);
+        assertEquals("han", jo1.getString("user_name"));
+        assertNull(jo1.getString("userName"));
+
+        StringWriter sw = new StringWriter();
+        facade.writeNode(sw, jo1);
+        assertEquals(json, sw.toString());
+
+        SnakePlainBook pojo = (SnakePlainBook) facade.readNode(new StringReader(json), SnakePlainBook.class);
+        assertEquals("han", pojo.userName);
+        assertEquals(2, pojo.loginCount);
+        sw = new StringWriter();
+        facade.writeNode(sw, pojo);
+        assertEquals(json, sw.toString());
     }
 
 

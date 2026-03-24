@@ -4,6 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -96,6 +97,8 @@ public final class ReflectUtil {
             else return null;
         }
 
+        NamingStrategy nodeNamingStrategy = getDeclaredNamingStrategy(clazz);
+
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = Sjf4jConfig.global().mapSupplier.create();
         Map<String, String> aliasMap = creatorInfo.aliasMap;
@@ -142,13 +145,13 @@ public final class ReflectUtil {
                     }
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
-                    String fieldName = getFieldName(field);
+                    String fieldName = getFieldName(field, curClazz);
                     NodeRegistry.FieldInfo oldFi = fields.putIfAbsent(fieldName, fi);
                     if (oldFi != null) {
                         continue;
                     }
 
-                    String[] aliases = getFieldAliases(field);
+                    String[] aliases = getAliases(field);
                     if (aliases != null) {
                         for (String alias : aliases) {
                             if (alias == null || alias.isEmpty() || alias.equals(fieldName)) continue;
@@ -175,58 +178,70 @@ public final class ReflectUtil {
             }
         }
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, fields, aliasFields);
+        return new NodeRegistry.PojoInfo(clazz, creatorInfo, nodeNamingStrategy, fields, aliasFields);
     }
 
-    /**
-     * Resolves effective field name from supported annotations.
-     */
+    public static String getFieldName(Field field, Class<?> ownerClass) {
+        String fname = getExplicitName(field);
+        if (fname != null) return fname;
+        return getNamingStrategy(ownerClass).translate(field.getName());
+    }
+
     public static String getFieldName(Field field) {
-        String fname = getNodeProperty(field);
-        if (fname != null && !fname.isEmpty()) return fname;
-        fname = getJacksonProperty(field);
-        if (fname != null && !fname.isEmpty()) return fname;
-        fname = getFastjson2Property(field);
-        if (fname != null && !fname.isEmpty()) return fname;
-        return field.getName();
+        return getFieldName(field, field.getDeclaringClass());
     }
 
-    /**
-     * Resolves field aliases from supported annotations.
-     */
     public static String[] getFieldAliases(Field field) {
-        String[] aliases = getNodeAliases(field);
-        if (aliases != null && aliases.length > 0) return aliases;
-        aliases = getJacksonAliases(field);
-        if (aliases != null && aliases.length > 0) return aliases;
-        aliases = getFastjson2Aliases(field);
-        if (aliases != null && aliases.length > 0) return aliases;
+        return getAliases(field);
+    }
+
+    public static String getParameterName(Parameter parameter, Class<?> ownerClass) {
+        String fname = getExplicitName(parameter);
+        if (fname != null) return fname;
+        if (parameter.isNamePresent()) return getNamingStrategy(ownerClass).translate(parameter.getName());
         return null;
     }
 
-    /**
-     * Resolves constructor/method parameter name.
-     */
     public static String getParameterName(Parameter parameter) {
-        String fname = getNodeProperty(parameter);
+        return getParameterName(parameter, parameter.getDeclaringExecutable().getDeclaringClass());
+    }
+
+    public static String[] getParameterAliases(Parameter parameter) {
+        return getAliases(parameter);
+    }
+
+    public static NamingStrategy getDeclaredNamingStrategy(Class<?> clazz) {
+        if (clazz == null) return null;
+        NodeNaming ann = clazz.getAnnotation(NodeNaming.class);
+        if (ann == null) return null;
+        NamingStrategy strategy = ann.value();
+        if (strategy == NamingStrategy.IDENTITY) {
+            throw new JsonException("@NodeNaming(IDENTITY) is not supported on " + clazz.getName());
+        }
+        return strategy;
+    }
+
+    public static NamingStrategy getNamingStrategy(Class<?> clazz) {
+        NamingStrategy strategy = getDeclaredNamingStrategy(clazz);
+        return strategy != null ? strategy : Sjf4jConfig.global().namingStrategy;
+    }
+
+    public static String getExplicitName(AnnotatedElement element) {
+        String fname = getNodeProperty(element);
         if (fname != null && !fname.isEmpty()) return fname;
-        fname = getJacksonProperty(parameter);
+        fname = getJacksonProperty(element);
         if (fname != null && !fname.isEmpty()) return fname;
-        fname = getFastjson2Property(parameter);
+        fname = getFastjson2Property(element);
         if (fname != null && !fname.isEmpty()) return fname;
-        if (parameter.isNamePresent()) return parameter.getName();
         return null;
     }
 
-    /**
-     * Resolves constructor/method parameter aliases.
-     */
-    public static String[] getParameterAliases(Parameter parameter) {
-        String[] aliases = getNodeAliases(parameter);
+    public static String[] getAliases(AnnotatedElement element) {
+        String[] aliases = getNodeAliases(element);
         if (aliases != null && aliases.length > 0) return aliases;
-        aliases = getJacksonAliases(parameter);
+        aliases = getJacksonAliases(element);
         if (aliases != null && aliases.length > 0) return aliases;
-        aliases = getFastjson2Aliases(parameter);
+        aliases = getFastjson2Aliases(element);
         if (aliases != null && aliases.length > 0) return aliases;
         return null;
     }
@@ -377,7 +392,7 @@ public final class ReflectUtil {
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
             for (int i = 0; i < params.length; i++) {
-                String name = getParameterName(params[i]);
+                String name = getParameterName(params[i], creator.getDeclaringClass());
                 if (name == null || name.isEmpty())
                     throw new JsonException("Missing parameter name for creator in " + clazz.getName() +
                             ": parameter index " + i + " (from 0). Use @NodeProperty or @JsonProperty on parameters.");
@@ -388,7 +403,7 @@ public final class ReflectUtil {
         if (creator != null && creator.getParameterCount() > 0) {
             Parameter[] params = creator.getParameters();
             for (int i = 0; i < params.length; i++) {
-                String[] aliases = getParameterAliases(params[i]);
+                String[] aliases = getAliases(params[i]);
                 if (aliases != null && aliases.length > 0) {
                     if (aliasMap == null) aliasMap = new HashMap<>();
                     for (String alias : aliases) {

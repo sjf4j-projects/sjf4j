@@ -83,25 +83,11 @@ public class JsonPath {
             segments = new PathSegment[]{PathSegment.Root.INSTANCE};
         } else if (expr.startsWith("/")) {
             segments = Paths.parsePointer(expr);
-        } else if (expr.startsWith("$") || expr.startsWith("@")) {
-            segments = Paths.parsePath(expr);
         } else {
             segments = Paths.parsePath(expr);
-//            throw new JsonException("Invalid path expression '" + expr + "'. " +
-//                    "Must start with '$' or '@' for JSON Path, or '/' for JSON Pointer.");
         }
         return new JsonPath(expr, segments);
     }
-
-
-//    /**
-//     * Creates JsonPath from the last segment in a chain.
-//     */
-//    public static JsonPath fromLast(PathSegment lastSegment) {
-//        Objects.requireNonNull(lastSegment, "lastSegment");
-//        PathSegment[] segments = Paths.linearize(lastSegment);
-//        return new JsonPath(null, segments);
-//    }
 
     /**
      * Converts the path tokens back to a JSON Path expression string.
@@ -164,35 +150,6 @@ public class JsonPath {
     public PathSegment head() {
         return segments.length > 0 ? segments[0] : null;
     }
-
-//    /**
-//     * Returns the last token in the path without removing it.
-//     *
-//     * @return the last path token
-//     */
-//    public PathSegment tail() {
-//        return tokens.get(tokens.size() - 1);
-//    }
-//
-//    /**
-//     * Pushes a new path token to the end of the path.
-//     *
-//     * @param token the token to add
-//     * @throws IllegalArgumentException if token is null
-//     */
-//    public void push(PathSegment token) {
-//        Objects.requireNonNull(token, "token");
-//        tokens.add(token);
-//    }
-//
-//    /**
-//     * Removes the last token in the path, and returns it.
-//     *
-//     * @return the removed path token
-//     */
-//    public PathSegment pop() {
-//        return tokens.remove(tokens.size() - 1);
-//    }
 
     /// Find
 

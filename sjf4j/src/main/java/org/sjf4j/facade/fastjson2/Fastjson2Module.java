@@ -7,6 +7,7 @@ import com.alibaba.fastjson2.codec.BeanInfo;
 import com.alibaba.fastjson2.codec.FieldInfo;
 import com.alibaba.fastjson2.modules.ObjectReaderAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectReaderModule;
+import com.alibaba.fastjson2.modules.ObjectWriterAnnotationProcessor;
 import com.alibaba.fastjson2.modules.ObjectWriterModule;
 import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.writer.ObjectWriter;
@@ -14,8 +15,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
 
 import java.io.IOException;
@@ -54,12 +55,8 @@ public interface Fastjson2Module {
             if (ti.valueCodecInfo != null) {
                 return new NodeValueReader<>(ti.valueCodecInfo);
             }
-            if (ti.pojoInfo != null) {
-                for (NodeRegistry.FieldInfo fi : ti.pojoInfo.fields.values()) {
-                    if (fi.anyOfInfo != null && fi.anyOfInfo.scope == AnyOf.Scope.PARENT) {
-                        return new PojoReader<>(ti.pojoInfo);
-                    }
-                }
+            if (ti.usesStreamingPojoReader()) {
+                return new PojoReader<>(ti.pojoInfo);
             }
 
             return null;
@@ -74,18 +71,15 @@ public interface Fastjson2Module {
             if (annotationProcessor != null) {
                 annotationProcessor.getFieldInfo(fieldInfo, objectClass, field);
             }
-            NodeProperty ann = field.getAnnotation(NodeProperty.class);
-            if (ann != null) {
-                String name = ann.value();
-                if (name != null && name.length() > 0) {
-                    fieldInfo.fieldName = ann.value();
-                    fieldInfo.ignore = false; // Must false here
-                }
-                String[] aliases = ann.aliases();
-                if (aliases != null && aliases.length > 0) {
-                    fieldInfo.alternateNames = aliases;
-                    fieldInfo.ignore = false; // Must false here
-                }
+            String name = ReflectUtil.getExplicitName(field);
+            if (name != null && name.length() > 0) {
+                fieldInfo.fieldName = name;
+                fieldInfo.ignore = false;
+            }
+            String[] aliases = ReflectUtil.getAliases(field);
+            if (aliases != null && aliases.length > 0) {
+                fieldInfo.alternateNames = aliases;
+                fieldInfo.ignore = false;
             }
         }
 
@@ -111,38 +105,28 @@ public interface Fastjson2Module {
                 @Override
                 public void getFieldInfo(FieldInfo fieldInfo, Class objectClass, Constructor constructor,
                                          int paramIndex, Parameter parameter) {
-                    NodeProperty ann = parameter.getAnnotation(NodeProperty.class);
-                    if (ann != null) {
-                        String name = ann.value();
-                        if (name != null && name.length() > 0) {
-                            fieldInfo.fieldName = ann.value();
-                            fieldInfo.ignore = false; // Must false here
-                        }
-                        String[] aliases = ann.aliases();
-                        if (aliases != null && aliases.length > 0) {
-                            fieldInfo.alternateNames = aliases;
-                            fieldInfo.ignore = false; // Must false here
-                        }
-                    }
+                    applyNameAndAliases(fieldInfo, parameter);
                 }
+
                 @Override
                 public void getFieldInfo(FieldInfo fieldInfo, Class objectClass, Method method,
                                          int paramIndex, Parameter parameter) {
-                    NodeProperty ann = parameter.getAnnotation(NodeProperty.class);
-                    if (ann != null) {
-                        String name = ann.value();
-                        if (name != null && name.length() > 0) {
-                            fieldInfo.fieldName = ann.value();
-                            fieldInfo.ignore = false; // Must false here
-                        }
-                        String[] aliases = ann.aliases();
-                        if (aliases != null && aliases.length > 0) {
-                            fieldInfo.alternateNames = aliases;
-                            fieldInfo.ignore = false; // Must false here
-                        }
-                    }
+                    applyNameAndAliases(fieldInfo, parameter);
                 }
             };
+        }
+
+        private static void applyNameAndAliases(FieldInfo fieldInfo, Parameter parameter) {
+            String name = ReflectUtil.getExplicitName(parameter);
+            if (name != null && name.length() > 0) {
+                fieldInfo.fieldName = name;
+                fieldInfo.ignore = false;
+            }
+            String[] aliases = ReflectUtil.getAliases(parameter);
+            if (aliases != null && aliases.length > 0) {
+                fieldInfo.alternateNames = aliases;
+                fieldInfo.ignore = false;
+            }
         }
     }
 
@@ -298,62 +282,42 @@ public interface Fastjson2Module {
             if (vci != null) {
                 return new NodeValueWriter<>(vci);
             }
+            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
+            if (ti.usesStreamingPojoWriter()) {
+                return new JsonObjectWriter();
+            }
             return null;
         }
 
-//        @SuppressWarnings("rawtypes")
-//        @Override
-//        public boolean createFieldWriters(ObjectWriterCreator creator,
-//                                          Class objectType,
-//                                          List<FieldWriter> fieldWriters) {
-//            for (int i = 0; i < fieldWriters.size(); i++) {
-//                FieldWriter fw = fieldWriters.get(i);
-//                NodeField nf = fw.field.getAnnotation(NodeField.class);
-//                if (nf != null && !nf.value().isEmpty()) {
-//                    FieldWriter newFw = creator.createFieldWriter(nf.value(),
-//                            fw.ordinal, fw.features, fw.format, fw.field);
-//                    fieldWriters.set(i, newFw);
-//                }
-//            }
-//            return false;
-//        }
+        @Override
+        public ObjectWriterAnnotationProcessor getAnnotationProcessor() {
+            return new ObjectWriterAnnotationProcessor() {
+                @Override
+                public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Field field) {
+                    String name = ReflectUtil.getExplicitName(field);
+                    if (name != null && name.length() > 0) {
+                        fieldInfo.fieldName = name;
+                        fieldInfo.ignore = false;
+                    }
+                }
 
-//        @Override
-//        public ObjectWriterAnnotationProcessor getAnnotationProcessor() {
-//            return new ObjectWriterAnnotationProcessor() {
-//                @Override
-//                public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Field field) {
-//                    NodeProperty nf = field.getAnnotation(NodeProperty.class);
-//                    if (nf != null && !nf.value().isEmpty()) {
-//                        fieldInfo.fieldName = nf.value();
-//                        fieldInfo.ignore = false;
-//                        fieldInfo.features |= FieldInfo.DISABLE_SMART_MATCH;
-//                    }
-//                }
-//                @Override
-//                public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Method method) {
-//                    fieldInfo.ignore = true;
-//                }
-//            };
-//        }
+                @Override
+                public void getFieldInfo(BeanInfo beanInfo, FieldInfo fieldInfo, Class objectType, Method method) {
+                }
+            };
+        }
 
     }
 
-    class JsonObjectWriter implements ObjectWriter<JsonObject> {
-        /**
-         * Writes JsonObject entries as object fields.
-         */
+    class JsonObjectWriter implements ObjectWriter<Object> {
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
-            JsonObject jo = (JsonObject) object;
-            writer.startObject();
-            jo.forEach((k, v) -> {
-                writer.writeName(k);
-                writer.writeColon();
-                writer.writeAny(v);
-            });
-            writer.endObject();
+            try {
+                Fastjson2StreamingIO.writeNode(writer, object);
+            } catch (IOException e) {
+                throw new JSONException(writer.toString(), e);
+            }
         }
     }
 

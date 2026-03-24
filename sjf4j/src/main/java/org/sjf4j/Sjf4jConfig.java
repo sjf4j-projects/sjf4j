@@ -11,6 +11,7 @@ import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.PathCache;
@@ -81,6 +82,11 @@ public final class Sjf4jConfig {
     public final boolean bindingPath;
 
     /**
+     * Naming style used for JSON-facing POJO/JOJO property names.
+     */
+    public final NamingStrategy namingStrategy;
+
+    /**
      * Private constructor for JsonConfig. Use the Builder to create instances.
      *
      * @param builder The builder containing the configuration settings
@@ -96,6 +102,7 @@ public final class Sjf4jConfig {
         this.instantFormat = builder.instantFormat;
         this.pathCache = builder.pathCache;
         this.bindingPath = builder.bindingPath;
+        this.namingStrategy = builder.namingStrategy;
     }
 
     private static Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
@@ -105,8 +112,19 @@ public final class Sjf4jConfig {
      */
     public static void global(Sjf4jConfig sjf4jConfig) {
         Objects.requireNonNull(sjf4jConfig, "sjf4jConfig");
+        Sjf4jConfig previous = GLOBAL;
+
+        if (previous.namingStrategy != sjf4jConfig.namingStrategy) {
+            NodeRegistry.clearPojoCache();
+            if (sjf4jConfig.jsonFacade == previous.jsonFacade) {
+                sjf4jConfig.jsonFacade = null;
+            }
+        }
+        if (previous.instantFormat != sjf4jConfig.instantFormat) {
+            NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
+        }
+
         GLOBAL = sjf4jConfig;
-        NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
     }
     /**
      * Returns the current global configuration.
@@ -248,6 +266,7 @@ public final class Sjf4jConfig {
                 ", listSupplier=" + listSupplier +
                 ", setSupplier=" + setSupplier +
                 ", instantFormat=" + instantFormat +
+                ", namingStrategy=" + namingStrategy +
                 ", pathCache=" + Types.name(pathCache) +
                 ", bindingPath=" + bindingPath +
                 '}';
@@ -268,6 +287,7 @@ public final class Sjf4jConfig {
         private SetSupplier setSupplier = SetSupplier.LinkedHashSetSupplier;
 
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
+        private NamingStrategy namingStrategy = NamingStrategy.IDENTITY;
         private PathCache pathCache = PathCache.ConcurrentMapPathCache;
         private boolean bindingPath = true;
 
@@ -289,6 +309,7 @@ public final class Sjf4jConfig {
             this.listSupplier = config.listSupplier;
             this.setSupplier = config.setSupplier;
             this.instantFormat = config.instantFormat;
+            this.namingStrategy = config.namingStrategy;
             this.pathCache = config.pathCache;
             this.bindingPath = config.bindingPath;
         }
@@ -362,6 +383,14 @@ public final class Sjf4jConfig {
         public Builder instantFormat(InstantFormat instantFormat) {
             Objects.requireNonNull(instantFormat, "instantFormat");
             this.instantFormat = instantFormat;
+            return this;
+        }
+        /**
+         * Sets POJO/JOJO property naming style.
+         */
+        public Builder namingStrategy(NamingStrategy namingStrategy) {
+            Objects.requireNonNull(namingStrategy, "namingStrategy");
+            this.namingStrategy = namingStrategy;
             return this;
         }
         /**

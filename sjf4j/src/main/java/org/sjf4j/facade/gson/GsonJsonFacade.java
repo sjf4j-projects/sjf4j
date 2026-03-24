@@ -52,8 +52,10 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         if (this.streamingMode == StreamingMode.PLUGIN_MODULE) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
         }
-        // TODO: Retrieve the original FieldNamingStrategy via reflection?
-        gsonBuilder.setFieldNamingStrategy(new GsonModule.NodeFieldNamingStrategy());
+        gsonBuilder.setFieldNamingStrategy(field -> {
+            String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
+            return name != null ? name : Sjf4jConfig.global().namingStrategy.translate(field.getName());
+        });
         this.gson = gsonBuilder.create();
     }
 
