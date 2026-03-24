@@ -28,7 +28,7 @@ public class ValidJsonSchemaTest {
         public String name;
     }
 
-    @ValidJsonSchema(ref = "user.schema.json")
+    @ValidJsonSchema(ref = "user.json")
     public static class ResourceUser {
         public int id;
         public String name;
@@ -39,20 +39,20 @@ public class ValidJsonSchemaTest {
         public String code;
     }
 
-    @ValidJsonSchema(ref = "domain.schema.json#User")
+    @ValidJsonSchema(ref = "domain.json#User")
     public static class AnchoredUser {
         public String name;
         public String email;
         public String tag;
     }
 
-    @ValidJsonSchema(ref = "classpath:/json-schemas/user.schema.json")
+    @ValidJsonSchema(ref = "classpath:/json-schemas/user.json")
     public static class ClasspathRefUser {
         public int id;
         public String name;
     }
 
-    @ValidJsonSchema(ref = "user.schema.json")
+    @ValidJsonSchema(ref = "user.json")
     public static class ExternalRefUser {
         public int id;
         public String name;
@@ -150,7 +150,7 @@ public class ValidJsonSchemaTest {
         assertTrue(validator.validate(ok).isValid());
     }
 
-    @ValidJsonSchema(ref = "classpath:/json-schemas/domain.schema.json#/$defs/User")
+    @ValidJsonSchema(ref = "classpath:/json-schemas/domain.json#/$defs/User")
     public static class PointerRefUser {
         public String name;
         public String email;
@@ -195,7 +195,7 @@ public class ValidJsonSchemaTest {
                 "\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1}}," +
                 "\"additionalProperties\":false" +
                 "}";
-        Path schemaPath = tempDir.resolve("ExternalBaseUser.schema.json");
+        Path schemaPath = tempDir.resolve("ExternalBaseUser.json");
         Files.write(schemaPath, schema.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
@@ -208,12 +208,12 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testPreloadRefs(@TempDir Path tempDir) throws Exception {
-        Path schemaPath = tempDir.resolve("user.schema.json");
+        Path schemaPath = tempDir.resolve("user.json");
         Files.write(schemaPath, SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
         SchemaValidator validator = new SchemaValidator(baseDir, null, null);
-        validator.preload("user.schema.json");
+        validator.preload("user.json");
 
         ExternalRefUser ok = new ExternalRefUser();
         ok.id = 1;
@@ -223,7 +223,7 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testPreloadDirectory(@TempDir Path tempDir) throws Exception {
-        Path schemaPath = tempDir.resolve("PreloadUser.schema.json");
+        Path schemaPath = tempDir.resolve("PreloadUser.json");
         Files.write(schemaPath, SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();

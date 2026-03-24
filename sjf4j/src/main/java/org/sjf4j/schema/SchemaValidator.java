@@ -192,8 +192,9 @@ public final class SchemaValidator {
                 ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(simpleNameUri);
                 return compileAndRegister(schema);
             } catch (Exception e2) {
-                throw new SchemaException("No 'value' or 'ref' specified for @ValidJsonSchema on " + clazz.getName() +
-                        ", and neither '" + fullNameUri + "' nor '" + simpleNameUri + "' was found");
+                throw new SchemaException("No schema found for @ValidJsonSchema on " + clazz.getName() +
+                        ": neither 'value' nor 'ref' is specified, and no schema file exists at '" +
+                        fullNameUri + "' or '" + simpleNameUri + "'.");
             }
         }
     }
