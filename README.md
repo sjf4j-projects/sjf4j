@@ -16,9 +16,13 @@ Beyond JSON, it also supports YAML (via [SnakeYAML](https://github.com/snakeyaml
 and Java Properties (built-in).
 
 SJF4J provides **a unified JSON-semantic structural processing layer**,
-delivering consistent APIs for *modeling (OBNT)*, *parsing (JSON/YAML)*, 
-*navigation (JSON Path)*, *transformation (JSON Patch)*, 
-and *validation (JSON Schema)* across data formats and native object graphs.
+delivering consistent APIs for 
+**modeling** (OBNT), 
+**parsing** (JSON/YAML), 
+**navigation** (JSON Path), 
+**transformation** (JSON Patch), 
+and **validation** (JSON Schema) across data formats and native object graphs.
+
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies.
 
