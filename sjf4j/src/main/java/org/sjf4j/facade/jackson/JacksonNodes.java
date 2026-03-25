@@ -30,9 +30,6 @@ import java.util.function.BiPredicate;
  */
 public final class JacksonNodes {
 
-    private static final String NODE_TYPE = "JsonNode";
-    private static final String BACKEND = "Jackson";
-
     private JacksonNodes() {}
 
     /**
@@ -484,11 +481,11 @@ public final class JacksonNodes {
 
 
     private static JsonException notNode(Object node) {
-        return new JsonException("Not a " + BACKEND + "'s " + NODE_TYPE + ", but was '" + Types.name(node) + "'");
+        return new JsonException("Not a Jackson's JsonNode, but was '" + Types.name(node) + "'");
     }
 
     private static JsonException notNode(Class<?> clazz) {
-        return new JsonException("Not a " + BACKEND + "'s " + NODE_TYPE + ", but was '" + Types.name(clazz) + "'");
+        return new JsonException("Not a Jackson's JsonNode, but was '" + Types.name(clazz) + "'");
     }
 
     private static JsonException expected(String expected, Object node) {
@@ -496,7 +493,7 @@ public final class JacksonNodes {
     }
 
     private static JsonException unsupported(String method) {
-        return new JsonException("'" + method + "' is not supported for `" + NODE_TYPE + "` in " + BACKEND);
+        return new JsonException("'" + method + "' is not supported for `JsonNode` in Jackson");
     }
 
 

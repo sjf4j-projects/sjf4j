@@ -27,9 +27,6 @@ import java.util.function.BiPredicate;
  */
 public final class GsonNodes {
 
-    private static final String NODE_TYPE = "JsonElement";
-    private static final String BACKEND = "Gson";
-
     private GsonNodes() {}
 
     /**
@@ -478,7 +475,7 @@ public final class GsonNodes {
     }
 
     private static JsonException notNode(Object node) {
-        return new JsonException("Not a " + BACKEND + "'s " + NODE_TYPE + ", but was '" + Types.name(node) + "'");
+        return new JsonException("Not a Gson's JsonElement, but was '" + Types.name(node) + "'");
     }
 
     private static JsonException expected(String expected, Object node) {
@@ -486,6 +483,6 @@ public final class GsonNodes {
     }
 
     private static JsonException unsupported(String method) {
-        return new JsonException("'" + method + "' is not supported for `" + NODE_TYPE + "` in " + BACKEND);
+        return new JsonException("'" + method + "' is not supported for `JsonElement` in Gson");
     }
 }
