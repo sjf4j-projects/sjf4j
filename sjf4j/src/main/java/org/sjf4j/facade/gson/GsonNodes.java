@@ -27,6 +27,9 @@ import java.util.function.BiPredicate;
  */
 public final class GsonNodes {
 
+    private static final String NODE_TYPE = "JsonElement";
+    private static final String BACKEND = "Gson";
+
     private GsonNodes() {}
 
     /**
@@ -47,7 +50,7 @@ public final class GsonNodes {
      * Resolves node kind for a Gson JsonElement.
      */
     public static NodeKind kindOf(Object node) {
-        if (!isNode(node)) throw new JsonException("Not a Gson's JsonElement, but was '" + Types.name(node) + "'");
+        if (!isNode(node)) throw notNode(node);
         JsonElement jsonNode = (JsonElement) node;
         if (jsonNode.isJsonNull()) return NodeKind.VALUE_NULL;
         if (jsonNode.isJsonPrimitive()) {
@@ -84,7 +87,7 @@ public final class GsonNodes {
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isString()) {
             return ((JsonPrimitive) node).getAsString();
         }
-        throw new JsonException("Expected JsonPrimitive(String) but was " + Types.name(node));
+        throw expected("JsonPrimitive(String)", node);
     }
 
     /**
@@ -101,7 +104,7 @@ public final class GsonNodes {
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isNumber()) {
             return ((JsonPrimitive) node).getAsNumber();
         }
-        throw new JsonException("Expected JsonPrimitive(Number) but was " + Types.name(node));
+        throw expected("JsonPrimitive(Number)", node);
     }
 
     /**
@@ -124,7 +127,7 @@ public final class GsonNodes {
         if (node instanceof JsonPrimitive && ((JsonPrimitive) node).isBoolean()) {
             return ((JsonPrimitive) node).getAsBoolean();
         }
-        throw new JsonException("Expected JsonPrimitive(Boolean) but was " + Types.name(node));
+        throw expected("JsonPrimitive(Boolean)", node);
     }
 
     /**
@@ -154,7 +157,7 @@ public final class GsonNodes {
             }
             return jo;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -169,7 +172,7 @@ public final class GsonNodes {
             }
             return map;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -183,7 +186,7 @@ public final class GsonNodes {
             }
             return ja;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -198,7 +201,7 @@ public final class GsonNodes {
             }
             return list;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -213,7 +216,7 @@ public final class GsonNodes {
             }
             return arr;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -228,7 +231,7 @@ public final class GsonNodes {
             }
             return set;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -238,7 +241,7 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).size();
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -248,7 +251,7 @@ public final class GsonNodes {
         if (node instanceof JsonArray) {
             return ((JsonArray) node).size();
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -260,7 +263,7 @@ public final class GsonNodes {
             set.addAll(((JsonObject) node).keySet());
             return set;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -275,7 +278,7 @@ public final class GsonNodes {
             }
             return out;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -290,7 +293,7 @@ public final class GsonNodes {
                 @Override public void remove() { it.remove(); }
             };
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -300,7 +303,7 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).get(key) != null;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -310,7 +313,7 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).get(key);
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -320,7 +323,7 @@ public final class GsonNodes {
         if (node instanceof JsonArray) {
             return ((JsonArray) node).get(idx);
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -333,7 +336,7 @@ public final class GsonNodes {
             out.insertable = false;
             return;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -346,7 +349,7 @@ public final class GsonNodes {
             out.insertable = false;
             return;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -359,7 +362,7 @@ public final class GsonNodes {
             }
             return;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
@@ -371,7 +374,7 @@ public final class GsonNodes {
             }
             return false;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
@@ -387,7 +390,7 @@ public final class GsonNodes {
             }
             return changed;
         }
-        throw new JsonException("Expected JsonObject but was " + Types.name(node));
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -401,7 +404,7 @@ public final class GsonNodes {
             }
             return;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -415,7 +418,7 @@ public final class GsonNodes {
             }
             return false;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
@@ -429,48 +432,60 @@ public final class GsonNodes {
             }
             return true;
         }
-        throw new JsonException("Expected JsonArray but was " + Types.name(node));
+        throw expected("JsonArray", node);
     }
 
     /**
      * Mutation is unsupported for Gson JsonElement facade.
      */
     public static Object putInObject(Object node, String key, Object value) {
-        throw new JsonException("'putInObject' is not supported for `JsonElement` in Gson");
+        throw unsupported("putInObject");
     }
 
     /**
      * Mutation is unsupported for Gson JsonElement facade.
      */
     public static Object setInArray(Object node, int idx, Object value) {
-        throw new JsonException("'setInArray' is not supported for `JsonElement` in Gson");
+        throw unsupported("setInArray");
     }
 
     /**
      * Mutation is unsupported for Gson JsonElement facade.
      */
     public static void addInArray(Object node, Object value) {
-        throw new JsonException("'addInArray' is not supported for `JsonElement` in Gson");
+        throw unsupported("addInArray");
     }
 
     /**
      * Mutation is unsupported for Gson JsonElement facade.
      */
     public static void addInArray(Object node, int idx, Object value) {
-        throw new JsonException("'addInArray' is not supported for `JsonElement` in Gson");
+        throw unsupported("addInArray");
     }
 
     /**
      * Mutation is unsupported for Gson JsonElement facade.
      */
     public static Object removeInObject(Object node, String key) {
-        throw new JsonException("'removeInObject' is not supported for `JsonElement` in Gson");
+        throw unsupported("removeInObject");
     }
 
     /**
      * Mutation is unsupported for Gson JsonElement facade.
      */
     public static Object removeInArray(Object node, int idx) {
-        throw new JsonException("'removeInArray' is not supported for `JsonElement` in Gson");
+        throw unsupported("removeInArray");
+    }
+
+    private static JsonException notNode(Object node) {
+        return new JsonException("Not a " + BACKEND + "'s " + NODE_TYPE + ", but was '" + Types.name(node) + "'");
+    }
+
+    private static JsonException expected(String expected, Object node) {
+        return new JsonException("Expected " + expected + " but was " + Types.name(node));
+    }
+
+    private static JsonException unsupported(String method) {
+        return new JsonException("'" + method + "' is not supported for `" + NODE_TYPE + "` in " + BACKEND);
     }
 }

@@ -1,8 +1,10 @@
 package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IRegexpUtilTest {
@@ -41,5 +43,17 @@ public class IRegexpUtilTest {
         assertTrue(IRegexpUtil.match("", ""));
         assertFalse(IRegexpUtil.search("a", ""));
         assertTrue(IRegexpUtil.search("", "a"));
+    }
+
+    @Test
+    public void testEscapesAndErrors() {
+        assertTrue(IRegexpUtil.match("a\\[b", "a[b"));
+        assertTrue(IRegexpUtil.search("[a-c]", "zzzab"));
+        assertTrue(IRegexpUtil.match("[a-c]", "b"));
+        assertFalse(IRegexpUtil.match("a\\[b", "axb"));
+        assertFalse(IRegexpUtil.search("abcd", "abc"));
+        assertFalse(IRegexpUtil.search("a", null));
+        assertThrows(JsonException.class, () -> IRegexpUtil.match("[abc", "a"));
+        assertThrows(JsonException.class, () -> IRegexpUtil.match("[\\]", "a"));
     }
 }

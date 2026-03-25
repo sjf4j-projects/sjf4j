@@ -30,6 +30,9 @@ import java.util.function.BiPredicate;
  */
 public final class JacksonNodes {
 
+    private static final String NODE_TYPE = "JsonNode";
+    private static final String BACKEND = "Jackson";
+
     private JacksonNodes() {}
 
     /**
@@ -50,7 +53,7 @@ public final class JacksonNodes {
      * Resolves node kind for a Jackson JsonNode.
      */
     public static NodeKind kindOf(Object node) {
-        if (!isNode(node)) throw new JsonException("Not a Jackson's JsonNode, but was '" + Types.name(node) + "'");
+        if (!isNode(node)) throw notNode(node);
         JsonNode jsonNode = (JsonNode) node;
         if (jsonNode.isNull() || jsonNode.isMissingNode()) return NodeKind.VALUE_NULL;
         if (jsonNode.isTextual()) return NodeKind.VALUE_STRING_FACADE;
@@ -63,13 +66,27 @@ public final class JacksonNodes {
     }
 
     /**
+     * Resolves node kind for a Jackson JsonNode class.
+     */
+    public static NodeKind kindOf(Class<?> clazz) {
+        if (!isNode(clazz)) throw notNode(clazz);
+        if (ObjectNode.class.isAssignableFrom(clazz)) return NodeKind.OBJECT_FACADE;
+        if (ArrayNode.class.isAssignableFrom(clazz)) return NodeKind.ARRAY_FACADE;
+        if (TextNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_STRING_FACADE;
+        if (NumericNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_NUMBER_FACADE;
+        if (BooleanNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_BOOLEAN_FACADE;
+        if (JsonNode.class == clazz || JsonNode.class.isAssignableFrom(clazz)) return NodeKind.UNKNOWN;
+        return NodeKind.UNKNOWN;
+    }
+
+    /**
      * Converts a Jackson text node to String.
      */
     public static String toString(Object node) {
         if (node instanceof TextNode) {
             return ((TextNode) node).textValue();
         }
-        throw new JsonException("Expected TextNode but was " + Types.name(node));
+        throw expected("TextNode", node);
     }
 
     /**
@@ -86,7 +103,7 @@ public final class JacksonNodes {
         if (node instanceof NumericNode) {
             return ((NumericNode) node).numberValue();
         }
-        throw new JsonException("Expected NumericNode but was " + Types.name(node));
+        throw expected("NumericNode", node);
     }
 
     /**
@@ -109,7 +126,7 @@ public final class JacksonNodes {
         if (node instanceof BooleanNode) {
             return ((BooleanNode) node).booleanValue();
         }
-        throw new JsonException("Expected BooleanNode but was " + Types.name(node));
+        throw expected("BooleanNode", node);
     }
 
     /**
@@ -139,7 +156,7 @@ public final class JacksonNodes {
             }
             return jo;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -154,7 +171,7 @@ public final class JacksonNodes {
             }
             return map;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -168,7 +185,7 @@ public final class JacksonNodes {
             }
             return ja;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -183,7 +200,7 @@ public final class JacksonNodes {
             }
             return list;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -198,7 +215,7 @@ public final class JacksonNodes {
             }
             return arr;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -213,7 +230,7 @@ public final class JacksonNodes {
             }
             return set;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
 
@@ -225,7 +242,7 @@ public final class JacksonNodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).size();
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -235,7 +252,7 @@ public final class JacksonNodes {
         if (node instanceof ArrayNode) {
             return ((ArrayNode) node).size();
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -250,7 +267,7 @@ public final class JacksonNodes {
             }
             return set;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -265,7 +282,7 @@ public final class JacksonNodes {
             }
             return out;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -280,7 +297,7 @@ public final class JacksonNodes {
                 @Override public void remove() { it.remove(); }
             };
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -290,7 +307,7 @@ public final class JacksonNodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key) != null;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -300,7 +317,7 @@ public final class JacksonNodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key);
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -310,7 +327,7 @@ public final class JacksonNodes {
         if (node instanceof ArrayNode) {
             return ((ArrayNode) node).get(idx);
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
     
     /**
@@ -323,7 +340,7 @@ public final class JacksonNodes {
             out.insertable = false;
             return;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     /**
@@ -336,7 +353,7 @@ public final class JacksonNodes {
             out.insertable = false;
             return;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
     
     /**
@@ -349,7 +366,7 @@ public final class JacksonNodes {
             }
             return;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
@@ -361,7 +378,7 @@ public final class JacksonNodes {
             }
             return false;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
@@ -377,7 +394,7 @@ public final class JacksonNodes {
             }
             return changed;
         }
-        throw new JsonException("Expected ObjectNode but was " + Types.name(node));
+        throw expected("ObjectNode", node);
     }
 
 
@@ -392,7 +409,7 @@ public final class JacksonNodes {
             }
             return;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -406,7 +423,7 @@ public final class JacksonNodes {
             }
             return false;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
@@ -420,49 +437,66 @@ public final class JacksonNodes {
             }
             return true;
         }
-        throw new JsonException("Expected ArrayNode but was " + Types.name(node));
+        throw expected("ArrayNode", node);
     }
 
     /**
      * Mutation is unsupported for Jackson JsonNode facade.
      */
     public static Object putInObject(Object node, String key, Object value) {
-        throw new JsonException("'putInObject' is not supported for `JsonNode` in Jackson");
+        throw unsupported("putInObject");
     }
 
     /**
      * Mutation is unsupported for Jackson JsonNode facade.
      */
     public static Object setInArray(Object node, int idx, Object value) {
-        throw new JsonException("'setInArray' is not supported for `JsonNode` in Jackson");
+        throw unsupported("setInArray");
     }
 
     /**
      * Mutation is unsupported for Jackson JsonNode facade.
      */
     public static void addInArray(Object node, Object value) {
-        throw new JsonException("'addInArray' is not supported for `JsonNode` in Jackson");
+        throw unsupported("addInArray");
     }
 
     /**
      * Mutation is unsupported for Jackson JsonNode facade.
      */
     public static void addInArray(Object node, int idx, Object value) {
-        throw new JsonException("'addInArray' is not supported for `JsonNode` in Jackson");
+        throw unsupported("addInArray");
     }
 
     /**
      * Mutation is unsupported for Jackson JsonNode facade.
      */
     public static Object removeInObject(Object node, String key) {
-        throw new JsonException("'removeInObject' is not supported for `JsonNode` in Jackson");
+        throw unsupported("removeInObject");
     }
 
     /**
      * Mutation is unsupported for Jackson JsonNode facade.
      */
     public static Object removeInArray(Object node, int idx) {
-        throw new JsonException("'removeInArray' is not supported for `JsonNode` in Jackson");
+        throw unsupported("removeInArray");
+    }
+
+
+    private static JsonException notNode(Object node) {
+        return new JsonException("Not a " + BACKEND + "'s " + NODE_TYPE + ", but was '" + Types.name(node) + "'");
+    }
+
+    private static JsonException notNode(Class<?> clazz) {
+        return new JsonException("Not a " + BACKEND + "'s " + NODE_TYPE + ", but was '" + Types.name(clazz) + "'");
+    }
+
+    private static JsonException expected(String expected, Object node) {
+        return new JsonException("Expected " + expected + " but was " + Types.name(node));
+    }
+
+    private static JsonException unsupported(String method) {
+        return new JsonException("'" + method + "' is not supported for `" + NODE_TYPE + "` in " + BACKEND);
     }
 
 
