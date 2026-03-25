@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     id("me.champeau.jmh") version "0.7.2"
     id("com.vanniktech.maven.publish") version "0.35.0"
 }
@@ -75,6 +76,15 @@ tasks.test {
     jvmArgs(
         "-Xshare:off"
     )
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 tasks.withType<Javadoc> {

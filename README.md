@@ -6,6 +6,7 @@
 [![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)  
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
+[![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
 
 **SJF4J** is a lightweight facade over multiple JSON libraries, 
 including [Jackson 2.x](https://github.com/FasterXML/jackson-databind), 
@@ -229,5 +230,4 @@ SJF4J began as an exploration of what JSON-Oriented Development might look like 
 
 If you find the project interesting,
 contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~!
-
 
