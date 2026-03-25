@@ -142,17 +142,6 @@ public abstract class JsonContainer {
     public String getAsStringByPath(String path) {
         return JsonPath.compile(path).getAsString(this);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to a String, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a String, or the default value if it doesn't exist
-     */
-    public String getAsStringByPath(String path, String defaultValue) {
-        return JsonPath.compile(path).getAsString(this, defaultValue);
-    }
 
     // Number
 
@@ -187,17 +176,6 @@ public abstract class JsonContainer {
         return JsonPath.compile(path).getAsNumber(this);
     }
 
-    /**
-     * Converts the value at the specified JSON path to a Number, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a Number, or the default value if it doesn't exist
-     */
-    public Number getAsNumberByPath(String path, Number defaultValue) {
-        return JsonPath.compile(path).getAsNumber(this, defaultValue);
-    }
-
     // Long
 
     /**
@@ -229,17 +207,6 @@ public abstract class JsonContainer {
      */
     public Long getAsLongByPath(String path) {
         return JsonPath.compile(path).getAsLong(this);
-    }
-    
-    /**
-     * Converts the value at the specified JSON path to a long primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a long, or the default value if it doesn't exist
-     */
-    public long getAsLongByPath(String path, long defaultValue) {
-        return JsonPath.compile(path).getAsLong(this, defaultValue);
     }
 
     // Integer
@@ -274,17 +241,6 @@ public abstract class JsonContainer {
     public Integer getAsIntegerByPath(String path) {
         return JsonPath.compile(path).getAsInteger(this);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to an int primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to an int, or the default value if it doesn't exist
-     */
-    public int getAsIntegerByPath(String path, int defaultValue) {
-        return JsonPath.compile(path).getAsInteger(this, defaultValue);
-    }
 
     // Short
 
@@ -317,17 +273,6 @@ public abstract class JsonContainer {
      */
     public Short getAsShortByPath(String path) {
         return JsonPath.compile(path).getAsShort(this);
-    }
-    
-    /**
-     * Converts the value at the specified JSON path to a short primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a short, or the default value if it doesn't exist
-     */
-    public short getAsShortByPath(String path, short defaultValue) {
-        return JsonPath.compile(path).getAsShort(this, defaultValue);
     }
 
     // Byte
@@ -362,17 +307,6 @@ public abstract class JsonContainer {
     public Byte getAsByteByPath(String path) {
         return JsonPath.compile(path).getAsByte(this);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to a byte primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a byte, or the default value if it doesn't exist
-     */
-    public byte getAsByteByPath(String path, byte defaultValue) {
-        return JsonPath.compile(path).getAsByte(this, defaultValue);
-    }
 
     // Double
 
@@ -405,17 +339,6 @@ public abstract class JsonContainer {
      */
     public Double getAsDoubleByPath(String path) {
         return JsonPath.compile(path).getAsDouble(this);
-    }
-    
-    /**
-     * Converts the value at the specified JSON path to a double primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a double, or the default value if it doesn't exist
-     */
-    public double getAsDoubleByPath(String path, double defaultValue) {
-        return JsonPath.compile(path).getAsDouble(this, defaultValue);
     }
 
     // Float
@@ -450,17 +373,6 @@ public abstract class JsonContainer {
     public Float getAsFloatByPath(String path) {
         return JsonPath.compile(path).getAsFloat(this);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to a float primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a float, or the default value if it doesn't exist
-     */
-    public float getAsFloatByPath(String path, float defaultValue) {
-        return JsonPath.compile(path).getAsFloat(this, defaultValue);
-    }
 
     // BigInteger
 
@@ -493,17 +405,6 @@ public abstract class JsonContainer {
      */
     public BigInteger getAsBigIntegerByPath(String path) {
         return JsonPath.compile(path).getAsBigInteger(this);
-    }
-    
-    /**
-     * Converts the value at the specified JSON path to a BigInteger, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a BigInteger, or the default value if it doesn't exist
-     */
-    public BigInteger getAsBigIntegerByPath(String path, BigInteger defaultValue) {
-        return JsonPath.compile(path).getAsBigInteger(this, defaultValue);
     }
 
     // BigDecimal
@@ -538,17 +439,6 @@ public abstract class JsonContainer {
     public BigDecimal getAsBigDecimalByPath(String path) {
         return JsonPath.compile(path).getAsBigDecimal(this);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to a BigDecimal, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a BigDecimal, or the default value if it doesn't exist
-     */
-    public BigDecimal getAsBigDecimalByPath(String path, BigDecimal defaultValue) {
-        return JsonPath.compile(path).getAsBigDecimal(this, defaultValue);
-    }
 
     // Boolean
 
@@ -582,17 +472,6 @@ public abstract class JsonContainer {
     public Boolean getAsBooleanByPath(String path) {
         return JsonPath.compile(path).getAsBoolean(this);
     }
-    
-    /**
-     * Converts the value at the specified JSON path to a boolean primitive, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a boolean, or the default value if it doesn't exist
-     */
-    public boolean getAsBooleanByPath(String path, boolean defaultValue) {
-        return JsonPath.compile(path).getAsBoolean(this, defaultValue);
-    }
 
     // Map
 
@@ -607,17 +486,6 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Gets the value at the specified JSON path as a Map, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist or can't be converted
-     * @return the value at the path as a Map, or the default value if it doesn't exist or can't be converted
-     */
-    public Map<String, Object> getMapByPath(String path, Map<String, Object> defaultValue) {
-        return JsonPath.compile(path).getMap(this, defaultValue);
-    }
-
-    /**
      * Converts the value at the specified JSON path to a Map.
      *
      * @param path the JSON path to get the value from
@@ -625,17 +493,6 @@ public abstract class JsonContainer {
      */
     public <T> Map<String, T> asMapByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).getMap(this, clazz);
-    }
-
-    /**
-     * Converts the value at the specified JSON path to a Map, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a Map, or the default value if it doesn't exist
-     */
-    public <T> Map<String, T> asMapByPath(String path, Class<T> clazz, Map<String, T> defaultValue) {
-        return JsonPath.compile(path).getMap(this, clazz, defaultValue);
     }
 
     // JsonObject
@@ -648,17 +505,6 @@ public abstract class JsonContainer {
     public JsonObject getJsonObjectByPath(String path) {
         return JsonPath.compile(path).getJsonObject(this);
     }
-    
-    /**
-     * Gets the value at the specified JSON path as a JsonObject, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist or can't be converted
-     * @return the value at the path as a JsonObject, or the default value if it doesn't exist or can't be converted
-     */
-    public JsonObject getJsonObjectByPath(String path, JsonObject defaultValue) {
-        return JsonPath.compile(path).getJsonObject(this, defaultValue);
-    }
 
     // JsonArray
     /**
@@ -669,17 +515,6 @@ public abstract class JsonContainer {
      */
     public JsonArray getJsonArrayByPath(String path) {
         return JsonPath.compile(path).getJsonArray(this);
-    }
-    
-    /**
-     * Gets the value at the specified JSON path as a JsonArray, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist or can't be converted
-     * @return the value at the path as a JsonArray, or the default value if it doesn't exist or can't be converted
-     */
-    public JsonArray getJsonArrayByPath(String path, JsonArray defaultValue) {
-        return JsonPath.compile(path).getJsonArray(this, defaultValue);
     }
 
     // List
@@ -694,17 +529,6 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Gets the value at the specified JSON path as a List, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist or can't be converted
-     * @return the value at the path as a List, or the default value if it doesn't exist or can't be converted
-     */
-    public List<Object> getListByPath(String path, List<Object> defaultValue) {
-        return JsonPath.compile(path).getList(this, defaultValue);
-    }
-
-    /**
      * Converts the value at the specified JSON path to a List.
      *
      * @param path the JSON path to get the value from
@@ -712,17 +536,6 @@ public abstract class JsonContainer {
      */
     public <T> List<T> getListByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).getList(this, clazz);
-    }
-
-    /**
-     * Converts the value at the specified JSON path to a List, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to a List, or the default value if it doesn't exist
-     */
-    public <T> List<T> getListByPath(String path, Class<T> clazz, List<T> defaultValue) {
-        return JsonPath.compile(path).getList(this, clazz, defaultValue);
     }
 
     // Array
@@ -737,17 +550,6 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Gets the value at the specified JSON path as a Array, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist or can't be converted
-     * @return the value at the path as an Array, or the default value if it doesn't exist or can't be converted
-     */
-    public Object[] getArrayByPath(String path, Object[] defaultValue) {
-        return JsonPath.compile(path).getArray(this, defaultValue);
-    }
-
-    /**
      * Converts the value at the specified JSON path to a Array.
      *
      * @param path the JSON path to get the value from
@@ -755,17 +557,6 @@ public abstract class JsonContainer {
      */
     public <T> T[] getArrayByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).getArray(this, clazz);
-    }
-
-    /**
-     * Converts the value at the specified JSON path to an Array, with a default value.
-     *
-     * @param path the JSON path to get the value from
-     * @param defaultValue the value to return if the path doesn't exist
-     * @return the value at the path converted to an Array, or the default value if it doesn't exist
-     */
-    public <T> T[] getArrayByPath(String path, Class<T> clazz, T[] defaultValue) {
-        return JsonPath.compile(path).getArray(this, clazz, defaultValue);
     }
 
     // Set
@@ -777,27 +568,12 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Returns a Set value by path with default.
-     */
-    public Set<Object> getSetByPath(String path, Set<Object> defaultValue) {
-        return JsonPath.compile(path).getSet(this, defaultValue);
-    }
-
-    /**
      * Returns a typed Set value by path using strict conversion.
      */
     public <T> Set<T> getSetByPath(String path, Class<T> clazz) {
         return JsonPath.compile(path).getSet(this, clazz);
     }
 
-    /**
-     * Returns a typed Set value by path with default.
-     */
-    public <T> Set<T> getSetByPath(String path, Class<T> clazz, Set<T> defaultValue) {
-        return JsonPath.compile(path).getSet(this, clazz, defaultValue);
-    }
-
-    
     // Clazz
 
     /**

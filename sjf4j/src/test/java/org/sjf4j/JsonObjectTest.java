@@ -427,14 +427,12 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"attr\":{\"aa\":\"bb\"}}");
         assertEquals(5, jo1.getInteger("num", 6));
         assertEquals(6, jo1.getInteger("num2", 6));
-        assertEquals("5", jo1.getAsString("num", "6"));
-        assertEquals("6", jo1.getAsString("num2", "6"));
+        assertEquals("5", jo1.getAsString("num"));
 
 //        assertEquals("bb", jo1.getStringByPath("$.attr.aa", "cc"));
 //        assertEquals("cc", jo1.getStringByPath("$.attr.aa2", "cc"));
 
-        assertEquals(JsonObject.of("aa", "bb"), jo1.getJsonObject("attr", new JsonObject()));
-        assertEquals(new JsonObject(), jo1.getJsonObject("attr2", new JsonObject()));
+        assertEquals(JsonObject.of("aa", "bb"), jo1.getJsonObject("attr"));
     }
 
 

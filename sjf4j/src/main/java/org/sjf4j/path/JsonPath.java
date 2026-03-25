@@ -204,13 +204,13 @@ public class JsonPath {
         }
     }
 
-    // String
     /**
      * Returns a String at this path using strict conversion.
      */
     public String getString(Object container) {
         return _getStrict(container, "String", Nodes::toString);
     }
+
     /**
      * Returns a String at this path or the default value when missing.
      */
@@ -225,21 +225,14 @@ public class JsonPath {
     public String getAsString(Object container) {
         return _getLenient(container, "String", Nodes::asString);
     }
-    /**
-     * Returns a String at this path using lenient conversion with default.
-     */
-    public String getAsString(Object container, String defaultValue) {
-        String value = getAsString(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Number
     /**
      * Returns a Number at this path using strict conversion.
      */
     public Number getNumber(Object container) {
         return _getStrict(container, "Number", Nodes::toNumber);
     }
+
     /**
      * Returns a Number at this path or the default value when missing.
      */
@@ -254,21 +247,14 @@ public class JsonPath {
     public Number getAsNumber(Object container) {
         return _getLenient(container, "Number", Nodes::asNumber);
     }
-    /**
-     * Returns a Number at this path using lenient conversion with default.
-     */
-    public Number getAsNumber(Object container, Number defaultValue) {
-        Number value = getAsNumber(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Long
     /**
      * Returns a Long at this path using strict conversion.
      */
     public Long getLong(Object container) {
         return _getStrict(container, "Long", Nodes::toLong);
     }
+
     /**
      * Returns a Long at this path or the default value when missing.
      */
@@ -283,21 +269,14 @@ public class JsonPath {
     public Long getAsLong(Object container) {
         return _getLenient(container, "Long", Nodes::asLong);
     }
-    /**
-     * Returns a Long at this path using lenient conversion with default.
-     */
-    public long getAsLong(Object container, long defaultValue) {
-        Long value = getAsLong(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Integer
     /**
      * Returns an Integer at this path using strict conversion.
      */
     public Integer getInteger(Object container) {
         return _getStrict(container, "Integer", Nodes::toInteger);
     }
+
     /**
      * Returns an Integer at this path or the default value when missing.
      */
@@ -312,21 +291,14 @@ public class JsonPath {
     public Integer getAsInteger(Object container) {
         return _getLenient(container, "Integer", Nodes::asInteger);
     }
-    /**
-     * Returns an Integer at this path using lenient conversion with default.
-     */
-    public int getAsInteger(Object container, int defaultValue) {
-        Integer value = getAsInteger(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Short
     /**
      * Returns a Short at this path using strict conversion.
      */
     public Short getShort(Object container) {
         return _getStrict(container, "Short", Nodes::toShort);
     }
+
     /**
      * Returns a Short at this path or the default value when missing.
      */
@@ -341,21 +313,14 @@ public class JsonPath {
     public Short getAsShort(Object container) {
         return _getLenient(container, "Short", Nodes::asShort);
     }
-    /**
-     * Returns a Short at this path using lenient conversion with default.
-     */
-    public short getAsShort(Object container, short defaultValue) {
-        Short value = getAsShort(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Byte
     /**
      * Returns a Byte at this path using strict conversion.
      */
     public Byte getByte(Object container) {
         return _getStrict(container, "Byte", Nodes::toByte);
     }
+
     /**
      * Returns a Byte at this path or the default value when missing.
      */
@@ -370,21 +335,14 @@ public class JsonPath {
     public Byte getAsByte(Object container) {
         return _getLenient(container, "Byte", Nodes::asByte);
     }
-    /**
-     * Returns a Byte at this path using lenient conversion with default.
-     */
-    public byte getAsByte(Object container, byte defaultValue) {
-        Byte value = getAsByte(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Double
     /**
      * Returns a Double at this path using strict conversion.
      */
     public Double getDouble(Object container) {
         return _getStrict(container, "Double", Nodes::toDouble);
     }
+
     /**
      * Returns a Double at this path or the default value when missing.
      */
@@ -399,21 +357,14 @@ public class JsonPath {
     public Double getAsDouble(Object container) {
         return _getLenient(container, "Double", Nodes::asDouble);
     }
-    /**
-     * Returns a Double at this path using lenient conversion with default.
-     */
-    public double getAsDouble(Object container, double defaultValue) {
-        Double value = getAsDouble(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Float
     /**
      * Returns a Float at this path using strict conversion.
      */
     public Float getFloat(Object container) {
         return _getStrict(container, "Float", Nodes::toFloat);
     }
+
     /**
      * Returns a Float at this path or the default value when missing.
      */
@@ -428,21 +379,14 @@ public class JsonPath {
     public Float getAsFloat(Object container) {
         return _getLenient(container, "Float", Nodes::asFloat);
     }
-    /**
-     * Returns a Float at this path using lenient conversion with default.
-     */
-    public float getAsFloat(Object container, float defaultValue) {
-        Float value = getAsFloat(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // BigInteger
     /**
      * Returns a BigInteger at this path using strict conversion.
      */
     public BigInteger getBigInteger(Object container) {
         return _getStrict(container, "BigInteger", Nodes::toBigInteger);
     }
+
     /**
      * Returns a BigInteger at this path or the default value when missing.
      */
@@ -457,21 +401,14 @@ public class JsonPath {
     public BigInteger getAsBigInteger(Object container) {
         return _getLenient(container, "BigInteger", Nodes::asBigInteger);
     }
-    /**
-     * Returns a BigInteger at this path using lenient conversion with default.
-     */
-    public BigInteger getAsBigInteger(Object container, BigInteger defaultValue) {
-        BigInteger value = getAsBigInteger(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // BigDecimal
     /**
      * Returns a BigDecimal at this path using strict conversion.
      */
     public BigDecimal getBigDecimal(Object container) {
         return _getStrict(container, "BigDecimal", Nodes::toBigDecimal);
     }
+
     /**
      * Returns a BigDecimal at this path or the default value when missing.
      */
@@ -486,21 +423,14 @@ public class JsonPath {
     public BigDecimal getAsBigDecimal(Object container) {
         return _getLenient(container, "BigDecimal", Nodes::asBigDecimal);
     }
-    /**
-     * Returns a BigDecimal at this path using lenient conversion with default.
-     */
-    public BigDecimal getAsBigDecimal(Object container, BigDecimal defaultValue) {
-        BigDecimal value = getAsBigDecimal(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Boolean
     /**
      * Returns a Boolean at this path using strict conversion.
      */
     public Boolean getBoolean(Object container) {
         return _getStrict(container, "Boolean", Nodes::toBoolean);
     }
+
     /**
      * Returns a Boolean at this path or the default value when missing.
      */
@@ -515,42 +445,19 @@ public class JsonPath {
     public Boolean getAsBoolean(Object container) {
         return _getLenient(container, "Boolean", Nodes::asBoolean);
     }
-    /**
-     * Returns a Boolean at this path using lenient conversion with default.
-     */
-    public boolean getAsBoolean(Object container, boolean defaultValue) {
-        Boolean value = getAsBoolean(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // JsonObject
     /**
      * Returns a JsonObject at this path using strict conversion.
      */
     public JsonObject getJsonObject(Object container) {
         return _getStrict(container, "JsonObject", Nodes::toJsonObject);
     }
-    /**
-     * Returns a JsonObject at this path or the default value when missing.
-     */
-    public JsonObject getJsonObject(Object container, JsonObject defaultValue) {
-        JsonObject value = getJsonObject(container);
-        return value == null ? defaultValue : value;
-    }
 
-    // Map
     /**
      * Returns a Map at this path using strict conversion.
      */
     public Map<String, Object> getMap(Object container) {
         return _getStrict(container, "Map<String,Object>", Nodes::toMap);
-    }
-    /**
-     * Returns a Map at this path or the default value when missing.
-     */
-    public Map<String, Object> getMap(Object container, Map<String, Object> defaultValue) {
-        Map<String, Object> value = getMap(container);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -559,27 +466,12 @@ public class JsonPath {
     public <T> Map<String, T> getMap(Object container, Class<T> clazz) {
         return _getLenient(container, "Map<String," + clazz.getName() + ">", (value) -> Nodes.toMap(value, clazz));
     }
-    /**
-     * Returns a typed Map at this path or the default value when missing.
-     */
-    public <T> Map<String, T> getMap(Object container, Class<T> clazz, Map<String, T> defaultValue) {
-        Map<String, T> value = getMap(container, clazz);
-        return value == null ? defaultValue : value;
-    }
 
-    // JsonArray
     /**
      * Returns a JsonArray at this path using strict conversion.
      */
     public JsonArray getJsonArray(Object container) {
         return _getStrict(container, "JsonArray", Nodes::toJsonArray);
-    }
-    /**
-     * Returns a JsonArray at this path or the default value when missing.
-     */
-    public JsonArray getJsonArray(Object container, JsonArray defaultValue) {
-        JsonArray value = getJsonArray(container);
-        return value == null ? defaultValue : value;
     }
 
     // List
@@ -589,13 +481,6 @@ public class JsonPath {
     public List<Object> getList(Object container) {
         return _getStrict(container, "List<Object>", Nodes::toList);
     }
-    /**
-     * Returns a List at this path or the default value when missing.
-     */
-    public List<Object> getList(Object container, List<Object> defaultValue) {
-        List<Object> value = getList(container);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a typed List at this path using strict conversion.
@@ -603,27 +488,12 @@ public class JsonPath {
     public <T> List<T> getList(Object container, Class<T> clazz) {
         return _getLenient(container, "List<" + clazz.getName() + ">", (value) -> Nodes.toList(value, clazz));
     }
-    /**
-     * Returns a typed List at this path or the default value when missing.
-     */
-    public <T> List<T> getList(Object container, Class<T> clazz, List<T> defaultValue) {
-        List<T> value = getList(container, clazz);
-        return value == null ? defaultValue : value;
-    }
 
-    // Array
     /**
      * Returns an Object array at this path using strict conversion.
      */
     public Object[] getArray(Object container) {
         return _getStrict(container, "Object[]", Nodes::toArray);
-    }
-    /**
-     * Returns an Object array at this path or the default value when missing.
-     */
-    public Object[] getArray(Object container, Object[] defaultValue) {
-        Object[] value = getArray(container);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -632,27 +502,12 @@ public class JsonPath {
     public <T> T[] getArray(Object container, Class<T> clazz) {
         return _getLenient(container, clazz.getName() + "[]", (value) -> Nodes.toArray(value, clazz));
     }
-    /**
-     * Returns a typed array at this path or the default value when missing.
-     */
-    public <T> T[] getArray(Object container, Class<T> clazz, T[] defaultValue) {
-        T[] value = getArray(container, clazz);
-        return value == null ? defaultValue : value;
-    }
 
-    // Set
     /**
      * Returns a Set at this path using strict conversion.
      */
     public Set<Object> getSet(Object container) {
         return _getStrict(container, "Set<Object>", Nodes::toSet);
-    }
-    /**
-     * Returns a Set at this path or the default value when missing.
-     */
-    public Set<Object> getSet(Object container, Set<Object> defaultValue) {
-        Set<Object> value = getSet(container);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -660,13 +515,6 @@ public class JsonPath {
      */
     public <T> Set<T> getSet(Object container, Class<T> clazz) {
         return _getLenient(container, "Set<" + clazz.getName() + ">", (value) -> Nodes.toSet(value, clazz));
-    }
-    /**
-     * Returns a typed Set at this path or the default value when missing.
-     */
-    public <T> Set<T> getSet(Object container, Class<T> clazz, Set<T> defaultValue) {
-        Set<T> value = getSet(container, clazz);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -692,6 +540,7 @@ public class JsonPath {
     public <T> T getAs(Object container, Class<T> clazz) {
         return _getLenient(container, clazz.getName(), (value) -> Nodes.as(value, clazz));
     }
+
     /**
      * Returns a value at this path using lenient conversion with inferred type.
      */
@@ -702,8 +551,8 @@ public class JsonPath {
         return getAs(container, clazz);
     }
 
+    /// Find
 
-    /// All
     /**
      * Finds all matching nodes for this path.
      */
@@ -736,7 +585,8 @@ public class JsonPath {
         return result;
     }
 
-    // eval() is more powerful than get() / find()
+    /// Eval
+
     /**
      * Evaluates the path and returns either a single value, a list of values,
      * or a function result.

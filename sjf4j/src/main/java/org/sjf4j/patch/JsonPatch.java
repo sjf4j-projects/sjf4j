@@ -1,6 +1,7 @@
 package org.sjf4j.patch;
 
 import org.sjf4j.JsonArray;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
 
@@ -41,7 +42,7 @@ public class JsonPatch extends JsonArray {
      * Parses patch document from JSON string.
      */
     public static JsonPatch fromJson(String json) {
-        return JsonPatch.fromJson(json, JsonPatch.class);
+        return Sjf4j.fromJson(json, JsonPatch.class);
     }
 
     /**

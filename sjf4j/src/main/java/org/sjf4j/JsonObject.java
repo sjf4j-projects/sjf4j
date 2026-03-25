@@ -429,20 +429,6 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Parses a JSON string into a JsonObject subtype.
-     */
-    public static <T extends JsonObject> T fromJson(String input, Class<T> clazz) {
-        return Sjf4j.fromJson(input, clazz);
-    }
-
-    /**
-     * Parses a JSON string into a JsonObject using a type reference.
-     */
-    public static <T extends JsonObject> T fromJson(String input, TypeReference<T> type) {
-        return Sjf4j.fromJson(input, type);
-    }
-
-    /**
      * Serializes this JsonObject to JSON.
      */
     public String toJson() {
@@ -459,20 +445,6 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Parses a YAML string into a JsonObject subtype.
-     */
-    public static <T extends JsonObject> T fromYaml(String input, Class<T> clazz) {
-        return Sjf4j.fromYaml(input, clazz);
-    }
-
-    /**
-     * Parses a YAML string into a JsonObject using a type reference.
-     */
-    public static <T extends JsonObject> T fromYaml(String input, TypeReference<T> type) {
-        return Sjf4j.fromYaml(input, type);
-    }
-
-    /**
      * Serializes this JsonObject to YAML.
      */
     public String toYaml() {
@@ -486,20 +458,6 @@ public class JsonObject extends JsonContainer {
      */
     public static JsonObject fromNode(Object node) {
         return Sjf4j.fromNode(node, JsonObject.class);
-    }
-
-    /**
-     * Converts a node into a JsonObject subtype.
-     */
-    public static <T extends JsonObject> T fromNode(Object node, Class<T> clazz) {
-        return Sjf4j.fromNode(node, clazz);
-    }
-
-    /**
-     * Converts a node into a JsonObject using a type reference.
-     */
-    public static <T extends JsonObject> T fromNode(Object node, TypeReference<T> type) {
-        return Sjf4j.fromNode(node, type);
     }
 
     /**
@@ -593,14 +551,6 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a String value using lenient conversion with default.
-     */
-    public String getAsString(String key, String defaultValue) {
-        String value = getAsString(key);
-        return value == null ? defaultValue : value;
-    }
-
-    /**
      * Returns a Number value using strict conversion.
      */
     public Number getNumber(String key) {
@@ -630,14 +580,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to Number", e);
         }
-    }
-    
-    /**
-     * Returns a Number value using lenient conversion with default.
-     */
-    public Number getAsNumber(String key, Number defaultValue) {
-        Number value = getAsNumber(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -671,14 +613,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("as failed: key '" + key + "' to Long", e);
         }
     }
-    
-    /**
-     * Returns a Long value using lenient conversion with default.
-     */
-    public long getAsLong(String key, long defaultValue) {
-        Long value = getAsLong(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns an Integer value using strict conversion.
@@ -710,14 +644,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to Integer", e);
         }
-    }
-    
-    /**
-     * Returns an Integer value using lenient conversion with default.
-     */
-    public int getAsInteger(String key, int defaultValue) {
-        Integer value = getAsInteger(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -751,14 +677,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("as failed: key '" + key + "' to Short", e);
         }
     }
-    
-    /**
-     * Returns a Short value using lenient conversion with default.
-     */
-    public short getAsShort(String key, short defaultValue) {
-        Short value = getAsShort(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a Byte value using strict conversion.
@@ -790,14 +708,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to Byte", e);
         }
-    }
-    
-    /**
-     * Returns a Byte value using lenient conversion with default.
-     */
-    public byte getAsByte(String key, byte defaultValue) {
-        Byte value = getAsByte(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -831,14 +741,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("as failed: key '" + key + "' to Double", e);
         }
     }
-    
-    /**
-     * Returns a Double value using lenient conversion with default.
-     */
-    public double getAsDouble(String key, double defaultValue) {
-        Double value = getAsDouble(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a Float value using strict conversion.
@@ -870,14 +772,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to Float", e);
         }
-    }
-    
-    /**
-     * Returns a Float value using lenient conversion with default.
-     */
-    public float getAsFloat(String key, float defaultValue) {
-        Float value = getAsFloat(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -911,14 +805,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("as failed: key '" + key + "' to BigInteger", e);
         }
     }
-    
-    /**
-     * Returns a BigInteger value using lenient conversion with default.
-     */
-    public BigInteger getAsBigInteger(String key, BigInteger defaultValue) {
-        BigInteger value = getAsBigInteger(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a BigDecimal value using strict conversion.
@@ -950,14 +836,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to BigDecimal", e);
         }
-    }
-    
-    /**
-     * Returns a BigDecimal value using lenient conversion with default.
-     */
-    public BigDecimal getAsBigDecimal(String key, BigDecimal defaultValue) {
-        BigDecimal value = getAsBigDecimal(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -991,14 +869,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("as failed: key '" + key + "' to Boolean", e);
         }
     }
-    
-    /**
-     * Returns a Boolean value using lenient conversion with default.
-     */
-    public boolean getAsBoolean(String key, boolean defaultValue) {
-        Boolean value = getAsBoolean(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a JsonObject value using strict conversion.
@@ -1010,14 +880,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("get failed: JsonObject for key '" + key + "'", e);
         }
-    }
-    
-    /**
-     * Returns a JsonObject value or the default value when missing.
-     */
-    public JsonObject getJsonObject(String key, JsonObject defaultValue) {
-        JsonObject value = getJsonObject(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -1031,13 +893,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("get failed: Map<String,Object> for key '" + key + "'", e);
         }
     }
-    /**
-     * Returns a Map value or the default value when missing.
-     */
-    public Map<String, Object> getMap(String key, Map<String, Object> defaultValue) {
-        Map<String, Object> value = getMap(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a typed Map value using strict conversion.
@@ -1049,13 +904,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to Map<String," + clazz.getName() + ">", e);
         }
-    }
-    /**
-     * Returns a typed Map value or the default value when missing.
-     */
-    public <T> Map<String, T> getMap(String key, Class<T> clazz, Map<String, T> defaultValue) {
-        Map<String, T> value = getMap(key, clazz);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -1069,14 +917,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("get failed: JsonArray for key '" + key + "'", e);
         }
     }
-    
-    /**
-     * Returns a JsonArray value or the default value when missing.
-     */
-    public JsonArray getJsonArray(String key, JsonArray defaultValue) {
-        JsonArray value = getJsonArray(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a List value using strict conversion.
@@ -1088,13 +928,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("get failed: List<Object> for key '" + key + "'", e);
         }
-    }
-    /**
-     * Returns a List value or the default value when missing.
-     */
-    public List<Object> getList(String key, List<Object> defaultValue) {
-        List<Object> value = getList(key);
-        return value == null ? defaultValue : value;
     }
 
     /**
@@ -1108,13 +941,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("as failed: key '" + key + "' to List<" + clazz.getName() + ">", e);
         }
     }
-    /**
-     * Returns a typed List value or the default value when missing.
-     */
-    public <T> List<T> getList(String key, Class<T> clazz, List<T> defaultValue) {
-        List<T> value = getList(key, clazz);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns an Object array using strict conversion.
@@ -1127,13 +953,6 @@ public class JsonObject extends JsonContainer {
             throw new JsonException("get failed: Object[] for key '" + key + "'", e);
         }
     }
-    /**
-     * Returns an Object array or the default value when missing.
-     */
-    public Object[] getArray(String key, Object[] defaultValue) {
-        Object[] value = getArray(key);
-        return value == null ? defaultValue : value;
-    }
 
     /**
      * Returns a typed array using strict conversion.
@@ -1145,13 +964,6 @@ public class JsonObject extends JsonContainer {
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to " + clazz.getName() + "[]", e);
         }
-    }
-    /**
-     * Returns a typed array or the default value when missing.
-     */
-    public <T> T[] getArray(String key, Class<T> clazz, T[] defaultValue) {
-        T[] value = getArray(key, clazz);
-        return value == null ? defaultValue : value;
     }
 
     /**
