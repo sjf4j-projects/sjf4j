@@ -27,38 +27,44 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Codec contract for mapping domain value types to raw node values.
+ * Codec contract for mapping domain value types to raw OBNT node values.
  * <p>
- * Raw values should be JSON-friendly types supported by SJF4J node model
- * (typically String/Number/Boolean/Map/List/Object). Implementations should be
- * deterministic and reversible for stable serialization/deserialization.
+ * This is the extension point behind {@code @NodeValue}. A codec lets a custom
+ * Java type behave like a single logical JSON value in SJF4J instead of being
+ * analyzed as a POJO.
+ *
+ * <p>The raw side should use SJF4J-supported node forms such as
+ * {@link String}, {@link Number}, {@link Boolean}, {@link java.util.Map},
+ * {@link java.util.List}, or {@link Object}. Implementations should be stable,
+ * deterministic, and reversible for predictable reads and writes.
  */
 public interface ValueCodec<V, R> {
 
     /**
-     * Encodes a domain value to raw node value.
+     * Encodes a domain value to its raw node representation.
      */
     R valueToRaw(V value);
 
     /**
-     * Decodes a raw node value back to domain value.
+     * Decodes a raw node representation back to the domain value.
      */
     V rawToValue(R raw);
 
     /**
-     * Returns value type handled by this codec.
+     * Returns the domain value type handled by this codec.
      */
     Class<V> valueClass();
 
     /**
-     * Returns raw type produced/consumed by this codec.
+     * Returns the raw node type produced and consumed by this codec.
      */
     Class<R> rawClass();
 
     /**
-     * Returns a copy of value when custom copy semantics are needed.
+     * Returns a copy of the value when custom copy semantics are needed.
      * <p>
-     * Default implementation returns the input reference unchanged.
+     * Override this for mutable value types. The default implementation returns
+     * the input reference unchanged.
      */
     default V valueCopy(V value) {return value;}
 

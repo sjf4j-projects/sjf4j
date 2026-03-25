@@ -11,7 +11,17 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * High-level JSON node classification used across the library.
+ * High-level JSON-semantic classification for values in SJF4J's OBNT model.
+ * <p>
+ * Unlike {@link NodeKind}, which is a lower-level runtime dispatch category,
+ * {@code JsonType} answers the simpler question "what JSON type does this value
+ * behave like?". Different Java representations can therefore map to the same
+ * {@code JsonType}; for example {@link Map}, {@link JsonObject}, JOJO, and POJO
+ * all classify as {@link #OBJECT}.
+ *
+ * <p>This type is used when APIs need JSON-level semantics rather than exact Java
+ * container identity, especially for validation, polymorphic resolution, node
+ * comparison, and shape-based decisions.
  */
 public enum JsonType {
     OBJECT,
@@ -24,7 +34,7 @@ public enum JsonType {
     UNKNOWN;
 
     /**
-     * Resolves JsonType from low-level NodeKind.
+     * Resolves the JSON-semantic type from a low-level {@link NodeKind}.
      */
     public static JsonType of(NodeKind nodeKind) {
         switch (nodeKind) {
@@ -60,12 +70,19 @@ public enum JsonType {
     }
 
     /**
-     * Resolves JsonType from runtime node object.
+     * Resolves the JSON-semantic type of a runtime OBNT value.
      */
     public static JsonType of(Object node) {
         return of(NodeKind.of(node));
     }
 
+    /**
+     * Resolves the JSON-semantic type implied by a Java class.
+     * <p>
+     * This method checks plain container/value classes first, then SJF4J-managed
+     * types such as {@code @NodeValue}, {@code @AnyOf}, POJO, JOJO, and facade
+     * node classes.
+     */
     public static JsonType rawOf(Class<?> clazz) {
         NodeKind kind = NodeKind.plainOf(clazz);
         if (kind != NodeKind.UNKNOWN) return of(kind);
@@ -86,7 +103,7 @@ public enum JsonType {
     }
 
     /**
-     * Resolves JsonType from JSON Schema type keyword.
+     * Resolves {@link JsonType} from a JSON Schema {@code type} keyword.
      */
     public static JsonType ofSchema(String type) {
         switch (type) {

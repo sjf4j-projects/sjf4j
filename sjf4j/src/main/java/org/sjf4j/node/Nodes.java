@@ -29,7 +29,16 @@ import java.util.function.BiPredicate;
 
 
 /**
- * Core node utilities: type conversion, inspection, and container access.
+ * Core structural utilities for SJF4J's OBNT (Object-Based Node Tree).
+ * <p>
+ * {@code Nodes} is the main helper API for working directly with OBNT values:
+ * native Java object graphs composed of object nodes, array nodes, and scalar
+ * values without a dedicated JSON AST.
+ *
+ * <p>It provides type conversion, inspection, traversal, equality, hashing,
+ * copying, and container access with semantics shared across {@link JsonObject},
+ * {@link JsonArray}, plain {@link Map}/{@link List}, and supported facade-native
+ * node types.
  */
 public class Nodes {
 
@@ -475,7 +484,12 @@ public class Nodes {
     }
 
     /**
-     * Converts a node to JOJO subtype.
+     * Converts a node to a JOJO subtype.
+     * <p>
+     * A JOJO is any concrete {@link JsonObject} subclass other than
+     * {@link JsonObject} itself. During conversion, declared fields are bound by
+     * normal POJO rules, and object members that do not match declared fields are
+     * retained as dynamic properties on the target object.
      */
     public static <T> T toJojo(Object node, Class<T> clazz) {
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
@@ -485,7 +499,11 @@ public class Nodes {
     }
 
     /**
-     * Converts a node to JAJO subtype.
+     * Converts a node to a JAJO subtype.
+     * <p>
+     * A JAJO is any concrete {@link JsonArray} subclass other than
+     * {@link JsonArray} itself. The target instance is created first and then
+     * populated with converted array elements in order.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toJajo(Object node, Class<T> clazz) {
@@ -500,15 +518,23 @@ public class Nodes {
 
 
     /**
-     * Converts a node to a registered POJO type (including JOJO/JAJO subclasses).
+     * Converts a node to a registered POJO type, including JOJO and JAJO subclasses.
      * <p>
-     * For regular POJO targets, fields are mapped by declared field names, with
+     * In SJF4J terminology:
+     * <ul>
+     *     <li>POJO means a regular Java object bound by declared members</li>
+     *     <li>JOJO means a {@link JsonObject} subtype with both declared fields and dynamic object properties</li>
+     *     <li>JAJO means a {@link JsonArray} subtype with array semantics and a dedicated Java type</li>
+     * </ul>
+     *
+     * <p>For regular POJO targets, fields are mapped by declared field names, with
      * alias support from {@code @NodeProperty}. Constructor-arg mapping is used
      * when required by {@code @NodeCreator}; unmatched values are applied later
      * through setters when available.
-     * <p>
-     * For JOJO targets ({@link JsonObject} subclasses), dynamic keys that are not
-     * declared fields are preserved in the dynamic map.
+     *
+     * <p>For JOJO targets, object members that are not declared fields are
+     * preserved in the dynamic map. For JAJO targets, array items are appended to
+     * the target subtype in order.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {

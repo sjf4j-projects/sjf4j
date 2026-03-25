@@ -25,9 +25,15 @@ import java.util.function.Predicate;
 
 
 /**
- * JSON object container with both dynamic fields and POJO-backed fields.
+ * JSON object container in SJF4J's OBNT model.
  *
- * <p>Dynamic fields are stored in {@code dynamicMap}; POJO fields are mapped
+ * <p>{@link JsonObject} can be used directly as a mutable JSON object node, or
+ * subclassed to define a JOJO (JSON Object Java Object). A JOJO combines
+ * declared Java fields with dynamic JSON properties in the same object, so a
+ * model can keep typed domain fields without losing extra object members from
+ * input JSON.
+ *
+ * <p>Dynamic fields are stored in {@code dynamicMap}; declared fields are mapped
  * via {@link NodeRegistry.FieldInfo}. Accessors use {@link Nodes} conversion
  * semantics for strict/lenient reads.
  */
@@ -65,6 +71,10 @@ public class JsonObject extends JsonContainer {
      *     <li>JOJO/POJO inputs are copied by exposed node fields</li>
      *     <li>unsupported object kinds fail fast</li>
      * </ul>
+     *
+     * <p>This is useful when you want object-style APIs on top of an existing
+     * object node, but only plain {@link JsonObject} preserves a shared dynamic
+     * backing map. JOJO and POJO inputs are reprojected field by field.
      */
     @SuppressWarnings("unchecked")
     public JsonObject(Object node) {

@@ -20,7 +20,11 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 /**
- * JSON array container backed by a mutable list.
+ * JSON array container in SJF4J's OBNT model.
+ *
+ * <p>{@link JsonArray} can be used directly as a mutable JSON array node, or
+ * subclassed to define a JAJO. A JAJO is the array-side counterpart to JOJO:
+ * it keeps JSON-array behavior while giving the subtype a dedicated Java type.
  *
  * <p>Element access and conversion are delegated to {@link Nodes} to keep
  * behavior consistent across JSON container types.

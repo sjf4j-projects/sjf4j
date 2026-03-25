@@ -26,7 +26,16 @@ import java.util.function.Supplier;
 
 
 /**
- * Registry for POJO metadata and {@link ValueCodec} mappings.
+ * Central metadata registry for SJF4J's OBNT type system.
+ * <p>
+ * {@code NodeRegistry} analyzes Java classes once and caches the structural
+ * metadata later used by reads, writes, conversion, copying, and traversal.
+ * For jar users, this is where SJF4J decides whether a class behaves as a
+ * POJO, JOJO, JAJO, {@code @NodeValue}, or {@code @AnyOf} type.
+ *
+ * <p>Most application code does not need to call this class directly, but its
+ * metadata model defines the runtime binding semantics used across
+ * {@link Nodes}, {@link org.sjf4j.Sjf4j}, and facade integrations.
  */
 public final class NodeRegistry {
 
@@ -37,7 +46,9 @@ public final class NodeRegistry {
 
 
     /**
-     * Registers (or returns cached) metadata for a class.
+     * Registers or returns cached metadata for a class.
+     * <p>
+     * This is the main entry point for runtime classification of user types.
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz) {
         return registerTypeInfo(clazz, false);
@@ -47,7 +58,7 @@ public final class NodeRegistry {
      * Registers type metadata and optionally enforces POJO availability.
      * <p>
      * Resolution order is: cache hit, {@code @NodeValue}/registered codec,
-     * POJO analysis, then NONE marker.
+     * {@code @AnyOf}, POJO analysis, then NONE marker.
      *
      * @param mustPojo when true, non-POJO results are rejected
      */

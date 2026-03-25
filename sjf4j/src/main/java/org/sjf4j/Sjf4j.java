@@ -12,7 +12,15 @@ import java.util.Properties;
 
 
 /**
- * Static facade for JSON/YAML/properties IO and node conversion.
+ * Main static entry point for JSON/YAML/properties IO and node conversion.
+ * <p>
+ * If you are using the published jar directly, this is usually the first API to
+ * read: parsing methods turn external data into SJF4J's OBNT (Object-Based Node
+ * Tree), and writing methods serialize the same native Java object graph back
+ * out.
+ * <p>
+ * Typical object targets are regular POJOs, {@link JsonObject}/{@link JsonArray},
+ * and their structured subtypes such as JOJO and JAJO models.
  * <p>
  * All operations delegate to facades from global {@link Sjf4jConfig}.
  */

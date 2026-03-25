@@ -11,7 +11,12 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Low-level node kind classification used for runtime dispatch.
+ * Low-level classification of OBNT node shapes and SJF4J-managed Java types.
+ * <p>
+ * {@code NodeKind} is mainly an internal dispatch enum, but it also explains how
+ * SJF4J groups values at runtime: scalar values, object-like nodes, array-like
+ * nodes, facade-native nodes, and structurally managed Java types such as JOJO,
+ * JAJO, POJO, and {@code @NodeValue} types.
  */
 public enum NodeKind {
     /** Represents a null or void value. */
