@@ -36,6 +36,21 @@ jobs:
     - name: Build with Gradle Wrapper
       run: ./gradlew build
 
+    - name: Print JaCoCo summary
+      run: |
+        python3 - <<'PY'
+        import xml.etree.ElementTree as ET
+        path = 'sjf4j/build/reports/jacoco/test/jacocoTestReport.xml'
+        root = ET.parse(path).getroot()
+        for counter in root.findall('counter'):
+            if counter.attrib['type'] in ('BRANCH', 'LINE', 'INSTRUCTION', 'METHOD'):
+                missed = int(counter.attrib['missed'])
+                covered = int(counter.attrib['covered'])
+                total = missed + covered
+                pct = (covered / total * 100.0) if total else 100.0
+                print(f"{counter.attrib['type']}: {covered}/{total} {pct:.2f}%")
+        PY
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
       with:
