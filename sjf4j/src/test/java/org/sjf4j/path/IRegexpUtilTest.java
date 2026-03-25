@@ -50,6 +50,8 @@ public class IRegexpUtilTest {
         assertTrue(IRegexpUtil.match("a\\[b", "a[b"));
         assertTrue(IRegexpUtil.search("[a-c]", "zzzab"));
         assertTrue(IRegexpUtil.match("[a-c]", "b"));
+        assertTrue(IRegexpUtil.match("[\\-]", "-"));
+        assertFalse(IRegexpUtil.match("[a-c]", "z"));
         assertFalse(IRegexpUtil.match("a\\[b", "axb"));
         assertFalse(IRegexpUtil.search("abcd", "abc"));
         assertFalse(IRegexpUtil.search("a", null));

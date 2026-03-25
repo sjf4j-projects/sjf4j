@@ -63,8 +63,12 @@ class PathFunctionRegistryBuiltinTest {
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("stddev", new Object[0]));
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("first", new Object[0]));
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("last", new Object[0]));
+        assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("match", new Object[]{"abc"}));
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("match", new Object[]{"abc", null}));
+        assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("match", new Object[]{"abc", JsonObject.of("p", 1)}));
+        assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("search", new Object[]{"abc"}));
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("search", new Object[]{"abc", null}));
+        assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("search", new Object[]{"abc", JsonObject.of("p", 1)}));
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("index", new Object[]{JsonArray.of("a"), "x"}));
         assertThrows(JsonException.class, () -> PathFunctionRegistry.invoke("index", new Object[]{JsonArray.of("a")}));
         assertThrows(JsonException.class, () -> new PathFunctionRegistry.FunctionDescriptor("", args -> null));
