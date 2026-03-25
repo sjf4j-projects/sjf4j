@@ -700,7 +700,7 @@ public class Nodes {
             return (T) map;
         }
         if (rawClazz == JsonObject.class) {
-            return (T) new JsonObject((JsonObject) node);
+            return (T) new JsonObject(((JsonObject) node).toMap());
         }
         if (node instanceof JsonObject) {
             JsonObject srcJo = (JsonObject) node;
@@ -720,7 +720,7 @@ public class Nodes {
             return (T) Sjf4jConfig.global().listSupplier.create((List<Object>) node);
         }
         if (rawClazz == JsonArray.class) {
-            return (T) new JsonArray((JsonArray) node);
+            return (T) new JsonArray(((JsonArray) node).toList());
         }
         if (node instanceof JsonArray) {
             NodeRegistry.PojoInfo pi = NodeRegistry.getPojoInfo(node.getClass());

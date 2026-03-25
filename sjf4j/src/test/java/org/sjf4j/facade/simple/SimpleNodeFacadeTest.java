@@ -46,7 +46,7 @@ public class SimpleNodeFacadeTest {
                 "x",
                 Arrays.asList(1,2),
                 Collections.singletonMap("a",1),
-                new JsonObject("x",1),
+                JsonObject.of("x", 1),
                 new Student()
         };
 
@@ -71,7 +71,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     void objectClassDeepCopySwitchWorks() {
-        JsonObject src = new JsonObject("name", "A", "meta", new JsonObject("age", 18));
+        JsonObject src = JsonObject.of("name", "A", "meta", JsonObject.of("age", 18));
 
         Object same = nodeFacade.readNode(src, Object.class, false);
         assertTrue(same == src);
@@ -106,12 +106,12 @@ public class SimpleNodeFacadeTest {
         User baby = new User();
         baby.setName("Baby");
         baby.setAge(1);
-        baby.setInfo(new JsonObject("cc", "dd"));
+        baby.setInfo(JsonObject.of("cc", "dd"));
 
         User lily = new User();
         lily.setName("Lily");
         lily.setAge(25);
-        lily.setInfo(new JsonObject("aa", "bb"));
+        lily.setInfo(JsonObject.of("aa", "bb"));
         lily.setFriends(Collections.singletonList(baby));
         lily.setRoles(Collections.singletonMap("kk", new Role("Mom", 90.0f)));
 
@@ -134,12 +134,12 @@ public class SimpleNodeFacadeTest {
         User baby = new User();
         baby.setName("Baby");
         baby.setAge(1);
-        baby.setInfo(new JsonObject("k", "v"));
+        baby.setInfo(JsonObject.of("k", "v"));
 
         User lily = new User();
         lily.setName("Lily");
         lily.setAge(25);
-        lily.setInfo(new JsonObject("city", "NY"));
+        lily.setInfo(JsonObject.of("city", "NY"));
         lily.setFriends(Collections.singletonList(baby));
 
         User copied = (User) nodeFacade.readNode(lily, User.class, true);
@@ -156,7 +156,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     public void testValue2Object2() {
-        Object o1 = nodeFacade.readNode(new JsonObject("percentage", 0), Role.class);
+        Object o1 = nodeFacade.readNode(JsonObject.of("percentage", 0), Role.class);
         log.info("o1 type={}, o1={}", o1.getClass(), o1);
         assertEquals(Role.class, o1.getClass());
     }
@@ -299,7 +299,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     void testAnyOfRootByDiscriminator() {
-        JsonObject jo = new JsonObject("kind", "cat", "name", "Nana", "lives", 7);
+        JsonObject jo = JsonObject.of("kind", "cat", "name", "Nana", "lives", 7);
 
         AnyOfAnimal animal = (AnyOfAnimal) nodeFacade.readNode(jo, AnyOfAnimal.class);
         assertInstanceOf(AnyOfCat.class, animal);
@@ -309,7 +309,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     void testAnyOfFieldByDiscriminator() {
-        JsonObject jo = new JsonObject("pet", new JsonObject("kind", "dog", "name", "Bobo", "bark", 3));
+        JsonObject jo = JsonObject.of("pet", JsonObject.of("kind", "dog", "name", "Bobo", "bark", 3));
         AnyOfZoo zoo = (AnyOfZoo) nodeFacade.readNode(jo, AnyOfZoo.class);
 
         assertInstanceOf(AnyOfDog.class, zoo.pet);
@@ -319,8 +319,8 @@ public class SimpleNodeFacadeTest {
 
     @Test
     void testAnyOfRootByJsonType() {
-        AnyOfPoly p1 = (AnyOfPoly) nodeFacade.readNode(new JsonObject("k", 1), AnyOfPoly.class);
-        AnyOfPoly p2 = (AnyOfPoly) nodeFacade.readNode(new JsonArray(new Object[]{1, 2}), AnyOfPoly.class);
+        AnyOfPoly p1 = (AnyOfPoly) nodeFacade.readNode(JsonObject.of("k", 1), AnyOfPoly.class);
+        AnyOfPoly p2 = (AnyOfPoly) nodeFacade.readNode(JsonArray.of(1, 2), AnyOfPoly.class);
 
         assertInstanceOf(AnyOfPolyObj.class, p1);
         assertInstanceOf(AnyOfPolyArr.class, p2);
@@ -330,8 +330,8 @@ public class SimpleNodeFacadeTest {
     public void testListOfPojo() {
         JsonObject jo = new JsonObject();
         List<JsonObject> list = new ArrayList<>();
-        list.add(new JsonObject("name", "Ann", "age", 10));
-        list.add(new JsonObject("name", "Ben", "age", 12));
+        list.add(JsonObject.of("name", "Ann", "age", 10));
+        list.add(JsonObject.of("name", "Ben", "age", 12));
         jo.put("students", list);
 
         ClassRoom c = (ClassRoom) nodeFacade.readNode(jo, ClassRoom.class, true);
@@ -356,8 +356,8 @@ public class SimpleNodeFacadeTest {
     public void testSetOfPojo() {
         JsonObject jo = new JsonObject();
         List<JsonObject> list = new ArrayList<>();
-        list.add(new JsonObject("name", "Ann", "age", 10));
-        list.add(new JsonObject("name", "Ben", "age", 12));
+        list.add(JsonObject.of("name", "Ann", "age", 10));
+        list.add(JsonObject.of("name", "Ben", "age", 12));
         jo.put("students", list);
 
         ClassRoomSet c = (ClassRoomSet) nodeFacade.readNode(jo, ClassRoomSet.class);
@@ -390,8 +390,8 @@ public class SimpleNodeFacadeTest {
         map.put("b", 2);
 
         JsonObject nested = new JsonObject();
-        nested.put("s1", new JsonObject("name", "Alice", "age", 7));
-        nested.put("s2", new JsonObject("name", "Bob", "age", 8));
+        nested.put("s1", JsonObject.of("name", "Alice", "age", 7));
+        nested.put("s2", JsonObject.of("name", "Bob", "age", 8));
 
         jo.put("map", map);
         jo.put("nested", nested);
@@ -479,7 +479,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     public void testObjectJsonArrayPreserveType() {
-        JsonArray input = new JsonArray(new Object[]{1, "a", true});
+        JsonArray input = JsonArray.of(1, "a", true);
         Object out = nodeFacade.readNode(input, Object.class);
         assertEquals(JsonArray.class, out.getClass());
         JsonArray outJa = (JsonArray) out;

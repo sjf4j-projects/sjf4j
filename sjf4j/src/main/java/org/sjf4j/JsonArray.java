@@ -40,42 +40,38 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Creates JsonArray from existing list.
+     * Creates JsonArray from literal element values.
      */
-    public JsonArray(List<Object> nodeList) {
-        this();
-        setNodeList(nodeList);
+    public static JsonArray of(Object... values) {
+        JsonArray ja = new JsonArray();
+        ja.setNodeList(values == null ? null : Sjf4jConfig.global().listSupplier.create(values));
+        return ja;
     }
 
     /**
-     * Creates JsonArray by copying another JsonArray.
+     * Creates a JsonArray by wrapping or converting an array-like node.
+     * <p>
+     * When the source already uses a compatible list backing, this constructor
+     * shares that backing storage. Otherwise it converts the source into a new
+     * list. In practice:
+     * <ul>
+     *     <li>{@link List} and {@link JsonArray} share when possible</li>
+     *     <li>Java arrays and {@link Set} inputs are copied</li>
+     *     <li>other backend array nodes are converted and copied</li>
+     * </ul>
      */
-    public JsonArray(JsonArray ja) {
-        this();
-        setNodeList(ja.nodeList);
-    }
-
-    /**
-     * Creates JsonArray from set elements.
-     */
-    public JsonArray(Set<Object> set) {
-        this();
-        setNodeList(Sjf4jConfig.global().listSupplier.create(set));
-    }
-
-    /**
-     * Creates JsonArray from array elements.
-     */
-    public JsonArray(Object[] array) {
-        this();
-        setNodeList(Sjf4jConfig.global().listSupplier.create(array));
-    }
-
-    /**
-     * Creates a JsonArray from a list-like node.
-     */
+    @SuppressWarnings("unchecked")
     public JsonArray(Object node) {
         this();
+        if (node == null) return;
+        if (node instanceof List) {
+            setNodeList((List<Object>) node);
+            return;
+        }
+        if (node instanceof JsonArray) {
+            setNodeList(((JsonArray) node).nodeList);
+            return;
+        }
         setNodeList(Nodes.toList(node));
     }
 

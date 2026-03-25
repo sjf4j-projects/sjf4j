@@ -135,7 +135,7 @@ public class NodesTest {
 
     @Test
     public void testToJsonObject() {
-        JsonObject jo = new JsonObject("key", "value");
+        JsonObject jo = JsonObject.of("key", "value");
         assertEquals(jo, Nodes.toJsonObject(jo));
         assertNull(Nodes.toJsonObject(null));
         
@@ -146,7 +146,7 @@ public class NodesTest {
 
     @Test
     public void testToJsonObject2() {
-        JsonObject jo = new JsonObject("key", "value");
+        JsonObject jo = JsonObject.of("key", "value");
         assertEquals(jo, Nodes.toJsonObject(jo));
         
         Map<String, Object> map = new HashMap<>();
@@ -260,7 +260,7 @@ public class NodesTest {
 
     @Test
     void testNodesToPojoAnyOfRoot() {
-        JsonObject src = new JsonObject("kind", "cat", "name", "Nana", "lives", 7);
+        JsonObject src = JsonObject.of("kind", "cat", "name", "Nana", "lives", 7);
         Animal animal = Nodes.to(src, Animal.class);
         assertInstanceOf(Cat.class, animal);
         assertEquals("Nana", animal.getName());
@@ -269,7 +269,7 @@ public class NodesTest {
 
     @Test
     void testNodesToPojoAnyOfField() {
-        JsonObject src = new JsonObject("pet", new JsonObject("kind", "dog", "name", "Bobo", "bark", 3));
+        JsonObject src = JsonObject.of("pet", JsonObject.of("kind", "dog", "name", "Bobo", "bark", 3));
         Zoo zoo = Nodes.to(src, Zoo.class);
         assertInstanceOf(Dog.class, zoo.pet);
         assertEquals("Bobo", zoo.pet.getName());
@@ -322,9 +322,9 @@ public class NodesTest {
     @Test
     public void testEquals() {
         Sjf4jConfig.useFastjson2AsGlobal();
-        JsonObject jo = new JsonObject(
+        JsonObject jo = JsonObject.of(
                 "name", "Bob",
-                "address", new JsonObject(
+                "address", JsonObject.of(
                         "city", "New York",
                         "street", "5th Ave"));
         Person p1 = jo.toPojo(Person.class);
@@ -346,17 +346,17 @@ public class NodesTest {
 
     @Test
     public void testHash1() {
-        JsonObject jo1 = new JsonObject(
+        JsonObject jo1 = JsonObject.of(
                 "name", "Bob",
                 "yes", true,
-                "address", new JsonObject(
+                "address", JsonObject.of(
                     "city", 1,
                     "street", Arrays.asList("aa", "bb")));
 
-        JsonObject jo2 = new JsonObject(
+        JsonObject jo2 = JsonObject.of(
                 "yes", true,
                 "name", "Bob",
-                "address", new JsonObject(
+                "address", JsonObject.of(
                     "city", 1.0,
                     "street", Arrays.asList("aa", "bb")));
 
@@ -379,9 +379,9 @@ public class NodesTest {
 
     @Test
     public void testCopy2() {
-        JsonObject jo = new JsonObject(
+        JsonObject jo = JsonObject.of(
                 "name", "Bob",
-                "address", new JsonObject(
+                "address", JsonObject.of(
                 "city", "New York",
                 "street", "5th Ave"));
         Person p1 = jo.toPojo(Person.class);
@@ -400,7 +400,7 @@ public class NodesTest {
 
     @Test
     public void testCopy3() {
-        JsonObject jo = new JsonObject(
+        JsonObject jo = JsonObject.of(
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
         Baby b1 = jo.toPojo(Baby.class);

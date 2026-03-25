@@ -114,10 +114,10 @@ public class PatchesTest {
     @Test
     public void testMergeRfc7386Nested() {
         Map<String, Object> target = new HashMap<>();
-        target.put("obj", new JsonObject("x", 1, "y", 2));
+        target.put("obj", JsonObject.of("x", 1, "y", 2));
 
         Map<String, Object> patch = new HashMap<>();
-        patch.put("obj", new JsonObject("x", 10, "z", 3));
+        patch.put("obj", JsonObject.of("x", 10, "z", 3));
 
         Patches.mergeRfc7386(target, patch);
 

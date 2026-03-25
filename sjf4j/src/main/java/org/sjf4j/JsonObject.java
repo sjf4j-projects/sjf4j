@@ -54,26 +54,17 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JsonObject backed by the provided map.
-     */
-    public JsonObject(Map<String, Object> dynamicMap) {
-        this();
-        this.dynamicMap = dynamicMap;
-    }
-
-    /**
-     * Creates a JsonObject by copying entries from another JsonObject.
-     */
-    public JsonObject(JsonObject jo) {
-        this();
-        putAll(jo);
-    }
-
-    /**
-     * Creates a JsonObject from a Map, JsonObject, or POJO.
+     * Creates a JsonObject by wrapping or converting a node.
      * <p>
-     * Map input is used as dynamic backing map directly. POJO input is copied by
-     * exposed node fields into this container.
+     * When the source already uses a compatible object backing, this constructor
+     * shares that backing storage. Otherwise it projects the source into this
+     * container by copying exposed entries. In practice:
+     * <ul>
+     *     <li>{@link Map} shares as the dynamic backing map</li>
+     *     <li>plain {@link JsonObject} shares its dynamic backing map</li>
+     *     <li>JOJO/POJO inputs are copied by exposed node fields</li>
+     *     <li>unsupported object kinds fail fast</li>
+     * </ul>
      */
     @SuppressWarnings("unchecked")
     public JsonObject(Object node) {
@@ -84,7 +75,12 @@ public class JsonObject extends JsonContainer {
             return;
         }
         if (node instanceof JsonObject) {
-            putAll((JsonObject) node);
+            JsonObject jo = (JsonObject) node;
+            if (jo.getClass() == JsonObject.class) {
+                this.dynamicMap = jo.dynamicMap;
+                return;
+            }
+            putAll(jo);
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
@@ -100,95 +96,22 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JsonObject with a single key-value pair.
+     * Creates a JsonObject from alternating key-value pairs.
      */
-    public JsonObject(String key1, Object value1) {
-        this();
-        put(key1, value1);
-    }
-    
-    /**
-     * Creates a JsonObject with two key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2) {
-        this(key1, value1);
-        put(key2, value2);
-    }
-    
-    /**
-     * Creates a JsonObject with three key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2,
-                      String key3, Object value3) {
-        this(key1, value1, key2, value2);
-        put(key3, value3);
-    }
-    
-    /**
-     * Creates a JsonObject with four key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2,
-                      String key3, Object value3,
-                      String key4, Object value4) {
-        this(key1, value1, key2, value2, key3, value3);
-        put(key4, value4);
-    }
-    
-    /**
-     * Creates a JsonObject with five key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2,
-                      String key3, Object value3,
-                      String key4, Object value4,
-                      String key5, Object value5) {
-        this(key1, value1, key2, value2, key3, value3, key4, value4);
-        put(key5, value5);
-    }
-    
-    /**
-     * Creates a JsonObject with six key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2,
-                      String key3, Object value3,
-                      String key4, Object value4,
-                      String key5, Object value5,
-                      String key6, Object value6) {
-        this(key1, value1, key2, value2, key3, value3, key4, value4, key5, value5);
-        put(key6, value6);
-    }
-    
-    /**
-     * Creates a JsonObject with seven key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2,
-                      String key3, Object value3,
-                      String key4, Object value4,
-                      String key5, Object value5,
-                      String key6, Object value6,
-                      String key7, Object value7) {
-        this(key1, value1, key2, value2, key3, value3, key4, value4, key5, value5, key6, value6);
-        put(key7, value7);
-    }
-    
-    /**
-     * Creates a JsonObject with eight key-value pairs.
-     */
-    public JsonObject(String key1, Object value1,
-                      String key2, Object value2,
-                      String key3, Object value3,
-                      String key4, Object value4,
-                      String key5, Object value5,
-                      String key6, Object value6,
-                      String key7, Object value7,
-                      String key8, Object value8) {
-        this(key1, value1, key2, value2, key3, value3, key4, value4, key5, value5, key6, value6, key7, value7);
-        put(key8, value8);
+    public static JsonObject of(Object... keyValues) {
+        JsonObject jo = new JsonObject();
+        if (keyValues == null || keyValues.length == 0) return jo;
+        if ((keyValues.length & 1) != 0) {
+            throw new JsonException("JsonObject.of requires an even number of arguments");
+        }
+        for (int i = 0; i < keyValues.length; i += 2) {
+            Object key = keyValues[i];
+            if (!(key instanceof String)) {
+                throw new JsonException("JsonObject.of key at index " + i + " must be a String");
+            }
+            jo.put((String) key, keyValues[i + 1]);
+        }
+        return jo;
     }
 
     /**

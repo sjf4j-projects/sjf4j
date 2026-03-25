@@ -27,14 +27,14 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class FromNodeBenchmark {
 
-    private static final JsonObject JSON_PERSON = new JsonObject(
+    private static final JsonObject JSON_PERSON = JsonObject.of(
             "name", "Alice",
             "age", 30,
-            "address", new JsonObject("city", "SG", "street", "Main"),
+            "address", JsonObject.of("city", "SG", "street", "Main"),
             "tags", Arrays.asList("a", "b", "c")
     );
 
-    private static final JsonObject JSON_CTOR_ONLY = new JsonObject(
+    private static final JsonObject JSON_CTOR_ONLY = JsonObject.of(
             "id", "u-1",
             "level", 7,
             "note", "hello",

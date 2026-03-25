@@ -49,8 +49,8 @@ public class SimpleNodeFacadeGenericTest {
     @Test
     void read_top_level_generic_list_of_pojo() {
         List<JsonObject> node = Arrays.asList(
-                new JsonObject("name", "A", "age", 7),
-                new JsonObject("name", "B", "age", 8)
+                JsonObject.of("name", "A", "age", 7),
+                JsonObject.of("name", "B", "age", 8)
         );
 
         List<UserBody> users = (List<UserBody>) nodeFacade.readNode(
@@ -67,9 +67,9 @@ public class SimpleNodeFacadeGenericTest {
 
     @Test
     void read_top_level_generic_map_of_pojo() {
-        JsonObject node = new JsonObject(
-                "u1", new JsonObject("name", "Han", "age", 18),
-                "u2", new JsonObject("name", "Li", "age", 20)
+        JsonObject node = JsonObject.of(
+                "u1", JsonObject.of("name", "Han", "age", 18),
+                "u2", JsonObject.of("name", "Li", "age", 20)
         );
 
         Map<String, UserBody> users = (Map<String, UserBody>) nodeFacade.readNode(
@@ -86,10 +86,10 @@ public class SimpleNodeFacadeGenericTest {
 
     @Test
     void read_generic_jojo_body_with_pojo_type_should_bind_to_pojo() {
-        JsonObject node = new JsonObject(
+        JsonObject node = JsonObject.of(
                 "code", 200,
                 "msg", "ok",
-                "body", new JsonObject("name", "Han", "age", 18)
+                "body", JsonObject.of("name", "Han", "age", 18)
         );
 
         PatchResponse<UserBody> response = (PatchResponse<UserBody>) nodeFacade.readNode(
@@ -107,12 +107,12 @@ public class SimpleNodeFacadeGenericTest {
 
     @Test
     void read_generic_jojo_body_with_list_type_should_bind_to_pojo_list() {
-        JsonObject node = new JsonObject(
+        JsonObject node = JsonObject.of(
                 "code", 200,
                 "msg", "ok",
                 "body", Arrays.asList(
-                        new JsonObject("name", "A", "age", 7),
-                        new JsonObject("name", "B", "age", 8)
+                        JsonObject.of("name", "A", "age", 7),
+                        JsonObject.of("name", "B", "age", 8)
                 )
         );
 
@@ -132,10 +132,10 @@ public class SimpleNodeFacadeGenericTest {
 
     @Test
     void read_generic_jojo_body_with_map_type_should_bind_to_map() {
-        JsonObject node = new JsonObject(
+        JsonObject node = JsonObject.of(
                 "code", 500,
                 "msg", "error",
-                "body", new JsonObject("retry", 3, "timeout", 30)
+                "body", JsonObject.of("retry", 3, "timeout", 30)
         );
 
         PatchResponse<Map<String, Integer>> response = (PatchResponse<Map<String, Integer>>) nodeFacade.readNode(
@@ -153,10 +153,10 @@ public class SimpleNodeFacadeGenericTest {
 
     @Test
     void read_generic_jojo_with_node_creator_body_should_bind_to_pojo() {
-        JsonObject node = new JsonObject(
+        JsonObject node = JsonObject.of(
                 "code", 200,
                 "msg", "ok",
-                "body", new JsonObject("name", "Han", "age", 18)
+                "body", JsonObject.of("name", "Han", "age", 18)
         );
 
         PatchResponseWithCreator<UserBody> response = (PatchResponseWithCreator<UserBody>) nodeFacade.readNode(

@@ -61,6 +61,8 @@ class JsonArrayTest {
         testSetAndAdd();
         testContainsIndex();
         testForEach();
+        testOfFactory();
+        testWrapSemantics();
         testEmptyArray();
         testMerge();
         testPrimitiveArrays();
@@ -114,8 +116,8 @@ class JsonArrayTest {
 
     public void testParse2() {
 //        JsonArray ja1 = new JsonArray("gaga", "haha", new String[]{"jiji", "kaka"});
-        JsonArray ja1 = new JsonArray(
-                new Object[]{"gaga", "haha", new JsonArray(new String[]{"jiji", "kaka"})});
+        JsonArray ja1 = JsonArray.of(
+                "gaga", "haha", JsonArray.of("jiji", "kaka"));
 
         JsonArray ja2 = JsonArray.fromJson("[\"gaga\",\"haha\",[\"jiji\",\"kaka\"]]");
         assertNotEquals(ja1, ja2);
@@ -149,6 +151,25 @@ class JsonArrayTest {
             JsonArray ja = JsonArray.fromJson("[\"number\",5,null,[\"gaga\",\"haha\"],45,32]");
             ja.getLong(0);
         });
+    }
+
+    public void testOfFactory() {
+        JsonArray ja = JsonArray.of("gaga", "haha", JsonArray.of("jiji", "kaka"));
+        assertEquals("[\"gaga\",\"haha\",[\"jiji\",\"kaka\"]]", ja.toJson());
+
+        assertEquals(JsonArray.of(1, 2, 3), new JsonArray(new int[]{1, 2, 3}));
+    }
+
+    public void testWrapSemantics() {
+        JsonArray src = JsonArray.of(1, 2);
+        JsonArray wrapped = new JsonArray(src);
+        src.add(3);
+        assertEquals(3, wrapped.size());
+
+        int[] ints = new int[]{1, 2};
+        JsonArray copied = new JsonArray(ints);
+        ints[0] = 9;
+        assertEquals(1, copied.getInteger(0));
     }
 
     @Test
@@ -242,7 +263,7 @@ class JsonArrayTest {
     }
 
     public void testNegativeIndex() {
-        JsonArray ja = new JsonArray(new String[]{"a", "b", "c", "d"});
+        JsonArray ja = JsonArray.of("a", "b", "c", "d");
         
         // negative index: from the end
         assertEquals("d", ja.getString(-1));
@@ -259,13 +280,13 @@ class JsonArrayTest {
         assertEquals("z", ja.getString(3));
         
         // get different types using negative index
-        JsonArray ja2 = new JsonArray(new Object[]{1, 2, 3, 4});
+        JsonArray ja2 = JsonArray.of(1, 2, 3, 4);
         assertEquals(4, ja2.getInteger(-1));
         assertEquals(1.0, ja2.getDouble(-4));
     }
 
     public void testSetAndAdd() {
-        JsonArray ja = new JsonArray(new Object[]{"a", "b", "c"});
+        JsonArray ja = JsonArray.of("a", "b", "c");
         
         // test set
         ja.set(1, "x");
@@ -295,7 +316,7 @@ class JsonArrayTest {
     }
 
     public void testContainsIndex() {
-        JsonArray ja = new JsonArray(new Object[]{"a", "b", "c"});
+        JsonArray ja = JsonArray.of("a", "b", "c");
         
         assertTrue(ja.containsIndex(0));
         assertTrue(ja.containsIndex(1));
@@ -310,7 +331,7 @@ class JsonArrayTest {
     }
 
     public void testForEach() {
-        JsonArray ja = new JsonArray(new Object[]{"a", "b", "c"});
+        JsonArray ja = JsonArray.of("a", "b", "c");
         List<Object> collected = new java.util.ArrayList<>();
         
         ja.forEach(e -> collected.add(e));
@@ -368,7 +389,7 @@ class JsonArrayTest {
     }
 
     public void testToList1() {
-        JsonArray ja = new JsonArray(new Object[]{1, 2, "test", true});
+        JsonArray ja = JsonArray.of(1, 2, "test", true);
         List<Object> list = ja.toList();
         
         assertEquals(4, list.size());
@@ -380,28 +401,28 @@ class JsonArrayTest {
 
     public void testPrimitiveArrays() {
         // test boolean array
-        JsonArray ja1 = new JsonArray(new Object[]{true, false, true});
+        JsonArray ja1 = JsonArray.of(true, false, true);
         assertEquals(3, ja1.size());
         assertTrue(ja1.getBoolean(0));
         assertFalse(ja1.getBoolean(1));
         
         // test byte array
-        JsonArray ja2 = new JsonArray(new Object[]{(byte)1, (byte)2, (byte)3});
+        JsonArray ja2 = JsonArray.of((byte) 1, (byte) 2, (byte) 3);
         assertEquals(3, ja2.size());
         assertEquals((byte)1, ja2.getByte(0));
         
         // test short array
-        JsonArray ja3 = new JsonArray(new Object[]{(short)10, (short)20});
+        JsonArray ja3 = JsonArray.of((short) 10, (short) 20);
         assertEquals(2, ja3.size());
         assertEquals((short)10, ja3.getShort(0));
         
         // test char array
-        JsonArray ja4 = new JsonArray(new Object[]{'a', 'b', 'c'});
+        JsonArray ja4 = JsonArray.of('a', 'b', 'c');
         assertEquals(3, ja4.size());
         assertEquals("a", ja4.getString(0));
         
         // test float array
-        JsonArray ja5 = new JsonArray(new Object[]{1.1f, 2.2f});
+        JsonArray ja5 = JsonArray.of(1.1f, 2.2f);
         assertEquals(2, ja5.size());
         assertEquals(1.1f, ja5.getFloat(0), 0.001f);
     }
@@ -419,8 +440,8 @@ class JsonArrayTest {
         ja2.add(1);
         ja2.add("string");
         ja2.add(true);
-        ja2.add(new JsonObject("key", "value"));
-        ja2.add(new JsonArray(new Object[]{1, 2}));
+        ja2.add(JsonObject.of("key", "value"));
+        ja2.add(JsonArray.of(1, 2));
         assertEquals(5, ja2.size());
         
         // test very large array
@@ -432,7 +453,7 @@ class JsonArrayTest {
         assertEquals(999, ja3.getInteger(999));
         
         // test default value of getString
-        JsonArray ja4 = new JsonArray(new Object[]{"a", null, "c"});
+        JsonArray ja4 = JsonArray.of("a", null, "c");
         assertEquals("default", ja4.getString(1, "default"));
         assertEquals("a", ja4.getString(0, "default"));
     }

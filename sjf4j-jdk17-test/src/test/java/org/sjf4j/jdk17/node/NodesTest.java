@@ -33,7 +33,7 @@ public class NodesTest {
         User user1 = Nodes.toPojo(jo, User.class);
         log.info("user1={}", Nodes.inspect(user1));
 
-        JsonObject jo2 = new JsonObject("name", "yes");
+        JsonObject jo2 = JsonObject.of("name", "yes");
         User user2 = Nodes.toPojo(jo2, User.class);
         log.info("user2={}", Nodes.inspect(user2));
         assertEquals("yes", user2.name);

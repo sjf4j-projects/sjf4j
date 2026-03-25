@@ -75,6 +75,8 @@ class JsonObjectTest {
         testPutNonNull();
         testComputeIfAbsent();
         testBuilder();
+        testOfFactory();
+        testWrapSemantics();
         testEntrySetKeySet();
         testRemoveByPath();
         testEdgeCases();
@@ -155,7 +157,7 @@ class JsonObjectTest {
         jo.remove("name");
         assertEquals("{\"age\":18.8}", jo.toJson());
 
-        JsonObject jo2 = new JsonObject("copy", "me", "yes?", true);
+        JsonObject jo2 = JsonObject.of("copy", "me", "yes?", true);
         jo2.putAll(jo);
         assertEquals("{\"copy\":\"me\",\"yes?\":true,\"age\":18.8}", jo2.toJson());
 
@@ -192,7 +194,7 @@ class JsonObjectTest {
     public void testParse2() {
         Map<String, Object> map1 = new HashMap<>();
         map1.put("number", 5);
-        map1.put("duck", new JsonArray(new String[]{"gaga", "haha"}));
+        map1.put("duck", JsonArray.of("gaga", "haha"));
         JsonObject jo1 = new JsonObject(map1);
 
         JsonObject jo2 = JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga\",\"haha\"]}");
@@ -227,6 +229,34 @@ class JsonObjectTest {
         assertThrows(JsonException.class, () -> {
             JsonObject.fromJson("{\"number\":5,\"duck\":[\"gaga,\"haha\"],45:32}");
         });
+    }
+
+    public void testOfFactory() {
+        JsonObject jo = JsonObject.of("a", 1, "b", true, "c", new JsonArray(new int[]{1, 2}));
+        assertEquals("{\"a\":1,\"b\":true,\"c\":[1,2]}", jo.toJson());
+
+        assertThrows(JsonException.class, () -> JsonObject.of("a", 1, "b"));
+        assertThrows(JsonException.class, () -> JsonObject.of(1, "a"));
+    }
+
+    static class WrapJojo extends JsonObject {
+        String name;
+    }
+
+    public void testWrapSemantics() {
+        JsonObject src = JsonObject.of("a", 1);
+        JsonObject wrapped = new JsonObject(src);
+        src.put("b", 2);
+        assertEquals(2, wrapped.getInteger("b"));
+
+        WrapJojo jojo = new WrapJojo();
+        jojo.name = "han";
+        jojo.put("x", 1);
+        JsonObject copied = new JsonObject(jojo);
+        jojo.name = "li";
+        jojo.put("x", 2);
+        assertEquals("han", copied.getString("name"));
+        assertEquals(1, copied.getInteger("x"));
     }
 
     /**
@@ -313,7 +343,7 @@ class JsonObjectTest {
         assertThrows(JsonException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
-        jo3.ensurePutByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
+        jo3.ensurePutByPath("$.a.b", JsonArray.of(0, JsonObject.of("d", "99")));
         jo3.ensurePutByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
         //FIXME: this is a bug!
@@ -328,7 +358,7 @@ class JsonObjectTest {
         assertThrows(JsonException.class, () -> jo2.ensurePutByPath("$.a.b[1].c", "444"));
 
         JsonObject jo3 = new JsonObject();
-        jo3.ensurePutByPath("$.a.b", new JsonArray(new Object[]{0, new JsonObject("d", "99")}));
+        jo3.ensurePutByPath("$.a.b", JsonArray.of(0, JsonObject.of("d", "99")));
         jo3.ensurePutByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
         //FIXME: this is a bug!
@@ -403,7 +433,7 @@ class JsonObjectTest {
 //        assertEquals("bb", jo1.getStringByPath("$.attr.aa", "cc"));
 //        assertEquals("cc", jo1.getStringByPath("$.attr.aa2", "cc"));
 
-        assertEquals(new JsonObject("aa", "bb"), jo1.getJsonObject("attr", new JsonObject()));
+        assertEquals(JsonObject.of("aa", "bb"), jo1.getJsonObject("attr", new JsonObject()));
         assertEquals(new JsonObject(), jo1.getJsonObject("attr2", new JsonObject()));
     }
 
@@ -426,7 +456,7 @@ class JsonObjectTest {
         map6.put("k2", "v2");
         map1.put("map6", map6);
 
-        map1.put("jo7", new JsonObject("man", "bad"));
+        map1.put("jo7", JsonObject.of("man", "bad"));
 
         JsonObject jo1 = new JsonObject(map1);
         System.out.println("jo1: " + jo1.toJson());
@@ -501,9 +531,9 @@ class JsonObjectTest {
 
     @Test
     public void testPojo1() {
-        JsonObject jo = new JsonObject(
+        JsonObject jo = JsonObject.of(
                 "name", "Bob",
-                "address", new JsonObject(
+                "address", JsonObject.of(
                         "city", "New York",
                         "street", "5th Ave"));
         Person p1 = jo.toPojo(Person.class);
@@ -530,7 +560,7 @@ class JsonObjectTest {
     }
 
     public void testClear() {
-        JsonObject jo = new JsonObject("a", 1, "b", "test");
+        JsonObject jo = JsonObject.of("a", 1, "b", "test");
         assertFalse(jo.isEmpty());
         assertEquals(2, jo.size());
         
@@ -598,7 +628,7 @@ class JsonObjectTest {
     }
 
     public void testEntrySetKeySet() {
-        JsonObject jo = new JsonObject("a", 1, "b", "test", "c", true);
+        JsonObject jo = JsonObject.of("a", 1, "b", "test", "c", true);
         
         assertEquals(3, jo.keySet().size());
         assertTrue(jo.keySet().contains("a"));
@@ -675,12 +705,12 @@ class JsonObjectTest {
 
     public void testSupplier1() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
-        JsonObject jo1 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
+        JsonObject jo1 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"a\":\"aa\",\"b\":\"bb\",\"c\":\"cc\"}", jo1.toJson());
 
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
-        JsonObject jo2 = new JsonObject("c", "cc", "b", "bb", "a", "aa");
+        JsonObject jo2 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
         assertEquals(jo1, jo2);

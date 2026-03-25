@@ -215,10 +215,10 @@ public class JsonPathTest {
 
     @Test
     public void testMapList1() {
-        JsonObject jo1 = new JsonObject("names", new int[]{1,2,3});
+        JsonObject jo1 = JsonObject.of("names", new int[]{1, 2, 3});
         Map<String, List<JsonObject>> map = new HashMap<>();
         List<JsonObject> lis = new ArrayList<>();
-        lis.add(new JsonObject("kk", "ll"));
+        lis.add(JsonObject.of("kk", "ll"));
         map.put("lis", lis);
         jo1.put("map", map);
 
@@ -669,11 +669,11 @@ public class JsonPathTest {
             JsonObject item = new JsonObject();
             item.put("id", i);
             item.put("value", i * 10);
-            item.put("nested", new JsonObject("deepValue", i * 100));
+            item.put("nested", JsonObject.of("deepValue", i * 100));
             largeArray.add(item);
         }
         largeData.put("items", largeArray);
-        largeData.put("metadata", new JsonObject("count", 100));
+        largeData.put("metadata", JsonObject.of("count", 100));
 
         List<Object> slice = JsonPath.compile("$.items[10:20]").find(largeData);
         assertEquals(10, slice.size());
@@ -800,7 +800,7 @@ public class JsonPathTest {
     @Test
     public void testStringMatch() {
         JsonArray ja1 = new JsonArray();
-        ja1.add(new JsonObject("name", "Alice"));
+        ja1.add(JsonObject.of("name", "Alice"));
 
         JsonObject jo1 = JsonPath.compile("$[?(@.name =~ /^A/)]").eval(ja1, JsonObject.class);
         assertNotNull(jo1);
@@ -828,11 +828,11 @@ public class JsonPathTest {
     public void testComplexRegexWithGroups() {
         JsonArray array = new JsonArray();
         array.addAll(
-                new JsonObject("name", "Alice_01"),
-                new JsonObject("name", "Bob_99"),
-                new JsonObject("name", "ALIcE_02"),
-                new JsonObject("name", "ALICE_334"),
-                new JsonObject("name", "Alice-x")
+                JsonObject.of("name", "Alice_01"),
+                JsonObject.of("name", "Bob_99"),
+                JsonObject.of("name", "ALIcE_02"),
+                JsonObject.of("name", "ALICE_334"),
+                JsonObject.of("name", "Alice-x")
         );
 
         List<JsonObject> result =
