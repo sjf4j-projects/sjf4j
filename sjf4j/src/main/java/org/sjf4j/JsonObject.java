@@ -60,16 +60,16 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JsonObject by wrapping or converting a node.
+     * Creates a JsonObject by wrapping or converting an object-like node.
      * <p>
      * When the source already uses a compatible object backing, this constructor
-     * shares that backing storage. Otherwise it projects the source into this
+     * shares that backing storage. Otherwise, it projects the source into this
      * container by copying exposed entries. In practice:
      * <ul>
      *     <li>{@link Map} shares as the dynamic backing map</li>
      *     <li>plain {@link JsonObject} shares its dynamic backing map</li>
-     *     <li>facade object nodes are copied by exposed entries</li>
      *     <li>JOJO/POJO inputs are copied by exposed node fields</li>
+     *     <li>facade object nodes are copied by exposed entries</li>
      *     <li>unsupported object kinds fail fast</li>
      * </ul>
      *

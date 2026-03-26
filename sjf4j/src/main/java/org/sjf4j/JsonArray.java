@@ -57,12 +57,12 @@ public class JsonArray extends JsonContainer {
      * Creates a JsonArray by wrapping or converting an array-like node.
      * <p>
      * When the source already uses a compatible list backing, this constructor
-     * shares that backing storage. Otherwise it converts the source into a new
+     * shares that backing storage. Otherwise, it converts the source into a new
      * list. In practice:
      * <ul>
      *     <li>{@link List} and {@link JsonArray} share when possible</li>
      *     <li>Java arrays and {@link Set} inputs are copied</li>
-     *     <li>other backend array nodes are converted and copied</li>
+     *     <li>facade array nodes are copied by exposed entries</li>
      * </ul>
      */
     @SuppressWarnings("unchecked")
