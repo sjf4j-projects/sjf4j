@@ -1,6 +1,7 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
@@ -76,7 +77,16 @@ public class JsonArray extends JsonContainer {
             setNodeList(((JsonArray) node).nodeList);
             return;
         }
-        setNodeList(Nodes.toList(node));
+        if (node.getClass().isArray() || node instanceof Set) {
+            setNodeList(Nodes.toList(node));
+            return;
+        }
+        if (FacadeNodes.isNode(node)) {
+            setNodeList(FacadeNodes.toList(node));
+            return;
+        }
+        throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
+                "' into JsonArray. Supported types are: List, JsonArray, Array, Set, or facade array node.");
     }
 
 

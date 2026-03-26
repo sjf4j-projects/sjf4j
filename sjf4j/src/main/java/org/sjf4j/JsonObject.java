@@ -1,10 +1,10 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.TypeReference;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -68,13 +68,15 @@ public class JsonObject extends JsonContainer {
      * <ul>
      *     <li>{@link Map} shares as the dynamic backing map</li>
      *     <li>plain {@link JsonObject} shares its dynamic backing map</li>
+     *     <li>facade object nodes are copied by exposed entries</li>
      *     <li>JOJO/POJO inputs are copied by exposed node fields</li>
      *     <li>unsupported object kinds fail fast</li>
      * </ul>
      *
      * <p>This is useful when you want object-style APIs on top of an existing
      * object node, but only plain {@link JsonObject} preserves a shared dynamic
-     * backing map. JOJO and POJO inputs are reprojected field by field.
+     * backing map. Facade object nodes plus JOJO and POJO inputs are reprojected
+     * field by field.
      */
     @SuppressWarnings("unchecked")
     public JsonObject(Object node) {
@@ -101,8 +103,12 @@ public class JsonObject extends JsonContainer {
             }
             return;
         }
+        if (FacadeNodes.isNode(node)) {
+            putAll(FacadeNodes.toMap(node));
+            return;
+        }
         throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
-                "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");
+                "' into JsonObject. Supported types are: Map, JsonObject, JOJO, POJO, or facade object node.");
     }
 
     /**

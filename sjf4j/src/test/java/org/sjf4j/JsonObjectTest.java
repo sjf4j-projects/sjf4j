@@ -1,5 +1,8 @@
 package org.sjf4j;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonParser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -76,6 +79,7 @@ class JsonObjectTest {
         testComputeIfAbsent();
         testBuilder();
         testOfFactory();
+        testWrapFacadeObjectNodes();
         testWrapSemantics();
         testEntrySetKeySet();
         testRemoveByPath();
@@ -241,6 +245,23 @@ class JsonObjectTest {
 
     static class WrapJojo extends JsonObject {
         String name;
+    }
+
+    public void testWrapFacadeObjectNodes() {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode jacksonObject = mapper.createObjectNode();
+        jacksonObject.put("name", "han");
+        jacksonObject.put("age", 18);
+        JsonObject wrappedJackson = new JsonObject(jacksonObject);
+        jacksonObject.put("name", "li");
+        assertEquals("han", wrappedJackson.getString("name"));
+        assertEquals(18, wrappedJackson.getInteger("age"));
+
+        com.google.gson.JsonObject gsonObject = JsonParser.parseString("{\"name\":\"han\",\"age\":18}").getAsJsonObject();
+        JsonObject wrappedGson = new JsonObject(gsonObject);
+        gsonObject.addProperty("name", "li");
+        assertEquals("han", wrappedGson.getString("name"));
+        assertEquals(18, wrappedGson.getInteger("age"));
     }
 
     public void testWrapSemantics() {
