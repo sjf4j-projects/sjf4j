@@ -58,6 +58,9 @@ class PathsCoverageTest {
         assertEquals("$..", Paths.toPathExpr(Paths.parsePath("$..")));
         assertEquals("$.sum(1, 2)", Paths.toPathExpr(Paths.parsePath("$.sum(1, 2)")));
         assertEquals("$.items[?(@.age > 1.0)]", Paths.toPathExpr(Paths.parsePath("$.items[?@.age > 1]")));
+        assertEquals("$.items[?(@.isbn == null)]", Paths.toPathExpr(Paths.parsePath("$.items[?@.isbn == null]")));
+        assertEquals("$.items[?(@.enabled == true)]", Paths.toPathExpr(Paths.parsePath("$.items[?@.enabled == true]")));
+        assertEquals("$.items[?(@.enabled == false)]", Paths.toPathExpr(Paths.parsePath("$.items[?@.enabled == false]")));
 
         assertThrows(JsonException.class, () -> Paths.parsePath("$."));
         assertThrows(JsonException.class, () -> Paths.parsePath("$.name("));

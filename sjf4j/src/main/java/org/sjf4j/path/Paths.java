@@ -819,6 +819,16 @@ public class Paths {
             return parseRegex(s, pos);
         }
 
+        if (matchKeyword(s, pos, "null")) {
+            return new FilterExpr.LiteralExpr(null);
+        }
+        if (matchKeyword(s, pos, "true")) {
+            return new FilterExpr.LiteralExpr(true);
+        }
+        if (matchKeyword(s, pos, "false")) {
+            return new FilterExpr.LiteralExpr(false);
+        }
+
         // Function: search(@.b, 'a')
         if (isNamePart(c)) {
             return parseFunction(s, pos);
@@ -902,6 +912,19 @@ public class Paths {
             return true;
         }
         return false;
+    }
+
+    private static boolean matchKeyword(String s, int[] pos, String keyword) {
+        int start = pos[0];
+        if (!s.startsWith(keyword, start)) {
+            return false;
+        }
+        int end = start + keyword.length();
+        if (end < s.length() && isNamePart(s.charAt(end))) {
+            return false;
+        }
+        pos[0] = end;
+        return true;
     }
 
     /**

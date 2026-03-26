@@ -796,6 +796,18 @@ public class JsonPathTest {
         assertEquals("kilo", v1);
     }
 
+    @Test
+    public void testFilterLiteralNullAndBoolean() {
+        JsonObject jo = JsonObject.fromJson("{\"store\":{\"book\":[{" +
+                "\"title\":\"A\",\"isbn\":\"111\",\"published\":true},{" +
+                "\"title\":\"B\",\"published\":false},{" +
+                "\"title\":\"C\",\"isbn\":null,\"published\":true}]}}");
+
+        assertEquals(List.of("B", "C"), jo.findByPath("$.store.book[?@.isbn == null].title", String.class));
+        assertEquals(List.of("A", "C"), jo.findByPath("$.store.book[?@.published == true].title", String.class));
+        assertEquals(List.of("B"), jo.findByPath("$.store.book[?@.published == false].title", String.class));
+    }
+
 
     @Test
     public void testStringMatch() {
