@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 
 /**
@@ -323,7 +324,6 @@ public class Nodes {
     public static JsonObject toJsonObject(Object node) {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toJsonObject(node);
         return new JsonObject(node);
     }
 
@@ -366,7 +366,6 @@ public class Nodes {
     public static JsonArray toJsonArray(Object node) {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
-        if (FacadeNodes.isNode(node)) return FacadeNodes.toJsonArray(node);
         return new JsonArray(node);
     }
 
@@ -400,6 +399,17 @@ public class Nodes {
         if (node instanceof List && (clazz == null || clazz == Object.class)) return (List<T>) node;
         List<T> list = Sjf4jConfig.global().listSupplier.create();
         visitArray(node, (i, v) -> list.add(to(v, clazz)));
+        return list;
+    }
+
+    /**
+     * Converts an array-like node to a List using the given mapper.
+     */
+    public static <T> List<T> toList(Object node, Function<Object, T> mapper) {
+        if (node == null) return null;
+        Objects.requireNonNull(mapper, "mapper");
+        List<T> list = Sjf4jConfig.global().listSupplier.create();
+        visitArray(node, (i, v) -> list.add(mapper.apply(v)));
         return list;
     }
 
@@ -992,6 +1002,9 @@ public class Nodes {
     }
 
 
+    /**
+     * Returns true if any object entry matches the predicate.
+     */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
         Objects.requireNonNull(node, "node");
@@ -1024,8 +1037,14 @@ public class Nodes {
     }
 
 
+    /**
+     * Replaces object-entry values in place using the given mapper.
+     * <p>
+     * The mapper receives each entry key and current value, and returns the new
+     * value to store. Returns true when at least one entry changes by reference.
+     */
     @SuppressWarnings("unchecked")
-    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> mapper) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(mapper, "mapper");
         if (node instanceof Map) {
@@ -1465,6 +1484,12 @@ public class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
 
+    /**
+     * Mutable holder used by access helpers to report child node metadata.
+     * <p>
+     * Callers typically reuse one instance across repeated lookups to avoid
+     * allocating short-lived result wrappers.
+     */
     public static final class Access {
         /** child value (can be null) */
         public Object node;

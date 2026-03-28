@@ -77,8 +77,15 @@ public class JsonArray extends JsonContainer {
             setNodeList(((JsonArray) node).nodeList);
             return;
         }
-        if (node.getClass().isArray() || node instanceof Set) {
-            setNodeList(Nodes.toList(node));
+        if (node.getClass().isArray()) {
+            int len = Array.getLength(node);
+            List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
+            for (int i = 0; i < len; i++) list.add(Array.get(node, i));
+            setNodeList(list);
+            return;
+        }
+        if (node instanceof Set) {
+            setNodeList(Sjf4jConfig.global().listSupplier.create((Set<Object>) node));
             return;
         }
         if (FacadeNodes.isNode(node)) {

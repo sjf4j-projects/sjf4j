@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.SchemaException;
-import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
@@ -309,7 +308,7 @@ public class CompileUtil {
         if (!JsonType.of(schemaMapNode).isObject())
             throw new SchemaException("Schema node at " + JsonPointer.fromLast(cps) + " must be a JSON Object");
         Map<String, JsonSchema> schemaMap = new HashMap<>();
-        Nodes.transformInObject(schemaMapNode, (k, subNode) -> {
+        Nodes.replaceInObject(schemaMapNode, (k, subNode) -> {
             PathSegment ccps = new PathSegment.Name(cps, null, k);
             if (subNode == null) throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ccps) +
                     "': null is not allowed");
