@@ -374,7 +374,7 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson(json);
         schema.compile();
 
-        schema.validateOrThrow(JsonArray.fromJson("[1]"));
+        schema.requireValid(JsonArray.fromJson("[1]"));
         assertTrue(schema.isValid(JsonArray.fromJson("[1]")));
         assertFalse(schema.isValid(JsonArray.fromJson("[1,\"x\"]")));
     }

@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 /**
  * Schema validation entry point for POJOs annotated with {@link ValidJsonSchema}.
@@ -43,7 +44,7 @@ public final class SchemaValidator {
      * Creates a validator with base directory, options, and store.
      */
     public SchemaValidator(String baseDir, ValidationOptions options, SchemaStore store) {
-        this.baseUri = resolveBaseUri(baseDir);
+        this.baseUri = _resolveBaseUri(baseDir);
         this.options = options == null ? ValidationOptions.FAILFAST_STRICT : options;
         this.schemaStore = store == null ? new SchemaStore() : store;
     }
@@ -58,7 +59,7 @@ public final class SchemaValidator {
         if (pojo == null) return ValidationResult.VALID;
         Class<?> pojoClazz = pojo.getClass();
 
-        List<JsonSchema> schemaChain = getOrLoadSchemaChain(pojoClazz);
+        List<JsonSchema> schemaChain = _getOrLoadSchemaChain(pojoClazz);
         if (schemaChain.isEmpty()) return ValidationResult.VALID;
 
         for (JsonSchema schema : schemaChain) {
@@ -68,28 +69,11 @@ public final class SchemaValidator {
         return ValidationResult.VALID;
     }
 
-    private List<JsonSchema> getOrLoadSchemaChain(Class<?> pojoClazz) {
-        List<JsonSchema> chain = pojoSchemaChainMapping.get(pojoClazz);
-        if (chain != null) return chain;
-        List<JsonSchema> loaded = loadSchemaChain(pojoClazz);
-        pojoSchemaChainMapping.put(pojoClazz, loaded);
-        return loaded;
-    }
-
-    private List<JsonSchema> loadSchemaChain(Class<?> pojoClazz) {
-        List<JsonSchema> chain = new ArrayList<>();
-
-        Class<?> parent = pojoClazz.getSuperclass();
-        if (parent != null && parent != Object.class) {
-            chain.addAll(getOrLoadSchemaChain(parent));
+    public void requireValid(Object pojo) {
+        ValidationResult result = validate(pojo);
+        if (!result.isValid()) {
+            throw new ValidationException(result);
         }
-
-        ValidJsonSchema anno = pojoClazz.getDeclaredAnnotation(ValidJsonSchema.class);
-        if (anno != null) {
-            chain.add(loadPojoSchema(pojoClazz, anno));
-        }
-
-        return chain;
     }
 
     /**
@@ -103,7 +87,7 @@ public final class SchemaValidator {
             if (ref == null || ref.trim().isEmpty()) continue;
             URI uri = baseUri.resolve(ref);
             JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
-            compileAndRegister(schema);
+            _compileAndRegister(schema);
         }
         return this;
     }
@@ -112,14 +96,14 @@ public final class SchemaValidator {
      * Preloads and compiles all schema files in a directory.
      */
     public SchemaValidator preloadDirectory(String dir) {
-        URI dirUri = resolveBaseUri(dir);
+        URI dirUri = _resolveBaseUri(dir);
         String scheme = dirUri.getScheme();
         if (scheme == null) {
-            preloadDirectory(Paths.get(dir));
+            _preloadDir(Paths.get(dir));
             return this;
         }
         if ("file".equalsIgnoreCase(scheme)) {
-            preloadDirectory(Paths.get(dirUri));
+            _preloadDir(Paths.get(dirUri));
             return this;
         }
         if ("classpath".equalsIgnoreCase(scheme)) {
@@ -137,7 +121,7 @@ public final class SchemaValidator {
             if (!"file".equalsIgnoreCase(url.getProtocol())) {
                 throw new SchemaException("Classpath directory scan not supported: " + url);
             }
-            preloadDirectory(Paths.get(url.getPath()));
+            _preloadDir(Paths.get(url.getPath()));
             return this;
         }
         throw new SchemaException("Unsupported preload directory uri: " + dirUri);
@@ -146,7 +130,7 @@ public final class SchemaValidator {
     /**
      * Resolves user base directory against default schema base URI.
      */
-    private URI resolveBaseUri(String baseDir) {
+    private URI _resolveBaseUri(String baseDir) {
         if (baseDir == null) return DEFAULT_BASE_URI;
         if (!baseDir.endsWith("/")) baseDir += "/";
         return DEFAULT_BASE_URI.resolve(baseDir);
@@ -158,12 +142,12 @@ public final class SchemaValidator {
      * Resolution order: inline schema text, explicit ref, then
      * {@code <full-class-name>.schema.json}, then {@code <simple-name>.schema.json}.
      */
-    private JsonSchema loadPojoSchema(Class<?> clazz, ValidJsonSchema anno) {
+    private JsonSchema _loadPojoSchema(Class<?> clazz, ValidJsonSchema anno) {
         // From value
         String inline = anno.value();
         if (!inline.isEmpty()) {
             JsonSchema schema = JsonSchema.fromJson(inline);
-            return compileAndRegister(schema);
+            return _compileAndRegister(schema);
         }
 
         // From ref
@@ -171,13 +155,13 @@ public final class SchemaValidator {
         if (!ref.isEmpty()) {
             URI uri = baseUri.resolve(ref);
             JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
-            compileAndRegister(schema);
+            _compileAndRegister(schema);
 
             String refFragment = uri.getFragment();
             if (refFragment == null || refFragment.isEmpty()) {
                 return schema;
             } else {
-                return findInSchema(schema, refFragment);
+                return _findInSchema(schema, refFragment);
             }
         }
 
@@ -185,12 +169,12 @@ public final class SchemaValidator {
         URI fullNameUri = baseUri.resolve(clazz.getName() + SCHEMA_FILE_SUFFIX);
         try {
             ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(fullNameUri);
-            return compileAndRegister(schema);
+            return _compileAndRegister(schema);
         } catch (Exception e) {
             URI simpleNameUri = baseUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX);
             try {
                 ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(simpleNameUri);
-                return compileAndRegister(schema);
+                return _compileAndRegister(schema);
             } catch (Exception e2) {
                 throw new SchemaException("No schema found for @ValidJsonSchema on " + clazz.getName() +
                         ": neither 'value' nor 'ref' is specified, and no schema file exists at '" +
@@ -202,27 +186,50 @@ public final class SchemaValidator {
     /**
      * Compiles a schema and registers it in the store.
      */
-    private JsonSchema compileAndRegister(JsonSchema schema) {
+    private JsonSchema _compileAndRegister(JsonSchema schema) {
         schema.compile(schemaStore);
         schemaStore.register(schema);
         return schema;
     }
 
+    private List<JsonSchema> _getOrLoadSchemaChain(Class<?> pojoClazz) {
+        List<JsonSchema> chain = pojoSchemaChainMapping.get(pojoClazz);
+        if (chain != null) return chain;
+        List<JsonSchema> loaded = _loadSchemaChain(pojoClazz);
+        pojoSchemaChainMapping.put(pojoClazz, loaded);
+        return loaded;
+    }
+
+    private List<JsonSchema> _loadSchemaChain(Class<?> pojoClazz) {
+        List<JsonSchema> chain = new ArrayList<>();
+
+        Class<?> parent = pojoClazz.getSuperclass();
+        if (parent != null && parent != Object.class) {
+            chain.addAll(_getOrLoadSchemaChain(parent));
+        }
+
+        ValidJsonSchema anno = pojoClazz.getDeclaredAnnotation(ValidJsonSchema.class);
+        if (anno != null) {
+            chain.add(_loadPojoSchema(pojoClazz, anno));
+        }
+
+        return chain;
+    }
+
     /**
      * Recursively preloads schema files from a local directory path.
      */
-    private void preloadDirectory(Path dir) {
-        try {
-            if (!Files.exists(dir) || !Files.isDirectory(dir)) {
-                throw new SchemaException("Schema directory not found: " + dir);
-            }
-            Files.walk(dir)
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(SCHEMA_FILE_SUFFIX))
-                    .forEach(p -> {
-                        JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(p.toUri());
-                        compileAndRegister(schema);
-                    });
+    private void _preloadDir(Path dir) {
+        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
+            throw new SchemaException("Schema directory not found: " + dir);
+        }
+        try (Stream<Path> paths = Files.walk(dir)) {
+            paths.filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(SCHEMA_FILE_SUFFIX))
+                .forEach(p -> {
+                    JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(p.toUri());
+                    _compileAndRegister(schema);
+                });
         } catch (IOException e) {
             throw new SchemaException("Failed to preload schema directory: " + dir, e);
         }
@@ -231,7 +238,7 @@ public final class SchemaValidator {
     /**
      * Resolves an optional fragment to an anchor, dynamic anchor, or pointer.
      */
-    private JsonSchema findInSchema(JsonSchema schema, String fragment) {
+    private JsonSchema _findInSchema(JsonSchema schema, String fragment) {
         if (fragment == null || fragment.isEmpty()) return schema;
         if (!(schema instanceof ObjectSchema)) {
             throw new SchemaException("Invalid schema fragment lookup target: required ObjectSchema, but was " +

@@ -52,15 +52,6 @@ public class PatchOpRegistry {
     }
 
     /**
-     * Returns handler for operation name, or throws.
-     */
-    public static PatchOpHandler getOrElseThrow(String opName) {
-        PatchOpHandler opHandler = PATCH_OP_CACHE.get(opName);
-        if (opHandler == null) throw new JsonException("No PatchOpHandler for '" + opName + "'");
-        return opHandler;
-    }
-
-    /**
      * Applies operation by looking up its registered handler.
      */
     public static void apply(Object target, PatchOp op) {

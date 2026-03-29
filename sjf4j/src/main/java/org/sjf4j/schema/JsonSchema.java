@@ -52,7 +52,7 @@ public interface JsonSchema {
     /**
      * Validates and throws if invalid.
      */
-    default void validateOrThrow(Object node) {
+    default void requireValid(Object node) {
         ValidationResult result = validate(node, ValidationOptions.FAILFAST);
         if (!result.isValid()) throw new ValidationException(result);
     }
