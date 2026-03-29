@@ -57,6 +57,7 @@ dependencies {
     // JMH
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmhImplementation("com.jayway.jsonpath:json-path:2.9.0")
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")

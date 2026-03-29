@@ -102,6 +102,23 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testCompileSimpleBracketFastPath() {
+        JsonPath wildcard = JsonPath.compile("$.a[*].b");
+        JsonPath index = JsonPath.compile("$.a[123].b");
+
+        assertEquals("$.a[*].b", wildcard.toExpr());
+        assertEquals("$.a[123].b", index.toExpr());
+        assertEquals("$.a[*].b", JsonPath.compile("$.a[ * ].b").toExpr());
+        assertEquals("$.a[123].b", JsonPath.compile("$.a[ 123 ].b").toExpr());
+
+        // Other bracket forms should still use the normal parser path.
+        assertEquals("$.a[-123].b", JsonPath.compile("$.a[-123].b").toExpr());
+        assertEquals("$.a.name.b", JsonPath.compile("$.a['name'].b").toExpr());
+        assertEquals("$.a['na\\'me'].b", JsonPath.compile("$.a['na\\'me'].b").toString());
+        assertEquals("$.a[''].b", JsonPath.compile("$.a[''].b").toString());
+    }
+
+    @Test
     public void testCompileCachedDefaultChm() {
         JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
         JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");

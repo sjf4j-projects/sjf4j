@@ -271,6 +271,12 @@ public class Paths {
             }
 
             if (c == '[') {
+                int next = tryParseSimpleBracketToken(expr, i, segments);
+                if (next >= 0) {
+                    i = next;
+                    continue;
+                }
+
                 i++;
                 if (i >= expr.length())
                     throw new JsonException("Unexpected EOF after '[' in path '" + expr + "' at position " + i);
@@ -313,51 +319,44 @@ public class Paths {
                 if (i >= expr.length())
                     throw new JsonException("Missing closing ']' in path '" + expr + "' at position " + start);
 
-                // Extract content between [ and ]
-                String bracketContent = expr.substring(start, i);
+                int contentStart = skipWhitespace(expr, start);
+                int contentEnd = trimTrailingWhitespace(expr, contentStart, i);
                 i++; // skip ]
 
                 // Single element: could be [*], [0], [-1], ['name'], or [start:end:step]
-                String content = bracketContent.trim();
                 // Dispatch based on content type
-                if (content.startsWith("?")) {
+                if (contentStart >= contentEnd) {
+                    throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
+                } else if (expr.charAt(contentStart) == '?') {
                     // Filter
-                    String filterStr = content.substring(1).trim();
+                    int filterStart = skipWhitespace(expr, contentStart + 1);
+                    String filterStr = expr.substring(filterStart, contentEnd);
                     FilterExpr filterExpr = parseFilter(filterStr);
                     segments.addLast(new PathSegment.Filter(segments.peekLast(), null, filterExpr));
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
+                    String content = expr.substring(contentStart, contentEnd);
                     PathSegment[] unionTokens = parseUnionTokens(content);
                     segments.addLast(new PathSegment.Union(segments.peekLast(), null, unionTokens));
                 } else {
-                    if (content.isEmpty()) {
-                        throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
-                    } else if (content.equals("*")) {
+                    if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '*') {
                         // [*]
                         segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
-                    } else if (content.startsWith("'") || content.startsWith("\"")) {
+                    } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
-                        String name = parseSingleQuotedName(content);
+                        String name = parseQuotedContent(expr.substring(contentStart, contentEnd), 0, null, "name");
                         segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
-                    } else if (content.contains(":")) {
+                    } else if (containsChar(expr, contentStart, contentEnd, ':')) {
                         // Slice [start:end:step]
-                        String[] sliceParts = content.split(":", -1);
-                        if (sliceParts.length > 3) {
-                            throw new JsonException("Invalid slice syntax '" + content + "' in path '" + expr + "'");
-                        }
-                        Integer startIdx = parseSlicePart(sliceParts[0]);
-                        Integer endIdx = sliceParts.length > 1 ? parseSlicePart(sliceParts[1]) : null;
-                        Integer step = sliceParts.length > 2 ? parseSlicePart(sliceParts[2]) : null;
-                        if (step != null && step == 0) {
-                            throw new JsonException("Slice step cannot be 0 in path '" + expr + "'");
-                        }
-                        segments.addLast(new PathSegment.Slice(segments.peekLast(), null, startIdx, endIdx, step));
+                        String content = expr.substring(contentStart, contentEnd);
+                        segments.addLast(parseSlice(segments.peekLast(), content, " in path '" + expr + "'"));
                     } else {
                         try {
                             // Try to parse as numeric index
-                            int idx = Integer.parseInt(content);
+                            int idx = Integer.parseInt(expr.substring(contentStart, contentEnd));
                             segments.addLast(new PathSegment.Index(segments.peekLast(), null, idx));
                         } catch (NumberFormatException e) {
+                            String content = expr.substring(contentStart, contentEnd);
                             throw new JsonException("Invalid name or index '" + content + "' in path '" + expr + "'");
                         }
                     }
@@ -406,6 +405,42 @@ public class Paths {
         return segments.toArray(new PathSegment[0]);
     }
 
+    private static int tryParseSimpleBracketToken(String expr, int bracketIndex, Deque<PathSegment> segments) {
+        int len = expr.length();
+        int i = skipWhitespace(expr, bracketIndex + 1);
+        if (i >= len) return -1;
+
+        char c = expr.charAt(i);
+
+        if (c == '*') {
+            int end = skipWhitespace(expr, i + 1);
+            if (end < len && expr.charAt(end) == ']') {
+                segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
+                return end + 1;
+            }
+            return -1;
+        }
+
+        if (Character.isDigit(c)) {
+            int start = i;
+            do {
+                i++;
+            } while (i < len && Character.isDigit(expr.charAt(i)));
+
+            int end = skipWhitespace(expr, i);
+            if (end < len && expr.charAt(end) == ']') {
+                try {
+                    segments.addLast(new PathSegment.Index(segments.peekLast(), null,
+                            Integer.parseInt(expr.substring(start, i))));
+                    return end + 1;
+                } catch (NumberFormatException ignored) {
+                    return -1;
+                }
+            }
+        }
+        return -1;
+    }
+
 
     /// private
 
@@ -417,48 +452,21 @@ public class Paths {
         return c != '.' && c != '[' && c != '(';
     }
 
+    private static int skipWhitespace(String expr, int i) {
+        while (i < expr.length() && Character.isWhitespace(expr.charAt(i))) i++;
+        return i;
+    }
 
-    /**
-     * Parses a single-quoted or double-quoted name.
-     */
-    private static String parseSingleQuotedName(String content) {
-        if (content.length() < 2) {
-            throw new JsonException("Invalid quoted name '" + content + "'");
-        }
-        char quote = content.charAt(0);
-        if (quote != '\'' && quote != '"') {
-            throw new JsonException("Expected quoted string, got '" + content + "'");
-        }
+    private static int trimTrailingWhitespace(String expr, int start, int end) {
+        while (end > start && Character.isWhitespace(expr.charAt(end - 1))) end--;
+        return end;
+    }
 
-        StringBuilder sb = new StringBuilder();
-        int i = 1; // Skip opening quote
-        while (i < content.length()) {
-            char ch = content.charAt(i);
-            if (ch == '\\') {
-                // Escape character
-                if (i + 1 >= content.length()) {
-                    throw new JsonException("Invalid escape at end of quoted name");
-                }
-                char next = content.charAt(i + 1);
-                if (next == quote || next == '\\') {
-                    sb.append(next);
-                } else {
-                    sb.append('\\').append(next);
-                }
-                i += 2;
-            } else if (ch == quote) {
-                break;
-            } else {
-                sb.append(ch);
-                i++;
-            }
+    private static boolean containsChar(String expr, int start, int end, char target) {
+        for (int i = start; i < end; i++) {
+            if (expr.charAt(i) == target) return true;
         }
-
-        if (i >= content.length() || content.charAt(i) != quote) {
-            throw new JsonException("Missing closing quote in name '" + content + "'");
-        }
-
-        return sb.toString();
+        return false;
     }
 
 
@@ -477,44 +485,6 @@ public class Paths {
     }
 
     /**
-     * Parses a quoted name in a union expression.
-     */
-    private static String parseQuotedUnionName(String content, int start, int[] end) {
-        char quote = content.charAt(start);
-        StringBuilder sb = new StringBuilder();
-        int i = start + 1; // Skip opening quote
-
-        while (i < content.length()) {
-            char ch = content.charAt(i);
-            if (ch == '\\') {
-                // Escape character
-                if (i + 1 >= content.length()) {
-                    throw new JsonException("Invalid escape at end of quoted name in union");
-                }
-                char next = content.charAt(i + 1);
-                if (next == quote || next == '\\') {
-                    sb.append(next);
-                } else {
-                    sb.append('\\').append(next);
-                }
-                i += 2;
-            } else if (ch == quote) {
-                break;
-            } else {
-                sb.append(ch);
-                i++;
-            }
-        }
-
-        if (i >= content.length() || content.charAt(i) != quote) {
-            throw new JsonException("Missing closing quote in union name");
-        }
-
-        end[0] = i + 1;
-        return sb.toString();
-    }
-
-    /**
      * Parses union elements into segment tokens.
      */
     private static PathSegment[] parseUnionTokens(String content) {
@@ -530,7 +500,7 @@ public class Paths {
             if (firstChar == '\'' || firstChar == '"') {
                 // Quoted name
                 int[] end = new int[1];
-                String name = parseQuotedUnionName(content, i, end);
+                String name = parseQuotedContent(content, i, end, "union name");
                 segments.add(new PathSegment.Name(null, null, name));
 //                i += (name.length() + 2); // Skip quotes and content
                 i = end[0];
@@ -550,20 +520,7 @@ public class Paths {
                 String part = content.substring(start, i).trim();
                 if (hasColon) {
                     // Slice
-                    String[] sliceParts = part.split(":", -1);
-                    if (sliceParts.length > 3) {
-                        throw new JsonException("Invalid slice syntax '" + part + "' in union");
-                    }
-
-                    Integer startIdx = parseSlicePart(sliceParts[0]);
-                    Integer endIdx = sliceParts.length > 1 ? parseSlicePart(sliceParts[1]) : null;
-                    Integer step = sliceParts.length > 2 ? parseSlicePart(sliceParts[2]) : null;
-
-                    if (step != null && step == 0) {
-                        throw new JsonException("Slice step cannot be 0 in union");
-                    }
-
-                    segments.add(new PathSegment.Slice(null, null, startIdx, endIdx, step));
+                    segments.add(parseSlice(null, part, " in union"));
                 } else {
                     // Numeric index
                     try {
@@ -579,6 +536,51 @@ public class Paths {
             }
         }
         return segments.toArray(new PathSegment[0]);
+    }
+
+    private static PathSegment.Slice parseSlice(PathSegment parent, String content, String errorContext) {
+        String[] sliceParts = content.split(":", -1);
+        if (sliceParts.length > 3) {
+            throw new JsonException("Invalid slice syntax '" + content + "'" + errorContext);
+        }
+
+        Integer startIdx = parseSlicePart(sliceParts[0]);
+        Integer endIdx = sliceParts.length > 1 ? parseSlicePart(sliceParts[1]) : null;
+        Integer step = sliceParts.length > 2 ? parseSlicePart(sliceParts[2]) : null;
+        if (step != null && step == 0) {
+            throw new JsonException("Slice step cannot be 0" + errorContext);
+        }
+        return new PathSegment.Slice(parent, null, startIdx, endIdx, step);
+    }
+
+    private static String parseQuotedContent(String content, int start, int[] end, String errorContext) {
+        char quote = content.charAt(start);
+        StringBuilder sb = new StringBuilder(Math.max(0, content.length() - start - 2));
+        int i = start + 1;
+
+        while (i < content.length()) {
+            char ch = content.charAt(i);
+            if (ch == '\\') {
+                if (i + 1 >= content.length()) {
+                    throw new JsonException("Invalid escape at end of " + errorContext);
+                }
+                char next = content.charAt(i + 1);
+                if (next == quote || next == '\\') {
+                    sb.append(next);
+                } else {
+                    sb.append('\\').append(next);
+                }
+                i += 2;
+            } else if (ch == quote) {
+                if (end != null) end[0] = i + 1;
+                return sb.toString();
+            } else {
+                sb.append(ch);
+                i++;
+            }
+        }
+
+        throw new JsonException("Missing closing quote in " + errorContext);
     }
 
     /**
