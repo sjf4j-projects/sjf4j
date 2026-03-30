@@ -54,7 +54,7 @@ Format support is activated automatically when the corresponding libraries are p
 - **Java Properties** — A built-in parser is provided.  
   Conversions from Java Properties are inherently constrained by its flat key-value structure.
 
-- **In-Memory Usage** (No External Data) — Built-in.  
+- **In-Memory Usage** (No External Data)  
   SJF4J can operate directly on in-memory object graphs through OBNT,
   providing the same JSON-semantic APIs for navigation, transformation, and validation.
 
@@ -207,15 +207,19 @@ This simple example demonstrates how SJF4J unifies the entire lifecycle of struc
 ## Benchmarks
 SJF4J delivers **high performance** with minimal overhead while providing a unified JSON-semantic processing model.
 
+**Reflection Access Benchmark**  
+Lambda-based accessor generation minimizes reflection overhead,
+delivering performance close to direct field or method invocation.
+
 **JSON Parsing Benchmark**  
 SJF4J operates on top of underlying JSON parsers while adding structural
 capabilities and flexible binding annotations.  
 In most cases, the additional overhead remains modest compared to native
 JSON libraries.
 
-**Reflection Access Benchmark**  
-Lambda-based accessor generation minimizes reflection overhead,
-delivering performance close to direct field or method invocation.
+**JSON Path Navigation Benchmark**  
+SJF4J shows strong performance in `compile` and `query` workloads.  
+Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally closer to `Map/List` than plain `POJO`.
 
 **JSON Schema Validation Benchmark**  
 SJF4J fully supports JSON Schema Draft 2020-12 and consistently ranks
