@@ -85,21 +85,14 @@ public interface JsonSchema {
      * Parses JSON text and creates a schema instance.
      */
     static JsonSchema fromJson(String json) {
-        Object node = Sjf4j.fromJson(json) ;
-        return fromNode(node);
-//        return Sjf4j.fromJson(json, JsonSchema.class);
+        return Sjf4j.fromJson(json, JsonSchema.class);
     }
 
     /**
      * Creates a schema instance from a parsed JSON node.
      */
     static JsonSchema fromNode(Object node) {
-        if (node == null) return null;
-        JsonType jt = JsonType.of(node);
-        if (jt.isBoolean()) return Nodes.toBoolean(node) ? BooleanSchema.TRUE : BooleanSchema.FALSE;
-        if (jt.isObject()) return Nodes.as(node, ObjectSchema.class);
-        throw new SchemaException("Invalid JSON Schema: expected object or boolean, but was " + jt);
-//        return Sjf4j.fromNode(node, JsonSchema.class);
+        return Sjf4j.fromNode(node, JsonSchema.class);
     }
 
 }

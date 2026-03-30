@@ -659,9 +659,12 @@ public class JsonPath {
             int idx = ((PathSegment.Index) lastToken).index;
             Nodes.setInArray(lastContainer, idx, value);
             return null; // No need return old value in List/JsonArray
+        } else if (lastToken instanceof PathSegment.Append) {
+            Nodes.addInArray(lastContainer, value);
+            return null;
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; put() expected Name or Index token");
+                    "'; put() expected Name, Index, or Append token");
         }
     }
 
@@ -683,9 +686,12 @@ public class JsonPath {
             int idx = ((PathSegment.Index) lastToken).index;
             Nodes.setInArray(lastContainer, idx, value);
             return null; // No need return old value in List/JsonArray
+        } else if (lastToken instanceof PathSegment.Append) {
+            Nodes.addInArray(lastContainer, value);
+            return null;
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; ensurePut() expected Name or Index token");
+                    "'; ensurePut() expected Name, Index, or Append token");
         }
     }
 
@@ -710,29 +716,14 @@ public class JsonPath {
                 Nodes.setInArray(lastContainer, idx, value);
             }
             return null; // No need return old value in List/JsonArray
+        } else if (lastToken instanceof PathSegment.Append) {
+            Nodes.addInArray(lastContainer, value);
+            return null;
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; ensurePut() expected Name or Index token");
+                    "'; ensurePut() expected Name, Index, or Append token");
         }
     }
-
-//    /**
-//     * Computes and stores value when absent at this path.
-//     */
-//    @SuppressWarnings("unchecked")
-//    public <T> T ensureComputeIfAbsent(Object container, Function<JsonPath, T> computer) {
-//        Objects.requireNonNull(container, "container");
-//        Objects.requireNonNull(computer, "computer");
-//        T old = get(container);
-//        if (old == null) {
-//            T newNode = computer.apply(this);
-//            if (newNode != null) {
-//                ensurePut(container, newNode);
-//                return newNode;
-//            }
-//        }
-//        return old;
-//    }
 
     /// has
 
@@ -764,7 +755,7 @@ public class JsonPath {
             return false;
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; contains() expected Name, Index, or Append token");
+                    "'; contains() expected Name, Index");
         }
     }
 
@@ -805,9 +796,9 @@ public class JsonPath {
     public Object replace(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, -1);
-        if  (lastContainer == null)
+        if  (lastContainer == null) {
             throw new JsonException("Cannot replace value at path '" + this + "': parent container does not exist");
-
+        }
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
@@ -844,11 +835,9 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Index) {
             int index = ((PathSegment.Index) lastToken).index;
             return Nodes.removeInArray(lastContainer, index);
-        } else if (lastToken instanceof PathSegment.Append) {
-            return null;
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; remove() expected Name, Index, or Append token");
+                    "'; remove() expected Name or Index token");
         }
     }
 

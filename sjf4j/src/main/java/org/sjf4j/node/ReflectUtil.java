@@ -537,10 +537,10 @@ public final class ReflectUtil {
             throw new JsonException("@" + ValueToRaw.class.getName() + " method must have no parameters, but found " +
                     (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
-        Class<?> returnRawClazz = valueToRawHandle.type().returnType();
-        if (!NodeKind.plainOf(returnRawClazz).isRaw())
+        Class<?> valueToRawReturnBox = Types.box(valueToRawHandle.type().returnType());
+        if (!NodeKind.plainOf(valueToRawReturnBox).isRaw())
             throw new JsonException("@" + ValueToRaw.class.getName() + " method return invalid type " +
-                    returnRawClazz.getName() + " in " + clazz.getName() +
+                    valueToRawReturnBox.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported raw type (String, Number, Boolean, null, Map, or List).");
 
         if (rawToValueHandle == null)
@@ -548,15 +548,15 @@ public final class ReflectUtil {
         if (rawToValueHandle.type().parameterCount() != 1)
             throw new JsonException("@" + RawToValue.class.getName() +
                     " method must have exactly one parameter, but found " + rawToValueHandle.type().parameterCount());
-        Class<?> decodeParamClazz = rawToValueHandle.type().parameterType(0);
-        Class<?> decodeReturnClazz = rawToValueHandle.type().returnType();
-        if (decodeParamClazz != returnRawClazz)
+        Class<?> rawToValueParamBox = Types.box(rawToValueHandle.type().parameterType(0));
+        Class<?> rawToValueReturnClazz = rawToValueHandle.type().returnType();
+        if (rawToValueParamBox != valueToRawReturnBox)
             throw new JsonException("@" + RawToValue.class.getName() + " method parameter type must match @" +
-                    ValueToRaw.class.getName() + " return type. " + "Expected: " + returnRawClazz.getName() +
-                    ", Found: " + decodeParamClazz.getName());
-        if (decodeReturnClazz != clazz)
+                    ValueToRaw.class.getName() + " return type. " + "Expected: " + valueToRawReturnBox.getName() +
+                    ", Found: " + rawToValueParamBox.getName());
+        if (rawToValueReturnClazz != clazz)
             throw new JsonException("@" + RawToValue.class.getName() + " method return type must be " +
-                    clazz.getName() + ", but found " + decodeReturnClazz.getName());
+                    clazz.getName() + ", but found " + rawToValueReturnClazz.getName());
 
         if (valueCopyHandle != null) {
             if (valueCopyHandle.type().parameterCount() != 1)
@@ -568,7 +568,7 @@ public final class ReflectUtil {
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new NodeRegistry.ValueCodecInfo(clazz, returnRawClazz, null,
+        return new NodeRegistry.ValueCodecInfo(clazz, valueToRawReturnBox, null,
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 
