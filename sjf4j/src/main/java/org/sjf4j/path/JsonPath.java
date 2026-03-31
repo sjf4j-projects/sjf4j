@@ -273,23 +273,23 @@ public class JsonPath {
     /**
      * Returns an Integer at this path using strict conversion.
      */
-    public Integer getInteger(Object container) {
-        return _getStrict(container, "Integer", Nodes::toInteger);
+    public Integer getInt(Object container) {
+        return _getStrict(container, "Integer", Nodes::toInt);
     }
 
     /**
      * Returns an Integer at this path or the default value when missing.
      */
-    public int getInteger(Object container, int defaultValue) {
-        Integer value = getInteger(container);
+    public int getInt(Object container, int defaultValue) {
+        Integer value = getInt(container);
         return value == null ? defaultValue : value;
     }
 
     /**
      * Returns an Integer at this path using lenient conversion.
      */
-    public Integer getAsInteger(Object container) {
-        return _getLenient(container, "Integer", Nodes::asInteger);
+    public Integer getAsInt(Object container) {
+        return _getLenient(container, "Integer", Nodes::asInt);
     }
 
     /**

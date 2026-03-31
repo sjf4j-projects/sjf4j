@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * JSON Patch document modeled as a JsonArray of {@link PatchOp}.
+ * JSON Patch document modeled as a JsonArray of {@link PatchOperation}.
  *
  * <p>Supports RFC 6902 operations plus a small set of SJF4J extensions
  * (e.g. {@code exist}, {@code ensurePut}).
@@ -21,7 +21,7 @@ public class JsonPatch extends JsonArray {
      */
     @Override
     public Class<?> elementType() {
-        return PatchOp.class;
+        return PatchOperation.class;
     }
 
     /**
@@ -34,8 +34,8 @@ public class JsonPatch extends JsonArray {
     /**
      * Creates a patch document from operation list.
      */
-    public JsonPatch(List<PatchOp> ops) {
-        super(ops);
+    public JsonPatch(List<PatchOperation> operations) {
+        super(operations);
     }
 
     /**
@@ -49,7 +49,7 @@ public class JsonPatch extends JsonArray {
      * Computes patch operations that transform source into target.
      */
     public static JsonPatch diff(Object source, Object target) {
-        List<PatchOp> ops = Patches.diff(source, target);
+        List<PatchOperation> ops = Patches.diff(source, target);
         return new JsonPatch(ops);
     }
 
@@ -57,9 +57,9 @@ public class JsonPatch extends JsonArray {
     /**
      * Adds one patch operation.
      */
-    public void add(PatchOp op) {
-        Objects.requireNonNull(op, "op");
-        super.add(op);
+    public void add(PatchOperation operation) {
+        Objects.requireNonNull(operation, "operation");
+        super.add(operation);
     }
 
 
@@ -71,9 +71,9 @@ public class JsonPatch extends JsonArray {
     public void apply(Object target) {
         Objects.requireNonNull(target, "target");
         forEach(v -> {
-            if (v instanceof PatchOp) {
-                PatchOp op =  (PatchOp) v;
-                op.apply(target);
+            if (v instanceof PatchOperation) {
+                PatchOperation operation =  (PatchOperation) v;
+                operation.apply(target);
             } else throw new JsonException("Unsupported patch type: " + Types.name(v));
         });
     }

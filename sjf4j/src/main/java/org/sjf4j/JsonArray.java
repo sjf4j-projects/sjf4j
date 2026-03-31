@@ -4,7 +4,6 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.TypeReference;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -458,10 +457,10 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInteger(int idx) {
+    public Integer getInt(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.toInteger(value);
+            return Nodes.toInt(value);
         } catch (Exception e) {
             throw new JsonException("get failed: Integer at index " + idx, e);
         }
@@ -470,18 +469,18 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns an Integer value or the default value when missing.
      */
-    public int getInteger(int idx, int defaultValue) {
-        Integer value = getInteger(idx);
+    public int getInt(int idx, int defaultValue) {
+        Integer value = getInt(idx);
         return value == null ? defaultValue : value;
     }
 
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInteger(int idx) {
+    public Integer getAsInt(int idx) {
         try {
             Object value = getNode(idx);
-            return Nodes.asInteger(value);
+            return Nodes.asInt(value);
         } catch (Exception e) {
             throw new JsonException("as failed: value at index " + idx + " to Integer", e);
         }

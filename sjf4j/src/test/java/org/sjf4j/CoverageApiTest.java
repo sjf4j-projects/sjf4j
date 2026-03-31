@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -95,9 +94,9 @@ class CoverageApiTest {
         assertEquals(56L, array.getLong(2));
         assertEquals(7L, array.getLong(99, 7L));
         assertEquals(12L, array.getAsLong(0));
-        assertEquals(34, array.getInteger(1));
-        assertEquals(7, array.getInteger(99, 7));
-        assertEquals(12, array.getAsInteger(0));
+        assertEquals(34, array.getInt(1));
+        assertEquals(7, array.getInt(99, 7));
+        assertEquals(12, array.getAsInt(0));
         assertEquals((short) 9, array.getShort(9));
         assertEquals((short) 7, array.getShort(99, (short) 7));
         assertEquals((short) 12, array.getAsShort(0));
@@ -215,9 +214,9 @@ class CoverageApiTest {
         assertEquals(56L, object.getLong("long"));
         assertEquals(7L, object.getLong("missing", 7L));
         assertEquals(12L, object.getAsLong("string"));
-        assertEquals(34, object.getInteger("number"));
-        assertEquals(7, object.getInteger("missing", 7));
-        assertEquals(12, object.getAsInteger("string"));
+        assertEquals(34, object.getInt("number"));
+        assertEquals(7, object.getInt("missing", 7));
+        assertEquals(12, object.getAsInt("string"));
         assertEquals((short) 9, object.getShort("short"));
         assertEquals((short) 7, object.getShort("missing", (short) 7));
         assertEquals((short) 12, object.getAsShort("string"));
@@ -314,8 +313,8 @@ class CoverageApiTest {
                 .ensurePutIfAbsentByPath("$.nested.value", 4)
                 .ensurePutByPath("$.nested.other", 5)
                 .build();
-        assertEquals(3, built.getIntegerByPath("$.nested.value"));
-        assertEquals(5, built.getIntegerByPath("$.nested.other"));
+        assertEquals(3, built.getIntByPath("$.nested.value"));
+        assertEquals(5, built.getIntByPath("$.nested.other"));
         assertEquals(1, built.stream().count());
 
         Person pojo = JsonObject.of("name", "Alice", "age", 30).toPojo(Person.class);
@@ -365,9 +364,9 @@ class CoverageApiTest {
         assertEquals(34L, root.getLongByPath("$.num"));
         assertEquals(7L, root.getLongByPath("$.missing", 7L));
         assertEquals(12L, root.getAsLongByPath("$.string"));
-        assertEquals(34, root.getIntegerByPath("$.num"));
-        assertEquals(7, root.getIntegerByPath("$.missing", 7));
-        assertEquals(12, root.getAsIntegerByPath("$.string"));
+        assertEquals(34, root.getIntByPath("$.num"));
+        assertEquals(7, root.getIntByPath("$.missing", 7));
+        assertEquals(12, root.getAsIntByPath("$.string"));
         assertEquals((short) 9, root.getShortByPath("$.short"));
         assertEquals((short) 7, root.getShortByPath("$.missing", (short) 7));
         assertEquals((short) 12, root.getAsShortByPath("$.string"));
@@ -429,13 +428,13 @@ class CoverageApiTest {
         assertTrue(visits.get() > 0);
 
         root.apply(JsonPatch.fromJson("[{\"op\":\"add\",\"path\":\"/patched\",\"value\":1}]"));
-        assertEquals(1, root.getInteger("patched"));
+        assertEquals(1, root.getInt("patched"));
         root.merge(JsonObject.of("merged", JsonObject.of("value", 1)), true, false);
         root.merge(JsonObject.of("merged2", 2));
         root.mergeWithCopy(JsonObject.of("copied", JsonObject.of("x", 1)));
         root.mergeRfc7386(JsonObject.of("nullable", "set"));
-        assertEquals(1, root.getIntegerByPath("$.merged.value"));
-        assertEquals(2, root.getInteger("merged2"));
+        assertEquals(1, root.getIntByPath("$.merged.value"));
+        assertEquals(2, root.getInt("merged2"));
         assertEquals("set", root.getString("nullable"));
         root.deepPruneNulls();
         assertFalse(root.getJsonObject("drop").containsKey("gone"));
@@ -493,7 +492,7 @@ class CoverageApiTest {
         JsonObject deepSource = JsonObject.of("nested", JsonObject.of("value", 1));
         JsonObject deepCopy = Sjf4j.deepNode(deepSource);
         deepSource.getJsonObject("nested").put("value", 2);
-        assertEquals(1, deepCopy.getIntegerByPath("$.nested.value"));
+        assertEquals(1, deepCopy.getIntByPath("$.nested.value"));
         assertInstanceOf(Map.class, Sjf4j.toRaw(deepSource));
 
         Properties properties = Sjf4j.toProperties(JsonObject.of("app", JsonObject.of("name", "sjf4j")));

@@ -3,7 +3,6 @@ package org.sjf4j.path;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Types;
 
 import java.util.Map;
@@ -332,7 +331,7 @@ public class PathFunctionRegistry {
             if (!JsonType.of(args[1]).isNumber()) {
                 throw new JsonException("index(): the second argument must be a number but was " + Types.name(args[1]));
             }
-            int idx = Nodes.toInteger(args[1]);
+            int idx = Nodes.toInt(args[1]);
 
             switch (JsonType.of(node)) {
                 case ARRAY:

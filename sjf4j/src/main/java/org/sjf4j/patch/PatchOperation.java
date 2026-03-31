@@ -11,7 +11,7 @@ import org.sjf4j.path.JsonPointer;
  * <p>Fields follow RFC 6902 ({@code op}, {@code path}, optional {@code from}/{@code value})
  * with a few SJF4J extensions.
  */
-public final class PatchOp {
+public final class PatchOperation {
 
     // Standard op names defined in RFC 6902
     public static final String STD_ADD = "add";
@@ -25,7 +25,7 @@ public final class PatchOp {
     public static final String EXT_EXIST = "exist";
     public static final String EXT_ENSURE_PUT = "ensurePut";
 
-    private final String op;
+    private final String name;
     private final JsonPointer path;
     private final Object value;             // Optional
     private final JsonPointer from;         // Optional
@@ -35,11 +35,11 @@ public final class PatchOp {
      * Creates a patch operation with all fields.
      */
     @NodeCreator
-    public PatchOp(@NodeProperty("op") String op,
-                   @NodeProperty("path") JsonPointer path,
-                   @NodeProperty("value") Object value,
-                   @NodeProperty("from") JsonPointer from) {
-        this.op = op;
+    public PatchOperation(@NodeProperty("op") String op,
+                          @NodeProperty("path") JsonPointer path,
+                          @NodeProperty("value") Object value,
+                          @NodeProperty("from") JsonPointer from) {
+        this.name = op;
         this.path = path;
         this.value = value;
         this.from = from;
@@ -49,7 +49,7 @@ public final class PatchOp {
      * Returns operation name.
      */
     public String getOp() {
-        return op;
+        return name;
     }
 
     /**
@@ -74,10 +74,10 @@ public final class PatchOp {
     }
 
     /**
-     * Applies this operation to target node via {@link PatchOpRegistry}.
+     * Applies this operation to target node via {@link OperationRegistry}.
      */
     public void apply(Object target) {
-        PatchOpRegistry.apply(target, this);
+        OperationRegistry.apply(target, this);
     }
 
 }

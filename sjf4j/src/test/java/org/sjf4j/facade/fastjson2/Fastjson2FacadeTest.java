@@ -7,13 +7,11 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.NamingStrategy;
@@ -102,7 +100,7 @@ public class Fastjson2FacadeTest {
         JsonObject jo1 = (JsonObject) facade.readNode(json1, JsonObject.class);
 
         Book jo2 = (Book) facade.readNode(json1, Book.class);
-        assertEquals(20, jo2.getIntegerByPath("/friends/rose/age/1"));
+        assertEquals(20, jo2.getIntByPath("/friends/rose/age/1"));
 
         String json2 = "[1,2,3]";
         JsonArray ja1 = (JsonArray) facade.readNode(json2, JsonArray.class);

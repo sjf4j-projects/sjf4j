@@ -160,8 +160,8 @@ public class CompileUtil {
         }
 
         // minLength maxLength
-        Integer minLength = schema.getInteger("minLength");
-        Integer maxLength = schema.getInteger("maxLength");
+        Integer minLength = schema.getInt("minLength");
+        Integer maxLength = schema.getInt("maxLength");
         if ((minLength != null || maxLength != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
             evaluators.add(new Evaluator.StringEvaluator(minLength, maxLength));
@@ -174,8 +174,8 @@ public class CompileUtil {
         }
 
         // minProperties / maxProperties
-        Integer minProperties = schema.getInteger("minProperties");
-        Integer maxProperties = schema.getInteger("maxProperties");
+        Integer minProperties = schema.getInt("minProperties");
+        Integer maxProperties = schema.getInt("maxProperties");
         if ((minProperties != null || maxProperties != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
             evaluators.add(new Evaluator.ObjectEvaluator(minProperties, maxProperties));
@@ -218,8 +218,8 @@ public class CompileUtil {
         }
 
         // minItems / maxItems / uniqueItems
-        Integer minItems = schema.getInteger("minItems");
-        Integer maxItems = schema.getInteger("maxItems");
+        Integer minItems = schema.getInt("minItems");
+        Integer maxItems = schema.getInt("maxItems");
         Boolean uniqueItems = schema.getBoolean("uniqueItems");
         if ((minItems != null || maxItems != null || uniqueItems != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
@@ -236,8 +236,8 @@ public class CompileUtil {
 
         // contains / minContains / maxContains
         JsonSchema contains = compileSchemaByKey("contains", ps, schema, idSchema, rootSchema);
-        Integer minContains = schema.getInteger("minContains");
-        Integer maxContains = schema.getInteger("maxContains");
+        Integer minContains = schema.getInt("minContains");
+        Integer maxContains = schema.getInt("maxContains");
         if ((contains != null || minContains != null || maxContains != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
             evaluators.add(new Evaluator.ContainsEvaluator(contains, minContains, maxContains));

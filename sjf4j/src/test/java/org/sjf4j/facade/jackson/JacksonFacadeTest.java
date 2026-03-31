@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -95,7 +94,7 @@ public class JacksonFacadeTest {
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
 
         Book jo2 = (Book) facade.readNode(new StringReader(json1), Book.class);
-        assertEquals(20, jo2.getIntegerByPath("/friends/rose/age/1"));
+        assertEquals(20, jo2.getIntByPath("/friends/rose/age/1"));
 
         String json2 = "[1,2,3]";
         JsonArray ja1 = (JsonArray) facade.readNode(new StringReader(json2), JsonArray.class);

@@ -47,7 +47,7 @@ public class SimpleExampleTest {
         Object nodeId = jo.getNode("id");
         // Retrieve the raw node as an Object without type conversion.
 
-        Integer id = jo.getInteger("id");
+        Integer id = jo.getInt("id");
         // Retrieve the node as a specific type (int) using `getXx(key)`.
         // Performs an internal cast/conversion if necessary.
 
@@ -313,7 +313,7 @@ public class SimpleExampleTest {
         assertEquals(user.getName(), user2.getName());
         // user2 and user are the same on defined fields
 
-        assertEquals(18, user2.getInteger("age"));
+        assertEquals(18, user2.getInt("age"));
         // difference: user2 can also hold age
 
         System.out.println("user2=" + user2);

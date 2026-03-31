@@ -69,7 +69,7 @@ public class YamlFacadeTest {
         assertEquals("han", p1.getName());
         assertEquals(175, p1.getHeight());
         assertEquals("han", p1.getStringByPath("$.name"));
-        assertEquals(20, p1.getIntegerByPath("$.friends.rose.age[1]"));
+        assertEquals(20, p1.getIntByPath("$.friends.rose.age[1]"));
 
         Person p2 = (Person) snake.readNode(new StringReader(ya1), new TypeReference<Person>(){}.getType());
         log.info("p2={}", p2);

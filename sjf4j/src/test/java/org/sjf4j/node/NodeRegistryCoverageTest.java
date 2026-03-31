@@ -336,7 +336,7 @@ class NodeRegistryCoverageTest {
         jsonSession.acceptResolvedJsonEntry(-1, "extra", 1);
         jsonSession.acceptResolvedJsonEntry(0, "id", "json-id");
         JsonObject jsonObject = jsonSession.finishJsonObject();
-        assertEquals(1, jsonObject.getInteger("extra"));
+        assertEquals(1, jsonObject.getInt("extra"));
 
         NodeRegistry.PojoInfo containerInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
         NodeRegistry.PojoCreationSession noArgsSession = containerInfo.newCreationSession(2);
@@ -362,7 +362,7 @@ class NodeRegistryCoverageTest {
         }
         jsonGrowth.acceptResolvedJsonEntry(0, "id", "grow");
         JsonObject grownJson = jsonGrowth.finishJsonObject();
-        assertEquals(4, grownJson.getInteger("k4"));
+        assertEquals(4, grownJson.getInt("k4"));
     }
 
     @Test

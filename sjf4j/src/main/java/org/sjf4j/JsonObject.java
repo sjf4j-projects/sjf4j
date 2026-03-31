@@ -633,10 +633,10 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInteger(String key) {
+    public Integer getInt(String key) {
         Object value = getNode(key);
         try {
-            return Nodes.toInteger(value);
+            return Nodes.toInt(value);
         } catch (Exception e) {
             throw new JsonException("get failed: Integer for key '" + key + "'", e);
         }
@@ -645,18 +645,18 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns an Integer value or the default value when missing.
      */
-    public int getInteger(String key, int defaultValue) {
-        Integer value = getInteger(key);
+    public int getInt(String key, int defaultValue) {
+        Integer value = getInt(key);
         return value == null ? defaultValue : value;
     }
 
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInteger(String key) {
+    public Integer getAsInt(String key) {
         Object value = getNode(key);
         try {
-            return Nodes.asInteger(value);
+            return Nodes.asInt(value);
         } catch (Exception e) {
             throw new JsonException("as failed: key '" + key + "' to Integer", e);
         }

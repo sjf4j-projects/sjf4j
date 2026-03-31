@@ -255,7 +255,7 @@ public class JsonPathTest {
 
         JsonPath path2 = JsonPath.compile("$.array[1]");
         path2.ensurePut(jo, 999);
-        assertEquals(999, jo.getIntegerByPath("$.array[1]"));
+        assertEquals(999, jo.getIntByPath("$.array[1]"));
 
         JsonPath path3 = JsonPath.compile("$.a.d");
         path3.ensurePut(jo, "value");
@@ -276,7 +276,7 @@ public class JsonPathTest {
         JsonPath path6 = JsonPath.compile("$.array[0]");
         path6.remove(jo);
         assertEquals(2, jo.getJsonArray("array").size());
-        assertEquals(999, jo.getJsonArray("array").getInteger(0));
+        assertEquals(999, jo.getJsonArray("array").getInt(0));
     }
 
     @Test
@@ -384,7 +384,7 @@ public class JsonPathTest {
 
         JsonPath.compile("$.babies[0].age").ensurePut(jo1, 33);
         log.info("jo1={}", jo1);
-        assertEquals(33, jo1.getJsonArray("babies").getJsonObject(0).getInteger("age"));
+        assertEquals(33, jo1.getJsonArray("babies").getJsonObject(0).getInt("age"));
 
         JsonPath.compile("$.babies[1].name").ensurePut(jo1, "Grace");
         log.info("jo1={}", jo1);

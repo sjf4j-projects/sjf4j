@@ -122,9 +122,9 @@ public class PatchesTest {
         Patches.mergeRfc7386(target, patch);
 
         JsonObject obj = (JsonObject) target.get("obj");
-        assertEquals(10, obj.getInteger("x"));  // merged
-        assertEquals(2, obj.getInteger("y"));   // preserved
-        assertEquals(3, obj.getInteger("z"));   // added
+        assertEquals(10, obj.getInt("x"));  // merged
+        assertEquals(2, obj.getInt("y"));   // preserved
+        assertEquals(3, obj.getInt("z"));   // added
     }
 
 }

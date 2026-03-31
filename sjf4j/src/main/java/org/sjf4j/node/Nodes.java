@@ -161,7 +161,7 @@ public class Nodes {
     /**
      * Converts a node to an Integer with strict type checking.
      */
-    public static Integer toInteger(Object node) {
+    public static Integer toInt(Object node) {
         Number n = toNumber(node);
         if (n == null) return null;
         return Numbers.toInt(n);
@@ -170,7 +170,7 @@ public class Nodes {
     /**
      * Converts a node to an Integer with flexible type conversion.
      */
-    public static Integer asInteger(Object node) {
+    public static Integer asInt(Object node) {
         Number n = asNumber(node);
         if (n == null) return null;
         return Numbers.toInt(n);

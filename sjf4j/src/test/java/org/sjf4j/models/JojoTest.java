@@ -1,7 +1,6 @@
 package org.sjf4j.models;
 
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -126,7 +125,7 @@ public class JojoTest {
         p.put("age", 18);
 
         assertEquals("Alice", p.getString("name"));
-        assertEquals(18, p.getInteger("age"));
+        assertEquals(18, p.getInt("age"));
 
         p.put("name", "Bob");
         p.put("age", 25);
@@ -207,7 +206,7 @@ public class JojoTest {
         parent.setInfo(info);
         parent.setBabies(Collections.singletonList(baby));
 
-        assertEquals(175, parent.getInfo().getInteger("height"));
+        assertEquals(175, parent.getInfo().getInt("height"));
         assertEquals("Child1", parent.getBabies().get(0).getName());
     }
 

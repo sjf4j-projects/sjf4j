@@ -14,7 +14,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
-import org.sjf4j.patch.PatchOp;
+import org.sjf4j.patch.PatchOperation;
 import org.sjf4j.path.JsonPointer;
 
 import java.util.ArrayList;
@@ -81,7 +81,7 @@ public class SimpleNodeFacadeTest {
         assertNotSame(src.getJsonObject("meta"), copied.getJsonObject("meta"));
 
         copied.getJsonObject("meta").put("age", 20);
-        assertEquals(18, src.getJsonObject("meta").getInteger("age"));
+        assertEquals(18, src.getJsonObject("meta").getInt("age"));
     }
 
     @Data
@@ -119,7 +119,7 @@ public class SimpleNodeFacadeTest {
         Object value = nodeFacade.readNode(lily, JsonObject.class);
         log.info("value type={}, value={}", value.getClass(), value);
         assertEquals(JsonObject.class, value.getClass());
-        assertEquals(25, ((JsonObject) value).getInteger("age"));
+        assertEquals(25, ((JsonObject) value).getInt("age"));
         assertEquals("Baby",
                 ((JsonObject) value).getJsonArray("friends").getJsonObject(0).getString("name"));
         assertEquals(90f, ((JsonObject) value).getFloatByPath("$.roles.kk.percentage"));
@@ -492,14 +492,14 @@ public class SimpleNodeFacadeTest {
     @Test
     public void testObjectJsonArraySubclassPreserveType() {
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp("add", JsonPointer.compile("/a"), 1, null));
+        patch.add(new PatchOperation("add", JsonPointer.compile("/a"), 1, null));
 
         Object out = nodeFacade.readNode(patch, Object.class);
         assertEquals(JsonPatch.class, out.getClass());
         JsonPatch outPatch = (JsonPatch) out;
         assertEquals(1, outPatch.size());
-        PatchOp op = (PatchOp) outPatch.getNode(0);
-        assertEquals("add", op.getOp());
+        PatchOperation operation = (PatchOperation) outPatch.getNode(0);
+        assertEquals("add", operation.getOp());
     }
 
     @Test

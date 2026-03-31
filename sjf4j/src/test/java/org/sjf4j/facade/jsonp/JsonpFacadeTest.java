@@ -46,7 +46,7 @@ class JsonpFacadeTest {
         JsonpJsonFacade facade = new JsonpJsonFacade();
 
         JsonObject jo = (JsonObject) facade.readNode("{\"a\":1,\"b\":true}", JsonObject.class);
-        assertEquals(1, jo.getInteger("a"));
+        assertEquals(1, jo.getInt("a"));
 
         JsonArray ja = (JsonArray) facade.readNode("[1,2,3]", JsonArray.class);
         assertEquals(3, ja.size());

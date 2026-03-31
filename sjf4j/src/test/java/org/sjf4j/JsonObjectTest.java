@@ -10,7 +10,6 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.node.NodeKind;
 import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;
@@ -109,7 +108,7 @@ class JsonObjectTest {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20],\"sex\":false}},\"sex\":true}";
         JsonObject jo = JsonObject.fromJson(json1);
         assertEquals(json1, jo.toJson());
-        assertEquals(123, jo.getInteger("id"));
+        assertEquals(123, jo.getInt("id"));
         assertEquals(123, jo.getBigInteger("id").intValue());
         assertEquals(Integer.class, jo.getNode("id").getClass());
 
@@ -129,7 +128,7 @@ class JsonObjectTest {
 
         assertEquals("good", jo.getJsonObject("friends").getString("jack"));
         assertEquals(false, jo.getJsonObject("friends").getJsonObject("rose").getBoolean("sex"));
-        assertEquals(20, jo.getJsonObject("friends").getJsonObject("rose").getJsonArray("age").getInteger(1));
+        assertEquals(20, jo.getJsonObject("friends").getJsonObject("rose").getJsonArray("age").getInt(1));
 
         assertNull(jo.getString("noexist1"));
         assertNull(jo.getJsonObject("noexist2"));
@@ -255,20 +254,20 @@ class JsonObjectTest {
         JsonObject wrappedJackson = new JsonObject(jacksonObject);
         jacksonObject.put("name", "li");
         assertEquals("han", wrappedJackson.getString("name"));
-        assertEquals(18, wrappedJackson.getInteger("age"));
+        assertEquals(18, wrappedJackson.getInt("age"));
 
         com.google.gson.JsonObject gsonObject = JsonParser.parseString("{\"name\":\"han\",\"age\":18}").getAsJsonObject();
         JsonObject wrappedGson = new JsonObject(gsonObject);
         gsonObject.addProperty("name", "li");
         assertEquals("han", wrappedGson.getString("name"));
-        assertEquals(18, wrappedGson.getInteger("age"));
+        assertEquals(18, wrappedGson.getInt("age"));
     }
 
     public void testWrapSemantics() {
         JsonObject src = JsonObject.of("a", 1);
         JsonObject wrapped = new JsonObject(src);
         src.put("b", 2);
-        assertEquals(2, wrapped.getInteger("b"));
+        assertEquals(2, wrapped.getInt("b"));
 
         WrapJojo jojo = new WrapJojo();
         jojo.name = "han";
@@ -277,7 +276,7 @@ class JsonObjectTest {
         jojo.name = "li";
         jojo.put("x", 2);
         assertEquals("han", copied.getString("name"));
-        assertEquals(1, copied.getInteger("x"));
+        assertEquals(1, copied.getInt("x"));
     }
 
     /**
@@ -338,7 +337,7 @@ class JsonObjectTest {
         assertEquals("xixi", jo1.getStringByPath("$.duck[1]"));
         System.out.println(jo1.toJson());
 
-        assertEquals(5, jo1.getIntegerByPath("$.nested[2].yes[1].no"));
+        assertEquals(5, jo1.getIntByPath("$.nested[2].yes[1].no"));
 
         assertNull(jo1.getStringByPath("$.duck[5]"));
         assertEquals("jiji", jo1.getStringByPath("$.duck[5]", "jiji"));
@@ -346,8 +345,8 @@ class JsonObjectTest {
 
     public void testByPath2() {
         JsonObject jo1 = JsonObject.fromJson("{\"isYes\":false,\"isNo\":true, \"ss.ss\":[1]}");
-        assertNull(jo1.getIntegerByPath("$.ss\\.ss[0]"));
-        assertEquals(1, jo1.getIntegerByPath("$['ss.ss'][0]"));
+        assertNull(jo1.getIntByPath("$.ss\\.ss[0]"));
+        assertEquals(1, jo1.getIntByPath("$['ss.ss'][0]"));
 
         jo1.ensurePutByPath("$.query['idea.fqmn']", "::bad::good");
         assertEquals("::bad::good", jo1.getStringByPath("$.query['idea.fqmn']"));
@@ -446,8 +445,8 @@ class JsonObjectTest {
 
     public void testDefaultValue1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"attr\":{\"aa\":\"bb\"}}");
-        assertEquals(5, jo1.getInteger("num", 6));
-        assertEquals(6, jo1.getInteger("num2", 6));
+        assertEquals(5, jo1.getInt("num", 6));
+        assertEquals(6, jo1.getInt("num2", 6));
         assertEquals("5", jo1.getAsString("num"));
 
 //        assertEquals("bb", jo1.getStringByPath("$.attr.aa", "cc"));
@@ -599,7 +598,7 @@ class JsonObjectTest {
         assertFalse(jo.containsKey("b"));
         
         jo.putNonNull("c", 0);
-        assertEquals(0, jo.getInteger("c"));
+        assertEquals(0, jo.getInt("c"));
     }
 
     public void testComputeIfAbsent() {
@@ -630,7 +629,7 @@ class JsonObjectTest {
                 .build();
         
         assertEquals("Alice", jo.getString("name")); // not overwritten
-        assertEquals(25, jo.getInteger("age"));
+        assertEquals(25, jo.getInt("age"));
         assertEquals("alice@example.com", jo.getString("email"));
         assertTrue(jo.getBoolean("status"));
         
@@ -642,7 +641,7 @@ class JsonObjectTest {
                 .build();
         
         assertEquals("Bob", jo2.getStringByPath("$.user.name"));
-        assertEquals(30, jo2.getIntegerByPath("$.user.age"));
+        assertEquals(30, jo2.getIntByPath("$.user.age"));
         assertEquals("bob@example.com", jo2.getStringByPath("$.user.email"));
     }
 
@@ -678,8 +677,8 @@ class JsonObjectTest {
         assertTrue(jo.hasNonNullByPath("$.array[1]"));
         jo.removeByPath("$.array[1]");
         assertEquals(2, jo.getJsonArray("array").size());
-        assertEquals(1, jo.getJsonArray("array").getInteger(0));
-        assertEquals(3, jo.getJsonArray("array").getInteger(1));
+        assertEquals(1, jo.getJsonArray("array").getInt(0));
+        assertEquals(3, jo.getJsonArray("array").getInt(1));
     }
 
     public void testEdgeCases() {

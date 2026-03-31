@@ -169,7 +169,7 @@ class JsonArrayTest {
         int[] ints = new int[]{1, 2};
         JsonArray copied = new JsonArray(ints);
         ints[0] = 9;
-        assertEquals(1, copied.getInteger(0));
+        assertEquals(1, copied.getInt(0));
     }
 
     @Test
@@ -196,7 +196,7 @@ class JsonArrayTest {
         JsonArray ja1 = new JsonArray(ii);
         System.out.println("ja1: " + ja1);
         assertEquals(3, ja1.size());
-        assertEquals(3, ja1.getInteger(2));
+        assertEquals(3, ja1.getInt(2));
 
         JsonArray ja2 = new JsonArray();
         ja2.addAll(new char[]{'s', '1', '2'});
@@ -209,10 +209,10 @@ class JsonArrayTest {
         JsonArray a1 = JsonArray.fromJson("[2,3,[4,[5,6]]]");
         JsonArray a2 = a1.deepCopy();
 
-        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
+        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInt(1));
         a1.getJsonArray(2).getJsonArray(1).set(1, 7);
-        assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInteger(1));
-        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInteger(1));
+        assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInt(1));
+        assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInt(1));
     }
 
     public void testByPath1() {
@@ -281,7 +281,7 @@ class JsonArrayTest {
         
         // get different types using negative index
         JsonArray ja2 = JsonArray.of(1, 2, 3, 4);
-        assertEquals(4, ja2.getInteger(-1));
+        assertEquals(4, ja2.getInt(-1));
         assertEquals(1.0, ja2.getDouble(-4));
     }
 
@@ -373,8 +373,8 @@ class JsonArrayTest {
         
         ja1.merge(ja2);
         assertEquals(3, ja1.size());
-        assertEquals(3, ja1.getInteger(0));
-        assertEquals(4, ja1.getInteger(1));
+        assertEquals(3, ja1.getInt(0));
+        assertEquals(4, ja1.getInt(1));
         assertEquals("c", ja1.getJsonObject(2).getString("a"));
         assertEquals("e", ja1.getJsonObject(2).getString("d"));
         
@@ -384,8 +384,8 @@ class JsonArrayTest {
         ja3.mergeWithCopy(ja4);
         assertEquals(1, ja3.size());
         log.info("ja3={}", ja3.inspect());
-        assertEquals(1, ja3.getJsonObject(0).getInteger("x"));
-        assertEquals(2, ja3.getJsonObject(0).getInteger("y"));
+        assertEquals(1, ja3.getJsonObject(0).getInt("x"));
+        assertEquals(2, ja3.getJsonObject(0).getInt("y"));
     }
 
     public void testToList1() {
@@ -450,7 +450,7 @@ class JsonArrayTest {
             ja3.add(i);
         }
         assertEquals(1000, ja3.size());
-        assertEquals(999, ja3.getInteger(999));
+        assertEquals(999, ja3.getInt(999));
         
         // test default value of getString
         JsonArray ja4 = JsonArray.of("a", null, "c");

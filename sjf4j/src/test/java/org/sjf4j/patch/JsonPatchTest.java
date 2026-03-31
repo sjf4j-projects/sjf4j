@@ -23,15 +23,15 @@ public class JsonPatchTest {
 
     @Test
     void testBuiltinPatchOpsRegistered() {
-        assertTrue(PatchOpRegistry.exists(PatchOp.STD_ADD));
-        assertTrue(PatchOpRegistry.exists(PatchOp.STD_REMOVE));
-        assertTrue(PatchOpRegistry.exists(PatchOp.STD_REPLACE));
-        assertTrue(PatchOpRegistry.exists(PatchOp.STD_COPY));
-        assertTrue(PatchOpRegistry.exists(PatchOp.STD_MOVE));
-        assertTrue(PatchOpRegistry.exists(PatchOp.STD_TEST));
+        assertTrue(OperationRegistry.exists(PatchOperation.STD_ADD));
+        assertTrue(OperationRegistry.exists(PatchOperation.STD_REMOVE));
+        assertTrue(OperationRegistry.exists(PatchOperation.STD_REPLACE));
+        assertTrue(OperationRegistry.exists(PatchOperation.STD_COPY));
+        assertTrue(OperationRegistry.exists(PatchOperation.STD_MOVE));
+        assertTrue(OperationRegistry.exists(PatchOperation.STD_TEST));
 
-        assertTrue(PatchOpRegistry.exists(PatchOp.EXT_EXIST));
-        assertTrue(PatchOpRegistry.exists(PatchOp.EXT_ENSURE_PUT));
+        assertTrue(OperationRegistry.exists(PatchOperation.EXT_EXIST));
+        assertTrue(OperationRegistry.exists(PatchOperation.EXT_ENSURE_PUT));
     }
 
     @Test
@@ -39,15 +39,15 @@ public class JsonPatchTest {
         JsonObject target = new JsonObject();
         JsonPatch patch = new JsonPatch();
 
-        patch.add(new PatchOp(
-                PatchOp.STD_ADD,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_ADD,
                 JsonPointer.compile("/a"),
                 1,
                 null
         ));
 
         patch.apply(target);
-        assertEquals(1, target.getInteger("a"));
+        assertEquals(1, target.getInt("a"));
     }
 
     @Test
@@ -56,8 +56,8 @@ public class JsonPatchTest {
         target.put("a", 1);
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.STD_REMOVE,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_REMOVE,
                 JsonPointer.compile("/a"),
                 null,
                 null
@@ -73,15 +73,15 @@ public class JsonPatchTest {
         target.put("a", 1);
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.STD_REPLACE,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_REPLACE,
                 JsonPointer.compile("/a"),
                 2,
                 null
         ));
 
         patch.apply(target);
-        assertEquals(2, target.getInteger("a"));
+        assertEquals(2, target.getInt("a"));
     }
 
     @Test
@@ -89,8 +89,8 @@ public class JsonPatchTest {
         JsonObject target = new JsonObject();
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.STD_REPLACE,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_REPLACE,
                 JsonPointer.compile("/a"),
                 1,
                 null
@@ -105,8 +105,8 @@ public class JsonPatchTest {
         target.put("a", 1);
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.STD_TEST,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_TEST,
                 JsonPointer.compile("/a"),
                 1,
                 null
@@ -114,8 +114,8 @@ public class JsonPatchTest {
         assertDoesNotThrow(() -> patch.apply(target));
 
         JsonPatch patch2 = new JsonPatch();
-        patch2.add(new PatchOp(
-                PatchOp.STD_TEST,
+        patch2.add(new PatchOperation(
+                PatchOperation.STD_TEST,
                 JsonPointer.compile("/a"),
                 2,
                 null
@@ -129,15 +129,15 @@ public class JsonPatchTest {
         target.put("a", 1);
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.STD_COPY,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_COPY,
                 JsonPointer.compile("/b"),
                 null,
                 JsonPointer.compile("/a")
         ));
 
         patch.apply(target);
-        assertEquals(1, target.getInteger("b"));
+        assertEquals(1, target.getInt("b"));
     }
 
     @Test
@@ -146,8 +146,8 @@ public class JsonPatchTest {
         target.put("a", 1);
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.STD_MOVE,
+        patch.add(new PatchOperation(
+                PatchOperation.STD_MOVE,
                 JsonPointer.compile("/b"),
                 null,
                 JsonPointer.compile("/a")
@@ -155,7 +155,7 @@ public class JsonPatchTest {
 
         patch.apply(target);
 
-        assertEquals(1, target.getInteger("b"));
+        assertEquals(1, target.getInt("b"));
         assertFalse(target.containsKey("a"));
     }
 
@@ -165,8 +165,8 @@ public class JsonPatchTest {
         target.put("a", 1);
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.EXT_EXIST,
+        patch.add(new PatchOperation(
+                PatchOperation.EXT_EXIST,
                 JsonPointer.compile("/a"),
                 null,
                 null
@@ -180,15 +180,15 @@ public class JsonPatchTest {
         JsonObject target = new JsonObject();
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(
-                PatchOp.EXT_ENSURE_PUT,
+        patch.add(new PatchOperation(
+                PatchOperation.EXT_ENSURE_PUT,
                 JsonPointer.compile("/a/b/c"),
                 1,
                 null
         ));
 
         patch.apply(target);
-        assertEquals(1, target.getIntegerByPath("/a/b/c"));
+        assertEquals(1, target.getIntByPath("/a/b/c"));
     }
 
 
@@ -197,7 +197,7 @@ public class JsonPatchTest {
         List<Integer> src = new ArrayList<>(Arrays.asList(1, 2, 3));
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(PatchOp.STD_ADD, JsonPointer.compile("/-"), 4, null));
+        patch.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.compile("/-"), 4, null));
 
         patch.apply(src);
         log.info("src: {}", src);
@@ -209,7 +209,7 @@ public class JsonPatchTest {
         List<Integer> src = new ArrayList<>(Arrays.asList(1, 2, 3));
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(PatchOp.STD_REPLACE, JsonPointer.compile("/1"), 20, null));
+        patch.add(new PatchOperation(PatchOperation.STD_REPLACE, JsonPointer.compile("/1"), 20, null));
 
         patch.apply(src);
         assertEquals(Arrays.asList(1, 20, 3), src);
@@ -220,7 +220,7 @@ public class JsonPatchTest {
         List<Integer> src = new ArrayList<>(Arrays.asList(1, 2, 3));
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(PatchOp.STD_REMOVE, JsonPointer.compile("/10"), null, null));
+        patch.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.compile("/10"), null, null));
 
         assertThrows(JsonException.class, () -> patch.apply(src));
         assertEquals(Arrays.asList(1, 2, 3), src);
@@ -231,7 +231,7 @@ public class JsonPatchTest {
         List<String> src = new ArrayList<>(Arrays.asList("a", "b", "c"));
 
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOp(PatchOp.STD_MOVE, JsonPointer.compile("/-"), null, JsonPointer.compile("/0")));
+        patch.add(new PatchOperation(PatchOperation.STD_MOVE, JsonPointer.compile("/-"), null, JsonPointer.compile("/0")));
 
         patch.apply(src);
         assertEquals(Arrays.asList("b", "c", "a"), src);

@@ -74,14 +74,14 @@ public class NodesTest {
     }
 
     @Test
-    public void testAsInteger() {
-        assertEquals(123, Nodes.toInteger(123));
-        assertEquals(123, Nodes.asInteger("123"));
-        assertEquals(123, Nodes.asInteger(123.45));
-        assertNull(Nodes.asInteger(null));
+    public void testAsInt() {
+        assertEquals(123, Nodes.toInt(123));
+        assertEquals(123, Nodes.asInt("123"));
+        assertEquals(123, Nodes.asInt(123.45));
+        assertNull(Nodes.asInt(null));
         
         assertThrows(JsonException.class, () -> {
-            Nodes.toInteger("123");
+            Nodes.toInt("123");
         });
     }
 
@@ -182,7 +182,7 @@ public class NodesTest {
         list.add(2);
         JsonArray fromList = Nodes.toJsonArray(list);
         assertEquals(2, fromList.size());
-        assertEquals(1, fromList.getInteger(0));
+        assertEquals(1, fromList.getInt(0));
         
         assertNull(Nodes.toJsonArray(null));
         

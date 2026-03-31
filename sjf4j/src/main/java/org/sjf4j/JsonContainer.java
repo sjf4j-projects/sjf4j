@@ -217,8 +217,8 @@ public abstract class JsonContainer {
      * @param path the JSON path to get the value from
      * @return the value at the path as an Integer, or null if it doesn't exist or can't be converted
      */
-    public Integer getIntegerByPath(String path) {
-        return JsonPath.compile(path).getInteger(this);
+    public Integer getIntByPath(String path) {
+        return JsonPath.compile(path).getInt(this);
     }
     
     /**
@@ -228,8 +228,8 @@ public abstract class JsonContainer {
      * @param defaultValue the value to return if the path doesn't exist or can't be converted
      * @return the value at the path as an int, or the default value if it doesn't exist or can't be converted
      */
-    public int getIntegerByPath(String path, int defaultValue) {
-        return JsonPath.compile(path).getInteger(this, defaultValue);
+    public int getIntByPath(String path, int defaultValue) {
+        return JsonPath.compile(path).getInt(this, defaultValue);
     }
     
     /**
@@ -238,8 +238,8 @@ public abstract class JsonContainer {
      * @param path the JSON path to get the value from
      * @return the value at the path converted to an Integer, or null if it doesn't exist
      */
-    public Integer getAsIntegerByPath(String path) {
-        return JsonPath.compile(path).getAsInteger(this);
+    public Integer getAsIntByPath(String path) {
+        return JsonPath.compile(path).getAsInt(this);
     }
 
     // Short

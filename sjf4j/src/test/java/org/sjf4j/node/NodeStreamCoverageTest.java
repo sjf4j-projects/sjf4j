@@ -60,7 +60,7 @@ class NodeStreamCoverageTest {
 
         List<String> names = NodeStream.of(sampleNodes())
                 .peek(node -> peeked.incrementAndGet())
-                .filter(node -> node.getInteger("id") > 0)
+                .filter(node -> node.getInt("id") > 0)
                 .sorted((left, right) -> left.getString("name").compareTo(right.getString("name")))
                 .map(node -> node.getString("name"))
                 .distinct()
@@ -77,7 +77,7 @@ class NodeStreamCoverageTest {
         assertEquals(JsonArray.of("x", "y", "y", "z"), tags);
 
         assertEquals(2, NodeStream.of(sampleNodes()).count());
-        assertTrue(NodeStream.of(sampleNodes()).anyMatch(node -> node.getInteger("id") == 2));
+        assertTrue(NodeStream.of(sampleNodes()).anyMatch(node -> node.getInt("id") == 2));
         assertTrue(NodeStream.of(sampleNodes()).allMatch(node -> node.containsKey("name")));
         assertFalse(NodeStream.of(sampleNodes()).noneMatch(node -> node.containsKey("name")));
         assertEquals("beta", NodeStream.of(sampleNodes()).findFirst().get().getString("name"));
