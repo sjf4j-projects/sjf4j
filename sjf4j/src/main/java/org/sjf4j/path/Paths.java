@@ -342,6 +342,9 @@ public class Paths {
                     if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '*') {
                         // [*]
                         segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
+                    } else if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '+') {
+                        // [+]
+                        segments.addLast(new PathSegment.Append(segments.peekLast(), null));
                     } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
                         String name = parseQuotedContent(expr.substring(contentStart, contentEnd), 0, null, "name");

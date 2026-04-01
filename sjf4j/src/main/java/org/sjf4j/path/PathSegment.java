@@ -306,17 +306,17 @@ public abstract class PathSegment {
     }
 
     /**
-     * JSON Patch append token "-" used only in JSON Pointer paths.
+     * Append token used by JSON Pointer ("-") and JSONPath ("[+]").
      */
     public static final class Append extends PathSegment {
         /**
-         * Creates an append segment for JSON Pointer '-'.
+         * Creates an append segment.
          */
         public Append(PathSegment parent, Class<?> clazz) {
             super(parent, clazz);
         }
         @Override public String toString() {
-            return "-";
+            return "[+]";
         }
     }
 

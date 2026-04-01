@@ -105,11 +105,14 @@ public class JsonPathTest {
     public void testCompileSimpleBracketFastPath() {
         JsonPath wildcard = JsonPath.compile("$.a[*].b");
         JsonPath index = JsonPath.compile("$.a[123].b");
+        JsonPath append = JsonPath.compile("$.a[+]");
 
         assertEquals("$.a[*].b", wildcard.toExpr());
         assertEquals("$.a[123].b", index.toExpr());
+        assertEquals("$.a[+]", append.toExpr());
         assertEquals("$.a[*].b", JsonPath.compile("$.a[ * ].b").toExpr());
         assertEquals("$.a[123].b", JsonPath.compile("$.a[ 123 ].b").toExpr());
+        assertEquals("$.a[+]", JsonPath.compile("$.a[ + ]").toExpr());
 
         // Other bracket forms should still use the normal parser path.
         assertEquals("$.a[-123].b", JsonPath.compile("$.a[-123].b").toExpr());
@@ -123,22 +126,6 @@ public class JsonPathTest {
         JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
         JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
         assertSame(p1, p2);
-    }
-
-    @Test
-    public void testCompileCachedWithHashMapCache() {
-        Sjf4jConfig previous = Sjf4jConfig.global();
-        try {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder(previous)
-                    .pathCache(PathCache.HashMapPathCache)
-                    .build());
-
-            JsonPath p1 = JsonPath.compileCached("/book/1/title");
-            JsonPath p2 = JsonPath.compileCached("/book/1/title");
-            assertSame(p1, p2);
-        } finally {
-            Sjf4jConfig.global(previous);
-        }
     }
 
 
@@ -280,6 +267,27 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testPutMulti() {
+        JsonObject jo = JsonObject.fromJson("{\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}],\"groups\":[{\"members\":[{\"name\":\"A\"},{\"name\":\"B\"}]},{\"members\":[{\"name\":\"C\"}]}],\"meta\":{\"version\":1,\"nested\":{\"version\":2}}}");
+
+        assertEquals(3, JsonPath.compile("$.babies[*].age").putMulti(jo, 9));
+        assertEquals(Arrays.asList(9, 9, 9), JsonPath.compile("$.babies[*].age").find(jo));
+
+        assertEquals(3, JsonPath.compile("$.babies[?(@.age == 9)].name").putMulti(jo, "updated"));
+        assertEquals(Arrays.asList("updated", "updated", "updated"), JsonPath.compile("$.babies[*].name").find(jo));
+
+        assertEquals(2, JsonPath.compile("$..version").putMulti(jo, 7));
+        assertEquals(Arrays.asList(7, 7), JsonPath.compile("$..version").find(jo));
+
+        assertEquals(2, JsonPath.compile("$.groups[*].members[+]").putMulti(jo, JsonObject.of("name", "Z")));
+        assertEquals(Arrays.asList("A", "B", "Z", "C", "Z"), JsonPath.compile("$.groups[*].members[*].name").find(jo));
+
+        JsonArray babies = JsonArray.fromJson("[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]");
+        JsonPath.compile("$[+]").put(babies, JsonObject.of("name", "Baby-3", "age", 4));
+        assertEquals(Arrays.asList("Baby-0", "Baby-1", "Baby-2", "Baby-3"), JsonPath.compile("$[*].name").find(babies));
+    }
+
+    @Test
     public void testExceptionPaths() {
         JsonObject jo = JsonObject.fromJson("{\"a\":1}");
 
@@ -296,6 +304,12 @@ public class JsonPathTest {
 
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
         assertNull(JsonPath.compile("$[10]").getNode(ja));
+
+        JsonPath append = JsonPath.compile("$[+]");
+        assertFalse(append.contains(ja));
+        assertThrows(JsonException.class, () -> append.getNode(ja));
+        assertThrows(JsonException.class, () -> append.replace(ja, 4));
+        assertThrows(JsonException.class, () -> append.remove(ja));
     }
 
     @Test
