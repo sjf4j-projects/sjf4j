@@ -44,10 +44,6 @@ public class JsonPathCompareBenchmark {
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final JacksonJsonFacade SJF4J_JACKSON_PLUGIN =
-            new JacksonJsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
-    private static final JacksonJsonFacade SJF4J_JACKSON_EXCLUSIVE =
-            new JacksonJsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
 
     private static final Configuration JAYWAY_JACKSON_CONFIG = Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())

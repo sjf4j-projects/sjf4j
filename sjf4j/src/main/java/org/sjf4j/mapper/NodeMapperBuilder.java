@@ -80,7 +80,8 @@ public final class NodeMapperBuilder<S, T> {
      */
     public NodeMapperBuilder<S, T> compute(String targetPath, Function<S, Object> computer) {
         Objects.requireNonNull(computer, "computer");
-        return compute(targetPath, (root, parent, current) -> computer.apply(root));
+        return _addComputeAction(targetPath, false, true,
+                (root, parent, current) -> computer.apply(root));
     }
 
     /**
@@ -90,7 +91,7 @@ public final class NodeMapperBuilder<S, T> {
      * <p>Single target paths and multi target paths are both supported.
      */
     public NodeMapperBuilder<S, T> compute(String targetPath, ComputeFunction<S> computer) {
-        return _addComputeAction(targetPath, computer, false, true);
+        return _addComputeAction(targetPath, false, true, computer);
     }
 
     /**
@@ -99,16 +100,8 @@ public final class NodeMapperBuilder<S, T> {
      */
     public NodeMapperBuilder<S, T> ensureCompute(String targetPath, Function<S, Object> computer) {
         Objects.requireNonNull(computer, "computer");
-        return ensureCompute(targetPath, (root, parent, current) -> computer.apply(root));
-    }
-
-    /**
-     * Computes a single target-path value from source root, target parent
-     * container, and current target value, creating missing target containers
-     * when needed.
-     */
-    public NodeMapperBuilder<S, T> ensureCompute(String targetPath, ComputeFunction<S> computer) {
-        return _addComputeAction(targetPath, computer, true, false);
+        return _addComputeAction(targetPath, true, false,
+                (root, parent, current) -> computer.apply(root));
     }
 
     /**
@@ -206,9 +199,9 @@ public final class NodeMapperBuilder<S, T> {
     }
 
     private NodeMapperBuilder<S, T> _addComputeAction(String targetPath,
-                                                      ComputeFunction<S> computer,
                                                       boolean ensure,
-                                                      boolean allowMulti) {
+                                                      boolean allowMulti,
+                                                      ComputeFunction<S> computer) {
         Objects.requireNonNull(computer, "computer");
         String opName = ensure ? "ensureCompute()" : "compute()";
         JsonPath compiledTargetPath = allowMulti ? _compilePath(targetPath) : _requireSingleTargetPath(targetPath, opName);
