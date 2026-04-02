@@ -17,7 +17,8 @@ public class NodeMapperTest {
     public void testDefaultMappingAndOverrideOrder() {
         UserSource source = sampleUser();
 
-        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+        UserDtoJojo target = NodeMapper
+                .builder(UserSource.class, UserDtoJojo.class)
                 .copy("displayName", "name")
                 .value("displayName", "fixed")
                 .compute("displayName", (root, parent, current) -> root.name + "!")

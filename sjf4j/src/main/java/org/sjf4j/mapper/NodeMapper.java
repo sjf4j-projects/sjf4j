@@ -27,7 +27,7 @@ public interface NodeMapper<S, T> {
     /**
      * Creates a new builder for the given source and target types.
      */
-    default NodeMapperBuilder<S, T> builder(Class<S> sourceType, Class<T> targetType) {
+    static <S, T> NodeMapperBuilder<S, T> builder(Class<S> sourceType, Class<T> targetType) {
         return new NodeMapperBuilder<>(sourceType, targetType);
     }
 
