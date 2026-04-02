@@ -16,13 +16,9 @@ including [Jackson 2.x](https://github.com/FasterXML/jackson-databind),
 Beyond JSON, it also supports YAML (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml))
 and Java Properties (built-in).
 
-SJF4J provides ***a unified JSON-semantic structural processing layer***,
-delivering consistent APIs for 
-**modeling** (OBNT), 
-**parsing** (JSON/YAML), 
-**navigating** (JSON Path), 
-**patching** (JSON Patch), 
-**validating** (JSON Schema),
+SJF4J provides **a unified JSON-semantic structural processing layer**, 
+offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML), 
+**navigating** (JSON Path), **patching** (JSON Patch), **validating** (JSON Schema), 
 and **mapping** across data formats and native object graphs.
 
 ## Install
@@ -202,25 +198,19 @@ Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
 ### Mapping
 
-While `JsonPatch` focuses on in-place partial modification,  
-`NodeMapper` enables structural projection between different types,
-combining path-based extraction, computed fields, and nested mapping.
-
+While `JsonPatch` focuses on in-place partial modification,
+`NodeMapper` produces a new structure from the source object graph.
 ```java
 NodeMapper<Student, StudentDto> mapper = NodeMapper
     .builder(Student.class, StudentDto.class)
-    .mapPath("studentName", "name")
-    .mapValue("$.info.school", "PKU")
-    .mapCompute("avgScore", root -> {
-        Map<String, Integer> scores = root.getMap("scores");
-        return scores.values().stream().mapToInt(i -> i).average().orElse(0);
-    })
+    .copy("studentName", "name")
+    .ensureValue("$.info.school", "PKU")
+    .compute("/avgScore", (root, parent, current) -> 
+            root.getScores().values().stream().mapToInt(i -> i).average().orElse(0))
     .build();
 
 StudentDto studentDto = mapper.map(student);
 ```
-
-Unlike patching which is in-place, mapping produces a new structure based on the source object graph.
 
 Learn more → [Mapping](https://sjf4j.org/docs/mapping)
 

@@ -8,11 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added `NamingStrategy` and `@NodeNaming` to map JSON property names like `snake_case` to Java fields without per-field annotations.
+
+
+## [1.1.6] - 2026.04.02
+### Added
 - Added `JsonPath.compileCached(String)` to provide an explicit cached compile path.
 - Added `PathCache` interface with built-in `ConcurrentHashMap` as default implementation.
 - Added `JsonPath.compute(...)` overloads to update every matched target from its current content.
 - Added `NodeConverter`, `NodeMapper`, and `NodeMapperBuilder` for path-driven object graph mapping.
+- Added `NamingStrategy` and `@NodeNaming` to map JSON property names like `snake_case` to Java fields without per-field annotations.
 
 ### Improved
 - Improved node conversion extensibility so exact source/target converters can participate in nested POJO and collection binding flows.
