@@ -205,7 +205,7 @@ NodeMapper<Student, StudentDto> mapper = NodeMapper
     .builder(Student.class, StudentDto.class)
     .copy("studentName", "name")
     .ensureValue("$.info.school", "PKU")
-    .compute("/avgScore", (root, parent, current) -> 
+    .compute("/avgScore", root -> 
             root.getScores().values().stream().mapToInt(i -> i).average().orElse(0))
     .build();
 
