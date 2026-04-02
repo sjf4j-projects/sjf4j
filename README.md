@@ -241,8 +241,6 @@ Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
 Given that JSON has evolved into a well-defined and widely adopted specification,
-SJF4J began as an exploration of *what JSON-Oriented development might look like in Java*.
+SJF4J began as an exploration of *What JSON-Oriented development might look like in Java*.
 
-If you find the project interesting,
-contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~
-
+Contributions of code, docs, bug reports, examples, benchmarks, and careful feedback are all valuable.
