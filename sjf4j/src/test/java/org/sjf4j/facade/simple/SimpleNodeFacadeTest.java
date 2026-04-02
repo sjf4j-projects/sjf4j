@@ -11,6 +11,7 @@ import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.patch.JsonPatch;
@@ -507,6 +508,96 @@ public class SimpleNodeFacadeTest {
         Map<String, Object> m = Collections.singletonMap("a", 1);
         Object o = nodeFacade.readNode(m, Object.class);
         assertInstanceOf(Map.class, o);
+    }
+
+    public static class MapperNameSource {
+        public String value;
+    }
+
+    public static class MapperNameTarget {
+        public String text;
+        public String marker;
+    }
+
+    public static class MapperContainerSource {
+        public MapperNameSource lead;
+        public List<MapperNameSource> members;
+    }
+
+    public static class MapperContainerTarget {
+        public MapperNameTarget lead;
+        public List<MapperNameTarget> members;
+    }
+
+    @Test
+    public void testReadMapperOverridesTopLevelPojoBinding() {
+        SimpleNodeFacade facade = new SimpleNodeFacade(new NodeConverter<MapperNameSource, MapperNameTarget>() {
+            @Override
+            public Class<MapperNameSource> sourceType() {
+                return MapperNameSource.class;
+            }
+
+            @Override
+            public Class<MapperNameTarget> targetType() {
+                return MapperNameTarget.class;
+            }
+
+            @Override
+            public MapperNameTarget convert(MapperNameSource source) {
+                MapperNameTarget target = new MapperNameTarget();
+                target.text = source.value == null ? null : source.value.toUpperCase();
+                target.marker = "mapper";
+                return target;
+            }
+        });
+
+        MapperNameSource source = new MapperNameSource();
+        source.value = "alice";
+
+        MapperNameTarget target = (MapperNameTarget) facade.readNode(source, MapperNameTarget.class, true);
+        assertEquals("ALICE", target.text);
+        assertEquals("mapper", target.marker);
+    }
+
+    @Test
+    public void testReadMapperAppliesToNestedPojoAndListElements() {
+        SimpleNodeFacade facade = new SimpleNodeFacade(new NodeConverter<MapperNameSource, MapperNameTarget>() {
+            @Override
+            public Class<MapperNameSource> sourceType() {
+                return MapperNameSource.class;
+            }
+
+            @Override
+            public Class<MapperNameTarget> targetType() {
+                return MapperNameTarget.class;
+            }
+
+            @Override
+            public MapperNameTarget convert(MapperNameSource source) {
+                MapperNameTarget target = new MapperNameTarget();
+                target.text = "mapped:" + source.value;
+                target.marker = "nested";
+                return target;
+            }
+        });
+
+        MapperContainerSource source = new MapperContainerSource();
+        source.lead = new MapperNameSource();
+        source.lead.value = "captain";
+
+        MapperNameSource member1 = new MapperNameSource();
+        member1.value = "m1";
+        MapperNameSource member2 = new MapperNameSource();
+        member2.value = "m2";
+        source.members = Arrays.asList(member1, member2);
+
+        MapperContainerTarget target = (MapperContainerTarget) facade.readNode(source, MapperContainerTarget.class, true);
+        assertEquals("mapped:captain", target.lead.text);
+        assertEquals("nested", target.lead.marker);
+        assertEquals(2, target.members.size());
+        assertEquals("mapped:m1", target.members.get(0).text);
+        assertEquals("mapped:m2", target.members.get(1).text);
+        assertEquals("nested", target.members.get(1).marker);
     }
 
 

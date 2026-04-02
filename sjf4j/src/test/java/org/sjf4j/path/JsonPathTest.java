@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.node.Nodes;
 
@@ -267,19 +266,24 @@ public class JsonPathTest {
     }
 
     @Test
-    public void testPutMulti() {
+    public void testCompute() {
         JsonObject jo = JsonObject.fromJson("{\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}],\"groups\":[{\"members\":[{\"name\":\"A\"},{\"name\":\"B\"}]},{\"members\":[{\"name\":\"C\"}]}],\"meta\":{\"version\":1,\"nested\":{\"version\":2}}}");
 
-        assertEquals(3, JsonPath.compile("$.babies[*].age").putMulti(jo, 9));
+        assertEquals(3, JsonPath.compile("$.babies[*].age").compute(jo, current -> 9));
         assertEquals(Arrays.asList(9, 9, 9), JsonPath.compile("$.babies[*].age").find(jo));
 
-        assertEquals(3, JsonPath.compile("$.babies[?(@.age == 9)].name").putMulti(jo, "updated"));
+        assertEquals(3, JsonPath.compile("$.babies[*].name").compute(jo, (parent, current) -> {
+            return Nodes.toInt(Nodes.getInObject(parent, "age")) + ":" + current;
+        }));
+        assertEquals(Arrays.asList("9:Baby-0", "9:Baby-1", "9:Baby-2"), JsonPath.compile("$.babies[*].name").find(jo));
+
+        assertEquals(3, JsonPath.compile("$.babies[?(@.age == 9)].name").compute(jo, current -> "updated"));
         assertEquals(Arrays.asList("updated", "updated", "updated"), JsonPath.compile("$.babies[*].name").find(jo));
 
-        assertEquals(2, JsonPath.compile("$..version").putMulti(jo, 7));
+        assertEquals(2, JsonPath.compile("$..version").compute(jo, current -> 7));
         assertEquals(Arrays.asList(7, 7), JsonPath.compile("$..version").find(jo));
 
-        assertEquals(2, JsonPath.compile("$.groups[*].members[+]").putMulti(jo, JsonObject.of("name", "Z")));
+        assertEquals(2, JsonPath.compile("$.groups[*].members[+]").compute(jo, current -> JsonObject.of("name", "Z")));
         assertEquals(Arrays.asList("A", "B", "Z", "C", "Z"), JsonPath.compile("$.groups[*].members[*].name").find(jo));
 
         JsonArray babies = JsonArray.fromJson("[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]");

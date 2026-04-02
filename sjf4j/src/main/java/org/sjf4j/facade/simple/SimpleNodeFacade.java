@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.facade.NodeFacade;
@@ -18,15 +19,52 @@ import org.sjf4j.util.Strings;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 
 /**
  * Node conversion facade backed by core node utilities.
+ *
+ * <p>This implementation supports optional exact {@link NodeConverter}
+ * registrations that override default binding for matching source/target pairs.
  */
 public class SimpleNodeFacade implements NodeFacade {
+
+    private static final NodeConverterSlot[] EMPTY_CONVERTERS = new NodeConverterSlot[0];
+
+    private final NodeConverterSlot[] converters;
+
+    /**
+     * Creates a facade with only the default conversion pipeline.
+     */
+    public SimpleNodeFacade() {
+        this.converters = EMPTY_CONVERTERS;
+    }
+
+    /**
+     * Creates a facade with additional exact source/target converters.
+     *
+     * <p>These converters are checked before the default binding logic.
+     */
+    public SimpleNodeFacade(NodeConverter<?, ?>... converters) {
+        if (converters == null || converters.length == 0) {
+            this.converters = EMPTY_CONVERTERS;
+            return;
+        }
+        NodeConverterSlot[] slots = new NodeConverterSlot[converters.length];
+        int i = 0;
+        for (NodeConverter<?, ?> converter : converters) {
+            Objects.requireNonNull(converter, "converter");
+            Class<?> sourceType = Types.box(Objects.requireNonNull(converter.sourceType(), "converter.sourceType()"));
+            Class<?> targetType = Types.box(Objects.requireNonNull(converter.targetType(), "converter.targetType()"));
+            slots[i++] = new NodeConverterSlot(sourceType, targetType, converter);
+        }
+        this.converters = slots;
+    }
 
     /**
      * Converts node into target type.
@@ -50,6 +88,16 @@ public class SimpleNodeFacade implements NodeFacade {
                              NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) return null;
+
+            NodeConverter<Object, Object> converter = _findConverter(node.getClass(), rawClazz);
+            if (converter != null) {
+                Object mapped = converter.convert(node);
+                if (mapped == null || rawClazz.isInstance(mapped)) {
+                    return mapped;
+                }
+                throw new BindingException("NodeConverter returned incompatible value from '" +
+                        Types.name(node) + "' to '" + rawClazz.getName() + "'", ps);
+            }
 
             if (anyOfInfo != null) {
                 return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
@@ -124,6 +172,29 @@ public class SimpleNodeFacade implements NodeFacade {
             throw e;
         } catch (Exception e) {
             throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps, e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private NodeConverter<Object, Object> _findConverter(Class<?> sourceType, Class<?> targetType) {
+        for (int i = 0; i < converters.length; i++) {
+            NodeConverterSlot slot = converters[i];
+            if (slot.targetType == targetType && slot.sourceType == sourceType) {
+                return (NodeConverter<Object, Object>) slot.converter;
+            }
+        }
+        return null;
+    }
+
+    private static final class NodeConverterSlot {
+        private final Class<?> sourceType;
+        private final Class<?> targetType;
+        private final NodeConverter<?, ?> converter;
+
+        private NodeConverterSlot(Class<?> sourceType, Class<?> targetType, NodeConverter<?, ?> converter) {
+            this.sourceType = sourceType;
+            this.targetType = targetType;
+            this.converter = converter;
         }
     }
 

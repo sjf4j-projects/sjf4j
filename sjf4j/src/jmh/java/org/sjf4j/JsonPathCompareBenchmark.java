@@ -315,16 +315,6 @@ public class JsonPathCompareBenchmark {
     }
 
     @Benchmark
-    public Object parse_only_sjf4j_jackson_plugin() {
-        return SJF4J_JACKSON_PLUGIN.readNode(BOOKSTORE_JSON, Object.class);
-    }
-
-    @Benchmark
-    public Object parse_only_sjf4j_jackson_exclusive() {
-        return SJF4J_JACKSON_EXCLUSIVE.readNode(BOOKSTORE_JSON, Object.class);
-    }
-
-    @Benchmark
     public Object parse_only_jayway() {
         return JAYWAY_MAP_LIST_CONFIG.jsonProvider().parse(BOOKSTORE_JSON);
     }
@@ -392,18 +382,6 @@ public class JsonPathCompareBenchmark {
     @Benchmark
     public Object parse_and_query_sjf4j(ParseAndQueryState state) {
         Object document = Sjf4j.fromJson(BOOKSTORE_JSON);
-        return runSjf4j(state.sjf4jPath, document, state.indefinite);
-    }
-
-    @Benchmark
-    public Object parse_and_query_sjf4j_jackson_plugin(ParseAndQueryState state) {
-        Object document = SJF4J_JACKSON_PLUGIN.readNode(BOOKSTORE_JSON, Object.class);
-        return runSjf4j(state.sjf4jPath, document, state.indefinite);
-    }
-
-    @Benchmark
-    public Object parse_and_query_sjf4j_jackson_exclusive(ParseAndQueryState state) {
-        Object document = SJF4J_JACKSON_EXCLUSIVE.readNode(BOOKSTORE_JSON, Object.class);
         return runSjf4j(state.sjf4jPath, document, state.indefinite);
     }
 

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -674,30 +675,6 @@ public class JsonPath {
     }
 
     /**
-     * Writes the same value to every matched target location.
-     * <p>
-     * Unlike {@link #ensurePut(Object, Object)}, this method does not create
-     * missing intermediate containers. Only already-matched parent containers are
-     * updated.
-     *
-     * @return number of matched locations written
-     */
-    public int putMulti(Object container, Object value) {
-        Objects.requireNonNull(container, "container");
-        PathSegment lastToken = segments[segments.length - 1];
-        if (!(lastToken instanceof PathSegment.Name || lastToken instanceof PathSegment.Index || lastToken instanceof PathSegment.Append)) {
-            throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; putMulti() expected Name, Index, or Append token");
-        }
-        List<Object> parents = new ArrayList<Object>();
-        _findAll(container, container, 1, segments.length - 1, parents, Function.identity());
-        for (Object parent : parents) {
-            _putLast(parent, lastToken, value, "putMulti()");
-        }
-        return parents.size();
-    }
-
-    /**
      * Ensures intermediate containers exist and writes the value at the last
      * segment.
      * <p>
@@ -738,6 +715,50 @@ public class JsonPath {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; ensurePut() expected Name, Index, or Append token");
         }
+    }
+
+    /**
+     * Recomputes and writes every matched target location.
+     * <p>
+     * Only already-matched parent containers are updated.
+     *
+     * <p>The callback receives only the current value. For access to the matched
+     * parent container, use {@link #compute(Object, BiFunction)}.
+     *
+     * @return number of matched locations written
+     */
+    public int compute(Object container, Function<Object, Object> computer) {
+        Objects.requireNonNull(computer, "computer");
+        return compute(container, (parent, current) -> computer.apply(current));
+    }
+
+    /**
+     * Recomputes and writes every matched target location with access to the
+     * matched parent container and current value.
+     * <p>
+     * Only already-matched parent containers are updated.
+     *
+     * <p>The first callback argument is the matched parent container of the last
+     * path segment. The second is the current value at that location, or
+     * {@code null} for append targets.
+     *
+     * @return number of matched locations written
+     */
+    public int compute(Object container, BiFunction<Object, Object, Object> computer) {
+        Objects.requireNonNull(container, "container");
+        Objects.requireNonNull(computer, "computer");
+        PathSegment lastToken = segments[segments.length - 1];
+        if (!(lastToken instanceof PathSegment.Name || lastToken instanceof PathSegment.Index
+                || lastToken instanceof PathSegment.Append)) {
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; computeMulti() expected Name, Index, or Append token");
+        }
+        List<Object> parents = new ArrayList<Object>();
+        _findAll(container, container, 1, segments.length - 1, parents, Function.identity());
+        for (Object parent : parents) {
+            _putLast(parent, lastToken, computer.apply(parent, _currentAt(parent, lastToken)), "compute()");
+        }
+        return parents.size();
     }
 
     /// has
@@ -1028,6 +1049,19 @@ public class JsonPath {
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; " + opName + " expected Name, Index, or Append token");
+        }
+    }
+
+    private Object _currentAt(Object lastContainer, PathSegment lastToken) {
+        if (lastToken instanceof PathSegment.Name) {
+            return Nodes.getInObject(lastContainer, ((PathSegment.Name) lastToken).name);
+        } else if (lastToken instanceof PathSegment.Index) {
+            return Nodes.getInArray(lastContainer, ((PathSegment.Index) lastToken).index);
+        } else if (lastToken instanceof PathSegment.Append) {
+            return null;
+        } else {
+            throw new JsonException("Unsupported last path token '" + lastToken +
+                    "'; _currentAt() expected Name, Index, or Append token");
         }
     }
 

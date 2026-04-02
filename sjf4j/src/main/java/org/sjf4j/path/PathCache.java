@@ -31,15 +31,4 @@ public interface PathCache {
         }
     };
 
-    PathCache HashMapPathCache = new PathCache() {
-        private final Map<String, JsonPath> cache = new HashMap<>();
-
-        @Override
-        public JsonPath getOrCompile(String expr, Function<String, JsonPath> compiler) {
-            Objects.requireNonNull(expr, "expr");
-            Objects.requireNonNull(compiler, "compiler");
-            return cache.computeIfAbsent(expr, compiler);
-        }
-    };
-
 }
