@@ -229,7 +229,7 @@ In most cases, the additional overhead remains modest compared to native
 JSON libraries.
 
 **JSON Path Navigating Benchmark**  
-SJF4J shows strong performance in `compile` and `query` workloads.  
+SJF4J shows strong performance in `compile` and `query` workloads, while also providing `mutation` operations.  
 Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally closer to `Map/List` than plain `POJO`.
 
 **JSON Schema Validating Benchmark**  
