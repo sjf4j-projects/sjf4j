@@ -111,7 +111,7 @@ student.getName();                  // Alice
 student.getInteger("age");          // 18
 ```
 
-Learn more → [Parsing (Codec)](https://sjf4j.org/docs/parsing)
+Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
 
 ### Navigating
 
@@ -212,7 +212,7 @@ NodeMapper<Student, StudentDto> mapper = NodeMapper
 StudentDto studentDto = mapper.map(student);
 ```
 
-Learn more → [Mapping](https://sjf4j.org/docs/mapping)
+Learn more → [Mapping (Transformation)](https://sjf4j.org/docs/mapping)
 
 
 ## Benchmarks
