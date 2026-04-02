@@ -160,7 +160,6 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns the number of elements in this JsonArray.
      */
-    @Override
     public int size() {
         return nodeList == null ? 0 : nodeList.size();
     }

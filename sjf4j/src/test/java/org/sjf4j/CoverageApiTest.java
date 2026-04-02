@@ -407,12 +407,15 @@ class CoverageApiTest {
         root.putByPath("$.obj.added", 1);
         root.ensurePutByPath("$.created.path", "x");
         root.ensurePutIfAbsentByPath("$.created.path", "y");
+        assertEquals(2, root.computeByPath("$.items[*].id", (parent, current) ->
+                Integer.parseInt(((JsonObject) parent).getString("idText")) * 10));
         root.addByPath("$.strings", "z");
         root.replaceByPath("$.obj.k", "vv");
         root.removeByPath("$.obj.added");
         assertEquals("vv", root.getStringByPath("$.obj.k"));
         assertEquals("x", root.getStringByPath("$.created.path"));
-        assertEquals(Arrays.asList(1, 2), root.findByPath("$.items[*].id", Integer.class));
+        assertEquals(Arrays.asList(10, 20), root.findByPath("$.items[*].id", Integer.class));
+        assertEquals(Arrays.asList("1", "2"), root.findByPath("$.items[*].idText", String.class));
         assertEquals(Arrays.asList(1, 2), root.findAsByPath("$.items[*].idText", Integer.class));
         assertEquals(2, root.evalByPath("$.items.length()", Number.class).intValue());
         assertEquals(12, root.evalAsByPath("$.string", Integer.class));

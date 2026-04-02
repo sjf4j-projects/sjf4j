@@ -24,15 +24,6 @@ public abstract class JsonContainer {
     /// Base
 
     /**
-     * Returns the size of the container.
-     * For JsonObject, this returns the number of key-value pairs.
-     * For JsonArray, this returns the number of elements.
-     *
-     * @return the size of the container
-     */
-    public abstract int size();
-
-    /**
      * Compares this container with node-semantic equality.
      */
     public boolean nodeEquals(Object target) {
@@ -625,6 +616,10 @@ public abstract class JsonContainer {
      */
     public Object ensurePutIfAbsentByPath(String path, Object value) {
         return JsonPath.compile(path).ensurePutIfAbsent(this, value);
+    }
+
+    public int computeByPath(String path, BiFunction<Object, Object, Object> computer) {
+        return JsonPath.compile(path).compute(this, computer);
     }
 
     /**

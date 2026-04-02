@@ -193,7 +193,6 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns the number of entries across fields and dynamic nodes.
      */
-    @Override
     public int size() {
         return (fieldMap == null ? 0 : fieldMap.size()) + (dynamicMap == null ? 0 : dynamicMap.size());
     }

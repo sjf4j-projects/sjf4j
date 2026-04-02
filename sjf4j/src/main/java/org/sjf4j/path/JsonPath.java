@@ -718,21 +718,6 @@ public class JsonPath {
     }
 
     /**
-     * Recomputes and writes every matched target location.
-     * <p>
-     * Only already-matched parent containers are updated.
-     *
-     * <p>The callback receives only the current value. For access to the matched
-     * parent container, use {@link #compute(Object, BiFunction)}.
-     *
-     * @return number of matched locations written
-     */
-    public int compute(Object container, Function<Object, Object> computer) {
-        Objects.requireNonNull(computer, "computer");
-        return compute(container, (parent, current) -> computer.apply(current));
-    }
-
-    /**
      * Recomputes and writes every matched target location with access to the
      * matched parent container and current value.
      * <p>
