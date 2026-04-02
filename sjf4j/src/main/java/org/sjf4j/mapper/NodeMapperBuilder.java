@@ -11,6 +11,7 @@ import org.sjf4j.path.JsonPointer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Builder for path-driven object graph mapping.
@@ -72,6 +73,17 @@ public final class NodeMapperBuilder<S, T> {
     }
 
     /**
+     * Computes target values from the source root object only.
+     *
+     * <p>Use this overload when the mapped value depends only on the source
+     * object graph and not on current target state.
+     */
+    public NodeMapperBuilder<S, T> compute(String targetPath, Function<S, Object> computer) {
+        Objects.requireNonNull(computer, "computer");
+        return compute(targetPath, (root, parent, current) -> computer.apply(root));
+    }
+
+    /**
      * Computes target values from source root, target parent container, and
      * current target value.
      *
@@ -79,6 +91,15 @@ public final class NodeMapperBuilder<S, T> {
      */
     public NodeMapperBuilder<S, T> compute(String targetPath, ComputeFunction<S> computer) {
         return _addComputeAction(targetPath, computer, false, true);
+    }
+
+    /**
+     * Computes a single target-path value from the source root object only,
+     * creating missing target containers when needed.
+     */
+    public NodeMapperBuilder<S, T> ensureCompute(String targetPath, Function<S, Object> computer) {
+        Objects.requireNonNull(computer, "computer");
+        return ensureCompute(targetPath, (root, parent, current) -> computer.apply(root));
     }
 
     /**

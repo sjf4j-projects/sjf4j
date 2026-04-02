@@ -21,7 +21,7 @@ public class NodeMapperTest {
                 .builder(UserSource.class, UserDtoJojo.class)
                 .copy("displayName", "name")
                 .value("displayName", "fixed")
-                .compute("displayName", (root, parent, current) -> root.name + "!")
+                .compute("displayName", root -> root.name + "!")
                 .ensureCopy("$.meta.city", "profile.city")
                 .ensureValue("$.meta.source", "sjf4j")
                 .build()
@@ -39,7 +39,7 @@ public class NodeMapperTest {
         UserSource source = sampleUser();
 
         UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
-                .compute("displayName", (root, parent, current) -> root.name + "!")
+                .compute("displayName", root -> root.name + "!")
                 .value("displayName", "fixed")
                 .copy("displayName", "name")
                 .build()
@@ -53,7 +53,7 @@ public class NodeMapperTest {
         UserSource source = sampleUser();
 
         NodeMapper<OrderSource, OrderDtoJojo> orderConverter = new NodeMapperBuilder<OrderSource, OrderDtoJojo>(OrderSource.class, OrderDtoJojo.class)
-                .compute("label", (order, parent, current) -> order.id + ":" + order.total)
+                .compute("label", order -> order.id + ":" + order.total)
                 .build();
 
         UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
@@ -92,7 +92,7 @@ public class NodeMapperTest {
         UserSource source = sampleUser();
 
         NodeMapper<OrderSource, OrderDtoPojo> orderConverter = new NodeMapperBuilder<OrderSource, OrderDtoPojo>(OrderSource.class, OrderDtoPojo.class)
-                .compute("label", (order, parent, current) -> order.id + ":" + order.total)
+                .compute("label", order -> order.id + ":" + order.total)
                 .build();
 
         UserDtoPojo target = new NodeMapperBuilder<UserSource, UserDtoPojo>(UserSource.class, UserDtoPojo.class)
@@ -114,7 +114,7 @@ public class NodeMapperTest {
         UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
                 .ensureCopy("$.meta.city", "profile.city")
                 .ensureValue("$.meta.source", "sjf4j")
-                .ensureCompute("$.meta.label", (root, parent, current) -> root.name + ":ok")
+                .ensureCompute("$.meta.label", root -> root.name + ":ok")
                 .build()
                 .map(source);
 
@@ -139,7 +139,7 @@ public class NodeMapperTest {
                 .map(source));
 
         assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
-                .compute("$.meta.label", (root, parent, current) -> root.name + ":x")
+                .compute("$.meta.label", root -> root.name + ":x")
                 .build()
                 .map(source));
     }
