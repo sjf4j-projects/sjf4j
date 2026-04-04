@@ -138,7 +138,7 @@ public final class StreamingIO {
         }
         if (rawClazz == Character.class) {
             String s = reader.nextString();
-            return s.length() > 0 ? s.charAt(0) : null;
+            return !s.isEmpty() ? s.charAt(0) : null;
         }
         if (rawClazz.isEnum()) {
             String s = reader.nextString();

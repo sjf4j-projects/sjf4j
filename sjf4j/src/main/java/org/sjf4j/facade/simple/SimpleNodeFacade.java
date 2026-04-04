@@ -340,7 +340,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = new LinkedHashSet<>(Math.max((int) (srcSet.size() / 0.75f) + 1, 16));
+                Set<Object> newSet = new LinkedHashSet<>(srcSet.size());
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -686,7 +686,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
-            Set<Object> set = new LinkedHashSet<>(Math.max((int) (source.size() / 0.75f) + 1, 16));
+            Set<Object> set = new LinkedHashSet<>(source.size());
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);

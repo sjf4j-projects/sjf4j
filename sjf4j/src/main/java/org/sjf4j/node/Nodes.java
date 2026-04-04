@@ -485,7 +485,7 @@ public class Nodes {
         if (node instanceof JsonArray) return ((JsonArray) node).toSet();
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
-            Set<Object> set = new LinkedHashSet<>(Math.max((int) (len / 0.75f) + 1, 16));
+            Set<Object> set = new LinkedHashSet<>(len);
             for (int i = 0; i < len; i++) set.add(Array.get(node, i));
             return set;
         }

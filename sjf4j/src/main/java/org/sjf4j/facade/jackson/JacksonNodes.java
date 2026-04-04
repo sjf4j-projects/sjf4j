@@ -222,7 +222,7 @@ public final class JacksonNodes {
     public static Set<Object> toSet(Object node) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
-            Set<Object> set = new LinkedHashSet<>(Math.max((int) (an.size() / 0.75f) + 1, 16));
+            Set<Object> set = new LinkedHashSet<>(an.size());
             for (Iterator<JsonNode> it = ((ArrayNode) node).elements(); it.hasNext(); ) {
                 set.add(it.next());
             }

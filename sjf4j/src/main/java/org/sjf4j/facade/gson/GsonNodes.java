@@ -223,7 +223,7 @@ public final class GsonNodes {
     public static Set<Object> toSet(Object node) {
         if (node instanceof JsonArray) {
             JsonArray an = (JsonArray) node;
-            Set<Object> set = new LinkedHashSet<>(Math.max((int) (an.size() / 0.75f) + 1, 16));
+            Set<Object> set = new LinkedHashSet<>(an.size());
             for (int i = 0, size = an.size(); i < size; i++) {
                 set.add(an.get(i));
             }
