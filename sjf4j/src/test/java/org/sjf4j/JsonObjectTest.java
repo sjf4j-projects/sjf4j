@@ -725,12 +725,16 @@ class JsonObjectTest {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
         JsonObject jo1 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
-        assertEquals("{\"a\":\"aa\",\"b\":\"bb\",\"c\":\"cc\"}", jo1.toJson());
+        assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo1.toJson());
+        assertInstanceOf(java.util.LinkedHashMap.class, jo1.dynamicMap);
+        assertInstanceOf(java.util.LinkedHashMap.class, jo1.toMap());
 
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
         JsonObject jo2 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
+        assertInstanceOf(java.util.LinkedHashMap.class, jo2.dynamicMap);
+        assertInstanceOf(java.util.LinkedHashMap.class, jo2.toMap());
         assertEquals(jo1, jo2);
     }
 

@@ -12,6 +12,7 @@ import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -327,7 +328,7 @@ public class JsonObject extends JsonContainer {
      * Returns a merged Map view of fields and dynamic entries.
      */
     public Map<String, Object> toMap() {
-        Map<String, Object> merged = Sjf4jConfig.global().mapSupplier.create();
+        Map<String, Object> merged = new LinkedHashMap<>();
         if (fieldMap != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
@@ -343,7 +344,7 @@ public class JsonObject extends JsonContainer {
      * Converts this object to a typed Map.
      */
     public <T> Map<String, T> toMap(Class<T> clazz) {
-        return Nodes.toMap(toMap(), clazz);
+        return Nodes.toMap(this, clazz);
     }
 
     /**
@@ -428,7 +429,7 @@ public class JsonObject extends JsonContainer {
      */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
         if (dynamicMap != null) {
-            return  dynamicMap.entrySet().removeIf(filter);
+            return dynamicMap.entrySet().removeIf(filter);
         }
         return false;
     }
@@ -1044,9 +1045,7 @@ public class JsonObject extends JsonContainer {
                 return old;
             }
         }
-        if (dynamicMap == null) {
-            dynamicMap = Sjf4jConfig.global().mapSupplier.create();
-        }
+        if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
         return dynamicMap.put(key, object);
     }
 

@@ -8,9 +8,11 @@ import org.sjf4j.node.Nodes;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +50,11 @@ public class JsonArray extends JsonContainer {
      */
     public static JsonArray of(Object... values) {
         JsonArray ja = new JsonArray();
-        ja.setNodeList(values == null ? null : Sjf4jConfig.global().listSupplier.create(values));
+        if (values != null) {
+            List<Object> list = new ArrayList<>(values.length);
+            Collections.addAll(list, values);
+            ja.setNodeList(list);
+        }
         return ja;
     }
 
@@ -78,13 +84,13 @@ public class JsonArray extends JsonContainer {
         }
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
-            List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
+            List<Object> list = new ArrayList<>(len);
             for (int i = 0; i < len; i++) list.add(Array.get(node, i));
             setNodeList(list);
             return;
         }
         if (node instanceof Set) {
-            setNodeList(Sjf4jConfig.global().listSupplier.create((Set<Object>) node));
+            setNodeList(new ArrayList<>((Set<Object>) node));
             return;
         }
         if (FacadeNodes.isNode(node)) {
@@ -175,14 +181,14 @@ public class JsonArray extends JsonContainer {
      * Returns the elements as a List.
      */
     public List<Object> toList() {
-        return nodeList == null ? Collections.emptyList() : Sjf4jConfig.global().listSupplier.create(nodeList);
+        return nodeList == null ? Collections.emptyList() : new ArrayList<>(nodeList);
     }
 
     /**
      * Returns a typed List of elements.
      */
     public <T> List<T> toList(Class<T> clazz) {
-        return Nodes.toList(toList(), clazz);
+        return Nodes.toList(this, clazz);
     }
 
     /**
@@ -196,21 +202,21 @@ public class JsonArray extends JsonContainer {
      * Returns the elements as a typed array.
      */
     public <T> T[] toArray(Class<T> clazz) {
-        return Nodes.toArray(toArray(), clazz);
+        return Nodes.toArray(this, clazz);
     }
 
     /**
      * Returns the elements as a Set.
      */
     public Set<Object> toSet() {
-        return nodeList == null ? Collections.emptySet() : Sjf4jConfig.global().setSupplier.create(nodeList);
+        return nodeList == null ? Collections.emptySet() : new LinkedHashSet<>(nodeList);
     }
 
     /**
      * Returns the elements as a typed Set.
      */
     public <T> Set<T> toSet(Class<T> clazz) {
-        return Nodes.toSet(toList(), clazz);
+        return Nodes.toSet(this, clazz);
     }
 
     /**
@@ -862,7 +868,7 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Type mismatch: cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
-        if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
+        if (nodeList == null) nodeList = new ArrayList<>();
         nodeList.add(object);
     }
 
@@ -889,7 +895,7 @@ public class JsonArray extends JsonContainer {
             throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
         }
 
-        if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
+        if (nodeList == null) nodeList = new ArrayList<>();
         nodeList.add(pidx, object);
     }
 
@@ -908,7 +914,7 @@ public class JsonArray extends JsonContainer {
         if (pidx < 0 || pidx >= size()) {
             throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
         }
-        if (nodeList == null) nodeList = Sjf4jConfig.global().listSupplier.create();
+        if (nodeList == null) nodeList = new ArrayList<>();
         return nodeList.set(pidx, object);
     }
 

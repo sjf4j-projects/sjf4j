@@ -5,7 +5,11 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.supplier.ListSupplier;
+import org.sjf4j.supplier.SetSupplier;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -67,6 +71,7 @@ class JsonArrayTest {
         testMerge();
         testPrimitiveArrays();
         testEdgeCases();
+        testSupplier1();
     }
 
     public void testGetter1() {
@@ -213,6 +218,24 @@ class JsonArrayTest {
         a1.getJsonArray(2).getJsonArray(1).set(1, 7);
         assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInt(1));
         assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInt(1));
+    }
+
+    public void testSupplier1() {
+        Sjf4jConfig global = Sjf4jConfig.global();
+        try {
+            Sjf4jConfig.global(new Sjf4jConfig.Builder(global)
+                    .listSupplier(ListSupplier.LinkedListSupplier)
+                    .setSupplier(SetSupplier.HashSetSupplier)
+                    .build());
+
+            JsonArray ja = JsonArray.of("c", "b", "a");
+            assertInstanceOf(ArrayList.class, ja.nodeList);
+            assertInstanceOf(ArrayList.class, ja.toList());
+            assertInstanceOf(LinkedHashSet.class, ja.toSet());
+            assertEquals("[\"c\",\"b\",\"a\"]", ja.toJson());
+        } finally {
+            Sjf4jConfig.global(global);
+        }
     }
 
     public void testByPath1() {
