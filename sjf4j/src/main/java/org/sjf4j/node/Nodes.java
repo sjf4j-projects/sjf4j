@@ -8,13 +8,16 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.supplier.MapSupplier;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.AbstractMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -99,7 +102,7 @@ public class Nodes {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = toString(node);
-        return s.length() > 0 ? s.charAt(0) : null;
+        return !s.isEmpty() ? s.charAt(0) : null;
     }
 
     /**
@@ -109,7 +112,7 @@ public class Nodes {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = asString(node);
-        return s.length() > 0 ? s.charAt(0) : null;
+        return !s.isEmpty() ? s.charAt(0) : null;
     }
 
     /**
@@ -337,7 +340,7 @@ public class Nodes {
         if (node instanceof JsonObject) return ((JsonObject) node).toMap();
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+            Map<String, Object> map = new LinkedHashMap<>();
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 Object v = entry.getValue().invokeGetter(node);
                 map.put(entry.getKey(), v);
@@ -351,12 +354,22 @@ public class Nodes {
     /**
      * Converts a node to typed Map.
      */
+    public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
+        return _toMap(node, Map.class, valueClazz);
+    }
+
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> toMap(Object node, Class<T> clazz) {
+    private static <T> Map<String, T> _toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
         if (node == null) return null;
-        if (node instanceof Map && (clazz == null || clazz == Object.class)) return (Map<String, T>) node;
-        Map<String, T> map = Sjf4jConfig.global().mapSupplier.create();
-        visitObject(node, (k, v) -> map.put(k, to(v, clazz)));
+        if ((mapType == null || mapType == Map.class) && node instanceof Map
+                && (valueClazz == null || valueClazz == Object.class)) {
+            return (Map<String, T>) node;
+        }
+        Map<String, T> map = MapSupplier.create(mapType, sizeInObject(node));
+        visitObject(node, (k, v) -> {
+            T value = to(v, valueClazz);
+            map.put(k, value);
+        });
         return map;
     }
 
@@ -379,12 +392,12 @@ public class Nodes {
         if (node instanceof JsonArray) return ((JsonArray) node).toList();
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
-            List<Object> list = Sjf4jConfig.global().listSupplier.create(len);
+            List<Object> list = new ArrayList<>(len);
             for (int i = 0; i < len; i++) list.add(Array.get(node, i));
             return list;
         }
         if (node instanceof Set) {
-            return Sjf4jConfig.global().listSupplier.create((Set<Object>) node);
+            return new ArrayList<>((Set<Object>) node);
         }
         if (FacadeNodes.isNode(node)) return FacadeNodes.toList(node);
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to List");
@@ -397,7 +410,7 @@ public class Nodes {
     public static <T> List<T> toList(Object node, Class<T> clazz) {
         if (node == null) return null;
         if (node instanceof List && (clazz == null || clazz == Object.class)) return (List<T>) node;
-        List<T> list = Sjf4jConfig.global().listSupplier.create();
+        List<T> list = new ArrayList<>();
         visitArray(node, (i, v) -> list.add(to(v, clazz)));
         return list;
     }
@@ -408,7 +421,7 @@ public class Nodes {
     public static <T> List<T> toList(Object node, Function<Object, T> mapper) {
         if (node == null) return null;
         Objects.requireNonNull(mapper, "mapper");
-        List<T> list = Sjf4jConfig.global().listSupplier.create();
+        List<T> list = new ArrayList<>();
         visitArray(node, (i, v) -> list.add(mapper.apply(v)));
         return list;
     }
@@ -468,11 +481,11 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     public static Set<Object> toSet(Object node) {
         if (node == null) return null;
-        if (node instanceof List) return Sjf4jConfig.global().setSupplier.create((List<Object>) node);
+        if (node instanceof List) return new LinkedHashSet<>((List<Object>) node);
         if (node instanceof JsonArray) return ((JsonArray) node).toSet();
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create(len);
+            Set<Object> set = new LinkedHashSet<>(Math.max((int) (len / 0.75f) + 1, 16));
             for (int i = 0; i < len; i++) set.add(Array.get(node, i));
             return set;
         }
@@ -488,7 +501,7 @@ public class Nodes {
     public static <T> Set<T> toSet(Object node, Class<T> clazz) {
         if (node == null) return null;
         if (node instanceof Set && (clazz == null || clazz == Object.class)) return (Set<T>) node;
-        Set<T> set = Sjf4jConfig.global().setSupplier.create();
+        Set<T> set = new LinkedHashSet<>();
         visitArray(node, (i, v) -> set.add(to(v, clazz)));
         return set;
     }
@@ -590,7 +603,7 @@ public class Nodes {
         if (Map.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
-            return toMap(node, vc);
+            return _toMap(node, clazz, vc);
         }
         if (clazz == JsonObject.class) return toJsonObject(node);
         if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
@@ -731,8 +744,7 @@ public class Nodes {
         Class<?> rawClazz = node.getClass();
 
         if (node instanceof Map) {
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
-            map.putAll((Map<String, ?>) node);
+            Map<String, Object> map = MapSupplier.create(rawClazz, (Map<String, Object>) node);
             return (T) map;
         }
         if (rawClazz == JsonObject.class) {
@@ -753,7 +765,7 @@ public class Nodes {
             return (T) newJo;
         }
         if (node instanceof List) {
-            return (T) Sjf4jConfig.global().listSupplier.create((List<Object>) node);
+            return (T) new ArrayList<>((List<Object>) node);
         }
         if (rawClazz == JsonArray.class) {
             return (T) new JsonArray(((JsonArray) node).toList());
@@ -771,7 +783,7 @@ public class Nodes {
             return (T) arr;
         }
         if (node instanceof Set) {
-            return (T) Sjf4jConfig.global().setSupplier.create((Set<Object>) node);
+            return (T) new LinkedHashSet<>((Set<Object>) node);
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
@@ -839,7 +851,7 @@ public class Nodes {
     @SuppressWarnings("unchecked")
     private static void _inspect(Object node, StringBuilder sb) {
         if (node == null) {
-            sb.append(node);
+            sb.append((Object) null);
             return;
         }
         Class<?> rawClazz = node.getClass();
@@ -1466,17 +1478,6 @@ public class Nodes {
         }
         if (node instanceof Set) {
             throw new JsonException("Cannot call getInArray() on an unordered Java Set");
-//            Set<Object> set = (Set<Object>) node;
-//            idx = idx < 0 ? set.size() + idx : idx;
-//            if (idx < 0 || idx >= set.size()) {
-//                return null;
-//            } else {
-//                int i = 0;
-//                for (Object v : set) {
-//                    if (i++ == idx) return v;
-//                }
-//                return null;
-//            }
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.getInArray(node, idx);
@@ -1488,12 +1489,13 @@ public class Nodes {
      * Mutable holder used by access helpers to report child node metadata.
      * <p>
      * Callers typically reuse one instance across repeated lookups to avoid
-     * allocating short-lived result wrappers.
+     * allocating short-lived result wrappers. Each access helper call fully
+     * overwrites the holder fields.
      */
     public static final class Access {
         /** child value (can be null) */
         public Object node;
-        /** static Type of child (never null; default Object.class) */
+        /** static Type of child resolved by the access helper */
         public Type type;
         /**
          * Indicates whether this location allows insertion or auto-creation.
@@ -1501,14 +1503,6 @@ public class Nodes {
          */
         public boolean insertable;
 
-        /**
-         * Resets access payload to defaults.
-         */
-        public void reset() {
-            node = null;
-            type = Object.class;
-            insertable = false;
-        }
         /**
          * Sets access payload values.
          */
@@ -1627,28 +1621,6 @@ public class Nodes {
         }
         if (node instanceof Set) {
             throw new JsonException("Cannot call accessInArray() on an unordered Java Set");
-//            out.type = Types.resolveTypeArgument(type, Set.class, 0);
-//            Set<Object> set = (Set<Object>) node;
-//            idx = idx < 0 ? set.size() + idx : idx;
-//            if (idx >= 0 && idx < set.size()) {
-//                int i = 0;
-//                for (Object v : set) {
-//                    if (i++ == idx) {
-//                        out.node = v;
-//                        out.insertable = true;
-//                        return;
-//                    }
-//                }
-//                throw new AssertionError("Unreachable");
-//            }
-//            if (idx == set.size()){
-//                out.node = null;
-//                out.insertable = true;
-//                return;
-//            }
-//            out.node = null;
-//            out.insertable = false;
-//            return;
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.accessInArray(node, type, idx, out);
@@ -1740,16 +1712,6 @@ public class Nodes {
         }
         if (node instanceof Set) {
             throw new JsonException("Cannot call setInArray() on an unordered Java Set");
-//            Set<Object> set = (Set<Object>) node;
-//            idx = idx < 0 ? set.size() + idx : idx;
-//            if (idx == set.size()) {
-//                set.add(value);
-//                return null;
-//            } else if (idx >= 0 && idx < set.size()) {
-//                throw new JsonException("Cannot set an element at a given index in an unordered Java Set");
-//            } else {
-//                throw new JsonException("Cannot set/add index " + idx + " in Set of size " + set.size());
-//            }
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.setInArray(node, idx, value);
@@ -1934,27 +1896,29 @@ public class Nodes {
             if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
                 if (!visitor.apply(path, container)) return;
             }
+
             Nodes.visitObject(container, (key, node) -> {
                 PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                if (!visitor.apply(path, container)) return;
+                visitor.apply(path, container);
             }
         } else if (jt.isArray()) {
             if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
                 if (!visitor.apply(path, container)) return;
             }
+
             Nodes.visitArray(container, (idx, node) -> {
                 PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                if (!visitor.apply(path, container)) return;
+                visitor.apply(path, container);
             }
         } else {
             if (target == WalkTarget.VALUE || target == WalkTarget.ANY) {
-                if (!visitor.apply(path, container)) return;
+                visitor.apply(path, container);
             }
         }
 

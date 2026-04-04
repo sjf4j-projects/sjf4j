@@ -21,8 +21,12 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -241,6 +245,30 @@ public class NodesTest {
         assertEquals(123L, Nodes.to(123L, long.class));
     }
 
+    @Test
+    public void testToMapImpls() {
+        JsonObject jo = JsonObject.of("b", 2, "a", 1);
+
+        Map<?, ?> hashMap = Nodes.to(jo, HashMap.class);
+        assertInstanceOf(HashMap.class, hashMap);
+        assertEquals(2, hashMap.get("b"));
+
+        Map<?, ?> linkedHashMap = Nodes.to(jo, LinkedHashMap.class);
+        assertInstanceOf(LinkedHashMap.class, linkedHashMap);
+        assertEquals(Arrays.asList("b", "a"), new ArrayList<>(linkedHashMap.keySet()));
+
+        Map<?, ?> treeMap = Nodes.to(jo, TreeMap.class);
+        assertInstanceOf(TreeMap.class, treeMap);
+        assertEquals(Arrays.asList("a", "b"), new ArrayList<>(treeMap.keySet()));
+
+        Map<?, ?> concurrentHashMap = Nodes.to(jo, ConcurrentHashMap.class);
+        assertInstanceOf(ConcurrentHashMap.class, concurrentHashMap);
+        assertEquals(1, concurrentHashMap.get("a"));
+
+        JsonObject withNull = JsonObject.of("a", null);
+        assertThrows(NullPointerException.class, () -> Nodes.to(withNull, ConcurrentHashMap.class));
+    }
+
     @Getter
     @Setter
     @AnyOf(value = {
@@ -435,6 +463,31 @@ public class NodesTest {
     }
 
     @Test
+    public void testCopyMapImpls() {
+        LinkedHashMap<String, Object> linked = new LinkedHashMap<>();
+        linked.put("b", 2);
+        linked.put("a", 1);
+        Map<?, ?> linkedCopy = Nodes.copy(linked);
+        assertInstanceOf(LinkedHashMap.class, linkedCopy);
+        assertNotSame(linked, linkedCopy);
+        assertEquals(Arrays.asList("b", "a"), new ArrayList<>(linkedCopy.keySet()));
+
+        ConcurrentHashMap<String, Object> concurrent = new ConcurrentHashMap<>();
+        concurrent.put("x", 7);
+        Map<?, ?> concurrentCopy = Nodes.copy(concurrent);
+        assertInstanceOf(ConcurrentHashMap.class, concurrentCopy);
+        assertNotSame(concurrent, concurrentCopy);
+        assertEquals(7, concurrentCopy.get("x"));
+
+        TreeMap<String, Object> sorted = new TreeMap<>();
+        sorted.put("b", 2);
+        sorted.put("a", 1);
+        Map<?, ?> sortedCopy = Nodes.copy(sorted);
+        assertInstanceOf(TreeMap.class, sortedCopy);
+        assertEquals(Arrays.asList("a", "b"), new ArrayList<>(sortedCopy.keySet()));
+    }
+
+    @Test
     public void testCopyCtorOnlyPojo() {
         CtorOnlyPojo p1 = new CtorOnlyPojo("user-1", 7);
         p1.note = "hello";
@@ -453,6 +506,46 @@ public class NodesTest {
 
         p1.tags.set(0, "z");
         assertEquals("z", p2.tags.get(0));
+    }
+
+    @Test
+    public void testAllMatchInArray() {
+        JsonArray ja = JsonArray.of(2, 4, 6);
+
+        assertTrue(Nodes.allMatchInArray(ja, (idx, value) -> ((Number) value).intValue() % 2 == 0));
+        assertFalse(Nodes.allMatchInArray(ja, (idx, value) -> idx < 2));
+        assertTrue(Nodes.allMatchInArray(JsonArray.of(), (idx, value) -> false));
+    }
+
+    @Test
+    public void testNoneMatchInArray() {
+        List<Object> list = Arrays.asList(1, 2, 3);
+
+        assertTrue(Nodes.noneMatchInArray(list, (idx, value) -> ((Number) value).intValue() > 3));
+        assertFalse(Nodes.noneMatchInArray(list, (idx, value) -> idx == 1 && Objects.equals(value, 2)));
+        assertTrue(Nodes.noneMatchInArray(new int[0], (idx, value) -> true));
+    }
+
+    @Test
+    public void testReplaceInObject() {
+        JsonObject jo = JsonObject.of("name", "Alice", "age", 18);
+
+        assertFalse(Nodes.replaceInObject(jo, (key, value) -> value));
+        assertEquals("Alice", jo.getString("name"));
+        assertEquals(18, jo.getInt("age"));
+
+        assertTrue(Nodes.replaceInObject(jo, (key, value) -> "age".equals(key) ? 20 : value));
+        assertEquals("Alice", jo.getString("name"));
+        assertEquals(20, jo.getInt("age"));
+
+        Person person = new Person();
+        person.setName("Bob");
+        person.setAge(21);
+
+        assertFalse(Nodes.replaceInObject(person, (key, value) -> value));
+        assertTrue(Nodes.replaceInObject(person, (key, value) -> "name".equals(key) ? "Tom" : value));
+        assertEquals("Tom", person.getName());
+        assertEquals(21, person.getAge());
     }
 
     @Test

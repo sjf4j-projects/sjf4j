@@ -33,6 +33,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -100,7 +101,7 @@ public final class ReflectUtil {
         NamingStrategy nodeNamingStrategy = getDeclaredNamingStrategy(clazz);
 
         // Fields
-        Map<String, NodeRegistry.FieldInfo> fields = Sjf4jConfig.global().mapSupplier.create();
+        Map<String, NodeRegistry.FieldInfo> fields = new LinkedHashMap<>();
         Map<String, String> aliasMap = creatorInfo.aliasMap;
         Class<?> curClazz = clazz;
         Type curType = clazz;

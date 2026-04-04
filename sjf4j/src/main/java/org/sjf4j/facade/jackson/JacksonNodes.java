@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
@@ -16,7 +15,9 @@ import org.sjf4j.node.Types;
 
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +163,7 @@ public final class JacksonNodes {
     public static Map<String, Object> toMap(Object node) {
         if (node instanceof ObjectNode) {
             ObjectNode on = (ObjectNode) node;
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(on.size());
+            Map<String, Object> map = new LinkedHashMap<>(on.size());
             for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
                 map.put(entry.getKey(), entry.getValue());
             }
@@ -191,7 +192,7 @@ public final class JacksonNodes {
     public static List<Object> toList(Object node) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
-            List<Object> list = Sjf4jConfig.global().listSupplier.create(an.size());
+            List<Object> list = new ArrayList<>(an.size());
             for (Iterator<JsonNode> it = ((ArrayNode) node).elements(); it.hasNext(); ) {
                 list.add(it.next());
             }
@@ -221,7 +222,7 @@ public final class JacksonNodes {
     public static Set<Object> toSet(Object node) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create(an.size());
+            Set<Object> set = new LinkedHashSet<>(Math.max((int) (an.size() / 0.75f) + 1, 16));
             for (Iterator<JsonNode> it = ((ArrayNode) node).elements(); it.hasNext(); ) {
                 set.add(it.next());
             }

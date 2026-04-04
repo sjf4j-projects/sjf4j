@@ -21,6 +21,8 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -265,7 +267,7 @@ public class JacksonStreamingIO {
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else if (pi.isJojo) {
                     if (dynamicMap == null) {
-                        dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                        dynamicMap = new LinkedHashMap<>();
                     }
                     dynamicMap.put(key, _readNode(parser, Object.class, Object.class, null));
                 } else {
@@ -450,7 +452,7 @@ public class JacksonStreamingIO {
             parser.nextToken();
             return null;
         }
-        Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        Map<String, Object> map = new LinkedHashMap<>();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_OBJECT) {
@@ -488,7 +490,7 @@ public class JacksonStreamingIO {
             parser.nextToken();
             return null;
         }
-        Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        Set<Object> set = new LinkedHashSet<>();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {

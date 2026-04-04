@@ -15,9 +15,6 @@ import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.PathCache;
-import org.sjf4j.supplier.ListSupplier;
-import org.sjf4j.supplier.MapSupplier;
-import org.sjf4j.supplier.SetSupplier;
 
 import java.util.Objects;
 
@@ -48,21 +45,6 @@ public final class Sjf4jConfig {
      * The Object facade implementation to use for object conversion operations.
      */
     private NodeFacade nodeFacade;
-
-    /**
-     * The supplier used to create map instances.
-     */
-    public final MapSupplier mapSupplier;
-
-    /**
-     * The supplier used to create list instances.
-     */
-    public final ListSupplier listSupplier;
-
-    /**
-     * The supplier used to create list instances.
-     */
-    public final SetSupplier setSupplier;
 
     public enum InstantFormat {
         ISO_STRING,
@@ -96,9 +78,6 @@ public final class Sjf4jConfig {
         this.yamlFacade = builder.yamlFacade;
         this.propertiesFacade = builder.propertiesFacade;
         this.nodeFacade = builder.nodeFacade;
-        this.mapSupplier = builder.mapSupplier;
-        this.listSupplier = builder.listSupplier;
-        this.setSupplier = builder.setSupplier;
         this.instantFormat = builder.instantFormat;
         this.pathCache = builder.pathCache;
         this.bindingPath = builder.bindingPath;
@@ -262,9 +241,6 @@ public final class Sjf4jConfig {
                 ", yamlFacade=" + Types.name(getYamlFacade()) +
                 ", propertiesFacade=" + Types.name(getPropertiesFacade()) +
                 ", nodeFacade=" + Types.name(getNodeFacade()) +
-                ", mapSupplier=" + mapSupplier +
-                ", listSupplier=" + listSupplier +
-                ", setSupplier=" + setSupplier +
                 ", instantFormat=" + instantFormat +
                 ", namingStrategy=" + namingStrategy +
                 ", pathCache=" + Types.name(pathCache) +
@@ -281,10 +257,6 @@ public final class Sjf4jConfig {
         private YamlFacade<?, ?> yamlFacade;
         private PropertiesFacade propertiesFacade;
         private NodeFacade nodeFacade;
-
-        private MapSupplier mapSupplier = MapSupplier.LinkedHashMapSupplier;
-        private ListSupplier listSupplier = ListSupplier.ArrayListSupplier;
-        private SetSupplier setSupplier = SetSupplier.LinkedHashSetSupplier;
 
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
         private NamingStrategy namingStrategy = NamingStrategy.IDENTITY;
@@ -305,9 +277,6 @@ public final class Sjf4jConfig {
             this.yamlFacade = config.yamlFacade;
             this.propertiesFacade = config.propertiesFacade;
             this.nodeFacade = config.nodeFacade;
-            this.mapSupplier = config.mapSupplier;
-            this.listSupplier = config.listSupplier;
-            this.setSupplier = config.setSupplier;
             this.instantFormat = config.instantFormat;
             this.namingStrategy = config.namingStrategy;
             this.pathCache = config.pathCache;
@@ -351,30 +320,6 @@ public final class Sjf4jConfig {
         public Builder nodeFacade(NodeFacade nodeFacade) {
             Objects.requireNonNull(nodeFacade, "nodeFacade");
             this.nodeFacade = nodeFacade;
-            return this;
-        }
-        /**
-         * Sets map supplier.
-         */
-        public Builder mapSupplier(MapSupplier mapSupplier) {
-            Objects.requireNonNull(mapSupplier, "mapSupplier");
-            this.mapSupplier = mapSupplier;
-            return this;
-        }
-        /**
-         * Sets list supplier.
-         */
-        public Builder listSupplier(ListSupplier listSupplier) {
-            Objects.requireNonNull(listSupplier, "listSupplier");
-            this.listSupplier = listSupplier;
-            return this;
-        }
-        /**
-         * Sets set supplier.
-         */
-        public Builder setSupplier(SetSupplier setSupplier) {
-            Objects.requireNonNull(setSupplier, "setSupplier");
-            this.setSupplier = setSupplier;
             return this;
         }
         /**

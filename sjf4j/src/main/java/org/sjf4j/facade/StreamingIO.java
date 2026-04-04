@@ -16,6 +16,8 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -208,7 +210,7 @@ public final class StreamingIO {
                     fi.invokeSetterIfPresent(pojo, vv);
                 } else if (pi.isJojo) {
                     if (dynamicMap == null) {
-                        dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                        dynamicMap = new LinkedHashMap<>();
                     }
                     dynamicMap.put(key, _readNode(reader, Object.class, Object.class, null));
                 } else {
@@ -398,7 +400,7 @@ public final class StreamingIO {
             reader.nextNull();
             return null;
         }
-        Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create();
+        Map<String, Object> map = new LinkedHashMap<>();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.startObject();
         while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
@@ -441,7 +443,7 @@ public final class StreamingIO {
             reader.nextNull();
             return null;
         }
-        Set<Object> set = Sjf4jConfig.global().setSupplier.create();
+        Set<Object> set = new LinkedHashSet<>();
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.startArray();
         while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {

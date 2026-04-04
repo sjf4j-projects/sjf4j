@@ -5,8 +5,6 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.supplier.ListSupplier;
-import org.sjf4j.supplier.SetSupplier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -221,21 +219,11 @@ class JsonArrayTest {
     }
 
     public void testSupplier1() {
-        Sjf4jConfig global = Sjf4jConfig.global();
-        try {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder(global)
-                    .listSupplier(ListSupplier.LinkedListSupplier)
-                    .setSupplier(SetSupplier.HashSetSupplier)
-                    .build());
-
-            JsonArray ja = JsonArray.of("c", "b", "a");
-            assertInstanceOf(ArrayList.class, ja.nodeList);
-            assertInstanceOf(ArrayList.class, ja.toList());
-            assertInstanceOf(LinkedHashSet.class, ja.toSet());
-            assertEquals("[\"c\",\"b\",\"a\"]", ja.toJson());
-        } finally {
-            Sjf4jConfig.global(global);
-        }
+        JsonArray ja = JsonArray.of("c", "b", "a");
+        assertInstanceOf(ArrayList.class, ja.nodeList);
+        assertInstanceOf(ArrayList.class, ja.toList());
+        assertInstanceOf(LinkedHashSet.class, ja.toSet());
+        assertEquals("[\"c\",\"b\",\"a\"]", ja.toJson());
     }
 
     public void testByPath1() {

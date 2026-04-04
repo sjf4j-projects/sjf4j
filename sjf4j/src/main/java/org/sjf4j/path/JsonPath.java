@@ -15,6 +15,8 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -738,7 +740,7 @@ public class JsonPath {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; computeMulti() expected Name, Index, or Append token");
         }
-        List<Object> parents = new ArrayList<Object>();
+        List<Object> parents = new ArrayList<>();
         _findAll(container, container, 1, segments.length - 1, parents, Function.identity());
         for (Object parent : parents) {
             _putLast(parent, lastToken, computer.apply(parent, _currentAt(parent, lastToken)), "compute()");
@@ -1121,7 +1123,7 @@ public class JsonPath {
     private Object _createContainer(PathSegment ps, Class<?> clazz) {
         if (ps instanceof PathSegment.Name) {
             if (clazz == Object.class || clazz == Map.class) {
-                return Sjf4jConfig.global().mapSupplier.create();
+                return new LinkedHashMap<>();
             }
             if (clazz == JsonObject.class) {
                 return new JsonObject();
@@ -1134,7 +1136,7 @@ public class JsonPath {
                     ps.rootedInspect() + "'. Only support Map/JsonObject/JOJO/POJO.");
         } else if (ps instanceof PathSegment.Index) {
             if (clazz == Object.class || clazz == List.class) {
-                return Sjf4jConfig.global().listSupplier.create();
+                return new ArrayList<>();
             }
             if (clazz == JsonArray.class) {
                 return new JsonArray();
@@ -1147,7 +1149,7 @@ public class JsonPath {
                 return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
             }
             if (clazz == Set.class) {
-                return Sjf4jConfig.global().setSupplier.create();
+                return new LinkedHashSet<>();
             }
             throw new JsonException("Cannot create array node with type '" + clazz +
                     "' at '" + ps.rootedInspect() + "'. Only support List/JsonArray/JAJO/Array/Set.");

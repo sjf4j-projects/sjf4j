@@ -10,11 +10,11 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.supplier.MapSupplier;
 
 import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -722,19 +722,17 @@ class JsonObjectTest {
     }
 
     public void testSupplier1() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.TreeMapSupplier).build());
         JsonObject jo1 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo1.toJson());
-        assertInstanceOf(java.util.LinkedHashMap.class, jo1.dynamicMap);
-        assertInstanceOf(java.util.LinkedHashMap.class, jo1.toMap());
+        assertInstanceOf(LinkedHashMap.class, jo1.dynamicMap);
+        assertInstanceOf(LinkedHashMap.class, jo1.toMap());
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global()).mapSupplier(MapSupplier.LinkedHashMapSupplier).build());
         JsonObject jo2 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
-        assertInstanceOf(java.util.LinkedHashMap.class, jo2.dynamicMap);
-        assertInstanceOf(java.util.LinkedHashMap.class, jo2.toMap());
+        assertInstanceOf(LinkedHashMap.class, jo2.dynamicMap);
+        assertInstanceOf(LinkedHashMap.class, jo2.toMap());
         assertEquals(jo1, jo2);
     }
 

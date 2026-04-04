@@ -20,6 +20,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -260,7 +262,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(srcMap.size());
+                Map<String, Object> newMap = new LinkedHashMap<>(srcMap.size());
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, k);
@@ -306,7 +308,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof List) {
                 List<Object> srcList = (List<Object>) node;
-                List<Object> newList = Sjf4jConfig.global().listSupplier.create(srcList.size());
+                List<Object> newList = new ArrayList<>(srcList.size());
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, nodeClazz, i);
@@ -338,7 +340,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = Sjf4jConfig.global().setSupplier.create(srcSet.size());
+                Set<Object> newSet = new LinkedHashSet<>(Math.max((int) (srcSet.size() / 0.75f) + 1, 16));
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -446,7 +448,7 @@ public class SimpleNodeFacade implements NodeFacade {
                                           boolean deepCopy,
                                           PathSegment ps) {
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(source.size());
+            Map<String, Object> map = new LinkedHashMap<>(source.size());
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
@@ -548,7 +550,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
 
             if (pi.isJojo) {
-                if (dynamicMap == null) dynamicMap = Sjf4jConfig.global().mapSupplier.create();
+                if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(rawValue, Object.class, Object.class, null, deepCopy, cps);
                 dynamicMap.put(key, vv);
@@ -637,7 +639,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
-            List<Object> list = Sjf4jConfig.global().listSupplier.create(source.size());
+            List<Object> list = new ArrayList<>(source.size());
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
@@ -684,7 +686,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
-            Set<Object> set = Sjf4jConfig.global().setSupplier.create(source.size());
+            Set<Object> set = new LinkedHashSet<>(Math.max((int) (source.size() / 0.75f) + 1, 16));
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
@@ -700,7 +702,7 @@ public class SimpleNodeFacade implements NodeFacade {
     private Object _readFromPojo(Object node, NodeRegistry.PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
         if (rawClazz == Object.class || rawClazz == Map.class) {
-            Map<String, Object> map = Sjf4jConfig.global().mapSupplier.create(oldPi.fieldCount);
+            Map<String, Object> map = new LinkedHashMap<>(oldPi.fieldCount);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
@@ -728,7 +730,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null && !pi.isJajo) {
-            Map<String, Object> sourceValues = Sjf4jConfig.global().mapSupplier.create(oldPi.fieldCount);
+            Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.fieldCount);
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
                 sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
@@ -776,7 +778,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof Map) {
                 Map<String, Object> oldMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(oldMap.size());
+                Map<String, Object> newMap = new LinkedHashMap<>(oldMap.size());
                 for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
                     Object vv = _writeNode(entry.getValue(), cps);
@@ -787,7 +789,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof List) {
                 List<Object> oldList = (List<Object>) node;
-                List<Object> newList = Sjf4jConfig.global().listSupplier.create(oldList.size());
+                List<Object> newList = new ArrayList<>(oldList.size());
                 for (int i = 0, len = oldList.size(); i < len; i++) {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                     Object vv = _writeNode(oldList.get(i), cps);
@@ -798,7 +800,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof JsonObject) {
                 JsonObject jo = (JsonObject) node;
-                Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(jo.size());
+                Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
                 jo.forEach((k, v) -> {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, k);
                     Object vv = _writeNode(v, cps);
@@ -809,7 +811,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof JsonArray) {
                 JsonArray ja = (JsonArray) node;
-                List<Object> newList = Sjf4jConfig.global().listSupplier.create(ja.size());
+                List<Object> newList = new ArrayList<>(ja.size());
                 for (int i = 0, len = ja.size(); i < len; i++) {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                     Object vv = _writeNode(ja.getNode(i), cps);
@@ -820,7 +822,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node.getClass().isArray()) {
                 int len = Array.getLength(node);
-                List<Object> newList = Sjf4jConfig.global().listSupplier.create(len);
+                List<Object> newList = new ArrayList<>(len);
                 for (int i = 0; i < len; i++) {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                     Object vv = _writeNode(Array.get(node, i), cps);
@@ -831,7 +833,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof Set) {
                 Set<Object> set = (Set<Object>) node;
-                List<Object> newList = Sjf4jConfig.global().listSupplier.create(set.size());
+                List<Object> newList = new ArrayList<>(set.size());
                 int i = 0;
                 for (Object v : set) {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
@@ -849,7 +851,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                Map<String, Object> newMap = Sjf4jConfig.global().mapSupplier.create(pi.fieldCount);
+                Map<String, Object> newMap = new LinkedHashMap<>(pi.fieldCount);
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     String key = entry.getKey();
                     Object v = entry.getValue().invokeGetter(node);
