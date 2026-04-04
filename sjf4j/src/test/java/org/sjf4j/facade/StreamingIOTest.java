@@ -25,9 +25,16 @@ import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -94,6 +101,14 @@ public class StreamingIOTest {
             this.msg = msg;
             this.body = body;
         }
+    }
+
+    @Getter
+    @Setter
+    static class ConcreteContainers {
+        HashMap<String, Integer> map;
+        LinkedList<Integer> list;
+        TreeSet<Integer> set;
     }
 
     @Getter
@@ -389,6 +404,32 @@ public class StreamingIOTest {
         assertEquals(18, response.body.age);
     }
 
+    private static void assertConcreteContainerTargets() {
+        HashMap<String, Integer> map = Sjf4j.fromJson("{\"b\":2,\"a\":1}",
+                new TypeReference<HashMap<String, Integer>>() {});
+        assertInstanceOf(HashMap.class, map);
+        assertEquals(2, map.get("b"));
+
+        LinkedList<Integer> list = Sjf4j.fromJson("[2,1,3]",
+                new TypeReference<LinkedList<Integer>>() {});
+        assertInstanceOf(LinkedList.class, list);
+        assertEquals(Arrays.asList(2, 1, 3), list);
+
+        Set<Integer> set = Sjf4j.fromJson("[2,1,3]",
+                new TypeReference<TreeSet<Integer>>() {});
+        assertInstanceOf(TreeSet.class, set);
+        assertEquals(Arrays.asList(1, 2, 3), new ArrayList<>(set));
+
+        ConcreteContainers holder = Sjf4j.fromJson("{\"map\":{\"a\":1},\"list\":[2,1,3],\"set\":[2,1,3]}",
+                ConcreteContainers.class);
+        assertInstanceOf(HashMap.class, holder.map);
+        assertInstanceOf(LinkedList.class, holder.list);
+        assertInstanceOf(TreeSet.class, holder.set);
+
+        assertThrows(JsonException.class, () -> Sjf4j.fromJson("{\"a\":1}", SortedMap.class));
+        assertThrows(JsonException.class, () -> Sjf4j.fromJson("[2,1,3]", SortedSet.class));
+    }
+
     @Test
     void testGenericJojoBindingSharedIo() {
         Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
@@ -402,6 +443,30 @@ public class StreamingIOTest {
         Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
+    }
+
+    @Test
+    void testConcreteContainerTargetsSharedIo() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertConcreteContainerTargets();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertConcreteContainerTargets();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertConcreteContainerTargets();
+    }
+
+    @Test
+    void testConcreteContainerTargetsExclusiveIo() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertConcreteContainerTargets();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertConcreteContainerTargets();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertConcreteContainerTargets();
     }
 
     @Test

@@ -159,10 +159,10 @@ public class GsonStreamingIO {
      */
     private static Object _readObject(JsonReader reader, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == Map.class) {
+        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(reader, valueType, valueClazz);
+            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -181,7 +181,7 @@ public class GsonStreamingIO {
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, valueType, valueClazz);
+            Map<String, Object> map = _readMapWithValueType(reader, ti.valueCodecInfo.rawClazz, valueType, valueClazz);
             return ti.valueCodecInfo.rawToValue(map);
         }
 
@@ -311,10 +311,10 @@ public class GsonStreamingIO {
      */
     private static Object _readArray(JsonReader reader, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == List.class) {
+        if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(reader, valueType, valueClazz);
+            return _readListWithElementType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -328,10 +328,10 @@ public class GsonStreamingIO {
             return ja;
         }
 
-        if (rawClazz == Set.class) {
+        if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(reader, valueType, valueClazz);
+            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz.isArray()) {
@@ -358,7 +358,7 @@ public class GsonStreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+            List<Object> list = _readListWithElementType(reader, vci.rawClazz, valueType, valueClazz);
             return vci.rawToValue(list);
         }
 
@@ -379,13 +379,13 @@ public class GsonStreamingIO {
             return _readNode(reader, fieldType, fieldRaw, fieldAnyOf);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
+            switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMapWithValueType(reader, fi.argType, fi.argRawClazz);
+                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case LIST:
-                return _readListWithElementType(reader, fi.argType, fi.argRawClazz);
+                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case SET:
-                return _readSetWithElementType(reader, fi.argType, fi.argRawClazz);
+                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case ARRAY:
                 return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
@@ -393,14 +393,14 @@ public class GsonStreamingIO {
         }
     }
 
-    private static Map<String, Object> _readMapWithValueType(JsonReader reader,
+    private static Map<String, Object> _readMapWithValueType(JsonReader reader, Class<?> mapClazz,
                                                               Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
             return null;
         }
-        Map<String, Object> map = new LinkedHashMap<>();
+        Map<String, Object> map = NodeRegistry.newMapContainer(mapClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.beginObject();
         while (reader.hasNext()) {
@@ -412,14 +412,14 @@ public class GsonStreamingIO {
         return map;
     }
 
-    private static List<Object> _readListWithElementType(JsonReader reader,
+    private static List<Object> _readListWithElementType(JsonReader reader, Class<?> listClazz,
                                                           Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
             return null;
         }
-        List<Object> list = new ArrayList<>();
+        List<Object> list = NodeRegistry.newListContainer(listClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.beginArray();
         while (reader.hasNext()) {
@@ -430,14 +430,14 @@ public class GsonStreamingIO {
         return list;
     }
 
-    private static Set<Object> _readSetWithElementType(JsonReader reader,
+    private static Set<Object> _readSetWithElementType(JsonReader reader, Class<?> setClazz,
                                                         Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull();
             return null;
         }
-        Set<Object> set = new LinkedHashSet<>();
+        Set<Object> set = NodeRegistry.newSetContainer(setClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.beginArray();
         while (reader.hasNext()) {
@@ -451,7 +451,7 @@ public class GsonStreamingIO {
     private static Object _readArrayWithElementType(JsonReader reader, Class<?> rawClazz,
                                                        Type valueType, Class<?> valueClazz)
             throws IOException {
-        List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+        List<Object> list = _readListWithElementType(reader, List.class, valueType, valueClazz);
         if (list == null) {
             return null;
         }

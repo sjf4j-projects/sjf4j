@@ -857,15 +857,15 @@ public final class NodeRegistry {
             ContainerKind kind = ContainerKind.NONE;
             Type argType = null;
             Class<?> argRawType = null;
-            if (this.rawClazz == List.class) {
+            if (List.class.isAssignableFrom(this.rawClazz)) {
                 kind = ContainerKind.LIST;
                 argType = Types.resolveTypeArgument(type, List.class, 0);
                 argRawType = Types.rawBox(argType);
-            } else if (this.rawClazz == Set.class) {
+            } else if (Set.class.isAssignableFrom(this.rawClazz)) {
                 kind = ContainerKind.SET;
                 argType = Types.resolveTypeArgument(type, Set.class, 0);
                 argRawType = Types.rawBox(argType);
-            } else if (this.rawClazz == Map.class) {
+            } else if (Map.class.isAssignableFrom(this.rawClazz)) {
                 kind = ContainerKind.MAP;
                 argType = Types.resolveTypeArgument(type, Map.class, 1);
                 argRawType = Types.rawBox(argType);

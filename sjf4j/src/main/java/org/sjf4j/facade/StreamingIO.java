@@ -158,10 +158,10 @@ public final class StreamingIO {
      */
     private static Object _readObject(StreamingReader reader, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == Map.class) {
+        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(reader, valueType, valueClazz);
+            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -181,7 +181,7 @@ public final class StreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, valueType, valueClazz);
+            Map<String, Object> map = _readMapWithValueType(reader, vci.rawClazz, valueType, valueClazz);
             return vci.rawToValue(map);
         }
 
@@ -305,10 +305,10 @@ public final class StreamingIO {
      */
     private static Object _readArray(StreamingReader reader, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == List.class) {
+        if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(reader, valueType, valueClazz);
+            return _readListWithElementType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -322,10 +322,10 @@ public final class StreamingIO {
             return ja;
         }
 
-        if (rawClazz == Set.class) {
+        if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(reader, valueType, valueClazz);
+            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz.isArray()) {
@@ -352,7 +352,7 @@ public final class StreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+            List<Object> list = _readListWithElementType(reader, vci.rawClazz, valueType, valueClazz);
             return vci.rawToValue(list);
         }
 
@@ -376,13 +376,13 @@ public final class StreamingIO {
             return _readNode(reader, fieldType, fieldRaw, fieldAnyOf);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
+            switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMapWithValueType(reader, fi.argType, fi.argRawClazz);
+                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case LIST:
-                return _readListWithElementType(reader, fi.argType, fi.argRawClazz);
+                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case SET:
-                return _readSetWithElementType(reader, fi.argType, fi.argRawClazz);
+                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case ARRAY:
                 return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
@@ -393,14 +393,14 @@ public final class StreamingIO {
     /**
      * Reads object token into map with typed values.
      */
-    private static Map<String, Object> _readMapWithValueType(StreamingReader reader,
+    private static Map<String, Object> _readMapWithValueType(StreamingReader reader, Class<?> mapClazz,
                                                               Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peekToken() == StreamingReader.Token.NULL) {
             reader.nextNull();
             return null;
         }
-        Map<String, Object> map = new LinkedHashMap<>();
+        Map<String, Object> map = NodeRegistry.newMapContainer(mapClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.startObject();
         while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
@@ -415,14 +415,14 @@ public final class StreamingIO {
     /**
      * Reads array token into list with typed elements.
      */
-    private static List<Object> _readListWithElementType(StreamingReader reader,
+    private static List<Object> _readListWithElementType(StreamingReader reader, Class<?> listClazz,
                                                          Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peekToken() == StreamingReader.Token.NULL) {
             reader.nextNull();
             return null;
         }
-        List<Object> list = new ArrayList<>();
+        List<Object> list = NodeRegistry.newListContainer(listClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.startArray();
         while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
@@ -436,14 +436,14 @@ public final class StreamingIO {
     /**
      * Reads array token into set with typed elements.
      */
-    private static Set<Object> _readSetWithElementType(StreamingReader reader,
+    private static Set<Object> _readSetWithElementType(StreamingReader reader, Class<?> setClazz,
                                                         Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.peekToken() == StreamingReader.Token.NULL) {
             reader.nextNull();
             return null;
         }
-        Set<Object> set = new LinkedHashSet<>();
+        Set<Object> set = NodeRegistry.newSetContainer(setClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         reader.startArray();
         while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
@@ -460,7 +460,7 @@ public final class StreamingIO {
     private static Object _readArrayWithElementType(StreamingReader reader, Class<?> rawClazz,
                                                     Type valueType, Class<?> valueClazz)
             throws IOException {
-        List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+        List<Object> list = _readListWithElementType(reader, List.class, valueType, valueClazz);
         if (list == null) {
             return null;
         }

@@ -17,9 +17,11 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -200,6 +202,9 @@ class NodeRegistryCoverageTest {
         public List<String> names;
         public Set<Integer> numbers;
         public Map<String, Long> mapping;
+        public LinkedList<String> linkedNames;
+        public TreeSet<Integer> sortedNumbers;
+        public HashMap<String, Long> hashMapping;
         public String[] array;
         public String plain;
         public final String readOnly = "ro";
@@ -371,6 +376,9 @@ class NodeRegistryCoverageTest {
         NodeRegistry.FieldInfo namesField = pojoInfo.fields.get("names");
         NodeRegistry.FieldInfo numbersField = pojoInfo.fields.get("numbers");
         NodeRegistry.FieldInfo mappingField = pojoInfo.fields.get("mapping");
+        NodeRegistry.FieldInfo linkedNamesField = pojoInfo.fields.get("linkedNames");
+        NodeRegistry.FieldInfo sortedNumbersField = pojoInfo.fields.get("sortedNumbers");
+        NodeRegistry.FieldInfo hashMappingField = pojoInfo.fields.get("hashMapping");
         NodeRegistry.FieldInfo arrayField = pojoInfo.fields.get("array");
         NodeRegistry.FieldInfo plainField = pojoInfo.fields.get("plain");
         NodeRegistry.FieldInfo readOnlyField = pojoInfo.fields.get("readOnly");
@@ -381,6 +389,9 @@ class NodeRegistryCoverageTest {
         assertEquals(Integer.class, numbersField.argRawClazz);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, mappingField.containerKind);
         assertEquals(Long.class, mappingField.argRawClazz);
+        assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, linkedNamesField.containerKind);
+        assertEquals(NodeRegistry.FieldInfo.ContainerKind.SET, sortedNumbersField.containerKind);
+        assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, hashMappingField.containerKind);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.ARRAY, arrayField.containerKind);
         assertEquals(String.class, arrayField.argRawClazz);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.NONE, plainField.containerKind);

@@ -155,10 +155,10 @@ public class Fastjson2StreamingIO {
      */
     private static Object _readObject(JSONReader reader, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == Map.class) {
+        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(reader, valueType, valueClazz);
+            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -178,7 +178,7 @@ public class Fastjson2StreamingIO {
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, valueType, valueClazz);
+            Map<String, Object> map = _readMapWithValueType(reader, ti.valueCodecInfo.rawClazz, valueType, valueClazz);
             return ti.valueCodecInfo.rawToValue(map);
         }
 
@@ -304,10 +304,10 @@ public class Fastjson2StreamingIO {
      */
     private static Object _readArray(JSONReader reader, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == List.class) {
+        if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(reader, valueType, valueClazz);
+            return _readListWithElementType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -322,10 +322,10 @@ public class Fastjson2StreamingIO {
             return ja;
         }
 
-        if (rawClazz == Set.class) {
+        if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(reader, valueType, valueClazz);
+            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz);
         }
 
         if (rawClazz.isArray()) {
@@ -353,7 +353,7 @@ public class Fastjson2StreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+            List<Object> list = _readListWithElementType(reader, vci.rawClazz, valueType, valueClazz);
             return vci.rawToValue(list);
         }
 
@@ -374,13 +374,13 @@ public class Fastjson2StreamingIO {
             return _readNode(reader, fieldType, fieldRaw, fieldAnyOf);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
+            switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMapWithValueType(reader, fi.argType, fi.argRawClazz);
+                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case LIST:
-                return _readListWithElementType(reader, fi.argType, fi.argRawClazz);
+                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case SET:
-                return _readSetWithElementType(reader, fi.argType, fi.argRawClazz);
+                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             case ARRAY:
                 return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz);
             default:
@@ -388,13 +388,13 @@ public class Fastjson2StreamingIO {
         }
     }
 
-    private static Map<String, Object> _readMapWithValueType(JSONReader reader,
+    private static Map<String, Object> _readMapWithValueType(JSONReader reader, Class<?> mapClazz,
                                                               Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        Map<String, Object> map = new LinkedHashMap<>();
+        Map<String, Object> map = NodeRegistry.newMapContainer(mapClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         if (!reader.nextIfObjectStart()) {
             throw new JsonException("Expected token '{', but was " + reader.current());
@@ -407,13 +407,13 @@ public class Fastjson2StreamingIO {
         return map;
     }
 
-    private static List<Object> _readListWithElementType(JSONReader reader,
+    private static List<Object> _readListWithElementType(JSONReader reader, Class<?> listClazz,
                                                           Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        List<Object> list = new ArrayList<>();
+        List<Object> list = NodeRegistry.newListContainer(listClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         if (!reader.nextIfArrayStart()) {
             throw new JsonException("Expected token '[', but was " + reader.current());
@@ -425,13 +425,13 @@ public class Fastjson2StreamingIO {
         return list;
     }
 
-    private static Set<Object> _readSetWithElementType(JSONReader reader,
+    private static Set<Object> _readSetWithElementType(JSONReader reader, Class<?> setClazz,
                                                         Type valueType, Class<?> valueClazz)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
         }
-        Set<Object> set = new LinkedHashSet<>();
+        Set<Object> set = NodeRegistry.newSetContainer(setClazz, false);
         NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
         if (!reader.nextIfArrayStart()) {
             throw new JsonException("Expected token '[', but was " + reader.current());
@@ -446,7 +446,7 @@ public class Fastjson2StreamingIO {
     private static Object _readArrayWithElementType(JSONReader reader, Class<?> rawClazz,
                                                        Type valueType, Class<?> valueClazz)
             throws IOException {
-        List<Object> list = _readListWithElementType(reader, valueType, valueClazz);
+        List<Object> list = _readListWithElementType(reader, List.class, valueType, valueClazz);
         if (list == null) {
             return null;
         }
