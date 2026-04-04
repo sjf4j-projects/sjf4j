@@ -226,22 +226,22 @@ class NodeRegistryCoverageTest {
     @Test
     void testTypeInfoRegistrationAndInstantRefresh() {
         NodeRegistry.TypeInfo none = NodeRegistry.registerTypeInfo(String.class);
-        assertFalse(none.isPojo());
-        assertFalse(none.isNodeValue());
-        assertFalse(none.isAnyOf());
+        assertNull(none.pojoInfo);
+        assertNull(none.valueCodecInfo);
+        assertNull(none.anyOfInfo);
 
         NodeRegistry.TypeInfo pojoType = NodeRegistry.registerTypeInfo(ContainerPojo.class);
-        assertTrue(pojoType.isPojo());
-        assertFalse(pojoType.isNodeValue());
+        assertNotNull(pojoType.pojoInfo);
+        assertNull(pojoType.valueCodecInfo);
         assertFalse(pojoType.usesStreamingPojoWriter());
 
         NodeRegistry.TypeInfo valueType = NodeRegistry.registerTypeInfo(MiniValue.class);
-        assertTrue(valueType.isNodeValue());
+        assertNotNull(valueType.valueCodecInfo);
         assertThrows(JsonException.class, () -> NodeRegistry.registerTypeInfo(MiniValue.class, true));
         assertThrows(JsonException.class, () -> NodeRegistry.registerTypeInfo(AnotherMiniValue.class, true));
 
         NodeRegistry.TypeInfo anyOfType = NodeRegistry.registerTypeInfo(DiscriminatedAnyOf.class);
-        assertTrue(anyOfType.isAnyOf());
+        assertNotNull(anyOfType.anyOfInfo);
 
         assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new InvalidRawCodec()));
 

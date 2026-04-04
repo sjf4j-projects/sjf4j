@@ -34,7 +34,9 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -74,20 +76,41 @@ public final class ReflectUtil {
     }
 
 
+    public static NodeRegistry.ContainerInfo analyzeContainer(Class<?> clazz) {
+        if (clazz == null || clazz == Object.class || clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
+            return null;
+        }
+
+        NodeKind kind;
+        if (Map.class.isAssignableFrom(clazz)) {
+            kind = NodeKind.OBJECT_MAP;
+        } else if (List.class.isAssignableFrom(clazz)) {
+            kind = NodeKind.ARRAY_LIST;
+        } else if (Set.class.isAssignableFrom(clazz)) {
+            kind = NodeKind.ARRAY_SET;
+        } else {
+            return null;
+        }
+
+        MethodHandles.Lookup lookup = resolveLookup(clazz);
+        try {
+            Constructor<?> ctor = clazz.getDeclaredConstructor();
+            try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
+            MethodHandle noArgsCtor = lookup.unreflectConstructor(ctor);
+            Supplier<?> noArgsLambdaCtor = createLambdaConstructor(lookup, clazz, noArgsCtor);
+            return new NodeRegistry.ContainerInfo(clazz, kind, noArgsCtor, noArgsLambdaCtor);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            return null;
+        }
+    }
+
     public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
         if (!isPojoCandidate(clazz)) {
             if (orElseThrow) throw new JsonException("Class " + clazz.getName() + " cannot be a POJO candidate");
             else return null;
         }
 
-        MethodHandles.Lookup lookup = ROOT_LOOKUP;
-        if (!IS_JDK8 && PRIVATE_LOOKUP_IN != null) {
-            try {
-                lookup = (MethodHandles.Lookup) PRIVATE_LOOKUP_IN.invoke(null, clazz, ROOT_LOOKUP);
-            } catch (Exception e) {
-                // log.debug("Failed to get 'privateLookupIn'", e);
-            }
-        }
+        MethodHandles.Lookup lookup = resolveLookup(clazz);
 
         // Creator constructor (for final fields / record-style)
         NodeRegistry.CreatorInfo creatorInfo = null;
@@ -281,6 +304,18 @@ public final class ReflectUtil {
 //            throw new RuntimeException(e);
         }
         PRIVATE_LOOKUP_IN = privateLookupIn;
+    }
+
+    private static MethodHandles.Lookup resolveLookup(Class<?> clazz) {
+        MethodHandles.Lookup lookup = ROOT_LOOKUP;
+        if (!IS_JDK8 && PRIVATE_LOOKUP_IN != null) {
+            try {
+                lookup = (MethodHandles.Lookup) PRIVATE_LOOKUP_IN.invoke(null, clazz, ROOT_LOOKUP);
+            } catch (Exception e) {
+                // log.debug("Failed to get 'privateLookupIn'", e);
+            }
+        }
+        return lookup;
     }
 
 

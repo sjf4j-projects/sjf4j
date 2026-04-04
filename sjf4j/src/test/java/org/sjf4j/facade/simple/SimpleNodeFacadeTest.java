@@ -21,10 +21,17 @@ import org.sjf4j.path.JsonPointer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -508,6 +515,69 @@ public class SimpleNodeFacadeTest {
         Map<String, Object> m = Collections.singletonMap("a", 1);
         Object o = nodeFacade.readNode(m, Object.class);
         assertInstanceOf(Map.class, o);
+    }
+
+    @Test
+    public void testReadConcreteMapTargets() {
+        JsonObject jo = JsonObject.of("b", 2, "a", 1);
+
+        Map<?, ?> hashMap = (Map<?, ?>) nodeFacade.readNode(jo, HashMap.class);
+        assertInstanceOf(HashMap.class, hashMap);
+        assertEquals(2, hashMap.get("b"));
+
+        Map<?, ?> concurrentMap = (Map<?, ?>) nodeFacade.readNode(jo, ConcurrentHashMap.class);
+        assertInstanceOf(ConcurrentHashMap.class, concurrentMap);
+        assertEquals(1, concurrentMap.get("a"));
+
+        assertThrows(JsonException.class, () -> nodeFacade.readNode(jo, SortedMap.class));
+    }
+
+    @Test
+    public void testReadConcreteListAndSetTargets() {
+        JsonArray ja = JsonArray.of(2, 1, 3);
+
+        List<?> linkedList = (List<?>) nodeFacade.readNode(ja, LinkedList.class);
+        assertInstanceOf(LinkedList.class, linkedList);
+        assertEquals(Arrays.asList(2, 1, 3), linkedList);
+
+        Set<?> treeSet = (Set<?>) nodeFacade.readNode(ja, TreeSet.class);
+        assertInstanceOf(TreeSet.class, treeSet);
+        assertEquals(Arrays.asList(1, 2, 3), new ArrayList<>(treeSet));
+
+        assertThrows(JsonException.class, () -> nodeFacade.readNode(ja, SortedSet.class));
+    }
+
+    @Test
+    public void testDeepCopyPreservesConcreteContainers() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        Object mapCopy = nodeFacade.readNode(map, Object.class, true);
+        assertInstanceOf(HashMap.class, mapCopy);
+        assertNotSame(map, mapCopy);
+
+        LinkedList<Object> list = new LinkedList<>(Arrays.asList("b", "a"));
+        Object listCopy = nodeFacade.readNode(list, Object.class, true);
+        assertInstanceOf(LinkedList.class, listCopy);
+        assertNotSame(list, listCopy);
+        assertEquals(list, listCopy);
+
+        TreeSet<Object> set = new TreeSet<>(Arrays.asList("b", "a"));
+        Object setCopy = nodeFacade.readNode(set, Object.class, true);
+        assertInstanceOf(TreeSet.class, setCopy);
+        assertNotSame(set, setCopy);
+        assertEquals(Arrays.asList("a", "b"), new ArrayList<>((Set<?>) setCopy));
+
+        Object singletonMapCopy = nodeFacade.readNode(Collections.singletonMap("a", 1), Object.class, true);
+        assertInstanceOf(LinkedHashMap.class, singletonMapCopy);
+        assertEquals(Collections.singletonMap("a", 1), singletonMapCopy);
+
+        Object fixedListCopy = nodeFacade.readNode(Arrays.asList("x", "y"), Object.class, true);
+        assertInstanceOf(ArrayList.class, fixedListCopy);
+        assertEquals(Arrays.asList("x", "y"), fixedListCopy);
+
+        Object singletonSetCopy = nodeFacade.readNode(Collections.singleton("z"), Object.class, true);
+        assertInstanceOf(LinkedHashSet.class, singletonSetCopy);
+        assertEquals(Collections.singleton("z"), singletonSetCopy);
     }
 
     public static class MapperNameSource {

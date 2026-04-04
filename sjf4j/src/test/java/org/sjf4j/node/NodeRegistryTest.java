@@ -24,7 +24,11 @@ import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.models.JojoTest;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -75,11 +79,6 @@ public class NodeRegistryTest {
     }
 
     @Test
-    public void testIsPojo1() {
-        assertTrue(NodeRegistry.isPojo(Role.class));
-    }
-
-    @Test
     public void testInheritedFieldSameKeyChildWins() {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
         assertNotNull(pi.fields.get("key"));
@@ -87,6 +86,21 @@ public class NodeRegistryTest {
 
         ChildSameKey pojo = Sjf4j.fromJson("{\"key\":123}", ChildSameKey.class);
         assertEquals(123, pojo.key);
+    }
+
+    @Test
+    public void testContainerFactoryFallback() {
+        assertThrows(JsonException.class, () -> NodeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), false));
+        Map<String, Object> map = NodeRegistry.newMapContainer(Collections.singletonMap("a", 1).getClass(), true);
+        assertTrue(map.isEmpty());
+
+        assertThrows(JsonException.class, () -> NodeRegistry.newListContainer(Arrays.asList("x").getClass(), false));
+        List<Object> list = NodeRegistry.newListContainer(Arrays.asList("x").getClass(), true);
+        assertTrue(list.isEmpty());
+
+        assertThrows(JsonException.class, () -> NodeRegistry.newSetContainer(Collections.singleton("z").getClass(), false));
+        Set<Object> set = NodeRegistry.newSetContainer(Collections.singleton("z").getClass(), true);
+        assertTrue(set.isEmpty());
     }
 
     @Test

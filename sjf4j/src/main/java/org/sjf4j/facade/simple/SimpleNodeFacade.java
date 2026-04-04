@@ -262,7 +262,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
-                Map<String, Object> newMap = new LinkedHashMap<>(srcMap.size());
+                Map<String, Object> newMap = NodeRegistry.newMapContainer(nodeClazz, true);
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, k);
@@ -308,7 +308,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof List) {
                 List<Object> srcList = (List<Object>) node;
-                List<Object> newList = new ArrayList<>(srcList.size());
+                List<Object> newList = NodeRegistry.newListContainer(nodeClazz, true);
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, nodeClazz, i);
@@ -340,7 +340,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             if (node instanceof Set) {
                 Set<Object> srcSet = (Set<Object>) node;
-                Set<Object> newSet = new LinkedHashSet<>(srcSet.size());
+                Set<Object> newSet = NodeRegistry.newSetContainer(nodeClazz, true);
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
@@ -447,8 +447,8 @@ public class SimpleNodeFacade implements NodeFacade {
                                           Type type,
                                           boolean deepCopy,
                                           PathSegment ps) {
-        if (rawClazz == Object.class || rawClazz == Map.class) {
-            Map<String, Object> map = new LinkedHashMap<>(source.size());
+        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
@@ -635,11 +635,11 @@ public class SimpleNodeFacade implements NodeFacade {
                                           Type type,
                                           boolean deepCopy,
                                           PathSegment ps) {
-        if (rawClazz == Object.class || rawClazz == List.class) {
+        if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
-            List<Object> list = new ArrayList<>(source.size());
+            List<Object> list = NodeRegistry.newListContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
@@ -682,11 +682,11 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return array;
         }
-        if (rawClazz == Set.class) {
+        if (Set.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
-            Set<Object> set = new LinkedHashSet<>(source.size());
+            Set<Object> set = NodeRegistry.newSetContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
@@ -701,8 +701,8 @@ public class SimpleNodeFacade implements NodeFacade {
     // POJO -> Map/JsonObject/JOJO/POJO
     private Object _readFromPojo(Object node, NodeRegistry.PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
-        if (rawClazz == Object.class || rawClazz == Map.class) {
-            Map<String, Object> map = new LinkedHashMap<>(oldPi.fieldCount);
+        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
+            Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;

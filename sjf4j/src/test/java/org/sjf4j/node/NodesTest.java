@@ -1,5 +1,6 @@
 package org.sjf4j.node;
 
+import com.alibaba.fastjson2.JSONObject;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,13 +21,23 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -267,6 +278,58 @@ public class NodesTest {
 
         JsonObject withNull = JsonObject.of("a", null);
         assertThrows(NullPointerException.class, () -> Nodes.to(withNull, ConcurrentHashMap.class));
+        assertThrows(JsonException.class, () -> Nodes.to(jo, ConcurrentMap.class));
+        assertThrows(JsonException.class, () -> Nodes.to(jo, SortedMap.class));
+    }
+
+    @Test
+    public void testToListImpls() {
+        JsonArray ja = JsonArray.of(2, 1, 3);
+
+        List<?> arrayList = Nodes.to(ja, ArrayList.class);
+        assertInstanceOf(ArrayList.class, arrayList);
+        assertEquals(Arrays.asList(2, 1, 3), arrayList);
+
+        List<?> linkedList = Nodes.to(ja, LinkedList.class);
+        assertInstanceOf(LinkedList.class, linkedList);
+        assertEquals(Arrays.asList(2, 1, 3), linkedList);
+
+        List<?> cowList = Nodes.to(ja, CopyOnWriteArrayList.class);
+        assertInstanceOf(CopyOnWriteArrayList.class, cowList);
+        assertEquals(Arrays.asList(2, 1, 3), cowList);
+    }
+
+    @Test
+    public void testToSetImpls() {
+        JsonArray ja = JsonArray.of(2, 1, 3);
+
+        Set<?> hashSet = Nodes.to(ja, HashSet.class);
+        assertInstanceOf(HashSet.class, hashSet);
+        assertEquals(new HashSet<>(Arrays.asList(1, 2, 3)), hashSet);
+
+        Set<?> linkedHashSet = Nodes.to(ja, LinkedHashSet.class);
+        assertInstanceOf(LinkedHashSet.class, linkedHashSet);
+        assertEquals(Arrays.asList(2, 1, 3), new ArrayList<>(linkedHashSet));
+
+        Set<?> treeSet = Nodes.to(ja, TreeSet.class);
+        assertInstanceOf(TreeSet.class, treeSet);
+        assertEquals(Arrays.asList(1, 2, 3), new ArrayList<>(treeSet));
+
+        assertThrows(JsonException.class, () -> Nodes.to(ja, SortedSet.class));
+    }
+
+    @Test
+    public void testFastjson2JSONObjectParse() {
+        JSONObject jo = JSONObject.parseObject("{\"name\":\"Alice\",\"age\":30,\"info\":{\"city\":\"SZ\"}}");
+
+        Person person = Nodes.to(jo, Person.class);
+        assertEquals("Alice", person.getName());
+        assertEquals(30, person.getAge());
+        assertEquals("SZ", person.getInfo().getString("city"));
+
+        Map<?, ?> map = Nodes.to(jo, LinkedHashMap.class);
+        assertInstanceOf(LinkedHashMap.class, map);
+        assertEquals("Alice", map.get("name"));
     }
 
     @Getter
@@ -485,6 +548,50 @@ public class NodesTest {
         Map<?, ?> sortedCopy = Nodes.copy(sorted);
         assertInstanceOf(TreeMap.class, sortedCopy);
         assertEquals(Arrays.asList("a", "b"), new ArrayList<>(sortedCopy.keySet()));
+    }
+
+    @Test
+    public void testCopyListImpls() {
+        ArrayList<Object> arrayList = new ArrayList<>(Arrays.asList("b", "a"));
+        List<?> arrayListCopy = Nodes.copy(arrayList);
+        assertInstanceOf(ArrayList.class, arrayListCopy);
+        assertNotSame(arrayList, arrayListCopy);
+        assertEquals(arrayList, arrayListCopy);
+
+        LinkedList<Object> linkedList = new LinkedList<>(Arrays.asList("b", "a"));
+        List<?> linkedListCopy = Nodes.copy(linkedList);
+        assertInstanceOf(LinkedList.class, linkedListCopy);
+        assertNotSame(linkedList, linkedListCopy);
+        assertEquals(linkedList, linkedListCopy);
+
+        CopyOnWriteArrayList<Object> cowList = new CopyOnWriteArrayList<>(Arrays.asList("b", "a"));
+        List<?> cowListCopy = Nodes.copy(cowList);
+        assertInstanceOf(CopyOnWriteArrayList.class, cowListCopy);
+        assertNotSame(cowList, cowListCopy);
+        assertEquals(cowList, cowListCopy);
+
+        List<?> fixedListCopy = Nodes.copy(Arrays.asList("x", "y"));
+        assertInstanceOf(ArrayList.class, fixedListCopy);
+        assertEquals(Arrays.asList("x", "y"), fixedListCopy);
+    }
+
+    @Test
+    public void testCopySetImpls() {
+        LinkedHashSet<Object> linkedSet = new LinkedHashSet<>(Arrays.asList("b", "a"));
+        Set<?> linkedSetCopy = Nodes.copy(linkedSet);
+        assertInstanceOf(LinkedHashSet.class, linkedSetCopy);
+        assertNotSame(linkedSet, linkedSetCopy);
+        assertEquals(Arrays.asList("b", "a"), new ArrayList<>(linkedSetCopy));
+
+        TreeSet<Object> sortedSet = new TreeSet<>(Arrays.asList("b", "a"));
+        Set<?> sortedSetCopy = Nodes.copy(sortedSet);
+        assertInstanceOf(TreeSet.class, sortedSetCopy);
+        assertNotSame(sortedSet, sortedSetCopy);
+        assertEquals(Arrays.asList("a", "b"), new ArrayList<>(sortedSetCopy));
+
+        Set<?> singletonSetCopy = Nodes.copy(Collections.singleton("z"));
+        assertInstanceOf(LinkedHashSet.class, singletonSetCopy);
+        assertEquals(Collections.singleton("z"), singletonSetCopy);
     }
 
     @Test

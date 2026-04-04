@@ -13,8 +13,11 @@ import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,7 +45,7 @@ public final class NodeRegistry {
     // All in TypeInfo
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
 
-    private static final TypeInfo NONE_INFO = new TypeInfo(Object.class, null, null, null);
+    private static final TypeInfo NONE_INFO = new TypeInfo(Object.class, null, null, null, null);
 
 
     /**
@@ -77,7 +80,7 @@ public final class NodeRegistry {
             if (mustPojo) {
                 throw new JsonException("Class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
             }
-            ti = new TypeInfo(clazz, vci, null, null);
+            ti = new TypeInfo(clazz, vci, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -85,14 +88,24 @@ public final class NodeRegistry {
         AnyOf ann = clazz.getAnnotation(AnyOf.class);
         if (ann != null) {
             AnyOfInfo aoi = ReflectUtil.analyzeAnyOf(clazz, ann);
-            ti = new TypeInfo(clazz, null, aoi, null);
+            ti = new TypeInfo(clazz, null, aoi, null, null);
+            TYPE_INFO_CACHE.put(clazz, ti);
+            return ti;
+        }
+
+        ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
+        if (ci != null) {
+            if (mustPojo) {
+                throw new JsonException("Class '" + clazz.getName() + "' is a container, not a POJO");
+            }
+            ti = new TypeInfo(clazz, null, null, ci, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
         PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
-            ti = new TypeInfo(clazz, null, null, pi);
+            ti = new TypeInfo(clazz, null, null, null, pi);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -152,7 +165,7 @@ public final class NodeRegistry {
         Objects.requireNonNull(valueClazz, "valueClazz");
 
         ValueCodecInfo vci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec);
-        TYPE_INFO_CACHE.put(valueClazz, new TypeInfo(valueClazz, vci, null, null));
+        TYPE_INFO_CACHE.put(valueClazz, new TypeInfo(valueClazz, vci, null, null, null));
         return vci;
     }
 
@@ -201,13 +214,6 @@ public final class NodeRegistry {
     }
 
     /**
-     * Returns cached POJO metadata for a class.
-     */
-    public static PojoInfo getPojoInfo(Class<?> clazz) {
-        return registerPojo(clazz);
-    }
-
-    /**
      * Clears cached POJO metadata while preserving codec and other type entries.
      */
     public static void clearPojoCache() {
@@ -226,11 +232,49 @@ public final class NodeRegistry {
         return registerPojoOrElseThrow(clazz).fields.get(fieldName);
     }
 
-    /**
-     * Returns true when class is recognized as POJO.
-     */
-    public static boolean isPojo(Class<?> clazz) {
-        return registerTypeInfo(clazz).pojoInfo != null;
+    @SuppressWarnings("unchecked")
+    public static <T> Map<String, T> newMapContainer(Class<?> mapType, boolean fallback) {
+        if (mapType == null || mapType == Object.class || mapType == Map.class || mapType == LinkedHashMap.class) {
+            return new LinkedHashMap<>();
+        }
+        ContainerInfo ci = registerTypeInfo(mapType).containerInfo;
+        if (ci == null || ci.kind != NodeKind.OBJECT_MAP) {
+            if (fallback) {
+                return new LinkedHashMap<>();
+            }
+            throw new JsonException("Unsupported Map target type '" + mapType.getName() + "'");
+        }
+        return (Map<String, T>) ci.newContainer();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> List<T> newListContainer(Class<?> listType, boolean fallback) {
+        if (listType == null || listType == Object.class || listType == List.class || listType == ArrayList.class) {
+            return new ArrayList<>();
+        }
+        ContainerInfo ci = registerTypeInfo(listType).containerInfo;
+        if (ci == null || ci.kind != NodeKind.ARRAY_LIST) {
+            if (fallback) {
+                return new ArrayList<>();
+            }
+            throw new JsonException("Unsupported List target type '" + listType.getName() + "'");
+        }
+        return (List<T>) ci.newContainer();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Set<T> newSetContainer(Class<?> setType, boolean fallback) {
+        if (setType == null || setType == Object.class || setType == Set.class || setType == LinkedHashSet.class) {
+            return new LinkedHashSet<>();
+        }
+        ContainerInfo ci = registerTypeInfo(setType).containerInfo;
+        if (ci == null || ci.kind != NodeKind.ARRAY_SET) {
+            if (fallback) {
+                return new LinkedHashSet<>();
+            }
+            throw new JsonException("Unsupported Set target type '" + setType.getName() + "'");
+        }
+        return (Set<T>) ci.newContainer();
     }
 
     /// Info
@@ -240,31 +284,19 @@ public final class NodeRegistry {
         public final Class<?> clazz;
         public final ValueCodecInfo valueCodecInfo;
         public final AnyOfInfo anyOfInfo;
+        public final ContainerInfo containerInfo;
         public final PojoInfo pojoInfo;
 
         /**
          * Creates immutable type metadata holder.
          */
-        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, AnyOfInfo anyOfInfo, PojoInfo pojoInfo) {
+        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, AnyOfInfo anyOfInfo,
+                        ContainerInfo containerInfo, PojoInfo pojoInfo) {
             this.clazz = clazz;
             this.valueCodecInfo = valueCodecInfo;
             this.anyOfInfo = anyOfInfo;
+            this.containerInfo = containerInfo;
             this.pojoInfo = pojoInfo;
-        }
-        /**
-         * Returns true when this type has POJO metadata.
-         */
-        public boolean isPojo() {
-            return pojoInfo != null;
-        }
-        /**
-         * Returns true when this type has value codec metadata.
-         */
-        public boolean isNodeValue() {
-            return valueCodecInfo != null;
-        }
-        public boolean isAnyOf() {
-            return anyOfInfo != null;
         }
 
         public boolean usesStreamingPojoReader() {
@@ -273,6 +305,38 @@ public final class NodeRegistry {
 
         public boolean usesStreamingPojoWriter() {
             return pojoInfo != null && pojoInfo.usesStreamingWriter;
+        }
+    }
+
+    public static final class ContainerInfo {
+        public final Class<?> clazz;
+        public final NodeKind kind;
+        public final MethodHandle noArgsCtorHandle;
+        public final Supplier<?> noArgsCtorLambda;
+
+        public ContainerInfo(Class<?> clazz, NodeKind kind,
+                             MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda) {
+            if (kind != NodeKind.OBJECT_MAP && kind != NodeKind.ARRAY_LIST && kind != NodeKind.ARRAY_SET) {
+                throw new JsonException("Invalid container kind '" + kind + "' for " + clazz.getName());
+            }
+            this.clazz = clazz;
+            this.kind = kind;
+            this.noArgsCtorHandle = noArgsCtorHandle;
+            this.noArgsCtorLambda = noArgsCtorLambda;
+        }
+
+        public Object newContainer() {
+            if (noArgsCtorLambda != null) {
+                return noArgsCtorLambda.get();
+            }
+            if (noArgsCtorHandle != null) {
+                try {
+                    return noArgsCtorHandle.invoke();
+                } catch (Throwable e) {
+                    throw new JsonException("Failed to create container instance of " + clazz.getName(), e);
+                }
+            }
+            throw new JsonException("Failed to create container instance of " + clazz.getName());
         }
     }
 
