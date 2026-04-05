@@ -96,7 +96,7 @@ public class Nodes {
     /**
      * Converts a node to Character using strict conversion.
      */
-    public static Character toCharacter(Object node) {
+    public static Character toChar(Object node) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = toString(node);
@@ -106,7 +106,7 @@ public class Nodes {
     /**
      * Converts a node to Character using lenient conversion.
      */
-    public static Character asCharacter(Object node) {
+    public static Character asChar(Object node) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
         String s = asString(node);
@@ -592,8 +592,8 @@ public class Nodes {
             else return toString(node);
         }
         if (clazz == Character.class) {
-            if (cross) return asCharacter(node);
-            else return toCharacter(node);
+            if (cross) return asChar(node);
+            else return toChar(node);
         }
         if (clazz.isEnum()) {
             if (cross) return asEnum(node, (Class<Enum>) clazz);
