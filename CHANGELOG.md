@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 - Improved `Nodes.to(...)`, `NodeFacade.readNode(...)`, and streaming IO binding so concrete `Map`/`List`/`Set` targets are created with their declared container implementations when supported.
 - Improved `Nodes.copy(...)` and `deepNode(...)` to preserve concrete container types when possible and fall back to default mutable containers only on unsupported source implementations.
+- Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.

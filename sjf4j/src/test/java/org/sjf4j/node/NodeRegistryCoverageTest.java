@@ -202,6 +202,8 @@ class NodeRegistryCoverageTest {
         public List<String> names;
         public Set<Integer> numbers;
         public Map<String, Long> mapping;
+        public List<TypedAnyOf> typedList;
+        public Map<String, TypedAnyOf> typedMap;
         public LinkedList<String> linkedNames;
         public TreeSet<Integer> sortedNumbers;
         public HashMap<String, Long> hashMapping;
@@ -376,6 +378,8 @@ class NodeRegistryCoverageTest {
         NodeRegistry.FieldInfo namesField = pojoInfo.fields.get("names");
         NodeRegistry.FieldInfo numbersField = pojoInfo.fields.get("numbers");
         NodeRegistry.FieldInfo mappingField = pojoInfo.fields.get("mapping");
+        NodeRegistry.FieldInfo typedListField = pojoInfo.fields.get("typedList");
+        NodeRegistry.FieldInfo typedMapField = pojoInfo.fields.get("typedMap");
         NodeRegistry.FieldInfo linkedNamesField = pojoInfo.fields.get("linkedNames");
         NodeRegistry.FieldInfo sortedNumbersField = pojoInfo.fields.get("sortedNumbers");
         NodeRegistry.FieldInfo hashMappingField = pojoInfo.fields.get("hashMapping");
@@ -389,6 +393,12 @@ class NodeRegistryCoverageTest {
         assertEquals(Integer.class, numbersField.argRawClazz);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, mappingField.containerKind);
         assertEquals(Long.class, mappingField.argRawClazz);
+        assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, typedListField.containerKind);
+        assertEquals(TypedAnyOf.class, typedListField.argRawClazz);
+        assertNotNull(typedListField.argAnyOfInfo);
+        assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, typedMapField.containerKind);
+        assertEquals(TypedAnyOf.class, typedMapField.argRawClazz);
+        assertNotNull(typedMapField.argAnyOfInfo);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, linkedNamesField.containerKind);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.SET, sortedNumbersField.containerKind);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, hashMappingField.containerKind);

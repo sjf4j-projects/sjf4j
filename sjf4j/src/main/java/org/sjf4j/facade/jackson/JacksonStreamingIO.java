@@ -216,7 +216,8 @@ public class JacksonStreamingIO {
         if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(parser, rawClazz, valueType, valueClazz);
+            return _readMapWithValueType(parser, rawClazz, valueType, valueClazz,
+                    NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
         if (rawClazz == JsonObject.class) {
@@ -236,7 +237,8 @@ public class JacksonStreamingIO {
         if (ti.valueCodecInfo != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(parser, ti.valueCodecInfo.rawClazz, valueType, valueClazz);
+            Map<String, Object> map = _readMapWithValueType(parser, ti.valueCodecInfo.rawClazz, valueType, valueClazz,
+                    NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
             return ti.valueCodecInfo.rawToValue(map);
         }
 
@@ -366,7 +368,8 @@ public class JacksonStreamingIO {
         if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(parser, rawClazz, valueType, valueClazz);
+            return _readListWithElementType(parser, rawClazz, valueType, valueClazz,
+                    NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -383,13 +386,15 @@ public class JacksonStreamingIO {
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(parser, rawClazz, valueType, valueClazz);
+            return _readSetWithElementType(parser, rawClazz, valueType, valueClazz,
+                    NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            return _readArrayWithElementType(parser, rawClazz, compType, valueClazz);
+            return _readArrayWithElementType(parser, rawClazz, compType, valueClazz,
+                    NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
@@ -410,7 +415,8 @@ public class JacksonStreamingIO {
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(parser, vci.rawClazz, valueType, valueClazz);
+            List<Object> list = _readListWithElementType(parser, vci.rawClazz, valueType, valueClazz,
+                    NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
             return vci.rawToValue(list);
         }
 
@@ -425,7 +431,7 @@ public class JacksonStreamingIO {
 
         NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
         if (fieldAnyOf == null && fieldRaw != fi.rawClazz) {
-            fieldAnyOf = NodeRegistry.registerTypeInfo(fi.rawClazz).anyOfInfo;
+            fieldAnyOf = NodeRegistry.registerTypeInfo(fieldRaw).anyOfInfo;
         }
         if (fieldAnyOf != null) {
             return _readNode(parser, fieldType, fieldRaw, fieldAnyOf);
@@ -433,27 +439,29 @@ public class JacksonStreamingIO {
 
             switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMapWithValueType(parser, fi.rawClazz, fi.argType, fi.argRawClazz);
+                return _readMapWithValueType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case LIST:
-                return _readListWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz);
+                return _readListWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case SET:
-                return _readSetWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz);
+                return _readSetWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case ARRAY:
-                return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz);
+                return _readArrayWithElementType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             default:
                 return _readNode(parser, fieldType, fieldRaw, null);
         }
     }
 
     private static Map<String, Object> _readMapWithValueType(JsonParser parser, Class<?> mapClazz,
-                                                              Type valueType, Class<?> valueClazz)
+                                                              Type valueType, Class<?> valueClazz,
+                                                              NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
         }
-        Map<String, Object> map = NodeRegistry.newMapContainer(mapClazz, false);
-        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
+        Map<String, Object> map = mapClazz == Object.class || mapClazz == Map.class || mapClazz == LinkedHashMap.class
+                ? new LinkedHashMap<>()
+                : NodeRegistry.newMapContainer(mapClazz, false);
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_OBJECT) {
             String key = parser.currentName();
@@ -466,14 +474,16 @@ public class JacksonStreamingIO {
     }
 
     private static List<Object> _readListWithElementType(JsonParser parser, Class<?> listClazz,
-                                                          Type valueType, Class<?> valueClazz)
+                                                          Type valueType, Class<?> valueClazz,
+                                                          NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
         }
-        List<Object> list = NodeRegistry.newListContainer(listClazz, false);
-        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
+        List<Object> list = listClazz == Object.class || listClazz == List.class || listClazz == ArrayList.class
+                ? new ArrayList<>()
+                : NodeRegistry.newListContainer(listClazz, false);
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
@@ -484,14 +494,16 @@ public class JacksonStreamingIO {
     }
 
     private static Set<Object> _readSetWithElementType(JsonParser parser, Class<?> setClazz,
-                                                        Type valueType, Class<?> valueClazz)
+                                                        Type valueType, Class<?> valueClazz,
+                                                        NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
             return null;
         }
-        Set<Object> set = NodeRegistry.newSetContainer(setClazz, false);
-        NodeRegistry.AnyOfInfo valueAnyOf = NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo;
+        Set<Object> set = setClazz == Object.class || setClazz == Set.class || setClazz == LinkedHashSet.class
+                ? new LinkedHashSet<>()
+                : NodeRegistry.newSetContainer(setClazz, false);
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
             Object value = _readNode(parser, valueType, valueClazz, valueAnyOf);
@@ -502,9 +514,10 @@ public class JacksonStreamingIO {
     }
 
     private static Object _readArrayWithElementType(JsonParser parser, Class<?> rawClazz,
-                                                       Type valueType, Class<?> valueClazz)
+                                                       Type valueType, Class<?> valueClazz,
+                                                       NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
-        List<Object> list = _readListWithElementType(parser, List.class, valueType, valueClazz);
+        List<Object> list = _readListWithElementType(parser, List.class, valueType, valueClazz, valueAnyOf);
         if (list == null) {
             return null;
         }

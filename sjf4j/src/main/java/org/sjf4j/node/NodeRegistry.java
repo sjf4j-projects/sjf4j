@@ -837,6 +837,7 @@ public final class NodeRegistry {
         public final ContainerKind containerKind;
         public final Type argType;
         public final Class<?> argRawClazz;
+        public final AnyOfInfo argAnyOfInfo;
         public final MethodHandle getter;
         public final Function<Object, Object> lambdaGetter;
         public final MethodHandle setter;
@@ -877,6 +878,7 @@ public final class NodeRegistry {
             this.containerKind = kind;
             this.argType = argType;
             this.argRawClazz = argRawType;
+            this.argAnyOfInfo = argRawType == null ? null : ReflectUtil.resolveAnyOfInfo(argRawType);
             this.getter = getter;
             this.lambdaGetter = lambdaGetter;
             this.setter = setter;

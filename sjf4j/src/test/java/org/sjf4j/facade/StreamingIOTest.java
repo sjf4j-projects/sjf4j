@@ -142,6 +142,13 @@ public class StreamingIOTest {
 
     @Getter
     @Setter
+    static class ZooGroup {
+        List<Animal> pets;
+        Map<String, Animal> petMap;
+    }
+
+    @Getter
+    @Setter
     static class ParentZoo {
         String kind;
         @AnyOf(value = {
@@ -331,6 +338,17 @@ public class StreamingIOTest {
         assertEquals(9, ((Cat) zoo.pet).getLives());
     }
 
+    private static void assertAnyOfInContainers() {
+        String json = "{\"pets\":[{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9},"
+                + "{\"kind\":\"dog\",\"name\":\"Lucky\",\"bark\":3}],"
+                + "\"petMap\":{\"a\":{\"kind\":\"cat\",\"name\":\"Mini\",\"lives\":7}}}";
+        ZooGroup zoo = Sjf4j.fromJson(json, ZooGroup.class);
+        assertNotNull(zoo);
+        assertTrue(zoo.pets.get(0) instanceof Cat);
+        assertTrue(zoo.pets.get(1) instanceof Dog);
+        assertTrue(zoo.petMap.get("a") instanceof Cat);
+    }
+
     private static void assertAnyOfByJsonTypeOnRoot() {
         Poly p1 = Sjf4j.fromJson("{\"a\":1}", Poly.class);
         Poly p2 = Sjf4j.fromJson("[1,2,3]", Poly.class);
@@ -381,6 +399,30 @@ public class StreamingIOTest {
 
         Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
+    }
+
+    @Test
+    void testAnyOfInContainersSharedIoAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfInContainers();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfInContainers();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfInContainers();
+    }
+
+    @Test
+    void testAnyOfInContainersExclusiveIoAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertAnyOfInContainers();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertAnyOfInContainers();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertAnyOfInContainers();
     }
 
     private static void assertGenericPatchResponse() {

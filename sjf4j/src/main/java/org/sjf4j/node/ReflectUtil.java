@@ -104,6 +104,14 @@ public final class ReflectUtil {
         }
     }
 
+    public static NodeRegistry.AnyOfInfo resolveAnyOfInfo(Class<?> clazz) {
+        if (clazz == null || clazz == Object.class) {
+            return null;
+        }
+        AnyOf ann = clazz.getAnnotation(AnyOf.class);
+        return ann == null ? null : analyzeAnyOf(clazz, ann);
+    }
+
     public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
         if (!isPojoCandidate(clazz)) {
             if (orElseThrow) throw new JsonException("Class " + clazz.getName() + " cannot be a POJO candidate");
@@ -165,7 +173,7 @@ public final class ReflectUtil {
                     if (ann != null) {
                         anyOfInfo = ReflectUtil.analyzeAnyOf(fieldClazz, ann);
                     } else {
-                        anyOfInfo = NodeRegistry.registerTypeInfo(fieldClazz).anyOfInfo;
+                        anyOfInfo = resolveAnyOfInfo(fieldClazz);
                     }
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
@@ -285,7 +293,7 @@ public final class ReflectUtil {
 
     private static final String[] FRAMEWORK_PREFIX = {
             "java.", "javax.", "jakarta.", "jdk.",
-            "com.fasterxml.jackson.", "com.google.gson."
+            "com.fasterxml.jackson.", "tools.jackson.", "com.google.gson."
     };
 
     private static boolean isFrameworkPackage(String clazzName) {
