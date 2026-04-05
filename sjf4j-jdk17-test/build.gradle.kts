@@ -1,5 +1,6 @@
 plugins {
     java
+    id("me.champeau.jmh") version "0.7.2"
 }
 
 java {
@@ -27,6 +28,7 @@ configurations {
 dependencies {
     implementation(project(":sjf4j"))
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
+    implementation("tools.jackson.core:jackson-databind:3.1.1")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     implementation("org.yaml:snakeyaml:2.5")
@@ -43,9 +45,16 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
+    testImplementation("tools.jackson.core:jackson-databind:3.1.1")
     testImplementation("com.google.code.gson:gson:2.13.1")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     testImplementation("org.yaml:snakeyaml:2.5")
+
+    jmhImplementation(project(":sjf4j"))
+    jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
+    jmhImplementation("tools.jackson.core:jackson-databind:3.1.1")
 
 }
 

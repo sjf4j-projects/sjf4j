@@ -9,6 +9,7 @@ import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.NamingStrategy;
@@ -123,6 +124,14 @@ public final class Sjf4jConfig {
     public static void useJacksonAsGlobal(StreamingFacade.StreamingMode streamingMode) {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(new JacksonJsonFacade(streamingMode)).build());
+    }
+    public static void useJackson3AsGlobal() {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new Jackson3JsonFacade()).build());
+    }
+    public static void useJackson3AsGlobal(StreamingFacade.StreamingMode streamingMode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new Jackson3JsonFacade(streamingMode)).build());
     }
     /**
      * Switches global JSON facade to Gson.

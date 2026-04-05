@@ -5,6 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.gson.GsonNodes;
 import org.sjf4j.facade.jackson.JacksonNodes;
+import org.sjf4j.facade.jackson3.Jackson3Nodes;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Types;
@@ -24,6 +25,7 @@ import java.util.function.BiPredicate;
 public class FacadeNodes {
 
     private static final boolean JACKSON_NODES_PRESENT;
+    private static final boolean JACKSON3_NODES_PRESENT;
     private static final boolean GSON_NODES_PRESENT;
 
     static {
@@ -40,6 +42,14 @@ public class FacadeNodes {
         } catch (Throwable ignored) {}
 
         JACKSON_NODES_PRESENT = jacksonNodesPresent;
+
+        boolean jackson3NodesPresent = false;
+        try {
+            Class.forName("tools.jackson.databind.JsonNode");
+            jackson3NodesPresent = true;
+        } catch (Throwable ignored) {}
+        JACKSON3_NODES_PRESENT = jackson3NodesPresent;
+
         GSON_NODES_PRESENT = gsonNodesPresent;
     }
 
@@ -50,6 +60,10 @@ public class FacadeNodes {
      */
     public static boolean isJacksonNodesPresent() {
         return JACKSON_NODES_PRESENT;
+    }
+
+    public static boolean isJackson3NodesPresent() {
+        return JACKSON3_NODES_PRESENT;
     }
 
     /**
@@ -64,6 +78,7 @@ public class FacadeNodes {
      */
     public static boolean isNode(Object node) {
         return (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) ||
+                (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) ||
                 (GSON_NODES_PRESENT && GsonNodes.isNode(node));
     }
 
@@ -72,6 +87,7 @@ public class FacadeNodes {
      */
     public static boolean isNode(Class<?> clazz) {
         return (JACKSON_NODES_PRESENT && JacksonNodes.isNode(clazz)) ||
+                (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(clazz)) ||
                 (GSON_NODES_PRESENT && GsonNodes.isNode(clazz));
     }
 
@@ -80,6 +96,7 @@ public class FacadeNodes {
      */
     public static NodeKind kindOf(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.kindOf(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.kindOf(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.kindOf(node);
         throw unknownNode(node);
     }
@@ -89,6 +106,7 @@ public class FacadeNodes {
      */
     public static NodeKind kindOf(Class<?> clazz) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(clazz)) return JacksonNodes.kindOf(clazz);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(clazz)) return Jackson3Nodes.kindOf(clazz);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(clazz)) return GsonNodes.kindOf(clazz);
         throw unknownNode(clazz);
     }
@@ -104,6 +122,7 @@ public class FacadeNodes {
      */
     public static String toString(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toString(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toString(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toString(node);
         throw unknownNode(node);
     }
@@ -113,6 +132,7 @@ public class FacadeNodes {
      */
     public static String asString(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.asString(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asString(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.asString(node);
         throw unknownNode(node);
     }
@@ -122,6 +142,7 @@ public class FacadeNodes {
      */
     public static Number toNumber(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toNumber(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toNumber(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toNumber(node);
         throw unknownNode(node);
     }
@@ -131,6 +152,7 @@ public class FacadeNodes {
      */
     public static Number asNumber(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.asNumber(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asNumber(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.asNumber(node);
         throw unknownNode(node);
     }
@@ -140,6 +162,7 @@ public class FacadeNodes {
      */
     public static Boolean toBoolean(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toBoolean(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toBoolean(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toBoolean(node);
         throw unknownNode(node);
     }
@@ -149,6 +172,7 @@ public class FacadeNodes {
      */
     public static Boolean asBoolean(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.asBoolean(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asBoolean(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.asBoolean(node);
         throw unknownNode(node);
     }
@@ -158,6 +182,7 @@ public class FacadeNodes {
      */
     public static JsonObject toJsonObject(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toJsonObject(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toJsonObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toJsonObject(node);
         throw unknownNode(node);
     }
@@ -167,6 +192,7 @@ public class FacadeNodes {
      */
     public static Map<String, Object> toMap(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toMap(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toMap(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toMap(node);
         throw unknownNode(node);
     }
@@ -176,6 +202,7 @@ public class FacadeNodes {
      */
     public static JsonArray toJsonArray(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toJsonArray(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toJsonArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toJsonArray(node);
         throw unknownNode(node);
     }
@@ -185,6 +212,7 @@ public class FacadeNodes {
      */
     public static List<Object> toList(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toList(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toList(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toList(node);
         throw unknownNode(node);
     }
@@ -194,6 +222,7 @@ public class FacadeNodes {
      */
     public static Object[] toArray(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toArray(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toArray(node);
         throw unknownNode(node);
     }
@@ -203,6 +232,7 @@ public class FacadeNodes {
      */
     public static Set<Object> toSet(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.toSet(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toSet(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toSet(node);
         throw unknownNode(node);
     }
@@ -213,6 +243,10 @@ public class FacadeNodes {
     public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             JacksonNodes.visitObject(node, visitor);
+            return;
+        }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.visitObject(node, visitor);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
@@ -226,6 +260,9 @@ public class FacadeNodes {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.anyMatchInObject(node, predicate);
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.anyMatchInObject(node, predicate);
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.anyMatchInObject(node, predicate);
         }
@@ -235,6 +272,9 @@ public class FacadeNodes {
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.transformInObject(node, mapper);
+        }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.transformInObject(node, mapper);
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.transformInObject(node, mapper);
@@ -248,6 +288,10 @@ public class FacadeNodes {
     public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             JacksonNodes.visitArray(node, visitor);
+            return;
+        }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.visitArray(node, visitor);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
@@ -264,6 +308,9 @@ public class FacadeNodes {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.anyMatchInArray(node, predicate);
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.anyMatchInArray(node, predicate);
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.anyMatchInArray(node, predicate);
         }
@@ -277,6 +324,9 @@ public class FacadeNodes {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.allMatchInArray(node, predicate);
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.allMatchInArray(node, predicate);
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.allMatchInArray(node, predicate);
         }
@@ -288,6 +338,7 @@ public class FacadeNodes {
      */
     public static int sizeInObject(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.sizeInObject(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.sizeInObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.sizeInObject(node);
         throw unknownNode(node);
     }
@@ -297,6 +348,7 @@ public class FacadeNodes {
      */
     public static int sizeInArray(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.sizeInArray(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.sizeInArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.sizeInArray(node);
         throw unknownNode(node);
     }
@@ -306,6 +358,7 @@ public class FacadeNodes {
      */
     public static Set<String> keySetInObject(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.keySetInObject(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.keySetInObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.keySetInObject(node);
         throw unknownNode(node);
     }
@@ -315,6 +368,7 @@ public class FacadeNodes {
      */
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.entrySetInObject(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.entrySetInObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.entrySetInObject(node);
         throw unknownNode(node);
     }
@@ -324,6 +378,7 @@ public class FacadeNodes {
      */
     public static Iterator<Object> iteratorInArray(Object node) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.iteratorInArray(node);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.iteratorInArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.iteratorInArray(node);
         throw unknownNode(node);
     }
@@ -333,6 +388,7 @@ public class FacadeNodes {
      */
     public static boolean containsInObject(Object node, String key) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.containsInObject(node, key);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.containsInObject(node, key);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.containsInObject(node, key);
         throw unknownNode(node);
     }
@@ -342,6 +398,7 @@ public class FacadeNodes {
      */
     public static Object getInObject(Object node, String key) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.getInObject(node, key);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.getInObject(node, key);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.getInObject(node, key);
         throw unknownNode(node);
     }
@@ -351,6 +408,7 @@ public class FacadeNodes {
      */
     public static Object getInArray(Object node, int idx) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) return JacksonNodes.getInArray(node, idx);
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.getInArray(node, idx);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.getInArray(node, idx);
         throw unknownNode(node);
     }
@@ -411,6 +469,10 @@ public class FacadeNodes {
             JacksonNodes.accessInObject(node, type, key, out);
             return;
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.accessInObject(node, type, key, out);
+            return;
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             GsonNodes.accessInObject(node, type, key, out);
             return;
@@ -424,6 +486,10 @@ public class FacadeNodes {
     public static void accessInArray(Object node, Type type, int idx, Nodes.Access out) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             JacksonNodes.accessInArray(node, type, idx, out);
+            return;
+        }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.accessInArray(node, type, idx, out);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
@@ -440,6 +506,9 @@ public class FacadeNodes {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.putInObject(node, key, value);
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.putInObject(node, key, value);
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.putInObject(node, key, value);
         }
@@ -453,6 +522,9 @@ public class FacadeNodes {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.setInArray(node, idx, value);
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.setInArray(node, idx, value);
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.setInArray(node, idx, value);
         }
@@ -465,6 +537,10 @@ public class FacadeNodes {
     public static void addInArray(Object node, Object value) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             JacksonNodes.addInArray(node, value);
+            return;
+        }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.addInArray(node, value);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
@@ -482,6 +558,10 @@ public class FacadeNodes {
             JacksonNodes.addInArray(node, idx, value);
             return;
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.addInArray(node, idx, value);
+            return;
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             GsonNodes.addInArray(node, idx, value);
             return;
@@ -496,6 +576,9 @@ public class FacadeNodes {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.removeInObject(node, key);
         }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.removeInObject(node, key);
+        }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.removeInObject(node, key);
         }
@@ -508,6 +591,9 @@ public class FacadeNodes {
     public static Object removeInArray(Object node, int idx) {
         if (JACKSON_NODES_PRESENT && JacksonNodes.isNode(node)) {
             return JacksonNodes.removeInArray(node, idx);
+        }
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.removeInArray(node, idx);
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.removeInArray(node, idx);

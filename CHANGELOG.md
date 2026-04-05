@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added Jackson 3 facade integration with runtime auto-detection, global config entry points, Jackson3 `JsonNode` support, and JDK 17 coverage/JMH evaluation.
 - Added container metadata and factory paths in `NodeRegistry` for concrete `Map`/`List`/`Set` target types.
 
 ### Improved
