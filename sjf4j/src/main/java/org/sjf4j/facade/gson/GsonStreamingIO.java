@@ -657,6 +657,9 @@ public class GsonStreamingIO {
             if (pi != null) {
                 writer.beginObject();
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                    if (!entry.getValue().hasGetter()) {
+                        continue;
+                    }
                     String key = entry.getKey();
                     writer.name(key);
                     Object vv = entry.getValue().invokeGetter(node);

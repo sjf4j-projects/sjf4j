@@ -55,7 +55,7 @@ public interface Fastjson2Module {
             if (ti.valueCodecInfo != null) {
                 return new NodeValueReader<>(ti.valueCodecInfo);
             }
-            if (ti.usesStreamingPojoReader()) {
+            if (ti.requiresFrameworkReader()) {
                 return new PojoReader<>(ti.pojoInfo);
             }
 
@@ -283,7 +283,7 @@ public interface Fastjson2Module {
                 return new NodeValueWriter<>(vci);
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
-            if (ti.usesStreamingPojoWriter()) {
+            if (ti.requiresFrameworkWriter()) {
                 return new JsonObjectWriter();
             }
             return null;

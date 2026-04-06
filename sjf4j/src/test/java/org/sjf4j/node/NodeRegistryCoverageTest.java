@@ -6,6 +6,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -212,6 +213,51 @@ class NodeRegistryCoverageTest {
         public final String readOnly = "ro";
     }
 
+    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    static class NamingPojo {
+        public String userName;
+    }
+
+    static class ExplicitFieldPojo {
+        @NodeProperty("user_name")
+        public String userName;
+    }
+
+    static class PublicPlainPojo {
+        public String userName;
+        public int loginCount;
+    }
+
+    static class AccessorPojo {
+        private String userName;
+        private int loginCount;
+
+        public String getUserName() {
+            return userName;
+        }
+
+        public void setUserName(String userName) {
+            this.userName = userName;
+        }
+
+        public int getLoginCount() {
+            return loginCount;
+        }
+
+        public void setLoginCount(int loginCount) {
+            this.loginCount = loginCount;
+        }
+    }
+
+    static class PrivateFieldPojo {
+        private String userName;
+    }
+
+    static class InvalidTransientNodePropertyPojo {
+        @NodeProperty("user_name")
+        transient String userName;
+    }
+
     @AnyOf(value = {
             @AnyOf.Mapping(value = JsonSubtype.class, when = {"json"}),
             @AnyOf.Mapping(value = OtherSubtype.class, when = {"other"})
@@ -240,7 +286,35 @@ class NodeRegistryCoverageTest {
         NodeRegistry.TypeInfo pojoType = NodeRegistry.registerTypeInfo(ContainerPojo.class);
         assertNotNull(pojoType.pojoInfo);
         assertNull(pojoType.valueCodecInfo);
-        assertFalse(pojoType.usesStreamingPojoWriter());
+        assertFalse(pojoType.requiresFrameworkReader());
+        assertFalse(pojoType.requiresFrameworkWriter());
+
+        NodeRegistry.TypeInfo creatorType = NodeRegistry.registerTypeInfo(AliasCreatorPojo.class);
+        assertTrue(creatorType.requiresFrameworkReader());
+        assertTrue(creatorType.requiresFrameworkWriter());
+
+        NodeRegistry.TypeInfo namingType = NodeRegistry.registerTypeInfo(NamingPojo.class);
+        assertTrue(namingType.requiresFrameworkReader());
+        assertTrue(namingType.requiresFrameworkWriter());
+
+        NodeRegistry.TypeInfo explicitFieldType = NodeRegistry.registerTypeInfo(ExplicitFieldPojo.class);
+        assertTrue(explicitFieldType.requiresFrameworkReader());
+        assertTrue(explicitFieldType.requiresFrameworkWriter());
+
+        NodeRegistry.TypeInfo publicPlainType = NodeRegistry.registerTypeInfo(PublicPlainPojo.class);
+        assertFalse(publicPlainType.requiresFrameworkReader());
+        assertFalse(publicPlainType.requiresFrameworkWriter());
+
+        NodeRegistry.TypeInfo accessorType = NodeRegistry.registerTypeInfo(AccessorPojo.class);
+        assertFalse(accessorType.requiresFrameworkReader());
+        assertFalse(accessorType.requiresFrameworkWriter());
+
+        NodeRegistry.TypeInfo privateFieldType = NodeRegistry.registerTypeInfo(PrivateFieldPojo.class);
+        assertTrue(privateFieldType.requiresFrameworkReader());
+        assertTrue(privateFieldType.requiresFrameworkWriter());
+
+        assertThrows(JsonException.class,
+                () -> NodeRegistry.registerTypeInfo(InvalidTransientNodePropertyPojo.class));
 
         NodeRegistry.TypeInfo valueType = NodeRegistry.registerTypeInfo(MiniValue.class);
         assertNotNull(valueType.valueCodecInfo);

@@ -53,17 +53,19 @@ public @interface AnyOf {
     /**
      * Discriminator path read from the current scope.
      */
-    String path() default "";   // Only works in Scope.SELF
+    String path() default "";   // Only works in Scope.CURRENT
 
     /**
      * Scope used when resolving {@link #path()}.
      */
-    Scope scope() default Scope.SELF;
+    Scope scope() default Scope.CURRENT;
 
     /**
      * Path resolution scope for discriminator lookup.
+     *
+     * TODO: ROOT is currently not supported.
      */
-    enum Scope { SELF, PARENT /*, ROOT*/ }
+    enum Scope {CURRENT, PARENT, ROOT }
 
     /**
      * Behavior when no mapping matches the input.

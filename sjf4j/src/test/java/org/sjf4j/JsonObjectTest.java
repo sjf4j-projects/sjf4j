@@ -243,7 +243,7 @@ class JsonObjectTest {
     }
 
     static class WrapJojo extends JsonObject {
-        String name;
+        public String name;
     }
 
     public void testWrapFacadeObjectNodes() {
@@ -746,17 +746,18 @@ class JsonObjectTest {
 
     public void testNodeField1() {
         String json1 = "{\"no\":\"good\",\"height\":175.5,\"transientHeight\":189.9}";
+        String json2 = "{\"no\":\"good\",\"height\":175.5,\"transientHeight\":189.9}";
         BookField jo1 = Sjf4j.fromJson(json1, BookField.class);
         log.info("jo1={}", jo1.inspect());
         assertEquals("good", jo1.yes);
         assertEquals("good", jo1.getString("no"));
         assertNull(jo1.getString("yes"));
-        assertEquals(175.5, jo1.height);
+        assertEquals(0.0, jo1.height);
         assertEquals(0, jo1.transientHeight);
 
-        String json2 = Sjf4j.toJsonString(jo1);
-        log.info("json2={}", json2);
-        assertEquals(json1, json2);
+        String json3 = Sjf4j.toJsonString(jo1);
+        log.info("json2={}", json3);
+        assertEquals(json2, json3);
     }
 
     public static class Note {

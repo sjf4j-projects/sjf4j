@@ -640,6 +640,9 @@ public final class StreamingIO {
                 writer.startObject();
                 boolean veryStart = true;
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                    if (!entry.getValue().hasGetter()) {
+                        continue;
+                    }
                     if (veryStart) veryStart = false;
                     else writer.writeObjectComma();
                     String key = entry.getKey();
@@ -664,7 +667,7 @@ public final class StreamingIO {
     /// Support
 
     public static Class<?> resolveSelfDiscriminatorTarget(Object rawNode, NodeRegistry.AnyOfInfo anyOfInfo) {
-        if (anyOfInfo.scope != AnyOf.Scope.SELF) {
+        if (anyOfInfo.scope != AnyOf.Scope.CURRENT) {
             throw new BindingException("AnyOf scope '" + anyOfInfo.scope + "' is not supported in streaming parser");
         }
         if (!(rawNode instanceof Map)) {

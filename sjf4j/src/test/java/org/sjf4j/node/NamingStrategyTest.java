@@ -39,14 +39,14 @@ class NamingStrategyTest {
 
     @NodeNaming(NamingStrategy.SNAKE_CASE)
     static class SnakeUser extends JsonObject {
-        String userName;
-        int loginCount;
-        String _internalId;
+        public String userName;
+        public int loginCount;
+        public String _internalId;
     }
 
     static class GlobalUser extends JsonObject {
-        String userName;
-        int loginCount;
+        public String userName;
+        public int loginCount;
     }
 
     @Test

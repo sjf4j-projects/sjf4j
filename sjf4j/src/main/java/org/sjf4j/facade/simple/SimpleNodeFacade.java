@@ -19,9 +19,7 @@ import org.sjf4j.util.Strings;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -205,7 +203,7 @@ public class SimpleNodeFacade implements NodeFacade {
         Class<?> targetClazz;
 
         if (anyOfInfo.hasDiscriminator) {
-            if (anyOfInfo.scope != AnyOf.Scope.SELF) {
+            if (anyOfInfo.scope != AnyOf.Scope.CURRENT) {
                 throw new BindingException("AnyOf scope '" + anyOfInfo.scope + "' is not supported", ps);
             }
 

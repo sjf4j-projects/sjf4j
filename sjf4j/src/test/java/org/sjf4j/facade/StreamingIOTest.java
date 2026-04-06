@@ -83,9 +83,9 @@ public class StreamingIOTest {
     }
 
     static class PatchResponse<T> extends JsonObject {
-        int code;
-        String msg;
-        T body;
+        public int code;
+        public String msg;
+        public T body;
     }
 
     static class PatchResponseWithCreator<T> extends JsonObject {

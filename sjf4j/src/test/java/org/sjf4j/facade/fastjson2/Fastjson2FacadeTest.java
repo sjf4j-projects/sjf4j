@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeNaming;
@@ -166,30 +167,30 @@ public class Fastjson2FacadeTest {
 
     private static void assertNodeField(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":null,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
+        String json2 = "{\"user_name\":\"han\",\"id\":123,\"name\":null,\"height\":175.5,\"transientHeight\":189.9}";
         BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
         assertEquals("han", jo1.userName);
         assertEquals("han", jo1.getString("user_name"));
         assertNull(jo1.getString("userName"));
 
-        assertEquals(175.5, jo1.height);
+        assertEquals(0.0, jo1.height);
         assertEquals(0, jo1.transientHeight);
 
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
-        String json2 = sw.toString();
-        assertEquals(json1, json2);
+        assertEquals(json2, sw.toString());
     }
 
     @NodeNaming(NamingStrategy.SNAKE_CASE)
     public static class SnakeBook extends JsonObject {
-        private String userName;
-        private int loginCount;
+        public String userName;
+        public int loginCount;
     }
 
     @NodeNaming(NamingStrategy.SNAKE_CASE)
     public static class SnakePlainBook {
-        private String userName;
-        private int loginCount;
+        public String userName;
+        public int loginCount;
     }
 
     private static void assertNodeNaming(Fastjson2JsonFacade facade) {
@@ -256,9 +257,29 @@ public class Fastjson2FacadeTest {
     }
 
     static class User {
-        String name;
-        List<User> friends;
-        Map<String, Object> ext;
+        public String name;
+        public List<User> friends;
+        public Map<String, Object> ext;
+    }
+
+    static class PublicPlainBook {
+        public String userName;
+        public int loginCount;
+    }
+
+    static class AccessorBook {
+        private String userName;
+        private int loginCount;
+
+        public String getUserName() { return userName; }
+        public void setUserName(String userName) { this.userName = userName; }
+        public int getLoginCount() { return loginCount; }
+        public void setLoginCount(int loginCount) { this.loginCount = loginCount; }
+    }
+
+    static class PlainPrivateBook {
+        String userName;
+        int loginCount;
     }
 
     interface Pet {}
@@ -302,6 +323,54 @@ public class Fastjson2FacadeTest {
     @Test
     void testSkipNode1() {
         assertSkipNode(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO));
+    }
+
+    @Test
+    void testPluginModuleAllowsNativeEquivalentPublicPojo() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PublicPlainBook.class);
+        assertEquals("han", book.userName);
+        assertEquals(2, book.loginCount);
+        assertEquals("{\"loginCount\":2,\"userName\":\"han\"}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleAllowsBeanAccessorPojo() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        AccessorBook book = (AccessorBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                AccessorBook.class);
+        assertEquals("han", book.getUserName());
+        assertEquals(2, book.getLoginCount());
+        assertEquals("{\"loginCount\":2,\"userName\":\"han\"}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleBeanOnlySkipsNonPublicPlainPojo() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PlainPrivateBook.class);
+        assertNull(book.userName);
+        assertEquals(0, book.loginCount);
+        assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleFieldBasedAllowsNonPublicPlainPojo() {
+        Sjf4jConfig previous = Sjf4jConfig.global();
+        try {
+            Sjf4jConfig.global(new Sjf4jConfig.Builder(previous)
+                    .plainPojoFieldAccess(Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED)
+                    .build());
+            Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+            PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                    PlainPrivateBook.class);
+            assertEquals("han", book.userName);
+            assertEquals(2, book.loginCount);
+            assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
+        } finally {
+            Sjf4jConfig.global(previous);
+        }
     }
 
     private static void assertAnyOf(Fastjson2JsonFacade facade) {

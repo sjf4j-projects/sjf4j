@@ -17,13 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class JsonpFacadeTest {
 
     static class Book extends JsonObject {
-        int id;
-        String name;
+        public int id;
+        public String name;
     }
 
     static class User {
-        String name;
-        List<User> friends;
+        public String name;
+        public List<User> friends;
     }
 
     @Test

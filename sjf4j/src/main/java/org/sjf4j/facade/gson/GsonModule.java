@@ -10,6 +10,7 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.node.NodeRegistry;
@@ -52,7 +53,13 @@ public interface GsonModule {
                 return new NodeValueAdapter<>(gson, vci);
             }
 
-            if (ti.usesStreamingPojoReader()) {
+            if (ti.pojoInfo != null
+                    && Sjf4jConfig.global().plainPojoFieldAccess == Sjf4jConfig.PlainPojoFieldAccess.BEAN_ONLY
+                    && ti.pojoInfo.hasNonPublicFields) {
+                return new PojoAdapter<>(type.getType(), ti.pojoInfo);
+            }
+
+            if (ti.requiresFrameworkReader()) {
                 return new PojoAdapter<>(type.getType(), ti.pojoInfo);
             }
             return null;

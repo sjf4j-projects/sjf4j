@@ -117,9 +117,9 @@ public class SimpleJsonFacadeTest {
 
 
     static class User {
-        String name;
-        List<User> friends;
-        Map<String, Object> ext;
+        public String name;
+        public List<User> friends;
+        public Map<String, Object> ext;
     }
 
     @Test
@@ -156,8 +156,8 @@ public class SimpleJsonFacadeTest {
     }
 
     static class CtorAlias {
-        final String name;
-        final int age;
+        public final String name;
+        public final int age;
 
         @JsonCreator
         public CtorAlias(@NodeProperty(value = "name", aliases = {"n"}) String name,
@@ -222,6 +222,42 @@ public class SimpleJsonFacadeTest {
         log.info("pojo={}", Nodes.inspect(pojo));
         assertEquals("a", pojo.name);
         assertEquals(0, pojo.age);
+    }
+
+    static class GetterOnlyPojo {
+        private String name = "seed";
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    static class SetterOnlyPojo {
+        private String name;
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String rawName() {
+            return name;
+        }
+    }
+
+    @Test
+    void bean_only_should_not_write_private_field_without_getter() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        SetterOnlyPojo pojo = (SetterOnlyPojo) facade.readNode("{\"name\":\"a\"}", SetterOnlyPojo.class);
+        assertEquals("a", pojo.rawName());
+        assertEquals("{}", facade.writeNodeAsString(pojo));
+    }
+
+    @Test
+    void bean_only_should_not_read_private_field_without_setter() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        GetterOnlyPojo pojo = (GetterOnlyPojo) facade.readNode("{\"name\":\"a\"}", GetterOnlyPojo.class);
+        assertEquals("seed", pojo.getName());
+        assertEquals("{\"name\":\"seed\"}", facade.writeNodeAsString(pojo));
     }
 
     @Test

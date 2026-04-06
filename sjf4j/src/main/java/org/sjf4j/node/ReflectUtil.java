@@ -134,6 +134,12 @@ public final class ReflectUtil {
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = new LinkedHashMap<>();
         Map<String, String> aliasMap = creatorInfo.aliasMap;
+        boolean hasExplicitBinding = false;
+        boolean hasNonPublicFields = false;
+        boolean hasNonPublicReaderGap = false;
+        boolean hasNonPublicWriterGap = false;
+        boolean allowPlainPojoFieldAccess = Sjf4jConfig.global().plainPojoFieldAccess
+                == Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED;
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
@@ -141,29 +147,85 @@ public final class ReflectUtil {
             try { AccessibleObject.setAccessible(fds, true); } catch (RuntimeException ignored) {}
             for (Field field : fds) {
                 int mod = field.getModifiers();
-                if (Modifier.isStatic(mod) || Modifier.isTransient(mod)) { continue; }
+                NodeProperty nodeProperty = field.getAnnotation(NodeProperty.class);
+                if (Modifier.isStatic(mod)) { continue; }
+                if (Modifier.isTransient(mod)) {
+                    if (nodeProperty != null) {
+                        throw new JsonException("Transient field '" + field.getName() + "' in " + clazz.getName() +
+                                " cannot use @NodeProperty");
+                    }
+                    continue;
+                }
+                boolean forceFieldBinding = nodeProperty != null;
+                boolean nonPublicField = !Modifier.isPublic(mod);
+                boolean fieldReaderGap = false;
+                boolean fieldWriterGap = false;
+                if (nonPublicField) {
+                    boolean publicGetter = hasPublicGetter(clazz, field);
+                    boolean publicSetter = hasPublicSetter(clazz, field);
+                    fieldReaderGap = !publicSetter;
+                    fieldWriterGap = !publicGetter;
+                }
+                if (forceFieldBinding) {
+                    hasExplicitBinding = true;
+                }
+                if (nonPublicField) {
+                    hasNonPublicFields = true;
+                }
+                if (fieldReaderGap) {
+                    hasNonPublicReaderGap = true;
+                }
+                if (fieldWriterGap) {
+                    hasNonPublicWriterGap = true;
+                }
+                if (nonPublicField && !forceFieldBinding && !allowPlainPojoFieldAccess
+                        && fieldReaderGap && fieldWriterGap) {
+                    continue;
+                }
 
                 MethodHandle getter = null;
-                try {
-                    getter = lookup.unreflectGetter(field);
-                } catch (Exception e) {
-                    // log.warn("Failed to get getter for '{}' of {}", field.getName(), curClazz, e);
+                if (!nonPublicField || forceFieldBinding || allowPlainPojoFieldAccess) {
+                    try {
+                        getter = lookup.unreflectGetter(field);
+                    } catch (Exception e) {
+                        // log.warn("Failed to get getter for '{}' of {}", field.getName(), curClazz, e);
+                    }
+                } else {
+                    Method getterMethod = findPublicGetterMethod(clazz, field);
+                    if (getterMethod != null) {
+                        try {
+                            getter = lookup.unreflect(getterMethod);
+                        } catch (Exception e) {
+                            // log.warn("Failed to get method getter for '{}' of {}", field.getName(), curClazz, e);
+                        }
+                    }
                 }
                 Function<Object, Object> lambdaGetter = createLambdaGetter(lookup, curClazz, field);
 
                 MethodHandle setter = null;
                 BiConsumer<Object, Object> lambdaSetter = null;
                 if (!Modifier.isFinal(mod)) {
-                    try {
-                        setter = lookup.unreflectSetter(field);
-                    } catch (Exception e) {
-                        // log.warn("Failed to get setter for '{}' of {}", field.getName(), curClazz, e);
+                    if (!nonPublicField || forceFieldBinding || allowPlainPojoFieldAccess) {
+                        try {
+                            setter = lookup.unreflectSetter(field);
+                        } catch (Exception e) {
+                            // log.warn("Failed to get setter for '{}' of {}", field.getName(), curClazz, e);
+                        }
+                    } else {
+                        Method setterMethod = findPublicSetterMethod(clazz, field);
+                        if (setterMethod != null) {
+                            try {
+                                setter = lookup.unreflect(setterMethod);
+                            } catch (Exception e) {
+                                // log.warn("Failed to get method setter for '{}' of {}", field.getName(), curClazz, e);
+                            }
+                        }
                     }
                     lambdaSetter = createLambdaSetter(lookup, curClazz, field);
 
                 }
 
-                if (getter == null && lambdaGetter == null) {
+                if (getter == null && lambdaGetter == null && setter == null && lambdaSetter == null) {
                     // log.warn("No accessible getter or setter found for field '{}' of {}", field.getName(), curClazz);
                 } else {
                     Type fieldType = Types.fieldType(curType, field);
@@ -210,7 +272,56 @@ public final class ReflectUtil {
             }
         }
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, nodeNamingStrategy, fields, aliasFields);
+        return new NodeRegistry.PojoInfo(clazz, creatorInfo, nodeNamingStrategy, fields, aliasFields,
+                hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
+    }
+
+    private static boolean hasPublicGetter(Class<?> ownerClass, Field field) {
+        return findPublicGetterMethod(ownerClass, field) != null;
+    }
+
+    private static Method findPublicGetterMethod(Class<?> ownerClass, Field field) {
+        String capitalized = capitalize(field.getName());
+        String getterName = "get" + capitalized;
+        Method getter = findPublicMethod(ownerClass, getterName);
+        if (getter != null && getter.getReturnType() != void.class) {
+            return getter;
+        }
+        if (isRecord(ownerClass)) {
+            Method componentGetter = findPublicMethod(ownerClass, field.getName());
+            if (componentGetter != null && componentGetter.getReturnType() != void.class) {
+                return componentGetter;
+            }
+        }
+        Class<?> fieldClass = field.getType();
+        if (fieldClass == boolean.class || fieldClass == Boolean.class) {
+            Method booleanGetter = findPublicMethod(ownerClass, "is" + capitalized);
+            if (booleanGetter != null &&
+                    (booleanGetter.getReturnType() == boolean.class || booleanGetter.getReturnType() == Boolean.class)) {
+                return booleanGetter;
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasPublicSetter(Class<?> ownerClass, Field field) {
+        return findPublicSetterMethod(ownerClass, field) != null;
+    }
+
+    private static Method findPublicSetterMethod(Class<?> ownerClass, Field field) {
+        if (Modifier.isFinal(field.getModifiers())) {
+            return null;
+        }
+        return findPublicMethod(ownerClass, "set" + capitalize(field.getName()), field.getType());
+    }
+
+    private static Method findPublicMethod(Class<?> ownerClass, String name, Class<?>... parameterTypes) {
+        try {
+            Method method = ownerClass.getMethod(name, parameterTypes);
+            return Modifier.isPublic(method.getModifiers()) ? method : null;
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
     }
 
     public static String getFieldName(Field field, Class<?> ownerClass) {

@@ -78,9 +78,9 @@ public class YamlFacadeTest {
 
 
     static class User {
-        String name;
-        List<User> friends;
-        Map<String, Object> ext;
+        public String name;
+        public List<User> friends;
+        public Map<String, Object> ext;
     }
 
     @Test

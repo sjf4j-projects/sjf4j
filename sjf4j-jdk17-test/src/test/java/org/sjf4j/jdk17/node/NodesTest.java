@@ -19,8 +19,8 @@ public class NodesTest {
 
     record PlainRecord(String msg, LocalDate date) {}
     static class User {
-        private String name;
-        private PlainRecord[] records;
+        public String name;
+        public PlainRecord[] records;
     }
 
     @Test

@@ -71,6 +71,10 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
 
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
         this.writerContext.config(JSONWriter.Feature.WriteNulls);
+        if (Sjf4jConfig.global().plainPojoFieldAccess == Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED) {
+            this.readerContext.config(JSONReader.Feature.FieldBased);
+            this.writerContext.config(JSONWriter.Feature.FieldBased);
+        }
 
         // With Module
         if (this.streamingMode == StreamingMode.PLUGIN_MODULE || this.streamingMode == StreamingMode.AUTO) {

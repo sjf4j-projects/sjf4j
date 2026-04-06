@@ -5,6 +5,10 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyName;
+import com.fasterxml.jackson.databind.introspect.Annotated;
+import com.fasterxml.jackson.databind.introspect.AnnotatedField;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DynamicTest;
@@ -12,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeNaming;
@@ -28,12 +33,17 @@ import org.sjf4j.node.TypeReference;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -75,6 +85,83 @@ public class JacksonFacadeTest {
         assertEquals(json1, res1);
     }
 
+    @Test
+    void testCustomMapperIntrospectorIsPreserved() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setAnnotationIntrospector(new LegacyNameIntrospector());
+
+        JacksonJsonFacade facade = new JacksonJsonFacade(objectMapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        NativeLegacyBook book = (NativeLegacyBook) facade.readNode("{\"legacy_name\":\"legacy\"}",
+                NativeLegacyBook.class);
+        assertEquals("legacy", book.legacyName);
+
+        String json = facade.writeNodeAsString(book);
+        assertTrue(json.contains("\"legacy_name\":\"legacy\""));
+        assertFalse(json.contains("legacyName"));
+    }
+
+    @Test
+    void testSeparateMapperIntrospectorsArePreserved() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setAnnotationIntrospectors(
+                new LegacySerializeOnlyIntrospector(),
+                new LegacyDeserializeOnlyIntrospector()
+        );
+
+        JacksonJsonFacade facade = new JacksonJsonFacade(objectMapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        SplitLegacyBook book = (SplitLegacyBook) facade.readNode("{\"legacy_in\":\"legacy\"}", SplitLegacyBook.class);
+        assertEquals("legacy", book.legacyName);
+        assertEquals("{\"legacy_out\":\"legacy\"}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleFallsBackForNonPublicPlainPojo() {
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PlainPrivateBook.class);
+        assertNull(book.userName);
+        assertEquals(0, book.loginCount);
+        assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleAllowsNativeEquivalentPublicPojo() {
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PublicPlainBook.class);
+        assertEquals("han", book.userName);
+        assertEquals(2, book.loginCount);
+        assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleAllowsNativeEquivalentAccessorPojo() {
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        AccessorBook book = (AccessorBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                AccessorBook.class);
+        assertEquals("han", book.getUserName());
+        assertEquals(2, book.getLoginCount());
+        assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testFieldBasedGlobalAllowsNonPublicPlainPojo() {
+        Sjf4jConfig previous = Sjf4jConfig.global();
+        try {
+            Sjf4jConfig.global(new Sjf4jConfig.Builder(previous)
+                    .plainPojoFieldAccess(Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED)
+                    .build());
+            JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+            PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                    PlainPrivateBook.class);
+            assertEquals("han", book.userName);
+            assertEquals(2, book.loginCount);
+            assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
+        } finally {
+            Sjf4jConfig.global(previous);
+        }
+    }
+
     private static void assertSerDe(JacksonJsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
@@ -87,6 +174,96 @@ public class JacksonFacadeTest {
     public static class Book extends JsonObject {
         private int id;
         private String name;
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface LegacyName {
+        String value();
+    }
+
+    static class LegacyNameIntrospector extends JacksonAnnotationIntrospector {
+        @Override
+        public PropertyName findNameForSerialization(Annotated ann) {
+            if (ann instanceof AnnotatedField) {
+                LegacyName legacyName = ((AnnotatedField) ann).getAnnotated().getAnnotation(LegacyName.class);
+                if (legacyName != null) {
+                    return PropertyName.construct(legacyName.value());
+                }
+            }
+            return super.findNameForSerialization(ann);
+        }
+
+        @Override
+        public PropertyName findNameForDeserialization(Annotated ann) {
+            if (ann instanceof AnnotatedField) {
+                LegacyName legacyName = ((AnnotatedField) ann).getAnnotated().getAnnotation(LegacyName.class);
+                if (legacyName != null) {
+                    return PropertyName.construct(legacyName.value());
+                }
+            }
+            return super.findNameForDeserialization(ann);
+        }
+    }
+
+    static class LegacySerializeOnlyIntrospector extends JacksonAnnotationIntrospector {
+        @Override
+        public PropertyName findNameForSerialization(Annotated ann) {
+            if (ann instanceof AnnotatedField && "legacyName".equals(((AnnotatedField) ann).getAnnotated().getName())) {
+                return PropertyName.construct("legacy_out");
+            }
+            return super.findNameForSerialization(ann);
+        }
+    }
+
+    static class LegacyDeserializeOnlyIntrospector extends JacksonAnnotationIntrospector {
+        @Override
+        public PropertyName findNameForDeserialization(Annotated ann) {
+            if (ann instanceof AnnotatedField && "legacyName".equals(((AnnotatedField) ann).getAnnotated().getName())) {
+                return PropertyName.construct("legacy_in");
+            }
+            return super.findNameForDeserialization(ann);
+        }
+    }
+
+    static class NativeLegacyBook {
+        @LegacyName("legacy_name")
+        public String legacyName;
+    }
+
+    static class SplitLegacyBook {
+        public String legacyName;
+    }
+
+    static class PublicPlainBook {
+        public String userName;
+        public int loginCount;
+    }
+
+    static class AccessorBook {
+        private String userName;
+        private int loginCount;
+
+        public String getUserName() {
+            return userName;
+        }
+
+        public void setUserName(String userName) {
+            this.userName = userName;
+        }
+
+        public int getLoginCount() {
+            return loginCount;
+        }
+
+        public void setLoginCount(int loginCount) {
+            this.loginCount = loginCount;
+        }
+    }
+
+    static class PlainPrivateBook {
+        String userName;
+        int loginCount;
     }
 
     private static void assertReadModule(JacksonJsonFacade facade) {
@@ -161,30 +338,30 @@ public class JacksonFacadeTest {
 
     private static void assertNodeField(JacksonJsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":null,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
+        String json2 = "{\"user_name\":\"han\",\"id\":123,\"name\":null,\"height\":175.5,\"transientHeight\":189.9}";
         BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
         assertEquals("han", jo1.userName);
         assertEquals("han", jo1.getString("user_name"));
         assertNull(jo1.getString("userName"));
 
-        assertEquals(175.5, jo1.height);
+        assertEquals(0.0, jo1.height);
         assertEquals(0, jo1.transientHeight);
 
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
-        String json2 = sw.toString();
-        assertEquals(json1, json2);
+        assertEquals(json2, sw.toString());
     }
 
     @NodeNaming(NamingStrategy.SNAKE_CASE)
     public static class SnakeBook extends JsonObject {
-        private String userName;
-        private int loginCount;
+        public String userName;
+        public int loginCount;
     }
 
     @NodeNaming(NamingStrategy.SNAKE_CASE)
     public static class SnakePlainBook {
-        private String userName;
-        private int loginCount;
+        public String userName;
+        public int loginCount;
     }
 
     private static void assertNodeNaming(JacksonJsonFacade facade) {
@@ -249,9 +426,9 @@ public class JacksonFacadeTest {
     }
 
     static class User {
-        String name;
-        List<User> friends;
-        Map<String, Object> ext;
+        public String name;
+        public List<User> friends;
+        public Map<String, Object> ext;
     }
 
     interface Pet {}

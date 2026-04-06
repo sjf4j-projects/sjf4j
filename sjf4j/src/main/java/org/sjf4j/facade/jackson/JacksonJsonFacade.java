@@ -10,6 +10,8 @@ import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
+import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
@@ -59,7 +61,12 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 
         this.objectMapper = objectMapper;
         this.objectMapper.registerModule(new JacksonModule.MySimpleModule());
-        this.objectMapper.setAnnotationIntrospector(new JacksonModule.NodePropertyAnnotationIntrospector());
+        AnnotationIntrospector serializationAi = this.objectMapper.getSerializationConfig().getAnnotationIntrospector();
+        AnnotationIntrospector deserializationAi = this.objectMapper.getDeserializationConfig().getAnnotationIntrospector();
+        this.objectMapper.setAnnotationIntrospectors(
+                AnnotationIntrospectorPair.create(new JacksonModule.NodePropertyAnnotationIntrospector(), serializationAi),
+                AnnotationIntrospectorPair.create(new JacksonModule.NodePropertyAnnotationIntrospector(), deserializationAi)
+        );
     }
 
 

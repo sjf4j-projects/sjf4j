@@ -8,11 +8,14 @@ import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
@@ -25,6 +28,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.node.NodeRegistry;
@@ -85,7 +89,7 @@ public interface JacksonModule {
                     if (ti.valueCodecInfo != null) {
                         return new NodeValueDeserializer<>(ti.valueCodecInfo);
                     }
-                    if (ti.usesStreamingPojoReader()) {
+                    if (ti.requiresFrameworkReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo);
                     }
                     return deserializer;
@@ -104,12 +108,12 @@ public interface JacksonModule {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
-                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(clazz);
+                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
                     }
-                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    if (ti.usesStreamingPojoWriter()) {
+                    if (ti.requiresFrameworkWriter()) {
                         return new StreamingSerializer();
                     }
 
@@ -276,7 +280,49 @@ public interface JacksonModule {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) JacksonStreamingIO.readAnyOf(p, anyOfInfo);
+            if (anyOfInfo.hasDiscriminator) {
+                TokenBuffer rawBuffer = ctxt.bufferAsCopyOfValue(p);
+                JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
+                Class<?> targetClazz;
+                try {
+                    targetClazz = org.sjf4j.facade.StreamingIO.resolveSelfDiscriminatorTarget(
+                            ctxt.readValue(discriminatorParser, Object.class), anyOfInfo);
+                } finally {
+                    discriminatorParser.close();
+                }
+                if (targetClazz == null) {
+                    return null;
+                }
+                JsonParser targetParser = rawBuffer.asParserOnFirstToken();
+                try {
+                    return (T) ctxt.readValue(targetParser, targetClazz);
+                } finally {
+                    targetParser.close();
+                }
+            }
+
+            JsonNode rawNode = ctxt.readTree(p);
+            Class<?> targetClazz;
+            JsonType jsonType = toJsonType(rawNode);
+            targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+            if (targetClazz == null && anyOfInfo.onNoMatch != AnyOf.OnNoMatch.FAILBACK_NULL) {
+                throw new org.sjf4j.exception.BindingException("AnyOf mapping does not support jsonType=" + jsonType +
+                        " for type '" + anyOfInfo.clazz.getName() + "'");
+            }
+            if (targetClazz == null) {
+                return null;
+            }
+            return (T) ctxt.readTreeAsValue(rawNode, targetClazz);
+        }
+
+        private JsonType toJsonType(JsonNode rawNode) {
+            if (rawNode.isObject()) return JsonType.OBJECT;
+            if (rawNode.isArray()) return JsonType.ARRAY;
+            if (rawNode.isTextual()) return JsonType.STRING;
+            if (rawNode.isNumber()) return JsonType.NUMBER;
+            if (rawNode.isBoolean()) return JsonType.BOOLEAN;
+            if (rawNode.isNull()) return JsonType.NULL;
+            return JsonType.UNKNOWN;
         }
     }
 

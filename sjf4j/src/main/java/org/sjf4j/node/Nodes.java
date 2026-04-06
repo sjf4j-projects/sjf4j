@@ -340,6 +340,9 @@ public class Nodes {
         if (pi != null) {
             Map<String, Object> map = new LinkedHashMap<>();
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                if (!entry.getValue().hasGetter()) {
+                    continue;
+                }
                 Object v = entry.getValue().invokeGetter(node);
                 map.put(entry.getKey(), v);
             }
@@ -811,6 +814,9 @@ public class Nodes {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 String key = entry.getKey();
                 NodeRegistry.FieldInfo fi = entry.getValue();
+                if (!fi.hasGetter()) {
+                    continue;
+                }
 
                 Object v = fi.invokeGetter(node);
                 session.accept(key, v, fi, applyPojoField);
@@ -975,6 +981,9 @@ public class Nodes {
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
             int idx = 0;
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                if (!entry.getValue().hasGetter()) {
+                    continue;
+                }
                 if (idx++ > 0) sb.append(", ");
                 sb.append("*").append(entry.getKey()).append("=");
                 Object v = entry.getValue().invokeGetter(node);
@@ -1014,6 +1023,9 @@ public class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                if (!entry.getValue().hasGetter()) {
+                    continue;
+                }
                 Object value = entry.getValue().invokeGetter(node);
                 visitor.accept(entry.getKey(), value);
             }
@@ -1048,6 +1060,9 @@ public class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                if (!entry.getValue().hasGetter()) {
+                    continue;
+                }
                 Object value = entry.getValue().invokeGetter(node);
                 if (predicate.test(entry.getKey(), value)) {
                     return true;
@@ -1092,6 +1107,9 @@ public class Nodes {
             boolean changed = false;
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                 NodeRegistry.FieldInfo fi = entry.getValue();
+                if (!fi.hasGetter() || !fi.hasSetter()) {
+                    continue;
+                }
                 Object oldValue = fi.invokeGetter(node);
                 Object newValue = mapper.apply(entry.getKey(), oldValue);
                 if (oldValue != newValue) {
@@ -1347,6 +1365,9 @@ public class Nodes {
         if (pi != null) {
             Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>(pi.fieldCount);
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                if (!entry.getValue().hasGetter()) {
+                    continue;
+                }
                 Object value = entry.getValue().invokeGetter(node);
                 entrySet.add(new AbstractMap.SimpleEntry<>(entry.getKey(), value));
             }
@@ -1449,7 +1470,7 @@ public class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             NodeRegistry.FieldInfo fi = pi.fields.get(key);
-            return fi != null ? fi.invokeGetter(node) : null;
+            return fi != null && fi.hasGetter() ? fi.invokeGetter(node) : null;
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.getInObject(node, key);
@@ -1554,9 +1575,9 @@ public class Nodes {
         if (pi != null) {
             NodeRegistry.FieldInfo fi = pi.fields.get(key);
             if (fi != null) {
-                out.node = fi.invokeGetter(node);
+                out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 out.type = fi.type;
-                out.insertable = true;
+                out.insertable = fi.hasSetter();
                 return;
             }
             if (node instanceof JsonObject) {
@@ -1662,7 +1683,7 @@ public class Nodes {
         if (pi != null) {
             NodeRegistry.FieldInfo fi = pi.fields.get(key);
             if (fi != null) {
-                Object old = fi.invokeGetter(node);
+                Object old = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 fi.invokeSetter(node, value);
                 return old;
             } else {

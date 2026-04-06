@@ -299,12 +299,20 @@ public final class NodeRegistry {
             this.pojoInfo = pojoInfo;
         }
 
-        public boolean usesStreamingPojoReader() {
-            return pojoInfo != null && pojoInfo.usesStreamingReader;
+        /**
+         * Returns true when read binding must stay on the framework-owned path.
+         * Native backend modules may only bypass SJF4J when this is false.
+         */
+        public boolean requiresFrameworkReader() {
+            return anyOfInfo != null || valueCodecInfo != null || (pojoInfo != null && pojoInfo.requiresFrameworkReader);
         }
 
-        public boolean usesStreamingPojoWriter() {
-            return pojoInfo != null && pojoInfo.usesStreamingWriter;
+        /**
+         * Returns true when write binding must stay on the framework-owned path.
+         * Native backend modules may only bypass SJF4J when this is false.
+         */
+        public boolean requiresFrameworkWriter() {
+            return valueCodecInfo != null || (pojoInfo != null && pojoInfo.requiresFrameworkWriter);
         }
     }
 
@@ -351,15 +359,25 @@ public final class NodeRegistry {
         public final boolean isJojo;
         public final boolean isJajo;
         public final boolean hasParentScopeAnyOf;
-        public final boolean usesStreamingReader;
-        public final boolean usesStreamingWriter;
+        public final boolean hasExplicitBinding;
+        public final boolean hasCreatorBinding;
+        public final boolean hasNonPublicFields;
+        public final boolean hasNonPublicReaderGap;
+        public final boolean hasNonPublicWriterGap;
+        public final boolean requiresFrameworkReader;
+        public final boolean requiresFrameworkWriter;
+
         /**
          * Creates immutable POJO metadata holder.
          */
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
                         NamingStrategy nodeNamingStrategy,
                         Map<String, FieldInfo> fields,
-                        Map<String, FieldInfo> aliasFields) {
+                        Map<String, FieldInfo> aliasFields,
+                        boolean hasExplicitBinding,
+                        boolean hasNonPublicFields,
+                        boolean hasNonPublicReaderGap,
+                        boolean hasNonPublicWriterGap) {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
             this.nodeNamingStrategy = nodeNamingStrategy;
@@ -377,8 +395,38 @@ public final class NodeRegistry {
                 }
             }
             this.hasParentScopeAnyOf = hasParentScopeAnyOf;
-            this.usesStreamingReader = nodeNamingStrategy != null || hasParentScopeAnyOf;
-            this.usesStreamingWriter = nodeNamingStrategy != null;
+            this.hasExplicitBinding = hasExplicitBinding;
+            this.hasCreatorBinding = creatorInfo != null && creatorInfo.argsCreator != null;
+            this.hasNonPublicFields = hasNonPublicFields;
+            this.hasNonPublicReaderGap = hasNonPublicReaderGap;
+            this.hasNonPublicWriterGap = hasNonPublicWriterGap;
+            this.requiresFrameworkReader = needsFrameworkReader(nodeNamingStrategy, hasParentScopeAnyOf,
+                    hasExplicitBinding, this.hasCreatorBinding, hasNonPublicReaderGap);
+            this.requiresFrameworkWriter = needsFrameworkWriter(nodeNamingStrategy,
+                    hasExplicitBinding, hasNonPublicWriterGap);
+        }
+
+        /**
+         * Read binding stays framework-owned once naming, creator binding, parent AnyOf,
+         * or non-public field access can diverge from backend-native bean binding.
+         */
+        private static boolean needsFrameworkReader(NamingStrategy nodeNamingStrategy,
+                                                    boolean hasParentScopeAnyOf,
+                                                    boolean hasExplicitBinding,
+                                                    boolean hasCreatorBinding,
+                                                    boolean hasNonPublicReaderGap) {
+            return nodeNamingStrategy != null || hasParentScopeAnyOf
+                    || hasExplicitBinding || hasCreatorBinding || hasNonPublicReaderGap;
+        }
+
+        /**
+         * Write binding stays framework-owned once naming or field visibility
+         * cannot be represented safely by backend-native bean serialization.
+         */
+        private static boolean needsFrameworkWriter(NamingStrategy nodeNamingStrategy,
+                                                    boolean hasExplicitBinding,
+                                                    boolean hasNonPublicWriterGap) {
+            return nodeNamingStrategy != null || hasExplicitBinding || hasNonPublicWriterGap;
         }
 
         public PojoCreationSession newCreationSession(int pendingCapacity) {
@@ -890,13 +938,13 @@ public final class NodeRegistry {
          * Returns true when a getter is available.
          */
         public boolean hasGetter() {
-            return getter != null;
+            return getter != null || lambdaGetter != null;
         }
         /**
          * Returns true when a setter is available.
          */
         public boolean hasSetter() {
-            return setter != null;
+            return setter != null || lambdaSetter != null;
         }
 
 
@@ -922,7 +970,7 @@ public final class NodeRegistry {
          * Invokes setter when present and reports success.
          */
         public boolean invokeSetterIfPresent(Object receiver, Object value) {
-            if (setter == null) return false;
+            if (setter == null && lambdaSetter == null) return false;
             invokeSetter(receiver, value);
             return true;
         }
@@ -932,13 +980,13 @@ public final class NodeRegistry {
          */
         public void invokeSetter(Object receiver, Object value) {
             Objects.requireNonNull(receiver, "receiver");
-            if (setter == null)
-                throw new JsonException("No setter available for field '" + name + "' of " + type);
             try {
                 if (lambdaSetter != null) {
                     lambdaSetter.accept(receiver, value);
                     return;
                 }
+                if (setter == null)
+                    throw new JsonException("No setter available for field '" + name + "' of " + type);
                 setter.invoke(receiver, value);
             } catch (Throwable e) {
                 throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +

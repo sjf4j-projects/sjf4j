@@ -715,6 +715,9 @@ public class Fastjson2StreamingIO {
             if (pi != null) {
                 writer.startObject();
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                    if (!entry.getValue().hasGetter()) {
+                        continue;
+                    }
                     String key = entry.getKey();
                     writer.writeName(key);
                     writer.writeColon();

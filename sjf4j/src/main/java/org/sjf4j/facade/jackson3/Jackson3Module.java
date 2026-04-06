@@ -7,6 +7,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
+import org.sjf4j.JsonType;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -29,6 +30,7 @@ import tools.jackson.databind.introspect.AnnotatedParameter;
 import tools.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import tools.jackson.databind.module.SimpleModule;
 import tools.jackson.databind.ser.ValueSerializerModifier;
+import tools.jackson.databind.util.TokenBuffer;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
@@ -76,7 +78,7 @@ public interface Jackson3Module {
                     if (ti.valueCodecInfo != null) {
                         return new NodeValueDeserializer<>(ti.valueCodecInfo);
                     }
-                    if (ti.usesStreamingPojoReader()) {
+                    if (ti.requiresFrameworkReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo);
                     }
                     return deserializer;
@@ -95,12 +97,12 @@ public interface Jackson3Module {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
-                    NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(clazz);
+                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
                     }
-                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    if (ti.usesStreamingPojoWriter()) {
+                    if (ti.requiresFrameworkWriter()) {
                         return new StreamingSerializer();
                     }
                     return serializer;
@@ -229,11 +231,51 @@ public interface Jackson3Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws tools.jackson.core.JacksonException {
-            try {
-                return (T) org.sjf4j.facade.StreamingIO.readAnyOf(new Jackson3Reader(p), anyOfInfo);
-            } catch (java.io.IOException e) {
-                throw new IllegalStateException(e);
+            JsonToken token = p.currentToken();
+            if (token == null) {
+                token = p.nextToken();
             }
+
+            if (anyOfInfo.hasDiscriminator) {
+                TokenBuffer rawBuffer = ctxt.bufferAsCopyOfValue(p);
+                JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken(ctxt);
+                Class<?> targetClazz;
+                try {
+                    targetClazz = org.sjf4j.facade.StreamingIO.resolveSelfDiscriminatorTarget(
+                            ctxt.readValue(discriminatorParser, Object.class), anyOfInfo);
+                } finally {
+                    discriminatorParser.close();
+                }
+                if (targetClazz == null) return null;
+                JsonParser targetParser = rawBuffer.asParserOnFirstToken(ctxt);
+                try {
+                    return (T) ctxt.readValue(targetParser, targetClazz);
+                } finally {
+                    targetParser.close();
+                }
+            }
+
+            JsonType jsonType = toJsonType(token);
+            Class<?> targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+            if (targetClazz == null) {
+                if (anyOfInfo.onNoMatch == org.sjf4j.annotation.node.AnyOf.OnNoMatch.FAILBACK_NULL) {
+                    ctxt.readValue(p, Object.class);
+                    return null;
+                }
+                throw new org.sjf4j.exception.BindingException("AnyOf mapping does not support jsonType=" + jsonType +
+                        " for type '" + anyOfInfo.clazz.getName() + "'");
+            }
+            return (T) ctxt.readValue(p, targetClazz);
+        }
+
+        private JsonType toJsonType(JsonToken token) {
+            if (token == JsonToken.START_OBJECT) return JsonType.OBJECT;
+            if (token == JsonToken.START_ARRAY) return JsonType.ARRAY;
+            if (token == JsonToken.VALUE_STRING) return JsonType.STRING;
+            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) return JsonType.NUMBER;
+            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
+            if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
+            return JsonType.UNKNOWN;
         }
     }
 

@@ -5,10 +5,12 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Types;
+import tools.jackson.databind.AnnotationIntrospector;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.cfg.MapperBuilder;
+import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.InputStream;
@@ -51,7 +53,9 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             builder.propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         }
         builder.addModule(new Jackson3Module.MySimpleModule());
-        builder.annotationIntrospector(new Jackson3Module.NodePropertyAnnotationIntrospector());
+        AnnotationIntrospector existing = builder.annotationIntrospector();
+        builder.annotationIntrospector(AnnotationIntrospectorPair.create(
+                new Jackson3Module.NodePropertyAnnotationIntrospector(), existing));
 
         this.objectMapper = builder.build();
     }

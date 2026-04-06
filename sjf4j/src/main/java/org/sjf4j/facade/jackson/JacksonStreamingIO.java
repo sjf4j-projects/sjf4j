@@ -714,6 +714,9 @@ public class JacksonStreamingIO {
             if (pi != null) {
                 gen.writeStartObject();
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                    if (!entry.getValue().hasGetter()) {
+                        continue;
+                    }
                     String key = entry.getKey();
                     gen.writeFieldName(key);
                     Object vv = entry.getValue().invokeGetter(node);
