@@ -28,16 +28,16 @@ public class WithArgsCreatorTest {
                     Sjf4jConfig.useSimpleJsonAsGlobal();
                     testAll();
                 }),
-                DynamicTest.dynamicTest("Run with Jackson", () -> {
-                    Sjf4jConfig.useJacksonAsGlobal(null);
+                DynamicTest.dynamicTest("Run with Jackson2", () -> {
+                    Sjf4jConfig.useJackson2AsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    Sjf4jConfig.useGsonAsGlobal(null);
+                    Sjf4jConfig.useGsonAsGlobal();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    Sjf4jConfig.useFastjson2AsGlobal(null);
+                    Sjf4jConfig.useFastjson2AsGlobal();
                     testAll();
                 })
         );

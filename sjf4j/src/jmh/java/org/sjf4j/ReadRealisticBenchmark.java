@@ -17,7 +17,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -48,7 +48,7 @@ public class ReadRealisticBenchmark {
 //        @Param({"false"})
 //        public boolean bindingPath;
 //
-//        public JacksonJsonFacade jacksonFacade;
+//        public Jackson2JsonFacade jackson2Facade;
 //        public Fastjson2JsonFacade fastjson2Facade;
 //        public String payload;
 //        public byte[] payloadBytes;
@@ -59,7 +59,7 @@ public class ReadRealisticBenchmark {
 //                    .streamingMode(StreamingFacade.StreamingMode.valueOf(streamingMode))
 //                    .bindingPath(bindingPath)
 //                    .build());
-//            jacksonFacade = new JacksonJsonFacade(new ObjectMapper());
+//            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper());
 //            fastjson2Facade = new Fastjson2JsonFacade();
 //            payload = buildPayload(orderCount);
 //            payloadBytes = payload.getBytes(StandardCharsets.UTF_8);
@@ -67,13 +67,13 @@ public class ReadRealisticBenchmark {
 //    }
 //
 //    @Benchmark
-//    public Object json_jackson_facade_realistic_pojo(ScenarioState state) {
-//        return readWithInput(state.jacksonFacade, state, BookPojo.class);
+//    public Object json_jackson2_facade_realistic_pojo(ScenarioState state) {
+//        return readWithInput(state.jackson2Facade, state, BookPojo.class);
 //    }
 //
 //    @Benchmark
-//    public Object json_jackson_facade_realistic_jojo(ScenarioState state) {
-//        return readWithInput(state.jacksonFacade, state, BookJojo.class);
+//    public Object json_jackson2_facade_realistic_jojo(ScenarioState state) {
+//        return readWithInput(state.jackson2Facade, state, BookJojo.class);
 //    }
 //
 //    @Benchmark

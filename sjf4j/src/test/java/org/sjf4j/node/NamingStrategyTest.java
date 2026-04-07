@@ -11,7 +11,7 @@ import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.path.JsonPath;
 
@@ -71,7 +71,7 @@ class NamingStrategyTest {
     @Test
     void testGlobalSnakeCaseRecreatesCopiedJsonFacade() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(previousConfig)
-                .jsonFacade(new JacksonJsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE))
+                .jsonFacade(new Jackson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE))
                 .build());
         Object firstFacade = Sjf4jConfig.global().getJsonFacade();
 

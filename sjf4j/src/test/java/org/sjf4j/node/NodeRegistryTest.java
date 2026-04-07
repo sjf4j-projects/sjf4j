@@ -21,6 +21,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.models.JojoTest;
 
 import java.time.LocalDate;
@@ -298,17 +299,19 @@ public class NodeRegistryTest {
     public void testCreatorPojoMissingParamName() {
         String json = "{\"name\":\"Alice\"}";
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE))
+                .build());
         CreatorPojoNoMatch obj1 = Sjf4j.fromJson(json, CreatorPojoNoMatch.class);
         log.info("obj1={}", Nodes.inspect(obj1));
         log.info("obj1.name={}", obj1.name);
 
-        Sjf4jConfig.useJacksonAsGlobal();
+        Sjf4jConfig.useJackson2AsGlobal();
         assertThrows(JsonException.class, () -> Sjf4j.fromJson(json, CreatorPojoNoMatch.class));
     }
 
     @Test
-    public void testJacksonCreatorPojo() {
+    public void testJackson2CreatorPojo() {
         String json = "{\"name\":\"Bob\",\"age\":20}";
         JacksonCreatorPojo pojo = Sjf4j.fromJson(json, JacksonCreatorPojo.class);
         assertEquals("Bob", pojo.getName());
@@ -316,7 +319,7 @@ public class NodeRegistryTest {
     }
 
     @Test
-    public void testJacksonAliasPojo() {
+    public void testJackson2AliasPojo() {
         String json = "{\"n\":\"Alice\"}";
         JacksonAliasPojo pojo = Sjf4j.fromJson(json, JacksonAliasPojo.class);
         assertEquals("Alice", pojo.getName());

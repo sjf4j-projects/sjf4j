@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -10,16 +10,16 @@ import java.math.BigInteger;
 import java.util.Objects;
 
 /**
- * Streaming reader backed by Jackson's {@link JsonParser}.
+ * Streaming reader backed by Jackson2's {@link JsonParser}.
  */
-public class JacksonReader implements StreamingReader {
+public class Jackson2Reader implements StreamingReader {
 
     private final JsonParser parser;
 
     /**
-     * Creates reader adapter from Jackson JsonParser.
+     * Creates reader adapter from Jackson2 JsonParser.
      */
-    public JacksonReader(JsonParser parser) {
+    public Jackson2Reader(JsonParser parser) {
         Objects.requireNonNull(parser, "parser");
         this.parser = parser;
     }

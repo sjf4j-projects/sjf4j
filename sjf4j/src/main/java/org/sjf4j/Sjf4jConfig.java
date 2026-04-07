@@ -4,11 +4,10 @@ import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
-import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
@@ -127,23 +126,15 @@ public final class Sjf4jConfig {
 
 
     /**
-     * Switches global JSON facade to Jackson.
+     * Switches global JSON facade to Jackson2.
      */
-    public static void useJacksonAsGlobal() {
+    public static void useJackson2AsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(new JacksonJsonFacade()).build());
-    }
-    public static void useJacksonAsGlobal(StreamingFacade.StreamingMode streamingMode) {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(new JacksonJsonFacade(streamingMode)).build());
+                .jsonFacade(new Jackson2JsonFacade()).build());
     }
     public static void useJackson3AsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(new Jackson3JsonFacade()).build());
-    }
-    public static void useJackson3AsGlobal(StreamingFacade.StreamingMode streamingMode) {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(new Jackson3JsonFacade(streamingMode)).build());
     }
     /**
      * Switches global JSON facade to Gson.
@@ -152,20 +143,12 @@ public final class Sjf4jConfig {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(new GsonJsonFacade()).build());
     }
-    public static void useGsonAsGlobal(StreamingFacade.StreamingMode streamingMode) {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(new GsonJsonFacade(streamingMode)).build());
-    }
     /**
      * Switches global JSON facade to Fastjson2.
      */
     public static void useFastjson2AsGlobal() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .jsonFacade(new Fastjson2JsonFacade()).build());
-    }
-    public static void useFastjson2AsGlobal(StreamingFacade.StreamingMode streamingMode) {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(new Fastjson2JsonFacade(streamingMode)).build());
     }
     /**
      * Switches global JSON facade to JSON-P.

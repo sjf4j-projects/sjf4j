@@ -35,7 +35,7 @@ class FacadeNodesTest {
 
     @Test
     void testPresenceAndKindDispatch() {
-        assertTrue(FacadeNodes.isJacksonNodesPresent());
+        assertTrue(FacadeNodes.isJackson2NodesPresent());
         assertTrue(FacadeNodes.isGsonNodesPresent());
 
         ObjectNode jacksonObject = MAPPER.createObjectNode();

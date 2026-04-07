@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import org.sjf4j.facade.StreamingWriter;
@@ -8,16 +8,16 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
- * Streaming writer backed by Jackson's {@link JsonGenerator}.
+ * Streaming writer backed by Jackson2's {@link JsonGenerator}.
  */
-public class JacksonWriter implements StreamingWriter {
+public class Jackson2Writer implements StreamingWriter {
 
     private final JsonGenerator gen;
 
     /**
-     * Creates writer adapter from Jackson JsonGenerator.
+     * Creates writer adapter from Jackson2 JsonGenerator.
      */
-    public JacksonWriter(JsonGenerator gen) {
+    public Jackson2Writer(JsonGenerator gen) {
         this.gen = gen;
     }
 
@@ -70,7 +70,7 @@ public class JacksonWriter implements StreamingWriter {
     }
 
     /**
-     * Writes numeric value using Jackson numeric APIs.
+     * Writes numeric value using Jackson2 numeric APIs.
      */
     @Override
     public void writeNumber(Number value) throws IOException {

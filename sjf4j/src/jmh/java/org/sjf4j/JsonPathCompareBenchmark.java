@@ -19,7 +19,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.path.JsonPath;
 
 import java.io.IOException;

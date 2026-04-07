@@ -5,7 +5,7 @@ import jakarta.json.spi.JsonProvider;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
@@ -22,9 +22,9 @@ import org.yaml.snakeyaml.LoaderOptions;
 public class FacadeFactory {
 
     /**
-     * Flag indicating whether Jackson library is present in the classpath.
+     * Flag indicating whether Jackson2 library is present in the classpath.
      */
-    private static final boolean JACKSON_PRESENT;
+    private static final boolean JACKSON2_PRESENT;
 
     /**
      * Flag indicating whether Jackson3 library is present in the classpath.
@@ -57,19 +57,19 @@ public class FacadeFactory {
     static {
         ClassLoader loader = FacadeFactory.class.getClassLoader();
 
-        boolean jacksonPresent = false;
-        try {
-            loader.loadClass("com.fasterxml.jackson.databind.ObjectMapper");
-            jacksonPresent = true;
-        } catch (Throwable ignored) {}
-        JACKSON_PRESENT = jacksonPresent;
-
         boolean jackson3Present = false;
         try {
             loader.loadClass("tools.jackson.databind.ObjectMapper");
             jackson3Present = true;
         } catch (Throwable ignored) {}
         JACKSON3_PRESENT = jackson3Present;
+
+        boolean jackson2Present = false;
+        try {
+            loader.loadClass("com.fasterxml.jackson.databind.ObjectMapper");
+            jackson2Present = true;
+        } catch (Throwable ignored) {}
+        JACKSON2_PRESENT = jackson2Present;
 
         boolean gsonPresent = false;
         try {
@@ -107,8 +107,8 @@ public class FacadeFactory {
     public static JsonFacade<?, ?> getDefaultJsonFacade() {
         if (JACKSON3_PRESENT) {
             return new Jackson3JsonFacade();
-        } else if (JACKSON_PRESENT) {
-            return new JacksonJsonFacade();
+        } else if (JACKSON2_PRESENT) {
+            return new Jackson2JsonFacade();
         } else if (GSON_PRESENT) {
             return new GsonJsonFacade();
         } else if (FASTJSON2_PRESENT) {

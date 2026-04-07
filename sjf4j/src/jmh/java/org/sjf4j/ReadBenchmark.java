@@ -28,7 +28,7 @@ import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.gson.GsonModule;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.TypeReference;
@@ -105,14 +105,14 @@ public class ReadBenchmark {
     private static final java.lang.reflect.Type JOJO_USER_LIST_TYPE =
             new TypeReference<List<UserJojo>>() {}.getType();
 
-    private static final ObjectMapper JACKSON = new ObjectMapper();
+    private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final Gson GSON = createNativeGson();
     private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = createFastjson2NativeContext();
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
     private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
     static {
-        JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        JACKSON2.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 //        Sjf4jConfig.useBindingPath(false);
     }
 
@@ -140,7 +140,7 @@ public class ReadBenchmark {
 //        @Param({/*"true",*/ "false"})
 //        public String useBindingPath;
 
-        public JacksonJsonFacade jacksonFacade;
+        public Jackson2JsonFacade jackson2Facade;
         public GsonJsonFacade gsonFacade;
         public Fastjson2JsonFacade fastjson2Facade;
         public JsonpJsonFacade jsonpFacade;
@@ -151,7 +151,7 @@ public class ReadBenchmark {
             Sjf4jConfig.global(new Sjf4jConfig.Builder()
                     .build());
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
-            jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), mode);
+            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), mode);
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
             fastjson2Facade = new Fastjson2JsonFacade(mode);
             jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.SHARED_IO);
@@ -160,35 +160,35 @@ public class ReadBenchmark {
     }
 
 
-    // ----- Jackson baselines -----
+    // ----- Jackson2 baselines -----
     @Benchmark
-    public Object json_jackson_pojo_native() throws IOException {
-        return JACKSON.readValue(JSON_DATA2, UserPojo.class);
+    public Object json_jackson2_pojo_native() throws IOException {
+        return JACKSON2.readValue(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_jackson_jojo_native() throws IOException {
-        return JACKSON.readValue(JSON_DATA2, UserHasAny.class);
+    public Object json_jackson2_jojo_native() throws IOException {
+        return JACKSON2.readValue(JSON_DATA2, UserHasAny.class);
     }
 
     @Benchmark
-    public Object json_jackson_map_native() throws IOException {
-        return JACKSON.readValue(JSON_DATA2, Map.class);
+    public Object json_jackson2_map_native() throws IOException {
+        return JACKSON2.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson_pojo_facade(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2, UserPojo.class);
+    public Object json_jackson2_pojo_facade(FacadeState state) throws IOException {
+        return state.jackson2Facade.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_jackson_jojo_facade(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2, UserJojo.class);
+    public Object json_jackson2_jojo_facade(FacadeState state) throws IOException {
+        return state.jackson2Facade.readNode(JSON_DATA2, UserJojo.class);
     }
 
     @Benchmark
-    public Object json_jackson_map_facade(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2, Map.class);
+    public Object json_jackson2_map_facade(FacadeState state) throws IOException {
+        return state.jackson2Facade.readNode(JSON_DATA2, Map.class);
     }
 
 

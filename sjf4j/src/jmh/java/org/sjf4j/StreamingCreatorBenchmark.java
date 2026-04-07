@@ -26,7 +26,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 
 import java.util.concurrent.TimeUnit;
 
@@ -41,7 +41,7 @@ public class StreamingCreatorBenchmark {
     private static final String JSON3 = "{\"a1\":\"x\",\"a2\":\"y\",\"a3\":\"z\"}";
     private static final String JSON6 = "{\"a1\":\"x\",\"a2\":\"y\",\"a3\":\"z\",\"a4\":\"u\",\"a5\":\"v\",\"a6\":\"w\"}";
 
-    private static final ObjectMapper JACKSON = new ObjectMapper();
+    private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final Gson GSON = new GsonBuilder().create();
     private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = JSONFactory.createReadContext();
 
@@ -54,14 +54,14 @@ public class StreamingCreatorBenchmark {
         @Param({"SHARED_IO", "PLUGIN_MODULE"})
         public String streamingMode;
 
-        public JacksonJsonFacade jackson;
+        public Jackson2JsonFacade jackson2;
         public GsonJsonFacade gson;
         public Fastjson2JsonFacade fastjson2;
 
         @Setup(Level.Trial)
         public void setup() {
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
-            jackson = new JacksonJsonFacade(new ObjectMapper(), mode);
+            jackson2 = new Jackson2JsonFacade(new ObjectMapper(), mode);
             gson = new GsonJsonFacade(new GsonBuilder(), mode);
             fastjson2 = new Fastjson2JsonFacade(mode);
         }
@@ -109,23 +109,23 @@ public class StreamingCreatorBenchmark {
     }
 
     @Benchmark
-    public Object streaming_jackson_ctor3(FacadeState s) {
-        return s.jackson.readNode(JSON3, Ctor3.class);
+    public Object streaming_jackson2_ctor3(FacadeState s) {
+        return s.jackson2.readNode(JSON3, Ctor3.class);
     }
 
     @Benchmark
-    public Object streaming_jackson_native_ctor3() throws Exception {
-        return JACKSON.readValue(JSON3, Ctor3.class);
+    public Object streaming_jackson2_native_ctor3() throws Exception {
+        return JACKSON2.readValue(JSON3, Ctor3.class);
     }
 
     @Benchmark
-    public Object streaming_jackson_ctor6(FacadeState s) {
-        return s.jackson.readNode(JSON6, Ctor6.class);
+    public Object streaming_jackson2_ctor6(FacadeState s) {
+        return s.jackson2.readNode(JSON6, Ctor6.class);
     }
 
     @Benchmark
-    public Object streaming_jackson_native_ctor6() throws Exception {
-        return JACKSON.readValue(JSON6, Ctor6.class);
+    public Object streaming_jackson2_native_ctor6() throws Exception {
+        return JACKSON2.readValue(JSON6, Ctor6.class);
     }
 
     @Benchmark

@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -27,11 +27,11 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 /**
- * Jackson JsonNode adapter used by {@link org.sjf4j.facade.FacadeNodes}.
+ * Jackson2 JsonNode adapter used by {@link org.sjf4j.facade.FacadeNodes}.
  */
-public final class JacksonNodes {
+public final class Jackson2Nodes {
 
-    private JacksonNodes() {}
+    private Jackson2Nodes() {}
 
     /**
      * Returns true when object is a Jackson JsonNode.
@@ -59,7 +59,7 @@ public final class JacksonNodes {
         if (jsonNode.isBoolean()) return NodeKind.VALUE_BOOLEAN_FACADE;
         if (jsonNode.isObject()) return NodeKind.OBJECT_FACADE;
         if (jsonNode.isArray()) return NodeKind.ARRAY_FACADE;
-        if (jsonNode.isPojo()) throw new JsonException("Not support POJONode of Jackson");
+        if (jsonNode.isPojo()) throw new JsonException("Not support POJONode of Jackson2");
         return NodeKind.UNKNOWN;
     }
 
@@ -482,11 +482,11 @@ public final class JacksonNodes {
 
 
     private static JsonException notNode(Object node) {
-        return new JsonException("Not a Jackson's JsonNode, but was '" + Types.name(node) + "'");
+        return new JsonException("Not a Jackson2 JsonNode, but was '" + Types.name(node) + "'");
     }
 
     private static JsonException notNode(Class<?> clazz) {
-        return new JsonException("Not a Jackson's JsonNode, but was '" + Types.name(clazz) + "'");
+        return new JsonException("Not a Jackson2 JsonNode, but was '" + Types.name(clazz) + "'");
     }
 
     private static JsonException expected(String expected, Object node) {
@@ -494,7 +494,7 @@ public final class JacksonNodes {
     }
 
     private static JsonException unsupported(String method) {
-        return new JsonException("'" + method + "' is not supported for `JsonNode` in Jackson");
+        return new JsonException("'" + method + "' is not supported for `JsonNode` in Jackson2");
     }
 
 

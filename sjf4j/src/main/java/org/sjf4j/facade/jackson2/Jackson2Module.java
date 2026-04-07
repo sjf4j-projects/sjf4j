@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -43,9 +43,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Jackson module integration for JsonObject/JsonArray and @NodeValue types.
+ * Jackson2 module integration for JsonObject/JsonArray and @NodeValue types.
  */
-public interface JacksonModule {
+public interface Jackson2Module {
 
     /**
      * SimpleModule that wires framework serializers/deserializers.
@@ -145,7 +145,7 @@ public interface JacksonModule {
                 if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
                 throw new IOException("Expected object value for JsonObject, but got " + value.getClass().getName());
             }
-            return (T) JacksonStreamingIO.readPojo(p, ownerType, ownerRawClazz, pi);
+            return (T) Jackson2StreamingIO.readPojo(p, ownerType, ownerRawClazz, pi);
         }
 
         private static Type _toType(JavaType javaType) {
@@ -386,7 +386,7 @@ public interface JacksonModule {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) JacksonStreamingIO.readPojo(p, pi.clazz, pi.clazz, pi);
+            return (T) Jackson2StreamingIO.readPojo(p, pi.clazz, pi.clazz, pi);
         }
     }
 
@@ -398,7 +398,7 @@ public interface JacksonModule {
     class StreamingSerializer extends JsonSerializer<Object> {
         @Override
         public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-            JacksonStreamingIO.writeNode(gen, value);
+            Jackson2StreamingIO.writeNode(gen, value);
         }
     }
 
@@ -442,7 +442,7 @@ public interface JacksonModule {
 
     /// NodeProperty
     /**
-     * Annotation introspector mapping NodeProperty/NodeCreator to Jackson metadata.
+     * Annotation introspector mapping NodeProperty/NodeCreator to Jackson2 metadata.
      */
     class NodePropertyAnnotationIntrospector extends JacksonAnnotationIntrospector {
         /**

@@ -19,8 +19,9 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
@@ -59,6 +60,24 @@ public class StreamingIOTest {
         if (previousConfig != null) {
             Sjf4jConfig.global(previousConfig);
         }
+    }
+
+    private void useJackson2Global(StreamingFacade.StreamingMode mode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new Jackson2JsonFacade(new ObjectMapper(), mode))
+                .build());
+    }
+
+    private void useGsonGlobal(StreamingFacade.StreamingMode mode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new GsonJsonFacade(new GsonBuilder(), mode))
+                .build());
+    }
+
+    private void useFastjson2Global(StreamingFacade.StreamingMode mode) {
+        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
+                .jsonFacade(new Fastjson2JsonFacade(mode))
+                .build());
     }
 
     @Getter
@@ -228,7 +247,7 @@ public class StreamingIOTest {
 
     @Test
     void testSkipNode1() {
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +
@@ -250,7 +269,7 @@ public class StreamingIOTest {
 
     @Test
     public void testExceptionWithPathSegment1() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.SHARED_IO);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\n" +
                 "  \"name\": \"Alice\",\n" +
                 "  \"friends\": [\n" +
@@ -310,7 +329,7 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfByDiscriminatorOnField() {
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useGsonGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}";
 
         Zoo zoo = Sjf4j.fromJson(json, Zoo.class);
@@ -322,7 +341,7 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfByDiscriminatorOnRootType() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\"kind\":\"dog\",\"name\":\"Lucky\",\"bark\":3}";
 
         Animal animal = Sjf4j.fromJson(json, Animal.class);
@@ -334,7 +353,7 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfByJsonTypeWithoutDiscriminator() {
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
 
         Poly p1 = Sjf4j.fromJson("{\"a\":1}", Poly.class);
         Poly p2 = Sjf4j.fromJson("[1,2,3]", Poly.class);
@@ -345,7 +364,7 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfParentDiscriminatorEarly() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
         ParentZoo zoo = Sjf4j.fromJson(json, ParentZoo.class);
@@ -357,7 +376,7 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfParentDiscriminatorLate() {
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
 
         ParentZoo zoo = Sjf4j.fromJson(json, ParentZoo.class);
@@ -369,7 +388,7 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfParentPathNotSupported() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         System.out.println(Sjf4jConfig.global().inspect());
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
@@ -428,97 +447,97 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfPluginModuleByDiscriminatorOnFieldAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByDiscriminatorOnField();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGsonGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByDiscriminatorOnField();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByDiscriminatorOnField();
     }
 
     @Test
     void testAnyOfPluginModuleByJsonTypeOnRootAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByJsonTypeOnRoot();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGsonGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByJsonTypeOnRoot();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByJsonTypeOnRoot();
     }
 
     @Test
     void testAnyOfCurrentPathSharedIoAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfByCurrentPath();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useGsonGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfByCurrentPath();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfByCurrentPath();
     }
 
     @Test
     void testAnyOfCurrentPathPluginModuleAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByCurrentPath();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGsonGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByCurrentPath();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByCurrentPath();
     }
 
     @Test
     void testAnyOfFailbackNullSharedIoAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfFailbackNull();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useGsonGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfFailbackNull();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfFailbackNull();
     }
 
     @Test
     void testAnyOfFailbackNullPluginModuleAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfFailbackNull();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGsonGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfFailbackNull();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfFailbackNull();
     }
 
     @Test
     void testAnyOfPluginModuleParentDiscriminatorLateAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGsonGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
     }
 
     @Test
     void testAnyOfInContainersSharedIoAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfInContainers();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useGsonGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfInContainers();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertAnyOfInContainers();
     }
 
@@ -571,48 +590,48 @@ public class StreamingIOTest {
 
     @Test
     void testGenericJojoBindingSharedIo() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useGsonGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }
 
     @Test
     void testConcreteContainerTargetsSharedIo() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
 
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useGsonGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
 
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2Global(StreamingFacade.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
     }
 
     @Test
-    void testGenericJojoBindingPluginModuleJackson() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+    void testGenericJojoBindingPluginModuleJackson2() {
+        useJackson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }
 
     @Test
     void testGenericJojoBindingPluginModuleGson() {
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGsonGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }
 
     @Test
     void testGenericJojoBindingPluginModuleFastjson2() {
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2Global(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }

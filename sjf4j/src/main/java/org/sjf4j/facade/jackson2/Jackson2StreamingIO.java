@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -30,9 +30,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Jackson streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
+ * Jackson2 streaming implementation aligned with {@link org.sjf4j.facade.StreamingIO} semantics.
  */
-public class JacksonStreamingIO {
+public class Jackson2StreamingIO {
     private static final Object UNSET = new Object();
 
     /// Read
@@ -51,7 +51,7 @@ public class JacksonStreamingIO {
     }
 
     /**
-     * Reads one node from Jackson parser into target type.
+     * Reads one node from Jackson2 parser into target type.
      */
     public static Object readNode(JsonParser parser, Type type) throws IOException {
         Class<?> rawBox = Types.rawBox(type);
@@ -686,7 +686,7 @@ public class JacksonStreamingIO {
     /// Write
 
     /**
-     * Writes one node to Jackson generator.
+     * Writes one node to Jackson2 generator.
      */
     public static void writeNode(JsonGenerator gen, Object node) throws IOException {
         Objects.requireNonNull(gen, "gen");
@@ -820,7 +820,7 @@ public class JacksonStreamingIO {
     }
 
     /**
-     * Writes numeric value using matching Jackson overload.
+     * Writes numeric value using matching Jackson2 overload.
      */
     public static void writeValue(JsonGenerator gen, Number value) throws IOException {
         if (value instanceof Long) {

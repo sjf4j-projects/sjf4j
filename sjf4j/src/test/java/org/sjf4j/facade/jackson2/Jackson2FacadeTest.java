@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
-public class JacksonFacadeTest {
+public class Jackson2FacadeTest {
 
     private static Stream<StreamingFacade.StreamingMode> allModes() {
         return Stream.of(
@@ -58,18 +58,18 @@ public class JacksonFacadeTest {
         );
     }
 
-    private static JacksonJsonFacade newFacade(StreamingFacade.StreamingMode mode) {
-        return new JacksonJsonFacade(new ObjectMapper(), mode);
+    private static Jackson2JsonFacade newFacade(StreamingFacade.StreamingMode mode) {
+        return new Jackson2JsonFacade(new ObjectMapper(), mode);
     }
 
     @FunctionalInterface
     private interface ModeCase {
-        void run(JacksonJsonFacade facade) throws Exception;
+        void run(Jackson2JsonFacade facade) throws Exception;
     }
 
     private static Stream<DynamicTest> modeTests(String caseName, ModeCase caze) {
         return allModes().map(mode -> DynamicTest.dynamicTest(caseName + " mode=" + mode, () -> {
-            JacksonJsonFacade facade = newFacade(mode);
+            Jackson2JsonFacade facade = newFacade(mode);
             caze.run(facade);
         }));
     }
@@ -90,7 +90,7 @@ public class JacksonFacadeTest {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setAnnotationIntrospector(new LegacyNameIntrospector());
 
-        JacksonJsonFacade facade = new JacksonJsonFacade(objectMapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(objectMapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
         NativeLegacyBook book = (NativeLegacyBook) facade.readNode("{\"legacy_name\":\"legacy\"}",
                 NativeLegacyBook.class);
         assertEquals("legacy", book.legacyName);
@@ -108,7 +108,7 @@ public class JacksonFacadeTest {
                 new LegacyDeserializeOnlyIntrospector()
         );
 
-        JacksonJsonFacade facade = new JacksonJsonFacade(objectMapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(objectMapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
         SplitLegacyBook book = (SplitLegacyBook) facade.readNode("{\"legacy_in\":\"legacy\"}", SplitLegacyBook.class);
         assertEquals("legacy", book.legacyName);
         assertEquals("{\"legacy_out\":\"legacy\"}", facade.writeNodeAsString(book));
@@ -116,7 +116,7 @@ public class JacksonFacadeTest {
 
     @Test
     void testPluginModuleFallsBackForNonPublicPlainPojo() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);
@@ -126,7 +126,7 @@ public class JacksonFacadeTest {
 
     @Test
     void testAutoModePrefersPluginModule() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper());
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);
@@ -136,7 +136,7 @@ public class JacksonFacadeTest {
 
     @Test
     void testPluginModuleAllowsNativeEquivalentPublicPojo() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PublicPlainBook.class);
         assertEquals("han", book.userName);
@@ -146,7 +146,7 @@ public class JacksonFacadeTest {
 
     @Test
     void testPluginModuleAllowsNativeEquivalentAccessorPojo() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         AccessorBook book = (AccessorBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 AccessorBook.class);
         assertEquals("han", book.getUserName());
@@ -161,7 +161,7 @@ public class JacksonFacadeTest {
             Sjf4jConfig.global(new Sjf4jConfig.Builder(previous)
                     .plainPojoFieldAccess(Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED)
                     .build());
-            JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+            Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
             PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                     PlainPrivateBook.class);
             assertEquals("han", book.userName);
@@ -172,7 +172,7 @@ public class JacksonFacadeTest {
         }
     }
 
-    private static void assertSerDe(JacksonJsonFacade facade) {
+    private static void assertSerDe(Jackson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
         StringWriter sw = new StringWriter();
@@ -276,7 +276,7 @@ public class JacksonFacadeTest {
         int loginCount;
     }
 
-    private static void assertReadModule(JacksonJsonFacade facade) {
+    private static void assertReadModule(Jackson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
 
@@ -294,7 +294,7 @@ public class JacksonFacadeTest {
         assertEquals(int[].class, ja3.getClass());
     }
 
-    private static void assertWrite(JacksonJsonFacade facade) {
+    private static void assertWrite(Jackson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         Book jo1 = (Book) facade.readNode(new StringReader(json1), Book.class);
 
@@ -323,7 +323,7 @@ public class JacksonFacadeTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void assertNodeValue(JacksonJsonFacade facade) {
+    private static void assertNodeValue(Jackson2JsonFacade facade) {
         NodeRegistry.registerValueCodec(Ops.class);
 
 
@@ -346,7 +346,7 @@ public class JacksonFacadeTest {
         private transient int transientHeight;
     }
 
-    private static void assertNodeField(JacksonJsonFacade facade) {
+    private static void assertNodeField(Jackson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":null,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
         String json2 = "{\"user_name\":\"han\",\"id\":123,\"name\":null,\"height\":175.5,\"transientHeight\":189.9}";
         BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
@@ -374,7 +374,7 @@ public class JacksonFacadeTest {
         public int loginCount;
     }
 
-    private static void assertNodeNaming(JacksonJsonFacade facade) {
+    private static void assertNodeNaming(Jackson2JsonFacade facade) {
         String json = "{\"user_name\":\"han\",\"login_count\":2}";
         SnakeBook jo1 = (SnakeBook) facade.readNode(new StringReader(json), SnakeBook.class);
         assertEquals("han", jo1.userName);
@@ -410,7 +410,7 @@ public class JacksonFacadeTest {
         public void setCity(String city) { this.city = city; }
     }
 
-    private static void assertCreatorExtraField(JacksonJsonFacade facade) {
+    private static void assertCreatorExtraField(Jackson2JsonFacade facade) {
         String json = "{\"name\":\"a\",\"age\":1,\"city\":\"sh\"}";
         Ctor2PlusField pojo = (Ctor2PlusField) facade.readNode(json, Ctor2PlusField.class);
         assertEquals("a", pojo.name);
@@ -429,7 +429,7 @@ public class JacksonFacadeTest {
         }
     }
 
-    private static void assertCreatorAlias(JacksonJsonFacade facade) {
+    private static void assertCreatorAlias(Jackson2JsonFacade facade) {
         String json = "{\"n\":\"a\",\"age\":2}";
         CtorAlias pojo = (CtorAlias) facade.readNode(json, CtorAlias.class);
         assertEquals("a", pojo.name);
@@ -453,7 +453,7 @@ public class JacksonFacadeTest {
         public TypedPet pet;
     }
 
-    private static void assertAnyOf(JacksonJsonFacade facade) {
+    private static void assertAnyOf(Jackson2JsonFacade facade) {
         String anyOfJson = "{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}";
         PetHolder holder = (PetHolder) facade.readNode(anyOfJson, PetHolder.class);
         assertEquals(Cat.class, holder.pet.getClass());
@@ -465,21 +465,21 @@ public class JacksonFacadeTest {
     @TestFactory
     Stream<DynamicTest> testSjf4jCasesAcrossModes() {
         return Stream.of(
-                modeTests("serde", JacksonFacadeTest::assertSerDe),
-                modeTests("read-module", JacksonFacadeTest::assertReadModule),
-                modeTests("write", JacksonFacadeTest::assertWrite),
-                modeTests("node-value", JacksonFacadeTest::assertNodeValue),
-                modeTests("node-field", JacksonFacadeTest::assertNodeField),
-                modeTests("node-naming", JacksonFacadeTest::assertNodeNaming),
-                modeTests("creator-extra-field", JacksonFacadeTest::assertCreatorExtraField),
-                modeTests("creator-alias", JacksonFacadeTest::assertCreatorAlias),
-                modeTests("anyof", JacksonFacadeTest::assertAnyOf)
+                modeTests("serde", Jackson2FacadeTest::assertSerDe),
+                modeTests("read-module", Jackson2FacadeTest::assertReadModule),
+                modeTests("write", Jackson2FacadeTest::assertWrite),
+                modeTests("node-value", Jackson2FacadeTest::assertNodeValue),
+                modeTests("node-field", Jackson2FacadeTest::assertNodeField),
+                modeTests("node-naming", Jackson2FacadeTest::assertNodeNaming),
+                modeTests("creator-extra-field", Jackson2FacadeTest::assertCreatorExtraField),
+                modeTests("creator-alias", Jackson2FacadeTest::assertCreatorAlias),
+                modeTests("anyof", Jackson2FacadeTest::assertAnyOf)
         ).flatMap(s -> s);
     }
 
     @Test
     void testSkipNode1() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.SHARED_IO);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +

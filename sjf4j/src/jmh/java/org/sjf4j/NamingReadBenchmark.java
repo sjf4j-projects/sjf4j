@@ -18,7 +18,7 @@ import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
-import org.sjf4j.facade.jackson.JacksonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.NamingStrategy;
 
@@ -114,7 +114,7 @@ public class NamingReadBenchmark {
     }
 
     public SimpleJsonFacade simpleFacade;
-    public JacksonJsonFacade jacksonFacade;
+    public Jackson2JsonFacade jackson2Facade;
     public GsonJsonFacade gsonFacade;
     public Fastjson2JsonFacade fastjson2Facade;
 
@@ -122,14 +122,14 @@ public class NamingReadBenchmark {
     public void setup() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder().build());
         simpleFacade = new SimpleJsonFacade();
-        jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         fastjson2Facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
 
         simpleFacade.readNode(CAMEL_JSON, CamelProfile.class);
         simpleFacade.readNode(SNAKE_JSON, SnakeProfile.class);
-        jacksonFacade.readNode(CAMEL_JSON, CamelProfile.class);
-        jacksonFacade.readNode(SNAKE_JSON, SnakeProfile.class);
+        jackson2Facade.readNode(CAMEL_JSON, CamelProfile.class);
+        jackson2Facade.readNode(SNAKE_JSON, SnakeProfile.class);
         gsonFacade.readNode(CAMEL_JSON, CamelProfile.class);
         gsonFacade.readNode(SNAKE_JSON, SnakeProfile.class);
         fastjson2Facade.readNode(CAMEL_JSON, CamelProfile.class);
@@ -147,13 +147,13 @@ public class NamingReadBenchmark {
     }
 
     @Benchmark
-    public Object jackson_plugin_camel_pojo() {
-        return jacksonFacade.readNode(CAMEL_JSON, CamelProfile.class);
+    public Object jackson2_plugin_camel_pojo() {
+        return jackson2Facade.readNode(CAMEL_JSON, CamelProfile.class);
     }
 
     @Benchmark
-    public Object jackson_plugin_snake_pojo() {
-        return jacksonFacade.readNode(SNAKE_JSON, SnakeProfile.class);
+    public Object jackson2_plugin_snake_pojo() {
+        return jackson2Facade.readNode(SNAKE_JSON, SnakeProfile.class);
     }
 
     @Benchmark

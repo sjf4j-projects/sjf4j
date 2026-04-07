@@ -1,4 +1,4 @@
-package org.sjf4j.facade.jackson;
+package org.sjf4j.facade.jackson2;
 
 
 import com.fasterxml.jackson.core.JsonEncoding;
@@ -28,29 +28,29 @@ import java.lang.reflect.Type;
 import java.util.Objects;
 
 /**
- * Jackson-based JSON facade with selectable streaming modes.
+ * Jackson2-based JSON facade with selectable streaming modes.
  */
-public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWriter> {
+public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Writer> {
     private final StreamingMode streamingMode;
 
     private final ObjectMapper objectMapper;
 
-    public JacksonJsonFacade() {
+    public Jackson2JsonFacade() {
         this(new ObjectMapper(), null);
     }
 
-    public JacksonJsonFacade(ObjectMapper objectMapper) {
+    public Jackson2JsonFacade(ObjectMapper objectMapper) {
         this(objectMapper, null);
     }
 
-    public JacksonJsonFacade(StreamingMode streamingMode) {
+    public Jackson2JsonFacade(StreamingMode streamingMode) {
         this(new ObjectMapper(), streamingMode);
     }
 
     /**
      * Creates facade with configured ObjectMapper and SJF4J module.
      */
-    public JacksonJsonFacade(ObjectMapper objectMapper, StreamingMode streamingMode) {
+    public Jackson2JsonFacade(ObjectMapper objectMapper, StreamingMode streamingMode) {
         Objects.requireNonNull(objectMapper, "objectMapper");
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
@@ -61,12 +61,12 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
 //        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         this.objectMapper = objectMapper;
-        this.objectMapper.registerModule(new JacksonModule.MySimpleModule());
+        this.objectMapper.registerModule(new Jackson2Module.MySimpleModule());
         AnnotationIntrospector serializationAi = this.objectMapper.getSerializationConfig().getAnnotationIntrospector();
         AnnotationIntrospector deserializationAi = this.objectMapper.getDeserializationConfig().getAnnotationIntrospector();
         this.objectMapper.setAnnotationIntrospectors(
-                AnnotationIntrospectorPair.create(new JacksonModule.NodePropertyAnnotationIntrospector(), serializationAi),
-                AnnotationIntrospectorPair.create(new JacksonModule.NodePropertyAnnotationIntrospector(), deserializationAi)
+                AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), serializationAi),
+                AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), deserializationAi)
         );
     }
 
@@ -77,36 +77,36 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      * Creates a streaming reader from java.io.Reader.
      */
     @Override
-    public JacksonReader createReader(Reader input) throws IOException {
+    public Jackson2Reader createReader(Reader input) throws IOException {
         Objects.requireNonNull(input, "input");
-        return new JacksonReader(objectMapper.getFactory().createParser(input));
+        return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
     /**
      * Creates a streaming reader from InputStream.
      */
     @Override
-    public JacksonReader createReader(InputStream input) throws IOException {
+    public Jackson2Reader createReader(InputStream input) throws IOException {
         Objects.requireNonNull(input, "input");
-        return new JacksonReader(objectMapper.getFactory().createParser(input));
+        return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
     /**
      * Creates a streaming reader from JSON string.
      */
     @Override
-    public JacksonReader createReader(String input) throws IOException {
+    public Jackson2Reader createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input");
-        return new JacksonReader(objectMapper.getFactory().createParser(input));
+        return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
     /**
      * Creates a streaming reader from JSON bytes.
      */
     @Override
-    public JacksonReader createReader(byte[] input) throws IOException {
+    public Jackson2Reader createReader(byte[] input) throws IOException {
         Objects.requireNonNull(input, "input");
-        return new JacksonReader(objectMapper.getFactory().createParser(input));
+        return new Jackson2Reader(objectMapper.getFactory().createParser(input));
     }
 
     /**
@@ -122,7 +122,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             case EXCLUSIVE_IO: {
                 try {
                     JsonParser parser = objectMapper.getFactory().createParser(input);
-                    return JacksonStreamingIO.readNode(parser, type);
+                    return Jackson2StreamingIO.readNode(parser, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
@@ -153,7 +153,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             case EXCLUSIVE_IO: {
                 try {
                     JsonParser parser = objectMapper.getFactory().createParser(input);
-                    return JacksonStreamingIO.readNode(parser, type);
+                    return Jackson2StreamingIO.readNode(parser, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
@@ -183,7 +183,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             }
             case EXCLUSIVE_IO: {
                 try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
-                    return JacksonStreamingIO.readNode(parser, type);
+                    return Jackson2StreamingIO.readNode(parser, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
@@ -213,7 +213,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             }
             case EXCLUSIVE_IO: {
                 try (JsonParser parser = objectMapper.getFactory().createParser(input)) {
-                    return JacksonStreamingIO.readNode(parser, type);
+                    return Jackson2StreamingIO.readNode(parser, type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);
                 }
@@ -238,16 +238,16 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      * Creates a streaming writer to java.io.Writer.
      */
     @Override
-    public JacksonWriter createWriter(Writer output) throws IOException {
-        return new JacksonWriter(objectMapper.getFactory().createGenerator(output));
+    public Jackson2Writer createWriter(Writer output) throws IOException {
+        return new Jackson2Writer(objectMapper.getFactory().createGenerator(output));
     }
 
     /**
      * Creates a streaming writer to OutputStream.
      */
     @Override
-    public JacksonWriter createWriter(OutputStream output) throws IOException {
-        return new JacksonWriter(objectMapper.getFactory().createGenerator(output, JsonEncoding.UTF8));
+    public Jackson2Writer createWriter(OutputStream output) throws IOException {
+        return new Jackson2Writer(objectMapper.getFactory().createGenerator(output, JsonEncoding.UTF8));
     }
 
     /**
@@ -264,7 +264,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             case EXCLUSIVE_IO: {
                 try {
                     JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
-                    JacksonStreamingIO.writeNode(gen, node);
+                    Jackson2StreamingIO.writeNode(gen, node);
                     gen.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON streaming", e);
@@ -299,7 +299,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             case EXCLUSIVE_IO: {
                 try {
                     JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
-                    JacksonStreamingIO.writeNode(gen, node);
+                    Jackson2StreamingIO.writeNode(gen, node);
                     gen.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON streaming", e);
@@ -333,7 +333,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 final BufferRecycler br = objectMapper.getFactory()._getBufferRecycler();
                 try (SegmentedStringWriter sw = new SegmentedStringWriter(br)) {
                     JsonGenerator gen = objectMapper.getFactory().createGenerator(sw);
-                    JacksonStreamingIO.writeNode(gen, node);
+                    Jackson2StreamingIO.writeNode(gen, node);
                     return sw.getAndClear();
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON string", e);
@@ -367,7 +367,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 final BufferRecycler br = objectMapper.getFactory()._getBufferRecycler();
                 try (ByteArrayBuilder bb = new ByteArrayBuilder(br)) {
                     JsonGenerator gen = objectMapper.getFactory().createGenerator(bb);
-                    JacksonStreamingIO.writeNode(gen, node);
+                    Jackson2StreamingIO.writeNode(gen, node);
                     final byte[] result = bb.toByteArray();
                     bb.release();
                     return result;

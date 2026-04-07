@@ -388,7 +388,7 @@ class Jackson3FacadeTest {
 
     @Test
     void testUseJackson3AsGlobal() {
-        Sjf4jConfig.useJackson3AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Sjf4jConfig.useJackson3AsGlobal();
         Book book = Sjf4j.fromJson("{\"id\":7,\"user_name\":\"jack\"}", Book.class);
         assertEquals(7, book.id);
         assertEquals("jack", book.userName);
