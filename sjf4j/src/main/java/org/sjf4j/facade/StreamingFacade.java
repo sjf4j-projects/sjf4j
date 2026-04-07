@@ -180,7 +180,16 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
      */
     default void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        writeNode(new OutputStreamWriter(output, StandardCharsets.UTF_8), node);
+        try {
+            StreamingWriter writer = createWriter(output);
+            writer.startDocument();
+            StreamingIO.writeNode(writer, node);
+            writer.endDocument();
+            writer.flush();
+            writer.flushTo(output);
+        } catch (Exception e) {
+            throw new JsonException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
+        }
     }
 
     /**
