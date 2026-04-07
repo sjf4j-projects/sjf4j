@@ -88,6 +88,7 @@ public final class Sjf4jConfig {
         this.yamlFacade = builder.yamlFacade;
         this.propertiesFacade = builder.propertiesFacade;
         this.nodeFacade = builder.nodeFacade;
+
         this.instantFormat = builder.instantFormat;
         this.pathCache = builder.pathCache;
         this.bindingPath = builder.bindingPath;

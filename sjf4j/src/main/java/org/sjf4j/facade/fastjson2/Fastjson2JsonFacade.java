@@ -1,5 +1,6 @@
 package org.sjf4j.facade.fastjson2;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
@@ -347,9 +348,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             }
             case PLUGIN_MODULE:
             {
-                try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
-                    writer.writeAny(node);
-                    writer.flushTo(output);
+                try {
+                    JSON.writeTo(output, node, writerContext);
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node of type '" + Types.name(node) +
                             "' to JSON streaming", e);
@@ -380,9 +380,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             }
             case PLUGIN_MODULE:
             {
-                try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
-                    writer.writeAny(node);
-                    return writer.toString();
+                try {
+                    return JSON.toJSONString(node, writerContext);
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node of type '" + Types.name(node) + "' to JSON string", e);
                 }
@@ -411,9 +410,8 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             }
             case PLUGIN_MODULE:
             {
-                try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
-                    writer.writeAny(node);
-                    return writer.getBytes();
+                try {
+                    return JSON.toJSONBytes(node, StandardCharsets.UTF_8, writerContext);
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node of type '" + Types.name(node) + "' to JSON bytes", e);
                 }
