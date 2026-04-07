@@ -41,17 +41,17 @@ public class BindingBenchmark {
     @Setter
     static class User {
         String name;
-        List<ReadBenchmark.User> friends;
+        List<User> friends;
         @JsonAnySetter
         @JsonAnyGetter
         Map<String, Object> ext = new LinkedHashMap<>();
     }
 
-    // Define a JOJO `User2`
+    // Define a JOJO `JojoUser`
     @Getter @Setter
-    static class User2 extends JsonObject {
+    static class JojoUser extends JsonObject {
         String name;
-        List<ReadBenchmark.User2> friends;
+        List<JojoUser> friends;
     }
 
 
@@ -92,4 +92,3 @@ public class BindingBenchmark {
 //    }
 
 }
-

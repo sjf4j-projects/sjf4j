@@ -26,8 +26,27 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
     enum StreamingMode {
         AUTO,
         SHARED_IO,
+        /**
+         * Backend-specific streaming implementation.
+         */
         EXCLUSIVE_IO,
         PLUGIN_MODULE
+    }
+
+    static StreamingMode resolveRuntimeMode(StreamingMode configuredMode,
+                                            boolean supportsPluginModule,
+                                            boolean supportsExclusiveIo) {
+        StreamingMode mode = configuredMode == null ? StreamingMode.AUTO : configuredMode;
+        if (mode == StreamingMode.AUTO) {
+            return supportsPluginModule ? StreamingMode.PLUGIN_MODULE : StreamingMode.SHARED_IO;
+        }
+        if (mode == StreamingMode.EXCLUSIVE_IO && !supportsExclusiveIo) {
+            throw new JsonException("Streaming mode 'EXCLUSIVE_IO' is not supported by this facade");
+        }
+        if (mode == StreamingMode.PLUGIN_MODULE && !supportsPluginModule) {
+            throw new JsonException("Streaming mode 'PLUGIN_MODULE' is not supported by this facade");
+        }
+        return mode;
     }
 
     /// Reader

@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Types;
 
@@ -114,7 +115,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -127,7 +128,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -145,7 +146,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -158,7 +159,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -176,7 +177,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -188,7 +189,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -206,7 +207,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -218,7 +219,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     return objectMapper.readValue(input, objectMapper.constructType(type));
                 } catch (Exception e) {
@@ -255,7 +256,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -271,7 +272,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 break;
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
@@ -290,7 +291,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -306,7 +307,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 break;
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     objectMapper.writeValue(output, node);
                 } catch (IOException e) {
@@ -324,7 +325,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public String writeNodeAsString(Object node) {
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsString(node);
             }
@@ -341,7 +342,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     return objectMapper.writeValueAsString(node);
                 } catch (IOException e) {
@@ -358,7 +359,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
      */
     @Override
     public byte[] writeNodeAsBytes(Object node) {
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsBytes(node);
             }
@@ -377,7 +378,7 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     return objectMapper.writeValueAsBytes(node);
                 } catch (IOException e) {
@@ -387,6 +388,10 @@ public class JacksonJsonFacade implements JsonFacade<JacksonReader, JacksonWrite
             default:
                 throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
+    }
+
+    private StreamingMode runtimeMode() {
+        return StreamingFacade.resolveRuntimeMode(streamingMode, true, true);
     }
 
 

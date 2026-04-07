@@ -125,6 +125,16 @@ public class JacksonFacadeTest {
     }
 
     @Test
+    void testAutoModePrefersPluginModule() {
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper());
+        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PlainPrivateBook.class);
+        assertNull(book.userName);
+        assertEquals(0, book.loginCount);
+        assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
     void testPluginModuleAllowsNativeEquivalentPublicPojo() {
         JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
@@ -469,7 +479,7 @@ public class JacksonFacadeTest {
 
     @Test
     void testSkipNode1() {
-        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        JacksonJsonFacade facade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +

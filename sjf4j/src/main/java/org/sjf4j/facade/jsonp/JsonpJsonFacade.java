@@ -6,6 +6,7 @@ import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -82,9 +83,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             default:
@@ -98,9 +98,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             default:
@@ -114,9 +113,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             default:
@@ -130,9 +128,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             default:
@@ -165,9 +162,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
             }
@@ -182,9 +178,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
             }
@@ -198,9 +193,8 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public String writeNodeAsString(Object node) {
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsString(node);
             }
             default:
@@ -213,14 +207,17 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
      */
     @Override
     public byte[] writeNodeAsBytes(Object node) {
-        switch (streamingMode) {
-            case SHARED_IO:
-            case AUTO: {
+        switch (runtimeMode()) {
+            case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsBytes(node);
             }
             default:
                 throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
+    }
+
+    private StreamingMode runtimeMode() {
+        return StreamingFacade.resolveRuntimeMode(streamingMode, false, false);
     }
 
 

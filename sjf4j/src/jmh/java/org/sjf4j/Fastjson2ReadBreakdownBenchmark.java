@@ -17,6 +17,9 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facade.fastjson2.Fastjson2StreamingIO;
+
+import java.lang.reflect.Type;
 
 import java.util.List;
 import java.util.Map;
@@ -68,13 +71,17 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @State(Scope.Thread)
     public static class S {
-        Fastjson2JsonFacade exclusive;
         Fastjson2JsonFacade plugin;
 
         @Setup(Level.Trial)
         public void setup() {
-            exclusive = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
             plugin = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        }
+    }
+
+    private static Object readExclusive(String json, Type type) {
+        try (JSONReader reader = JSONReader.of(json, NATIVE_READER_CONTEXT)) {
+            return Fastjson2StreamingIO.readNode(reader, type);
         }
     }
 
@@ -115,7 +122,7 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @Benchmark
     public Object facade_exclusive_flat(S s) {
-        return s.exclusive.readNode(JSON_FLAT, FlatPojo.class);
+        return readExclusive(JSON_FLAT, FlatPojo.class);
     }
 
     @Benchmark
@@ -151,7 +158,7 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @Benchmark
     public Object facade_exclusive_flat_unknown(S s) {
-        return s.exclusive.readNode(JSON_FLAT_UNKNOWN, FlatPojo.class);
+        return readExclusive(JSON_FLAT_UNKNOWN, FlatPojo.class);
     }
 
     @Benchmark
@@ -166,7 +173,7 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @Benchmark
     public Object facade_exclusive_nested(S s) {
-        return s.exclusive.readNode(JSON_NESTED, NestedPojo.class);
+        return readExclusive(JSON_NESTED, NestedPojo.class);
     }
 
     @Benchmark
@@ -181,7 +188,7 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @Benchmark
     public Object facade_exclusive_list(S s) {
-        return s.exclusive.readNode(JSON_LIST, ListPojo.class);
+        return readExclusive(JSON_LIST, ListPojo.class);
     }
 
     @Benchmark
@@ -196,7 +203,7 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @Benchmark
     public Object facade_exclusive_map_field(S s) {
-        return s.exclusive.readNode(JSON_MAP_FIELD, MapFieldPojo.class);
+        return readExclusive(JSON_MAP_FIELD, MapFieldPojo.class);
     }
 
     @Benchmark
@@ -211,7 +218,7 @@ public class Fastjson2ReadBreakdownBenchmark {
 
     @Benchmark
     public Object facade_exclusive_map_root(S s) {
-        return s.exclusive.readNode(JSON_MAP_ROOT, Map.class);
+        return readExclusive(JSON_MAP_ROOT, Map.class);
     }
 
     @Benchmark

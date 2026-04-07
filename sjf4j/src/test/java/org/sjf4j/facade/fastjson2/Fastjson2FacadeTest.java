@@ -322,7 +322,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testSkipNode1() {
-        assertSkipNode(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO));
+        assertSkipNode(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.SHARED_IO));
     }
 
     @Test
@@ -348,6 +348,16 @@ public class Fastjson2FacadeTest {
     @Test
     void testPluginModuleBeanOnlySkipsNonPublicPlainPojo() {
         Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PlainPrivateBook.class);
+        assertNull(book.userName);
+        assertEquals(0, book.loginCount);
+        assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testAutoModePrefersPluginModule() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade();
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);

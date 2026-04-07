@@ -3,6 +3,7 @@ package org.sjf4j.facade.jackson3;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Types;
 import tools.jackson.databind.AnnotationIntrospector;
@@ -90,9 +91,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 return JsonFacade.super.readNode(input, type);
             case PLUGIN_MODULE:
             case AUTO:
@@ -109,9 +109,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 return JsonFacade.super.readNode(input, type);
             case PLUGIN_MODULE:
             case AUTO:
@@ -128,9 +127,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 return JsonFacade.super.readNode(input, type);
             case PLUGIN_MODULE:
             case AUTO:
@@ -147,9 +145,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 return JsonFacade.super.readNode(input, type);
             case PLUGIN_MODULE:
             case AUTO:
@@ -181,9 +178,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 JsonFacade.super.writeNode(output, node);
                 return;
             case PLUGIN_MODULE:
@@ -202,9 +198,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 JsonFacade.super.writeNode(output, node);
                 return;
             case PLUGIN_MODULE:
@@ -222,9 +217,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
 
     @Override
     public String writeNodeAsString(Object node) {
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 return JsonFacade.super.writeNodeAsString(node);
             case PLUGIN_MODULE:
             case AUTO:
@@ -240,9 +234,8 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
 
     @Override
     public byte[] writeNodeAsBytes(Object node) {
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO:
-            case EXCLUSIVE_IO:
                 return JsonFacade.super.writeNodeAsBytes(node);
             case PLUGIN_MODULE:
             case AUTO:
@@ -254,5 +247,9 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             default:
                 throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
+    }
+
+    private StreamingMode runtimeMode() {
+        return StreamingFacade.resolveRuntimeMode(streamingMode, true, false);
     }
 }

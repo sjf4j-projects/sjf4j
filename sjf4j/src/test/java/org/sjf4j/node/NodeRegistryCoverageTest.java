@@ -286,32 +286,32 @@ class NodeRegistryCoverageTest {
         NodeRegistry.TypeInfo pojoType = NodeRegistry.registerTypeInfo(ContainerPojo.class);
         assertNotNull(pojoType.pojoInfo);
         assertNull(pojoType.valueCodecInfo);
-        assertFalse(pojoType.requiresFrameworkReader());
-        assertFalse(pojoType.requiresFrameworkWriter());
+        assertFalse(pojoType.requiresPojoReader());
+        assertFalse(pojoType.requiresPojoWriter());
 
         NodeRegistry.TypeInfo creatorType = NodeRegistry.registerTypeInfo(AliasCreatorPojo.class);
-        assertTrue(creatorType.requiresFrameworkReader());
-        assertTrue(creatorType.requiresFrameworkWriter());
+        assertTrue(creatorType.requiresPojoReader());
+        assertTrue(creatorType.requiresPojoWriter());
 
         NodeRegistry.TypeInfo namingType = NodeRegistry.registerTypeInfo(NamingPojo.class);
-        assertTrue(namingType.requiresFrameworkReader());
-        assertTrue(namingType.requiresFrameworkWriter());
+        assertTrue(namingType.requiresPojoReader());
+        assertTrue(namingType.requiresPojoWriter());
 
         NodeRegistry.TypeInfo explicitFieldType = NodeRegistry.registerTypeInfo(ExplicitFieldPojo.class);
-        assertTrue(explicitFieldType.requiresFrameworkReader());
-        assertTrue(explicitFieldType.requiresFrameworkWriter());
+        assertTrue(explicitFieldType.requiresPojoReader());
+        assertTrue(explicitFieldType.requiresPojoWriter());
 
         NodeRegistry.TypeInfo publicPlainType = NodeRegistry.registerTypeInfo(PublicPlainPojo.class);
-        assertFalse(publicPlainType.requiresFrameworkReader());
-        assertFalse(publicPlainType.requiresFrameworkWriter());
+        assertFalse(publicPlainType.requiresPojoReader());
+        assertFalse(publicPlainType.requiresPojoWriter());
 
         NodeRegistry.TypeInfo accessorType = NodeRegistry.registerTypeInfo(AccessorPojo.class);
-        assertFalse(accessorType.requiresFrameworkReader());
-        assertFalse(accessorType.requiresFrameworkWriter());
+        assertFalse(accessorType.requiresPojoReader());
+        assertFalse(accessorType.requiresPojoWriter());
 
         NodeRegistry.TypeInfo privateFieldType = NodeRegistry.registerTypeInfo(PrivateFieldPojo.class);
-        assertTrue(privateFieldType.requiresFrameworkReader());
-        assertTrue(privateFieldType.requiresFrameworkWriter());
+        assertTrue(privateFieldType.requiresPojoReader());
+        assertTrue(privateFieldType.requiresPojoWriter());
 
         assertThrows(JsonException.class,
                 () -> NodeRegistry.registerTypeInfo(InvalidTransientNodePropertyPojo.class));
@@ -420,7 +420,7 @@ class NodeRegistryCoverageTest {
         assertEquals(1, jsonObject.getInt("extra"));
 
         NodeRegistry.PojoInfo containerInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
-        NodeRegistry.PojoCreationSession noArgsSession = containerInfo.newCreationSession(2);
+        NodeRegistry.PojoCreationSession noArgsSession = new NodeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
         assertEquals(-1, noArgsSession.resolveArgIndex("plain"));
 
         NodeRegistry.PojoCreationSession growthSession = new NodeRegistry.PojoCreationSession(sessionCreator, 0);

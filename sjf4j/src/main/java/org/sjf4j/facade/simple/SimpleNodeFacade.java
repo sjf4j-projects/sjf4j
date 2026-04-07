@@ -283,7 +283,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 JsonObject srcJo = (JsonObject) node;
                 NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(nodeClazz);
                 NodeRegistry.CreatorInfo ci = pojoInfo.creatorInfo;
-                NodeRegistry.PojoCreationSession session = pojoInfo.newCreationSession(srcJo.size());
+                NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
 
                 for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
                     String key = entry.getKey();
@@ -351,7 +351,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(nodeClazz);
             if (pi != null) {
                 NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-                NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+                NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
 
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     String key = entry.getKey();
@@ -386,7 +386,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Object _readString(String s, Class<?> rawClazz, PathSegment ps) {
-        if (rawClazz == Object.class || rawClazz == String.class) {
+        if (rawClazz == String.class) {
             return s;
         }
         if (rawClazz == Character.class) {
@@ -445,7 +445,7 @@ public class SimpleNodeFacade implements NodeFacade {
                                           Type type,
                                           boolean deepCopy,
                                           PathSegment ps) {
-        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
@@ -633,7 +633,7 @@ public class SimpleNodeFacade implements NodeFacade {
                                           Type type,
                                           boolean deepCopy,
                                           PathSegment ps) {
-        if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
+        if (List.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
@@ -699,7 +699,7 @@ public class SimpleNodeFacade implements NodeFacade {
     // POJO -> Map/JsonObject/JOJO/POJO
     private Object _readFromPojo(Object node, NodeRegistry.PojoInfo oldPi, Class<?> rawClazz,
                                  Type type, boolean deepCopy, PathSegment ps) {
-        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);

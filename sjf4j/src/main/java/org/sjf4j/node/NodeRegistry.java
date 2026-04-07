@@ -66,7 +66,7 @@ public final class NodeRegistry {
      * @param mustPojo when true, non-POJO results are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
-        if (fastNoType(clazz)) return NONE_INFO;
+        if (_fastNoType(clazz)) return NONE_INFO;
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
             if (mustPojo && ti.pojoInfo == null) {
@@ -114,7 +114,7 @@ public final class NodeRegistry {
         return NONE_INFO;
     }
 
-    private static boolean fastNoType(Class<?> clazz) {
+    private static boolean _fastNoType(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || clazz == Map.class || clazz == List.class || clazz == Set.class || clazz.isPrimitive()
                 || clazz == JsonObject.class || clazz == JsonArray.class;
@@ -300,22 +300,23 @@ public final class NodeRegistry {
         }
 
         /**
-         * Returns true when read binding must stay on the framework-owned path.
+         * Returns true when POJO reads must stay on the framework-owned path.
          * Native backend modules may only bypass SJF4J when this is false.
          */
-        public boolean requiresFrameworkReader() {
-            return anyOfInfo != null || valueCodecInfo != null || (pojoInfo != null && pojoInfo.requiresFrameworkReader);
+        public boolean requiresPojoReader() {
+            return pojoInfo != null && pojoInfo.requiresPojoReader;
         }
 
         /**
-         * Returns true when write binding must stay on the framework-owned path.
+         * Returns true when POJO writes must stay on the framework-owned path.
          * Native backend modules may only bypass SJF4J when this is false.
          */
-        public boolean requiresFrameworkWriter() {
-            return valueCodecInfo != null || (pojoInfo != null && pojoInfo.requiresFrameworkWriter);
+        public boolean requiresPojoWriter() {
+            return pojoInfo != null && pojoInfo.requiresPojoWriter;
         }
     }
 
+    // Map / List / Set
     public static final class ContainerInfo {
         public final Class<?> clazz;
         public final NodeKind kind;
@@ -364,8 +365,8 @@ public final class NodeRegistry {
         public final boolean hasNonPublicFields;
         public final boolean hasNonPublicReaderGap;
         public final boolean hasNonPublicWriterGap;
-        public final boolean requiresFrameworkReader;
-        public final boolean requiresFrameworkWriter;
+        public final boolean requiresPojoReader;
+        public final boolean requiresPojoWriter;
 
         /**
          * Creates immutable POJO metadata holder.
@@ -400,37 +401,9 @@ public final class NodeRegistry {
             this.hasNonPublicFields = hasNonPublicFields;
             this.hasNonPublicReaderGap = hasNonPublicReaderGap;
             this.hasNonPublicWriterGap = hasNonPublicWriterGap;
-            this.requiresFrameworkReader = needsFrameworkReader(nodeNamingStrategy, hasParentScopeAnyOf,
-                    hasExplicitBinding, this.hasCreatorBinding, hasNonPublicReaderGap);
-            this.requiresFrameworkWriter = needsFrameworkWriter(nodeNamingStrategy,
-                    hasExplicitBinding, hasNonPublicWriterGap);
-        }
-
-        /**
-         * Read binding stays framework-owned once naming, creator binding, parent AnyOf,
-         * or non-public field access can diverge from backend-native bean binding.
-         */
-        private static boolean needsFrameworkReader(NamingStrategy nodeNamingStrategy,
-                                                    boolean hasParentScopeAnyOf,
-                                                    boolean hasExplicitBinding,
-                                                    boolean hasCreatorBinding,
-                                                    boolean hasNonPublicReaderGap) {
-            return nodeNamingStrategy != null || hasParentScopeAnyOf
-                    || hasExplicitBinding || hasCreatorBinding || hasNonPublicReaderGap;
-        }
-
-        /**
-         * Write binding stays framework-owned once naming or field visibility
-         * cannot be represented safely by backend-native bean serialization.
-         */
-        private static boolean needsFrameworkWriter(NamingStrategy nodeNamingStrategy,
-                                                    boolean hasExplicitBinding,
-                                                    boolean hasNonPublicWriterGap) {
-            return nodeNamingStrategy != null || hasExplicitBinding || hasNonPublicWriterGap;
-        }
-
-        public PojoCreationSession newCreationSession(int pendingCapacity) {
-            return new PojoCreationSession(creatorInfo, pendingCapacity);
+            this.requiresPojoReader = nodeNamingStrategy != null || hasParentScopeAnyOf
+                    || hasExplicitBinding || this.hasCreatorBinding || hasNonPublicReaderGap;
+            this.requiresPojoWriter = nodeNamingStrategy != null || hasExplicitBinding || hasNonPublicWriterGap;
         }
 
     }
@@ -490,26 +463,26 @@ public final class NodeRegistry {
         public void acceptResolvedField(int argIdx, Object value, FieldInfo fieldInfo) {
             if (argIdx >= 0) {
                 setCtorArg(argIdx, value);
-                materializeIfReadyField();
+                _materializeIfReadyField();
                 return;
             }
             if (pojo != null) {
                 fieldInfo.invokeSetterIfPresent(pojo, value);
             } else {
-                addPendingField(fieldInfo, value);
+                _addPendingField(fieldInfo, value);
             }
         }
 
         public void acceptResolvedJsonEntry(int argIdx, String key, Object value) {
             if (argIdx >= 0) {
                 setCtorArg(argIdx, value);
-                materializeIfReadyJsonObject();
+                _materializeIfReadyJsonObject();
                 return;
             }
             if (pojo != null) {
                 ((JsonObject) pojo).put(key, value);
             } else {
-                addPendingName(key, value);
+                _addPendingName(key, value);
             }
         }
 
@@ -526,7 +499,7 @@ public final class NodeRegistry {
 
         public void addPending(Object key, Object value) {
             if (pojo != null) return;
-            ensurePendingCapacity();
+            _ensurePendingCapacity();
             pendingKeys[pendingSize] = key;
             pendingValues[pendingSize] = value;
             pendingSize++;
@@ -535,7 +508,7 @@ public final class NodeRegistry {
         public void materializeIfReady(PojoPendingApplier applier) {
             if (pojo == null && remainingArgs == 0) {
                 pojo = creatorInfo.newPojoWithArgs(args);
-                replayPending(applier);
+                _replayPending(applier);
             }
         }
 
@@ -543,7 +516,7 @@ public final class NodeRegistry {
             if (pojo == null) {
                 pojo = creatorInfo.newPojoWithArgs(args);
             }
-            replayPending(applier);
+            _replayPending(applier);
             return pojo;
         }
 
@@ -551,7 +524,7 @@ public final class NodeRegistry {
             if (pojo == null) {
                 pojo = creatorInfo.newPojoWithArgs(args);
             }
-            replayPendingFields();
+            _replayPendingFields();
             return pojo;
         }
 
@@ -559,11 +532,11 @@ public final class NodeRegistry {
             if (pojo == null) {
                 pojo = creatorInfo.newPojoWithArgs(args);
             }
-            replayPendingJsonEntries();
+            _replayPendingJsonEntries();
             return (JsonObject) pojo;
         }
 
-        private void replayPending(PojoPendingApplier applier) {
+        private void _replayPending(PojoPendingApplier applier) {
             if (pendingSize == 0) return;
             for (int i = 0; i < pendingSize; i++) {
                 applier.apply(pojo, pendingKeys[i], pendingValues[i]);
@@ -571,21 +544,21 @@ public final class NodeRegistry {
             pendingSize = 0;
         }
 
-        private void materializeIfReadyField() {
+        private void _materializeIfReadyField() {
             if (pojo == null && remainingArgs == 0) {
                 pojo = creatorInfo.newPojoWithArgs(args);
-                replayPendingFields();
+                _replayPendingFields();
             }
         }
 
-        private void addPendingField(FieldInfo fi, Object value) {
-            ensurePendingFieldCapacity();
+        private void _addPendingField(FieldInfo fi, Object value) {
+            _ensurePendingFieldCapacity();
             pendingFields[pendingFieldSize] = fi;
             pendingFieldValues[pendingFieldSize] = value;
             pendingFieldSize++;
         }
 
-        private void replayPendingFields() {
+        private void _replayPendingFields() {
             if (pendingFieldSize == 0) return;
             for (int i = 0; i < pendingFieldSize; i++) {
                 pendingFields[i].invokeSetterIfPresent(pojo, pendingFieldValues[i]);
@@ -593,21 +566,21 @@ public final class NodeRegistry {
             pendingFieldSize = 0;
         }
 
-        private void materializeIfReadyJsonObject() {
+        private void _materializeIfReadyJsonObject() {
             if (pojo == null && remainingArgs == 0) {
                 pojo = creatorInfo.newPojoWithArgs(args);
-                replayPendingJsonEntries();
+                _replayPendingJsonEntries();
             }
         }
 
-        private void addPendingName(String key, Object value) {
-            ensurePendingNameCapacity();
+        private void _addPendingName(String key, Object value) {
+            _ensurePendingNameCapacity();
             pendingNames[pendingNameSize] = key;
             pendingNameValues[pendingNameSize] = value;
             pendingNameSize++;
         }
 
-        private void replayPendingJsonEntries() {
+        private void _replayPendingJsonEntries() {
             if (pendingNameSize == 0) return;
             JsonObject jo = (JsonObject) pojo;
             for (int i = 0; i < pendingNameSize; i++) {
@@ -616,7 +589,7 @@ public final class NodeRegistry {
             pendingNameSize = 0;
         }
 
-        private void ensurePendingFieldCapacity() {
+        private void _ensurePendingFieldCapacity() {
             if (pendingFields == null || pendingFieldValues == null) {
                 int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
                 pendingFields = new FieldInfo[cap];
@@ -634,7 +607,7 @@ public final class NodeRegistry {
             pendingFieldValues = newValues;
         }
 
-        private void ensurePendingNameCapacity() {
+        private void _ensurePendingNameCapacity() {
             if (pendingNames == null || pendingNameValues == null) {
                 int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
                 pendingNames = new String[cap];
@@ -652,7 +625,7 @@ public final class NodeRegistry {
             pendingNameValues = newValues;
         }
 
-        private void ensurePendingCapacity() {
+        private void _ensurePendingCapacity() {
             if (pendingKeys == null || pendingValues == null) {
                 pendingKeys = new Object[4];
                 pendingValues = new Object[4];
@@ -792,7 +765,7 @@ public final class NodeRegistry {
                 for (int i = 0; i < args.length; i++) {
                     if (args[i] == null) {
                         Class<?> argClazz = Types.rawClazz(argTypes[i]);
-                        args[i] = missingValueOfClass(argClazz);
+                        args[i] = _missingValueOfClass(argClazz);
                     }
                 }
 
@@ -830,7 +803,7 @@ public final class NodeRegistry {
         /**
          * Returns default missing value for primitive classes.
          */
-        private static Object missingValueOfClass(Class<?> clazz) {
+        private static Object _missingValueOfClass(Class<?> clazz) {
             if (clazz == null) return null;
             if (!clazz.isPrimitive()) return null;
             if (clazz == boolean.class) return false;

@@ -55,7 +55,7 @@ public interface Fastjson2Module {
             if (ti.valueCodecInfo != null) {
                 return new NodeValueReader<>(ti.valueCodecInfo);
             }
-            if (ti.requiresFrameworkReader()) {
+            if (ti.requiresPojoReader()) {
                 return new PojoReader<>(ti.pojoInfo);
             }
 
@@ -153,7 +153,7 @@ public interface Fastjson2Module {
                 try {
                     Type resolvedOwnerType = fieldType != null ? fieldType : (ownerType != null ? ownerType : pi.clazz);
                     return (T) Fastjson2StreamingIO.readPojo(reader, resolvedOwnerType, Types.rawBox(resolvedOwnerType), pi);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     throw new JSONException(reader.info("JsonObjectReader.readObject() failed"), e);
                 }
             }
@@ -254,7 +254,7 @@ public interface Fastjson2Module {
             try {
                 Type ownerType = fieldType != null ? fieldType : pi.clazz;
                 return (T) Fastjson2StreamingIO.readPojo(reader, ownerType, Types.rawBox(ownerType), pi);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 throw new JSONException(reader.info("PojoReader.readObject() failed"), e);
             }
         }
@@ -283,7 +283,7 @@ public interface Fastjson2Module {
                 return new NodeValueWriter<>(vci);
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
-            if (ti.requiresFrameworkWriter()) {
+            if (ti.requiresPojoWriter()) {
                 return new JsonObjectWriter();
             }
             return null;

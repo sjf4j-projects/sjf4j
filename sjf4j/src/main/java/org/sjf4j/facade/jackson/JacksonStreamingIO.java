@@ -3,6 +3,7 @@ package org.sjf4j.facade.jackson;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
@@ -68,6 +69,9 @@ public class JacksonStreamingIO {
             if (anyOfInfo != null) {
                 return readAnyOf(parser, anyOfInfo);
             }
+            if (rawClazz == Object.class) {
+                return _readRawNode(parser);
+            }
             StreamingReader.Token token = peekToken(parser);
             switch (token) {
                 case START_OBJECT:
@@ -92,6 +96,57 @@ public class JacksonStreamingIO {
         }
     }
 
+    private static Object _readRawNode(JsonParser parser) throws IOException {
+        switch (peekToken(parser)) {
+            case START_OBJECT:
+                return _readRawObject(parser);
+            case START_ARRAY:
+                return _readRawArray(parser);
+            case STRING: {
+                String s = parser.getText();
+                parser.nextToken();
+                return s;
+            }
+            case NUMBER: {
+                Number n = parser.getNumberValue();
+                parser.nextToken();
+                return n;
+            }
+            case BOOLEAN: {
+                boolean b = parser.getBooleanValue();
+                parser.nextToken();
+                return b;
+            }
+            case NULL:
+                parser.nextToken();
+                return null;
+            default:
+                throw new JsonException("Unexpected token '" + parser.currentToken() + "'");
+        }
+    }
+
+    private static Map<String, Object> _readRawObject(JsonParser parser) throws IOException {
+        Map<String, Object> map = new LinkedHashMap<>();
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_OBJECT) {
+            String key = parser.currentName();
+            parser.nextToken();
+            map.put(key, _readRawNode(parser));
+        }
+        parser.nextToken();
+        return map;
+    }
+
+    private static List<Object> _readRawArray(JsonParser parser) throws IOException {
+        List<Object> list = new ArrayList<>();
+        parser.nextToken();
+        while (parser.currentToken() != JsonToken.END_ARRAY) {
+            list.add(_readRawNode(parser));
+        }
+        parser.nextToken();
+        return list;
+    }
+
     private static Object _readNull(JsonParser parser, Class<?> rawClazz)
             throws IOException {
         parser.nextToken();
@@ -105,7 +160,7 @@ public class JacksonStreamingIO {
 
     private static Object _readBoolean(JsonParser parser, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == Boolean.class) {
+        if (rawClazz == Boolean.class) {
             boolean b = parser.getBooleanValue();
             parser.nextToken();
             return b;
@@ -123,7 +178,7 @@ public class JacksonStreamingIO {
 
     private static Object _readNumber(JsonParser parser, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == Number.class) {
+        if (rawClazz == Number.class) {
             Number n = parser.getNumberValue();
             parser.nextToken();
             return n;
@@ -182,7 +237,7 @@ public class JacksonStreamingIO {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object _readString(JsonParser parser, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || rawClazz == String.class) {
+        if (rawClazz == String.class) {
             String s = parser.getText();
             parser.nextToken();
             return s;
@@ -213,7 +268,7 @@ public class JacksonStreamingIO {
      */
     private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || Map.class.isAssignableFrom(rawClazz)) {
+        if (Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readMapWithValueType(parser, rawClazz, valueType, valueClazz,
@@ -221,16 +276,7 @@ public class JacksonStreamingIO {
         }
 
         if (rawClazz == JsonObject.class) {
-            JsonObject jo = new JsonObject();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_OBJECT) {
-                String key = parser.currentName();
-                parser.nextToken();
-                Object value = _readNode(parser, Object.class, Object.class, null);
-                jo.put(key, value);
-            }
-            parser.nextToken();
-            return jo;
+            return new JsonObject(_readRawObject(parser));
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
@@ -271,7 +317,7 @@ public class JacksonStreamingIO {
                     if (dynamicMap == null) {
                         dynamicMap = new LinkedHashMap<>();
                     }
-                    dynamicMap.put(key, _readNode(parser, Object.class, Object.class, null));
+                    dynamicMap.put(key, _readRawNode(parser));
                 } else {
                     skipNode(parser);
                 }
@@ -283,7 +329,7 @@ public class JacksonStreamingIO {
             return pojo;
         }
 
-        NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
         NodeRegistry.FieldInfo deferredParentAnyOfFi = null;
         Object deferredParentAnyOfRaw = null;
         String parentAnyOfKey = null;
@@ -329,7 +375,7 @@ public class JacksonStreamingIO {
                             throw new BindingException("At most one AnyOf field with scope=PARENT is supported per class");
                         }
                         deferredParentAnyOfFi = fi;
-                        deferredParentAnyOfRaw = _readNode(parser, Object.class, Object.class, null);
+                        deferredParentAnyOfRaw = _readRawNode(parser);
                         continue;
                     }
                 } else {
@@ -343,7 +389,7 @@ public class JacksonStreamingIO {
             }
 
             if (pi.isJojo) {
-                Object vv = _readNode(parser, Object.class, Object.class, null);
+                Object vv = _readRawNode(parser);
                 session.acceptResolvedJsonEntry(-1, key, vv);
                 if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
                     parentAnyOfValue = vv;
@@ -365,7 +411,7 @@ public class JacksonStreamingIO {
      */
     private static Object _readArray(JsonParser parser, Type type, Class<?> rawClazz)
             throws IOException {
-        if (rawClazz == Object.class || List.class.isAssignableFrom(rawClazz)) {
+        if (List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readListWithElementType(parser, rawClazz, valueType, valueClazz,
@@ -373,14 +419,7 @@ public class JacksonStreamingIO {
         }
 
         if (rawClazz == JsonArray.class) {
-            JsonArray ja = new JsonArray();
-            parser.nextToken();
-            while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = _readNode(parser, Object.class, Object.class, null);
-                ja.add(value);
-            }
-            parser.nextToken();
-            return ja;
+            return new JsonArray(_readRawArray(parser));
         }
 
         if (Set.class.isAssignableFrom(rawClazz)) {
@@ -437,7 +476,7 @@ public class JacksonStreamingIO {
             return _readNode(parser, fieldType, fieldRaw, fieldAnyOf);
         }
 
-            switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
+        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMapWithValueType(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case LIST:
@@ -531,37 +570,83 @@ public class JacksonStreamingIO {
 
     public static Object readAnyOf(JsonParser parser, NodeRegistry.AnyOfInfo anyOfInfo)
             throws IOException {
-        Class<?> targetClazz;
+        JsonToken token = parser.currentToken();
+        if (token == null) {
+            token = parser.nextToken();
+        }
 
         if (anyOfInfo.hasDiscriminator) {
-            Object rawNode = _readNode(parser, Object.class, Object.class, null);
-            targetClazz = StreamingIO.resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
+            if (token == JsonToken.START_OBJECT && anyOfInfo.scope == AnyOf.Scope.CURRENT && !anyOfInfo.key.isEmpty()) {
+                TokenBuffer rawBuffer = _bufferCurrentValue(parser);
+                Class<?> targetClazz = _resolveKeyDiscriminatorTarget(rawBuffer, anyOfInfo);
+                if (targetClazz == null) return null;
+                JsonParser targetParser = rawBuffer.asParserOnFirstToken();
+                try {
+                    return _readNode(targetParser, targetClazz, Types.rawBox(targetClazz), null);
+                } finally {
+                    targetParser.close();
+                }
+            }
+
+            Object rawNode = _readRawNode(parser);
+            Class<?> targetClazz = StreamingIO.resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
             if (targetClazz == null) return null;
             return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
         }
 
-        JsonType jsonType = _peekJsonType(parser.currentToken());
-        targetClazz = anyOfInfo.resolveByJsonType(jsonType);
+        Class<?> targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(peekToken(parser).jsonType(), anyOfInfo);
         if (targetClazz == null) {
-            if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
-                _readNode(parser, Object.class, Object.class, null);
-                return null;
-            }
-            throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
-                    " for type '" + anyOfInfo.clazz.getName() + "'");
+            _readRawNode(parser);
+            return null;
         }
 
         return _readNode(parser, targetClazz, Types.rawBox(targetClazz), null);
     }
 
-    private static JsonType _peekJsonType(JsonToken token) {
-        if (token == JsonToken.START_OBJECT) return JsonType.OBJECT;
-        if (token == JsonToken.START_ARRAY) return JsonType.ARRAY;
-        if (token == JsonToken.VALUE_STRING) return JsonType.STRING;
-        if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) return JsonType.NUMBER;
-        if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
-        if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
-        return JsonType.UNKNOWN;
+    private static TokenBuffer _bufferCurrentValue(JsonParser parser) throws IOException {
+        TokenBuffer rawBuffer = new TokenBuffer(parser);
+        rawBuffer.copyCurrentStructure(parser);
+        parser.nextToken();
+        return rawBuffer;
+    }
+
+    private static Class<?> _resolveKeyDiscriminatorTarget(TokenBuffer rawBuffer, NodeRegistry.AnyOfInfo anyOfInfo)
+            throws IOException {
+        JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
+        try {
+            JsonToken token = discriminatorParser.currentToken();
+            if (token == null) {
+                token = discriminatorParser.nextToken();
+            }
+            if (token != JsonToken.START_OBJECT) {
+                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator");
+            }
+            while (discriminatorParser.nextToken() != JsonToken.END_OBJECT) {
+                String name = discriminatorParser.currentName();
+                JsonToken valueToken = discriminatorParser.nextToken();
+                if (anyOfInfo.key.equals(name)) {
+                    return StreamingIO.resolveAnyOfDiscriminatorTarget(
+                            _readDiscriminatorValue(discriminatorParser, valueToken), anyOfInfo);
+                }
+                discriminatorParser.skipChildren();
+            }
+            return StreamingIO.resolveAnyOfDiscriminatorTarget(null, anyOfInfo);
+        } finally {
+            discriminatorParser.close();
+        }
+    }
+
+    private static Object _readDiscriminatorValue(JsonParser parser, JsonToken valueToken) throws IOException {
+        if (valueToken == JsonToken.VALUE_NULL) return null;
+        if (valueToken == JsonToken.VALUE_STRING) return parser.getText();
+        if (valueToken == JsonToken.VALUE_NUMBER_INT || valueToken == JsonToken.VALUE_NUMBER_FLOAT) {
+            return parser.getNumberValue();
+        }
+        if (valueToken == JsonToken.VALUE_TRUE || valueToken == JsonToken.VALUE_FALSE) {
+            return parser.getBooleanValue();
+        }
+        return _readRawNode(parser);
     }
 
     /// Reader

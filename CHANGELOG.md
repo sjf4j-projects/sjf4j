@@ -18,10 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
 - Improved plain-POJO binding contracts with explicit `BEAN_ONLY` / `FIELD_BASED` global policy, backend-aligned plugin-module fallback rules, and consistent handling across Jackson, Jackson 3, Gson, and Fastjson2.
 - Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_ONLY`.
+- Improved shared/Jackson/Gson/Fastjson2 streaming readers by separating raw node reads from typed dispatch, reducing duplicated `Object.class` hot-path work and closing the Fastjson2 JOJO gap against native any-setter baselines.
+- Improved benchmark coverage and naming so `ReadBenchmark` and the JDK 17 companion benchmark compare POJO/JOJO/map cases consistently across Jackson, Jackson 3, Gson, Fastjson2, JSON-P, and Simple facade baselines.
 - Improved JSONPath/JSON Pointer handling so numeric pointer tokens preserve object-key semantics, filter strings unescape consistently, regex flags parse more strictly, and `&&` / `||` short-circuit during filter evaluation.
 
 ### Changed
 - Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
+- Changed `NodeRegistry` POJO routing flags from framework-centric reader/writer naming to `requiresPojoReader` / `requiresPojoWriter`, and removed `PojoInfo.newCreationSession()` in favor of direct `PojoCreationSession` construction.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.

@@ -765,7 +765,7 @@ public class Nodes {
         if (node instanceof JsonObject) {
             JsonObject srcJo = (JsonObject) node;
             NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(node.getClass());
-            NodeRegistry.PojoCreationSession session = pojoInfo.newCreationSession(srcJo.size());
+            NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
             NodeRegistry.PojoPendingApplier applyJsonObject = (pojo, pendingKey, pendingValue) ->
                     ((JsonObject) pojo).put((String) pendingKey, pendingValue);
 
@@ -807,7 +807,7 @@ public class Nodes {
             return (T) ti.valueCodecInfo.valueCopy(node);
         } else if (ti.pojoInfo != null) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(node.getClass());
-            NodeRegistry.PojoCreationSession session = pi.newCreationSession(pi.fieldCount);
+            NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
             NodeRegistry.PojoPendingApplier applyPojoField = (target, pendingKey, pendingValue) ->
                     ((NodeRegistry.FieldInfo) pendingKey).invokeSetterIfPresent(target, pendingValue);
 

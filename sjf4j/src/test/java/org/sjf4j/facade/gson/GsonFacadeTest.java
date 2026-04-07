@@ -240,7 +240,7 @@ public class GsonFacadeTest {
 
     @Test
     void testSkipNode1() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +
@@ -282,6 +282,16 @@ public class GsonFacadeTest {
     @Test
     void testPluginModuleBeanOnlySkipsNonPublicPlainPojo() {
         GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PlainPrivateBook.class);
+        assertNull(book.userName);
+        assertEquals(0, book.loginCount);
+        assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testAutoModePrefersPluginModule() {
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);

@@ -51,7 +51,7 @@ public class StreamingCreatorBenchmark {
 
     @State(Scope.Thread)
     public static class FacadeState {
-        @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
+        @Param({"SHARED_IO", "PLUGIN_MODULE"})
         public String streamingMode;
 
         public JacksonJsonFacade jackson;

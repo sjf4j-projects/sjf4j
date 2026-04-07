@@ -9,6 +9,7 @@ import com.alibaba.fastjson2.writer.ObjectWriterProvider;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Types;
 
@@ -20,11 +21,16 @@ import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fastjson2-based JSON facade with selectable streaming modes.
  */
 public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
+    private static final AtomicBoolean DEFAULT_MODULES_REGISTERED = new AtomicBoolean();
+    private static final Fastjson2Module.MyReaderModule READER_MODULE = new Fastjson2Module.MyReaderModule();
+    private static final Fastjson2Module.MyWriterModule WRITER_MODULE = new Fastjson2Module.MyWriterModule();
+
     private final StreamingMode streamingMode;
 
 //    private final JSONReader.Feature[] readerFeatures;
@@ -77,13 +83,12 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         }
 
         // With Module
-        if (this.streamingMode == StreamingMode.PLUGIN_MODULE || this.streamingMode == StreamingMode.AUTO) {
+        if (usesPluginModule()) {
             ObjectReaderProvider readProvider = JSONFactory.getDefaultObjectReaderProvider();
             readProvider.setNamingStrategy(toFastjsonNamingStrategy(Sjf4jConfig.global().namingStrategy));
-            readProvider.register(new Fastjson2Module.MyReaderModule());
             ObjectWriterProvider writeProvider = JSONFactory.getDefaultObjectWriterProvider();
             writeProvider.setNamingStrategy(toFastjsonNamingStrategy(Sjf4jConfig.global().namingStrategy));
-            writeProvider.register(new Fastjson2Module.MyWriterModule());
+            ensureDefaultModulesRegistered(readProvider, writeProvider);
         }
     }
 
@@ -141,7 +146,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -154,7 +159,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     JSONReader reader = JSONReader.of(input, readerContext);
                     return reader.read(type);
@@ -173,7 +178,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -186,7 +191,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try {
                     JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
                     return reader.read(type);
@@ -205,7 +210,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -217,7 +222,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
@@ -235,7 +240,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
@@ -247,7 +252,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try (JSONReader reader = JSONReader.of(input, readerContext)) {
                     return reader.read(type);
                 } catch (Exception e) {
@@ -289,7 +294,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -304,7 +309,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 break;
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try (JSONWriter writer = JSONWriter.of(writerContext)) {
                     writer.writeAny(node);
                     writer.flushTo(output);
@@ -326,7 +331,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
@@ -341,7 +346,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 break;
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     writer.flushTo(output);
@@ -361,7 +366,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public String writeNodeAsString(Object node) {
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsString(node);
             }
@@ -374,7 +379,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     return writer.toString();
@@ -392,7 +397,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      */
     @Override
     public byte[] writeNodeAsBytes(Object node) {
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.writeNodeAsBytes(node);
             }
@@ -405,7 +410,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
                 }
             }
             case PLUGIN_MODULE:
-            case AUTO: {
+            {
                 try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
                     writer.writeAny(node);
                     return writer.getBytes();
@@ -415,6 +420,22 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             }
             default:
                 throw new JsonException("Unsupported write mode '" + streamingMode + "'");
+        }
+    }
+
+    private boolean usesPluginModule() {
+        return streamingMode == StreamingMode.AUTO || streamingMode == StreamingMode.PLUGIN_MODULE;
+    }
+
+    private StreamingMode runtimeMode() {
+        return StreamingFacade.resolveRuntimeMode(streamingMode, true, true);
+    }
+
+    private static void ensureDefaultModulesRegistered(ObjectReaderProvider readProvider,
+                                                       ObjectWriterProvider writeProvider) {
+        if (DEFAULT_MODULES_REGISTERED.compareAndSet(false, true)) {
+            readProvider.register(READER_MODULE);
+            writeProvider.register(WRITER_MODULE);
         }
     }
 

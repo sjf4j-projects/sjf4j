@@ -7,6 +7,7 @@ import com.google.gson.stream.JsonWriter;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -49,7 +50,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
 
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        if (this.streamingMode == StreamingMode.PLUGIN_MODULE) {
+        if (usesPluginModule()) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
         }
         gsonBuilder.setFieldNamingStrategy(field -> {
@@ -76,12 +77,12 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO:
-            case AUTO: {
+            {
                 try {
                     JsonReader reader = gson.newJsonReader(input);
                     return GsonStreamingIO.readNode(reader, type);
@@ -107,12 +108,12 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO:
-            case AUTO: {
+            {
                 try {
                     JsonReader reader = gson.newJsonReader(new InputStreamReader(input, StandardCharsets.UTF_8));
                     return GsonStreamingIO.readNode(reader, type);
@@ -138,12 +139,12 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO:
-            case AUTO: {
+            {
                 try (JsonReader reader = gson.newJsonReader(new StringReader(input))) {
                     return GsonStreamingIO.readNode(reader, type);
                 } catch (Exception e) {
@@ -168,12 +169,12 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 return JsonFacade.super.readNode(input, type);
             }
             case EXCLUSIVE_IO:
-            case AUTO: {
+            {
                 try (JsonReader reader = gson.newJsonReader(new InputStreamReader(
                         new ByteArrayInputStream(input), StandardCharsets.UTF_8))) {
                     return GsonStreamingIO.readNode(reader, type);
@@ -211,13 +212,13 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     @Override
     public void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        switch (streamingMode) {
+        switch (runtimeMode()) {
             case SHARED_IO: {
                 JsonFacade.super.writeNode(output, node);
                 break;
             }
             case EXCLUSIVE_IO:
-            case AUTO: {
+            {
                 try {
                     JsonWriter writer = gson.newJsonWriter(output);
                     GsonStreamingIO.writeNode(writer, node);
@@ -234,6 +235,14 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             default:
                 throw new JsonException("Unsupported write mode '" + streamingMode + "'");
         }
+    }
+
+    private boolean usesPluginModule() {
+        return streamingMode == StreamingMode.AUTO || streamingMode == StreamingMode.PLUGIN_MODULE;
+    }
+
+    private StreamingMode runtimeMode() {
+        return StreamingFacade.resolveRuntimeMode(streamingMode, true, true);
     }
 
 

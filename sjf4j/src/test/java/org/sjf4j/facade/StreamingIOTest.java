@@ -39,6 +39,7 @@ import java.util.TreeSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -169,6 +170,52 @@ public class StreamingIOTest {
         Animal pet;
     }
 
+    @Getter
+    @Setter
+    @AnyOf(value = {
+            @AnyOf.Mapping(value = PathCat.class, when = "cat"),
+            @AnyOf.Mapping(value = PathDog.class, when = "dog")
+    }, path = "$.meta.kind")
+    static class PathAnimal {
+        JsonObject meta;
+        String name;
+    }
+
+    @Getter
+    @Setter
+    static class PathCat extends PathAnimal {
+        int lives;
+    }
+
+    @Getter
+    @Setter
+    static class PathDog extends PathAnimal {
+        int bark;
+    }
+
+    @Getter
+    @Setter
+    @AnyOf(value = {
+            @AnyOf.Mapping(value = NullableCat.class, when = "cat"),
+            @AnyOf.Mapping(value = NullableDog.class, when = "dog")
+    }, key = "kind", onNoMatch = AnyOf.OnNoMatch.FAILBACK_NULL)
+    static class NullableAnimal {
+        String kind;
+        String name;
+    }
+
+    @Getter
+    @Setter
+    static class NullableCat extends NullableAnimal {
+        int lives;
+    }
+
+    @Getter
+    @Setter
+    static class NullableDog extends NullableAnimal {
+        int bark;
+    }
+
     @AnyOf(value = {
             @AnyOf.Mapping(PolyObj.class),
             @AnyOf.Mapping(PolyArr.class)
@@ -238,7 +285,7 @@ public class StreamingIOTest {
 
     @Test
     public void testExceptionWithPathSegment2() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder());
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
 
         UserJojo user1 = new UserJojo();
         user1.name = "Alice";
@@ -356,6 +403,20 @@ public class StreamingIOTest {
         assertTrue(p2 instanceof PolyArr);
     }
 
+    private static void assertAnyOfByCurrentPath() {
+        String json = "{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mimi\",\"lives\":9}";
+        PathAnimal animal = Sjf4j.fromJson(json, PathAnimal.class);
+        assertNotNull(animal);
+        assertTrue(animal instanceof PathCat);
+        assertEquals("Mimi", animal.getName());
+        assertEquals(9, ((PathCat) animal).getLives());
+    }
+
+    private static void assertAnyOfFailbackNull() {
+        NullableAnimal animal = Sjf4j.fromJson("{\"kind\":\"bird\",\"name\":\"Sky\"}", NullableAnimal.class);
+        assertNull(animal);
+    }
+
     private static void assertAnyOfParentDiscriminatorLateCase() {
         String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
         ParentZoo zoo = Sjf4j.fromJson(json, ParentZoo.class);
@@ -390,6 +451,54 @@ public class StreamingIOTest {
     }
 
     @Test
+    void testAnyOfCurrentPathSharedIoAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfByCurrentPath();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfByCurrentPath();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfByCurrentPath();
+    }
+
+    @Test
+    void testAnyOfCurrentPathPluginModuleAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByCurrentPath();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByCurrentPath();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfByCurrentPath();
+    }
+
+    @Test
+    void testAnyOfFailbackNullSharedIoAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfFailbackNull();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfFailbackNull();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
+        assertAnyOfFailbackNull();
+    }
+
+    @Test
+    void testAnyOfFailbackNullPluginModuleAllBackends() {
+        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfFailbackNull();
+
+        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfFailbackNull();
+
+        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertAnyOfFailbackNull();
+    }
+
+    @Test
     void testAnyOfPluginModuleParentDiscriminatorLateAllBackends() {
         Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
@@ -410,18 +519,6 @@ public class StreamingIOTest {
         assertAnyOfInContainers();
 
         Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
-        assertAnyOfInContainers();
-    }
-
-    @Test
-    void testAnyOfInContainersExclusiveIoAllBackends() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertAnyOfInContainers();
-
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertAnyOfInContainers();
-
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
         assertAnyOfInContainers();
     }
 
@@ -497,33 +594,6 @@ public class StreamingIOTest {
 
         Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
-    }
-
-    @Test
-    void testConcreteContainerTargetsExclusiveIo() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertConcreteContainerTargets();
-
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertConcreteContainerTargets();
-
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertConcreteContainerTargets();
-    }
-
-    @Test
-    void testGenericJojoBindingExclusiveIo() {
-        Sjf4jConfig.useJacksonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
-
-        Sjf4jConfig.useGsonAsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
-
-        Sjf4jConfig.useFastjson2AsGlobal(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
     }
 
     @Test

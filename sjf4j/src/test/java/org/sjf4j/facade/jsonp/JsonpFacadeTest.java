@@ -12,6 +12,7 @@ import java.io.StringWriter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Slf4j
 class JsonpFacadeTest {
@@ -82,5 +83,17 @@ class JsonpFacadeTest {
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, book);
         assertEquals("{\"id\":1,\"name\":\"n\"}", sw.toString());
+    }
+
+    @Test
+    void testPluginModuleUnsupported() {
+        JsonpJsonFacade facade = new JsonpJsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        assertThrows(org.sjf4j.exception.JsonException.class, () -> facade.readNode("{}", Object.class));
+    }
+
+    @Test
+    void testExclusiveIoUnsupported() {
+        JsonpJsonFacade facade = new JsonpJsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        assertThrows(org.sjf4j.exception.JsonException.class, () -> facade.readNode("{}", Object.class));
     }
 }

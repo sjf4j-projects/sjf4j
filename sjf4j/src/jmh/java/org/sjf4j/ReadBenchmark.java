@@ -1,18 +1,16 @@
 package org.sjf4j;
 
 
-import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONFactory;
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
-import lombok.Getter;
-import lombok.Setter;
-import org.junit.jupiter.api.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -29,6 +27,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
+import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jackson.JacksonJsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
@@ -36,7 +35,6 @@ import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 2)
 @Threads(1)
 @State(Scope.Thread)
@@ -95,7 +93,7 @@ public class ReadBenchmark {
     // Kept for compatibility with older benchmark variants.
     private static final String JSON_DATA2_NO_DYN = JSON_DATA2;
 
-    // Pure list of User2 to focus on array/collection parsing overhead.
+    // Pure list of JojoUser to focus on array/collection parsing overhead.
     private static final String JSON_DATA2_LIST = "[\n" +
             "  {\"name\": \"Alice\", \"friends\": [\n" +
             "    {\"name\": \"Bill\", \"friends\": []},\n" +
@@ -104,17 +102,34 @@ public class ReadBenchmark {
             "  {\"name\": \"David\", \"friends\": []}\n" +
             "]\n";
 
-    private static final java.lang.reflect.Type USER2_LIST_TYPE =
-            new TypeReference<List<User2>>() {}.getType();
+    private static final java.lang.reflect.Type JOJO_USER_LIST_TYPE =
+            new TypeReference<List<UserJojo>>() {}.getType();
 
     private static final ObjectMapper JACKSON = new ObjectMapper();
-    private static final GsonBuilder GSON_BUILDER = new GsonBuilder();
-    private static final Gson GSON = GSON_BUILDER.create();
+    private static final Gson GSON = createNativeGson();
+    private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = createFastjson2NativeContext();
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
+    private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
     static {
         JACKSON.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 //        Sjf4jConfig.useBindingPath(false);
+    }
+
+    private static Gson createNativeGson() {
+        GsonBuilder builder = new GsonBuilder();
+        builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
+        builder.setFieldNamingStrategy(field -> {
+            String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
+            return name != null ? name : Sjf4jConfig.global().namingStrategy.translate(field.getName());
+        });
+        return builder.create();
+    }
+
+    private static JSONReader.Context createFastjson2NativeContext() {
+        ObjectReaderProvider provider = new ObjectReaderProvider();
+        return JSONFactory.createReadContext(provider, JSONReader.Feature.UseDoubleForDecimals);
     }
 
     @State(Scope.Thread)
@@ -135,175 +150,164 @@ public class ReadBenchmark {
         public void setup() {
             Sjf4jConfig.global(new Sjf4jConfig.Builder()
                     .build());
-            jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.valueOf(streamingMode));
-            gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.valueOf(streamingMode));
-            fastjson2Facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
-            jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.valueOf(streamingMode));
+            StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
+            jacksonFacade = new JacksonJsonFacade(new ObjectMapper(), mode);
+            gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
+            fastjson2Facade = new Fastjson2JsonFacade(mode);
+            jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.SHARED_IO);
             simpleFacade = new SimpleJsonFacade();
         }
     }
 
 
-
-    // ----- Simple JSON baselines -----
-    @Benchmark
-    public Object json_simple_facade_pojo(FacadeState state) throws IOException {
-        return state.simpleFacade.readNode(JSON_DATA2, UserPlain.class);
-    }
-
-    @Benchmark
-    public Object json_simple_facade_jojo(FacadeState state) throws IOException {
-        return state.simpleFacade.readNode(JSON_DATA2, User2.class);
-    }
-
-    @Benchmark
-    public Object json_simple_facade_pojo_static() throws IOException {
-        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPlain.class);
-    }
-
     // ----- Jackson baselines -----
     @Benchmark
-    public Object json_jackson_native_pojo() throws IOException {
-        return JACKSON.readValue(JSON_DATA2, UserPlain.class);
+    public Object json_jackson_pojo_native() throws IOException {
+        return JACKSON.readValue(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_jackson_facade_pojo(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2, UserPlain.class);
+    public Object json_jackson_jojo_native() throws IOException {
+        return JACKSON.readValue(JSON_DATA2, UserHasAny.class);
     }
 
     @Benchmark
-    public Object json_jackson_native_has_any() throws IOException {
-        return JACKSON.readValue(JSON_DATA2, User.class);
-    }
-
-    @Benchmark
-    public Object json_jackson_native_map() throws IOException {
+    public Object json_jackson_map_native() throws IOException {
         return JACKSON.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object json_jackson_facade_map(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2, Map.class);
+    public Object json_jackson_pojo_facade(FacadeState state) throws IOException {
+        return state.jacksonFacade.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_jackson_facade_jojo(FacadeState state) throws IOException {
-        return state.jacksonFacade.readNode(JSON_DATA2, User2.class);
+    public Object json_jackson_jojo_facade(FacadeState state) throws IOException {
+        return state.jacksonFacade.readNode(JSON_DATA2, UserJojo.class);
     }
 
-//    @Benchmark
-//    public Object json_jackson_facade_jojo_no_dyn(FacadeState state) throws IOException {
-//        return state.jacksonFacade.readNode(JSON_DATA2_NO_DYN, User2.class);
-//    }
-//
-//    @Benchmark
-//    public Object json_jackson_facade_jojo_list(FacadeState state) throws IOException {
-//        return state.jacksonFacade.readNode(JSON_DATA2_LIST, USER2_LIST_TYPE);
-//    }
+    @Benchmark
+    public Object json_jackson_map_facade(FacadeState state) throws IOException {
+        return state.jacksonFacade.readNode(JSON_DATA2, Map.class);
+    }
 
 
     // ----- Gson baselines -----
     @Benchmark
-    public Object json_gson_native_pojo() {
-        return GSON.fromJson(JSON_DATA2, UserPlain.class);
+    public Object json_gson_pojo_native() {
+        return GSON.fromJson(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_gson_facade_pojo(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2, UserPlain.class);
-    }
-
-    @Benchmark
-    public Object json_gson_native_map() {
+    public Object json_gson_map_native() {
         return GSON.fromJson(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object json_gson_facade_map(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2, Map.class);
+    public Object json_gson_pojo_facade(FacadeState state) {
+        return state.gsonFacade.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_gson_facade_jojo(FacadeState state) {
-        return state.gsonFacade.readNode(JSON_DATA2, User2.class);
+    public Object json_gson_jojo_facade(FacadeState state) {
+        return state.gsonFacade.readNode(JSON_DATA2, UserJojo.class);
+    }
+
+    @Benchmark
+    public Object json_gson_map_facade(FacadeState state) {
+        return state.gsonFacade.readNode(JSON_DATA2, Map.class);
     }
 
 
     // ----- Fastjson2 baselines -----
     @Benchmark
-    public Object json_fastjson2_native_pojo() {
-        return JSON.parseObject(JSON_DATA2, UserPlain.class);
+    public Object json_fastjson2_pojo_native() {
+        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.read(UserPojo.class);
+        }
     }
 
     @Benchmark
-    public Object json_fastjson2_facade_pojo(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2, UserPlain.class);
+    public Object json_fastjson2_jojo_native() {
+        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.read(UserHasAny.class);
+        }
     }
 
     @Benchmark
-    public Object json_fastjson2_native_has_any() {
-        return JSON.parseObject(JSON_DATA2, User.class);
+    public Object json_fastjson2_map_native() {
+        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.read(Map.class);
+        }
     }
 
     @Benchmark
-    public Object json_fastjson2_native_map() {
-        return JSON.parseObject(JSON_DATA2, Map.class);
+    public Object json_fastjson2_pojo_facade(FacadeState state) throws IOException {
+        return state.fastjson2Facade.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_fastjson2_facade_map(FacadeState state) throws IOException {
+    public Object json_fastjson2_jojo_facade(FacadeState state) throws IOException {
+        return state.fastjson2Facade.readNode(JSON_DATA2, UserJojo.class);
+    }
+
+    @Benchmark
+    public Object json_fastjson2_map_facade(FacadeState state) throws IOException {
         return state.fastjson2Facade.readNode(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_fastjson2_facade_jojo(FacadeState state) throws IOException {
-        return state.fastjson2Facade.readNode(JSON_DATA2, User2.class);
     }
 
     // ----- JSON-P baselines -----
     @Benchmark
-    public Object json_jsonp_native_map() {
-        return Json.createReader(new StringReader(JSON_DATA2)).readObject();
+    public Object json_jsonp_map_native() {
+        return Json.createReader(new StringReader(JSON_DATA2)).read();
     }
 
     @Benchmark
-    public Object json_jsonp_facade_pojo(FacadeState state) {
-        return state.jsonpFacade.readNode(JSON_DATA2, UserPlain.class);
+    public Object json_jsonp_pojo_facade() {
+        return JSONP_JSON_FACADE.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_jsonp_facade_map(FacadeState state) {
-        return state.jsonpFacade.readNode(JSON_DATA2, Map.class);
+    public Object json_jsonp_map_facade() {
+        return JSONP_JSON_FACADE.readNode(JSON_DATA2, Map.class);
     }
 
     @Benchmark
-    public Object json_jsonp_facade_jojo(FacadeState state) {
-        return state.jsonpFacade.readNode(JSON_DATA2, User2.class);
+    public Object json_jsonp_jojo_facade() {
+        return JSONP_JSON_FACADE.readNode(JSON_DATA2, UserJojo.class);
     }
+
+    // ----- Simple JSON baselines -----
+    @Benchmark
+    public Object json_simple_pojo_facade() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserPojo.class);
+    }
+
+    @Benchmark
+    public Object json_simple_jojo_facade() throws IOException {
+        return SIMPLE_JSON_FACADE.readNode(JSON_DATA2, UserJojo.class);
+    }
+
 
 
     // Define a POJO `User`
-    @Getter @Setter
-    static class User {
-        String name;
-        List<User> friends;
+    static class UserPojo {
+        public String name;
+        public List<UserPojo> friends;
+
+    }
+
+    // Define a JOJO `JojoUser`
+    static class UserJojo extends JsonObject {
+        public String name;
+        public List<UserJojo> friends;
+    }
+
+    static class UserHasAny {
+        public String name;
+        public List<UserHasAny> friends;
         @JsonAnySetter @JsonAnyGetter
-        Map<String, Object> ext = new LinkedHashMap<>();
-    }
-
-    // Define a plain POJO without dynamic extension map.
-    @Getter @Setter
-    static class UserPlain {
-        String name;
-        List<UserPlain> friends;
-    }
-
-    // Define a JOJO `User2`
-    @Getter @Setter
-    static class User2 extends JsonObject {
-        String name;
-        List<User2> friends;
+        public Map<String, Object> ext = new LinkedHashMap<>();
     }
 
 

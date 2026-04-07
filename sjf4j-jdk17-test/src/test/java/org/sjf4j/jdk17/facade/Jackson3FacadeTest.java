@@ -46,6 +46,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Jackson3FacadeTest {
@@ -240,7 +241,6 @@ class Jackson3FacadeTest {
     private static Stream<StreamingFacade.StreamingMode> allModes() {
         return Stream.of(
                 StreamingFacade.StreamingMode.SHARED_IO,
-                StreamingFacade.StreamingMode.EXCLUSIVE_IO,
                 StreamingFacade.StreamingMode.PLUGIN_MODULE
         );
     }
@@ -419,6 +419,25 @@ class Jackson3FacadeTest {
         assertNull(book.userName);
         assertEquals(0, book.loginCount);
         assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testAutoModePrefersPluginModule() {
+        Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build());
+        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                PlainPrivateBook.class);
+        assertNull(book.userName);
+        assertEquals(0, book.loginCount);
+        assertEquals("{}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testExclusiveIoUnsupportedAtRuntime() {
+        Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
+                StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        org.sjf4j.exception.JsonException ex = assertThrows(org.sjf4j.exception.JsonException.class,
+                () -> facade.readNode("{}", Object.class));
+        assertTrue(ex.getMessage().contains("not supported"));
     }
 
     @Test

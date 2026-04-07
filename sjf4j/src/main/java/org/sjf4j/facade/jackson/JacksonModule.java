@@ -8,9 +8,7 @@ import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
@@ -31,6 +29,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
@@ -89,7 +88,7 @@ public interface JacksonModule {
                     if (ti.valueCodecInfo != null) {
                         return new NodeValueDeserializer<>(ti.valueCodecInfo);
                     }
-                    if (ti.requiresFrameworkReader()) {
+                    if (ti.requiresPojoReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo);
                     }
                     return deserializer;
@@ -113,7 +112,7 @@ public interface JacksonModule {
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
                     }
-                    if (ti.requiresFrameworkWriter()) {
+                    if (ti.requiresPojoWriter()) {
                         return new StreamingSerializer();
                     }
 
@@ -280,16 +279,18 @@ public interface JacksonModule {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            JsonToken token = p.currentToken();
+            if (token == null) {
+                token = p.nextToken();
+            }
+
             if (anyOfInfo.hasDiscriminator) {
                 TokenBuffer rawBuffer = ctxt.bufferAsCopyOfValue(p);
-                JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
-                Class<?> targetClazz;
-                try {
-                    targetClazz = org.sjf4j.facade.StreamingIO.resolveSelfDiscriminatorTarget(
-                            ctxt.readValue(discriminatorParser, Object.class), anyOfInfo);
-                } finally {
-                    discriminatorParser.close();
-                }
+                Class<?> targetClazz = token == JsonToken.START_OBJECT
+                        && anyOfInfo.scope == AnyOf.Scope.CURRENT
+                        && !anyOfInfo.key.isEmpty()
+                        ? _readByCurrentKey(rawBuffer, ctxt)
+                        : _readByRawNode(rawBuffer, ctxt);
                 if (targetClazz == null) {
                     return null;
                 }
@@ -301,27 +302,71 @@ public interface JacksonModule {
                 }
             }
 
-            JsonNode rawNode = ctxt.readTree(p);
-            Class<?> targetClazz;
-            JsonType jsonType = toJsonType(rawNode);
-            targetClazz = anyOfInfo.resolveByJsonType(jsonType);
-            if (targetClazz == null && anyOfInfo.onNoMatch != AnyOf.OnNoMatch.FAILBACK_NULL) {
-                throw new org.sjf4j.exception.BindingException("AnyOf mapping does not support jsonType=" + jsonType +
-                        " for type '" + anyOfInfo.clazz.getName() + "'");
-            }
+            Class<?> targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(_toJsonType(token), anyOfInfo);
             if (targetClazz == null) {
+                ctxt.readValue(p, Object.class);
                 return null;
             }
-            return (T) ctxt.readTreeAsValue(rawNode, targetClazz);
+            return (T) ctxt.readValue(p, targetClazz);
         }
 
-        private JsonType toJsonType(JsonNode rawNode) {
-            if (rawNode.isObject()) return JsonType.OBJECT;
-            if (rawNode.isArray()) return JsonType.ARRAY;
-            if (rawNode.isTextual()) return JsonType.STRING;
-            if (rawNode.isNumber()) return JsonType.NUMBER;
-            if (rawNode.isBoolean()) return JsonType.BOOLEAN;
-            if (rawNode.isNull()) return JsonType.NULL;
+        private Class<?> _readByRawNode(TokenBuffer rawBuffer, DeserializationContext ctxt) throws IOException {
+            JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
+            try {
+                return StreamingIO.resolveSelfDiscriminatorTarget(
+                        ctxt.readValue(discriminatorParser, Object.class), anyOfInfo);
+            } finally {
+                discriminatorParser.close();
+            }
+        }
+
+        private Class<?> _readByCurrentKey(TokenBuffer rawBuffer, DeserializationContext ctxt) throws IOException {
+            JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
+            try {
+                JsonToken token = discriminatorParser.currentToken();
+                if (token == null) {
+                    token = discriminatorParser.nextToken();
+                }
+                if (token != JsonToken.START_OBJECT) {
+                    if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                    throw new org.sjf4j.exception.BindingException(
+                            "Node must be a JSON object, when AnyOf has a SELF discriminator");
+                }
+                while (discriminatorParser.nextToken() != JsonToken.END_OBJECT) {
+                    String name = discriminatorParser.currentName();
+                    JsonToken valueToken = discriminatorParser.nextToken();
+                    if (anyOfInfo.key.equals(name)) {
+                        return StreamingIO.resolveAnyOfDiscriminatorTarget(
+                                _readDiscriminatorValue(discriminatorParser, valueToken, ctxt), anyOfInfo);
+                    }
+                    discriminatorParser.skipChildren();
+                }
+                return StreamingIO.resolveAnyOfDiscriminatorTarget(null, anyOfInfo);
+            } finally {
+                discriminatorParser.close();
+            }
+        }
+
+        private Object _readDiscriminatorValue(JsonParser parser, JsonToken token, DeserializationContext ctxt)
+                throws IOException {
+            if (token == JsonToken.VALUE_NULL) return null;
+            if (token == JsonToken.VALUE_STRING) return parser.getText();
+            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) {
+                return parser.getNumberValue();
+            }
+            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) {
+                return parser.getBooleanValue();
+            }
+            return ctxt.readValue(parser, Object.class);
+        }
+
+        private JsonType _toJsonType(JsonToken token) {
+            if (token == JsonToken.START_OBJECT) return JsonType.OBJECT;
+            if (token == JsonToken.START_ARRAY) return JsonType.ARRAY;
+            if (token == JsonToken.VALUE_STRING) return JsonType.STRING;
+            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) return JsonType.NUMBER;
+            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
+            if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
             return JsonType.UNKNOWN;
         }
     }
