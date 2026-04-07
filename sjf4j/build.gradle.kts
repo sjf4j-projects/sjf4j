@@ -83,7 +83,13 @@ tasks.test {
 }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test)
+    dependsOn(tasks.test, ":sjf4j-jdk17-test:test")
+    executionData(
+        files(
+            layout.buildDirectory.file("jacoco/test.exec"),
+            project(":sjf4j-jdk17-test").layout.buildDirectory.file("jacoco/test.exec")
+        )
+    )
     reports {
         xml.required.set(true)
         html.required.set(true)

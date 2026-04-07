@@ -103,7 +103,11 @@ public class JsonPointer extends JsonPath {
             if (a instanceof PathSegment.Name) {
                 if (!((PathSegment.Name) a).name.equals(((PathSegment.Name) b).name)) return false;
             } else if (a instanceof PathSegment.Index) {
-                if (((PathSegment.Index) a).index != ((PathSegment.Index) b).index) return false;
+                PathSegment.Index ai = (PathSegment.Index) a;
+                PathSegment.Index bi = (PathSegment.Index) b;
+                String at = ai.pointerToken != null ? ai.pointerToken : Integer.toString(ai.index);
+                String bt = bi.pointerToken != null ? bi.pointerToken : Integer.toString(bi.index);
+                if (!at.equals(bt)) return false;
             }
         }
         return true;
@@ -117,7 +121,9 @@ public class JsonPointer extends JsonPath {
             if (seg instanceof PathSegment.Name) {
                 segHash = 31 * segHash + ((PathSegment.Name) seg).name.hashCode();
             } else if (seg instanceof PathSegment.Index) {
-                segHash = 31 * segHash + ((PathSegment.Index) seg).index;
+                PathSegment.Index index = (PathSegment.Index) seg;
+                String token = index.pointerToken != null ? index.pointerToken : Integer.toString(index.index);
+                segHash = 31 * segHash + token.hashCode();
             }
             hash = 31 * hash + segHash;
         }

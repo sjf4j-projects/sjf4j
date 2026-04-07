@@ -153,6 +153,13 @@ public interface FilterExpr {
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             Object a = left.eval(rootNode, currentNode);
+            switch (op) {
+                case AND:
+                    return truth(a) && truth(right.eval(rootNode, currentNode));
+                case OR:
+                    return truth(a) || truth(right.eval(rootNode, currentNode));
+            }
+
             Object b = right.eval(rootNode, currentNode);
             switch (op) {
                 case EQ: return eq(a, b);
@@ -161,8 +168,6 @@ public interface FilterExpr {
                 case GE: return ge(a, b);
                 case LT: return lt(a, b);
                 case LE: return le(a, b);
-                case AND: return truth(a) && truth(b);
-                case OR:  return truth(a) || truth(b);
                 case MATCH: return match(a, b);
             }
             return false;

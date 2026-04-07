@@ -111,13 +111,22 @@ public abstract class PathSegment {
      */
     public static final class Index extends PathSegment {
         public final int index;
+        final String pointerToken;
 
         /**
          * Creates an array-index segment.
          */
         public Index(PathSegment parent, Class<?> clazz, int index) {
+            this(parent, clazz, index, null);
+        }
+
+        /**
+         * Creates an index segment with optional original JSON Pointer token.
+         */
+        public Index(PathSegment parent, Class<?> clazz, int index, String pointerToken) {
             super(parent, clazz);
             this.index = index;
+            this.pointerToken = pointerToken;
         }
 
         /**

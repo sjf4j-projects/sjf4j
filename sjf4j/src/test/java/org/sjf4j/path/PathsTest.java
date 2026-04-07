@@ -84,6 +84,7 @@ public class PathsTest {
         assertEquals(3, segments.length);
         assertEquals(1, ((PathSegment.Index) segments[1]).index);
         assertEquals(2, ((PathSegment.Index) segments[2]).index);
+        assertEquals("/01/002", Paths.toPointerExpr(segments));
 
         // large number
         segments = Paths.parsePointer("/1234567890");
@@ -94,6 +95,9 @@ public class PathsTest {
     @Test
     void testInvalidInputs() {
         assertThrows(JsonException.class, () -> Paths.parsePointer("users")); // missing '/'
+        assertThrows(JsonException.class, () -> Paths.parsePointer("/a~2b"));
+        assertThrows(JsonException.class, () -> Paths.parsePointer("/~"));
+        assertThrows(JsonException.class, () -> Paths.parsePointer("/a~xb"));
     }
 
     @Test
@@ -173,6 +177,7 @@ public class PathsTest {
         testExpr("$..user..name", 3, "..");
         testParsePath("$..[0]", 3, PathSegment.Root.class, PathSegment.Descendant.class, PathSegment.Index.class);
 
+        testParsePathFailure("$..", "Descendant");
         testParsePathFailure("$....name", "name");
         testParsePathFailure("$...name", "name");
     }

@@ -1,5 +1,9 @@
 package org.sjf4j.path;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -13,12 +17,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -27,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 public class JsonPathTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
     public void testCompile1() {
@@ -59,10 +68,12 @@ public class JsonPathTest {
         assertEquals("$.a.b[0].c", path1.toExpr());
         assertEquals("/a/b/0/c", path1.toPointerExpr());
 
-        String s2 = "/a~0/0/b~1'/c~/d e";
+        String s2 = "/a~0/0/b~1'/c~0/d e";
         JsonPath path2 = JsonPath.compile(s2);
         log.info("path2: {}", path2);
         assertEquals("$['a~'][0]['b/\\'']['c~']['d e']", path2.toExpr());
+
+        assertThrows(JsonException.class, () -> JsonPath.compile("/a~2b"));
     }
 
     @Test
@@ -82,6 +93,56 @@ public class JsonPathTest {
         assertEquals(JsonPointer.compile("/a/1"), JsonPointer.compile("/a/1"));
         assertEquals(JsonPointer.compile("/a/1").hashCode(), JsonPointer.compile("/a/1").hashCode());
         assertFalse(JsonPointer.compile("/a/1").equals(JsonPointer.compile("/a/2")));
+        assertEquals("/01", JsonPointer.compile("/01").toString());
+        assertNotEquals(JsonPointer.compile("/01"), JsonPointer.compile("/1"));
+    }
+
+    @Test
+    public void testJsonPointerNumericObjectKeys() {
+        JsonObject jo = JsonObject.fromJson("{\"0\":{\"01\":\"value\"},\"arr\":[\"a\",\"b\"]}");
+
+        assertEquals("value", JsonPath.compile("/0/01").getString(jo));
+        assertEquals("b", JsonPath.compile("/arr/1").getString(jo));
+
+        JsonObject target = new JsonObject();
+        JsonPath.compile("/0").put(target, "first");
+        assertEquals("first", target.getString("0"));
+        assertEquals("first", JsonPath.compile("/0").replace(target, "second"));
+        assertEquals("second", target.getString("0"));
+        assertEquals("second", JsonPath.compile("/0").remove(target));
+        assertFalse(target.containsKey("0"));
+    }
+
+    @Test
+    public void testJsonPointerFastPathsOnFacadeAndArrayContainers() {
+        ObjectNode objectNode = MAPPER.createObjectNode().put("0", "zero");
+        JsonPath objectKey = JsonPath.compile("/0");
+
+        assertTrue(objectKey.contains(objectNode));
+        assertEquals("zero", objectKey.getString(objectNode));
+        assertNull(objectKey.ensurePutIfAbsent(objectNode, TextNode.valueOf("ignored")));
+        assertThrows(JsonException.class, () -> objectKey.replace(objectNode, TextNode.valueOf("one")));
+        assertThrows(JsonException.class, () -> objectKey.remove(objectNode));
+        assertThrows(JsonException.class, () -> objectKey.add(objectNode, TextNode.valueOf("again")));
+
+        JsonObject target = JsonObject.of("0", "zero");
+        assertNull(objectKey.ensurePutIfAbsent(target, "ignored"));
+        assertEquals("zero", objectKey.replace(target, "one"));
+        assertEquals("one", objectKey.getString(target));
+        assertEquals("one", objectKey.remove(target));
+        objectKey.add(target, "again");
+        assertEquals("again", target.getString("0"));
+
+        ArrayNode arrayNode = MAPPER.createArrayNode().add("a");
+        JsonPath arrayIndex = JsonPath.compile("/0");
+        assertTrue(arrayIndex.contains(arrayNode));
+        assertEquals("a", arrayIndex.getString(arrayNode));
+        assertNull(arrayIndex.ensurePutIfAbsent(arrayNode, TextNode.valueOf("ignored")));
+        assertThrows(JsonException.class, () -> arrayIndex.replace(arrayNode, TextNode.valueOf("b")));
+        assertThrows(JsonException.class, () -> JsonPath.compile("/1").add(arrayNode, TextNode.valueOf("c")));
+
+        assertTrue(JsonPath.compile("/0").contains(new String[]{"x"}));
+        assertTrue(JsonPath.compile("/0").contains(new LinkedHashSet<>(Set.of("x"))));
     }
 
     @Test
@@ -305,6 +366,7 @@ public class JsonPathTest {
         assertDoesNotThrow(() -> JsonPath.compile("no.invalid"));
 
         assertDoesNotThrow(() -> JsonPath.compile("")); // "" is valid in JSON Pointer
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.."));
 
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
         assertNull(JsonPath.compile("$[10]").getNode(ja));
@@ -383,6 +445,19 @@ public class JsonPathTest {
         public int age;
     }
 
+    public static class AutoContainerHolder {
+        public Object objectField;
+        public List<Object> listField;
+        public JsonArray jsonArrayField;
+        public AutoJsonArray autoJsonArrayField;
+        public Baby[] babyArrayField;
+        public Set<Object> setField;
+        public Integer unsupportedObjectField;
+        public Integer unsupportedArrayField;
+    }
+
+    public static class AutoJsonArray extends JsonArray {}
+
     private static final String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":\"Singapore\"},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
 
     @Test
@@ -393,6 +468,37 @@ public class JsonPathTest {
         String name = JsonPath.compile("$.babies[1].name").getString(person);
         log.info("name={}", name);
 
+    }
+
+    @Test
+    public void testEnsurePutCreatesTypedContainers() {
+        AutoContainerHolder holder = new AutoContainerHolder();
+
+        JsonPath.compile("$.objectField[0].name").ensurePut(holder, "object");
+        assertTrue(holder.objectField instanceof ArrayList);
+        assertEquals("object", JsonPath.compile("$.objectField[0].name").getString(holder));
+
+        JsonPath.compile("$.listField[0].name").ensurePut(holder, "list");
+        assertTrue(holder.listField instanceof ArrayList);
+        assertEquals("list", JsonPath.compile("$.listField[0].name").getString(holder));
+
+        JsonPath.compile("$.jsonArrayField[0].name").ensurePut(holder, "json-array");
+        assertTrue(holder.jsonArrayField instanceof JsonArray);
+        assertEquals("json-array", JsonPath.compile("$.jsonArrayField[0].name").getString(holder));
+
+        JsonPath.compile("$.autoJsonArrayField[0].name").ensurePut(holder, "jajo");
+        assertTrue(holder.autoJsonArrayField instanceof AutoJsonArray);
+        assertEquals("jajo", JsonPath.compile("$.autoJsonArrayField[0].name").getString(holder));
+
+        JsonPath.compile("$.babyArrayField[2].name").ensurePut(holder, "baby");
+        assertEquals(3, holder.babyArrayField.length);
+        assertEquals("baby", holder.babyArrayField[2].name);
+
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.setField[0].name").ensurePut(holder, "set"));
+        assertTrue(holder.setField instanceof java.util.LinkedHashSet);
+
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.unsupportedObjectField.name").ensurePut(holder, "x"));
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.unsupportedArrayField[0]").ensurePut(holder, "x"));
     }
 
     @Test
@@ -841,6 +947,8 @@ public class JsonPathTest {
         assertEquals(List.of("B", "C"), jo.findByPath("$.store.book[?@.isbn == null].title", String.class));
         assertEquals(List.of("A", "C"), jo.findByPath("$.store.book[?@.published == true].title", String.class));
         assertEquals(List.of("B"), jo.findByPath("$.store.book[?@.published == false].title", String.class));
+        assertEquals(List.of("D"), JsonObject.fromJson("{\"store\":{\"book\":[{\"title\":\"D\",\"name\":\"a'b\"}]}}")
+                .findByPath("$.store.book[?@.name == 'a\\'b'].title", String.class));
     }
 
 

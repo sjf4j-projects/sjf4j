@@ -3,6 +3,7 @@ package org.sjf4j.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.exception.JsonException;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -10,6 +11,7 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FilterExprTest {
@@ -98,5 +100,23 @@ class FilterExprTest {
         FilterExpr.RegexExpr regexExpr = new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha"));
         assertSame(regexExpr.eval(root, root), regexExpr.eval(root, root));
         assertEquals("/ha/", regexExpr.toString());
+    }
+
+    @Test
+    void testEscapedStringParsingAndShortCircuit() {
+        assertEquals("a'b", Paths.parseFilter("'a\\'b'").eval(null, null));
+        assertEquals("a\"b\n", Paths.parseFilter("\"a\\\"b\\n\"").eval(null, null));
+        assertEquals("\\'\"\b\f\n\r\tA", Paths.parseFilter("'\\\\\\'\\\"\\b\\f\\n\\r\\t\\u0041'").eval(null, null));
+        assertThrows(JsonException.class, () -> Paths.parseFilter("'\\x'"));
+        assertThrows(JsonException.class, () -> Paths.parseFilter("'\\u12'"));
+        assertThrows(JsonException.class, () -> Paths.parseFilter("'\\uZZZZ'"));
+        assertTrue(Paths.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null));
+
+        PathFunctionRegistry.register(new PathFunctionRegistry.FunctionDescriptor("explodeFilterExpr", args -> {
+            throw new IllegalStateException("boom");
+        }));
+
+        assertFalse(Paths.parseFilter("false && explodeFilterExpr()").evalTruth(null, null));
+        assertTrue(Paths.parseFilter("true || explodeFilterExpr()").evalTruth(null, null));
     }
 }

@@ -35,7 +35,7 @@ class PathFunctionRegistryBuiltinTest {
         assertNull(PathFunctionRegistry.invoke("max", new Object[]{JsonArray.of()}));
         assertEquals(2.0d, (Double) PathFunctionRegistry.invoke("avg", new Object[]{JsonArray.of(1, 2, 3)}));
         assertNull(PathFunctionRegistry.invoke("avg", new Object[]{JsonArray.of()}));
-        assertEquals(2.0d / 3.0d, (Double) PathFunctionRegistry.invoke("stddev", new Object[]{JsonArray.of(1, 2, 3)}));
+        assertEquals(Math.sqrt(2.0d / 3.0d), (Double) PathFunctionRegistry.invoke("stddev", new Object[]{JsonArray.of(1, 2, 3)}));
         assertNull(PathFunctionRegistry.invoke("stddev", new Object[]{JsonArray.of()}));
         assertEquals("a", PathFunctionRegistry.invoke("first", new Object[]{JsonArray.of("a", "b")}));
         assertNull(PathFunctionRegistry.invoke("first", new Object[]{JsonArray.of()}));

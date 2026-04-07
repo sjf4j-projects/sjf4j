@@ -121,15 +121,19 @@ public class Paths {
             String seg = expr.substring(start, end);
             String name;
 
-            // decode ~0/~1
+            // decode ~0/~1 and reject invalid escapes
             if (seg.indexOf('~') >= 0) {
                 StringBuilder sb = new StringBuilder(seg.length());
                 for (int i = 0, len2 = seg.length(); i < len2; i++) {
                     char c = seg.charAt(i);
-                    if (c == '~' && i + 1 < seg.length()) {
+                    if (c == '~') {
+                        if (i + 1 >= seg.length()) {
+                            throw new JsonException("Invalid JSON Pointer expression '" + expr + "': invalid escape '~' in token '" + seg + "'");
+                        }
                         char next = seg.charAt(i + 1);
                         if (next == '0') { sb.append('~'); i++; continue; }
                         if (next == '1') { sb.append('/'); i++; continue; }
+                        throw new JsonException("Invalid JSON Pointer expression '" + expr + "': invalid escape '~" + next + "' in token '" + seg + "'");
                     }
                     sb.append(c);
                 }
@@ -146,7 +150,11 @@ public class Paths {
             }
 
             if (isNumber) {
-                segments.addLast(new PathSegment.Index(segments.peekLast(), null, Integer.parseInt(name)));
+                try {
+                    segments.addLast(new PathSegment.Index(segments.peekLast(), null, Integer.parseInt(name), seg));
+                } catch (NumberFormatException e) {
+                    segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
+                }
             } else if (name.equals("-")) {
                 segments.addLast(new PathSegment.Append(segments.peekLast(), null));
             } else {
@@ -177,7 +185,12 @@ public class Paths {
                 // Root token: no output
             } else if (token instanceof PathSegment.Index) {
                 sb.append('/');
-                sb.append(((PathSegment.Index) token).index);
+                PathSegment.Index index = (PathSegment.Index) token;
+                if (index.pointerToken != null) {
+                    sb.append(index.pointerToken);
+                } else {
+                    sb.append(index.index);
+                }
             } else if (token instanceof PathSegment.Append) {
                 sb.append("/-");
                 if (i != segments.length - 1)
@@ -261,7 +274,7 @@ public class Paths {
             if (c == '.' && i + 1 < expr.length() && expr.charAt(i + 1) == '.') {
                 segments.addLast(new PathSegment.Descendant(segments.peekLast(), null));
                 if (i + 2 == expr.length()) {
-                    break;
+                    throw new JsonException("Descendant '..' cannot appear at the end.");
                 } else if (expr.charAt(i + 2) == '[') {
                     i += 2;
                 } else {
@@ -944,34 +957,64 @@ public class Paths {
      */
     private static String parseString(String s, int[] pos) {
         char quote = s.charAt(pos[0]++);
-        int start = pos[0];
-        boolean escape = false;
+        StringBuilder sb = new StringBuilder();
         while (pos[0] < s.length()) {
-            char c = s.charAt(pos[0]);
-
-            if (escape) {
-                escape = false;
-                pos[0]++;
-                continue;
-            }
-
-            if (c == '\\') {
-                escape = true;
-                pos[0]++;
-                continue;
-            }
+            char c = s.charAt(pos[0]++);
 
             if (c == quote) {
-                String v = s.substring(start, pos[0]);
-                pos[0]++; // skip closing quote
-                return v;
+                return sb.toString();
             }
 
-            pos[0]++;
+            if (c != '\\') {
+                sb.append(c);
+                continue;
+            }
+
+            if (pos[0] >= s.length()) {
+                throw new JsonException("Unterminated escape sequence in string literal");
+            }
+
+            char next = s.charAt(pos[0]++);
+            switch (next) {
+                case '\\':
+                case '\'':
+                case '"':
+                    sb.append(next);
+                    break;
+                case 'b':
+                    sb.append('\b');
+                    break;
+                case 'f':
+                    sb.append('\f');
+                    break;
+                case 'n':
+                    sb.append('\n');
+                    break;
+                case 'r':
+                    sb.append('\r');
+                    break;
+                case 't':
+                    sb.append('\t');
+                    break;
+                case 'u':
+                    if (pos[0] + 4 > s.length()) {
+                        throw new JsonException("Invalid unicode escape in string literal");
+                    }
+                    String hex = s.substring(pos[0], pos[0] + 4);
+                    try {
+                        sb.append((char) Integer.parseInt(hex, 16));
+                    } catch (NumberFormatException e) {
+                        throw new JsonException("Invalid unicode escape in string literal", e);
+                    }
+                    pos[0] += 4;
+                    break;
+                default:
+                    throw new JsonException("Invalid escape '\\" + next + "' in string literal");
+            }
         }
 
         // reached end without closing quote
-        throw new JsonException("Unterminated string literal starting at position " + start);
+        throw new JsonException("Unterminated string literal");
     }
 
     /**

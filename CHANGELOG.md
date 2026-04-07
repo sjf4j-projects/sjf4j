@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
 - Improved plain-POJO binding contracts with explicit `BEAN_ONLY` / `FIELD_BASED` global policy, backend-aligned plugin-module fallback rules, and consistent handling across Jackson, Jackson 3, Gson, and Fastjson2.
 - Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_ONLY`.
+- Improved JSONPath/JSON Pointer handling so numeric pointer tokens preserve object-key semantics, filter strings unescape consistently, regex flags parse more strictly, and `&&` / `||` short-circuit during filter evaluation.
 
 ### Changed
 - Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
@@ -27,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed transient-field precedence so transient members are always ignored first, and transient fields annotated with `@NodeProperty` now fail fast during metadata analysis.
 - Fixed backend contract drift in tests and plugin-module routing for plain POJOs, including Gson/Fastjson2 private-field behavior under `BEAN_ONLY` and `FIELD_BASED`.
 - Fixed Jackson/Jackson3 module installation so existing mapper annotation introspectors remain active alongside SJF4J `@NodeProperty` support.
+- Fixed JSON Pointer parsing to reject invalid `~` escapes, preserve leading-zero numeric tokens, and route numeric pointer segments to object keys when the runtime container is object-shaped.
+- Fixed `stddev()` to return standard deviation instead of variance, and reject terminal descendant paths like `$..` during compile time.
 
 
 ## [1.1.6] - 2026.04.02

@@ -705,9 +705,15 @@ public class JsonPath {
             }
             return null;
         } else if (lastToken instanceof PathSegment.Index) {
-            int idx = ((PathSegment.Index) lastToken).index;
-            if (!Nodes.containsInArray(lastContainer, idx)) {
-                Nodes.setInArray(lastContainer, idx, value);
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                if (!Nodes.containsInObject(lastContainer, index.pointerToken)) {
+                    return Nodes.putInObject(lastContainer, index.pointerToken, value);
+                }
+                return null;
+            }
+            if (!Nodes.containsInArray(lastContainer, index.index)) {
+                Nodes.setInArray(lastContainer, index.index, value);
             }
             return null; // No need return old value in List/JsonArray
         } else if (lastToken instanceof PathSegment.Append) {
@@ -772,8 +778,11 @@ public class JsonPath {
             String name = ((PathSegment.Name) lastToken).name;
             return Nodes.containsInObject(lastContainer, name);
         } else if (lastToken instanceof PathSegment.Index) {
-            int index = ((PathSegment.Index) lastToken).index;
-            return Nodes.containsInArray(lastContainer, index);
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                return Nodes.containsInObject(lastContainer, index.pointerToken);
+            }
+            return Nodes.containsInArray(lastContainer, index.index);
         } else if (lastToken instanceof PathSegment.Append) {
             return false;
         } else {
@@ -801,8 +810,12 @@ public class JsonPath {
             String name = ((PathSegment.Name) lastToken).name;
             Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
-            int idx = ((PathSegment.Index) lastToken).index;
-            Nodes.addInArray(lastContainer, idx, value);
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                Nodes.putInObject(lastContainer, index.pointerToken, value);
+            } else {
+                Nodes.addInArray(lastContainer, index.index, value);
+            }
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(lastContainer, value);
         } else {
@@ -830,11 +843,17 @@ public class JsonPath {
             }
             return Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
-            int idx = ((PathSegment.Index) lastToken).index;
-            if (!Nodes.containsInArray(lastContainer, idx)) {
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                if (!Nodes.containsInObject(lastContainer, index.pointerToken)) {
+                    throw new JsonException("Cannot replace value at non-existent path '" + this + "'");
+                }
+                return Nodes.putInObject(lastContainer, index.pointerToken, value);
+            }
+            if (!Nodes.containsInArray(lastContainer, index.index)) {
                 throw new JsonException("Cannot replace value at non-existent path '" + this + "'");
             }
-            return Nodes.setInArray(lastContainer, idx, value);
+            return Nodes.setInArray(lastContainer, index.index, value);
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; replace() expected Name or Index token");
@@ -856,8 +875,11 @@ public class JsonPath {
             String name = ((PathSegment.Name) lastToken).name;
             return Nodes.removeInObject(lastContainer, name);
         } else if (lastToken instanceof PathSegment.Index) {
-            int index = ((PathSegment.Index) lastToken).index;
-            return Nodes.removeInArray(lastContainer, index);
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                return Nodes.removeInObject(lastContainer, index.pointerToken);
+            }
+            return Nodes.removeInArray(lastContainer, index.index);
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
                     "'; remove() expected Name or Index token");
@@ -866,6 +888,23 @@ public class JsonPath {
 
 
     /// private
+
+    private static boolean _isPointerObjectKey(PathSegment.Index index, Object container) {
+        if (index.pointerToken == null) {
+            return false;
+        }
+        if (container instanceof JsonObject || container instanceof Map) {
+            return true;
+        }
+        if (container instanceof JsonArray || container instanceof List || container instanceof Set) {
+            return false;
+        }
+        return !container.getClass().isArray() && JsonType.of(container).isObject();
+    }
+
+    private static boolean _isPointerObjectKey(PathSegment.Index index, JsonType containerType) {
+        return index.pointerToken != null && containerType.isObject();
+    }
 
     /**
      * Finds a single match for the path (optionally stopping before the tail).
@@ -883,8 +922,11 @@ public class JsonPath {
                     return null;
                 }
             } else if (pt instanceof PathSegment.Index) {
+                PathSegment.Index index = (PathSegment.Index) pt;
                 if (jt.isArray()) {
-                    node = Nodes.getInArray(node, ((PathSegment.Index) pt).index);
+                    node = Nodes.getInArray(node, index.index);
+                } else if (_isPointerObjectKey(index, jt)) {
+                    node = Nodes.getInObject(node, index.pointerToken);
                 } else {
                     return null;
                 }
@@ -928,8 +970,12 @@ public class JsonPath {
                     }
                 }
             } else if (pt instanceof PathSegment.Index) {
+                PathSegment.Index index = (PathSegment.Index) pt;
                 if (jt.isArray()) {
-                    node = Nodes.getInArray(node, ((PathSegment.Index) pt).index);
+                    node = Nodes.getInArray(node, index.index);
+                    continue;
+                } else if (_isPointerObjectKey(index, jt) && Nodes.containsInObject(node, index.pointerToken)) {
+                    node = Nodes.getInObject(node, index.pointerToken);
                     continue;
                 }
             } else if (pt instanceof PathSegment.Wildcard) {
@@ -1027,8 +1073,11 @@ public class JsonPath {
             String name = ((PathSegment.Name) lastToken).name;
             return Nodes.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
-            int idx = ((PathSegment.Index) lastToken).index;
-            Nodes.setInArray(lastContainer, idx, value);
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                return Nodes.putInObject(lastContainer, index.pointerToken, value);
+            }
+            Nodes.setInArray(lastContainer, index.index, value);
             return null;
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(lastContainer, value);
@@ -1043,7 +1092,11 @@ public class JsonPath {
         if (lastToken instanceof PathSegment.Name) {
             return Nodes.getInObject(lastContainer, ((PathSegment.Name) lastToken).name);
         } else if (lastToken instanceof PathSegment.Index) {
-            return Nodes.getInArray(lastContainer, ((PathSegment.Index) lastToken).index);
+            PathSegment.Index index = (PathSegment.Index) lastToken;
+            if (_isPointerObjectKey(index, lastContainer)) {
+                return Nodes.getInObject(lastContainer, index.pointerToken);
+            }
+            return Nodes.getInArray(lastContainer, index.index);
         } else if (lastToken instanceof PathSegment.Append) {
             return null;
         } else {
@@ -1089,20 +1142,34 @@ public class JsonPath {
                             "' at '" + ps.rootedInspect() + "'");
                 }
             } else if (ps instanceof PathSegment.Index) {
-                int idx = ((PathSegment.Index) ps).index;
+                PathSegment.Index index = (PathSegment.Index) ps;
                 if (jt.isArray()) {
-                    Nodes.accessInArray(curNode, curType, idx, acc);
+                    Nodes.accessInArray(curNode, curType, index.index, acc);
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.insertable) {
                         PathSegment nextPt = segments[i + 1];
                         Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
-                        Nodes.setInArray(curNode, idx, subNode);
+                        Nodes.setInArray(curNode, index.index, subNode);
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("Cannot add or set index " + idx + " on an array node '" + curType + "'");
+                        throw new JsonException("Cannot add or set index " + index.index + " on an array node '" + curType + "'");
+                    }
+                } else if (_isPointerObjectKey(index, jt)) {
+                    Nodes.accessInObject(curNode, curType, index.pointerToken, acc);
+                    if (acc.node != null) {
+                        curNode = acc.node;
+                        curType = acc.type;
+                    } else if (acc.insertable) {
+                        PathSegment nextPt = segments[i + 1];
+                        Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
+                        Nodes.putInObject(curNode, index.pointerToken, subNode);
+                        curNode = subNode;
+                        curType = acc.type;
+                    } else {
+                        throw new JsonException("Cannot put field '" + index.pointerToken + "' on an object node '" + curType + "'");
                     }
                 } else {
                     throw new JsonException("Not an array node, but was '" + curType +

@@ -291,7 +291,7 @@ public class PathFunctionRegistry {
                         }
                     });
             }
-            return qe[0] / cnt[0];
+            return Math.sqrt(qe[0] / cnt[0]);
         }));
 
         // first
