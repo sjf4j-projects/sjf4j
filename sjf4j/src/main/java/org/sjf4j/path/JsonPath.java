@@ -2,7 +2,7 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.Nodes;
@@ -73,15 +73,6 @@ public class JsonPath {
             }
         }
         this.single = isSingle;
-    }
-
-    /**
-     * Compiles with global cache from {@link Sjf4jConfig#global()}.
-     * <p>
-     * Cache implementation is configurable via {@link Sjf4jConfig.Builder#pathCache(PathCache)}.
-     */
-    public static JsonPath compileCached(String expr) {
-        return Sjf4jConfig.global().pathCache.getOrCompile(expr, JsonPath::compile);
     }
 
     /**

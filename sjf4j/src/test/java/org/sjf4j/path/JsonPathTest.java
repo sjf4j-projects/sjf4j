@@ -183,8 +183,8 @@ public class JsonPathTest {
 
     @Test
     public void testCompileCachedDefaultChm() {
-        JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
-        JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
+        JsonPath p1 = Sjf4j.cachedPath("$.a.b[0].c");
+        JsonPath p2 = Sjf4j.cachedPath("$.a.b[0].c");
         assertSame(p1, p2);
     }
 

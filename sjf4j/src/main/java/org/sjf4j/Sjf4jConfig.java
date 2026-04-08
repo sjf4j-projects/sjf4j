@@ -11,7 +11,6 @@ import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.PathCache;
@@ -51,32 +50,17 @@ public final class Sjf4jConfig {
         EPOCH_MILLIS,
     }
 
-    public enum PlainPojoFieldAccess {
-        BEAN_ONLY,
-        FIELD_BASED,
-    }
-
     /**
      * The format used when encoding/decoding {@link java.time.Instant}.
      */
     public final InstantFormat instantFormat;
 
     /**
-     * Cache strategy used by {@link org.sjf4j.path.JsonPath#compileCached(String)}.
+     * Cache strategy used by runtime-level cached path compilation.
      */
     public final PathCache pathCache;
 
     public final boolean bindingPath;
-
-    /**
-     * Naming style used for JSON-facing POJO/JOJO property names.
-     */
-    public final NamingStrategy namingStrategy;
-
-    /**
-     * Field access policy for plain POJO binding without explicit SJF4J field overrides.
-     */
-    public final PlainPojoFieldAccess plainPojoFieldAccess;
 
     /**
      * Private constructor for JsonConfig. Use the Builder to create instances.
@@ -92,8 +76,6 @@ public final class Sjf4jConfig {
         this.instantFormat = builder.instantFormat;
         this.pathCache = builder.pathCache;
         this.bindingPath = builder.bindingPath;
-        this.namingStrategy = builder.namingStrategy;
-        this.plainPojoFieldAccess = builder.plainPojoFieldAccess;
     }
 
     private static Sjf4jConfig GLOBAL = new Sjf4jConfig.Builder().build();
@@ -104,13 +86,6 @@ public final class Sjf4jConfig {
     public static void global(Sjf4jConfig sjf4jConfig) {
         Objects.requireNonNull(sjf4jConfig, "sjf4jConfig");
         Sjf4jConfig previous = GLOBAL;
-
-        if (previous.namingStrategy != sjf4jConfig.namingStrategy
-                || previous.plainPojoFieldAccess != sjf4jConfig.plainPojoFieldAccess) {
-            if (sjf4jConfig.jsonFacade == previous.jsonFacade) {
-                sjf4jConfig.jsonFacade = null;
-            }
-        }
         if (previous.instantFormat != sjf4jConfig.instantFormat) {
             NodeRegistry.refreshInstantValueCodec(sjf4jConfig.instantFormat);
         }
@@ -171,16 +146,6 @@ public final class Sjf4jConfig {
     public static void useBindingPath(boolean bindingPath) {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
                 .bindingPath(bindingPath).build());
-    }
-
-    public static void usePlainPojoBeanOnlyAsGlobal() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .plainPojoFieldAccess(PlainPojoFieldAccess.BEAN_ONLY).build());
-    }
-
-    public static void usePlainPojoFieldBasedAsGlobal() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .plainPojoFieldAccess(PlainPojoFieldAccess.FIELD_BASED).build());
     }
 
     /**
@@ -256,8 +221,6 @@ public final class Sjf4jConfig {
                 ", propertiesFacade=" + Types.name(getPropertiesFacade()) +
                 ", nodeFacade=" + Types.name(getNodeFacade()) +
                 ", instantFormat=" + instantFormat +
-                ", namingStrategy=" + namingStrategy +
-                ", plainPojoFieldAccess=" + plainPojoFieldAccess +
                 ", pathCache=" + Types.name(pathCache) +
                 ", bindingPath=" + bindingPath +
                 '}';
@@ -274,8 +237,6 @@ public final class Sjf4jConfig {
         private NodeFacade nodeFacade;
 
         private InstantFormat instantFormat = InstantFormat.ISO_STRING;
-        private NamingStrategy namingStrategy = NamingStrategy.IDENTITY;
-        private PlainPojoFieldAccess plainPojoFieldAccess = PlainPojoFieldAccess.BEAN_ONLY;
         private PathCache pathCache = PathCache.ConcurrentMapPathCache;
         private boolean bindingPath = true;
 
@@ -294,8 +255,6 @@ public final class Sjf4jConfig {
             this.propertiesFacade = config.propertiesFacade;
             this.nodeFacade = config.nodeFacade;
             this.instantFormat = config.instantFormat;
-            this.namingStrategy = config.namingStrategy;
-            this.plainPojoFieldAccess = config.plainPojoFieldAccess;
             this.pathCache = config.pathCache;
             this.bindingPath = config.bindingPath;
         }
@@ -345,22 +304,6 @@ public final class Sjf4jConfig {
         public Builder instantFormat(InstantFormat instantFormat) {
             Objects.requireNonNull(instantFormat, "instantFormat");
             this.instantFormat = instantFormat;
-            return this;
-        }
-        /**
-         * Sets POJO/JOJO property naming style.
-         */
-        public Builder namingStrategy(NamingStrategy namingStrategy) {
-            Objects.requireNonNull(namingStrategy, "namingStrategy");
-            this.namingStrategy = namingStrategy;
-            return this;
-        }
-        /**
-         * Sets field access policy for plain POJO binding.
-         */
-        public Builder plainPojoFieldAccess(PlainPojoFieldAccess plainPojoFieldAccess) {
-            Objects.requireNonNull(plainPojoFieldAccess, "plainPojoFieldAccess");
-            this.plainPojoFieldAccess = plainPojoFieldAccess;
             return this;
         }
         /**

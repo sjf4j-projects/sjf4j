@@ -55,7 +55,6 @@ class NamingStrategyTest {
     void testTypeLevelSnakeCaseBindingAndJsonPath() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(previousConfig)
                 .jsonFacade(new SimpleJsonFacade())
-                .namingStrategy(NamingStrategy.IDENTITY)
                 .build());
 
         SnakeUser user = Sjf4j.fromJson("{\"user_name\":\"han\",\"login_count\":2,\"_internal_id\":\"x1\"}",

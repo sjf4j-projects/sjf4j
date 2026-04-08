@@ -2,6 +2,7 @@ package org.sjf4j;
 
 
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.path.JsonPath;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,6 +26,35 @@ import java.util.Properties;
  * All operations delegate to facades from global {@link Sjf4jConfig}.
  */
 public class Sjf4j {
+
+    /**
+     * Creates a runtime from the current global configuration snapshot.
+     */
+    public static Sjf4jRuntime runtime() {
+        return Sjf4jRuntime.of(Sjf4jConfig.global());
+    }
+
+    /**
+     * Creates a runtime from the provided configuration snapshot.
+     */
+    public static Sjf4jRuntime runtime(Sjf4jConfig config) {
+        return Sjf4jRuntime.of(config);
+    }
+
+    /**
+     * Creates an instance-runtime builder. This is the forward-compatible entry
+     * point for the future non-static Sjf4j API.
+     */
+    public static Sjf4jRuntime.Builder builder() {
+        return Sjf4jRuntime.builder();
+    }
+
+    /**
+     * Compiles a JSONPath or JSON Pointer expression through the current global runtime cache.
+     */
+    public static JsonPath cachedPath(String expr) {
+        return runtime().cachedPath(expr);
+    }
 
     /// JSON
 

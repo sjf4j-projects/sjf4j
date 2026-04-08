@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
- * Cache strategy used by {@link JsonPath#compileCached(String)}.
+ * Cache strategy used by runtime-level cached path compilation.
  */
 @FunctionalInterface
 public interface PathCache {

@@ -105,7 +105,7 @@ public class ReadBenchmark {
         builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setFieldNamingStrategy(field -> {
             String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
-            return name != null ? name : Sjf4jConfig.global().namingStrategy.translate(field.getName());
+            return name != null ? name : field.getName();
         });
         return builder.create();
     }

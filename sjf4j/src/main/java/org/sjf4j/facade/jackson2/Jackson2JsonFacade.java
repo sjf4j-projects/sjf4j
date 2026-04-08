@@ -7,16 +7,13 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import com.fasterxml.jackson.core.util.BufferRecycler;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Types;
 
 import java.io.IOException;
@@ -55,9 +52,6 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        if (Sjf4jConfig.global().namingStrategy == NamingStrategy.SNAKE_CASE) {
-            objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
-        }
 //        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         this.objectMapper = objectMapper;

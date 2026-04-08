@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.StreamingFacade;
@@ -55,7 +54,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         }
         gsonBuilder.setFieldNamingStrategy(field -> {
             String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
-            return name != null ? name : Sjf4jConfig.global().namingStrategy.translate(field.getName());
+            return name != null ? name : field.getName();
         });
         this.gson = gsonBuilder.create();
     }
