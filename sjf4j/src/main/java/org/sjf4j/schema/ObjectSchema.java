@@ -269,8 +269,16 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     void compile(PathSegment ps, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
-            if (uri == null) uri = CompileUtil.resolveUri(getId(), idSchema.getUri());
-            if (uri == null && this == idSchema) uri = URI.create("");
+            if (this == idSchema) {
+                URI resolved = CompileUtil.resolveUri(getId(), uri);
+                if (resolved != null) {
+                    uri = resolved;
+                } else if (uri == null) {
+                    uri = URI.create("");
+                }
+            } else if (uri == null) {
+                uri = CompileUtil.resolveUri(getId(), idSchema.getUri());
+            }
             if (uri != null) {
                 idSchema = this;
                 rootSchema.innerStore.put(uri, this);

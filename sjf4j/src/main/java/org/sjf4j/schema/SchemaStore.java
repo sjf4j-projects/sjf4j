@@ -227,17 +227,20 @@ public class SchemaStore {
      */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
         Objects.requireNonNull(uri, "uri");
+        ObjectSchema schema;
         if ("file".equalsIgnoreCase(uri.getScheme())) {
-            return loadSchemaFromFile(uri.getPath());
-        }
-        if ("classpath".equalsIgnoreCase(uri.getScheme())) {
+            schema = loadSchemaFromFile(uri.getPath());
+        } else if ("classpath".equalsIgnoreCase(uri.getScheme())) {
             String path = uri.getPath();
             if (path == null || path.isEmpty()) {
                 path = uri.getSchemeSpecificPart();
             }
-            return loadSchemaFromResource(path);
+            schema = loadSchemaFromResource(path);
+        } else {
+            throw new SchemaException("Unsupported local schema uri: " + uri);
         }
-        throw new SchemaException("Unsupported local schema uri: " + uri);
+        schema.setUri(CompileUtil.dropFragment(uri));
+        return schema;
     }
 
     /**

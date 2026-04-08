@@ -58,6 +58,10 @@ public class ValidJsonSchemaTest {
         public String name;
     }
 
+    @ValidJsonSchema(ref = "root.json")
+    public static class NoIdRelativeRefUser extends JsonObject {
+    }
+
     @Test
     public void testInlineSchemaOnPojo() {
         SchemaValidator validator = new SchemaValidator();
@@ -234,6 +238,37 @@ public class ValidJsonSchemaTest {
         ok.id = 1;
         ok.name = "han";
         assertTrue(validator.validate(ok).isValid());
+    }
+
+    @Test
+    public void testRelativeRefUsesRetrievalUriWithoutId(@TempDir Path tempDir) throws Exception {
+        String rootSchema = "{" +
+                "\"type\":\"object\"," +
+                "\"required\":[\"name\"]," +
+                "\"properties\":{\"name\":{\"$ref\":\"defs/non-empty-string.json\"}}," +
+                "\"additionalProperties\":false" +
+                "}";
+        String leafSchema = "{" +
+                "\"type\":\"string\"," +
+                "\"minLength\":1" +
+                "}";
+
+        Path defsDir = tempDir.resolve("defs");
+        Files.createDirectories(defsDir);
+        Files.write(tempDir.resolve("root.json"), rootSchema.getBytes(StandardCharsets.UTF_8));
+        Files.write(defsDir.resolve("non-empty-string.json"), leafSchema.getBytes(StandardCharsets.UTF_8));
+
+        String baseDir = "file:" + tempDir.toString();
+        SchemaValidator validator = new SchemaValidator(baseDir, null, null);
+        validator.preloadDirectory(baseDir);
+
+        NoIdRelativeRefUser ok = new NoIdRelativeRefUser();
+        ok.put("name", "han");
+        assertTrue(validator.validate(ok).isValid());
+
+        NoIdRelativeRefUser bad = new NoIdRelativeRefUser();
+        bad.put("name", "");
+        assertFalse(validator.validate(bad).isValid());
     }
 
 

@@ -188,6 +188,13 @@ public final class SchemaValidator {
      */
     private JsonSchema _compileAndRegister(JsonSchema schema) {
         schema.compile(schemaStore);
+        if (schema instanceof ObjectSchema) {
+            ObjectSchema objectSchema = (ObjectSchema) schema;
+            URI resolvedUri = objectSchema.getResolvedUri();
+            if (resolvedUri != null && !resolvedUri.toString().isEmpty() && schemaStore.contains(resolvedUri)) {
+                return schemaStore.resolve(resolvedUri);
+            }
+        }
         schemaStore.register(schema);
         return schema;
     }

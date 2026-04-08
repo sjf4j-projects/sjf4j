@@ -1,9 +1,9 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.Paths;
 
 import java.net.IDN;
+import java.net.InetAddress;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -26,8 +26,6 @@ public interface FormatValidator {
 
     /**
      * Returns validator implementation for a standard format name.
-     *
-     * @throws IllegalArgumentException when format is not supported
      */
     static FormatValidator of(String format) {
         switch (format) {
@@ -50,9 +48,12 @@ public interface FormatValidator {
             case "json-pointer": return JSON_POINTER;
             case "relative-json-pointer": return RELATIVE_JSON_POINTER;
             case "regex": return REGEX;
-            default: throw new JsonException("Unsupported schema format: " + format);
+            default: return NOOP;
         }
     }
+
+    /** Unknown formats are treated as annotations and never fail validation. */
+    FormatValidator NOOP = value -> true;
 
     // INSTANCE
     EmailValidator EMAIL = new EmailValidator();
@@ -179,8 +180,7 @@ public interface FormatValidator {
 
     // hostname
     class HostnameValidator implements FormatValidator {
-        private final Pattern pattern = Pattern.compile(
-                "^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$");
+        private final Pattern labelPattern = Pattern.compile("^[a-zA-Z0-9-]+$");
 
         /**
          * Validates DNS hostname format.
@@ -188,7 +188,14 @@ public interface FormatValidator {
         @Override
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
-            return pattern.matcher(value).matches();
+            if (value.length() > 253 || value.startsWith(".") || value.endsWith(".")) return false;
+            String[] parts = value.split("\\\\.");
+            for (String label : parts) {
+                if (label.isEmpty() || label.length() > 63) return false;
+                if (!labelPattern.matcher(label).matches()) return false;
+                if (label.startsWith("-") || label.endsWith("-")) return false;
+            }
+            return true;
         }
     }
 
@@ -235,15 +242,18 @@ public interface FormatValidator {
 
     // ipv6
     class Ipv6Validator implements FormatValidator {
-        private final Pattern pattern = Pattern.compile(
-                "^(?:[\\da-fA-F]{1,4}:){7}[\\da-fA-F]{1,4}$"
-        );
         /**
          * Validates IPv6 address format.
          */
         @Override
         public boolean validate(String value) {
-            return pattern.matcher(value).matches();
+            if (value == null || value.isEmpty() || !value.contains(":")) return false;
+            try {
+                InetAddress.getByName(value);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
         }
     }
 
@@ -295,15 +305,26 @@ public interface FormatValidator {
 
     // uri-template (very simple check for braces)
     class UriTemplateValidator implements FormatValidator {
-        private final Pattern pattern = Pattern.compile("\\{[^}]*}");
         /**
-         * Validates URI-template placeholder presence.
+         * Validates URI-template brace structure.
          * <p>
-         * This is a lightweight check and does not fully implement RFC 6570.
+         * This is a lightweight RFC 6570 syntax check.
          */
         @Override
         public boolean validate(String value) {
-            return pattern.matcher(value).find();
+            if (value == null) return false;
+            boolean inExpression = false;
+            for (int i = 0; i < value.length(); i++) {
+                char ch = value.charAt(i);
+                if (ch == '{') {
+                    if (inExpression) return false;
+                    inExpression = true;
+                } else if (ch == '}') {
+                    if (!inExpression) return false;
+                    inExpression = false;
+                }
+            }
+            return !inExpression;
         }
     }
 
@@ -411,9 +432,15 @@ public interface FormatValidator {
         public boolean validate(String value) {
             try {
                 if (value == null) return false;
-                String[] ss = value.split("/", 2);
-                if (Integer.parseInt(ss[0]) < 0) return false;
-                if (ss.length > 1) Paths.parsePointer(ss[1]);
+                int idx = 0;
+                while (idx < value.length() && Character.isDigit(value.charAt(idx))) idx++;
+                if (idx == 0) return false;
+                String prefix = value.substring(0, idx);
+                if (prefix.length() > 1 && prefix.charAt(0) == '0') return false;
+                if (Integer.parseInt(prefix) < 0) return false;
+                if (idx == value.length()) return true;
+                if (value.charAt(idx) == '#') return idx == value.length() - 1;
+                Paths.parsePointer(value.substring(idx));
                 return true;
             } catch (Exception e) {
                 return false;

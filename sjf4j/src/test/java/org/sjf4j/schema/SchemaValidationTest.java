@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.SchemaException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 
@@ -9,7 +10,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SchemaValidationTest {
@@ -65,6 +68,20 @@ public class SchemaValidationTest {
         assertFalse(schema.isValid("a"));
         assertFalse(schema.isValid("abcde"));
         assertFalse(schema.isValid("AB"));
+    }
+
+    @Test
+    public void testStringLengthCountsCodePoints() {
+        String json =
+                "{\n" +
+                "  \"type\": \"string\",\n" +
+                "  \"minLength\": 2,\n" +
+                "  \"maxLength\": 2\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+        schema.compile();
+
+        assertTrue(schema.isValid("e\u0301"));
     }
 
     @Test
@@ -212,8 +229,8 @@ public class SchemaValidationTest {
         ok2.put("c", 3);
 
         Map<String, Object> ok3 = new HashMap<>();
-        ok2.put("a", 2);
-        ok2.put("d", 4);
+        ok3.put("a", 2);
+        ok3.put("d", 4);
 
         assertTrue(schema.isValid(ok1));
         assertTrue(schema.isValid(ok2));
@@ -361,6 +378,59 @@ public class SchemaValidationTest {
 
         ValidationResult result = schema.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build());
         assertFalse(result.isValid());
+    }
+
+    @Test
+    public void testUnknownKeywordIgnored() {
+        String json =
+                "{\n" +
+                "  \"type\": \"string\",\n" +
+                "  \"x-internal\": {\n" +
+                "    \"$id\": \"ignored\",\n" +
+                "    \"type\": 123\n" +
+                "  }\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+
+        assertDoesNotThrow(() -> schema.compile());
+        assertTrue(schema.isValid("ok"));
+        assertFalse(schema.isValid(1));
+    }
+
+    @Test
+    public void testUnknownFormatIgnoredInStrictMode() {
+        JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"unknown\"}");
+        assertDoesNotThrow(() -> schema.compile());
+
+        ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
+        assertTrue(schema.validate("still-valid", options).isValid());
+    }
+
+    @Test
+    public void testStrictFormatValidators() {
+        ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
+
+        JsonSchema hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}");
+        hostname.compile();
+        assertTrue(hostname.validate("hostname", options).isValid());
+
+        JsonSchema ipv6 = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"ipv6\"}");
+        ipv6.compile();
+        assertTrue(ipv6.validate("::1", options).isValid());
+
+        JsonSchema relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}");
+        relativeJsonPointer.compile();
+        assertTrue(relativeJsonPointer.validate("0#", options).isValid());
+
+        JsonSchema uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}");
+        uriTemplate.compile();
+        assertTrue(uriTemplate.validate("http://example.com/dictionary", options).isValid());
+    }
+
+    @Test
+    public void testNullSubschemaRejected() {
+        JsonSchema schema = JsonSchema.fromJson("{\"items\":null}");
+        assertThrows(SchemaException.class, schema::compile);
     }
 
     @Test

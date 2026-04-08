@@ -26,23 +26,19 @@ public class CompileUtil {
 
 
     /**
-     * Validates that schema keywords are recognized and allowed by vocabulary.
+     * Validates that recognized schema keywords are allowed by declared vocabulary.
      *
-     * @throws SchemaException when a keyword is unknown or explicitly disallowed
+     * @throws SchemaException when a recognized keyword is explicitly disallowed
      */
     static void checkVocabulary(PathSegment ps, ObjectSchema schema, Map<String, Boolean> vocabulary) {
         for (String property : schema.keySet()) {
             String vocabUri = VocabularyRegistry.getVocabUri(property);
-            if (vocabUri != null) {
-                if (vocabulary != null) {
-                    Boolean allow = vocabulary.get(vocabUri);
-                    if (allow != null && !allow)
-                        throw new SchemaException("Keyword '" + property + "' at " + JsonPointer.fromLast(ps) +
-                                " is disallowed by declared vocabulary " + vocabUri);
+            if (vocabUri != null && vocabulary != null) {
+                Boolean allow = vocabulary.get(vocabUri);
+                if (allow != null && !allow) {
+                    throw new SchemaException("Keyword '" + property + "' at " + JsonPointer.fromLast(ps) +
+                            " is disallowed by declared vocabulary " + vocabUri);
                 }
-            } else {
-                throw new SchemaException("Unrecognized schema keyword '" + property + "' at " +
-                        JsonPointer.fromLast(ps) + " . No registered vocabulary claims support for it.\n");
             }
         }
     }
@@ -351,10 +347,14 @@ public class CompileUtil {
      * Compiles one subschema from the given keyword and writes back if needed.
      */
     static JsonSchema compileSchemaByKey(String key, PathSegment ps,
-                                     ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
+                                      ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object subNode = schema.getNode(key);
-        if (subNode == null) return null;
         PathSegment cps = new PathSegment.Name(ps, null, key);
+        if (subNode == null) {
+            if (!schema.containsKey(key)) return null;
+            throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(cps) +
+                    "': null is not allowed");
+        }
         JsonSchema subSchema = compileSchema(subNode, cps, idSchema, rootSchema);
         if (subSchema != subNode) schema.put(key, subSchema);
         return subSchema;
@@ -374,7 +374,9 @@ public class CompileUtil {
 
         JsonType jt = JsonType.of(node);
         switch (jt) {
-            case NULL: return null;
+            case NULL:
+                throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ps) +
+                        "': null is not allowed");
             case BOOLEAN: return BooleanSchema.raw2Value(Nodes.toBoolean(node));
             case OBJECT: {
                 ObjectSchema schema = new ObjectSchema(node);
