@@ -67,15 +67,18 @@ public class JsonPatch extends JsonArray {
      * Applies all operations to target in document order.
      * <p>
      * Execution is stateful: each op observes mutations produced by previous ops.
+     * Capture the return value when the patch may replace/remove the root document.
      */
-    public void apply(Object target) {
-        Objects.requireNonNull(target, "target");
-        forEach(v -> {
+    public Object apply(Object target) {
+        Object current = target;
+        int size = size();
+        for (int i = 0; i < size; i++) {
+            Object v = get(i, Object.class);
             if (v instanceof PatchOperation) {
-                PatchOperation operation =  (PatchOperation) v;
-                operation.apply(target);
+                current = ((PatchOperation) v).apply(current);
             } else throw new JsonException("Unsupported patch type: " + Types.name(v));
-        });
+        }
+        return current;
     }
 
 }

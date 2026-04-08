@@ -76,8 +76,8 @@ public final class PatchOperation {
     /**
      * Applies this operation to target node via {@link OperationRegistry}.
      */
-    public void apply(Object target) {
-        OperationRegistry.apply(target, this);
+    public Object apply(Object target) {
+        return OperationRegistry.apply(target, this);
     }
 
 }

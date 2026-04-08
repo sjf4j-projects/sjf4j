@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
 - Changed `NodeRegistry` POJO routing flags from framework-centric reader/writer naming to `requiresPojoReader` / `requiresPojoWriter`, and removed `PojoInfo.newCreationSession()` in favor of direct `PojoCreationSession` construction.
+- Changed JSON Patch and RFC 7386 root-application APIs so `JsonPatch.apply(...)`, `PatchOperation.apply(...)`, `Patches.mergeRfc7386(...)`, and the `JsonContainer` wrappers return the possibly replaced root document.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.
@@ -33,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Jackson/Jackson3 module installation so existing mapper annotation introspectors remain active alongside SJF4J `@NodeProperty` support.
 - Fixed JSON Pointer parsing to reject invalid `~` escapes, preserve leading-zero numeric tokens, and route numeric pointer segments to object keys when the runtime container is object-shaped.
 - Fixed `stddev()` to return standard deviation instead of variance, and reject terminal descendant paths like `$..` during compile time.
+- Fixed JSON Patch / Merge Patch semantics for root replacement, `copy`/`move` of explicit `null`, deep-copy `copy`, atomic `move`, and numeric leaf equality during `diff`.
 
 
 ## [1.1.6] - 2026.04.02

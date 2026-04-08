@@ -726,9 +726,11 @@ public abstract class JsonContainer {
 
     /**
      * Applies a JSON Patch document to this container.
+     * <p>
+     * Capture the return value when the patch may replace or remove the root document.
      */
-    public void apply(JsonPatch patch) {
-        patch.apply(this);
+    public Object apply(JsonPatch patch) {
+        return patch.apply(this);
     }
 
     /**
@@ -757,9 +759,10 @@ public abstract class JsonContainer {
     /**
      * Applies RFC 7386 JSON Merge Patch semantics.
      * Use this when null means delete and arrays should be replaced as a whole.
+     * Capture the return value when the merge patch may replace the root document.
      */
-    public void mergeRfc7386(Object mergePatch) {
-        Patches.mergeRfc7386(this, mergePatch);
+    public Object mergeRfc7386(Object mergePatch) {
+        return Patches.mergeRfc7386(this, mergePatch);
     }
 
 

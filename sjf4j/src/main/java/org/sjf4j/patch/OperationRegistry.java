@@ -1,6 +1,7 @@
 package org.sjf4j.patch;
 
 
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
@@ -52,39 +53,135 @@ public class OperationRegistry {
     }
 
     /**
-     * Applies operation by looking up its registered handler.
+     * Applies operation and returns the possibly replaced root document.
      */
-    public static void apply(Object target, PatchOperation operation) {
-        Objects.requireNonNull(target, "target");
+    public static Object apply(Object target, PatchOperation operation) {
         Objects.requireNonNull(operation, "operation");
-        OperationHandler handler = OPERATION_CACHE.get(operation.getOp());
-        if (handler == null) throw new JsonException("No OperationHandler for '" + operation.getOp() + "'");
+        JsonPointer path = _requirePath(operation);
         try {
+            if (_isRoot(path)) {
+                return _applyAtRoot(target, operation);
+            }
+            if (target == null) {
+                throw new JsonException("Cannot apply PatchOperation '" + operation.getOp() +
+                        "' to null target at non-root path " + path);
+            }
+            OperationHandler handler = OPERATION_CACHE.get(operation.getOp());
+            if (handler == null) throw new JsonException("No OperationHandler for '" + operation.getOp() + "'");
             handler.apply(target, operation);
+            return target;
         } catch (Exception e) {
             throw new JsonException("Failed to apply PatchOperation '" + operation.getOp() + "'", e);
         }
+    }
+
+    private static Object _applyAtRoot(Object target, PatchOperation operation) {
+        switch (operation.getOp()) {
+            case PatchOperation.STD_ADD:
+            case PatchOperation.STD_REPLACE:
+                return operation.getValue();
+            case PatchOperation.STD_REMOVE:
+                return null;
+            case PatchOperation.STD_TEST:
+                if (!Nodes.equals(target, operation.getValue())) {
+                    throw new JsonException("'test' operation failed at path : expected " +
+                            operation.getValue() + ", found " + target);
+                }
+                return target;
+            case PatchOperation.STD_COPY: {
+                JsonPointer from = _requireFrom(operation);
+                if (!_contains(target, from)) {
+                    throw new JsonException("'copy' operation failed at from " + from + ": no value exist");
+                }
+                return Sjf4j.deepNode(_valueAt(target, from));
+            }
+            case PatchOperation.STD_MOVE: {
+                JsonPointer from = _requireFrom(operation);
+                if (from.equals(operation.getPath())) {
+                    return target;
+                }
+                if (!_contains(target, from)) {
+                    throw new JsonException("'move' operation failed at from " + from + ": no value exist");
+                }
+                return _isRoot(from) ? target : from.remove(target);
+            }
+            case PatchOperation.EXT_EXIST:
+                return target;
+            default: {
+                OperationHandler handler = OPERATION_CACHE.get(operation.getOp());
+                if (handler == null) {
+                    throw new JsonException("No OperationHandler for '" + operation.getOp() + "'");
+                }
+                if (target == null) {
+                    throw new JsonException("Cannot apply PatchOperation '" + operation.getOp() +
+                            "' to null root target");
+                }
+                handler.apply(target, operation);
+                return target;
+            }
+        }
+    }
+
+    private static JsonPointer _requirePath(PatchOperation operation) {
+        JsonPointer path = operation.getPath();
+        if (path == null) {
+            throw new JsonException("PatchOperation '" + operation.getOp() + "' is missing path");
+        }
+        return path;
+    }
+
+    private static JsonPointer _requireFrom(PatchOperation operation) {
+        JsonPointer from = operation.getFrom();
+        if (from == null) {
+            throw new JsonException("PatchOperation '" + operation.getOp() + "' is missing from");
+        }
+        return from;
+    }
+
+    private static boolean _isRoot(JsonPointer pointer) {
+        return pointer.depth() == 1;
+    }
+
+    private static boolean _contains(Object target, JsonPointer pointer) {
+        return _isRoot(pointer) || (target != null && pointer.contains(target));
+    }
+
+    private static Object _valueAt(Object target, JsonPointer pointer) {
+        return _isRoot(pointer) ? target : pointer.getNode(target);
+    }
+
+    private static boolean _isProperPrefix(JsonPointer prefix, JsonPointer pointer) {
+        for (JsonPointer parent = pointer.parent(); parent != null; parent = parent.parent()) {
+            if (prefix.equals(parent)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Pre-register build-in PatchOperations
     static {
         // test
         OperationRegistry.register(PatchOperation.STD_TEST, (target, operation) -> {
-            Object node = operation.getPath().getNode(target);
+            JsonPointer path = _requirePath(operation);
+            if (!_contains(target, path)) {
+                throw new JsonException("'test' operation failed at path " + path + ": no value exist");
+            }
+            Object node = _valueAt(target, path);
             if (!Nodes.equals(node, operation.getValue())) {
-                throw new JsonException("'test' operation failed at path " + operation.getPath() + ": expected " +
+                throw new JsonException("'test' operation failed at path " + path + ": expected " +
                         operation.getValue() + ", found " + node);
             }
         });
 
         // add
         OperationRegistry.register(PatchOperation.STD_ADD, (target, operation) -> {
-            operation.getPath().add(target, operation.getValue());
+            _requirePath(operation).add(target, operation.getValue());
         });
 
         // remove
         OperationRegistry.register(PatchOperation.STD_REMOVE, (target, operation) -> {
-            JsonPointer path = operation.getPath();
+            JsonPointer path = _requirePath(operation);
             if (!path.contains(target)) {
                 throw new JsonException("'remove' operation failed at path " + path + ": no value exist");
             }
@@ -93,36 +190,53 @@ public class OperationRegistry {
 
         // replace
         OperationRegistry.register(PatchOperation.STD_REPLACE, (target, operation) -> {
-            operation.getPath().replace(target, operation.getValue());
+            _requirePath(operation).replace(target, operation.getValue());
         });
 
         // copy
         OperationRegistry.register(PatchOperation.STD_COPY, (target, operation) -> {
-            Object value = operation.getFrom().getNode(target);
-            if (value == null) throw new JsonException("'copy' operation failed at from " + operation.getFrom() +
-                    ": no value exist");
-            operation.getPath().add(target, value);
+            JsonPointer from = _requireFrom(operation);
+            if (!_contains(target, from)) {
+                throw new JsonException("'copy' operation failed at from " + from + ": no value exist");
+            }
+            Object value = Sjf4j.deepNode(_valueAt(target, from));
+            _requirePath(operation).add(target, value);
         });
 
         // move
         OperationRegistry.register(PatchOperation.STD_MOVE, (target, operation) -> {
-            Object value = operation.getFrom().remove(target);
-            if (value == null) {
-                throw new JsonException("'move' operation failed at from " + operation.getFrom() + ": no value exist");
+            JsonPointer from = _requireFrom(operation);
+            JsonPointer path = _requirePath(operation);
+            if (from.equals(path)) {
+                return;
             }
-            operation.getPath().add(target, value);
+            if (_isProperPrefix(from, path)) {
+                throw new JsonException("'move' operation failed: from " + from +
+                        " is a proper prefix of path " + path);
+            }
+            if (!_contains(target, from)) {
+                throw new JsonException("'move' operation failed at from " + from + ": no value exist");
+            }
+
+            Object working = Sjf4j.deepNode(target);
+            Object workingValue = from.remove(working);
+            path.add(working, workingValue);
+
+            Object value = from.remove(target);
+            path.add(target, value);
         });
 
         // exist
         OperationRegistry.register(PatchOperation.EXT_EXIST, (target, operation) -> {
-            if (!operation.getPath().contains(target)) {
-                throw new JsonException("'exist' operation failed at path " + operation.getPath());
+            JsonPointer path = _requirePath(operation);
+            if (!path.contains(target)) {
+                throw new JsonException("'exist' operation failed at path " + path);
             }
         });
 
         // ensurePut
         OperationRegistry.register(PatchOperation.EXT_ENSURE_PUT, (target, operation) -> {
-            operation.getPath().ensurePut(target, operation.getValue());
+            _requirePath(operation).ensurePut(target, operation.getValue());
         });
 
     }

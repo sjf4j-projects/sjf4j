@@ -1,6 +1,7 @@
 package org.sjf4j.patch;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
@@ -8,7 +9,6 @@ import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Patch utilities: JSON Merge Patch (RFC 7386) and JSON Patch diff.
@@ -110,30 +110,32 @@ public class Patches {
      * Use this when you need standards-compliant merge behavior instead of
      * custom deep merge from {@link #merge(Object, Object, boolean, boolean)}.</p>
      */
-    public static void mergeRfc7386(Object target, Object patch) {
-        if (target == null || patch == null) return;
-        JsonType targetJt = JsonType.of(target);
+    public static Object mergeRfc7386(Object target, Object patch) {
         JsonType patchJt = JsonType.of(patch);
-        if (targetJt.isObject() && patchJt.isObject()) {
-            Nodes.visitObject(patch, (key, subPatch) -> {
-                Object subTarget = Nodes.getInObject(target, key);
-                JsonType subTargetJt = JsonType.of(subTarget);
-                JsonType subPatchJt = JsonType.of(subPatch);
-                if (subPatch == null) {
-                    if (subTarget != null) {
-                        Nodes.removeInObject(target, key);
-                    }
-                } else if (subPatchJt.isObject()) {
-                    if (subTargetJt.isObject()) {
-                        mergeRfc7386(subTarget, subPatch);
-                    } else {
-                        Nodes.putInObject(target, key, subPatch);
-                    }
-                } else {
-                    Nodes.putInObject(target, key, subPatch);
-                }
-            });
+        if (!patchJt.isObject()) {
+            return patch;
         }
+
+        JsonType targetJt = JsonType.of(target);
+        Object current = targetJt.isObject() ? target : new JsonObject();
+        Nodes.visitObject(patch, (key, subPatch) -> {
+            if (subPatch == null) {
+                if (Nodes.containsInObject(current, key)) {
+                    Nodes.removeInObject(current, key);
+                }
+                return;
+            }
+
+            JsonType subPatchJt = JsonType.of(subPatch);
+            if (subPatchJt.isObject()) {
+                Object subTarget = Nodes.getInObject(current, key);
+                Object subMerged = mergeRfc7386(subTarget, subPatch);
+                Nodes.putInObject(current, key, subMerged);
+            } else {
+                Nodes.putInObject(current, key, subPatch);
+            }
+        });
+        return current;
     }
 
 
@@ -199,7 +201,7 @@ public class Patches {
                         operations.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.fromLast(cps), null, null));
                     }
                 }
-            } else if (!Objects.equals(source, target)) {
+            } else if (!Nodes.equals(source, target)) {
                 operations.add(new PatchOperation(PatchOperation.STD_REPLACE, JsonPointer.fromLast(ps), target, null));
             }
         }
