@@ -10,14 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added Jackson 3 facade integration with runtime auto-detection, global config entry points, Jackson3 `JsonNode` support, and JDK 17 coverage/JMH evaluation.
 - Added container metadata and factory paths in `NodeRegistry` for concrete `Map`/`List`/`Set` target types.
-- Added `Sjf4jConfig.PlainPojoFieldAccess` with global bean-only and field-based switches for plain-POJO binding.
+- Added `@NodeBinding` with type-level `naming` and `access = AccessStrategy.BEAN_BASED/FIELD_BASED` so POJO binding semantics are cached per type instead of driven by mutable global defaults.
 
 ### Improved
 - Improved `Nodes.to(...)`, `NodeFacade.readNode(...)`, and streaming IO binding so concrete `Map`/`List`/`Set` targets are created with their declared container implementations when supported.
 - Improved `Nodes.copy(...)` and `deepNode(...)` to preserve concrete container types when possible and fall back to default mutable containers only on unsupported source implementations.
 - Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
-- Improved plain-POJO binding contracts with explicit `BEAN_ONLY` / `FIELD_BASED` global policy, backend-aligned plugin-module fallback rules, and consistent handling across Jackson, Jackson 3, Gson, and Fastjson2.
-- Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_ONLY`.
+- Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_BASED`.
 - Improved shared/Jackson/Gson/Fastjson2 streaming readers by separating raw node reads from typed dispatch, reducing duplicated `Object.class` hot-path work and closing the Fastjson2 JOJO gap against native any-setter baselines.
 - Improved benchmark coverage and naming so `ReadBenchmark` and the JDK 17 companion benchmark compare POJO/JOJO/map cases consistently across Jackson, Jackson 3, Gson, Fastjson2, JSON-P, and Simple facade baselines.
 - Improved JSONPath/JSON Pointer handling so numeric pointer tokens preserve object-key semantics, filter strings unescape consistently, regex flags parse more strictly, and `&&` / `||` short-circuit during filter evaluation.
@@ -25,12 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
 - Changed `NodeRegistry` POJO routing flags from framework-centric reader/writer naming to `requiresPojoReader` / `requiresPojoWriter`, and removed `PojoInfo.newCreationSession()` in favor of direct `PojoCreationSession` construction.
+- Changed POJO metadata analysis to read naming and field-access strategy only from `@NodeBinding`; `@NodeNaming` has been removed.
 - Changed JSON Patch and RFC 7386 root-application APIs so `JsonPatch.apply(...)`, `PatchOperation.apply(...)`, `Patches.mergeRfc7386(...)`, and the `JsonContainer` wrappers return the possibly replaced root document.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.
 - Fixed transient-field precedence so transient members are always ignored first, and transient fields annotated with `@NodeProperty` now fail fast during metadata analysis.
-- Fixed backend contract drift in tests and plugin-module routing for plain POJOs, including Gson/Fastjson2 private-field behavior under `BEAN_ONLY` and `FIELD_BASED`.
+- Fixed backend contract drift in tests and plugin-module routing for plain POJOs, including Gson/Fastjson2 private-field behavior under `BEAN_BASED` and `FIELD_BASED`.
 - Fixed Jackson/Jackson3 module installation so existing mapper annotation introspectors remain active alongside SJF4J `@NodeProperty` support.
 - Fixed JSON Pointer parsing to reject invalid `~` escapes, preserve leading-zero numeric tokens, and route numeric pointer segments to object keys when the runtime container is object-shaped.
 - Fixed `stddev()` to return standard deviation instead of variance, and reject terminal descendant paths like `$..` during compile time.

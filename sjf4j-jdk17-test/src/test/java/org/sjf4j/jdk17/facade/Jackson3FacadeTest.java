@@ -12,8 +12,8 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -22,6 +22,7 @@ import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
+import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.NodeRegistry;
@@ -171,16 +172,22 @@ class Jackson3FacadeTest {
         transient int transientHeight;
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeBook extends JsonObject {
         public String userName;
         public int loginCount;
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     static class SnakePlainBook {
         public String userName;
         public int loginCount;
+    }
+
+    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    static class FieldBasedPrivateBook {
+        String userName;
+        int loginCount;
     }
 
     static class Ctor2PlusField {
@@ -463,14 +470,11 @@ class Jackson3FacadeTest {
     }
 
     @Test
-    void testFieldBasedGlobalAllowsNonPublicPlainPojo() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(previousConfig)
-                .plainPojoFieldAccess(Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED)
-                .build());
+    void testFieldBasedAnnotatedAllowsNonPublicPlainPojo() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
                 StreamingFacade.StreamingMode.PLUGIN_MODULE);
-        PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
-                PlainPrivateBook.class);
+        FieldBasedPrivateBook book = (FieldBasedPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                FieldBasedPrivateBook.class);
         assertEquals("han", book.userName);
         assertEquals(2, book.loginCount);
         assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));

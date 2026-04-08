@@ -156,6 +156,20 @@ public final class NodeRegistry {
      * Boolean, Map, List, or Object).
      */
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
+        return _registerValueCodec(valueCodec, false);
+    }
+
+    /**
+     * Replaces an existing codec for the same value type.
+     * <p>
+     * This is the explicit "I know I am changing global codec semantics" path.
+     * Use {@link #registerValueCodec(ValueCodec)} when duplicates should fail fast.
+     */
+    public static <N, R> ValueCodecInfo overrideValueCodec(ValueCodec<N, R> valueCodec) {
+        return _registerValueCodec(valueCodec, true);
+    }
+
+    private static <N, R> ValueCodecInfo _registerValueCodec(ValueCodec<N, R> valueCodec, boolean override) {
         Objects.requireNonNull(valueCodec, "valueCodec");
         Class<R> rawClazz = valueCodec.rawClass();
         if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
@@ -165,8 +179,42 @@ public final class NodeRegistry {
         Objects.requireNonNull(valueClazz, "valueClazz");
 
         ValueCodecInfo vci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec);
-        TYPE_INFO_CACHE.put(valueClazz, new TypeInfo(valueClazz, vci, null, null, null));
+        _storeValueCodecInfo(vci, override);
         return vci;
+    }
+
+    private static void _storeValueCodecInfo(ValueCodecInfo vci, boolean override) {
+        Class<?> valueClazz = vci.valueClazz;
+        // Retry until we observe a stable slot so concurrent type analysis/codec registration stays correct.
+        while (true) {
+            TypeInfo oldTi = TYPE_INFO_CACHE.get(valueClazz);
+            if (oldTi == null) {
+                TypeInfo newTi = new TypeInfo(valueClazz, vci, null, null, null);
+                if (TYPE_INFO_CACHE.putIfAbsent(valueClazz, newTi) == null) {
+                    return;
+                }
+                continue;
+            }
+            if (oldTi == NONE_INFO) {
+                TypeInfo newTi = new TypeInfo(valueClazz, vci, null, null, null);
+                if (TYPE_INFO_CACHE.replace(valueClazz, oldTi, newTi)) {
+                    return;
+                }
+                continue;
+            }
+            if (oldTi.pojoInfo != null || oldTi.anyOfInfo != null || oldTi.containerInfo != null) {
+                throw new JsonException("Type '" + valueClazz.getName() +
+                        "' is already classified as a non-ValueCodec node type");
+            }
+            if (!override && oldTi.valueCodecInfo != null) {
+                throw new JsonException("ValueCodec already registered for type '" + valueClazz.getName() +
+                        "'. Use overrideValueCodec() to replace it");
+            }
+            TypeInfo newTi = new TypeInfo(valueClazz, vci, null, null, null);
+            if (TYPE_INFO_CACHE.replace(valueClazz, oldTi, newTi)) {
+                return;
+            }
+        }
     }
 
     /**
@@ -174,6 +222,18 @@ public final class NodeRegistry {
      */
     public static ValueCodecInfo registerValueCodec(Class<?> clazz) {
         return registerTypeInfo(clazz).valueCodecInfo;
+    }
+
+    /**
+     * Replaces an existing codec using the type's {@code @NodeValue} declaration.
+     */
+    public static ValueCodecInfo overrideValueCodec(Class<?> clazz) {
+        ValueCodecInfo vci = ReflectUtil.analyzeNodeValue(clazz);
+        if (vci == null) {
+            throw new JsonException("Class '" + clazz.getName() + "' is not annotated with @NodeValue");
+        }
+        _storeValueCodecInfo(vci, true);
+        return vci;
     }
 
     /**
@@ -190,9 +250,9 @@ public final class NodeRegistry {
      */
     public static void refreshInstantValueCodec(Sjf4jConfig.InstantFormat instantFormat) {
         if (instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
-            registerValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
+            overrideValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
         } else {
-            registerValueCodec(new ValueCodec.InstantStringValueCodec());
+            overrideValueCodec(new ValueCodec.InstantStringValueCodec());
         }
     }
 
@@ -353,7 +413,8 @@ public final class NodeRegistry {
     public static class PojoInfo {
         public final Class<?> clazz;
         public final CreatorInfo creatorInfo;
-        public final NamingStrategy nodeNamingStrategy;
+        public final NamingStrategy namingStrategy;
+        public final AccessStrategy accessStrategy;
         public final Map<String, FieldInfo> fields;
         public final int fieldCount;
         public final Map<String, FieldInfo> aliasFields;
@@ -372,7 +433,8 @@ public final class NodeRegistry {
          * Creates immutable POJO metadata holder.
          */
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
-                        NamingStrategy nodeNamingStrategy,
+                        NamingStrategy namingStrategy,
+                        AccessStrategy accessStrategy,
                         Map<String, FieldInfo> fields,
                         Map<String, FieldInfo> aliasFields,
                         boolean hasExplicitBinding,
@@ -381,7 +443,8 @@ public final class NodeRegistry {
                         boolean hasNonPublicWriterGap) {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
-            this.nodeNamingStrategy = nodeNamingStrategy;
+            this.namingStrategy = namingStrategy;
+            this.accessStrategy = accessStrategy;
             this.fields = fields;
             this.fieldCount = fields.size();
             this.aliasFields = aliasFields;
@@ -401,9 +464,10 @@ public final class NodeRegistry {
             this.hasNonPublicFields = hasNonPublicFields;
             this.hasNonPublicReaderGap = hasNonPublicReaderGap;
             this.hasNonPublicWriterGap = hasNonPublicWriterGap;
-            this.requiresPojoReader = nodeNamingStrategy != null || hasParentScopeAnyOf
+            boolean hasTypeOwnedBinding = namingStrategy != null || accessStrategy == AccessStrategy.FIELD_BASED;
+            this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeAnyOf
                     || hasExplicitBinding || this.hasCreatorBinding || hasNonPublicReaderGap;
-            this.requiresPojoWriter = nodeNamingStrategy != null || hasExplicitBinding || hasNonPublicWriterGap;
+            this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicWriterGap;
         }
 
     }

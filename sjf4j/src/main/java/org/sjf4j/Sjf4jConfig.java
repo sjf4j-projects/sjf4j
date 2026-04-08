@@ -107,7 +107,6 @@ public final class Sjf4jConfig {
 
         if (previous.namingStrategy != sjf4jConfig.namingStrategy
                 || previous.plainPojoFieldAccess != sjf4jConfig.plainPojoFieldAccess) {
-            NodeRegistry.clearPojoCache();
             if (sjf4jConfig.jsonFacade == previous.jsonFacade) {
                 sjf4jConfig.jsonFacade = null;
             }

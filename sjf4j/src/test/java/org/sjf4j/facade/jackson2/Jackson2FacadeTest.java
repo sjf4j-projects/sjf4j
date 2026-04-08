@@ -16,12 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -155,21 +155,13 @@ public class Jackson2FacadeTest {
     }
 
     @Test
-    void testFieldBasedGlobalAllowsNonPublicPlainPojo() {
-        Sjf4jConfig previous = Sjf4jConfig.global();
-        try {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder(previous)
-                    .plainPojoFieldAccess(Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED)
-                    .build());
-            Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
-            PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
-                    PlainPrivateBook.class);
-            assertEquals("han", book.userName);
-            assertEquals(2, book.loginCount);
-            assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
-        } finally {
-            Sjf4jConfig.global(previous);
-        }
+    void testFieldBasedAnnotatedAllowsNonPublicPlainPojo() {
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        FieldBasedPrivateBook book = (FieldBasedPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
+                FieldBasedPrivateBook.class);
+        assertEquals("han", book.userName);
+        assertEquals(2, book.loginCount);
+        assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
     }
 
     private static void assertSerDe(Jackson2JsonFacade facade) {
@@ -362,16 +354,22 @@ public class Jackson2FacadeTest {
         assertEquals(json2, sw.toString());
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakeBook extends JsonObject {
         public String userName;
         public int loginCount;
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakePlainBook {
         public String userName;
         public int loginCount;
+    }
+
+    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    static class FieldBasedPrivateBook {
+        String userName;
+        int loginCount;
     }
 
     private static void assertNodeNaming(Jackson2JsonFacade facade) {

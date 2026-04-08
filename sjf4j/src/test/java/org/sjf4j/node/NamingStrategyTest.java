@@ -8,15 +8,11 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.Sjf4jConfig;
-import org.sjf4j.annotation.node.NodeNaming;
-import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.path.JsonPath;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -37,16 +33,22 @@ class NamingStrategyTest {
         }
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeUser extends JsonObject {
         public String userName;
         public int loginCount;
         public String _internalId;
     }
 
-    static class GlobalUser extends JsonObject {
-        public String userName;
-        public int loginCount;
+    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    static class FieldBoundUser {
+        private String userName;
+        private int loginCount;
+    }
+
+    static class BeanBoundUser {
+        private String userName;
+        private int loginCount;
     }
 
     @Test
@@ -69,23 +71,23 @@ class NamingStrategyTest {
     }
 
     @Test
-    void testGlobalSnakeCaseRecreatesCopiedJsonFacade() {
+    void testTypeLevelFieldBasedBindingOverridesBeanDefaults() {
         Sjf4jConfig.global(new Sjf4jConfig.Builder(previousConfig)
-                .jsonFacade(new Jackson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE))
+                .jsonFacade(new SimpleJsonFacade())
                 .build());
-        Object firstFacade = Sjf4jConfig.global().getJsonFacade();
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .namingStrategy(NamingStrategy.SNAKE_CASE)
-                .build());
-        Object secondFacade = Sjf4jConfig.global().getJsonFacade();
+        FieldBoundUser fieldUser = Sjf4j.fromJson("{\"userName\":\"han\",\"loginCount\":3}",
+                FieldBoundUser.class);
+        BeanBoundUser beanUser = Sjf4j.fromJson("{\"userName\":\"han\",\"loginCount\":3}",
+                BeanBoundUser.class);
 
-        assertNotSame(firstFacade, secondFacade);
+        assertEquals("han", fieldUser.userName);
+        assertEquals(3, fieldUser.loginCount);
+        assertEquals("{\"userName\":\"han\",\"loginCount\":3}", Sjf4j.toJsonString(fieldUser));
 
-        GlobalUser user = Sjf4j.fromJson("{\"user_name\":\"han\",\"login_count\":3}", GlobalUser.class);
-        assertEquals("han", user.userName);
-        assertEquals(3, user.loginCount);
-        assertEquals("{\"user_name\":\"han\",\"login_count\":3}", Sjf4j.toJsonString(user));
+        assertNull(beanUser.userName);
+        assertEquals(0, beanUser.loginCount);
+        assertEquals("{}", Sjf4j.toJsonString(beanUser));
     }
 
     @Test

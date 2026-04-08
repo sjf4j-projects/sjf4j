@@ -5,8 +5,8 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -213,9 +213,14 @@ class NodeRegistryCoverageTest {
         public final String readOnly = "ro";
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     static class NamingPojo {
         public String userName;
+    }
+
+    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    static class FieldBasedPrivatePojo {
+        private String userName;
     }
 
     static class ExplicitFieldPojo {
@@ -313,6 +318,12 @@ class NodeRegistryCoverageTest {
         assertTrue(privateFieldType.requiresPojoReader());
         assertTrue(privateFieldType.requiresPojoWriter());
 
+        NodeRegistry.TypeInfo fieldBasedType = NodeRegistry.registerTypeInfo(FieldBasedPrivatePojo.class);
+        assertNotNull(fieldBasedType.pojoInfo.fields.get("userName"));
+        assertEquals(AccessStrategy.FIELD_BASED, fieldBasedType.pojoInfo.accessStrategy);
+        assertTrue(fieldBasedType.requiresPojoReader());
+        assertTrue(fieldBasedType.requiresPojoWriter());
+
         assertThrows(JsonException.class,
                 () -> NodeRegistry.registerTypeInfo(InvalidTransientNodePropertyPojo.class));
 
@@ -325,6 +336,10 @@ class NodeRegistryCoverageTest {
         assertNotNull(anyOfType.anyOfInfo);
 
         assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new InvalidRawCodec()));
+
+        assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new ValueCodec.LocaleValueCodec()));
+        NodeRegistry.ValueCodecInfo localeCodec = NodeRegistry.overrideValueCodec(new ValueCodec.LocaleValueCodec());
+        assertEquals(String.class, localeCodec.rawClazz);
 
         NodeRegistry.refreshInstantValueCodec(Sjf4jConfig.InstantFormat.EPOCH_MILLIS);
         assertEquals(Long.class, NodeRegistry.getValueCodecInfo(Instant.class).rawClazz);

@@ -2,9 +2,8 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
-import org.sjf4j.annotation.node.NodeNaming;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -129,7 +128,8 @@ public final class ReflectUtil {
             else return null;
         }
 
-        NamingStrategy nodeNamingStrategy = getDeclaredNamingStrategy(clazz);
+        NamingStrategy namingStrategy = getDeclaredNamingStrategy(clazz);
+        AccessStrategy accessStrategy = getDeclaredAccessStrategy(clazz);
 
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = new LinkedHashMap<>();
@@ -138,8 +138,7 @@ public final class ReflectUtil {
         boolean hasNonPublicFields = false;
         boolean hasNonPublicReaderGap = false;
         boolean hasNonPublicWriterGap = false;
-        boolean allowPlainPojoFieldAccess = Sjf4jConfig.global().plainPojoFieldAccess
-                == Sjf4jConfig.PlainPojoFieldAccess.FIELD_BASED;
+        boolean allowPlainPojoFieldAccess = accessStrategy == AccessStrategy.FIELD_BASED;
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
@@ -272,7 +271,7 @@ public final class ReflectUtil {
             }
         }
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, nodeNamingStrategy, fields, aliasFields,
+        return new NodeRegistry.PojoInfo(clazz, creatorInfo, namingStrategy, accessStrategy, fields, aliasFields,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
     }
 
@@ -355,18 +354,24 @@ public final class ReflectUtil {
 
     public static NamingStrategy getDeclaredNamingStrategy(Class<?> clazz) {
         if (clazz == null) return null;
-        NodeNaming ann = clazz.getAnnotation(NodeNaming.class);
-        if (ann == null) return null;
-        NamingStrategy strategy = ann.value();
-        if (strategy == NamingStrategy.IDENTITY) {
-            throw new JsonException("@NodeNaming(IDENTITY) is not supported on " + clazz.getName());
+        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
+        if (nodeBinding != null) {
+            NamingStrategy strategy = nodeBinding.naming();
+            return strategy == NamingStrategy.IDENTITY ? null : strategy;
         }
-        return strategy;
+        return null;
+    }
+
+    public static AccessStrategy getDeclaredAccessStrategy(Class<?> clazz) {
+        if (clazz == null) return AccessStrategy.BEAN_BASED;
+        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
+        if (nodeBinding == null) return AccessStrategy.BEAN_BASED;
+        return nodeBinding.access();
     }
 
     public static NamingStrategy getNamingStrategy(Class<?> clazz) {
         NamingStrategy strategy = getDeclaredNamingStrategy(clazz);
-        return strategy != null ? strategy : Sjf4jConfig.global().namingStrategy;
+        return strategy != null ? strategy : NamingStrategy.IDENTITY;
     }
 
     public static String getExplicitName(AnnotatedElement element) {

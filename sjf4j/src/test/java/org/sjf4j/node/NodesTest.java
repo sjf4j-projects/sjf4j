@@ -665,7 +665,7 @@ public class NodesTest {
 
     @Test
     public void testInspect2() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.overrideValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();

@@ -14,7 +14,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.annotation.node.NodeNaming;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -89,7 +89,7 @@ public class NamingReadBenchmark {
         public int buildingNo;
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakeProfile {
         public String userName;
         public int loginCount;
@@ -99,14 +99,14 @@ public class NamingReadBenchmark {
         public List<SnakeAddress> homeAddresses;
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakeMeta {
         public String regionCode;
         public int riskLevel;
         public List<String> tags;
     }
 
-    @NodeNaming(NamingStrategy.SNAKE_CASE)
+    @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     public static class SnakeAddress {
         public String streetName;
         public String postalCode;

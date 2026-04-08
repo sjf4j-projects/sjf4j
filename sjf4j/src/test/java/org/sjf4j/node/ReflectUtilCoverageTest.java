@@ -3,8 +3,8 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeNaming;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -168,8 +168,11 @@ class ReflectUtilCoverageTest {
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenAnyOf {}
 
-    @NodeNaming(NamingStrategy.IDENTITY)
-    static class InvalidNamingPojo {}
+    @NodeBinding(naming = NamingStrategy.IDENTITY)
+    static class IdentityNamingPojo {}
+
+    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    static class FieldBindingPojo {}
 
     enum SampleEnum { A }
 
@@ -280,7 +283,9 @@ class ReflectUtilCoverageTest {
         ));
 
         assertNull(ReflectUtil.getDeclaredNamingStrategy(null));
-        assertThrows(JsonException.class, () -> ReflectUtil.getDeclaredNamingStrategy(InvalidNamingPojo.class));
+        assertNull(ReflectUtil.getDeclaredNamingStrategy(IdentityNamingPojo.class));
+        assertEquals(AccessStrategy.FIELD_BASED, ReflectUtil.getDeclaredAccessStrategy(FieldBindingPojo.class));
+        assertEquals(AccessStrategy.BEAN_BASED, ReflectUtil.getDeclaredAccessStrategy(null));
 
         assertFalse(ReflectUtil.isPojoCandidate(org.sjf4j.JsonArray.class));
         assertFalse(ReflectUtil.isPojoCandidate(JsonObject.class));
