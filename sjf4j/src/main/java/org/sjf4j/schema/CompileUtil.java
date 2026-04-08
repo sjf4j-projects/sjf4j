@@ -82,11 +82,11 @@ public class CompileUtil {
         // $ref
         String ref = schema.getString("$ref");
         if (ref != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_CORE)) {
-            URI uri = resolveUri(ref, idSchema.getUri());
-            URI dropedUri = dropFragment(uri);
-            if (!dropedUri.toString().isEmpty()) {
-                ObjectSchema refSchema = rootSchema.importAndCompile(dropedUri);
-                idSchema.importSchema(dropedUri, refSchema);
+            URI uri = resolveUri(ref, idSchema.getCanonicalUri());
+            URI resourceUri = withoutFragment(uri);
+            if (!resourceUri.toString().isEmpty()) {
+                ObjectSchema refSchema = rootSchema.importAndCompile(resourceUri);
+                idSchema.importSchema(resourceUri, refSchema);
             }
 
             String fragment = URI.create(ref).getFragment();
@@ -95,17 +95,17 @@ public class CompileUtil {
             if (fragment == null) refAnchor = "";
             else if (fragment.startsWith("/")) refPath = JsonPointer.compile(fragment);
 
-            evaluators.add(new Evaluator.RefEvaluator(dropedUri, refPath, refAnchor));
+            evaluators.add(new Evaluator.RefEvaluator(resourceUri, refPath, refAnchor));
         }
 
         // $dynamicRef
         String dynamicRef = schema.getString("$dynamicRef");
         if (dynamicRef != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_CORE)) {
-            URI uri = resolveUri(dynamicRef, idSchema.getUri());
-            URI dropedUri = dropFragment(uri);
-            if (!dropedUri.toString().isEmpty()) {
-                ObjectSchema refSchema = rootSchema.importAndCompile(dropedUri);
-                idSchema.importSchema(dropedUri, refSchema);
+            URI uri = resolveUri(dynamicRef, idSchema.getCanonicalUri());
+            URI resourceUri = withoutFragment(uri);
+            if (!resourceUri.toString().isEmpty()) {
+                ObjectSchema refSchema = rootSchema.importAndCompile(resourceUri);
+                idSchema.importSchema(resourceUri, refSchema);
             }
 
             String fragment = URI.create(dynamicRef).getFragment();
@@ -113,7 +113,7 @@ public class CompileUtil {
             JsonPointer refPath = null;
             if (fragment == null) refDynamicAnchor = "";
             else if (fragment.startsWith("/")) refPath = JsonPointer.compile(fragment);
-            evaluators.add(new Evaluator.DynamicRefEvaluator(dropedUri, refPath, refDynamicAnchor));
+            evaluators.add(new Evaluator.DynamicRefEvaluator(resourceUri, refPath, refDynamicAnchor));
         }
 
         // format
@@ -389,9 +389,9 @@ public class CompileUtil {
     }
 
     /**
-     * Returns URI without fragment while preserving other components.
+     * Returns the referenced resource URI without its fragment.
      */
-    public static URI dropFragment(URI uri) {
+    static URI withoutFragment(URI uri) {
         try {
             if (uri.getFragment() != null) {
                 if (uri.isOpaque()) {
@@ -405,7 +405,6 @@ public class CompileUtil {
             throw new SchemaException("Invalid URI while dropping fragment: " + uri, e);
         }
     }
-
 
     /**
      * Resolves an {@code $id}/{@code $ref} value against base URI.

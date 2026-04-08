@@ -18,7 +18,22 @@ import java.util.Objects;
  */
 public final class ObjectSchema extends JsonObject implements JsonSchema {
 
-    private transient URI uri;
+    /**
+     * Original retrieval URI used to load the root schema document.
+     * <p>
+     * This is only populated for externally loaded root schemas. It provides
+     * the initial base used to resolve a root relative `$id`.
+     */
+    private transient URI retrievalUri;
+
+    /**
+     * Canonical URI of this schema resource after `$id` resolution.
+     * <p>
+     * For root schemas without `$id`, compilation promotes the retrieval URI to
+     * the canonical URI. For inline schemas without any URI, compilation uses
+     * the empty URI.
+     */
+    private transient URI canonicalUri;
     private transient ObjectSchema idSchema;
     private transient Evaluator[] evaluators;
     private transient Map<URI, ObjectSchema> innerStore;
@@ -41,26 +56,35 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         super(node);
     }
 
-
-    // uri
     /**
-     * Returns the schema URI for this resource.
+     * Returns the retrieval URI used to load the root schema document.
      */
-    public URI getUri() {
-        return uri;
+    URI getRetrievalUri() {
+        return retrievalUri;
     }
+
     /**
-     * Sets the resolved schema URI.
+     * Sets the retrieval URI used to load the root schema document.
      */
-    void setUri(URI uri) {this.uri = uri;}
+    void setRetrievalUri(URI retrievalUri) {
+        this.retrievalUri = retrievalUri;
+    }
+
     /**
-     * Returns resolved URI using $id when explicit URI is missing.
+     * Returns the canonical resource URI used for store registration.
      */
-    URI getResolvedUri() {
-        if (uri == null) {
-            return CompileUtil.resolveUri(getId(), null);
+    URI getCanonicalUri() {
+        if (canonicalUri == null) {
+            return CompileUtil.resolveUri(getId(), retrievalUri);
         }
-        return uri;
+        return canonicalUri;
+    }
+
+    /**
+     * Sets the canonical resource URI for this schema resource.
+     */
+    void setCanonicalUri(URI canonicalUri) {
+        this.canonicalUri = canonicalUri;
     }
 
     // Schema keywords
@@ -120,7 +144,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         Objects.requireNonNull(anchor);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
-            if (uri == null || uri == this.uri || uri.toString().isEmpty()) {
+            if (uri == null || uri.toString().isEmpty() || Objects.equals(uri, canonicalUri)) {
                 return getSchemaByAnchor(anchor);
             }
             if (innerStore != null) {
@@ -158,7 +182,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         Objects.requireNonNull(path);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
-            if (uri == null || uri == this.uri || uri.toString().isEmpty()) {
+            if (uri == null || uri.toString().isEmpty() || Objects.equals(uri, canonicalUri)) {
                 return getSchemaByPath(path);
             }
             if (innerStore != null) {
@@ -201,7 +225,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         Objects.requireNonNull(dynamicAnchor);
         if (idSchema == null) throw new SchemaException("Schema has not been compiled yet");
         if (idSchema == this) {
-            if (uri == null || uri == this.uri || uri.toString().isEmpty()) {
+            if (uri == null || uri.toString().isEmpty() || Objects.equals(uri, canonicalUri)) {
                 return getSchemaByDynamicAnchor(dynamicAnchor);
             }
             if (innerStore != null) {
@@ -270,18 +294,18 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     void compile(PathSegment ps, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
             if (this == idSchema) {
-                URI resolved = CompileUtil.resolveUri(getId(), uri);
+                URI resolved = CompileUtil.resolveUri(getId(), retrievalUri);
                 if (resolved != null) {
-                    uri = resolved;
-                } else if (uri == null) {
-                    uri = URI.create("");
+                    canonicalUri = resolved;
+                } else if (canonicalUri == null) {
+                    canonicalUri = retrievalUri != null ? retrievalUri : URI.create("");
                 }
-            } else if (uri == null) {
-                uri = CompileUtil.resolveUri(getId(), idSchema.getUri());
+            } else if (canonicalUri == null) {
+                canonicalUri = CompileUtil.resolveUri(getId(), idSchema.getCanonicalUri());
             }
-            if (uri != null) {
+            if (canonicalUri != null) {
                 idSchema = this;
-                rootSchema.innerStore.put(uri, this);
+                rootSchema.innerStore.put(canonicalUri, this);
             }
             this.idSchema = idSchema;
             evaluators = CompileUtil.compile(ps, this, idSchema, rootSchema);
@@ -307,14 +331,13 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * Resolution order: current inner store, outer store, then global store.
      */
     ObjectSchema importAndCompile(URI uri) {
-        if (uri == null || uri.equals(this.uri)) return this;
+        if (uri == null || Objects.equals(uri, canonicalUri)) return this;
         ObjectSchema schema = innerStore.get(uri);
         if (schema != null) return schema;
         if (outerStore != null) schema = outerStore.resolve(uri);
         if (schema == null) schema = SchemaStore.globalResolve(uri);
         if (schema == null) return null;
 
-        schema.setUri(uri);
         if (schema.evaluators != null) {
             if (schema.innerStore != null) {
                 innerStore.putAll(schema.innerStore);
@@ -322,6 +345,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
                 innerStore.put(uri, schema);
             }
         } else {
+            if (schema.getRetrievalUri() == null && schema.getCanonicalUri() == null) {
+                schema.setRetrievalUri(uri);
+            }
             schema.compile(PathSegment.Root.INSTANCE, schema, this);
         }
         return schema;

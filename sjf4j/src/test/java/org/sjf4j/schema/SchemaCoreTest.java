@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.SchemaException;
 
+import java.net.URI;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -52,8 +53,22 @@ public class SchemaCoreTest {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(json);
         log.info("schema={}", schema);
         schema.compile();
-        assertEquals("json-schema/base.json", schema.getUri().toString());
+        assertEquals("json-schema/base.json", schema.getCanonicalUri().toString());
         assertTrue(schema.isValid(13));
+    }
+
+    @Test
+    public void testRetrievalAndCanonicalUri() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
+        schema.setRetrievalUri(URI.create("file:/schemas/root.json"));
+
+        assertEquals("file:/schemas/root.json", schema.getRetrievalUri().toString());
+        assertEquals("file:/schemas/defs/user.json", schema.getCanonicalUri().toString());
+
+        schema.compile();
+
+        assertEquals("file:/schemas/root.json", schema.getRetrievalUri().toString());
+        assertEquals("file:/schemas/defs/user.json", schema.getCanonicalUri().toString());
     }
 
     @Test
@@ -65,6 +80,16 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
+    }
+
+    @Test
+    public void testWithoutFragment() {
+        assertEquals("https://example.com/a/b?x=1",
+                CompileUtil.withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
+        assertEquals("classpath:/schemas/user.json",
+                CompileUtil.withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
+        assertEquals("urn:uuid:deadbeef",
+                CompileUtil.withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
     }
 
     @Test

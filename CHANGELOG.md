@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `stddev()` to return standard deviation instead of variance, and reject terminal descendant paths like `$..` during compile time.
 - Fixed JSON Patch / Merge Patch semantics for root replacement, `copy`/`move` of explicit `null`, deep-copy `copy`, atomic `move`, and numeric leaf equality during `diff`.
 - Fixed JSON Schema compilation and validation edge cases so unknown keywords and formats are tolerated per draft 2020-12, local schemas without root `$id` retain their retrieval URI base for relative `$ref`, `null` subschemas fail fast, string length uses Unicode code points, and strict format checks cover core hostname / IPv6 / URI-template / relative JSON Pointer cases.
+- Fixed JSON Schema resource URI bookkeeping by separating retrieval and canonical URIs during compile time, while keeping store registration keyed by canonical `$id`-resolved resource URIs.
 
 
 ## [1.1.6] - 2026.04.02

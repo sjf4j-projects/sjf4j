@@ -42,14 +42,14 @@ public class SchemaStore {
     }
 
     /**
-     * Registers a schema using its resolved URI.
+     * Registers a schema using its canonical resource URI.
      *
      * @return true when schema was registrable (object schema with non-empty URI)
      */
     public boolean register(JsonSchema schema) {
         if (!(schema instanceof ObjectSchema)) return false;
         ObjectSchema os = (ObjectSchema) schema;
-        URI uri = os.getResolvedUri();
+        URI uri = os.getCanonicalUri();
         if (uri != null && !uri.toString().isEmpty()) {
             _register(uri, os);
             return true;
@@ -67,7 +67,7 @@ public class SchemaStore {
     public boolean register(URI uri, JsonSchema schema) {
         if (!(schema instanceof ObjectSchema)) return false;
         ObjectSchema os = (ObjectSchema) schema;
-        URI canonicalUri = os.getResolvedUri();
+        URI canonicalUri = os.getCanonicalUri();
         if (uri != null) {
             if (canonicalUri != null && !uri.equals(canonicalUri)) {
                 _register(uri, os);
@@ -102,7 +102,7 @@ public class SchemaStore {
         if (!(schema instanceof ObjectSchema))
             throw new SchemaException("Invalid schema: schema must be object (not true or false)");
         ObjectSchema os = (ObjectSchema) schema;
-        URI canonicalUri = os.getResolvedUri();
+        URI canonicalUri = os.getCanonicalUri();
         ObjectSchema oldOs = mixedUriSchemas.putIfAbsent(uri, os);
         if (oldOs != null) {
             if (uri.equals(canonicalUri)) {
@@ -123,8 +123,8 @@ public class SchemaStore {
             for (Map.Entry<URI, ObjectSchema> entry : other.mixedUriSchemas.entrySet()) {
                 ObjectSchema os = entry.getValue();
                 ObjectSchema oldOs = mixedUriSchemas.putIfAbsent(entry.getKey(), os);
-                if (oldOs != null && !oldOs.getResolvedUri().equals(os.getResolvedUri())) {
-                    throw new SchemaException("Duplicate schema uri: " + os.getResolvedUri());
+                if (oldOs != null && !oldOs.getCanonicalUri().equals(os.getCanonicalUri())) {
+                    throw new SchemaException("Duplicate schema uri: " + os.getCanonicalUri());
                 }
             }
         }
@@ -239,7 +239,9 @@ public class SchemaStore {
         } else {
             throw new SchemaException("Unsupported local schema uri: " + uri);
         }
-        schema.setUri(CompileUtil.dropFragment(uri));
+        // Preserve the retrieval URI. During compile, a root `$id` may resolve
+        // against this retrieval URI and produce a distinct canonical URI.
+        schema.setRetrievalUri(CompileUtil.withoutFragment(uri));
         return schema;
     }
 

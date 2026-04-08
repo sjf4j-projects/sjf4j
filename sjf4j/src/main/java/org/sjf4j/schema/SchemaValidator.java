@@ -190,7 +190,7 @@ public final class SchemaValidator {
         schema.compile(schemaStore);
         if (schema instanceof ObjectSchema) {
             ObjectSchema objectSchema = (ObjectSchema) schema;
-            URI resolvedUri = objectSchema.getResolvedUri();
+            URI resolvedUri = objectSchema.getCanonicalUri();
             if (resolvedUri != null && !resolvedUri.toString().isEmpty() && schemaStore.contains(resolvedUri)) {
                 return schemaStore.resolve(resolvedUri);
             }
@@ -261,7 +261,7 @@ public final class SchemaValidator {
         }
         if (found == null) {
             throw new SchemaException("No sub-schema found for fragment '" + fragment + "' in schema '" +
-                    idSchema.getResolvedUri() + "'");
+                    idSchema.getCanonicalUri() + "'");
         }
         return found;
     }
