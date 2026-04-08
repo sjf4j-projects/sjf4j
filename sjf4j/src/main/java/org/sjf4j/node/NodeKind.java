@@ -81,18 +81,6 @@ public enum NodeKind {
         return NodeKind.UNKNOWN;
     }
 
-    /**
-     * Determines the {@link NodeKind} of a given object.
-     *
-     * @param node the object to determine the type of
-     * @return the corresponding NodeType enum value
-     */
-    public static NodeKind plainOf(Object node) {
-        if (node == null) return VALUE_NULL;
-        Class<?> clazz = node.getClass();
-        return plainOf(clazz);
-    }
-
 
     public static NodeKind plainOf(Class<?> clazz) {
         Objects.requireNonNull(clazz);

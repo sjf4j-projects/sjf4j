@@ -314,43 +314,44 @@ public class JsonPathCompareBenchmark {
         return JAYWAY_MAP_LIST_CONFIG.jsonProvider().parse(BOOKSTORE_JSON);
     }
 
+    // JsonNode
     @Benchmark
-    public Object query_definite_sjf4j(DefiniteQueryState state) {
+    public Object query_jsonnode_definite_sjf4j(DefiniteQueryState state) {
         return state.sjf4jPath.getNode(state.document);
     }
 
     @Benchmark
-    public Object query_definite_jayway(DefiniteQueryState state) {
+    public Object query_jsonnode_definite_jayway(DefiniteQueryState state) {
         return runJayway(state.jaywayPath, state.document, JAYWAY_JACKSON_CONFIG);
     }
 
     @Benchmark
-    public Object query_indefinite_sjf4j(IndefiniteQueryState state) {
+    public Object query_jsonnode_indefinite_sjf4j(IndefiniteQueryState state) {
         return state.sjf4jPath.find(state.document);
     }
 
     @Benchmark
-    public Object query_indefinite_jayway(IndefiniteQueryState state) {
+    public Object query_jsonnode_indefinite_jayway(IndefiniteQueryState state) {
         return runJayway(state.jaywayPath, state.document, JAYWAY_JACKSON_CONFIG);
     }
 
     @Benchmark
-    public Object query_map_list_definite_sjf4j(DefiniteMapListQueryState state) {
+    public Object query_maplist_definite_sjf4j(DefiniteMapListQueryState state) {
         return runSjf4j(state.sjf4jPath, state.document, false);
     }
 
     @Benchmark
-    public Object query_map_list_definite_jayway(DefiniteMapListQueryState state) {
+    public Object query_maplist_definite_jayway(DefiniteMapListQueryState state) {
         return runJayway(state.jaywayPath, state.document, JAYWAY_MAP_LIST_CONFIG);
     }
 
     @Benchmark
-    public Object query_map_list_indefinite_sjf4j(IndefiniteMapListQueryState state) {
+    public Object query_maplist_indefinite_sjf4j(IndefiniteMapListQueryState state) {
         return runSjf4j(state.sjf4jPath, state.document, true);
     }
 
     @Benchmark
-    public Object query_map_list_indefinite_jayway(IndefiniteMapListQueryState state) {
+    public Object query_maplist_indefinite_jayway(IndefiniteMapListQueryState state) {
         return runJayway(state.jaywayPath, state.document, JAYWAY_MAP_LIST_CONFIG);
     }
 

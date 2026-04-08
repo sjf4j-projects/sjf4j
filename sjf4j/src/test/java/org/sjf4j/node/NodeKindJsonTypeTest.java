@@ -36,7 +36,6 @@ class NodeKindJsonTypeTest {
 
     @Test
     void testNodeKindPlainClassification() {
-        assertEquals(NodeKind.VALUE_NULL, NodeKind.plainOf((Object) null));
         assertEquals(NodeKind.VALUE_NULL, NodeKind.plainOf(void.class));
         assertEquals(NodeKind.VALUE_NULL, NodeKind.plainOf(Void.class));
         assertEquals(NodeKind.VALUE_STRING, NodeKind.plainOf(char.class));
