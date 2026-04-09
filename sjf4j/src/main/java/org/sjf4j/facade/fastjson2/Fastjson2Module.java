@@ -13,7 +13,6 @@ import com.alibaba.fastjson2.reader.ObjectReader;
 import com.alibaba.fastjson2.writer.ObjectWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
@@ -278,7 +277,7 @@ public interface Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(objectClass)) {
                 return new JsonArrayWriter();
             }
-            NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(objectClass);
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(objectClass);
             if (vci != null) {
                 return new NodeValueWriter<>(vci);
             }

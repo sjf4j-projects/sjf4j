@@ -21,6 +21,8 @@ import org.yaml.snakeyaml.LoaderOptions;
  */
 public class FacadeFactory {
 
+    private static final NodeFacade DEFAULT_NODE_FACADE = new SimpleNodeFacade();
+
     /**
      * Flag indicating whether Jackson2 library is present in the classpath.
      */
@@ -162,7 +164,7 @@ public class FacadeFactory {
      * Returns default node facade.
      */
     public static NodeFacade getDefaultNodeFacade() {
-        return new SimpleNodeFacade();
+        return DEFAULT_NODE_FACADE;
     }
 
 

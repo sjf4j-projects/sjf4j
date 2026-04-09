@@ -3,13 +3,12 @@ package org.sjf4j.facade.jackson3;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
-import org.sjf4j.JsonType;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -32,8 +31,8 @@ import tools.jackson.databind.introspect.AnnotatedParameter;
 import tools.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import tools.jackson.databind.module.SimpleModule;
 import tools.jackson.databind.ser.ValueSerializerModifier;
-import tools.jackson.databind.util.TokenBuffer;
 
+import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
@@ -77,8 +76,9 @@ public interface Jackson3Module {
                     if (ti.anyOfInfo != null) {
                         return new AnyOfDeserializer<>(ti.anyOfInfo);
                     }
-                    if (ti.valueCodecInfo != null) {
-                        return new NodeValueDeserializer<>(ti.valueCodecInfo);
+                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+                    if (vci != null) {
+                        return new NodeValueDeserializer<>(vci);
                     }
                     if (ti.requiresPojoReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo);
@@ -126,20 +126,20 @@ public interface Jackson3Module {
 
         @SuppressWarnings("unchecked")
         @Override
-        public T deserialize(JsonParser p, DeserializationContext ctxt) throws tools.jackson.core.JacksonException {
+        public T deserialize(JsonParser p, DeserializationContext ctxt) {
             if (pi == null) {
                 Object value = ctxt.readValue(p, Object.class);
                 if (value == null) return null;
                 if (value instanceof JsonObject) return (T) value;
-                if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
+                if (value instanceof Map) return (T) new JsonObject(value);
                 ctxt.reportInputMismatch(JsonObject.class,
                         "Expected object value for JsonObject, but got %s", value.getClass().getName());
                 return null;
             }
             try {
-                return (T) org.sjf4j.facade.StreamingIO.readPojo(new Jackson3Reader(p), ownerType, ownerRawClazz, pi);
+                return (T) StreamingIO.readPojo(new Jackson3Reader(p), ownerType, ownerRawClazz, pi);
             } catch (java.io.IOException e) {
-                throw new IllegalStateException(e);
+                throw new BindingException(e);
             }
         }
 
@@ -190,7 +190,7 @@ public interface Jackson3Module {
 
         @SuppressWarnings("unchecked")
         @Override
-        public T deserialize(JsonParser p, DeserializationContext ctx) throws tools.jackson.core.JacksonException {
+        public T deserialize(JsonParser p, DeserializationContext ctx) {
             if (p.currentToken() == null) {
                 p.nextToken();
             }
@@ -217,7 +217,7 @@ public interface Jackson3Module {
 
         @SuppressWarnings("unchecked")
         @Override
-        public T deserialize(JsonParser p, DeserializationContext ctxt) throws tools.jackson.core.JacksonException {
+        public T deserialize(JsonParser p, DeserializationContext ctxt) {
             Object raw = ctxt.readValue(p, Object.class);
             return (T) valueCodecInfo.rawToValue(raw);
         }
@@ -232,96 +232,12 @@ public interface Jackson3Module {
 
         @SuppressWarnings("unchecked")
         @Override
-        public T deserialize(JsonParser p, DeserializationContext ctxt) throws tools.jackson.core.JacksonException {
-            JsonToken token = p.currentToken();
-            if (token == null) {
-                token = p.nextToken();
-            }
-
-            if (anyOfInfo.hasDiscriminator) {
-                TokenBuffer rawBuffer = ctxt.bufferAsCopyOfValue(p);
-                Class<?> targetClazz = token == JsonToken.START_OBJECT
-                        && anyOfInfo.scope == AnyOf.Scope.CURRENT
-                        && !anyOfInfo.key.isEmpty()
-                        ? _readByCurrentKey(rawBuffer, ctxt)
-                        : _readByRawNode(rawBuffer, ctxt);
-                if (targetClazz == null) return null;
-                JsonParser targetParser = rawBuffer.asParserOnFirstToken(ctxt);
-                try {
-                    return (T) ctxt.readValue(targetParser, targetClazz);
-                } finally {
-                    targetParser.close();
-                }
-            }
-
-            Class<?> targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(_toJsonType(token), anyOfInfo);
-            if (targetClazz == null) {
-                ctxt.readValue(p, Object.class);
-                return null;
-            }
-            return (T) ctxt.readValue(p, targetClazz);
-        }
-
-        private Class<?> _readByRawNode(TokenBuffer rawBuffer, DeserializationContext ctxt)
-                throws tools.jackson.core.JacksonException {
-            JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken(ctxt);
+        public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
-                return StreamingIO.resolveSelfDiscriminatorTarget(
-                        ctxt.readValue(discriminatorParser, Object.class), anyOfInfo);
-            } finally {
-                discriminatorParser.close();
+                return (T) StreamingIO.readAnyOf(new Jackson3Reader(p), anyOfInfo);
+            } catch (IOException e) {
+                throw new BindingException(e);
             }
-        }
-
-        private Class<?> _readByCurrentKey(TokenBuffer rawBuffer, DeserializationContext ctxt)
-                throws tools.jackson.core.JacksonException {
-            JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken(ctxt);
-            try {
-                JsonToken token = discriminatorParser.currentToken();
-                if (token == null) {
-                    token = discriminatorParser.nextToken();
-                }
-                if (token != JsonToken.START_OBJECT) {
-                    if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                    throw new org.sjf4j.exception.BindingException(
-                            "Node must be a JSON object, when AnyOf has a SELF discriminator");
-                }
-                while (discriminatorParser.nextToken() != JsonToken.END_OBJECT) {
-                    String name = discriminatorParser.currentName();
-                    JsonToken valueToken = discriminatorParser.nextToken();
-                    if (anyOfInfo.key.equals(name)) {
-                        return StreamingIO.resolveAnyOfDiscriminatorTarget(
-                                _readDiscriminatorValue(discriminatorParser, valueToken, ctxt), anyOfInfo);
-                    }
-                    discriminatorParser.skipChildren();
-                }
-                return StreamingIO.resolveAnyOfDiscriminatorTarget(null, anyOfInfo);
-            } finally {
-                discriminatorParser.close();
-            }
-        }
-
-        private Object _readDiscriminatorValue(JsonParser parser, JsonToken token, DeserializationContext ctxt)
-                throws tools.jackson.core.JacksonException {
-            if (token == JsonToken.VALUE_NULL) return null;
-            if (token == JsonToken.VALUE_STRING) return parser.getString();
-            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) {
-                return parser.getNumberValue();
-            }
-            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) {
-                return parser.getBooleanValue();
-            }
-            return ctxt.readValue(parser, Object.class);
-        }
-
-        private JsonType _toJsonType(JsonToken token) {
-            if (token == JsonToken.START_OBJECT) return JsonType.OBJECT;
-            if (token == JsonToken.START_ARRAY) return JsonType.ARRAY;
-            if (token == JsonToken.VALUE_STRING) return JsonType.STRING;
-            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) return JsonType.NUMBER;
-            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
-            if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
-            return JsonType.UNKNOWN;
         }
     }
 
@@ -334,31 +250,29 @@ public interface Jackson3Module {
 
         @SuppressWarnings("unchecked")
         @Override
-        public T deserialize(JsonParser p, DeserializationContext ctxt) throws tools.jackson.core.JacksonException {
+        public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
-                return (T) org.sjf4j.facade.StreamingIO.readPojo(new Jackson3Reader(p), pi.clazz, pi.clazz, pi);
+                return (T) StreamingIO.readPojo(new Jackson3Reader(p), pi.clazz, pi.clazz, pi);
             } catch (java.io.IOException e) {
-                throw new IllegalStateException(e);
+                throw new BindingException(e);
             }
         }
     }
 
     class StreamingSerializer extends ValueSerializer<Object> {
         @Override
-        public void serialize(Object value, JsonGenerator gen, SerializationContext serializers)
-                throws tools.jackson.core.JacksonException {
+        public void serialize(Object value, JsonGenerator gen, SerializationContext serializers) {
             try {
-                org.sjf4j.facade.StreamingIO.writeNode(new Jackson3Writer(gen), value);
+                StreamingIO.writeNode(new Jackson3Writer(gen), value);
             } catch (java.io.IOException e) {
-                throw new IllegalStateException(e);
+                throw new BindingException(e);
             }
         }
     }
 
     class JsonArraySerializer extends ValueSerializer<JsonArray> {
         @Override
-        public void serialize(JsonArray ja, JsonGenerator gen, SerializationContext serializers)
-                throws tools.jackson.core.JacksonException {
+        public void serialize(JsonArray ja, JsonGenerator gen, SerializationContext serializers) {
             gen.writeStartArray();
             for (int i = 0, len = ja.size(); i < len; i++) {
                 serializers.writeValue(gen, ja.getNode(i));
@@ -375,8 +289,7 @@ public interface Jackson3Module {
         }
 
         @Override
-        public void serialize(T value, JsonGenerator gen, SerializationContext serializers)
-                throws tools.jackson.core.JacksonException {
+        public void serialize(T value, JsonGenerator gen, SerializationContext serializers) {
             serializers.writeValue(gen, valueCodecInfo.valueToRaw(value));
         }
     }

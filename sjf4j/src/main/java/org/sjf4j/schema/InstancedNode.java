@@ -4,13 +4,11 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.Nodes;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Map;
 
 /**
@@ -67,7 +65,7 @@ public final class InstancedNode {
         NodeKind nodeKind = NodeKind.of(node);
         boolean encoded = false;
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
-            node = NodeRegistry.getValueCodecInfo(node.getClass()).valueToRaw(node);
+            node = NodeRegistry.registerValueCodecInfo(node.getClass()).valueToRaw(node);
             nodeKind = NodeKind.of(node);
             encoded = true;
         }

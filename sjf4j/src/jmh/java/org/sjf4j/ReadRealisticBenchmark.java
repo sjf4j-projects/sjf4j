@@ -45,9 +45,6 @@ public class ReadRealisticBenchmark {
 //        @Param({"16", "256"})
 //        public int orderCount;
 //
-//        @Param({"false"})
-//        public boolean bindingPath;
-//
 //        public Jackson2JsonFacade jackson2Facade;
 //        public Fastjson2JsonFacade fastjson2Facade;
 //        public String payload;
@@ -55,10 +52,7 @@ public class ReadRealisticBenchmark {
 //
 //        @Setup(Level.Trial)
 //        public void setup() {
-//            Sjf4jConfig.global(new Sjf4jConfig.Builder()
-//                    .streamingMode(StreamingFacade.StreamingMode.valueOf(streamingMode))
-//                    .bindingPath(bindingPath)
-//                    .build());
+//            Sjf4j sjf4j = Sjf4j.builder().build();
 //            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper());
 //            fastjson2Facade = new Fastjson2JsonFacade();
 //            payload = buildPayload(orderCount);

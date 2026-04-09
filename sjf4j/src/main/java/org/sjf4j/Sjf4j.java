@@ -1,8 +1,16 @@
 package org.sjf4j;
 
 
+import org.sjf4j.facade.FacadeFactory;
+import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.NodeFacade;
+import org.sjf4j.facade.PropertiesFacade;
+import org.sjf4j.facade.YamlFacade;
+import org.sjf4j.mapper.NodeMapperBuilder;
+import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.path.JsonPath;
+import org.sjf4j.node.Types;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -13,339 +21,322 @@ import java.util.Properties;
 
 
 /**
- * Main static entry point for JSON/YAML/properties IO and node conversion.
- * <p>
- * If you are using the published jar directly, this is usually the first API to
- * read: parsing methods turn external data into SJF4J's OBNT (Object-Based Node
- * Tree), and writing methods serialize the same native Java object graph back
- * out.
+ * Main instance entry point for JSON/YAML/properties IO and node conversion.
  * <p>
  * Typical object targets are regular POJOs, {@link JsonObject}/{@link JsonArray},
  * and their structured subtypes such as JOJO and JAJO models.
  * <p>
- * All operations delegate to facades from global {@link Sjf4jConfig}.
+ * Use {@link #global()} for the process-wide default instance, or {@link #builder()}
+ * to create an isolated instance with custom facades and formatting behavior.
  */
-public class Sjf4j {
+public final class Sjf4j {
 
-    /**
-     * Creates a runtime from the current global configuration snapshot.
-     */
-    public static Sjf4jRuntime runtime() {
-        return Sjf4jRuntime.of(Sjf4jConfig.global());
+    private static final Sjf4j GLOBAL = new Builder().build();
+
+    private final JsonFacade<?, ?> jsonFacade;
+    private final YamlFacade<?, ?> yamlFacade;
+    private final PropertiesFacade propertiesFacade;
+    private final NodeFacade nodeFacade;
+
+    private Sjf4j(Builder builder) {
+        this.nodeFacade = builder.nodeFacade != null
+                ? builder.nodeFacade
+                : FacadeFactory.getDefaultNodeFacade();
+        this.jsonFacade = builder.jsonFacade != null ? builder.jsonFacade : FacadeFactory.getDefaultJsonFacade();
+        this.yamlFacade = builder.yamlFacade != null ? builder.yamlFacade : FacadeFactory.getDefaultYamlFacade();
+        this.propertiesFacade = builder.propertiesFacade != null
+                ? builder.propertiesFacade
+                : FacadeFactory.getDefaultPropertiesFacade();
     }
 
     /**
-     * Creates a runtime from the provided configuration snapshot.
+     * Returns the immutable process-wide default instance.
      */
-    public static Sjf4jRuntime runtime(Sjf4jConfig config) {
-        return Sjf4jRuntime.of(config);
+    public static Sjf4j global() {
+        return GLOBAL;
     }
 
     /**
-     * Creates an instance-runtime builder. This is the forward-compatible entry
-     * point for the future non-static Sjf4j API.
+     * Creates a builder with default settings.
      */
-    public static Sjf4jRuntime.Builder builder() {
-        return Sjf4jRuntime.builder();
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
-     * Compiles a JSONPath or JSON Pointer expression through the current global runtime cache.
+     * Creates a builder initialized from an existing instance.
      */
-    public static JsonPath cachedPath(String expr) {
-        return runtime().cachedPath(expr);
+    public static Builder builder(Sjf4j sjf4j) {
+        return new Builder(sjf4j);
+    }
+
+    public JsonFacade<?, ?> getJsonFacade() {
+        return jsonFacade;
+    }
+
+    public YamlFacade<?, ?> getYamlFacade() {
+        return yamlFacade;
+    }
+
+    public PropertiesFacade getPropertiesFacade() {
+        return propertiesFacade;
+    }
+
+    public NodeFacade getNodeFacade() {
+        return nodeFacade;
     }
 
     /// JSON
 
-    /**
-     * Parses JSON from reader into target class.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromJson(Reader input, Class<T> clazz) {
+    public <T> T fromJson(Reader input, Class<T> clazz) {
         Objects.requireNonNull(input, "input");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
-    }
-    /**
-     * Parses JSON from reader into target type reference.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T fromJson(Reader input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, clazz);
     }
 
-    /**
-     * Parses JSON from reader to generic object node.
-     */
-    public static Object fromJson(Reader input) {
+    @SuppressWarnings("unchecked")
+    public <T> T fromJson(Reader input, TypeReference<T> type) {
+        Objects.requireNonNull(input, "input");
+        Objects.requireNonNull(type, "type");
+        return (T) jsonFacade.readNode(input, type.getType());
+    }
+
+    public Object fromJson(Reader input) {
         return fromJson(input, Object.class);
     }
 
-    /**
-     * Parses JSON from string into target class.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromJson(String input, Class<T> clazz) {
+    public <T> T fromJson(String input, Class<T> clazz) {
         Objects.requireNonNull(input, "input");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
-    }
-    /**
-     * Parses JSON from string into target type reference.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T fromJson(String input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, clazz);
     }
 
-    /**
-     * Parses JSON from string to generic object node.
-     */
-    public static Object fromJson(String input) {
+    @SuppressWarnings("unchecked")
+    public <T> T fromJson(String input, TypeReference<T> type) {
+        Objects.requireNonNull(input, "input");
+        Objects.requireNonNull(type, "type");
+        return (T) jsonFacade.readNode(input, type.getType());
+    }
+
+    public Object fromJson(String input) {
         return fromJson(input, Object.class);
     }
 
-    /**
-     * Parses JSON from input stream into target class.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromJson(InputStream input, Class<T> clazz) {
+    public <T> T fromJson(InputStream input, Class<T> clazz) {
         Objects.requireNonNull(input, "input");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
+        return (T) jsonFacade.readNode(input, clazz);
     }
 
-    /**
-     * Parses JSON from input stream into target type reference.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromJson(InputStream input, TypeReference<T> type) {
+    public <T> T fromJson(InputStream input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, type.getType());
     }
 
-    /**
-     * Parses JSON from input stream to generic object node.
-     */
-    public static Object fromJson(InputStream input) {
+    public Object fromJson(InputStream input) {
         return fromJson(input, Object.class);
     }
 
-    /**
-     * Parses JSON bytes into target class.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromJson(byte[] input, Class<T> clazz) {
+    public <T> T fromJson(byte[] input, Class<T> clazz) {
         Objects.requireNonNull(input, "input");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, clazz);
+        return (T) jsonFacade.readNode(input, clazz);
     }
 
-    /**
-     * Parses JSON bytes into target type reference.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromJson(byte[] input, TypeReference<T> type) {
+    public <T> T fromJson(byte[] input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getJsonFacade().readNode(input, type.getType());
+        return (T) jsonFacade.readNode(input, type.getType());
     }
 
-    /**
-     * Parses JSON bytes to generic object node.
-     */
-    public static Object fromJson(byte[] input) {
+    public Object fromJson(byte[] input) {
         return fromJson(input, Object.class);
     }
 
-    /**
-     * Writes node as JSON to writer.
-     */
-    public static void toJson(Writer output, Object node) {
+    public void toJson(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        Sjf4jConfig.global().getJsonFacade().writeNode(output, node);
+        jsonFacade.writeNode(output, node);
     }
 
-    /**
-     * Writes node as JSON to output stream.
-     */
-    public static void toJson(OutputStream output, Object node) {
+    public void toJson(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        Sjf4jConfig.global().getJsonFacade().writeNode(output, node);
+        jsonFacade.writeNode(output, node);
     }
 
-    /**
-     * Serializes node to JSON string.
-     */
-    public static String toJsonString(Object node) {
-        return Sjf4jConfig.global().getJsonFacade().writeNodeAsString(node);
+    public String toJsonString(Object node) {
+        return jsonFacade.writeNodeAsString(node);
     }
 
-    /**
-     * Serializes node to JSON bytes.
-     */
-    public static byte[] toJsonBytes(Object node) {
-        return Sjf4jConfig.global().getJsonFacade().writeNodeAsBytes(node);
+    public byte[] toJsonBytes(Object node) {
+        return jsonFacade.writeNodeAsBytes(node);
     }
-
 
     /// YAML
 
-    /**
-     * Parses YAML from reader into target class.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromYaml(Reader input, Class<T> clazz) {
+    public <T> T fromYaml(Reader input, Class<T> clazz) {
         Objects.requireNonNull(input, "input");
-        return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, clazz);
+        return (T) yamlFacade.readNode(input, clazz);
     }
 
-    /**
-     * Parses YAML from reader into target type reference.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromYaml(Reader input, TypeReference<T> type) {
+    public <T> T fromYaml(Reader input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, type.getType());
+        return (T) yamlFacade.readNode(input, type.getType());
     }
 
-    /**
-     * Parses YAML from reader to generic object node.
-     */
-    public static Object fromYaml(Reader input) {
+    public Object fromYaml(Reader input) {
         return fromYaml(input, Object.class);
     }
 
-    /**
-     * Parses YAML from string into target class.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromYaml(String input, Class<T> clazz) {
+    public <T> T fromYaml(String input, Class<T> clazz) {
         Objects.requireNonNull(input, "input");
-        return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, clazz);
+        return (T) yamlFacade.readNode(input, clazz);
     }
 
-    /**
-     * Parses YAML from string into target type reference.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromYaml(String input, TypeReference<T> type) {
+    public <T> T fromYaml(String input, TypeReference<T> type) {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getYamlFacade().readNode(input, type.getType());
+        return (T) yamlFacade.readNode(input, type.getType());
     }
 
-    /**
-     * Parses YAML from string to generic object node.
-     */
-    public static Object fromYaml(String input) {
+    public Object fromYaml(String input) {
         return fromYaml(input, Object.class);
     }
 
-    /**
-     * Writes node as YAML to writer.
-     */
-    public static void toYaml(Writer output, Object node) {
+    public void toYaml(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        Sjf4jConfig.global().getYamlFacade().writeNode(output, node);
+        yamlFacade.writeNode(output, node);
     }
 
-    /**
-     * Serializes node to YAML string.
-     */
-    public static String toYamlString(Object node) {
-        return Sjf4jConfig.global().getYamlFacade().writeNodeAsString(node);
+    public String toYamlString(Object node) {
+        return yamlFacade.writeNodeAsString(node);
     }
 
-    /**
-     * Serializes node to YAML bytes.
-     */
-    public static byte[] toYamlBytes(Object node) {
-        return Sjf4jConfig.global().getYamlFacade().writeNodeAsBytes(node);
+    public byte[] toYamlBytes(Object node) {
+        return yamlFacade.writeNodeAsBytes(node);
     }
 
     /// Node
 
-    /**
-     * Converts a node to target class via node facade.
-     * <p>
-     * Uses strict conversion semantics.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromNode(Object node, Class<T> clazz) {
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, true);
+    public <T> T fromNode(Object node, Class<T> clazz) {
+        return (T) nodeFacade.readNode(node, clazz, true);
     }
 
-    /**
-     * Converts a node to target type reference via node facade.
-     * <p>
-     * Uses strict conversion semantics.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T fromNode(Object node, TypeReference<T> type) {
+    public <T> T fromNode(Object node, TypeReference<T> type) {
         Objects.requireNonNull(type, "type");
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, type.getType(), true);
+        return (T) nodeFacade.readNode(node, type.getType(), true);
     }
 
-    /**
-     * Deep-copies a node through node facade.
-     * <p>
-     * Container nodes and nested children are recursively copied.
-     */
     @SuppressWarnings("unchecked")
-    public static <T> T deepNode(T node) {
-        return (T) Sjf4jConfig.global().getNodeFacade().deepNode(node);
+    public <T> T deepNode(T node) {
+        return (T) nodeFacade.deepNode(node);
     }
 
-    /**
-     * Converts node to raw Java structures.
-     * <p>
-     * Result consists of JSON-friendly primitives plus Map/List containers.
-     */
-    public static Object toRaw(Object node) {
-        return Sjf4jConfig.global().getNodeFacade().writeNode(node);
+    public Object toRaw(Object node) {
+        return nodeFacade.writeNode(node);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T toPojo(Object node, Class<T> clazz) {
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
+        if (ti.pojoInfo == null && ti.anyOfInfo == null) {
+            throw new org.sjf4j.exception.JsonException("Class '" + clazz.getName() + "' is not a POJO");
+        }
+        return (T) nodeFacade.readNode(node, clazz, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T toPojo(Object node, TypeReference<T> type) {
+        Objects.requireNonNull(type, "type");
+        Class<?> rawBox = Types.rawBox(type.getType());
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawBox);
+        if (ti.pojoInfo == null && ti.anyOfInfo == null) {
+            throw new org.sjf4j.exception.JsonException("Type '" + type.getType() + "' is not a POJO");
+        }
+        return (T) nodeFacade.readNode(node, type.getType(), false);
+    }
+
+    public <S, T> NodeMapperBuilder<S, T> mapperBuilder(Class<S> sourceType, Class<T> targetType) {
+        return new NodeMapperBuilder<>(sourceType, targetType);
     }
 
     /// Properties
 
-    /**
-     * Converts properties to generic object node.
-     */
-    public static Object fromProperties(Properties props) {
+    public Object fromProperties(Properties props) {
         Objects.requireNonNull(props, "props");
-        return Sjf4jConfig.global().getPropertiesFacade().readNode(props);
+        return propertiesFacade.readNode(props);
     }
 
-    /**
-     * Converts properties to target class.
-     */
-    public static <T> T fromProperties(Properties props, Class<T> clazz) {
+    public <T> T fromProperties(Properties props, Class<T> clazz) {
         Objects.requireNonNull(props, "props");
-        JsonObject jo = Sjf4jConfig.global().getPropertiesFacade().readNode(props);
+        JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, clazz);
     }
 
-    /**
-     * Converts properties to target type reference.
-     */
-    public static <T> T fromProperties(Properties props, TypeReference<T> type) {
+    public <T> T fromProperties(Properties props, TypeReference<T> type) {
         Objects.requireNonNull(props, "props");
         Objects.requireNonNull(type, "type");
-        JsonObject jo = Sjf4jConfig.global().getPropertiesFacade().readNode(props);
+        JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, type);
     }
 
-    /**
-     * Converts node to {@link Properties} via properties facade.
-     */
-    public static Properties toProperties(Object node) {
+    public Properties toProperties(Object node) {
         Properties props = new Properties();
-        Sjf4jConfig.global().getPropertiesFacade().writeNode(props, node);
+        propertiesFacade.writeNode(props, node);
         return props;
     }
 
+    public String inspect() {
+        return Nodes.inspect(this);
+    }
 
+    public static final class Builder {
+        private JsonFacade<?, ?> jsonFacade;
+        private YamlFacade<?, ?> yamlFacade;
+        private PropertiesFacade propertiesFacade;
+        private NodeFacade nodeFacade;
+
+        public Builder() {}
+
+        public Builder(Sjf4j sjf4j) {
+            Objects.requireNonNull(sjf4j, "sjf4j");
+            this.jsonFacade = sjf4j.jsonFacade;
+            this.yamlFacade = sjf4j.yamlFacade;
+            this.propertiesFacade = sjf4j.propertiesFacade;
+            this.nodeFacade = sjf4j.nodeFacade;
+        }
+
+        public Builder jsonFacade(JsonFacade<?, ?> jsonFacade) {
+            this.jsonFacade = jsonFacade;
+            return this;
+        }
+
+        public Builder yamlFacade(YamlFacade<?, ?> yamlFacade) {
+            this.yamlFacade = yamlFacade;
+            return this;
+        }
+
+        public Builder propertiesFacade(PropertiesFacade propertiesFacade) {
+            this.propertiesFacade = propertiesFacade;
+            return this;
+        }
+
+        public Builder nodeFacade(NodeFacade nodeFacade) {
+            this.nodeFacade = nodeFacade;
+            return this;
+        }
+
+        public Sjf4j build() {
+            return new Sjf4j(this);
+        }
+    }
 }

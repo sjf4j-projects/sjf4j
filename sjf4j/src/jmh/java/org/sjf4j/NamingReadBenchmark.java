@@ -120,7 +120,6 @@ public class NamingReadBenchmark {
 
     @Setup(Level.Trial)
     public void setup() {
-        Sjf4jConfig.global(new Sjf4jConfig.Builder().build());
         simpleFacade = new SimpleJsonFacade();
         jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
         gsonFacade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);

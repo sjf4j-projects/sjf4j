@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SchemaStore {
     private final Map<URI, ObjectSchema> mixedUriSchemas = new ConcurrentHashMap<>();
-//    private final ArrayList<ObjectSchema> schemas = new ArrayList<>();
+
 
     /**
      * Creates an empty schema store.
@@ -184,41 +184,6 @@ public class SchemaStore {
         }
     }
 
-//    public static ObjectSchema loadSchemaByPath(String path) {
-//        if (path == null || path.isEmpty()) return null;
-//        URI uri = URI.create(path);
-//        if (uri.isAbsolute()) {
-//            if ("file".equalsIgnoreCase(uri.getScheme())) {
-//                try (InputStream in = Files.newInputStream(Paths.get(uri))) {
-//                    return Sjf4j.fromJson(in, ObjectSchema.class);
-//                } catch (Exception e) {
-//                    throw new SchemaException("Failed to load schema file: " + uri, e);
-//                }
-//            }
-//            if ("classpath".equalsIgnoreCase(uri.getScheme())) {
-//                try (InputStream in = SchemaStore.class.getClassLoader().getResourceAsStream(uri.getPath())) {
-//                    if (in == null) {
-//                        throw new SchemaException("Schema resource file not found: " + uri);
-//                    }
-//                    return Sjf4j.fromJson(in, ObjectSchema.class);
-//                } catch (Exception e) {
-//                    throw new SchemaException("Failed to load schema file: " + uri, e);
-//                }
-//            }
-//            throw new SchemaException("Unsupported schema path: " + uri);
-//        }
-//
-//        String resourcePath = JSON_SCHEMAS_DIR + uri.getPath();
-//        try (InputStream in = SchemaStore.class.getClassLoader().getResourceAsStream(resourcePath)) {
-//            if (in == null) {
-//                throw new SchemaException("Schema resource file not found: " + resourcePath);
-//            }
-//            return Sjf4j.fromJson(in, ObjectSchema.class);
-//        } catch (Exception e) {
-//            throw new SchemaException("Failed to load schema file: " + resourcePath, e);
-//        }
-//    }
-
 
     /**
      * Loads a schema from local URI.
@@ -250,7 +215,7 @@ public class SchemaStore {
      */
     public static ObjectSchema loadSchemaFromFile(String filePath) {
         try (InputStream in = Files.newInputStream(Paths.get(filePath))) {
-            return Sjf4j.fromJson(in, ObjectSchema.class);
+            return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
             throw new SchemaException("Failed to load schema file: " + filePath, e);
         }
@@ -263,7 +228,7 @@ public class SchemaStore {
         if (resourcePath.startsWith("/")) resourcePath = resourcePath.substring(1);
         try (InputStream in = SchemaStore.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (in == null) throw new SchemaException("Not found schema resource: " + resourcePath);
-            return Sjf4j.fromJson(in, ObjectSchema.class);
+            return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
             throw new SchemaException("Failed to load schema resource: " + resourcePath, e);
         }

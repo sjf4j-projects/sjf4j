@@ -31,31 +31,29 @@ public class Fastjson2Reader implements StreamingReader {
      */
     @Override
     public Token peekToken() throws IOException {
-        if (peeked != null) return peeked;
+        if (peeked == null) {
+            peeked = mappingToken(reader.current());
+        }
+        return peeked;
+    }
 
-        switch (reader.current()) {
+    static Token mappingToken(char ch) {
+        switch (ch) {
             case '{':
-                peeked = Token.START_OBJECT;
-                break;
+                return StreamingReader.Token.START_OBJECT;
             case '}':
-                peeked = Token.END_OBJECT;
-                break;
+                return StreamingReader.Token.END_OBJECT;
             case '[':
-                peeked = Token.START_ARRAY;
-                break;
+                return StreamingReader.Token.START_ARRAY;
             case ']':
-                peeked = Token.END_ARRAY;
-                break;
+                return StreamingReader.Token.END_ARRAY;
             case '"':
-                peeked = Token.STRING;
-                break;
+                return StreamingReader.Token.STRING;
             case 't':
             case 'f':
-                peeked = Token.BOOLEAN;
-                break;
+                return StreamingReader.Token.BOOLEAN;
             case 'n':
-                peeked = Token.NULL;
-                break;
+                return StreamingReader.Token.NULL;
             case '-':
             case '0':
             case '1':
@@ -67,32 +65,12 @@ public class Fastjson2Reader implements StreamingReader {
             case '7':
             case '8':
             case '9':
-                peeked = Token.NUMBER;
-                break;
+                return StreamingReader.Token.NUMBER;
             default:
-                if (reader.isObject()) {
-                    peeked = Token.START_OBJECT;
-                } else if (reader.current() == '}') {
-                    peeked = Token.END_OBJECT;
-                } else if (reader.isArray()) {
-                    peeked = Token.START_ARRAY;
-                } else if (reader.current() == ']') {
-                    peeked = Token.END_ARRAY;
-                } else if (reader.isString()) {
-                    peeked = Token.STRING;
-                } else if (reader.isNumber()) {
-                    peeked = Token.NUMBER;
-                } else if (reader.current() == 't' || reader.current() == 'f') {    // I can do it!
-                    peeked = Token.BOOLEAN;
-                } else if (reader.isNull()) {
-                    peeked = Token.NULL;
-                } else {
-                    peeked = Token.UNKNOWN;
-                }
-                break;
+                return StreamingReader.Token.UNKNOWN;
         }
-        return peeked;
     }
+
 
     /**
      * Consumes and enters object scope.

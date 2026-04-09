@@ -67,6 +67,13 @@ public interface StreamingReader extends Closeable {
 
     Token peekToken() throws IOException;
 
+    /**
+     * Returns an isolated reader for the current JSON value when the backend can buffer it.
+     */
+    default StreamingReader forkValue() throws IOException {
+        return null;
+    }
+
     void startObject() throws IOException;
 
     void endObject() throws IOException;

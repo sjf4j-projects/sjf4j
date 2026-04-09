@@ -316,7 +316,7 @@ public class Jackson2FacadeTest {
 
     @SuppressWarnings("unchecked")
     private static void assertNodeValue(Jackson2JsonFacade facade) {
-        NodeRegistry.registerValueCodec(Ops.class);
+        NodeRegistry.registerTypeInfo(Ops.class);
 
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";

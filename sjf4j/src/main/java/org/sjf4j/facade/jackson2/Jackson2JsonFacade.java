@@ -29,7 +29,6 @@ import java.util.Objects;
  */
 public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Writer> {
     private final StreamingMode streamingMode;
-
     private final ObjectMapper objectMapper;
 
     public Jackson2JsonFacade() {

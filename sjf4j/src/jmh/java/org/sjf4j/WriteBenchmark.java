@@ -92,10 +92,10 @@ public class WriteBenchmark {
 
     static {
         try {
-            USER_POJO = Sjf4j.fromJson(JSON_DATA2, UserPojo.class);
-            USER_HAS_ANY = Sjf4j.fromJson(JSON_DATA2, UserHasAny.class);
-            USER_JOJO = Sjf4j.fromJson(JSON_DATA2, UserJojo.class);
-            MAP_NODE = Sjf4j.fromJson(JSON_DATA2, new TypeReference<Map<String, Object>>() {});
+            USER_POJO = Sjf4j.global().fromJson(JSON_DATA2, UserPojo.class);
+            USER_HAS_ANY = Sjf4j.global().fromJson(JSON_DATA2, UserHasAny.class);
+            USER_JOJO = Sjf4j.global().fromJson(JSON_DATA2, UserJojo.class);
+            MAP_NODE = Sjf4j.global().fromJson(JSON_DATA2, new TypeReference<Map<String, Object>>() {});
             JSONP_MAP_NODE = Json.createReader(new StringReader(JSON_DATA2)).readObject();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -124,8 +124,6 @@ public class WriteBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder()
-                    .build());
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
             jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), mode);
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);

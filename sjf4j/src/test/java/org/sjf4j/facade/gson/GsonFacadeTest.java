@@ -120,7 +120,7 @@ public class GsonFacadeTest {
 
     @SuppressWarnings("unchecked")
     private static void assertNodeValue(GsonJsonFacade facade) {
-        NodeRegistry.registerValueCodec(Ops.class);
+        NodeRegistry.registerTypeInfo(Ops.class);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());

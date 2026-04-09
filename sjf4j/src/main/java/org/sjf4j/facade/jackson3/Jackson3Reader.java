@@ -3,6 +3,7 @@ package org.sjf4j.facade.jackson3;
 import org.sjf4j.facade.StreamingReader;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
+import tools.jackson.databind.util.TokenBuffer;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -47,6 +48,14 @@ public class Jackson3Reader implements StreamingReader {
             default:
                 return Token.UNKNOWN;
         }
+    }
+
+    @Override
+    public StreamingReader forkValue() throws IOException {
+        // Jackson databind may keep using the original parser after a field deserializer returns.
+        TokenBuffer rawBuffer = TokenBuffer.forBuffering(parser, parser.objectReadContext());
+        rawBuffer.copyCurrentStructure(parser);
+        return new Jackson3Reader(rawBuffer.asParserOnFirstToken(parser.objectReadContext(), parser));
     }
 
     @Override

@@ -24,8 +24,7 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
      * Creates SnakeYAML facade with default loader/dumper options.
      */
     public SnakeYamlFacade() {
-        this.loaderOptions = new LoaderOptions();
-        this.dumperOptions = new DumperOptions();
+        this(new LoaderOptions(), new DumperOptions());
     }
 
     /**

@@ -3,12 +3,11 @@ package org.sjf4j.facade.fastjson2;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
@@ -56,7 +55,7 @@ public class Fastjson2StreamingIO {
             if (rawClazz == Object.class) {
                 return _readRawNode(reader);
             }
-            StreamingReader.Token token = peekToken(reader);
+            StreamingReader.Token token = _peekToken(reader);
             switch (token) {
                 case START_OBJECT:
                     return _readObject(reader, type, rawClazz);
@@ -81,7 +80,7 @@ public class Fastjson2StreamingIO {
     }
 
     private static Object _readRawNode(JSONReader reader) throws IOException {
-        switch (peekToken(reader)) {
+        switch (_peekToken(reader)) {
             case START_OBJECT:
                 return _readRawObject(reader);
             case START_ARRAY:
@@ -128,7 +127,7 @@ public class Fastjson2StreamingIO {
             throws IOException {
         reader.readNull();
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             return vci.rawToValue(null);
         }
@@ -141,7 +140,7 @@ public class Fastjson2StreamingIO {
             return reader.readBoolValue();
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             boolean b = reader.readBoolValue();
             return vci.rawToValue(b);
@@ -164,7 +163,7 @@ public class Fastjson2StreamingIO {
         if (rawClazz == BigInteger.class) return reader.readBigInteger();
         if (rawClazz == BigDecimal.class) return reader.readBigDecimal();
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             Number n = reader.readNumber();
             return vci.rawToValue(n);
@@ -188,7 +187,7 @@ public class Fastjson2StreamingIO {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             String s = reader.readString();
             return vci.rawToValue(s);
@@ -205,7 +204,7 @@ public class Fastjson2StreamingIO {
         if (Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readMapWithValueType(reader, rawClazz, valueType, valueClazz,
+            return _readMap(reader, rawClazz, valueType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
@@ -214,12 +213,13 @@ public class Fastjson2StreamingIO {
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        if (ti.valueCodecInfo != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
+        if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, ti.valueCodecInfo.rawClazz, valueType, valueClazz,
+            Map<String, Object> map = _readMap(reader, vci.rawClazz, valueType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
-            return ti.valueCodecInfo.rawToValue(map);
+            return vci.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
@@ -347,7 +347,7 @@ public class Fastjson2StreamingIO {
         if (List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readListWithElementType(reader, rawClazz, valueType, valueClazz,
+            return _readList(reader, rawClazz, valueType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
@@ -358,14 +358,14 @@ public class Fastjson2StreamingIO {
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            return _readSetWithElementType(reader, rawClazz, valueType, valueClazz,
+            return _readSet(reader, rawClazz, valueType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
-            return _readArrayWithElementType(reader, rawClazz, compType, valueClazz,
+            return _readArray(reader, rawClazz, compType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
         }
 
@@ -384,11 +384,11 @@ public class Fastjson2StreamingIO {
             return ja;
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
-            List<Object> list = _readListWithElementType(reader, vci.rawClazz, valueType, valueClazz,
+            List<Object> list = _readList(reader, vci.rawClazz, valueType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
             return vci.rawToValue(list);
         }
@@ -412,21 +412,21 @@ public class Fastjson2StreamingIO {
 
         switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMapWithValueType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
+                return _readMap(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case LIST:
-                return _readListWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
+                return _readList(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case SET:
-                return _readSetWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
+                return _readSet(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             case ARRAY:
-                return _readArrayWithElementType(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
+                return _readArray(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argAnyOfInfo);
             default:
                 return _readNode(reader, fieldType, fieldRaw, null);
         }
     }
 
-    private static Map<String, Object> _readMapWithValueType(JSONReader reader, Class<?> mapClazz,
-                                                              Type valueType, Class<?> valueClazz,
-                                                              NodeRegistry.AnyOfInfo valueAnyOf)
+    private static Map<String, Object> _readMap(JSONReader reader, Class<?> mapClazz,
+                                                Type valueType, Class<?> valueClazz,
+                                                NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
@@ -445,9 +445,9 @@ public class Fastjson2StreamingIO {
         return map;
     }
 
-    private static List<Object> _readListWithElementType(JSONReader reader, Class<?> listClazz,
-                                                          Type valueType, Class<?> valueClazz,
-                                                          NodeRegistry.AnyOfInfo valueAnyOf)
+    private static List<Object> _readList(JSONReader reader, Class<?> listClazz,
+                                          Type valueType, Class<?> valueClazz,
+                                          NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
@@ -465,9 +465,9 @@ public class Fastjson2StreamingIO {
         return list;
     }
 
-    private static Set<Object> _readSetWithElementType(JSONReader reader, Class<?> setClazz,
-                                                        Type valueType, Class<?> valueClazz,
-                                                        NodeRegistry.AnyOfInfo valueAnyOf)
+    private static Set<Object> _readSet(JSONReader reader, Class<?> setClazz,
+                                        Type valueType, Class<?> valueClazz,
+                                        NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
         if (reader.nextIfNull()) {
             return null;
@@ -485,11 +485,11 @@ public class Fastjson2StreamingIO {
         return set;
     }
 
-    private static Object _readArrayWithElementType(JSONReader reader, Class<?> rawClazz,
-                                                       Type valueType, Class<?> valueClazz,
-                                                       NodeRegistry.AnyOfInfo valueAnyOf)
+    private static Object _readArray(JSONReader reader, Class<?> rawClazz,
+                                     Type valueType, Class<?> valueClazz,
+                                     NodeRegistry.AnyOfInfo valueAnyOf)
             throws IOException {
-        List<Object> list = _readListWithElementType(reader, List.class, valueType, valueClazz, valueAnyOf);
+        List<Object> list = _readList(reader, List.class, valueType, valueClazz, valueAnyOf);
         if (list == null) {
             return null;
         }
@@ -507,11 +507,11 @@ public class Fastjson2StreamingIO {
                 Object rawNode = _readRawNode(reader);
                 Class<?> targetClazz = StreamingIO.resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
                 if (targetClazz == null) return null;
-                return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
+                return FacadeFactory.getDefaultNodeFacade().readNode(rawNode, targetClazz);
             }
 
             Class<?> targetClazz;
-            targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(peekToken(reader).jsonType(), anyOfInfo);
+            targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(_peekToken(reader).jsonType(), anyOfInfo);
             if (targetClazz == null) {
                 _readRawNode(reader);
                 return null;
@@ -530,58 +530,8 @@ public class Fastjson2StreamingIO {
     /**
      * Peeks token kind from current Fastjson2 reader state.
      */
-    public static StreamingReader.Token peekToken(JSONReader reader) throws IOException {
-        switch (reader.current()) {
-            case '{':
-                return StreamingReader.Token.START_OBJECT;
-            case '}':
-                return StreamingReader.Token.END_OBJECT;
-            case '[':
-                return StreamingReader.Token.START_ARRAY;
-            case ']':
-                return StreamingReader.Token.END_ARRAY;
-            case '"':
-                return StreamingReader.Token.STRING;
-            case 't':
-            case 'f':
-                return StreamingReader.Token.BOOLEAN;
-            case 'n':
-                return StreamingReader.Token.NULL;
-            case '-':
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                return StreamingReader.Token.NUMBER;
-            default:
-                break;
-        }
-
-        if (reader.isObject()) {
-            return StreamingReader.Token.START_OBJECT;
-        } else if (reader.current() == '}') {
-            return StreamingReader.Token.END_OBJECT;
-        } else if (reader.isArray()) {
-            return StreamingReader.Token.START_ARRAY;
-        } else if (reader.current() == ']') {
-            return StreamingReader.Token.END_ARRAY;
-        } else if (reader.isString()) {
-            return StreamingReader.Token.STRING;
-        } else if (reader.isNumber()) {
-            return StreamingReader.Token.NUMBER;
-        } else if (reader.current() == 't' || reader.current() == 'f') {
-            return StreamingReader.Token.BOOLEAN;
-        } else if (reader.isNull()) {
-            return StreamingReader.Token.NULL;
-        } else {
-            return StreamingReader.Token.UNKNOWN;
-        }
+    private static StreamingReader.Token _peekToken(JSONReader reader) throws IOException {
+        return Fastjson2Reader.mappingToken(reader.current());
     }
 
     /// Write
@@ -619,7 +569,7 @@ public class Fastjson2StreamingIO {
             }
 
             if (node instanceof Number) {
-                writeNumber(writer, (Number) node);
+                _writeNumber(writer, (Number) node);
                 return;
             }
 
@@ -710,8 +660,9 @@ public class Fastjson2StreamingIO {
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-            if (ti.valueCodecInfo != null) {
-                Object raw = ti.valueCodecInfo.valueToRaw(node);
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
+            if (vci != null) {
+                Object raw = vci.valueToRaw(node);
                 _writeNode(writer, raw);
                 return;
             }
@@ -744,7 +695,7 @@ public class Fastjson2StreamingIO {
     /**
      * Writes numeric value with precise Fastjson2 API mapping.
      */
-    public static void writeNumber(JSONWriter writer, Number value) throws IOException {
+    private static void _writeNumber(JSONWriter writer, Number value) {
         if (value instanceof Long || value instanceof Integer || value instanceof Short || value instanceof Byte) {
             writer.writeInt64(value.longValue());
         } else if (value instanceof Float || value instanceof Double) {

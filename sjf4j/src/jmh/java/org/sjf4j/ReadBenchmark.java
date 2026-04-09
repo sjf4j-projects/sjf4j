@@ -113,7 +113,6 @@ public class ReadBenchmark {
 
     static {
         JACKSON2.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-//        Sjf4jConfig.useBindingPath(false);
     }
 
     private static Gson createNativeGson() {
@@ -137,9 +136,6 @@ public class ReadBenchmark {
         @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
         public String streamingMode;
 
-//        @Param({/*"true",*/ "false"})
-//        public String useBindingPath;
-
         public Jackson2JsonFacade jackson2Facade;
         public GsonJsonFacade gsonFacade;
         public Fastjson2JsonFacade fastjson2Facade;
@@ -148,8 +144,6 @@ public class ReadBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder()
-                    .build());
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
             jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), mode);
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);

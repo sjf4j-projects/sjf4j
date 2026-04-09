@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Patch utilities: JSON Merge Patch (RFC 7386) and JSON Patch diff.
  */
-public class Patches {
+public final class Patches {
 
     /**
      * Recursively merges a patch into target with custom overwrite rules.
@@ -50,7 +50,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.putInObject(target, key, Sjf4j.deepNode(subPatch));
+                            Nodes.putInObject(target, key, Sjf4j.global().deepNode(subPatch));
                         } else {
                             Nodes.putInObject(target, key, subPatch);
                         }
@@ -60,7 +60,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.putInObject(target, key, Sjf4j.deepNode(subPatch));
+                            Nodes.putInObject(target, key, Sjf4j.global().deepNode(subPatch));
                         } else {
                             Nodes.putInObject(target, key, subPatch);
                         }
@@ -79,7 +79,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.setInArray(target, i, Sjf4j.deepNode(subPatch));
+                            Nodes.setInArray(target, i, Sjf4j.global().deepNode(subPatch));
                         } else {
                             Nodes.setInArray(target, i, subPatch);
                         }
@@ -89,7 +89,7 @@ public class Patches {
                         merge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         if (deepCopy) {
-                            Nodes.setInArray(target, i, Sjf4j.deepNode(subPatch));
+                            Nodes.setInArray(target, i, Sjf4j.global().deepNode(subPatch));
                         } else {
                             Nodes.setInArray(target, i, subPatch);
                         }

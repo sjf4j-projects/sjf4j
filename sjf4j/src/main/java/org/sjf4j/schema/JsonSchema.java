@@ -85,14 +85,14 @@ public interface JsonSchema {
      * Parses JSON text and creates a schema instance.
      */
     static JsonSchema fromJson(String json) {
-        return Sjf4j.fromJson(json, JsonSchema.class);
+        return Sjf4j.global().fromJson(json, JsonSchema.class);
     }
 
     /**
      * Creates a schema instance from a parsed JSON node.
      */
     static JsonSchema fromNode(Object node) {
-        return Sjf4j.fromNode(node, JsonSchema.class);
+        return Sjf4j.global().fromNode(node, JsonSchema.class);
     }
 
 }

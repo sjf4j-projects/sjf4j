@@ -441,14 +441,14 @@ public class JsonObject extends JsonContainer {
      * Parses a JSON string into a JsonObject.
      */
     public static JsonObject fromJson(String input) {
-        return Sjf4j.fromJson(input, JsonObject.class);
+        return Sjf4j.global().fromJson(input, JsonObject.class);
     }
 
     /**
      * Serializes this JsonObject to JSON.
      */
     public String toJson() {
-        return Sjf4j.toJsonString(this);
+        return Sjf4j.global().toJsonString(this);
     }
 
     ///  YAML Facade
@@ -457,14 +457,14 @@ public class JsonObject extends JsonContainer {
      * Parses a YAML string into a JsonObject.
      */
     public static JsonObject fromYaml(String input) {
-        return Sjf4j.fromYaml(input, JsonObject.class);
+        return Sjf4j.global().fromYaml(input, JsonObject.class);
     }
 
     /**
      * Serializes this JsonObject to YAML.
      */
     public String toYaml() {
-        return Sjf4j.toYamlString(this);
+        return Sjf4j.global().toYamlString(this);
     }
 
     /// Node Facade
@@ -473,21 +473,21 @@ public class JsonObject extends JsonContainer {
      * Converts a node into a JsonObject.
      */
     public static JsonObject fromNode(Object node) {
-        return Sjf4j.fromNode(node, JsonObject.class);
+        return Sjf4j.global().fromNode(node, JsonObject.class);
     }
 
     /**
      * Converts this JsonObject into the target node type.
      */
     public <T> T toNode(Class<T> clazz) {
-        return Sjf4j.fromNode(this, clazz);
+        return Sjf4j.global().fromNode(this, clazz);
     }
 
     /**
      * Converts this JsonObject into a raw Java representation.
      */
     public Object toRaw() {
-        return Sjf4j.toRaw(this);
+        return Sjf4j.global().toRaw(this);
     }
 
 
@@ -498,14 +498,14 @@ public class JsonObject extends JsonContainer {
      * Converts Java Properties into a JsonObject.
      */
     public static JsonObject fromProperties(Properties props) {
-        return Sjf4j.fromProperties(props, JsonObject.class);
+        return Sjf4j.global().fromProperties(props, JsonObject.class);
     }
 
     /**
      * Converts this JsonObject into Java Properties.
      */
     public Properties toProperties() {
-        return Sjf4j.toProperties(this);
+        return Sjf4j.global().toProperties(this);
     }
 
 
@@ -1119,36 +1119,6 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Puts all entries from a Map, JsonObject, or POJO.
-     * <p>
-     * POJO inputs are expanded by registered node fields and written through
-     * {@link #put(String, Object)} semantics.
-     */
-    @SuppressWarnings("unchecked")
-    public void putAll(Object node) {
-        if (node == null) return;
-        if (node instanceof Map) {
-            for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
-                put(entry.getKey(), entry.getValue());
-            }
-            return;
-        }
-        if (node instanceof JsonObject) {
-            ((JsonObject) node).forEach(this::put);
-            return;
-        }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
-        if (pi != null && !pi.isJajo) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                put(entry.getKey(), entry.getValue().invokeGetter(node));
-            }
-            return;
-        }
-        throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
-                "' into JsonObject. Supported types are: JsonObject, Map, or POJO.");
-    }
-
-    /**
      * Removes a dynamic key and returns its previous value.
      * <p>
      * Declared JOJO/POJO fields are not removable.
@@ -1197,7 +1167,7 @@ public class JsonObject extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonObject>  T deepCopy() {
-        return (T) Sjf4j.deepNode(this);
+        return (T) Sjf4j.global().deepNode(this);
     }
 
     /// Stream

@@ -9,10 +9,10 @@
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
 
 **SJF4J** is a lightweight facade over multiple JSON libraries, 
-including [Jackson 2.x](https://github.com/FasterXML/jackson-databind), 
+including [Jackson](https://github.com/FasterXML/jackson-databind), 
 [Gson](https://github.com/google/gson), 
 [Fastjson2](https://github.com/alibaba/fastjson2),
-[JSON-P](https://github.com/jakartaee/jsonp-api).  
+[JSON-P](https://github.com/jakartaee/jsonp-api). 
 Beyond JSON, it also supports YAML (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml))
 and Java Properties (built-in).
 
@@ -41,19 +41,21 @@ Maven
 SJF4J itself has no external runtime dependencies.  
 Format support is activated automatically when the corresponding libraries are present.
 
-- **JSON** — Include one of: `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or other).  
-  SJF4J automatically detects and uses the first available implementation in that order.
-  If none are detected, it falls back to a built-in minimal JSON parser (functional but slower).
+- **JSON**
+  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or other).  
+  - By default, SJF4J automatically detects and uses the first available implementation in that order.
+  - If none are detected, it falls back to a built-in simple JSON parser (functional but slower).
 
+- **YAML**
+  - Include: `SnakeYAML`.
 
-- **YAML** — Include `SnakeYAML`.
+- **Java Properties**
+  - Built-in supported.
+  - Conversions from Java Properties are inherently constrained by its flat key-value structure.
 
-- **Java Properties** — A built-in parser is provided.  
-  Conversions from Java Properties are inherently constrained by its flat key-value structure.
-
-- **In-Memory Usage** (No External Data)  
-  SJF4J can operate directly on in-memory object graphs through OBNT,
-  providing the same JSON-semantic APIs for navigating, patching, and validating.
+- **In-Memory** (no external data)  
+  - SJF4J can operate directly on in-memory object graphs through OBNT,
+    providing the same JSON-semantic APIs.
 
 ## Quickstart
 

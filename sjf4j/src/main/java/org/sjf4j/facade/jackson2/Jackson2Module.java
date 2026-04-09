@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
@@ -26,10 +25,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
@@ -85,8 +81,9 @@ public interface Jackson2Module {
                     if (ti.anyOfInfo != null) {
                         return new AnyOfDeserializer<>(ti.anyOfInfo);
                     }
-                    if (ti.valueCodecInfo != null) {
-                        return new NodeValueDeserializer<>(ti.valueCodecInfo);
+                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+                    if (vci != null) {
+                        return new NodeValueDeserializer<>(vci);
                     }
                     if (ti.requiresPojoReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo);
@@ -279,95 +276,7 @@ public interface Jackson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            JsonToken token = p.currentToken();
-            if (token == null) {
-                token = p.nextToken();
-            }
-
-            if (anyOfInfo.hasDiscriminator) {
-                TokenBuffer rawBuffer = ctxt.bufferAsCopyOfValue(p);
-                Class<?> targetClazz = token == JsonToken.START_OBJECT
-                        && anyOfInfo.scope == AnyOf.Scope.CURRENT
-                        && !anyOfInfo.key.isEmpty()
-                        ? _readByCurrentKey(rawBuffer, ctxt)
-                        : _readByRawNode(rawBuffer, ctxt);
-                if (targetClazz == null) {
-                    return null;
-                }
-                JsonParser targetParser = rawBuffer.asParserOnFirstToken();
-                try {
-                    return (T) ctxt.readValue(targetParser, targetClazz);
-                } finally {
-                    targetParser.close();
-                }
-            }
-
-            Class<?> targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(_toJsonType(token), anyOfInfo);
-            if (targetClazz == null) {
-                ctxt.readValue(p, Object.class);
-                return null;
-            }
-            return (T) ctxt.readValue(p, targetClazz);
-        }
-
-        private Class<?> _readByRawNode(TokenBuffer rawBuffer, DeserializationContext ctxt) throws IOException {
-            JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
-            try {
-                return StreamingIO.resolveSelfDiscriminatorTarget(
-                        ctxt.readValue(discriminatorParser, Object.class), anyOfInfo);
-            } finally {
-                discriminatorParser.close();
-            }
-        }
-
-        private Class<?> _readByCurrentKey(TokenBuffer rawBuffer, DeserializationContext ctxt) throws IOException {
-            JsonParser discriminatorParser = rawBuffer.asParserOnFirstToken();
-            try {
-                JsonToken token = discriminatorParser.currentToken();
-                if (token == null) {
-                    token = discriminatorParser.nextToken();
-                }
-                if (token != JsonToken.START_OBJECT) {
-                    if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                    throw new org.sjf4j.exception.BindingException(
-                            "Node must be a JSON object, when AnyOf has a SELF discriminator");
-                }
-                while (discriminatorParser.nextToken() != JsonToken.END_OBJECT) {
-                    String name = discriminatorParser.currentName();
-                    JsonToken valueToken = discriminatorParser.nextToken();
-                    if (anyOfInfo.key.equals(name)) {
-                        return StreamingIO.resolveAnyOfDiscriminatorTarget(
-                                _readDiscriminatorValue(discriminatorParser, valueToken, ctxt), anyOfInfo);
-                    }
-                    discriminatorParser.skipChildren();
-                }
-                return StreamingIO.resolveAnyOfDiscriminatorTarget(null, anyOfInfo);
-            } finally {
-                discriminatorParser.close();
-            }
-        }
-
-        private Object _readDiscriminatorValue(JsonParser parser, JsonToken token, DeserializationContext ctxt)
-                throws IOException {
-            if (token == JsonToken.VALUE_NULL) return null;
-            if (token == JsonToken.VALUE_STRING) return parser.getText();
-            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) {
-                return parser.getNumberValue();
-            }
-            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) {
-                return parser.getBooleanValue();
-            }
-            return ctxt.readValue(parser, Object.class);
-        }
-
-        private JsonType _toJsonType(JsonToken token) {
-            if (token == JsonToken.START_OBJECT) return JsonType.OBJECT;
-            if (token == JsonToken.START_ARRAY) return JsonType.ARRAY;
-            if (token == JsonToken.VALUE_STRING) return JsonType.STRING;
-            if (token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT) return JsonType.NUMBER;
-            if (token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE) return JsonType.BOOLEAN;
-            if (token == JsonToken.VALUE_NULL) return JsonType.NULL;
-            return JsonType.UNKNOWN;
+            return (T) Jackson2StreamingIO.readAnyOf(p, anyOfInfo);
         }
     }
 

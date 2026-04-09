@@ -129,8 +129,8 @@ public class SchemaBenchmark {
             numberSchema = JsonSchema.fromJson(NUMBER_SCHEMA_JSON);
             numberSchema.compile();
 
-            objectNode = Sjf4j.fromJson(OBJECT_NODE_JSON);
-            arrayNode = Sjf4j.fromJson(ARRAY_NODE_JSON);
+            objectNode = Sjf4j.global().fromJson(OBJECT_NODE_JSON);
+            arrayNode = Sjf4j.global().fromJson(ARRAY_NODE_JSON);
             stringNode = "alice@example.com";
             numberNode = 84;
         }

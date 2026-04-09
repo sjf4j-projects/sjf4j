@@ -42,7 +42,7 @@ public class JsonPatch extends JsonArray {
      * Parses patch document from JSON string.
      */
     public static JsonPatch fromJson(String json) {
-        return Sjf4j.fromJson(json, JsonPatch.class);
+        return Sjf4j.global().fromJson(json, JsonPatch.class);
     }
 
     /**

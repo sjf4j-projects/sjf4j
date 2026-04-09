@@ -24,7 +24,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -128,7 +127,6 @@ public class ReadBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder().build());
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
             jackson2Facade = new JacksonJsonFacade(new ObjectMapper(), mode);
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
@@ -147,7 +145,6 @@ public class ReadBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            Sjf4jConfig.global(new Sjf4jConfig.Builder().build());
             facade = new Jackson3JsonFacade(createJackson3(), StreamingFacade.StreamingMode.valueOf(streamingMode));
         }
     }

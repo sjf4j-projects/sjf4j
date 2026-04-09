@@ -17,7 +17,7 @@ import java.util.Objects;
 /**
  * Reflection type helpers used for generic resolution and raw class lookup.
  */
-public class Types {
+public final class Types {
 
     /**
      * Returns the class name of an object, or "null".

@@ -6,7 +6,6 @@ import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.path.JsonPath;
 
 import java.lang.invoke.MethodHandle;
@@ -130,11 +129,7 @@ public final class NodeRegistry {
         registerValueCodec(new ValueCodec.LocaleValueCodec());
         registerValueCodec(new ValueCodec.CurrencyValueCodec());
         registerValueCodec(new ValueCodec.ZoneIdValueCodec());
-        if (Sjf4jConfig.global().instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
-            registerValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
-        } else {
-            registerValueCodec(new ValueCodec.InstantStringValueCodec());
-        }
+        registerValueCodec(new ValueCodec.InstantStringValueCodec());
         registerValueCodec(new ValueCodec.LocalDateValueCodec());
         registerValueCodec(new ValueCodec.LocalDateTimeValueCodec());
         registerValueCodec(new ValueCodec.OffsetDateTimeValueCodec());
@@ -218,13 +213,6 @@ public final class NodeRegistry {
     }
 
     /**
-     * Registers value codec metadata from @NodeValue or existing codec.
-     */
-    public static ValueCodecInfo registerValueCodec(Class<?> clazz) {
-        return registerTypeInfo(clazz).valueCodecInfo;
-    }
-
-    /**
      * Replaces an existing codec using the type's {@code @NodeValue} declaration.
      */
     public static ValueCodecInfo overrideValueCodec(Class<?> clazz) {
@@ -239,31 +227,14 @@ public final class NodeRegistry {
     /**
      * Returns value codec metadata for a class.
      */
-    public static ValueCodecInfo getValueCodecInfo(Class<?> clazz) {
-        return registerValueCodec(clazz);
+    public static ValueCodecInfo registerValueCodecInfo(Class<?> clazz) {
+        return registerTypeInfo(clazz).valueCodecInfo;
     }
-
-    /**
-     * Re-registers the Instant codec according to current instant format.
-     * <p>
-     * Existing Instant mappings are overwritten in the type metadata cache.
-     */
-    public static void refreshInstantValueCodec(Sjf4jConfig.InstantFormat instantFormat) {
-        if (instantFormat == Sjf4jConfig.InstantFormat.EPOCH_MILLIS) {
-            overrideValueCodec(new ValueCodec.InstantEpochMillisValueCodec());
-        } else {
-            overrideValueCodec(new ValueCodec.InstantStringValueCodec());
-        }
-    }
-
 
     /// POJO
 
-    /**
-     * Registers and returns POJO metadata for a class.
-     */
     public static PojoInfo registerPojo(Class<?> clazz) {
-        return registerTypeInfo(clazz).pojoInfo;
+        return registerTypeInfo(clazz, false).pojoInfo;
     }
 
     /**
@@ -271,18 +242,6 @@ public final class NodeRegistry {
      */
     public static PojoInfo registerPojoOrElseThrow(Class<?> clazz) {
         return registerTypeInfo(clazz, true).pojoInfo;
-    }
-
-    /**
-     * Clears cached POJO metadata while preserving codec and other type entries.
-     */
-    public static void clearPojoCache() {
-        for (Map.Entry<Class<?>, TypeInfo> entry : TYPE_INFO_CACHE.entrySet()) {
-            TypeInfo ti = entry.getValue();
-            if (ti != null && ti.pojoInfo != null) {
-                TYPE_INFO_CACHE.remove(entry.getKey(), ti);
-            }
-        }
     }
 
     /**

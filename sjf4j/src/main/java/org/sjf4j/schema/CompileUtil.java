@@ -22,7 +22,7 @@ import java.util.Objects;
  * These utilities normalize subschema nodes, resolve references, and build the
  * ordered evaluator list executed at validation time.
  */
-public class CompileUtil {
+public final class CompileUtil {
 
 
     /**

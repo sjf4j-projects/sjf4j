@@ -299,14 +299,14 @@ public class JsonArray extends JsonContainer {
      * Parses a JSON string into a JsonArray.
      */
     public static JsonArray fromJson(String input) {
-        return Sjf4j.fromJson(input, JsonArray.class);
+        return Sjf4j.global().fromJson(input, JsonArray.class);
     }
 
     /**
      * Serializes this JsonArray to JSON.
      */
     public String toJson() {
-        return Sjf4j.toJsonString(this);
+        return Sjf4j.global().toJsonString(this);
     }
 
     /// YAML Facade
@@ -315,14 +315,14 @@ public class JsonArray extends JsonContainer {
      * Parses a YAML string into a JsonArray.
      */
     public static JsonArray fromYaml(String input) {
-        return Sjf4j.fromYaml(input, JsonArray.class);
+        return Sjf4j.global().fromYaml(input, JsonArray.class);
     }
 
     /**
      * Serializes this JsonArray to YAML.
      */
     public String toYaml() {
-        return Sjf4j.toYamlString(this);
+        return Sjf4j.global().toYamlString(this);
     }
 
     /// Node Facade
@@ -331,14 +331,14 @@ public class JsonArray extends JsonContainer {
      * Converts a node into a JsonArray.
      */
     public static JsonArray fromNode(Object node) {
-        return Sjf4j.fromNode(node, JsonArray.class);
+        return Sjf4j.global().fromNode(node, JsonArray.class);
     }
 
     /**
      * Converts this JsonArray into the target node type.
      */
     public <T> T toNode(Class<T> clazz) {
-        return Sjf4j.fromNode(this, clazz);
+        return Sjf4j.global().fromNode(this, clazz);
     }
 
     /// Getter
@@ -1056,7 +1056,7 @@ public class JsonArray extends JsonContainer {
      */
     @SuppressWarnings("unchecked")
     public <T extends JsonArray> T deepCopy() {
-        return (T) Sjf4j.deepNode(this);
+        return (T) Sjf4j.global().deepNode(this);
     }
 
 }

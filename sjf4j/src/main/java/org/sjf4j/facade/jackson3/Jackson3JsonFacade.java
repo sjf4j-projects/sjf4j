@@ -23,7 +23,6 @@ import java.util.Objects;
  */
 public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Writer> {
     private final StreamingMode streamingMode;
-
     private final ObjectMapper objectMapper;
 
     public Jackson3JsonFacade() {

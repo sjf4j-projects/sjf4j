@@ -2,7 +2,6 @@ package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
@@ -73,8 +72,7 @@ public class SimpleNodeFacade implements NodeFacade {
     public Object readNode(Object node, Type type, boolean deepCopy) {
         try {
             Class<?> rawBox = Types.rawBox(type);
-            return _readNode(node, type, rawBox, null, deepCopy,
-                    Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
+            return _readNode(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE);
         } catch (Exception e) {
             throw new JsonException("Failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
         }
@@ -263,7 +261,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 Map<String, Object> newMap = NodeRegistry.newMapContainer(nodeClazz, true);
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 srcMap.forEach((k, v) -> {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, k);
+                    PathSegment cps = new PathSegment.Name(ps, nodeClazz, k);
                     newMap.put(k, _deepNode(v, valueType, cps));
                 });
                 return newMap;
@@ -273,7 +271,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 JsonObject srcJo = (JsonObject) node;
                 JsonObject newJo = new JsonObject();
                 srcJo.forEach((k, v) -> {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, k);
+                    PathSegment cps = new PathSegment.Name(ps, nodeClazz, k);
                     newJo.put(k, _deepNode(v, Object.class, cps));
                 });
                 return newJo;
@@ -289,13 +287,13 @@ public class SimpleNodeFacade implements NodeFacade {
                     String key = entry.getKey();
                     int argIdx = session.resolveArgIndex(key);
                     if (argIdx >= 0) {
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
+                        PathSegment cps = new PathSegment.Name(ps, nodeClazz, key);
                         Object vv = _deepNode(entry.getValue(), ci.argTypes[argIdx], cps);
                         session.acceptResolvedJsonEntry(argIdx, key, vv);
                         continue;
                     }
 
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
+                    PathSegment cps = new PathSegment.Name(ps, nodeClazz, key);
                     Object vv = _deepNode(entry.getValue(), Object.class, cps);
                     session.acceptResolvedJsonEntry(argIdx, key, vv);
                 }
@@ -309,7 +307,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 List<Object> newList = NodeRegistry.newListContainer(nodeClazz, true);
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcList.size(); i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, nodeClazz, i);
+                    PathSegment cps = new PathSegment.Index(ps, nodeClazz, i);
                     newList.add(_deepNode(srcList.get(i), elemType, cps));
                 }
                 return newList;
@@ -320,7 +318,7 @@ public class SimpleNodeFacade implements NodeFacade {
                         : (JsonArray) NodeRegistry.registerPojoOrElseThrow(nodeClazz).creatorInfo.forceNewPojo();
                 Type elemType = Types.resolveTypeArgument(type, List.class, 0);
                 for (int i = 0; i < srcJa.size(); i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, nodeClazz, i);
+                    PathSegment cps = new PathSegment.Index(ps, nodeClazz, i);
                     newJa.add(_deepNode(srcJa.getNode(i), elemType, cps));
                 }
                 return newJa;
@@ -330,7 +328,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 Object newArr = Array.newInstance(nodeClazz.getComponentType(), len);
                 Type compType = nodeClazz.getComponentType();
                 for (int i = 0; i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, nodeClazz, i);
+                    PathSegment cps = new PathSegment.Index(ps, nodeClazz, i);
                     Object vv = _deepNode(Array.get(node, i), compType, cps);
                     Array.set(newArr, i, vv);
                 }
@@ -342,7 +340,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 Type elemType = Types.resolveTypeArgument(type, Set.class, 0);
                 int i = 0;
                 for (Object v : srcSet) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, nodeClazz, i++);
+                    PathSegment cps = new PathSegment.Index(ps, nodeClazz, i++);
                     newSet.add(_deepNode(v, elemType, cps));
                 }
                 return newSet;
@@ -360,13 +358,13 @@ public class SimpleNodeFacade implements NodeFacade {
                     int argIdx = session.resolveArgIndex(key);
                     if (argIdx >= 0) {
                         Object v = fi.invokeGetter(node);
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
+                        PathSegment cps = new PathSegment.Name(ps, nodeClazz, key);
                         session.acceptResolvedField(argIdx, _deepNode(v, ci.argTypes[argIdx], cps), fi);
                         continue;
                     }
 
                     Object v = fi.invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, nodeClazz, key);
+                    PathSegment cps = new PathSegment.Name(ps, nodeClazz, key);
                     Object vv = _deepNode(v, fi.type, cps);
                     session.acceptResolvedField(argIdx, vv, fi);
                 }
@@ -451,7 +449,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
             for (Map.Entry<String, Object> entry : source.entries()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, entry.getKey());
                 Object vv = _readNode(entry.getValue(), vt, vc, va, deepCopy, cps);
                 map.put(entry.getKey(), vv);
             }
@@ -461,7 +459,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
             for (Map.Entry<String, Object> entry : source.entries()) {
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, entry.getKey());
                 Object vv = _readNode(entry.getValue(), Object.class, Object.class, null, deepCopy, cps);
                 jo.put(entry.getKey(), vv);
             }
@@ -507,7 +505,7 @@ public class SimpleNodeFacade implements NodeFacade {
             if (argIdx >= 0) {
                 assert args != null;
                 Type argType = Types.resolveMemberType(type, rawClazz, ci.argTypes[argIdx]);
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                 Class<?> argRaw = Types.rawBox(argType);
                 NodeRegistry.AnyOfInfo argAnyOf = NodeRegistry.registerTypeInfo(argRaw).anyOfInfo;
                 args[argIdx] = _readNode(rawValue, argType, argRaw, argAnyOf, deepCopy, cps);
@@ -524,7 +522,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
             if (fi != null) {
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                 Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
                 Class<?> fieldRaw = Types.rawBox(fieldType);
                 NodeRegistry.AnyOfInfo fieldAnyOf = fi.anyOfInfo;
@@ -549,7 +547,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (pi.isJojo) {
                 if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(rawValue, Object.class, Object.class, null, deepCopy, cps);
                 dynamicMap.put(key, vv);
             }
@@ -613,7 +611,7 @@ public class SimpleNodeFacade implements NodeFacade {
     // Set -> List/JsonArray/JAJO/Array/Set
     private Object _readFromSet(Set<Object> oldSet, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
         List<Object> values = new ArrayList<>(oldSet.size());
-        for (Object v : oldSet) values.add(v);
+        values.addAll(oldSet);
         return _readFromIndexedSource(new IndexedSource() {
             @Override
             public int size() {
@@ -639,7 +637,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
             List<Object> list = NodeRegistry.newListContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
                 list.add(vv);
@@ -649,7 +647,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz == JsonArray.class) {
             JsonArray ja = new JsonArray();
             for (int i = 0; i < source.size(); i++) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, Object.class, Object.class, null, deepCopy, cps);
                 ja.add(vv);
@@ -660,7 +658,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             for (int i = 0; i < source.size(); i++) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, Object.class, Object.class, null, deepCopy, cps);
                 jajo.add(vv);
@@ -673,7 +671,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
             Object array = Array.newInstance(vt, source.size());
             for (int i = 0; i < source.size(); i++) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
                 Array.set(array, i, vv);
@@ -686,7 +684,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
             Set<Object> set = NodeRegistry.newSetContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                 Object v = source.get(i);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
                 set.add(vv);
@@ -707,7 +705,7 @@ public class SimpleNodeFacade implements NodeFacade {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(v, vt, vc, va, deepCopy, cps);
                 map.put(key, vv);
             }
@@ -719,7 +717,7 @@ public class SimpleNodeFacade implements NodeFacade {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
-                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(v, Object.class, Object.class, null, deepCopy, cps);
                 jo.put(key, vv);
             }
@@ -745,8 +743,7 @@ public class SimpleNodeFacade implements NodeFacade {
      */
     @Override
     public Object writeNode(Object node) {
-        return _writeNode(node,
-                Sjf4jConfig.global().isBindingPath() ? PathSegment.Root.INSTANCE : null);
+        return _writeNode(node, PathSegment.Root.INSTANCE);
     }
 
     /**
@@ -778,7 +775,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 Map<String, Object> oldMap = (Map<String, Object>) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(oldMap.size());
                 for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, entry.getKey());
+                    PathSegment cps = new PathSegment.Name(ps, rawClazz, entry.getKey());
                     Object vv = _writeNode(entry.getValue(), cps);
                     newMap.put(entry.getKey(), vv);
                 }
@@ -789,7 +786,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 List<Object> oldList = (List<Object>) node;
                 List<Object> newList = new ArrayList<>(oldList.size());
                 for (int i = 0, len = oldList.size(); i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                    PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                     Object vv = _writeNode(oldList.get(i), cps);
                     newList.add(vv);
                 }
@@ -800,7 +797,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 JsonObject jo = (JsonObject) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
                 jo.forEach((k, v) -> {
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, k);
+                    PathSegment cps = new PathSegment.Name(ps, rawClazz, k);
                     Object vv = _writeNode(v, cps);
                     newMap.put(k, vv);
                 });
@@ -811,7 +808,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 JsonArray ja = (JsonArray) node;
                 List<Object> newList = new ArrayList<>(ja.size());
                 for (int i = 0, len = ja.size(); i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                    PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                     Object vv = _writeNode(ja.getNode(i), cps);
                     newList.add(vv);
                 }
@@ -822,7 +819,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 int len = Array.getLength(node);
                 List<Object> newList = new ArrayList<>(len);
                 for (int i = 0; i < len; i++) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i);
+                    PathSegment cps = new PathSegment.Index(ps, rawClazz, i);
                     Object vv = _writeNode(Array.get(node, i), cps);
                     newList.add(vv);
                 }
@@ -834,7 +831,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 List<Object> newList = new ArrayList<>(set.size());
                 int i = 0;
                 for (Object v : set) {
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, rawClazz, i++);
+                    PathSegment cps = new PathSegment.Index(ps, rawClazz, i++);
                     Object vv = _writeNode(v, cps);
                     newList.add(vv);
                 }
@@ -853,7 +850,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
                     String key = entry.getKey();
                     Object v = entry.getValue().invokeGetter(node);
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, rawClazz, key);
+                    PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                     Object vv = _writeNode(v, cps);
                     newMap.put(key, vv);
                 }

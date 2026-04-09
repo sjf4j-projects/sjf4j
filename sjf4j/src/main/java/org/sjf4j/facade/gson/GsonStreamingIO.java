@@ -4,12 +4,11 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
-import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
@@ -128,7 +127,7 @@ public class GsonStreamingIO {
             throws IOException {
         reader.nextNull();
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             return vci.rawToValue(null);
         }
@@ -141,7 +140,7 @@ public class GsonStreamingIO {
             return reader.nextBoolean();
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             boolean b = reader.nextBoolean();
             return vci.rawToValue(b);
@@ -164,7 +163,7 @@ public class GsonStreamingIO {
         if (rawClazz == BigInteger.class) return new BigInteger(reader.nextString());
         if (rawClazz == BigDecimal.class) return new BigDecimal(reader.nextString());
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             Number n = Numbers.parseNumber(reader.nextString());
             return vci.rawToValue(n);
@@ -188,7 +187,7 @@ public class GsonStreamingIO {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             String s = reader.nextString();
             return vci.rawToValue(s);
@@ -214,12 +213,13 @@ public class GsonStreamingIO {
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        if (ti.valueCodecInfo != null) {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
+        if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMapWithValueType(reader, ti.valueCodecInfo.rawClazz, valueType, valueClazz,
+            Map<String, Object> map = _readMapWithValueType(reader, vci.rawClazz, valueType, valueClazz,
                     NodeRegistry.registerTypeInfo(valueClazz).anyOfInfo);
-            return ti.valueCodecInfo.rawToValue(map);
+            return vci.rawToValue(map);
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
@@ -387,7 +387,7 @@ public class GsonStreamingIO {
             return ja;
         }
 
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.getValueCodecInfo(rawClazz);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
@@ -510,7 +510,7 @@ public class GsonStreamingIO {
             Object rawNode = _readRawNode(reader);
             Class<?> targetClazz = StreamingIO.resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
             if (targetClazz == null) return null;
-            return Sjf4jConfig.global().getNodeFacade().readNode(rawNode, targetClazz);
+            return FacadeFactory.getDefaultNodeFacade().readNode(rawNode, targetClazz);
         }
 
         Class<?> targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(peekToken(reader).jsonType(), anyOfInfo);
@@ -658,8 +658,9 @@ public class GsonStreamingIO {
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-            if (ti.valueCodecInfo != null) {
-                Object raw = ti.valueCodecInfo.valueToRaw(node);
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodecInfo(rawClazz);
+            if (vci != null) {
+                Object raw = vci.valueToRaw(node);
                 _writeNode(writer, raw);
                 return;
             }

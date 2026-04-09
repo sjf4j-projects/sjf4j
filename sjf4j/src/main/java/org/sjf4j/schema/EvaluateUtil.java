@@ -10,7 +10,7 @@ import java.util.regex.PatternSyntaxException;
 /**
  * String length helpers for JSON Schema length keywords.
  */
-public class EvaluateUtil {
+public final class EvaluateUtil {
 
     /// Length of Unicode grapheme clusters
 

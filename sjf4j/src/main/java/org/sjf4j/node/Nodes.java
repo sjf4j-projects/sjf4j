@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.path.PathSegment;
 
@@ -42,7 +42,7 @@ import java.util.function.Function;
  * {@link JsonArray}, plain {@link Map}/{@link List}, and supported facade-native
  * node types.
  */
-public class Nodes {
+public final class Nodes {
 
     /// Type-safe access and cross-type conversion
 
@@ -576,7 +576,7 @@ public class Nodes {
         if (ti.pojoInfo == null && ti.anyOfInfo == null) {
             throw new JsonException("Class '" + clazz.getName() + "' is not a POJO");
         }
-        return (T) Sjf4jConfig.global().getNodeFacade().readNode(node, clazz, false);
+        return (T) Sjf4j.global().getNodeFacade().readNode(node, clazz, false);
     }
 
     /**

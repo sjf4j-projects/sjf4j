@@ -262,7 +262,6 @@ class Jackson3FacadeTest {
     }
 
     private static void assertNodeValue(Jackson3JsonFacade facade) {
-        NodeRegistry.registerValueCodec(Ops.class);
         @SuppressWarnings("unchecked")
         List<Ops> list = (List<Ops>) facade.readNode("[\"2024-10-01\",\"2025-12-18\"]",
                 new org.sjf4j.node.TypeReference<List<Ops>>() {}.getType());

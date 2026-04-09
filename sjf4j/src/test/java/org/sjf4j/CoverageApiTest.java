@@ -269,9 +269,10 @@ class CoverageApiTest {
         assertNull(dynamic.replace("missing", "nope"));
         assertEquals("computed", dynamic.computeIfAbsent("computed", key -> key));
         assertEquals("computed", dynamic.computeIfAbsent("computed", key -> "ignored"));
+        dynamic.put("code", "ok");
         dynamic.putAll(Collections.singletonMap("mapKey", (Object) 1));
         dynamic.putAll(JsonObject.of("jsonKey", 2));
-        dynamic.putAll(new ExtraPojo());
+
         assertEquals("ok", dynamic.getString("code"));
         assertTrue(dynamic.removeIf(entry -> "mapKey".equals(entry.getKey())));
         assertEquals(2, dynamic.remove("jsonKey"));

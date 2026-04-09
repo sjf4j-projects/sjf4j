@@ -3,7 +3,6 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -282,73 +281,6 @@ class NodeRegistryCoverageTest {
     static class ArraySubtype extends org.sjf4j.JsonArray implements TypedAnyOf {}
 
     @Test
-    void testTypeInfoRegistrationAndInstantRefresh() {
-        NodeRegistry.TypeInfo none = NodeRegistry.registerTypeInfo(String.class);
-        assertNull(none.pojoInfo);
-        assertNull(none.valueCodecInfo);
-        assertNull(none.anyOfInfo);
-
-        NodeRegistry.TypeInfo pojoType = NodeRegistry.registerTypeInfo(ContainerPojo.class);
-        assertNotNull(pojoType.pojoInfo);
-        assertNull(pojoType.valueCodecInfo);
-        assertFalse(pojoType.requiresPojoReader());
-        assertFalse(pojoType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo creatorType = NodeRegistry.registerTypeInfo(AliasCreatorPojo.class);
-        assertTrue(creatorType.requiresPojoReader());
-        assertTrue(creatorType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo namingType = NodeRegistry.registerTypeInfo(NamingPojo.class);
-        assertTrue(namingType.requiresPojoReader());
-        assertTrue(namingType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo explicitFieldType = NodeRegistry.registerTypeInfo(ExplicitFieldPojo.class);
-        assertTrue(explicitFieldType.requiresPojoReader());
-        assertTrue(explicitFieldType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo publicPlainType = NodeRegistry.registerTypeInfo(PublicPlainPojo.class);
-        assertFalse(publicPlainType.requiresPojoReader());
-        assertFalse(publicPlainType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo accessorType = NodeRegistry.registerTypeInfo(AccessorPojo.class);
-        assertFalse(accessorType.requiresPojoReader());
-        assertFalse(accessorType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo privateFieldType = NodeRegistry.registerTypeInfo(PrivateFieldPojo.class);
-        assertTrue(privateFieldType.requiresPojoReader());
-        assertTrue(privateFieldType.requiresPojoWriter());
-
-        NodeRegistry.TypeInfo fieldBasedType = NodeRegistry.registerTypeInfo(FieldBasedPrivatePojo.class);
-        assertNotNull(fieldBasedType.pojoInfo.fields.get("userName"));
-        assertEquals(AccessStrategy.FIELD_BASED, fieldBasedType.pojoInfo.accessStrategy);
-        assertTrue(fieldBasedType.requiresPojoReader());
-        assertTrue(fieldBasedType.requiresPojoWriter());
-
-        assertThrows(JsonException.class,
-                () -> NodeRegistry.registerTypeInfo(InvalidTransientNodePropertyPojo.class));
-
-        NodeRegistry.TypeInfo valueType = NodeRegistry.registerTypeInfo(MiniValue.class);
-        assertNotNull(valueType.valueCodecInfo);
-        assertThrows(JsonException.class, () -> NodeRegistry.registerTypeInfo(MiniValue.class, true));
-        assertThrows(JsonException.class, () -> NodeRegistry.registerTypeInfo(AnotherMiniValue.class, true));
-
-        NodeRegistry.TypeInfo anyOfType = NodeRegistry.registerTypeInfo(DiscriminatedAnyOf.class);
-        assertNotNull(anyOfType.anyOfInfo);
-
-        assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new InvalidRawCodec()));
-
-        assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new ValueCodec.LocaleValueCodec()));
-        NodeRegistry.ValueCodecInfo localeCodec = NodeRegistry.overrideValueCodec(new ValueCodec.LocaleValueCodec());
-        assertEquals(String.class, localeCodec.rawClazz);
-
-        assertEquals(String.class, NodeRegistry.instantStringCodecInfo().rawClazz);
-
-        NodeRegistry.registerPojo(ContainerPojo.class);
-        NodeRegistry.clearPojoCache();
-        assertNotNull(NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class));
-    }
-
-    @Test
     void testCreatorInfoPathsAndPrimitiveDefaults() {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
@@ -522,7 +454,7 @@ class NodeRegistryCoverageTest {
         assertThrows(JsonException.class, () -> throwingField.invokeGetter(accessor));
         assertThrows(JsonException.class, () -> throwingField.invokeSetter(accessor, "x"));
 
-        NodeRegistry.ValueCodecInfo codecInfo = NodeRegistry.getValueCodecInfo(MiniValue.class);
+        NodeRegistry.ValueCodecInfo codecInfo = NodeRegistry.registerValueCodecInfo(MiniValue.class);
         MiniValue value = new MiniValue("v");
         assertEquals("v", codecInfo.valueToRaw(value));
         assertEquals("v", ((MiniValue) codecInfo.rawToValue("v")).value);

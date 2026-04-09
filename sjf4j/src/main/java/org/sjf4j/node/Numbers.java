@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Numeric conversion helpers with range checks.
  */
-public class Numbers {
+public final class Numbers {
 
     /**
      * Maximum number of digits allowed for numeric numbers.

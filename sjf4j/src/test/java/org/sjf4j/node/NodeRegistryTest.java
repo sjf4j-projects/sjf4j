@@ -229,7 +229,7 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue1() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(BigDay.class);
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(BigDay.class).valueCodecInfo;
         log.info("vci={}", vci);
         assertNotNull(vci);
 

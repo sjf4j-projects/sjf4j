@@ -1,10 +1,12 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
+import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 
@@ -149,7 +151,7 @@ public final class NodeMapperBuilder<S, T> {
 
     private NodeFacade _buildFacade() {
         if (nestedMappers.isEmpty()) {
-            return Sjf4jConfig.global().getNodeFacade();
+            return FacadeFactory.getDefaultNodeFacade();
         }
         NodeConverter<?, ?>[] converters = new NodeConverter[nestedMappers.size()];
         for (int i = 0; i < nestedMappers.size(); i++) {

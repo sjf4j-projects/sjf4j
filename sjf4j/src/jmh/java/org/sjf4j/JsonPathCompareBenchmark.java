@@ -138,7 +138,7 @@ public class JsonPathCompareBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            document = Sjf4j.fromJson(BOOKSTORE_JSON);
+            document = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             sjf4jPath = JsonPath.compile(expr);
             jaywayPath = com.jayway.jsonpath.JsonPath.compile(expr);
             assertEquivalent(expr, runSjf4j(sjf4jPath, document, false), runJayway(jaywayPath, document, JAYWAY_MAP_LIST_CONFIG));
@@ -161,7 +161,7 @@ public class JsonPathCompareBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            document = Sjf4j.fromJson(BOOKSTORE_JSON);
+            document = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             sjf4jPath = JsonPath.compile(expr);
             jaywayPath = com.jayway.jsonpath.JsonPath.compile(expr);
             assertEquivalent(expr, runSjf4j(sjf4jPath, document, true), runJayway(jaywayPath, document, JAYWAY_MAP_LIST_CONFIG));
@@ -182,8 +182,8 @@ public class JsonPathCompareBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            document = Sjf4j.fromJson(BOOKSTORE_JSON, BookstorePojo.class);
-            mapListDocument = Sjf4j.fromJson(BOOKSTORE_JSON);
+            document = Sjf4j.global().fromJson(BOOKSTORE_JSON, BookstorePojo.class);
+            mapListDocument = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             sjf4jPath = JsonPath.compile(expr);
             assertEquivalent(expr, runSjf4j(sjf4jPath, document, false), runSjf4j(sjf4jPath, mapListDocument, false));
         }
@@ -205,8 +205,8 @@ public class JsonPathCompareBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            document = Sjf4j.fromJson(BOOKSTORE_JSON, BookstorePojo.class);
-            mapListDocument = Sjf4j.fromJson(BOOKSTORE_JSON);
+            document = Sjf4j.global().fromJson(BOOKSTORE_JSON, BookstorePojo.class);
+            mapListDocument = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             sjf4jPath = JsonPath.compile(expr);
             assertEquivalent(expr, runSjf4j(sjf4jPath, document, true), runSjf4j(sjf4jPath, mapListDocument, true));
         }
@@ -226,8 +226,8 @@ public class JsonPathCompareBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            document = Sjf4j.fromJson(BOOKSTORE_JSON, BookstoreJojo.class);
-            mapListDocument = Sjf4j.fromJson(BOOKSTORE_JSON);
+            document = Sjf4j.global().fromJson(BOOKSTORE_JSON, BookstoreJojo.class);
+            mapListDocument = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             sjf4jPath = JsonPath.compile(expr);
             assertEquivalent(expr, runSjf4j(sjf4jPath, document, false), runSjf4j(sjf4jPath, mapListDocument, false));
         }
@@ -249,8 +249,8 @@ public class JsonPathCompareBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            document = Sjf4j.fromJson(BOOKSTORE_JSON, BookstoreJojo.class);
-            mapListDocument = Sjf4j.fromJson(BOOKSTORE_JSON);
+            document = Sjf4j.global().fromJson(BOOKSTORE_JSON, BookstoreJojo.class);
+            mapListDocument = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             sjf4jPath = JsonPath.compile(expr);
             assertEquivalent(expr, runSjf4j(sjf4jPath, document, true), runSjf4j(sjf4jPath, mapListDocument, true));
         }
@@ -276,7 +276,7 @@ public class JsonPathCompareBenchmark {
             sjf4jPath = JsonPath.compile(expr);
             jaywayPath = com.jayway.jsonpath.JsonPath.compile(expr);
 
-            Object sjf4jDocument = Sjf4j.fromJson(BOOKSTORE_JSON);
+            Object sjf4jDocument = Sjf4j.global().fromJson(BOOKSTORE_JSON);
             Object jaywayDocument = JAYWAY_MAP_LIST_CONFIG.jsonProvider().parse(BOOKSTORE_JSON);
             Object sjf4jResult = runSjf4j(sjf4jPath, sjf4jDocument, indefinite);
             Object jaywayResult = runJayway(jaywayPath, jaywayDocument, JAYWAY_MAP_LIST_CONFIG);
@@ -296,7 +296,7 @@ public class JsonPathCompareBenchmark {
 
     @Benchmark
     public Object parse_only_sjf4j() {
-        return Sjf4j.fromJson(BOOKSTORE_JSON);
+        return Sjf4j.global().fromJson(BOOKSTORE_JSON);
     }
 
     @Benchmark
@@ -375,17 +375,17 @@ public class JsonPathCompareBenchmark {
         return runSjf4j(state.sjf4jPath, state.document, true);
     }
 
-    @Benchmark
-    public Object parse_and_query_sjf4j(ParseAndQueryState state) {
-        Object document = Sjf4j.fromJson(BOOKSTORE_JSON);
-        return runSjf4j(state.sjf4jPath, document, state.indefinite);
-    }
-
-    @Benchmark
-    public Object parse_and_query_jayway(ParseAndQueryState state) {
-        Object document = JAYWAY_MAP_LIST_CONFIG.jsonProvider().parse(BOOKSTORE_JSON);
-        return runJayway(state.jaywayPath, document, JAYWAY_MAP_LIST_CONFIG);
-    }
+//    @Benchmark
+//    public Object parse_and_query_sjf4j(ParseAndQueryState state) {
+//        Object document = Sjf4j.global().fromJson(BOOKSTORE_JSON);
+//        return runSjf4j(state.sjf4jPath, document, state.indefinite);
+//    }
+//
+//    @Benchmark
+//    public Object parse_and_query_jayway(ParseAndQueryState state) {
+//        Object document = JAYWAY_MAP_LIST_CONFIG.jsonProvider().parse(BOOKSTORE_JSON);
+//        return runJayway(state.jaywayPath, document, JAYWAY_MAP_LIST_CONFIG);
+//    }
 
     private static boolean isIndefinite(String expr) {
         return expr.indexOf('*') >= 0 || expr.indexOf("..") >= 0 || expr.indexOf('?') >= 0;

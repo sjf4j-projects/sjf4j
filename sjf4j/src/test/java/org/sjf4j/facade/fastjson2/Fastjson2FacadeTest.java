@@ -1,5 +1,6 @@
 package org.sjf4j.facade.fastjson2;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.annotation.JSONField;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -143,7 +144,7 @@ public class Fastjson2FacadeTest {
 
     @SuppressWarnings("unchecked")
     private static void assertNodeValue(Fastjson2JsonFacade facade) {
-        NodeRegistry.registerValueCodec(Ops.class);
+        NodeRegistry.registerTypeInfo(Ops.class);
 
         String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
         List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());
@@ -288,6 +289,12 @@ public class Fastjson2FacadeTest {
         int loginCount;
     }
 
+    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    static class IsolatedFieldBasedPrivateBook {
+        String userName;
+        int loginCount;
+    }
+
     interface Pet {}
     static class Cat implements TypedPet { public String meow; }
     static class Dog implements TypedPet { public String bark; }
@@ -379,6 +386,25 @@ public class Fastjson2FacadeTest {
         assertEquals("han", book.userName);
         assertEquals(2, book.loginCount);
         assertEquals("{\"userName\":\"han\",\"loginCount\":2}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void testPluginModuleDoesNotPolluteGlobalFastjson2Providers() {
+        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+
+        IsolatedFieldBasedPrivateBook local = (IsolatedFieldBasedPrivateBook) facade.readNode(
+                "{\"userName\":\"han\",\"loginCount\":2}", IsolatedFieldBasedPrivateBook.class);
+        assertEquals("han", local.userName);
+        assertEquals(2, local.loginCount);
+
+        IsolatedFieldBasedPrivateBook global = JSON.parseObject(
+                "{\"userName\":\"han\",\"loginCount\":2}", IsolatedFieldBasedPrivateBook.class);
+        assertNull(global.userName);
+        assertEquals(0, global.loginCount);
+
+        local.userName = "han";
+        local.loginCount = 2;
+        assertEquals("{}", JSON.toJSONString(local));
     }
 
     private static void assertAnyOf(Fastjson2JsonFacade facade) {

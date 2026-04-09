@@ -93,7 +93,7 @@ public class OperationRegistry {
                 if (!_contains(target, from)) {
                     throw new JsonException("'copy' operation failed at from " + from + ": no value exist");
                 }
-                return Sjf4j.deepNode(_valueAt(target, from));
+                return Sjf4j.global().deepNode(_valueAt(target, from));
             }
             case PatchOperation.STD_MOVE: {
                 JsonPointer from = _requireFrom(operation);
@@ -199,7 +199,7 @@ public class OperationRegistry {
             if (!_contains(target, from)) {
                 throw new JsonException("'copy' operation failed at from " + from + ": no value exist");
             }
-            Object value = Sjf4j.deepNode(_valueAt(target, from));
+            Object value = Sjf4j.global().deepNode(_valueAt(target, from));
             _requirePath(operation).add(target, value);
         });
 
@@ -218,7 +218,7 @@ public class OperationRegistry {
                 throw new JsonException("'move' operation failed at from " + from + ": no value exist");
             }
 
-            Object working = Sjf4j.deepNode(target);
+            Object working = Sjf4j.global().deepNode(target);
             Object workingValue = from.remove(working);
             path.add(working, workingValue);
 
