@@ -6,7 +6,6 @@ import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.Types;
 import tools.jackson.databind.AnnotationIntrospector;
 import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.cfg.MapperBuilder;
 import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
 import tools.jackson.databind.json.JsonMapper;
@@ -23,14 +22,14 @@ import java.util.Objects;
  */
 public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Writer> {
     private final StreamingMode streamingMode;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
     public Jackson3JsonFacade() {
         this(JsonMapper.builderWithJackson2Defaults().build(), null);
     }
 
-    public Jackson3JsonFacade(ObjectMapper objectMapper) {
-        this(objectMapper, null);
+    public Jackson3JsonFacade(JsonMapper jsonMapper) {
+        this(jsonMapper, null);
     }
 
     public Jackson3JsonFacade(StreamingMode streamingMode) {
@@ -38,20 +37,20 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     }
 
     /**
-     * Creates facade with configured ObjectMapper and SJF4J module.
+     * Creates facade with configured JsonMapper and SJF4J module.
      */
-    public Jackson3JsonFacade(ObjectMapper objectMapper, StreamingMode streamingMode) {
-        Objects.requireNonNull(objectMapper, "objectMapper");
+    public Jackson3JsonFacade(JsonMapper jsonMapper, StreamingMode streamingMode) {
+        Objects.requireNonNull(jsonMapper, "jsonMapper");
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
 
-        MapperBuilder<?, ?> builder = objectMapper.rebuild();
+        MapperBuilder<?, ?> builder = jsonMapper.rebuild();
         builder.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         builder.addModule(new Jackson3Module.MySimpleModule());
         AnnotationIntrospector existing = builder.annotationIntrospector();
         builder.annotationIntrospector(AnnotationIntrospectorPair.create(
                 new Jackson3Module.NodePropertyAnnotationIntrospector(), existing));
 
-        this.objectMapper = builder.build();
+        this.jsonMapper = (JsonMapper) builder.build();
     }
 
 
@@ -60,25 +59,25 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Jackson3Reader createReader(Reader input) throws java.io.IOException {
         Objects.requireNonNull(input, "input");
-        return new Jackson3Reader(objectMapper.createParser(input));
+        return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
     public Jackson3Reader createReader(InputStream input) throws java.io.IOException {
         Objects.requireNonNull(input, "input");
-        return new Jackson3Reader(objectMapper.createParser(input));
+        return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
     public Jackson3Reader createReader(String input) throws java.io.IOException {
         Objects.requireNonNull(input, "input");
-        return new Jackson3Reader(objectMapper.createParser(input));
+        return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
     public Jackson3Reader createReader(byte[] input) throws java.io.IOException {
         Objects.requireNonNull(input, "input");
-        return new Jackson3Reader(objectMapper.createParser(input));
+        return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
@@ -90,7 +89,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    return objectMapper.readValue(input, objectMapper.constructType(type));
+                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
@@ -108,7 +107,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    return objectMapper.readValue(input, objectMapper.constructType(type));
+                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
                 }
@@ -126,7 +125,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    return objectMapper.readValue(input, objectMapper.constructType(type));
+                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
                 }
@@ -144,7 +143,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    return objectMapper.readValue(input, objectMapper.constructType(type));
+                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);
                 }
@@ -159,13 +158,13 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Jackson3Writer createWriter(Writer output) throws java.io.IOException {
         Objects.requireNonNull(output, "output");
-        return new Jackson3Writer(objectMapper.createGenerator(output));
+        return new Jackson3Writer(jsonMapper.createGenerator(output));
     }
 
     @Override
     public Jackson3Writer createWriter(OutputStream output) throws java.io.IOException {
         Objects.requireNonNull(output, "output");
-        return new Jackson3Writer(objectMapper.createGenerator(output));
+        return new Jackson3Writer(jsonMapper.createGenerator(output));
     }
 
     @Override
@@ -178,7 +177,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    objectMapper.writeValue(output, node);
+                    jsonMapper.writeValue(output, node);
                     return;
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON streaming", e);
@@ -198,7 +197,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    objectMapper.writeValue(output, node);
+                    jsonMapper.writeValue(output, node);
                     return;
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON streaming", e);
@@ -216,7 +215,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    return objectMapper.writeValueAsString(node);
+                    return jsonMapper.writeValueAsString(node);
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON string", e);
                 }
@@ -233,7 +232,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
             case PLUGIN_MODULE:
             case AUTO:
                 try {
-                    return objectMapper.writeValueAsBytes(node);
+                    return jsonMapper.writeValueAsBytes(node);
                 } catch (Exception e) {
                     throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON bytes", e);
                 }

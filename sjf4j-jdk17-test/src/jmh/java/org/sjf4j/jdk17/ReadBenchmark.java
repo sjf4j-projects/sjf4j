@@ -81,7 +81,7 @@ public class ReadBenchmark {
             + "}\n";
 
     private static final ObjectMapper JACKSON2 = createJackson2();
-    private static final tools.jackson.databind.ObjectMapper JACKSON3 = createJackson3();
+    private static final tools.jackson.databind.json.JsonMapper JACKSON3 = createJackson3();
     private static final Gson GSON = createNativeGson();
     private static final JSONReader.Context FASTJSON2_NATIVE_CONTEXT = createFastjson2NativeContext();
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
@@ -92,7 +92,7 @@ public class ReadBenchmark {
         return mapper;
     }
 
-    private static tools.jackson.databind.ObjectMapper createJackson3() {
+    private static tools.jackson.databind.json.JsonMapper createJackson3() {
         return tools.jackson.databind.json.JsonMapper.builderWithJackson2Defaults()
                 .configure(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .build();
