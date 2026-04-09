@@ -227,15 +227,15 @@ public class SimpleExampleTest {
                 "}\n";
 
         JsonObject jo = JsonObject.fromJson(json);               // = JsonObject.fromJson(json), to JsonObject
-        Map<String, Object> map = Sjf4j.fromJson(json,      // to Map
+        Map<String, Object> map = Sjf4j.global().fromJson(json,      // to Map
                 new TypeReference<Map<String, Object>>() {});
-        User user = Sjf4j.fromJson(json, User.class);       // to POJO
-        User2 user2 = Sjf4j.fromJson(json, User2.class);    // to JOJO
+        User user = Sjf4j.global().fromJson(json, User.class);       // to POJO
+        User2 user2 = Sjf4j.global().fromJson(json, User2.class);    // to JOJO
 
         // Serialize back to JSON
-        System.out.println("jo=" + jo.toJson());            // = Sjf4j.toJson(jo)
-        System.out.println("map=" + Sjf4j.toJsonString(map));     // Output dynamic nodes in Map
-        System.out.println("user=" + Sjf4j.toJsonString(user));   // Only outputs fields defined in User
+        System.out.println("jo=" + jo.toJson());            // = Sjf4j.global().toJson(jo)
+        System.out.println("map=" + Sjf4j.global().toJsonString(map));     // Output dynamic nodes in Map
+        System.out.println("user=" + Sjf4j.global().toJsonString(user));   // Only outputs fields defined in User
         System.out.println("user2=" + user2.toJson());
         // Outputs both fixed fields in User2 and dynamic nodes in super JsonObject
 
@@ -255,7 +255,7 @@ public class SimpleExampleTest {
 
         // JOJO <==> POJO
         tmpUser = user2.toPojo(User.class);
-        User2 tmpUser2 = Sjf4j.fromNode(user, User2.class);
+        User2 tmpUser2 = Sjf4j.global().fromNode(user, User2.class);
 
         System.out.println("keys=" + user2.keySet());
         // ["id",  "name",  "friends",  "age"]
@@ -307,8 +307,8 @@ public class SimpleExampleTest {
                 "  ],\n" +
                 "  \"age\": 18\n" +
                 "}\n";
-        User user = Sjf4j.fromJson(json, User.class);
-        User2 user2 = Sjf4j.fromJson(json, User2.class);
+        User user = Sjf4j.global().fromJson(json, User.class);
+        User2 user2 = Sjf4j.global().fromJson(json, User2.class);
 
         assertEquals(user.getName(), user2.getName());
         // user2 and user are the same on defined fields

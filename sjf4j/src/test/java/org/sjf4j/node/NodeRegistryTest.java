@@ -10,10 +10,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -22,6 +21,8 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
+import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.models.JojoTest;
 
 import java.time.LocalDate;
@@ -85,7 +86,7 @@ public class NodeRegistryTest {
         assertNotNull(pi.fields.get("key"));
         assertEquals(int.class, pi.fields.get("key").type);
 
-        ChildSameKey pojo = Sjf4j.fromJson("{\"key\":123}", ChildSameKey.class);
+        ChildSameKey pojo = Sjf4j.global().fromJson("{\"key\":123}", ChildSameKey.class);
         assertEquals(123, pojo.key);
     }
 
@@ -242,9 +243,9 @@ public class NodeRegistryTest {
         log.info("day2={}", day2);
         assertEquals(day.localDate, day2.localDate);
 
-        BigDay big = Sjf4j.fromJson("\"2026-01-01\"", BigDay.class);
+        BigDay big = Sjf4j.global().fromJson("\"2026-01-01\"", BigDay.class);
         log.info("big={}", big);
-        assertEquals("\"2026-01-01\"", Sjf4j.toJsonString(big));
+        assertEquals("\"2026-01-01\"", Sjf4j.global().toJsonString(big));
     }
 
 
@@ -288,9 +289,9 @@ public class NodeRegistryTest {
 
     @Test
     public void testCreatorPojo() {
-        Sjf4jConfig.useJsonpAsGlobal();
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new JsonpJsonFacade()).build();
         String json = "{\"name\":\"Alice\",\"age\":18}";
-        CreatorPojo pojo = Sjf4j.fromJson(json, CreatorPojo.class);
+        CreatorPojo pojo = sjf4j.fromJson(json, CreatorPojo.class);
         assertEquals("Alice", pojo.getName());
         assertEquals(18, pojo.getAge());
     }
@@ -299,21 +300,19 @@ public class NodeRegistryTest {
     public void testCreatorPojoMissingParamName() {
         String json = "{\"name\":\"Alice\"}";
 
-        Sjf4jConfig.global(new Sjf4jConfig.Builder(Sjf4jConfig.global())
-                .jsonFacade(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE))
-                .build());
-        CreatorPojoNoMatch obj1 = Sjf4j.fromJson(json, CreatorPojoNoMatch.class);
+        Fastjson2JsonFacade fastjson2 = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        CreatorPojoNoMatch obj1 = (CreatorPojoNoMatch) fastjson2.readNode(json, CreatorPojoNoMatch.class);
         log.info("obj1={}", Nodes.inspect(obj1));
         log.info("obj1.name={}", obj1.name);
 
-        Sjf4jConfig.useJackson2AsGlobal();
-        assertThrows(JsonException.class, () -> Sjf4j.fromJson(json, CreatorPojoNoMatch.class));
+        Jackson2JsonFacade jackson2 = new Jackson2JsonFacade();
+        assertThrows(JsonException.class, () -> jackson2.readNode(json, CreatorPojoNoMatch.class));
     }
 
     @Test
     public void testJackson2CreatorPojo() {
         String json = "{\"name\":\"Bob\",\"age\":20}";
-        JacksonCreatorPojo pojo = Sjf4j.fromJson(json, JacksonCreatorPojo.class);
+        JacksonCreatorPojo pojo = Sjf4j.global().fromJson(json, JacksonCreatorPojo.class);
         assertEquals("Bob", pojo.getName());
         assertEquals(20, pojo.getAge());
     }
@@ -321,14 +320,14 @@ public class NodeRegistryTest {
     @Test
     public void testJackson2AliasPojo() {
         String json = "{\"n\":\"Alice\"}";
-        JacksonAliasPojo pojo = Sjf4j.fromJson(json, JacksonAliasPojo.class);
+        JacksonAliasPojo pojo = Sjf4j.global().fromJson(json, JacksonAliasPojo.class);
         assertEquals("Alice", pojo.getName());
     }
 
     @Test
     public void testNodeAliasPojo() {
         String json = "{\"nick\":\"Alice\"}";
-        NodeAliasPojo pojo = Sjf4j.fromJson(json, NodeAliasPojo.class);
+        NodeAliasPojo pojo = Sjf4j.global().fromJson(json, NodeAliasPojo.class);
         assertEquals("Alice", pojo.getName());
     }
 

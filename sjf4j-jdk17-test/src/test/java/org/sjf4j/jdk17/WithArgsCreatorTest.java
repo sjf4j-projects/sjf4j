@@ -7,7 +7,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.facade.gson.GsonJsonFacade;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 
@@ -20,24 +23,42 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class WithArgsCreatorTest {
 
+    private Sjf4j sjf4j = Sjf4j.global();
+
+    private void useSimpleJson() {
+        sjf4j = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
+    }
+
+    private void useJackson2() {
+        sjf4j = Sjf4j.builder().jsonFacade(new Jackson2JsonFacade()).build();
+    }
+
+    private void useGson() {
+        sjf4j = Sjf4j.builder().jsonFacade(new GsonJsonFacade()).build();
+    }
+
+    private void useFastjson2() {
+        sjf4j = Sjf4j.builder().jsonFacade(new Fastjson2JsonFacade()).build();
+    }
+
 
     @TestFactory
     public Stream<DynamicTest> switchJsonLib() {
         return Stream.of(
                 DynamicTest.dynamicTest("Run with Simple JSON", () -> {
-                    Sjf4jConfig.useSimpleJsonAsGlobal();
+                    useSimpleJson();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Jackson2", () -> {
-                    Sjf4jConfig.useJackson2AsGlobal();
+                    useJackson2();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Gson", () -> {
-                    Sjf4jConfig.useGsonAsGlobal();
+                    useGson();
                     testAll();
                 }),
                 DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    Sjf4jConfig.useFastjson2AsGlobal();
+                    useFastjson2();
                     testAll();
                 })
         );
@@ -104,38 +125,38 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldDeserializeNoArgsSetterPojo() throws Exception {
-        NoArgsSetterPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", NoArgsSetterPojo.class);
+        NoArgsSetterPojo p = sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", NoArgsSetterPojo.class);
         assertNotNull(p);
     }
 
     @Test
     void shouldDeserializePublicFieldPojo() throws Exception {
-        PublicFieldPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", PublicFieldPojo.class);
+        PublicFieldPojo p = sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", PublicFieldPojo.class);
         assertNotNull(p);
     }
 
     @Test
     void shouldFailAllArgsNoCreatorPojoWithoutParams() {
         assertThrows(JsonException.class,
-                () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", AllArgsNoCreatorPojo.class));
+                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", AllArgsNoCreatorPojo.class));
     }
 
     @Test
     void shouldFailCreatorMissingParam() {
         assertThrows(JsonException.class,
-                () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", ExplicitCreatorMissingParamPojo.class));
+                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", ExplicitCreatorMissingParamPojo.class));
     }
 
     @Test
     void shouldDeserializeRecord() throws Exception {
-        PlainRecord r = Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", PlainRecord.class);
+        PlainRecord r = sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", PlainRecord.class);
         assertEquals("a", r.name());
     }
 
     @Test
     void shouldDeserializeRenamedRecord() throws Exception {
-        Sjf4jConfig.useSimpleJsonAsGlobal();
-        RenamedRecord r = Sjf4j.fromJson("{\"name2\":\"a\",\"age\":1}", RenamedRecord.class);
+        useSimpleJson();
+        RenamedRecord r = sjf4j.fromJson("{\"name2\":\"a\",\"age\":1}", RenamedRecord.class);
         assertEquals("a", r.name());
     }
 
@@ -175,7 +196,7 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldDeserializeCreatorWithFullProps() throws Exception {
-        CreatorFullPropsPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", CreatorFullPropsPojo.class);
+        CreatorFullPropsPojo p = sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", CreatorFullPropsPojo.class);
         assertEquals("a", p.name);
     }
 
@@ -185,19 +206,19 @@ public class WithArgsCreatorTest {
             "{\"nickname\":\"a\",\"age\":1}"
     })
     void shouldAcceptAliases(String json) throws Exception {
-        AliasPojo p = Sjf4j.fromJson(json, AliasPojo.class);
+        AliasPojo p = sjf4j.fromJson(json, AliasPojo.class);
         assertEquals("a", p.name);
     }
 
     @Test
     void shouldAcceptAliasOnCreatorParam() throws Exception {
-        AliasOnCreatorParamPojo p = Sjf4j.fromJson("{\"n\":\"a\",\"age\":1}", AliasOnCreatorParamPojo.class);
+        AliasOnCreatorParamPojo p = sjf4j.fromJson("{\"n\":\"a\",\"age\":1}", AliasOnCreatorParamPojo.class);
         assertEquals("a", p.name);
     }
 
     @Test
     void shouldExposeAliasConflictBehavior() throws Exception {
-        AliasPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"n\":\"b\",\"age\":1}", AliasPojo.class);
+        AliasPojo p = sjf4j.fromJson("{\"name\":\"a\",\"n\":\"b\",\"age\":1}", AliasPojo.class);
         // Behavior depends on Jackson override strategy; assert only final parseability.
         assertNotNull(p.name);
     }
@@ -217,32 +238,32 @@ public class WithArgsCreatorTest {
 //    @Test
 //    void shouldFailWhenMissingPrimitive() {
 //        assertThrows(JsonException.class,
-//                () -> Sjf4j.fromJson("{\"name\":\"a\"}", PrimitivePojo.class));
+//                () -> sjf4j.fromJson("{\"name\":\"a\"}", PrimitivePojo.class));
 //    }
 //
 //    @Test
 //    void shouldFailWhenNullToPrimitive() {
 //        assertThrows(JsonException.class,
-//                () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":null}", PrimitivePojo.class));
+//                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":null}", PrimitivePojo.class));
 //    }
 
     @Test
     void shouldAllowNullToWrapper() throws Exception {
-        Sjf4jConfig.useSimpleJsonAsGlobal();
-        WrapperPojo p = Sjf4j.fromJson("{\"name\":\"a\",\"age\":null}", WrapperPojo.class);
+        useSimpleJson();
+        WrapperPojo p = sjf4j.fromJson("{\"name\":\"a\",\"age\":null}", WrapperPojo.class);
         assertNull(p.age);
     }
 
     @Test
     void shouldFailTypeMismatch() {
         assertThrows(JsonException.class,
-                () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":\"notNumber\"}", PrimitivePojo.class));
+                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":\"notNumber\"}", PrimitivePojo.class));
     }
 
     @Test
     void shouldFailOverflow() {
         assertThrows(JsonException.class,
-                () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":2147483648}", PrimitivePojo.class));
+                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":2147483648}", PrimitivePojo.class));
     }
 
 
@@ -260,15 +281,15 @@ public class WithArgsCreatorTest {
 
     @Test
     void shouldExposePropertyConflictBehavior() throws Exception {
-        Sjf4jConfig.useSimpleJsonAsGlobal();
-        ConflictingNamePojo p = Sjf4j.fromJson("{\"name\":\"a\",\"name2\":\"b\",\"age\":1}", ConflictingNamePojo.class);
+        useSimpleJson();
+        ConflictingNamePojo p = sjf4j.fromJson("{\"name\":\"a\",\"name2\":\"b\",\"age\":1}", ConflictingNamePojo.class);
         assertEquals("b", p.name);
     }
 
     @Test
     void shouldFailWhenMultipleCreators() {
         assertThrows(JsonException.class,
-                () -> Sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", MultiCreatorPojo.class));
+                () -> sjf4j.fromJson("{\"name\":\"a\",\"age\":1}", MultiCreatorPojo.class));
     }
 
     static class MultiCreatorPojo {

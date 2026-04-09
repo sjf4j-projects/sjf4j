@@ -3,7 +3,7 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -341,10 +341,7 @@ class NodeRegistryCoverageTest {
         NodeRegistry.ValueCodecInfo localeCodec = NodeRegistry.overrideValueCodec(new ValueCodec.LocaleValueCodec());
         assertEquals(String.class, localeCodec.rawClazz);
 
-        NodeRegistry.refreshInstantValueCodec(Sjf4jConfig.InstantFormat.EPOCH_MILLIS);
-        assertEquals(Long.class, NodeRegistry.getValueCodecInfo(Instant.class).rawClazz);
-        NodeRegistry.refreshInstantValueCodec(Sjf4jConfig.InstantFormat.ISO_STRING);
-        assertEquals(String.class, NodeRegistry.getValueCodecInfo(Instant.class).rawClazz);
+        assertEquals(String.class, NodeRegistry.instantStringCodecInfo().rawClazz);
 
         NodeRegistry.registerPojo(ContainerPojo.class);
         NodeRegistry.clearPojoCache();

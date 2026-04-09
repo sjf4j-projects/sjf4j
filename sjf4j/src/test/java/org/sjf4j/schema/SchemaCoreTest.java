@@ -171,7 +171,7 @@ public class SchemaCoreTest {
         log.info("schema={}", schema);
         schema.compile();
 
-        ValidationResult result = schema.validate(Sjf4j.fromJson("{\n" +
+        ValidationResult result = schema.validate(Sjf4j.global().fromJson("{\n" +
                 "  \"value\": 1,\n" +
                 "  \"children\": [\n" +
                 "    { \"value\": 2 }\n" +
@@ -180,7 +180,7 @@ public class SchemaCoreTest {
         log.info("result={}", result);
         assertTrue(result.isValid());
 
-        ValidationResult result2 = schema.validate(Sjf4j.fromJson("{\n" +
+        ValidationResult result2 = schema.validate(Sjf4j.global().fromJson("{\n" +
                 "  \"value\": \"x\"\n" +
                 "}\n"));
         log.info("result2={}", result2);

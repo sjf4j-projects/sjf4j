@@ -182,14 +182,6 @@ public class JsonPathTest {
     }
 
     @Test
-    public void testCompileCachedDefaultChm() {
-        JsonPath p1 = Sjf4j.cachedPath("$.a.b[0].c");
-        JsonPath p2 = Sjf4j.cachedPath("$.a.b[0].c");
-        assertSame(p1, p2);
-    }
-
-
-    @Test
     public void testGetNode1() {
         String json1 = "{\n" +
                 "  \"book\": [\n" +
@@ -462,7 +454,7 @@ public class JsonPathTest {
 
     @Test
     public void testPojo1() {
-        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
 
         String name = JsonPath.compile("$.babies[1].name").getString(person);
@@ -503,7 +495,7 @@ public class JsonPathTest {
 
     @Test
     public void testSet1() {
-        JsonObject jo1 = Sjf4j.fromJson(JSON_DATA, JsonObject.class);
+        JsonObject jo1 = Sjf4j.global().fromJson(JSON_DATA, JsonObject.class);
         log.info("jo1={}", jo1);
 
         JsonPath.compile("$.babies[0].age").ensurePut(jo1, 33);
@@ -523,7 +515,7 @@ public class JsonPathTest {
 
     @Test
     public void testSet2() {
-        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
         JsonPath.compile("$.babies[0].age").ensurePut(p1, 33);
@@ -770,7 +762,7 @@ public class JsonPathTest {
 
     @Test
     public void testPojoWithNewFeatures() {
-        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
 
         List<Object> allAges = JsonPath.compile("$..age").find(person);
         log.info("allAges={}", allAges);
@@ -829,7 +821,7 @@ public class JsonPathTest {
 
     @Test
     public void testEval1() {
-        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         JsonPath pathSum = JsonPath.compile("$..age.sum()");
         log.info("sum={}", pathSum.eval(person));
 
@@ -850,7 +842,7 @@ public class JsonPathTest {
 
     @Test
     public void testEval2() {
-        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
 
         int age = JsonPath.compile("$.age").eval(p1, int.class);
         log.info("age={}", age);
@@ -864,7 +856,7 @@ public class JsonPathTest {
 
     @Test
     public void testFilter1() {
-        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         String name = JsonPath.compile("$.babies[?@.age > 2].name").eval(p1, String.class);
         log.info("name={}", name);
         assertEquals("Baby-2", name);

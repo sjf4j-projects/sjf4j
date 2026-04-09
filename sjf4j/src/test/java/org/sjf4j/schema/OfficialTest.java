@@ -70,7 +70,7 @@ public final class OfficialTest {
         String groupDesc;
 
         try {
-            JsonArray cases = Sjf4j.fromJson(Files.readAllBytes(file), JsonArray.class);
+            JsonArray cases = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonArray.class);
 //            JsonArray cases = (JsonArray) facade.readNode(Files.readAllBytes(file), JsonArray.class);
 
             for (int i = 0; i < cases.size(); i++) {
@@ -160,7 +160,7 @@ public final class OfficialTest {
                 .filter(p -> p.toString().endsWith(".json"))
                 .forEach(p -> {
                     try {
-                        ObjectSchema schema = Sjf4j.fromJson(Files.readAllBytes(p), ObjectSchema.class);
+                        ObjectSchema schema = Sjf4j.global().fromJson(Files.readAllBytes(p), ObjectSchema.class);
                         URI uri = resolveSchemaUri(schema, remotesDir, p);
 //                        System.out.println("uri: " + uri);
                         store.register(uri, schema);

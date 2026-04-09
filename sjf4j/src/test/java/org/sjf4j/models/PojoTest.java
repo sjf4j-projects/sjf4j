@@ -3,9 +3,9 @@ package org.sjf4j.models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -68,10 +68,10 @@ public class PojoTest {
 
     @Test
     public void testCreatorPojoWithJsonProperty() {
-        Sjf4jConfig.useSimpleJsonAsGlobal();
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
         String json = "{\"name\":\"Alice\",\"decimal\":12.5,\"anEnum\":\"THIS\"," +
                 "\"list\":[\"a\",\"b\"],\"polymorphicTypes\":[1,2]}";
-        TestModel model = Sjf4j.fromJson(json, TestModel.class);
+        TestModel model = sjf4j.fromJson(json, TestModel.class);
         assertEquals("Alice", model.getName());
         assertEquals(0, model.getDecimal().compareTo(new BigDecimal("12.5")));
         assertEquals(TestModel.AnEnum.THIS, model.getAnEnum());

@@ -256,9 +256,9 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson(json);
         schema.compile();
 
-        assertTrue(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":\"x\"}")));
-        assertFalse(schema.isValid(Sjf4j.fromJson("{\"a\":1}")));
-        assertTrue(schema.isValid(Sjf4j.fromJson("{\"b\":\"x\"}")));
+        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
+        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
+        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"b\":\"x\"}")));
     }
 
     @Test
@@ -274,8 +274,8 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson(json);
         schema.compile();
 
-        assertTrue(schema.isValid(Sjf4j.fromJson("{\"abc\":1}")));
-        assertFalse(schema.isValid(Sjf4j.fromJson("{\"Abc\":1}")));
+        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"abc\":1}")));
+        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"Abc\":1}")));
     }
 
     @Test
@@ -323,8 +323,8 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson(json);
         schema.compile();
 
-        assertTrue(schema.isValid(Sjf4j.fromJson("{\"a\":1}")));
-        assertFalse(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":2}")));
+        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
+        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":2}")));
     }
 
     @Test
@@ -341,8 +341,8 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson(json);
         schema.compile();
 
-        assertTrue(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":\"x\"}")));
-        assertFalse(schema.isValid(Sjf4j.fromJson("{\"a\":1,\"b\":\"x\",\"c\":3}")));
+        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
+        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\",\"c\":3}")));
     }
 
     @Test

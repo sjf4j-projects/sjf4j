@@ -3,7 +3,6 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingFacade;
 
@@ -46,7 +45,7 @@ public class ObjectSetTest {
 
         Nodes.addInArray(set, "b");
         assertEquals(2, Nodes.sizeInArray(set));
-        assertEquals("[\"a\",\"b\"]", Sjf4j.toJsonString(set));
+        assertEquals("[\"a\",\"b\"]", Sjf4j.global().toJsonString(set));
 
         assertThrows(JsonException.class, () -> Nodes.removeInArray(set, 0));
     }
@@ -57,10 +56,10 @@ public class ObjectSetTest {
         set.add("a");
         set.add("b");
 
-        String json = Sjf4j.toJsonString(set);
+        String json = Sjf4j.global().toJsonString(set);
         assertEquals("[\"a\",\"b\"]", json);
 
-        Set<String> parsed = Sjf4j.fromJson(json, new TypeReference<Set<String>>() {});
+        Set<String> parsed = Sjf4j.global().fromJson(json, new TypeReference<Set<String>>() {});
         assertEquals(set, parsed);
     }
 
@@ -68,12 +67,12 @@ public class ObjectSetTest {
     public void testSetFromNode() {
         Set<String> set = new LinkedHashSet<>();
         set.add("a");
-        Object node = Sjf4j.deepNode(set);
+        Object node = Sjf4j.global().deepNode(set);
         System.out.println("type: " + node.getClass().getName() + " node: " + Nodes.inspect(node));
         assertInstanceOf(Set.class, node);
-        assertEquals("[\"a\"]", Sjf4j.toJsonString(node));
+        assertEquals("[\"a\"]", Sjf4j.global().toJsonString(node));
 
-        Object node2 = Sjf4j.toRaw(set);
+        Object node2 = Sjf4j.global().toRaw(set);
         assertInstanceOf(List.class, node2);
     }
 

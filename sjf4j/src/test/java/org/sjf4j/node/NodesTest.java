@@ -11,7 +11,7 @@ import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.JsonArray;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
@@ -209,7 +209,7 @@ public class NodesTest {
     @Test
     public void testToArray1() {
         String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
-        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
         Baby[] babies = person.getArray("babies", Baby.class);
         log.info("babies={}", Nodes.inspect(babies));
@@ -426,7 +426,6 @@ public class NodesTest {
 
     @Test
     public void testEquals() {
-        Sjf4jConfig.useFastjson2AsGlobal();
         JsonObject jo = JsonObject.of(
                 "name", "Bob",
                 "address", JsonObject.of(
@@ -444,7 +443,7 @@ public class NodesTest {
         assertTrue(Nodes.equals(jo1, map1));
 
         log.info("map1={}", Nodes.toJsonObject(map1));
-        assertEquals(jo1.toJson(), Sjf4j.toJsonString(map1));
+        assertEquals(jo1.toJson(), Sjf4j.global().toJsonString(map1));
         assertEquals(jo1.toJson(), p1.toJson());
         assertTrue(jo1.nodeEquals(map1));
     }
@@ -473,7 +472,7 @@ public class NodesTest {
     public void testCopy1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
         JsonObject jo2 = Nodes.copy(jo1);
-        JsonObject jo3 = Sjf4j.deepNode(jo1);
+        JsonObject jo3 = Sjf4j.global().deepNode(jo1);
         assertEquals(jo1, jo2);
         assertEquals(jo1, jo3);
 
@@ -491,7 +490,7 @@ public class NodesTest {
                 "street", "5th Ave"));
         Person p1 = jo.toPojo(Person.class);
         Person p2 = Nodes.copy(p1);
-        Person p3 = Sjf4j.deepNode(p1);
+        Person p3 = Sjf4j.global().deepNode(p1);
         assertEquals(p1, p2);
         assertEquals(p1, p3);
 
@@ -510,19 +509,19 @@ public class NodesTest {
                 "friends", new String[]{"Tom", "Jay"});
         Baby b1 = jo.toPojo(Baby.class);
         Baby b2 = Nodes.copy(b1);
-        Baby b3 = Sjf4j.deepNode(b1);
+        Baby b3 = Sjf4j.global().deepNode(b1);
         log.info("b1={}, b3={}", b1, b3);
         log.info("b2={}, b3={}", b2, b3);
         assertEquals(b1, b2);
-        assertEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
-        assertEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b3));
+        assertEquals(Sjf4j.global().toJsonString(b1), Sjf4j.global().toJsonString(b2));
+        assertEquals(Sjf4j.global().toJsonString(b1), Sjf4j.global().toJsonString(b3));
 
         b1.friends.set(0, "Jim");
-        assertEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
-        assertNotEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b3));
+        assertEquals(Sjf4j.global().toJsonString(b1), Sjf4j.global().toJsonString(b2));
+        assertNotEquals(Sjf4j.global().toJsonString(b1), Sjf4j.global().toJsonString(b3));
 
         b1.name = "Bro";
-        assertNotEquals(Sjf4j.toJsonString(b1), Sjf4j.toJsonString(b2));
+        assertNotEquals(Sjf4j.global().toJsonString(b1), Sjf4j.global().toJsonString(b2));
     }
 
     @Test
@@ -658,7 +657,7 @@ public class NodesTest {
     @Test
     public void testInspect1() {
         String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
-        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("person={}", person.toString());
         log.info("person={}", person.inspect());
     }
@@ -688,7 +687,7 @@ public class NodesTest {
         });
 
         LocalDate date1 = LocalDate.now();
-        LocalDate date2 = Sjf4j.fromNode(date1.toString(), LocalDate.class);
+        LocalDate date2 = Sjf4j.global().fromNode(date1.toString(), LocalDate.class);
         log.info("date2={}", date2);
         assertEquals(date1, date2);
 

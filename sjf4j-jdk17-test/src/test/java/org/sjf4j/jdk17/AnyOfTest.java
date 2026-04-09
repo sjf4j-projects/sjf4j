@@ -47,15 +47,15 @@ public class AnyOfTest {
     @Test
     public void testOne() {
         String json1 = "{\"cmd\": \"start\", \"version\": 1}";
-        BaseRequest req1 = Sjf4j.fromJson(json1, BaseRequest.class);
+        BaseRequest req1 = Sjf4j.global().fromJson(json1, BaseRequest.class);
         log.info("class={}, req1={}", req1.getClass().getName(), req1);
 
         String json2 = "{\"cmd\": \"dialect\", \"dialect\": \"2020-12\"}";
-        BaseRequest req2 = Sjf4j.fromJson(json2, BaseRequest.class);
+        BaseRequest req2 = Sjf4j.global().fromJson(json2, BaseRequest.class);
         log.info("class={}, req2={}", req2.getClass().getName(), req2);
 
         String json3 = "{\"cmd\": \"run\", \"seq\": 12345, \"case\": {\"description\": \"none\"}}";
-        BaseRequest req3 = Sjf4j.fromJson(json3, BaseRequest.class);
+        BaseRequest req3 = Sjf4j.global().fromJson(json3, BaseRequest.class);
         log.info("class={}, req3={}", req3.getClass().getName(), req3);
     }
 

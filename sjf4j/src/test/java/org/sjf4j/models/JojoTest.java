@@ -66,7 +66,7 @@ public class JojoTest {
         log.info("p2={}", p2.inspect());
         assertNotEquals(p1, p2);
 
-        Person p3 = Sjf4j.fromNode(JsonObject.fromJson(json1), Person.class);
+        Person p3 = Sjf4j.global().fromNode(JsonObject.fromJson(json1), Person.class);
         log.info("p3={}", p3.inspect());
         assertEquals(p1, p3);
     }
@@ -221,7 +221,7 @@ public class JojoTest {
         p.setInfo(info);
 
         String json = p.toJson();
-        Person parsed = Sjf4j.fromJson(new StringReader(json), Person.class);
+        Person parsed = Sjf4j.global().fromJson(new StringReader(json), Person.class);
 
         assertEquals(p.getName(), parsed.getName());
         assertEquals(p.getInfo().getString("lang"), parsed.getInfo().getString("lang"));

@@ -1,7 +1,5 @@
 package org.sjf4j.jdk17.facade;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -10,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.Sjf4jConfig;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -52,19 +49,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Jackson3FacadeTest {
 
-    private Sjf4jConfig previousConfig;
-
-    @BeforeEach
-    void saveGlobalConfig() {
-        previousConfig = Sjf4jConfig.global();
-    }
-
-    @AfterEach
-    void restoreGlobalConfig() {
-        if (previousConfig != null) {
-            Sjf4jConfig.global(previousConfig);
-        }
-    }
+    private final Sjf4j sjf4j = Sjf4j.builder()
+            .jsonFacade(new Jackson3JsonFacade())
+            .build();
 
     static class Book extends JsonObject {
         public int id;
@@ -394,9 +381,8 @@ class Jackson3FacadeTest {
     }
 
     @Test
-    void testUseJackson3AsGlobal() {
-        Sjf4jConfig.useJackson3AsGlobal();
-        Book book = Sjf4j.fromJson("{\"id\":7,\"user_name\":\"jack\"}", Book.class);
+    void testJackson3Builder() {
+        Book book = sjf4j.fromJson("{\"id\":7,\"user_name\":\"jack\"}", Book.class);
         assertEquals(7, book.id);
         assertEquals("jack", book.userName);
     }

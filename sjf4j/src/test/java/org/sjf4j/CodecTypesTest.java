@@ -39,24 +39,7 @@ public class CodecTypesTest {
 
 //    @TestFactory
     public Stream<DynamicTest> testWithJsonLib() {
-        return Stream.of(
-                DynamicTest.dynamicTest("Run with Simple JSON", () -> {
-                    Sjf4jConfig.useSimpleJsonAsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Jackson2", () -> {
-                    Sjf4jConfig.useJackson2AsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Gson", () -> {
-                    Sjf4jConfig.useGsonAsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    Sjf4jConfig.useFastjson2AsGlobal();
-                    testAll();
-                })
-        );
+        return Stream.of(DynamicTest.dynamicTest("Run with default global", this::testAll));
     }
 
     public void testAll() throws Exception {
@@ -81,17 +64,17 @@ public class CodecTypesTest {
     }
     void optional_missing_property() {
         String json = "{}";
-        OptionalBean bean = Sjf4j.fromJson(json, OptionalBean.class);
+        OptionalBean bean = Sjf4j.global().fromJson(json, OptionalBean.class);
         assertFalse(bean.name.isPresent());
     }
     void optional_null_property() {
         String json = "{ \"name\": null }";
-        OptionalBean bean = Sjf4j.fromJson(json, OptionalBean.class);
+        OptionalBean bean = Sjf4j.global().fromJson(json, OptionalBean.class);
         assertFalse(bean.name.isPresent());
     }
     void optional_present_property() {
         String json = "{ \"name\": \"Alice\" }";
-        OptionalBean bean = Sjf4j.fromJson(json, OptionalBean.class);
+        OptionalBean bean = Sjf4j.global().fromJson(json, OptionalBean.class);
         assertEquals("Alice", bean.name.get());
     }
 
@@ -102,7 +85,7 @@ public class CodecTypesTest {
     }
     void optional_primitive_present() {
         String json = "{ \"count\": 3, \"total\": 10, \"ratio\": 0.5 }";
-        OptionalPrimitiveBean bean = Sjf4j.fromJson(json, OptionalPrimitiveBean.class);
+        OptionalPrimitiveBean bean = Sjf4j.global().fromJson(json, OptionalPrimitiveBean.class);
         assertEquals(3, bean.count.getAsInt());
         assertEquals(10L, bean.total.getAsLong());
         assertEquals(0.5, bean.ratio.getAsDouble());
@@ -126,7 +109,7 @@ public class CodecTypesTest {
                 "          \"zonedDateTime\": \"2024-01-01T10:00:00+08:00[Asia/Shanghai]\",\n" +
                 "          \"duration\": \"PT10S\"\n" +
                 "        }";
-        TimeBean bean = Sjf4j.fromJson(json, TimeBean.class);
+        TimeBean bean = Sjf4j.global().fromJson(json, TimeBean.class);
         assertEquals(LocalDate.of(2024,1,1), bean.date);
         assertEquals(Duration.ofSeconds(10), bean.duration);
     }
@@ -146,7 +129,7 @@ public class CodecTypesTest {
                 "          \"deque\": [\"m\", \"n\"]\n" +
                 "        }";
 
-        CollectionBean bean = Sjf4j.fromJson(json, CollectionBean.class);
+        CollectionBean bean = Sjf4j.global().fromJson(json, CollectionBean.class);
 
         assertEquals(Arrays.asList("a","b"), bean.list);
         assertEquals(new Integer[]{1,2}, bean.set.toArray(new Integer[0]));
@@ -162,7 +145,7 @@ public class CodecTypesTest {
     }
     void enum_mapping() {
         String json = "{ \"status\": \"NEW\" }";
-        EnumBean bean = Sjf4j.fromJson(json, EnumBean.class);
+        EnumBean bean = Sjf4j.global().fromJson(json, EnumBean.class);
         assertEquals(Status.NEW, bean.status);
     }
 
@@ -178,7 +161,7 @@ public class CodecTypesTest {
                 "          \"uri\": \"https://example.com/a\",\n" +
                 "          \"url\": \"https://example.com/b\"\n" +
                 "        }";
-        IdBean bean = Sjf4j.fromJson(json, IdBean.class);
+        IdBean bean = Sjf4j.global().fromJson(json, IdBean.class);
         assertNotNull(bean.id);
         assertEquals(new URI("https://example.com/a"), bean.uri);
     }
@@ -195,7 +178,7 @@ public class CodecTypesTest {
                 "          \"currency\": \"USD\",\n" +
                 "          \"zoneId\": \"Asia/Shanghai\"\n" +
                 "        }";
-        I18nBean bean = Sjf4j.fromJson(json, I18nBean.class);
+        I18nBean bean = Sjf4j.global().fromJson(json, I18nBean.class);
         assertEquals(Locale.US, bean.locale);
         assertEquals(Currency.getInstance("USD"), bean.currency);
         assertEquals(ZoneId.of("Asia/Shanghai"), bean.zoneId);
@@ -211,7 +194,7 @@ public class CodecTypesTest {
     }
     void nested_optional_object() {
         String json = "{ \"name\": \"Bob\" }";
-        Person p = Sjf4j.fromJson(json, Person.class);
+        Person p = Sjf4j.global().fromJson(json, Person.class);
         assertTrue(p.address.isPresent());
     }
 

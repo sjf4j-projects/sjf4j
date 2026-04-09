@@ -53,7 +53,7 @@ public class YamlFacadeTest {
     @Test
     public void testJojo1() {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
-        Person px = Sjf4j.fromJson(json1, Person.class);
+        Person px = Sjf4j.global().fromJson(json1, Person.class);
         log.info("px={}", px);
 
         JsonObject jo1 = JsonObject.fromJson(json1);

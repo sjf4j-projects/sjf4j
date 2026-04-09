@@ -28,28 +28,7 @@ class JsonObjectTest {
 
     @TestFactory
     public Stream<DynamicTest> testWithJsonLib() {
-        return Stream.of(
-                DynamicTest.dynamicTest("Run with Simple JSON", () -> {
-                    Sjf4jConfig.useSimpleJsonAsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Jackson2", () -> {
-                    Sjf4jConfig.useJackson2AsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Gson", () -> {
-                    Sjf4jConfig.useGsonAsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    Sjf4jConfig.useFastjson2AsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with JSON-P", () -> {
-                    Sjf4jConfig.useJsonpAsGlobal();
-                    testAll();
-                })
-        );
+        return Stream.of(DynamicTest.dynamicTest("Run with default global", this::testAll));
     }
 
     public void testAll() {
@@ -747,7 +726,7 @@ class JsonObjectTest {
     public void testNodeField1() {
         String json1 = "{\"no\":\"good\",\"height\":175.5,\"transientHeight\":189.9}";
         String json2 = "{\"no\":\"good\",\"height\":175.5,\"transientHeight\":189.9}";
-        BookField jo1 = Sjf4j.fromJson(json1, BookField.class);
+        BookField jo1 = Sjf4j.global().fromJson(json1, BookField.class);
         log.info("jo1={}", jo1.inspect());
         assertEquals("good", jo1.yes);
         assertEquals("good", jo1.getString("no"));
@@ -755,7 +734,7 @@ class JsonObjectTest {
         assertEquals(0.0, jo1.height);
         assertEquals(0, jo1.transientHeight);
 
-        String json3 = Sjf4j.toJsonString(jo1);
+        String json3 = Sjf4j.global().toJsonString(jo1);
         log.info("json2={}", json3);
         assertEquals(json2, json3);
     }
@@ -769,7 +748,7 @@ class JsonObjectTest {
     public void testNodeField2() {
         Note note1 = new Note();
         note1.yes = "gaga";
-        String json1 = Sjf4j.toJsonString(note1);
+        String json1 = Sjf4j.global().toJsonString(note1);
         log.info("json1={}", json1);
     }
 
@@ -788,7 +767,7 @@ class JsonObjectTest {
                 "  \"skipNull\": null,\n" +
                 "  \"name\": \"Jack\"\n" +
                 "}";
-        Person pojo = Sjf4j.fromJson(json, Person.class);
+        Person pojo = Sjf4j.global().fromJson(json, Person.class);
         log.info("pojo={}", pojo);
         assertEquals("Jack", pojo.name);
     }

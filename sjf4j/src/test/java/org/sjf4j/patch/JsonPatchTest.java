@@ -2,7 +2,7 @@ package org.sjf4j.patch;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.Sjf4jConfig;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
@@ -260,7 +260,7 @@ public class JsonPatchTest {
         JsonPatch patch = JsonPatch.diff(a, b);
         System.out.println("patch=" + patch.toJson());
 
-        List<Integer> c = Sjf4j.deepNode(a);
+        List<Integer> c = Sjf4j.global().deepNode(a);
         patch.apply(c);
 
         assertEquals(b, c);
@@ -299,15 +299,15 @@ public class JsonPatchTest {
                 "  { \"op\": \"replace\", \"path\": \"/meta/active\", \"value\": false }\n" +
                 "]";
 
-        Sjf4jConfig.useFastjson2AsGlobal();
-        JsonObject jo1 = JsonObject.fromJson(json1);
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new org.sjf4j.facade.fastjson2.Fastjson2JsonFacade()).build();
+        JsonObject jo1 = sjf4j.fromJson(json1, JsonObject.class);
         log.info("jo1={}", jo1);
-        JsonPatch patch = JsonPatch.fromJson(jsonPatch);
+        JsonPatch patch = sjf4j.fromJson(jsonPatch, JsonPatch.class);
         log.info("patch={}", patch);
         patch.apply(jo1);
         log.info("jo1={}", jo1);
 
-        JsonObject jo2 = JsonObject.fromJson(json2);
+        JsonObject jo2 = sjf4j.fromJson(json2, JsonObject.class);
         assertEquals(jo2, jo1);
     }
 }

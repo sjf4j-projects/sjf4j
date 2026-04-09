@@ -210,7 +210,7 @@ public class NodeWalkerTest {
 
     @Test
     public void testWalkPojo1() {
-        Person person = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("person={}", person);
 
         List<String> values1 = new ArrayList<>();

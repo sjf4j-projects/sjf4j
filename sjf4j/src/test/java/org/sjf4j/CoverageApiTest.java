@@ -3,6 +3,7 @@ package org.sjf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.TypeReference;
 import org.sjf4j.patch.JsonPatch;
 
@@ -30,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CoverageApiTest {
+
+    private Sjf4j sjf4j;
 
     static class TypedIntegerArray extends JsonArray {
         TypedIntegerArray() {
@@ -62,7 +65,7 @@ class CoverageApiTest {
 
     @BeforeEach
     void setUp() {
-        Sjf4jConfig.useSimpleJsonAsGlobal();
+        sjf4j = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
     }
 
     @Test
@@ -430,7 +433,7 @@ class CoverageApiTest {
         root.walk(org.sjf4j.node.Nodes.WalkTarget.VALUE, org.sjf4j.node.Nodes.WalkOrder.BOTTOM_UP, 3, (path, node) -> true);
         assertTrue(visits.get() > 0);
 
-        root.apply(JsonPatch.fromJson("[{\"op\":\"add\",\"path\":\"/patched\",\"value\":1}]"));
+        root.apply(sjf4j.fromJson("[{\"op\":\"add\",\"path\":\"/patched\",\"value\":1}]", JsonPatch.class));
         assertEquals(1, root.getInt("patched"));
         root.merge(JsonObject.of("merged", JsonObject.of("value", 1)), true, false);
         root.merge(JsonObject.of("merged2", 2));
@@ -446,70 +449,70 @@ class CoverageApiTest {
     @Test
     void testSjf4jApiSurface() {
         String json = "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"x\",\"y\"]}";
-        JsonObject fromString = Sjf4j.fromJson(json, JsonObject.class);
-        JsonObject fromReader = Sjf4j.fromJson(new StringReader(json), JsonObject.class);
-        JsonObject fromStream = Sjf4j.fromJson(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)), JsonObject.class);
-        JsonObject fromBytes = Sjf4j.fromJson(json.getBytes(StandardCharsets.UTF_8), JsonObject.class);
+        JsonObject fromString = sjf4j.fromJson(json, JsonObject.class);
+        JsonObject fromReader = sjf4j.fromJson(new StringReader(json), JsonObject.class);
+        JsonObject fromStream = sjf4j.fromJson(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)), JsonObject.class);
+        JsonObject fromBytes = sjf4j.fromJson(json.getBytes(StandardCharsets.UTF_8), JsonObject.class);
         assertEquals(fromString, fromReader);
         assertEquals(fromString, fromStream);
         assertEquals(fromString, fromBytes);
-        assertTrue(JsonType.of(Sjf4j.fromJson(json)).isObject());
+        assertTrue(JsonType.of(sjf4j.fromJson(json)).isObject());
 
-        List<Integer> intsFromReader = Sjf4j.fromJson(new StringReader("[1,2,3]"), new TypeReference<List<Integer>>() {});
-        List<Integer> intsFromString = Sjf4j.fromJson("[1,2,3]", new TypeReference<List<Integer>>() {});
-        List<Integer> intsFromBytes = Sjf4j.fromJson("[1,2,3]".getBytes(StandardCharsets.UTF_8), new TypeReference<List<Integer>>() {});
-        List<Integer> intsFromStream = Sjf4j.fromJson(new ByteArrayInputStream("[1,2,3]".getBytes(StandardCharsets.UTF_8)), new TypeReference<List<Integer>>() {});
+        List<Integer> intsFromReader = sjf4j.fromJson(new StringReader("[1,2,3]"), new TypeReference<List<Integer>>() {});
+        List<Integer> intsFromString = sjf4j.fromJson("[1,2,3]", new TypeReference<List<Integer>>() {});
+        List<Integer> intsFromBytes = sjf4j.fromJson("[1,2,3]".getBytes(StandardCharsets.UTF_8), new TypeReference<List<Integer>>() {});
+        List<Integer> intsFromStream = sjf4j.fromJson(new ByteArrayInputStream("[1,2,3]".getBytes(StandardCharsets.UTF_8)), new TypeReference<List<Integer>>() {});
         assertEquals(Arrays.asList(1, 2, 3), intsFromReader);
         assertEquals(intsFromReader, intsFromString);
         assertEquals(intsFromReader, intsFromBytes);
         assertEquals(intsFromReader, intsFromStream);
 
         StringWriter jsonWriter = new StringWriter();
-        Sjf4j.toJson(jsonWriter, fromString);
+        sjf4j.toJson(jsonWriter, fromString);
         ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
-        Sjf4j.toJson(jsonOutput, fromString);
+        sjf4j.toJson(jsonOutput, fromString);
         assertEquals(json, jsonWriter.toString());
         assertEquals(json, new String(jsonOutput.toByteArray(), StandardCharsets.UTF_8));
-        assertEquals(json, Sjf4j.toJsonString(fromString));
-        assertEquals(json, new String(Sjf4j.toJsonBytes(fromString), StandardCharsets.UTF_8));
+        assertEquals(json, sjf4j.toJsonString(fromString));
+        assertEquals(json, new String(sjf4j.toJsonBytes(fromString), StandardCharsets.UTF_8));
 
         String yaml = "name: Alice\nage: 30\n";
-        JsonObject yamlObject = Sjf4j.fromYaml(yaml, JsonObject.class);
+        JsonObject yamlObject = sjf4j.fromYaml(yaml, JsonObject.class);
         assertEquals("Alice", yamlObject.getString("name"));
-        assertEquals(yamlObject, Sjf4j.fromYaml(new StringReader(yaml), JsonObject.class));
-        assertTrue(JsonType.of(Sjf4j.fromYaml(yaml)).isObject());
-        Map<String, Object> yamlMap = Sjf4j.fromYaml(yaml, new TypeReference<Map<String, Object>>() {});
+        assertEquals(yamlObject, sjf4j.fromYaml(new StringReader(yaml), JsonObject.class));
+        assertTrue(JsonType.of(sjf4j.fromYaml(yaml)).isObject());
+        Map<String, Object> yamlMap = sjf4j.fromYaml(yaml, new TypeReference<Map<String, Object>>() {});
         assertEquals("Alice", yamlMap.get("name"));
-        assertEquals(yamlMap, Sjf4j.fromYaml(new StringReader(yaml), new TypeReference<Map<String, Object>>() {}));
+        assertEquals(yamlMap, sjf4j.fromYaml(new StringReader(yaml), new TypeReference<Map<String, Object>>() {}));
         StringWriter yamlWriter = new StringWriter();
-        Sjf4j.toYaml(yamlWriter, yamlObject);
+        sjf4j.toYaml(yamlWriter, yamlObject);
         assertTrue(yamlWriter.toString().contains("name: Alice"));
-        assertTrue(Sjf4j.toYamlString(yamlObject).contains("age: 30"));
-        assertTrue(new String(Sjf4j.toYamlBytes(yamlObject), StandardCharsets.UTF_8).contains("name: Alice"));
+        assertTrue(sjf4j.toYamlString(yamlObject).contains("age: 30"));
+        assertTrue(new String(sjf4j.toYamlBytes(yamlObject), StandardCharsets.UTF_8).contains("name: Alice"));
 
-        List<Integer> fromNode = Sjf4j.fromNode(JsonArray.of(1, 2, 3), new TypeReference<List<Integer>>() {});
+        List<Integer> fromNode = sjf4j.fromNode(JsonArray.of(1, 2, 3), new TypeReference<List<Integer>>() {});
         assertEquals(Arrays.asList(1, 2, 3), fromNode);
-        Person person = Sjf4j.fromNode(JsonObject.of("name", "Alice", "age", 30), Person.class);
+        Person person = sjf4j.fromNode(JsonObject.of("name", "Alice", "age", 30), Person.class);
         assertEquals("Alice", person.name);
         assertEquals(30, person.age);
         JsonObject deepSource = JsonObject.of("nested", JsonObject.of("value", 1));
-        JsonObject deepCopy = Sjf4j.deepNode(deepSource);
+        JsonObject deepCopy = sjf4j.deepNode(deepSource);
         deepSource.getJsonObject("nested").put("value", 2);
         assertEquals(1, deepCopy.getIntByPath("$.nested.value"));
-        assertInstanceOf(Map.class, Sjf4j.toRaw(deepSource));
+        assertInstanceOf(Map.class, sjf4j.toRaw(deepSource));
 
-        Properties properties = Sjf4j.toProperties(JsonObject.of("app", JsonObject.of("name", "sjf4j")));
+        Properties properties = sjf4j.toProperties(JsonObject.of("app", JsonObject.of("name", "sjf4j")));
         assertEquals("sjf4j", properties.getProperty("app.name"));
-        assertEquals("sjf4j", ((JsonObject) Sjf4j.fromProperties(properties)).getStringByPath("$.app.name"));
-        assertEquals("sjf4j", Sjf4j.fromProperties(properties, JsonObject.class).getStringByPath("$.app.name"));
-        assertEquals("sjf4j", Sjf4j.fromProperties(properties, new TypeReference<Map<String, Object>>() {}).get("app") instanceof Map
-                ? ((Map<?, ?>) Sjf4j.fromProperties(properties, new TypeReference<Map<String, Object>>() {}).get("app")).get("name")
+        assertEquals("sjf4j", ((JsonObject) sjf4j.fromProperties(properties)).getStringByPath("$.app.name"));
+        assertEquals("sjf4j", sjf4j.fromProperties(properties, JsonObject.class).getStringByPath("$.app.name"));
+        assertEquals("sjf4j", sjf4j.fromProperties(properties, new TypeReference<Map<String, Object>>() {}).get("app") instanceof Map
+                ? ((Map<?, ?>) sjf4j.fromProperties(properties, new TypeReference<Map<String, Object>>() {}).get("app")).get("name")
                 : null);
 
-        assertThrows(NullPointerException.class, () -> Sjf4j.fromJson((String) null, JsonObject.class));
-        assertThrows(NullPointerException.class, () -> Sjf4j.fromJson(json, (TypeReference<JsonObject>) null));
-        assertThrows(NullPointerException.class, () -> Sjf4j.fromYaml((String) null, JsonObject.class));
-        assertThrows(NullPointerException.class, () -> Sjf4j.fromNode(JsonObject.of(), (TypeReference<List<Integer>>) null));
-        assertThrows(NullPointerException.class, () -> Sjf4j.fromProperties(null));
+        assertThrows(NullPointerException.class, () -> sjf4j.fromJson((String) null, JsonObject.class));
+        assertThrows(NullPointerException.class, () -> sjf4j.fromJson(json, (TypeReference<JsonObject>) null));
+        assertThrows(NullPointerException.class, () -> sjf4j.fromYaml((String) null, JsonObject.class));
+        assertThrows(NullPointerException.class, () -> sjf4j.fromNode(JsonObject.of(), (TypeReference<List<Integer>>) null));
+        assertThrows(NullPointerException.class, () -> sjf4j.fromProperties(null));
     }
 }

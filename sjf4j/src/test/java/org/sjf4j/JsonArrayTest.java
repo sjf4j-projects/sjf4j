@@ -21,28 +21,7 @@ class JsonArrayTest {
 
     @TestFactory
     public Stream<DynamicTest> testWithJsonLib() {
-        return Stream.of(
-                DynamicTest.dynamicTest("Run with Simple JSON", () -> {
-                    Sjf4jConfig.useSimpleJsonAsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Jackson2", () -> {
-                    Sjf4jConfig.useJackson2AsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Gson", () -> {
-                    Sjf4jConfig.useGsonAsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with Fastjson2", () -> {
-                    Sjf4jConfig.useFastjson2AsGlobal();
-                    testAll();
-                }),
-                DynamicTest.dynamicTest("Run with JSON-P", () -> {
-                    Sjf4jConfig.useJsonpAsGlobal();
-                    testAll();
-                })
-        );
+        return Stream.of(DynamicTest.dynamicTest("Run with default global", this::testAll));
     }
 
     public void testAll() {
@@ -484,8 +463,8 @@ class JsonArrayTest {
     @Test
     public void testExtend1() {
         String json1 = "[1,2,{\"a\":\"b\"}]";
-        assertThrows(Exception.class, () -> Sjf4j.fromJson(json1, MyArray1.class));
-        MyArray2 my2 = Sjf4j.fromJson(json1, MyArray2.class);
+        assertThrows(Exception.class, () -> Sjf4j.global().fromJson(json1, MyArray1.class));
+        MyArray2 my2 = Sjf4j.global().fromJson(json1, MyArray2.class);
         log.info("my2={}", my2);
         assertEquals(json1, my2.toJson());
     }

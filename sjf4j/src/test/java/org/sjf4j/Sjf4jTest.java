@@ -41,7 +41,7 @@ public class Sjf4jTest {
 
     @Test
     public void testJson2Pojo1() {
-        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
         JsonObject jo1 = JsonObject.fromNode(p1);
@@ -51,25 +51,25 @@ public class Sjf4jTest {
         log.info("jo2={}", jo2);
         assertEquals(jo1, jo2);
 
-        JsonObject jo3 = Sjf4j.fromJson(JSON_DATA, JsonObject.class);
+        JsonObject jo3 = Sjf4j.global().fromJson(JSON_DATA, JsonObject.class);
         log.info("jo3={}", jo3);
 
-        Person p2 = Sjf4j.fromNode(jo3, Person.class);
+        Person p2 = Sjf4j.global().fromNode(jo3, Person.class);
         log.info("p2={}", p2);
         assertNotEquals(p1, p2);
 
-        assertEquals(Sjf4j.toRaw(p1), Sjf4j.toRaw(p2));
+        assertEquals(Sjf4j.global().toRaw(p1), Sjf4j.global().toRaw(p2));
     }
 
     @Test
     public void testJson2Pojo2() {
-        Person p1 = Sjf4j.fromJson(JSON_DATA, Person.class);
+        Person p1 = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         log.info("p1={}", p1);
 
         JsonObject jo2 = JsonObject.fromNode(p1);
         log.info("jo2={}", jo2);
 
-        Object n3 = Sjf4j.toRaw(p1);
+        Object n3 = Sjf4j.global().toRaw(p1);
         log.info("n3={}", n3);
 
         assertTrue(Nodes.equals(p1, n3));
