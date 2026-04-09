@@ -10,10 +10,10 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.AnyOf;
-import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
+import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -81,7 +81,7 @@ public interface GsonModule {
                 in.nextNull();
                 return null;
             }
-            return (T) GsonStreamingIO.readNode(in, ownerType);
+            return (T) StreamingIO.readNode(new GsonReader(in), ownerType);
         }
 
         /**
@@ -90,18 +90,7 @@ public interface GsonModule {
         @SuppressWarnings("unchecked")
         @Override
         public void write(JsonWriter out, JsonObject jo) throws IOException {
-            out.beginObject();
-            for (Map.Entry<String, Object> entry : jo.entrySet()) {
-                out.name(entry.getKey());
-                Object value = entry.getValue();
-                if (value == null) {
-                    out.nullValue();
-                } else {
-                    TypeAdapter<Object> adapter = (TypeAdapter<Object>) gson.getAdapter(value.getClass());
-                    adapter.write(out, value);
-                }
-            }
-            out.endObject();
+            StreamingIO.writeNode(new GsonWriter(out), jo);
         }
     }
 
@@ -165,12 +154,12 @@ public interface GsonModule {
                 in.nextNull();
                 return null;
             }
-            return (T) GsonStreamingIO.readAnyOf(in, anyOfInfo);
+            return (T) StreamingIO.readAnyOf(new GsonReader(in), anyOfInfo);
         }
 
         @Override
         public void write(JsonWriter out, T value) throws IOException {
-            GsonStreamingIO.writeNode(out, value);
+            StreamingIO.writeNode(new GsonWriter(out), value);
         }
     }
 
@@ -190,13 +179,14 @@ public interface GsonModule {
                 in.nextNull();
                 return null;
             }
-            Class<?> ownerRawClass = TypeToken.get(ownerType).getRawType();
-            return (T) GsonStreamingIO.readPojo(in, ownerType, ownerRawClass, pojoInfo);
+            Type resolvedOwnerType = ownerType != null ? ownerType : pojoInfo.clazz;
+            Class<?> ownerRawClass = Types.rawBox(resolvedOwnerType);
+            return (T) StreamingIO.readPojo(new GsonReader(in), resolvedOwnerType, ownerRawClass, pojoInfo);
         }
 
         @Override
         public void write(JsonWriter out, T value) throws IOException {
-            GsonStreamingIO.writeNode(out, value);
+            StreamingIO.writeNode(new GsonWriter(out), value);
         }
     }
 

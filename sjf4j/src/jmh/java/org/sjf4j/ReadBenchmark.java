@@ -137,19 +137,27 @@ public class ReadBenchmark {
         public String streamingMode;
 
         public Jackson2JsonFacade jackson2Facade;
-        public GsonJsonFacade gsonFacade;
         public Fastjson2JsonFacade fastjson2Facade;
-        public JsonpJsonFacade jsonpFacade;
-        public SimpleJsonFacade simpleFacade;
 
         @Setup(Level.Trial)
         public void setup() {
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
             jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), mode);
-            gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
             fastjson2Facade = new Fastjson2JsonFacade(mode);
-            jsonpFacade = new JsonpJsonFacade(StreamingFacade.StreamingMode.SHARED_IO);
-            simpleFacade = new SimpleJsonFacade();
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class GsonFacadeState {
+        @Param({"SHARED_IO", "PLUGIN_MODULE"})
+        public String streamingMode;
+
+        public GsonJsonFacade gsonFacade;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
+            gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
         }
     }
 
@@ -198,17 +206,17 @@ public class ReadBenchmark {
     }
 
     @Benchmark
-    public Object json_gson_pojo_facade(FacadeState state) {
+    public Object json_gson_pojo_facade(GsonFacadeState state) {
         return state.gsonFacade.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_gson_jojo_facade(FacadeState state) {
+    public Object json_gson_jojo_facade(GsonFacadeState state) {
         return state.gsonFacade.readNode(JSON_DATA2, UserJojo.class);
     }
 
     @Benchmark
-    public Object json_gson_map_facade(FacadeState state) {
+    public Object json_gson_map_facade(GsonFacadeState state) {
         return state.gsonFacade.readNode(JSON_DATA2, Map.class);
     }
 

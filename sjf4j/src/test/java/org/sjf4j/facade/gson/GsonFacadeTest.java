@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
@@ -35,7 +36,6 @@ public class GsonFacadeTest {
     private static Stream<StreamingFacade.StreamingMode> allModes() {
         return Stream.of(
                 StreamingFacade.StreamingMode.SHARED_IO,
-                StreamingFacade.StreamingMode.EXCLUSIVE_IO,
                 StreamingFacade.StreamingMode.PLUGIN_MODULE
         );
     }
@@ -97,6 +97,12 @@ public class GsonFacadeTest {
         StringWriter output = new StringWriter();
         facade.writeNode(output, jo1);
         assertEquals(json1, output.toString());
+    }
+
+    @Test
+    void testExclusiveIoIsRejected() {
+        assertThrows(org.sjf4j.exception.JsonException.class,
+                () -> new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.EXCLUSIVE_IO));
     }
 
 

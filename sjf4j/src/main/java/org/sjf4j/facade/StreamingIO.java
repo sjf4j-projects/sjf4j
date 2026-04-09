@@ -2,6 +2,7 @@ package org.sjf4j.facade;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
@@ -537,7 +538,7 @@ public final class StreamingIO {
             Object rawNode = _readRawNode(reader);
             Class<?> targetClazz = resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
             if (targetClazz == null) return null;
-            return FacadeFactory.getDefaultNodeFacade().readNode(rawNode, targetClazz);
+            return FacadeFactory.defaultNodeFacade().readNode(rawNode, targetClazz);
         }
 
         Class<?> targetClazz = resolveAnyOfJsonTypeTarget(reader.peekToken().jsonType(), anyOfInfo);
@@ -616,17 +617,13 @@ public final class StreamingIO {
 
             if (node instanceof JsonObject) {
                 writer.startObject();
-                final boolean[] veryStart = { true };
-                ((JsonObject) node).forEach((k, v) -> {
-                    try {
-                        if (veryStart[0]) veryStart[0] = false;
-                        else writer.writeObjectComma();
-                        writer.writeName(k);
-                        _writeNode(writer, v);
-                    } catch (IOException e) {
-                        throw new BindingException(e);
-                    }
-                });
+                boolean veryStart = true;
+                for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
+                    if (veryStart) veryStart = false;
+                    else writer.writeObjectComma();
+                    writer.writeName(entry.getKey());
+                    _writeNode(writer, entry.getValue());
+                }
                 writer.endObject();
                 return;
             }
@@ -775,7 +772,7 @@ public final class StreamingIO {
         Class<?> targetClazz = aoi.resolveByWhen(parentAnyOfValue == unsetSentinel ? null : parentAnyOfValue);
         Object vv;
         if (targetClazz != null) {
-            vv = FacadeFactory.getDefaultNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
+            vv = FacadeFactory.defaultNodeFacade().readNode(deferredParentAnyOfRaw, targetClazz);
         } else if (aoi.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) {
             vv = null;
         } else {

@@ -119,15 +119,27 @@ public class WriteBenchmark {
         public String streamingMode;
 
         public Jackson2JsonFacade jackson2Facade;
-        public GsonJsonFacade gsonFacade;
         public Fastjson2JsonFacade fastjson2Facade;
 
         @Setup(Level.Trial)
         public void setup() {
             StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
             jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), mode);
-            gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
             fastjson2Facade = new Fastjson2JsonFacade(mode);
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class GsonFacadeState {
+        @Param({"SHARED_IO", "PLUGIN_MODULE"})
+        public String streamingMode;
+
+        public GsonJsonFacade gsonFacade;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
+            gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
         }
     }
 
@@ -176,22 +188,32 @@ public class WriteBenchmark {
     }
 
     @Benchmark
+    public Object json_gson_hasAny_native() throws Exception {
+        return GSON.toJson(USER_HAS_ANY);
+    }
+
+    @Benchmark
     public Object json_gson_map_native() {
         return GSON.toJson(MAP_NODE);
     }
 
     @Benchmark
-    public Object json_gson_pojo_facade(FacadeState state) {
+    public Object json_gson_pojo_facade(GsonFacadeState state) {
         return state.gsonFacade.writeNodeAsString(USER_POJO);
     }
 
     @Benchmark
-    public Object json_gson_jojo_facade(FacadeState state) {
+    public Object json_gson_jojo_facade(GsonFacadeState state) {
         return state.gsonFacade.writeNodeAsString(USER_JOJO);
     }
 
     @Benchmark
-    public Object json_gson_map_facade(FacadeState state) {
+    public Object json_gson_hasAny_facade(GsonFacadeState state) {
+        return state.gsonFacade.writeNodeAsString(USER_HAS_ANY);
+    }
+
+    @Benchmark
+    public Object json_gson_map_facade(GsonFacadeState state) {
         return state.gsonFacade.writeNodeAsString(MAP_NODE);
     }
 

@@ -6,6 +6,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
+import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.Types;
 
@@ -46,6 +47,9 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     public GsonJsonFacade(GsonBuilder gsonBuilder, StreamingMode streamingMode) {
         Objects.requireNonNull(gsonBuilder, "gsonBuilder");
         this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
+        if (this.streamingMode == StreamingMode.EXCLUSIVE_IO) {
+            throw new JsonException("Streaming mode 'EXCLUSIVE_IO' is not supported by Gson facade");
+        }
 
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
@@ -84,7 +88,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             {
                 try {
                     JsonReader reader = gson.newJsonReader(input);
-                    return GsonStreamingIO.readNode(reader, type);
+                    return StreamingIO.readNode(new GsonReader(reader), type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON streaming into node type " + type, e);
                 }
@@ -115,7 +119,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             {
                 try {
                     JsonReader reader = gson.newJsonReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-                    return GsonStreamingIO.readNode(reader, type);
+                    return StreamingIO.readNode(new GsonReader(reader), type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON stream into node type " + type, e);
                 }
@@ -145,7 +149,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             case EXCLUSIVE_IO:
             {
                 try (JsonReader reader = gson.newJsonReader(new StringReader(input))) {
-                    return GsonStreamingIO.readNode(reader, type);
+                    return StreamingIO.readNode(new GsonReader(reader), type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON string into node type " + type, e);
                 }
@@ -176,7 +180,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             {
                 try (JsonReader reader = gson.newJsonReader(new InputStreamReader(
                         new ByteArrayInputStream(input), StandardCharsets.UTF_8))) {
-                    return GsonStreamingIO.readNode(reader, type);
+                    return StreamingIO.readNode(new GsonReader(reader), type);
                 } catch (Exception e) {
                     throw new JsonException("Failed to read JSON byte[] into node type " + type, e);
                 }
@@ -220,7 +224,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             {
                 try {
                     JsonWriter writer = gson.newJsonWriter(output);
-                    GsonStreamingIO.writeNode(writer, node);
+                    StreamingIO.writeNode(new GsonWriter(writer), node);
                     writer.flush();
                 } catch (IOException e) {
                     throw new JsonException("Failed to write node type " + Types.name(node) + " to JSON streaming", e);
@@ -241,7 +245,7 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     }
 
     private StreamingMode runtimeMode() {
-        return StreamingFacade.resolveRuntimeMode(streamingMode, true, true);
+        return StreamingFacade.resolveRuntimeMode(streamingMode, true, false);
     }
 
 

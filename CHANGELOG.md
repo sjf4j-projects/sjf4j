@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `Nodes.to(...)`, `NodeFacade.readNode(...)`, and streaming IO binding so concrete `Map`/`List`/`Set` targets are created with their declared container implementations when supported.
 - Improved `Nodes.copy(...)` and `deepNode(...)` to preserve concrete container types when possible and fall back to default mutable containers only on unsupported source implementations.
 - Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
+- Improved Gson facade integration by routing plugin-module reads and writes through shared `StreamingIO`, removing the separate Gson-exclusive streaming path, and aligning `hasAny` write performance with native Gson baselines.
 - Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_BASED`.
 - Improved shared/Jackson/Gson/Fastjson2 streaming readers by separating raw node reads from typed dispatch, reducing duplicated `Object.class` hot-path work and closing the Fastjson2 JOJO gap against native any-setter baselines.
 - Improved benchmark coverage and naming so `ReadBenchmark` and the JDK 17 companion benchmark compare POJO/JOJO/map cases consistently across Jackson, Jackson 3, Gson, Fastjson2, JSON-P, and Simple facade baselines.
