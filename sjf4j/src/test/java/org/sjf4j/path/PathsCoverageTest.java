@@ -69,10 +69,10 @@ class PathsCoverageTest {
 
     @Test
     void testFunctionArgAndParenHelpers() {
-        assertThrows(JsonException.class, () -> Paths.findMatchingParen("(abc", 0));
-        assertEquals(4, Paths.findMatchingParen("(')')x", 0));
-        assertEquals(List.of(""), Paths.parseFunctionArgs("   "));
-        assertEquals(List.of("1", "nested(2,3)", "'x,y'", "/a(b)/"), Paths.parseFunctionArgs("1, nested(2,3), 'x,y', /a(b)/"));
+        assertThrows(JsonException.class, () -> Paths._findMatchingParen("(abc", 0));
+        assertEquals(4, Paths._findMatchingParen("(')')x", 0));
+        assertEquals(List.of(""), Paths._parseFunctionArgs("   "));
+        assertEquals(List.of("1", "nested(2,3)", "'x,y'", "/a(b)/"), Paths._parseFunctionArgs("1, nested(2,3), 'x,y', /a(b)/"));
     }
 
     static class SamplePojo {

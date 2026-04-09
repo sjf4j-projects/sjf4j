@@ -301,17 +301,17 @@ public class PathsTest {
     @Test
     public void testFindMatchingParen() {
         int end;
-        end = Paths.findMatchingParen("?(@.name == \"foo(bar)\")", 1);
+        end = Paths._findMatchingParen("?(@.name == \"foo(bar)\")", 1);
         assertEquals(22, end);
-        end = Paths.findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
+        end = Paths._findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
         assertEquals(22, end);
-        end = Paths.findMatchingParen("(\"(abc)\")", 0);
+        end = Paths._findMatchingParen("(\"(abc)\")", 0);
         assertEquals(8, end);
     }
 
     @Test
     public void testParseFunctionArgs() {
-        List<String> args = Paths.parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
+        List<String> args = Paths._parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
         System.out.println(new JsonArray(args));
         System.out.println(args.get(0));
         System.out.println(args.get(1));

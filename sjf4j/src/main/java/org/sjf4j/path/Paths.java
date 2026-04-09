@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * <p>This class centralizes all string parsing and formatting logic so
  * {@link JsonPath} can focus on execution semantics.
  */
-public class Paths {
+public final class Paths {
 
     /**
      * Converts a segment chain to rooted debug inspect text.
@@ -50,7 +50,7 @@ public class Paths {
     /**
      * Linearizes a segment chain into an ordered array.
      */
-    static PathSegment[] linearize(PathSegment lastSegment) {
+    public static PathSegment[] linearize(PathSegment lastSegment) {
         Objects.requireNonNull(lastSegment, "lastSegment");
         int size = 0;
         for (PathSegment p = lastSegment; p != null; p = p.parent()) size++;
@@ -144,9 +144,12 @@ public class Paths {
 
             // detect numeric index
             boolean isNumber = !name.isEmpty();
-            for (int i = 0, len2 = name.length(); i < len2 && isNumber; i++) {
+            for (int i = 0, len2 = name.length(); i < len2; i++) {
                 char c = name.charAt(i);
-                if (c < '0' || c > '9') isNumber = false;
+                if (c < '0' || c > '9') {
+                    isNumber = false;
+                    break;
+                }
             }
 
             if (isNumber) {
@@ -251,7 +254,6 @@ public class Paths {
      */
     public static PathSegment[] parsePath(String expr) {
         if (expr == null || expr.isEmpty()) throw new JsonException("expr is empty");
-
         Deque<PathSegment> segments = new ArrayDeque<>();
         int i = 0;
 
@@ -284,7 +286,7 @@ public class Paths {
             }
 
             if (c == '[') {
-                int next = tryParseSimpleBracketToken(expr, i, segments);
+                int next = _tryParseSimpleBracketToken(expr, i, segments);
                 if (next >= 0) {
                     i = next;
                     continue;
@@ -332,8 +334,8 @@ public class Paths {
                 if (i >= expr.length())
                     throw new JsonException("Missing closing ']' in path '" + expr + "' at position " + start);
 
-                int contentStart = skipWhitespace(expr, start);
-                int contentEnd = trimTrailingWhitespace(expr, contentStart, i);
+                int contentStart = _skipWhitespace(expr, start);
+                int contentEnd = _trimTrailingWhitespace(expr, contentStart, i);
                 i++; // skip ]
 
                 // Single element: could be [*], [0], [-1], ['name'], or [start:end:step]
@@ -342,14 +344,12 @@ public class Paths {
                     throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
                 } else if (expr.charAt(contentStart) == '?') {
                     // Filter
-                    int filterStart = skipWhitespace(expr, contentStart + 1);
-                    String filterStr = expr.substring(filterStart, contentEnd);
-                    FilterExpr filterExpr = parseFilter(filterStr);
+                    int filterStart = _skipWhitespace(expr, contentStart + 1);
+                    FilterExpr filterExpr = _parseFilterRange(expr, filterStart, contentEnd);
                     segments.addLast(new PathSegment.Filter(segments.peekLast(), null, filterExpr));
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
-                    String content = expr.substring(contentStart, contentEnd);
-                    PathSegment[] unionTokens = parseUnionTokens(content);
+                    PathSegment[] unionTokens = _parseUnionTokens(expr, contentStart, contentEnd);
                     segments.addLast(new PathSegment.Union(segments.peekLast(), null, unionTokens));
                 } else {
                     if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '*') {
@@ -360,16 +360,16 @@ public class Paths {
                         segments.addLast(new PathSegment.Append(segments.peekLast(), null));
                     } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
-                        String name = parseQuotedContent(expr.substring(contentStart, contentEnd), 0, null, "name");
+                        String name = _parseQuotedContent(expr, contentStart, contentEnd, null, "name");
                         segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
-                    } else if (containsChar(expr, contentStart, contentEnd, ':')) {
+                    } else if (_containsChar(expr, contentStart, contentEnd, ':')) {
                         // Slice [start:end:step]
-                        String content = expr.substring(contentStart, contentEnd);
-                        segments.addLast(parseSlice(segments.peekLast(), content, " in path '" + expr + "'"));
+                        segments.addLast(_parseSlice(segments.peekLast(), expr, contentStart, contentEnd,
+                                " in path '" + expr + "'"));
                     } else {
                         try {
                             // Try to parse as numeric index
-                            int idx = Integer.parseInt(expr.substring(contentStart, contentEnd));
+                            int idx = _parseInt(expr, contentStart, contentEnd);
                             segments.addLast(new PathSegment.Index(segments.peekLast(), null, idx));
                         } catch (NumberFormatException e) {
                             String content = expr.substring(contentStart, contentEnd);
@@ -392,19 +392,19 @@ public class Paths {
                 }
 
                 int start = i;
-                while (i < expr.length() && isNextTokenChar(expr.charAt(i))) i++;
+                while (i < expr.length() && _isNextTokenChar(expr.charAt(i))) i++;
                 if (start == i)
                     throw new JsonException("Empty field name after '.' in path '" + expr + "' at position " + i);
 
                 // Function
                 if (i < expr.length() && expr.charAt(i) == '(') {
-                    int end = findMatchingParen(expr, i);
+                    int end = _findMatchingParen(expr, i);
                     if (end < 0) {
                         throw new JsonException("Unclosed '(' in function at position " + i + " in path '" + expr + "'");
                     }
                     String funcName = expr.substring(start, i);
                     String args = expr.substring(i + 1, end); // inside (...)
-                    segments.addLast(new PathSegment.Function(segments.peekLast(), null, funcName, parseFunctionArgs(args)));
+                    segments.addLast(new PathSegment.Function(segments.peekLast(), null, funcName, _parseFunctionArgs(args)));
                     i = end + 1;
                     continue;
                 }
@@ -421,18 +421,18 @@ public class Paths {
         return segments.toArray(new PathSegment[0]);
     }
 
-    private static int tryParseSimpleBracketToken(String expr, int bracketIndex, Deque<PathSegment> segments) {
+    private static int _tryParseSimpleBracketToken(String expr, int bracketIndex, Deque<PathSegment> segments) {
         int len = expr.length();
-        int i = skipWhitespace(expr, bracketIndex + 1);
+        int i = _skipWhitespace(expr, bracketIndex + 1);
         if (i >= len) return -1;
 
         char c = expr.charAt(i);
 
         if (c == '*') {
-            int end = skipWhitespace(expr, i + 1);
-            if (end < len && expr.charAt(end) == ']') {
+            int tokenEnd = _skipWhitespace(expr, i + 1);
+            if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
                 segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
-                return end + 1;
+                return tokenEnd + 1;
             }
             return -1;
         }
@@ -443,12 +443,12 @@ public class Paths {
                 i++;
             } while (i < len && Character.isDigit(expr.charAt(i)));
 
-            int end = skipWhitespace(expr, i);
-            if (end < len && expr.charAt(end) == ']') {
+            int tokenEnd = _skipWhitespace(expr, i);
+            if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
                 try {
                     segments.addLast(new PathSegment.Index(segments.peekLast(), null,
                             Integer.parseInt(expr.substring(start, i))));
-                    return end + 1;
+                    return tokenEnd + 1;
                 } catch (NumberFormatException ignored) {
                     return -1;
                 }
@@ -463,22 +463,22 @@ public class Paths {
     /**
      * Returns true if the char can continue a dot-name token.
      */
-    private static boolean isNextTokenChar(char c) {
+    private static boolean _isNextTokenChar(char c) {
 //        return Character.isLetterOrDigit(c) || c == '_' || c == '-';
         return c != '.' && c != '[' && c != '(';
     }
 
-    private static int skipWhitespace(String expr, int i) {
+    private static int _skipWhitespace(String expr, int i) {
         while (i < expr.length() && Character.isWhitespace(expr.charAt(i))) i++;
         return i;
     }
 
-    private static int trimTrailingWhitespace(String expr, int start, int end) {
+    private static int _trimTrailingWhitespace(String expr, int start, int end) {
         while (end > start && Character.isWhitespace(expr.charAt(end - 1))) end--;
         return end;
     }
 
-    private static boolean containsChar(String expr, int start, int end, char target) {
+    private static boolean _containsChar(String expr, int start, int end, char target) {
         for (int i = start; i < end; i++) {
             if (expr.charAt(i) == target) return true;
         }
@@ -489,7 +489,7 @@ public class Paths {
     /**
      * Parses a slice part value or returns null when blank.
      */
-    private static Integer parseSlicePart(String part) {
+    private static Integer _parseSlicePart(String part) {
         if (part == null || part.trim().isEmpty()) {
             return null;
         }
@@ -500,47 +500,60 @@ public class Paths {
         }
     }
 
+    private static Integer _parseSlicePart(String content, int start, int end) {
+        start = _skipWhitespace(content, start);
+        end = _trimTrailingWhitespace(content, start, end);
+        if (start >= end) return null;
+        try {
+            return _parseInt(content, start, end);
+        } catch (NumberFormatException e) {
+            throw new JsonException("Invalid slice part '" + content.substring(start, end) + "'");
+        }
+    }
+
+
     /**
      * Parses union elements into segment tokens.
      */
-    private static PathSegment[] parseUnionTokens(String content) {
+    private static PathSegment[] _parseUnionTokens(String content, int start, int end) {
         List<PathSegment> segments = new ArrayList<>();
-        int i = 0;
-        while (i < content.length()) {
+        int i = start;
+        while (i < end) {
             // Skip spaces and commas
-            while (i < content.length() && (content.charAt(i) == ' ' || content.charAt(i) == ',')) i++;
-            if (i >= content.length()) break;
+            while (i < end && (content.charAt(i) == ' ' || content.charAt(i) == ',')) i++;
+            if (i >= end) break;
 
             char firstChar = content.charAt(i);
 
             if (firstChar == '\'' || firstChar == '"') {
                 // Quoted name
-                int[] end = new int[1];
-                String name = parseQuotedContent(content, i, end, "union name");
+                int[] quotedEnd = new int[1];
+                String name = _parseQuotedContent(content, i, end, quotedEnd, "union name");
                 segments.add(new PathSegment.Name(null, null, name));
-//                i += (name.length() + 2); // Skip quotes and content
-                i = end[0];
+                i = quotedEnd[0];
                 // Find next comma or end
-                while (i < content.length() && content.charAt(i) != ',') i++;
+                while (i < end && content.charAt(i) != ',') i++;
             } else if (Character.isDigit(firstChar) || firstChar == '-') {
                 // Could be numeric index or slice
-                int start = i;
+                int tokenStart = i;
                 boolean hasColon = false;
-                while (i < content.length() && content.charAt(i) != ',') {
+                while (i < end && content.charAt(i) != ',') {
                     if (content.charAt(i) == ':') {
                         hasColon = true;
                     }
                     i++;
                 }
 
-                String part = content.substring(start, i).trim();
+                int tokenContentStart = _skipWhitespace(content, tokenStart);
+                int tokenContentEnd = _trimTrailingWhitespace(content, tokenContentStart, i);
+                String part = content.substring(tokenContentStart, tokenContentEnd);
                 if (hasColon) {
                     // Slice
-                    segments.add(parseSlice(null, part, " in union"));
+                    segments.add(_parseSlice(null, content, tokenContentStart, tokenContentEnd, " in union"));
                 } else {
                     // Numeric index
                     try {
-                        int idx = Integer.parseInt(part);
+                        int idx = _parseInt(content, tokenContentStart, tokenContentEnd);
                         segments.add(new PathSegment.Index(null, null, idx));
                     } catch (NumberFormatException e) {
                         throw new JsonException("Invalid index '" + part + "' in union");
@@ -554,30 +567,36 @@ public class Paths {
         return segments.toArray(new PathSegment[0]);
     }
 
-    private static PathSegment.Slice parseSlice(PathSegment parent, String content, String errorContext) {
-        String[] sliceParts = content.split(":", -1);
-        if (sliceParts.length > 3) {
-            throw new JsonException("Invalid slice syntax '" + content + "'" + errorContext);
+    private static PathSegment.Slice _parseSlice(PathSegment parent, String content,
+                                                int start, int end, String errorContext) {
+        int firstColon = -1;
+        int secondColon = -1;
+        for (int i = start; i < end; i++) {
+            if (content.charAt(i) == ':') {
+                if (firstColon < 0) firstColon = i;
+                else if (secondColon < 0) secondColon = i;
+                else throw new JsonException("Invalid slice syntax '" + content.substring(start, end) + "'" + errorContext);
+            }
         }
 
-        Integer startIdx = parseSlicePart(sliceParts[0]);
-        Integer endIdx = sliceParts.length > 1 ? parseSlicePart(sliceParts[1]) : null;
-        Integer step = sliceParts.length > 2 ? parseSlicePart(sliceParts[2]) : null;
+        Integer startIdx = _parseSlicePart(content, start, firstColon < 0 ? end : firstColon);
+        Integer endIdx = firstColon < 0 ? null : _parseSlicePart(content, firstColon + 1, secondColon < 0 ? end : secondColon);
+        Integer step = secondColon < 0 ? null : _parseSlicePart(content, secondColon + 1, end);
         if (step != null && step == 0) {
             throw new JsonException("Slice step cannot be 0" + errorContext);
         }
         return new PathSegment.Slice(parent, null, startIdx, endIdx, step);
     }
 
-    private static String parseQuotedContent(String content, int start, int[] end, String errorContext) {
+    private static String _parseQuotedContent(String content, int start, int limit, int[] end, String errorContext) {
         char quote = content.charAt(start);
-        StringBuilder sb = new StringBuilder(Math.max(0, content.length() - start - 2));
+        StringBuilder sb = new StringBuilder(Math.max(0, limit - start - 2));
         int i = start + 1;
 
-        while (i < content.length()) {
+        while (i < limit) {
             char ch = content.charAt(i);
             if (ch == '\\') {
-                if (i + 1 >= content.length()) {
+                if (i + 1 >= limit) {
                     throw new JsonException("Invalid escape at end of " + errorContext);
                 }
                 char next = content.charAt(i + 1);
@@ -599,13 +618,29 @@ public class Paths {
         throw new JsonException("Missing closing quote in " + errorContext);
     }
 
+    private static int _parseInt(String content, int start, int end) {
+        if (start >= end) throw new NumberFormatException("empty");
+        boolean negative = content.charAt(start) == '-';
+        int i = negative ? start + 1 : start;
+        if (i >= end) throw new NumberFormatException("empty");
+
+        int value = 0;
+        while (i < end) {
+            char ch = content.charAt(i++);
+            if (!Character.isDigit(ch)) throw new NumberFormatException("bad digit");
+            value = Math.multiplyExact(value, 10);
+            value = Math.addExact(value, ch - '0');
+        }
+        return negative ? -value : value;
+    }
+
     /**
      * Finds the matching closing parenthesis for an expression starting at `start`,
      * automatically skipping parentheses that appear inside quoted strings.
      *
      * Supports both single-quoted and double-quoted strings.
      */
-    static int findMatchingParen(String s, int start) {
+    static int _findMatchingParen(String s, int start) {
         if (start < 0 || start >= s.length() || s.charAt(start) != '(') {
             throw new JsonException("Invalid expression: start is not at '(' position");
         }
@@ -660,7 +695,7 @@ public class Paths {
     /**
      * Parses function arguments at the last token.
      */
-    static List<String> parseFunctionArgs(String s) {
+    static List<String> _parseFunctionArgs(String s) {
         List<String> args = new ArrayList<>();
         if (s == null || s.isEmpty()) return args;
 
@@ -720,11 +755,16 @@ public class Paths {
      * regex literals, and function calls.
      */
     public static FilterExpr parseFilter(String s) {
+        return _parseFilterRange(s, 0, s.length());
+    }
+
+    private static FilterExpr _parseFilterRange(String s, int start, int endExclusive) {
         int[] pos = {0};
-        skipWs(s, pos);
-        FilterExpr expr = parseOr(s, pos);
-        skipWs(s, pos);
-        if (pos[0] != s.length()) {
+        pos[0] = start;
+        _skipWs(s, pos);
+        FilterExpr expr = _parseOr(s, pos);
+        _skipWs(s, pos);
+        if (pos[0] != endExclusive) {
             throw new JsonException("Trailing characters at pos " + pos[0]);
         }
         return expr;
@@ -733,12 +773,12 @@ public class Paths {
     /**
      * Parses an OR expression.
      */
-    private static FilterExpr parseOr(String s, int[] pos) {
-        FilterExpr left = parseAnd(s, pos);
+    private static FilterExpr _parseOr(String s, int[] pos) {
+        FilterExpr left = _parseAnd(s, pos);
         while (true) {
-            skipWs(s, pos);
-            if (match(s, pos, "||")) {
-                FilterExpr right = parseAnd(s, pos);
+            _skipWs(s, pos);
+            if (_match(s, pos, "||")) {
+                FilterExpr right = _parseAnd(s, pos);
                 left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.OR);
             } else break;
         }
@@ -748,12 +788,12 @@ public class Paths {
     /**
      * Parses an AND expression.
      */
-    private static FilterExpr parseAnd(String s, int[] pos) {
-        FilterExpr left = parseCompare(s, pos);
+    private static FilterExpr _parseAnd(String s, int[] pos) {
+        FilterExpr left = _parseCompare(s, pos);
         while (true) {
-            skipWs(s, pos);
-            if (match(s, pos, "&&")) {
-                FilterExpr right = parseCompare(s, pos);
+            _skipWs(s, pos);
+            if (_match(s, pos, "&&")) {
+                FilterExpr right = _parseCompare(s, pos);
                 left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.AND);
             } else break;
         }
@@ -763,22 +803,22 @@ public class Paths {
     /**
      * Parses a comparison expression.
      */
-    private static FilterExpr parseCompare(String s, int[] pos) {
-        FilterExpr left = parseUnary(s, pos);
-        skipWs(s, pos);
+    private static FilterExpr _parseCompare(String s, int[] pos) {
+        FilterExpr left = _parseUnary(s, pos);
+        _skipWs(s, pos);
 
         FilterExpr.Op op = null;
 
-        if (match(s, pos, "==")) op = FilterExpr.Op.EQ;
-        else if (match(s, pos, "=~")) op = FilterExpr.Op.MATCH;
-        else if (match(s, pos, "!=")) op = FilterExpr.Op.NE;
-        else if (match(s, pos, ">=")) op = FilterExpr.Op.GE;
-        else if (match(s, pos, "<=")) op = FilterExpr.Op.LE;
-        else if (match(s, pos, ">"))  op = FilterExpr.Op.GT;
-        else if (match(s, pos, "<"))  op = FilterExpr.Op.LT;
+        if (_match(s, pos, "==")) op = FilterExpr.Op.EQ;
+        else if (_match(s, pos, "=~")) op = FilterExpr.Op.MATCH;
+        else if (_match(s, pos, "!=")) op = FilterExpr.Op.NE;
+        else if (_match(s, pos, ">=")) op = FilterExpr.Op.GE;
+        else if (_match(s, pos, "<=")) op = FilterExpr.Op.LE;
+        else if (_match(s, pos, ">"))  op = FilterExpr.Op.GT;
+        else if (_match(s, pos, "<"))  op = FilterExpr.Op.LT;
 
         if (op != null) {
-            FilterExpr right = parseUnary(s, pos);
+            FilterExpr right = _parseUnary(s, pos);
             return new FilterExpr.BinaryExpr(left, right, op);
         }
 
@@ -788,28 +828,28 @@ public class Paths {
     /**
      * Parses a unary expression.
      */
-    private static FilterExpr parseUnary(String s, int[] pos) {
-        skipWs(s, pos);
-        if (match(s, pos, "!")) {
-            FilterExpr child = parseUnary(s, pos);
+    private static FilterExpr _parseUnary(String s, int[] pos) {
+        _skipWs(s, pos);
+        if (_match(s, pos, "!")) {
+            FilterExpr child = _parseUnary(s, pos);
             return new FilterExpr.UnaryExpr(false, child);
         }
-        return parsePrimary(s, pos);
+        return _parsePrimary(s, pos);
     }
 
     /**
      * Parses a primary expression.
      */
-    private static FilterExpr parsePrimary(String s, int[] pos) {
-        skipWs(s, pos);
-        char c = peekLast(s, pos);
+    private static FilterExpr _parsePrimary(String s, int[] pos) {
+        _skipWs(s, pos);
+        char c = _peekLast(s, pos);
 
         // (expr)
         if (c == '(') {
             pos[0]++;
-            FilterExpr expr = parseOr(s, pos);
-            skipWs(s, pos);
-            if (peekLast(s, pos) != ')') {
+            FilterExpr expr = _parseOr(s, pos);
+            _skipWs(s, pos);
+            if (_peekLast(s, pos) != ')') {
                 throw new JsonException("Missing ')'");
             }
             pos[0]++;
@@ -818,38 +858,38 @@ public class Paths {
 
         // String literal
         if (c == '\'' || c == '"') {
-            return new FilterExpr.LiteralExpr(parseString(s, pos));
+            return new FilterExpr.LiteralExpr(_parseString(s, pos));
         }
 
         // Number literal
         if (Character.isDigit(c) || c == '-') {
-            return new FilterExpr.LiteralExpr(parseNumber(s, pos));
+            return new FilterExpr.LiteralExpr(_parseNumber(s, pos));
         }
 
         // Path: @.a.b or $.x.y
         if (c == '@' || c == '$') {
-            String path = parsePath(s, pos);
+            String path = _parsePath(s, pos);
             return new FilterExpr.PathExpr(path);
         }
 
         // Regex: /^a/i
         if (c == '/') {
-            return parseRegex(s, pos);
+            return _parseRegex(s, pos);
         }
 
-        if (matchKeyword(s, pos, "null")) {
+        if (_matchKeyword(s, pos, "null")) {
             return new FilterExpr.LiteralExpr(null);
         }
-        if (matchKeyword(s, pos, "true")) {
+        if (_matchKeyword(s, pos, "true")) {
             return new FilterExpr.LiteralExpr(true);
         }
-        if (matchKeyword(s, pos, "false")) {
+        if (_matchKeyword(s, pos, "false")) {
             return new FilterExpr.LiteralExpr(false);
         }
 
         // Function: search(@.b, 'a')
-        if (isNamePart(c)) {
-            return parseFunction(s, pos);
+        if (_isNamePart(c)) {
+            return _parseFunction(s, pos);
         }
 
         throw new JsonException("Unexpected char '" + c + "' at pos " + pos[0]);
@@ -858,12 +898,12 @@ public class Paths {
     /**
      * Parses a function call expression.
      */
-    private static FilterExpr parseFunction(String s, int[] pos) {
+    private static FilterExpr _parseFunction(String s, int[] pos) {
         // function name
         int start = pos[0];
-        while (pos[0] < s.length() && isNamePart(s.charAt(pos[0]))) { pos[0]++; }
+        while (pos[0] < s.length() && _isNamePart(s.charAt(pos[0]))) { pos[0]++; }
         String name = s.substring(start, pos[0]);
-        skipWs(s, pos);
+        _skipWs(s, pos);
 
         if (pos[0] >= s.length() || s.charAt(pos[0]) != '(') {
             throw new JsonException("Expected '(' after function name: " + name);
@@ -871,7 +911,7 @@ public class Paths {
         pos[0]++; // '('
 
         List<FilterExpr> args = new ArrayList<>();
-        skipWs(s, pos);
+        _skipWs(s, pos);
 
         // empty arg list
         if (pos[0] < s.length() && s.charAt(pos[0]) == ')') {
@@ -881,9 +921,9 @@ public class Paths {
 
         // arguments
         while (true) {
-            FilterExpr arg = parseOr(s, pos);
+            FilterExpr arg = _parseOr(s, pos);
             args.add(arg);
-            skipWs(s, pos);
+            _skipWs(s, pos);
 
             if (pos[0] >= s.length()) {
                 throw new JsonException("Unterminated function call: " + name);
@@ -892,7 +932,7 @@ public class Paths {
             char c = s.charAt(pos[0]);
             if (c == ',') {
                 pos[0]++;
-                skipWs(s, pos);
+                _skipWs(s, pos);
                 continue;
             }
             if (c == ')') {
@@ -908,14 +948,14 @@ public class Paths {
     /**
      * Returns true if the char is valid in function names.
      */
-    private static boolean isNamePart(char c) {
+    private static boolean _isNamePart(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
     }
 
     /**
      * Advances the cursor over whitespace.
      */
-    private static void skipWs(String s, int[] pos) {
+    private static void _skipWs(String s, int[] pos) {
         while (pos[0] < s.length() && Character.isWhitespace(s.charAt(pos[0]))) {
             pos[0]++;
         }
@@ -924,7 +964,7 @@ public class Paths {
     /**
      * Matches and consumes the given operator token.
      */
-    private static boolean match(String s, int[] pos, String op) {
+    private static boolean _match(String s, int[] pos, String op) {
         if (s.startsWith(op, pos[0])) {
             pos[0] += op.length();
             return true;
@@ -932,13 +972,13 @@ public class Paths {
         return false;
     }
 
-    private static boolean matchKeyword(String s, int[] pos, String keyword) {
+    private static boolean _matchKeyword(String s, int[] pos, String keyword) {
         int start = pos[0];
         if (!s.startsWith(keyword, start)) {
             return false;
         }
         int end = start + keyword.length();
-        if (end < s.length() && isNamePart(s.charAt(end))) {
+        if (end < s.length() && _isNamePart(s.charAt(end))) {
             return false;
         }
         pos[0] = end;
@@ -948,14 +988,14 @@ public class Paths {
     /**
      * Returns the current character or '\0' when out of range.
      */
-    private static char peekLast(String s, int[] pos) {
+    private static char _peekLast(String s, int[] pos) {
         return pos[0] < s.length() ? s.charAt(pos[0]) : '\0';
     }
 
     /**
      * Parses a quoted string literal.
      */
-    private static String parseString(String s, int[] pos) {
+    private static String _parseString(String s, int[] pos) {
         char quote = s.charAt(pos[0]++);
         StringBuilder sb = new StringBuilder();
         while (pos[0] < s.length()) {
@@ -1020,7 +1060,7 @@ public class Paths {
     /**
      * Parses a numeric literal.
      */
-    private static Number parseNumber(String s, int[] pos) {
+    private static Number _parseNumber(String s, int[] pos) {
         int start = pos[0];
         while (pos[0] < s.length() &&
                 (Character.isDigit(s.charAt(pos[0])) || s.charAt(pos[0]) == '.'
@@ -1033,7 +1073,7 @@ public class Paths {
     /**
      * Parses a path literal within a filter expression.
      */
-    private static String parsePath(String s, int[] pos) {
+    private static String _parsePath(String s, int[] pos) {
         int start = pos[0];
         boolean inStr = false, escape = false, inBracket = false, inParen = false;
         char quote = 0;
@@ -1086,7 +1126,7 @@ public class Paths {
      * Parses a regex literal with optional flags.
      */
     @SuppressWarnings("MagicConstant")
-    private static FilterExpr.RegexExpr parseRegex(String s, int[] pos) {
+    private static FilterExpr.RegexExpr _parseRegex(String s, int[] pos) {
         int start = pos[0];
         if (s.charAt(pos[0]++) != '/') throw new JsonException("Regex must start with '/' at pos " + pos[0]);
 
@@ -1120,7 +1160,7 @@ public class Paths {
                 }
                 String flags = s.substring(flagsStart, pos[0]);
                 String source = s.substring(start, pos[0]);
-                Pattern pattern = Pattern.compile(regex, toFlags(flags));
+                Pattern pattern = Pattern.compile(regex, _toFlags(flags));
                 return new FilterExpr.RegexExpr(source, pattern);
             }
             pos[0]++;
@@ -1132,7 +1172,7 @@ public class Paths {
     /**
      * Converts regex flag letters to Pattern flags.
      */
-    private static int toFlags(String flags) {
+    private static int _toFlags(String flags) {
         int f = 0;
         for (char c : flags.toCharArray()) {
             switch (c) {
