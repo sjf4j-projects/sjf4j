@@ -1,6 +1,7 @@
 package org.sjf4j.facade.jackson2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.BinaryNode;
 import com.fasterxml.jackson.databind.node.BooleanNode;
@@ -48,7 +49,7 @@ class Jackson2NodesTest {
         assertEquals(NodeKind.VALUE_STRING_FACADE, Jackson2Nodes.kindOf(TextNode.class));
         assertEquals(NodeKind.VALUE_NUMBER_FACADE, Jackson2Nodes.kindOf(JsonNodeFactory.instance.numberNode(1).getClass()));
         assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, Jackson2Nodes.kindOf(BooleanNode.class));
-        assertEquals(NodeKind.UNKNOWN, Jackson2Nodes.kindOf(com.fasterxml.jackson.databind.JsonNode.class));
+        assertEquals(NodeKind.UNKNOWN, Jackson2Nodes.kindOf(JsonNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson2Nodes.kindOf(new BinaryNode(new byte[]{1})));
         assertThrows(JsonException.class, () -> Jackson2Nodes.kindOf(new POJONode("x")));
         assertThrows(JsonException.class, () -> Jackson2Nodes.kindOf("x"));

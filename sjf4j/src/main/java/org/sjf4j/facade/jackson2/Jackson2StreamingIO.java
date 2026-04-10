@@ -590,7 +590,7 @@ public class Jackson2StreamingIO {
             Object rawNode = _readRawNode(parser);
             Class<?> targetClazz = StreamingIO.resolveSelfDiscriminatorTarget(rawNode, anyOfInfo);
             if (targetClazz == null) return null;
-            return FacadeFactory.getDefaultNodeFacade().readNode(rawNode, targetClazz);
+            return FacadeFactory.defaultNodeFacade().readNode(rawNode, targetClazz);
         }
 
         Class<?> targetClazz = StreamingIO.resolveAnyOfJsonTypeTarget(_peekToken(parser).jsonType(), anyOfInfo);

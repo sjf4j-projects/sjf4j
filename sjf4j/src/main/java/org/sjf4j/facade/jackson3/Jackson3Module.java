@@ -45,8 +45,8 @@ import java.util.Map;
  */
 public interface Jackson3Module {
 
-    class MySimpleModule extends SimpleModule {
-        public MySimpleModule() {
+    class TwoSimpleModule extends SimpleModule {
+        public TwoSimpleModule() {
             setDeserializerModifier(new ValueDeserializerModifier() {
                 @Override
                 public BeanDeserializerBuilder updateBuilder(DeserializationConfig config,
@@ -138,7 +138,7 @@ public interface Jackson3Module {
             }
             try {
                 return (T) StreamingIO.readPojo(new Jackson3Reader(p), ownerType, ownerRawClazz, pi);
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new BindingException(e);
             }
         }
@@ -253,7 +253,7 @@ public interface Jackson3Module {
         public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
                 return (T) StreamingIO.readPojo(new Jackson3Reader(p), pi.clazz, pi.clazz, pi);
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new BindingException(e);
             }
         }
@@ -264,7 +264,7 @@ public interface Jackson3Module {
         public void serialize(Object value, JsonGenerator gen, SerializationContext serializers) {
             try {
                 StreamingIO.writeNode(new Jackson3Writer(gen), value);
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new BindingException(e);
             }
         }

@@ -11,9 +11,11 @@ import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.mapper.NodeMapper;
+import org.sjf4j.mapper.NodeMapperBuilder;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -163,7 +165,7 @@ public class Sjf4jTest {
             private final NodeFacade delegate = new SimpleNodeFacade();
 
             @Override
-            public Object readNode(Object node, java.lang.reflect.Type type, boolean deepCopy) {
+            public Object readNode(Object node, Type type, boolean deepCopy) {
                 nodeFacadeReads.incrementAndGet();
                 return delegate.readNode(node, type, deepCopy);
             }
@@ -209,25 +211,13 @@ public class Sjf4jTest {
     }
 
     @Test
-    void testRuntimeToPojoKeepsShallowNodeReferences() {
-        JsonObject profile = JsonObject.of("city", "Shanghai");
-        JsonObject root = JsonObject.of("profile", profile);
-
-        RuntimePojo user = Sjf4j.builder().build().toPojo(root, RuntimePojo.class);
-
-        profile.put("city", "Beijing");
-        assertSame(profile, user.profile);
-        assertEquals("Beijing", user.profile.getString("city"));
-    }
-
-    @Test
     void testRuntimeMapperBuilderUsesDefaultNodeFacade() {
         AtomicInteger nodeFacadeReads = new AtomicInteger();
         NodeFacade trackingNodeFacade = new NodeFacade() {
             private final NodeFacade delegate = new SimpleNodeFacade();
 
             @Override
-            public Object readNode(Object node, java.lang.reflect.Type type, boolean deepCopy) {
+            public Object readNode(Object node, Type type, boolean deepCopy) {
                 nodeFacadeReads.incrementAndGet();
                 return delegate.readNode(node, type, deepCopy);
             }
@@ -243,9 +233,8 @@ public class Sjf4jTest {
         RuntimeMapperSource source = new RuntimeMapperSource();
         source.name = "han";
 
-        NodeMapper<RuntimeMapperSource, RuntimeMapperTarget> mapper = runtime
-                .mapperBuilder(RuntimeMapperSource.class, RuntimeMapperTarget.class)
-                .build();
+        NodeMapper<RuntimeMapperSource, RuntimeMapperTarget> mapper =
+                NodeMapper.builder(RuntimeMapperSource.class, RuntimeMapperTarget.class).build();
         RuntimeMapperTarget target = mapper.map(source);
 
         assertEquals("han", target.name);

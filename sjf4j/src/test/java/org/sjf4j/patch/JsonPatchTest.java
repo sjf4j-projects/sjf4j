@@ -6,6 +6,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.path.JsonPointer;
 
 import java.util.ArrayList;
@@ -299,7 +300,7 @@ public class JsonPatchTest {
                 "  { \"op\": \"replace\", \"path\": \"/meta/active\", \"value\": false }\n" +
                 "]";
 
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new org.sjf4j.facade.fastjson2.Fastjson2JsonFacade()).build();
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new Fastjson2JsonFacade()).build();
         JsonObject jo1 = sjf4j.fromJson(json1, JsonObject.class);
         log.info("jo1={}", jo1);
         JsonPatch patch = sjf4j.fromJson(jsonPatch, JsonPatch.class);

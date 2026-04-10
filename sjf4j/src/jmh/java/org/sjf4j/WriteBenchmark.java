@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -28,6 +30,7 @@ import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeReference;
 
 import java.io.StringReader;
@@ -48,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 public class WriteBenchmark {
 
     public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.Main.main(new String[]{WriteBenchmark.class.getName()});
+        Main.main(new String[]{WriteBenchmark.class.getName()});
     }
 
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
@@ -88,7 +91,7 @@ public class WriteBenchmark {
     private static final UserHasAny USER_HAS_ANY;
     private static final UserJojo USER_JOJO;
     private static final Map<String, Object> MAP_NODE;
-    private static final jakarta.json.JsonObject JSONP_MAP_NODE;
+    private static final JsonObject JSONP_MAP_NODE;
 
     static {
         try {
@@ -107,7 +110,7 @@ public class WriteBenchmark {
         builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setFieldNamingStrategy(field -> {
-            String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
+            String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
         });
         return builder.create();
@@ -294,7 +297,7 @@ public class WriteBenchmark {
         public List<UserPojo> friends;
     }
 
-    static class UserJojo extends JsonObject {
+    static class UserJojo extends org.sjf4j.JsonObject {
         public String name;
         public List<UserJojo> friends;
     }

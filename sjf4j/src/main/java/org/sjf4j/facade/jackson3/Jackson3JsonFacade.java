@@ -2,7 +2,6 @@ package org.sjf4j.facade.jackson3;
 
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.node.Types;
 import tools.jackson.databind.AnnotationIntrospector;
 import tools.jackson.databind.DeserializationFeature;
@@ -10,6 +9,7 @@ import tools.jackson.databind.cfg.MapperBuilder;
 import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -25,7 +25,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     private final JsonMapper jsonMapper;
 
     public Jackson3JsonFacade() {
-        this(JsonMapper.builderWithJackson2Defaults().build(), null);
+        this(new JsonMapper(), null);
     }
 
     public Jackson3JsonFacade(JsonMapper jsonMapper) {
@@ -33,7 +33,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     }
 
     public Jackson3JsonFacade(StreamingMode streamingMode) {
-        this(JsonMapper.builderWithJackson2Defaults().build(), streamingMode);
+        this(new JsonMapper(), streamingMode);
     }
 
     /**
@@ -41,11 +41,13 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
      */
     public Jackson3JsonFacade(JsonMapper jsonMapper, StreamingMode streamingMode) {
         Objects.requireNonNull(jsonMapper, "jsonMapper");
-        this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
+        // Jackson defaults to module-backed read/write so AUTO matches the highest-fidelity path.
+        this.streamingMode = streamingMode == null || streamingMode == StreamingMode.AUTO ?
+                StreamingMode.PLUGIN_MODULE : streamingMode;
 
         MapperBuilder<?, ?> builder = jsonMapper.rebuild();
         builder.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        builder.addModule(new Jackson3Module.MySimpleModule());
+        builder.addModule(new Jackson3Module.TwoSimpleModule());
         AnnotationIntrospector existing = builder.annotationIntrospector();
         builder.annotationIntrospector(AnnotationIntrospectorPair.create(
                 new Jackson3Module.NodePropertyAnnotationIntrospector(), existing));
@@ -53,102 +55,71 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
         this.jsonMapper = (JsonMapper) builder.build();
     }
 
+    @Override
+    public StreamingMode streamingMode() {
+        return streamingMode;
+    }
+
 
     /// Reader
 
     @Override
-    public Jackson3Reader createReader(Reader input) throws java.io.IOException {
+    public Jackson3Reader createReader(Reader input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
-    public Jackson3Reader createReader(InputStream input) throws java.io.IOException {
+    public Jackson3Reader createReader(InputStream input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
-    public Jackson3Reader createReader(String input) throws java.io.IOException {
+    public Jackson3Reader createReader(String input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
-    public Jackson3Reader createReader(byte[] input) throws java.io.IOException {
+    public Jackson3Reader createReader(byte[] input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new Jackson3Reader(jsonMapper.createParser(input));
     }
 
     @Override
-    public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                return JsonFacade.super.readNode(input, type);
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
-                }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+    public Object readNodePlugin(Reader input, Type type) {
+        try {
+            return jsonMapper.readValue(input, jsonMapper.constructType(type));
+        } catch (Exception e) {
+            throw failedToRead(type, e);
         }
     }
 
     @Override
-    public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                return JsonFacade.super.readNode(input, type);
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type '" + type + "'", e);
-                }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+    public Object readNodePlugin(InputStream input, Type type) {
+        try {
+            return jsonMapper.readValue(input, jsonMapper.constructType(type));
+        } catch (Exception e) {
+            throw failedToRead(type, e);
         }
     }
 
     @Override
-    public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                return JsonFacade.super.readNode(input, type);
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type '" + type + "'", e);
-                }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+    public Object readNodePlugin(String input, Type type) {
+        try {
+            return jsonMapper.readValue(input, jsonMapper.constructType(type));
+        } catch (Exception e) {
+            throw failedToRead(type, e);
         }
     }
 
     @Override
-    public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                return JsonFacade.super.readNode(input, type);
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    return jsonMapper.readValue(input, jsonMapper.constructType(type));
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON byte[] into node type '" + type + "'", e);
-                }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+    public Object readNodePlugin(byte[] input, Type type) {
+        try {
+            return jsonMapper.readValue(input, jsonMapper.constructType(type));
+        } catch (Exception e) {
+            throw failedToRead(type, e);
         }
     }
 
@@ -156,92 +127,51 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     /// Writer
 
     @Override
-    public Jackson3Writer createWriter(Writer output) throws java.io.IOException {
+    public Jackson3Writer createWriter(Writer output) {
         Objects.requireNonNull(output, "output");
         return new Jackson3Writer(jsonMapper.createGenerator(output));
     }
 
     @Override
-    public Jackson3Writer createWriter(OutputStream output) throws java.io.IOException {
+    public Jackson3Writer createWriter(OutputStream output) {
         Objects.requireNonNull(output, "output");
         return new Jackson3Writer(jsonMapper.createGenerator(output));
     }
 
     @Override
-    public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                JsonFacade.super.writeNode(output, node);
-                return;
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    jsonMapper.writeValue(output, node);
-                    return;
-                } catch (Exception e) {
-                    throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON streaming", e);
-                }
-            default:
-                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
+    public void writeNodePlugin(Writer output, Object node) {
+        try {
+            jsonMapper.writeValue(output, node);
+        } catch (Exception e) {
+            throw failedToWrite(node, e);
         }
     }
 
     @Override
-    public void writeNode(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output");
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                JsonFacade.super.writeNode(output, node);
-                return;
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    jsonMapper.writeValue(output, node);
-                    return;
-                } catch (Exception e) {
-                    throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON streaming", e);
-                }
-            default:
-                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
+    public void writeNodePlugin(OutputStream output, Object node) {
+        try {
+            jsonMapper.writeValue(output, node);
+        } catch (Exception e) {
+            throw failedToWrite(node, e);
         }
     }
 
     @Override
-    public String writeNodeAsString(Object node) {
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                return JsonFacade.super.writeNodeAsString(node);
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    return jsonMapper.writeValueAsString(node);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON string", e);
-                }
-            default:
-                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
+    public String writeNodeAsStringPlugin(Object node) {
+        try {
+            return jsonMapper.writeValueAsString(node);
+        } catch (Exception e) {
+            throw failedToWrite(node, e);
         }
     }
 
     @Override
-    public byte[] writeNodeAsBytes(Object node) {
-        switch (runtimeMode()) {
-            case SHARED_IO:
-                return JsonFacade.super.writeNodeAsBytes(node);
-            case PLUGIN_MODULE:
-            case AUTO:
-                try {
-                    return jsonMapper.writeValueAsBytes(node);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to write node type '" + Types.name(node) + "' to JSON bytes", e);
-                }
-            default:
-                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
+    public byte[] writeNodeAsBytesPlugin(Object node) {
+        try {
+            return jsonMapper.writeValueAsBytes(node);
+        } catch (Exception e) {
+            throw failedToWrite(node, e);
         }
     }
 
-    private StreamingMode runtimeMode() {
-        return StreamingFacade.resolveRuntimeMode(streamingMode, true, false);
-    }
 }

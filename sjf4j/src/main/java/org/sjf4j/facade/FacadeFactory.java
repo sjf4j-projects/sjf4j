@@ -12,26 +12,23 @@ import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.facade.simple.SimplePropertiesFacade;
 import org.sjf4j.facade.snake.SnakeYamlFacade;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.LoaderOptions;
 
 
 /**
  * Factory for facade implementations (JSON/YAML/properties).
  */
-public class FacadeFactory {
+public final class FacadeFactory {
 
-    private static final NodeFacade DEFAULT_NODE_FACADE = new SimpleNodeFacade();
-
-    /**
-     * Flag indicating whether Jackson2 library is present in the classpath.
-     */
-    private static final boolean JACKSON2_PRESENT;
 
     /**
      * Flag indicating whether Jackson3 library is present in the classpath.
      */
     private static final boolean JACKSON3_PRESENT;
+
+    /**
+     * Flag indicating whether Jackson2 library is present in the classpath.
+     */
+    private static final boolean JACKSON2_PRESENT;
 
     /**
      * Flag indicating whether Gson library is present in the classpath.
@@ -61,7 +58,7 @@ public class FacadeFactory {
 
         boolean jackson3Present = false;
         try {
-            loader.loadClass("tools.jackson.databind.ObjectMapper");
+            loader.loadClass("tools.jackson.databind.json.JsonMapper");
             jackson3Present = true;
         } catch (Throwable ignored) {}
         JACKSON3_PRESENT = jackson3Present;
@@ -101,12 +98,13 @@ public class FacadeFactory {
             snakePresent = true;
         } catch (Throwable ignored) {}
         SNAKE_PRESENT = snakePresent;
+
     }
 
     /**
      * Returns default JSON facade by priority: Jackson3 > Jackson2 > Gson > Fastjson2 > JSON-P > Simple.
      */
-    public static JsonFacade<?, ?> getDefaultJsonFacade() {
+    public static JsonFacade<?, ?> createJsonFacade() {
         if (JACKSON3_PRESENT) {
             return new Jackson3JsonFacade();
         } else if (JACKSON2_PRESENT) {
@@ -118,8 +116,8 @@ public class FacadeFactory {
         } else if (JSONP_PRESENT) {
             return new JsonpJsonFacade();
         } else {
-            System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson2, Jackson3, Gson, Fastjson2, JSON-P).");
-            System.err.println("SJF4J: Falling back to build-in slower JSON implementation.");
+            System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson3, Jackson2, Gson, " +
+                    "Fastjson2, JSON-P), falling back to build-in slower JSON implementation.");
             return new SimpleJsonFacade();
         }
     }
@@ -128,44 +126,30 @@ public class FacadeFactory {
     /**
      * Returns default YAML facade (SnakeYAML).
      */
-    public static YamlFacade<?, ?> getDefaultYamlFacade() {
+    public static YamlFacade<?, ?> createYamlFacade() {
         if (SNAKE_PRESENT) {
-            return createSnakeFacade();
+            return new SnakeYamlFacade();
         } else {
             throw new JsonException("No supported YAML library found. Please include one of SnakeYaml / ...");
         }
-    }
-
-    /**
-     * Creates SnakeYAML facade with default options.
-     */
-    public static YamlFacade<?, ?> createSnakeFacade() {
-        return new SnakeYamlFacade();
-    }
-
-    /**
-     * Creates SnakeYAML facade with custom loader/dumper options.
-     */
-    public static YamlFacade<?, ?> createSnakeFacade(
-            LoaderOptions loaderOptions,
-            DumperOptions dumperOptions) {
-        return new SnakeYamlFacade(loaderOptions, dumperOptions);
     }
 
 
     /**
      * Returns default properties facade.
      */
-    public static PropertiesFacade getDefaultPropertiesFacade() {
+    public static PropertiesFacade createPropertiesFacade() {
         return new SimplePropertiesFacade();
     }
 
-    /**
-     * Returns default node facade.
-     */
-    public static NodeFacade getDefaultNodeFacade() {
-        return DEFAULT_NODE_FACADE;
+    public static NodeFacade createNodeFacade() {
+        return new SimpleNodeFacade();
     }
 
+
+    private static final NodeFacade DEFAULT_NODE_FACADE = new SimpleNodeFacade();
+    public static NodeFacade defaultNodeFacade() {
+        return DEFAULT_NODE_FACADE;
+    }
 
 }

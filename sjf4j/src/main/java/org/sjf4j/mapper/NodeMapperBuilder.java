@@ -151,7 +151,7 @@ public final class NodeMapperBuilder<S, T> {
 
     private NodeFacade _buildFacade() {
         if (nestedMappers.isEmpty()) {
-            return FacadeFactory.getDefaultNodeFacade();
+            return FacadeFactory.defaultNodeFacade();
         }
         NodeConverter<?, ?>[] converters = new NodeConverter[nestedMappers.size()];
         for (int i = 0; i < nestedMappers.size(); i++) {

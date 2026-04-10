@@ -6,11 +6,8 @@ import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
-import org.sjf4j.mapper.NodeMapperBuilder;
-import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.Types;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,15 +35,15 @@ public final class Sjf4j {
     private final PropertiesFacade propertiesFacade;
     private final NodeFacade nodeFacade;
 
+    public Sjf4j() {
+        this(new Builder());
+    }
+
     private Sjf4j(Builder builder) {
-        this.nodeFacade = builder.nodeFacade != null
-                ? builder.nodeFacade
-                : FacadeFactory.getDefaultNodeFacade();
-        this.jsonFacade = builder.jsonFacade != null ? builder.jsonFacade : FacadeFactory.getDefaultJsonFacade();
-        this.yamlFacade = builder.yamlFacade != null ? builder.yamlFacade : FacadeFactory.getDefaultYamlFacade();
-        this.propertiesFacade = builder.propertiesFacade != null
-                ? builder.propertiesFacade
-                : FacadeFactory.getDefaultPropertiesFacade();
+        this.nodeFacade = builder.nodeFacade == null ? FacadeFactory.defaultNodeFacade() : builder.nodeFacade;
+        this.jsonFacade = builder.jsonFacade == null ? FacadeFactory.createJsonFacade() : builder.jsonFacade;
+        this.yamlFacade = builder.yamlFacade == null ? FacadeFactory.createYamlFacade() : builder.yamlFacade;
+        this.propertiesFacade = builder.propertiesFacade == null ? FacadeFactory.createPropertiesFacade() : builder.propertiesFacade;
     }
 
     /**
@@ -90,14 +87,11 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, Class<T> clazz) {
-        Objects.requireNonNull(input, "input");
         return (T) jsonFacade.readNode(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
@@ -107,14 +101,11 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, Class<T> clazz) {
-        Objects.requireNonNull(input, "input");
         return (T) jsonFacade.readNode(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
@@ -124,14 +115,11 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, Class<T> clazz) {
-        Objects.requireNonNull(input, "input");
         return (T) jsonFacade.readNode(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
@@ -141,14 +129,11 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, Class<T> clazz) {
-        Objects.requireNonNull(input, "input");
         return (T) jsonFacade.readNode(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
@@ -157,12 +142,10 @@ public final class Sjf4j {
     }
 
     public void toJson(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
         jsonFacade.writeNode(output, node);
     }
 
     public void toJson(OutputStream output, Object node) {
-        Objects.requireNonNull(output, "output");
         jsonFacade.writeNode(output, node);
     }
 
@@ -178,14 +161,11 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, Class<T> clazz) {
-        Objects.requireNonNull(input, "input");
         return (T) yamlFacade.readNode(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
         return (T) yamlFacade.readNode(input, type.getType());
     }
 
@@ -195,14 +175,11 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, Class<T> clazz) {
-        Objects.requireNonNull(input, "input");
         return (T) yamlFacade.readNode(input, clazz);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, TypeReference<T> type) {
-        Objects.requireNonNull(input, "input");
-        Objects.requireNonNull(type, "type");
         return (T) yamlFacade.readNode(input, type.getType());
     }
 
@@ -211,7 +188,6 @@ public final class Sjf4j {
     }
 
     public void toYaml(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
         yamlFacade.writeNode(output, node);
     }
 
@@ -232,7 +208,6 @@ public final class Sjf4j {
 
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, TypeReference<T> type) {
-        Objects.requireNonNull(type, "type");
         return (T) nodeFacade.readNode(node, type.getType(), true);
     }
 
@@ -245,46 +220,19 @@ public final class Sjf4j {
         return nodeFacade.writeNode(node);
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T toPojo(Object node, Class<T> clazz) {
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        if (ti.pojoInfo == null && ti.anyOfInfo == null) {
-            throw new org.sjf4j.exception.JsonException("Class '" + clazz.getName() + "' is not a POJO");
-        }
-        return (T) nodeFacade.readNode(node, clazz, false);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T toPojo(Object node, TypeReference<T> type) {
-        Objects.requireNonNull(type, "type");
-        Class<?> rawBox = Types.rawBox(type.getType());
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawBox);
-        if (ti.pojoInfo == null && ti.anyOfInfo == null) {
-            throw new org.sjf4j.exception.JsonException("Type '" + type.getType() + "' is not a POJO");
-        }
-        return (T) nodeFacade.readNode(node, type.getType(), false);
-    }
-
-    public <S, T> NodeMapperBuilder<S, T> mapperBuilder(Class<S> sourceType, Class<T> targetType) {
-        return new NodeMapperBuilder<>(sourceType, targetType);
-    }
 
     /// Properties
 
     public Object fromProperties(Properties props) {
-        Objects.requireNonNull(props, "props");
         return propertiesFacade.readNode(props);
     }
 
     public <T> T fromProperties(Properties props, Class<T> clazz) {
-        Objects.requireNonNull(props, "props");
         JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, clazz);
     }
 
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
-        Objects.requireNonNull(props, "props");
-        Objects.requireNonNull(type, "type");
         JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, type);
     }
@@ -298,6 +246,9 @@ public final class Sjf4j {
     public String inspect() {
         return Nodes.inspect(this);
     }
+
+
+    /// Builder
 
     public static final class Builder {
         private JsonFacade<?, ?> jsonFacade;

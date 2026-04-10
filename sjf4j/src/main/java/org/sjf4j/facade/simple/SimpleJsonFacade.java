@@ -11,6 +11,11 @@ import java.io.Writer;
  */
 public class SimpleJsonFacade implements JsonFacade<SimpleJsonReader, SimpleJsonWriter> {
 
+    @Override
+    public StreamingMode streamingMode() {
+        return StreamingMode.SHARED_IO;
+    }
+
     /**
      * Creates a streaming reader from java.io.Reader.
      */

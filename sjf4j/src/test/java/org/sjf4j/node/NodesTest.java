@@ -38,6 +38,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -225,7 +226,7 @@ public class NodesTest {
 
         assertEquals(Arrays.asList("a", "b"), ids);
         assertNull(Nodes.toList(null, node -> node));
-        assertThrows(NullPointerException.class, () -> Nodes.toList(hits, (java.util.function.Function<Object, Object>) null));
+        assertThrows(NullPointerException.class, () -> Nodes.toList(hits, (Function<Object, Object>) null));
         assertThrows(JsonException.class, () -> Nodes.toList("x", node -> node));
     }
 

@@ -23,10 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved JSONPath/JSON Pointer handling so numeric pointer tokens preserve object-key semantics, filter strings unescape consistently, regex flags parse more strictly, and `&&` / `||` short-circuit during filter evaluation.
 
 ### Changed
+- Breaking: changed `Sjf4j` from a static facade style to an instance-oriented entry point. Migrate calls like `Sjf4j.fromJson(...)` to `Sjf4j.global().fromJson(...)` for process-wide defaults, or create an isolated instance with `Sjf4j.builder().build()`.
 - Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
 - Changed `NodeRegistry` POJO routing flags from framework-centric reader/writer naming to `requiresPojoReader` / `requiresPojoWriter`, and removed `PojoInfo.newCreationSession()` in favor of direct `PojoCreationSession` construction.
 - Changed POJO metadata analysis to read naming and field-access strategy only from `@NodeBinding`; `@NodeNaming` has been removed.
 - Changed JSON Patch and RFC 7386 root-application APIs so `JsonPatch.apply(...)`, `PatchOperation.apply(...)`, `Patches.mergeRfc7386(...)`, and the `JsonContainer` wrappers return the possibly replaced root document.
+
+### Removed
+- Breaking: removed `Sjf4j.toPojo(...)` and `Sjf4j.mapperBuilder(...)` from the `Sjf4j` entry point; use `fromNode(...)` and `NodeMapperBuilder` directly instead.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.

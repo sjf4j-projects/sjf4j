@@ -341,7 +341,7 @@ public interface FormatValidator {
             try {
                 // java.net.URI only support ASCII, so transform from Unicode to ASCII
                 // RFC 3987: Unicode，Punycode + percent-encode
-                String ascii = java.net.IDN.toASCII(value);
+                String ascii = IDN.toASCII(value);
                 new URI(ascii);
                 return true;
             } catch (Exception e) {

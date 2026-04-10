@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Warmup(iterations = 5, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 8, time = 300, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 2)
 @Threads(1)
@@ -40,6 +40,7 @@ public class JsonPathCompareBenchmark {
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(new String[]{JsonPathCompareBenchmark.class.getName()});
+//        org.openjdk.jmh.Main.main(new String[]{"JsonPathCompareBenchmark.compile_"});
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

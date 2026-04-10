@@ -2,6 +2,7 @@ package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,7 +16,7 @@ public class PathStackTest {
     public void pushAndMaterialize() {
         PathStack stack = new PathStack();
         stack.pushName(Map.class, "user");
-        stack.pushIndex(java.util.List.class, 2);
+        stack.pushIndex(List.class, 2);
         stack.pushName(Map.class, "name");
 
         PathSegment ps = stack.toPathSegment();
@@ -27,7 +28,7 @@ public class PathStackTest {
     public void popAndClear() {
         PathStack stack = new PathStack();
         stack.pushName(Map.class, "a");
-        stack.pushIndex(java.util.List.class, 0);
+        stack.pushIndex(List.class, 0);
         assertEquals(2, stack.size());
 
         stack.pop();
@@ -43,7 +44,7 @@ public class PathStackTest {
     public void growCapacity() {
         PathStack stack = new PathStack(2);
         for (int i = 0; i < 32; i++) {
-            stack.pushIndex(java.util.List.class, i);
+            stack.pushIndex(List.class, i);
         }
 
         assertFalse(stack.isEmpty());

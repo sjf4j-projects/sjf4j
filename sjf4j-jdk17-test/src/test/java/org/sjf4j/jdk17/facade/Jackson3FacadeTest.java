@@ -22,7 +22,13 @@ import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
-import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.TypeReference;
+import org.sjf4j.exception.JsonException;
+import tools.jackson.databind.PropertyName;
+import tools.jackson.databind.cfg.MapperConfig;
+import tools.jackson.databind.introspect.Annotated;
+import tools.jackson.databind.introspect.AnnotatedField;
+import tools.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.BooleanNode;
 import tools.jackson.databind.node.JsonNodeFactory;
@@ -66,28 +72,26 @@ class Jackson3FacadeTest {
         String value();
     }
 
-    static class LegacyNameIntrospector extends tools.jackson.databind.introspect.JacksonAnnotationIntrospector {
+    static class LegacyNameIntrospector extends JacksonAnnotationIntrospector {
         @Override
-        public tools.jackson.databind.PropertyName findNameForSerialization(tools.jackson.databind.cfg.MapperConfig<?> config,
-                                                                           tools.jackson.databind.introspect.Annotated ann) {
-            if (ann instanceof tools.jackson.databind.introspect.AnnotatedField) {
-                LegacyName legacyName = ((tools.jackson.databind.introspect.AnnotatedField) ann)
+        public PropertyName findNameForSerialization(MapperConfig<?> config, Annotated ann) {
+            if (ann instanceof AnnotatedField) {
+                LegacyName legacyName = ((AnnotatedField) ann)
                         .getAnnotated().getAnnotation(LegacyName.class);
                 if (legacyName != null) {
-                    return tools.jackson.databind.PropertyName.construct(legacyName.value());
+                    return PropertyName.construct(legacyName.value());
                 }
             }
             return super.findNameForSerialization(config, ann);
         }
 
         @Override
-        public tools.jackson.databind.PropertyName findNameForDeserialization(tools.jackson.databind.cfg.MapperConfig<?> config,
-                                                                              tools.jackson.databind.introspect.Annotated ann) {
-            if (ann instanceof tools.jackson.databind.introspect.AnnotatedField) {
-                LegacyName legacyName = ((tools.jackson.databind.introspect.AnnotatedField) ann)
+        public PropertyName findNameForDeserialization(MapperConfig<?> config, Annotated ann) {
+            if (ann instanceof AnnotatedField) {
+                LegacyName legacyName = ((AnnotatedField) ann)
                         .getAnnotated().getAnnotation(LegacyName.class);
                 if (legacyName != null) {
-                    return tools.jackson.databind.PropertyName.construct(legacyName.value());
+                    return PropertyName.construct(legacyName.value());
                 }
             }
             return super.findNameForDeserialization(config, ann);
@@ -264,14 +268,14 @@ class Jackson3FacadeTest {
     private static void assertNodeValue(Jackson3JsonFacade facade) {
         @SuppressWarnings("unchecked")
         List<Ops> list = (List<Ops>) facade.readNode("[\"2024-10-01\",\"2025-12-18\"]",
-                new org.sjf4j.node.TypeReference<List<Ops>>() {}.getType());
+                new TypeReference<List<Ops>>() {}.getType());
         assertEquals(2, list.size());
 
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, list);
         @SuppressWarnings("unchecked")
         List<Ops> list2 = (List<Ops>) facade.readNode(sw.toString(),
-                new org.sjf4j.node.TypeReference<List<Ops>>() {}.getType());
+                new TypeReference<List<Ops>>() {}.getType());
         assertEquals(2, list2.size());
     }
 
@@ -427,9 +431,9 @@ class Jackson3FacadeTest {
     void testExclusiveIoUnsupportedAtRuntime() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
                 StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        org.sjf4j.exception.JsonException ex = assertThrows(org.sjf4j.exception.JsonException.class,
+        JsonException ex = assertThrows(JsonException.class,
                 () -> facade.readNode("{}", Object.class));
-        assertTrue(ex.getMessage().contains("not supported"));
+        assertTrue(ex.getMessage().contains("Unsupported"));
     }
 
     @Test
@@ -467,7 +471,7 @@ class Jackson3FacadeTest {
 
     @Test
     void testDefaultFacadePrefersJackson3() {
-        assertTrue(FacadeFactory.getDefaultJsonFacade() instanceof Jackson3JsonFacade);
+        assertTrue(FacadeFactory.createJsonFacade() instanceof Jackson3JsonFacade);
     }
 
     @Test

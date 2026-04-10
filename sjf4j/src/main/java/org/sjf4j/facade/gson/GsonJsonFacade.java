@@ -2,20 +2,15 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.StreamingIO;
-import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.node.Types;
+import org.sjf4j.node.ReflectUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +21,6 @@ import java.util.Objects;
  */
 public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
     private final StreamingMode streamingMode;
-
     private final Gson gson;
 
     public GsonJsonFacade() {
@@ -46,22 +40,28 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
      */
     public GsonJsonFacade(GsonBuilder gsonBuilder, StreamingMode streamingMode) {
         Objects.requireNonNull(gsonBuilder, "gsonBuilder");
-        this.streamingMode = streamingMode == null ? StreamingMode.AUTO : streamingMode;
-        if (this.streamingMode == StreamingMode.EXCLUSIVE_IO) {
-            throw new JsonException("Streaming mode 'EXCLUSIVE_IO' is not supported by Gson facade");
+        // Gson has no separate exclusive streaming implementation, so AUTO resolves to plugin-backed binding.
+        this.streamingMode = streamingMode == null || streamingMode == StreamingMode.AUTO ?
+                StreamingMode.PLUGIN_MODULE : streamingMode;
+
+        if (this.streamingMode == StreamingMode.PLUGIN_MODULE) {
+            gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
         }
 
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
-        if (usesPluginModule()) {
-            gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
-        }
         gsonBuilder.setFieldNamingStrategy(field -> {
-            String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
+            String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
         });
         this.gson = gsonBuilder.create();
     }
+
+    @Override
+    public StreamingMode streamingMode() {
+        return streamingMode;
+    }
+
 
     /// Read
 
@@ -74,129 +74,24 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         return new GsonReader(gson.newJsonReader(input));
     }
 
-    /**
-     * Reads JSON from reader into target type.
-     */
     @Override
-    public Object readNode(Reader input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO: {
-                return JsonFacade.super.readNode(input, type);
-            }
-            case EXCLUSIVE_IO:
-            {
-                try {
-                    JsonReader reader = gson.newJsonReader(input);
-                    return StreamingIO.readNode(new GsonReader(reader), type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type " + type, e);
-                }
-            }
-            case PLUGIN_MODULE: {
-                try {
-                    return gson.fromJson(input, type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON streaming into node type " + type, e);
-                }
-            }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+    public Object readNodePlugin(Reader input, Type type) {
+        try {
+            return gson.fromJson(input, type);
+        } catch (Exception e) {
+            throw failedToRead(type, e);
         }
     }
 
-    /**
-     * Reads JSON from input stream into target type.
-     */
     @Override
-    public Object readNode(InputStream input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO: {
-                return JsonFacade.super.readNode(input, type);
-            }
-            case EXCLUSIVE_IO:
-            {
-                try {
-                    JsonReader reader = gson.newJsonReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-                    return StreamingIO.readNode(new GsonReader(reader), type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON stream into node type " + type, e);
-                }
-            }
-            case PLUGIN_MODULE: {
-                try {
-                    return gson.fromJson(new InputStreamReader(input, StandardCharsets.UTF_8), type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON stream into node type " + type, e);
-                }
-            }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
+    public Object readNodePlugin(String input, Type type) {
+        try {
+            return gson.fromJson(input, type);
+        } catch (Exception e) {
+            throw failedToRead(type, e);
         }
     }
 
-    /**
-     * Reads JSON from string into target type.
-     */
-    @Override
-    public Object readNode(String input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO: {
-                return JsonFacade.super.readNode(input, type);
-            }
-            case EXCLUSIVE_IO:
-            {
-                try (JsonReader reader = gson.newJsonReader(new StringReader(input))) {
-                    return StreamingIO.readNode(new GsonReader(reader), type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type " + type, e);
-                }
-            }
-            case PLUGIN_MODULE: {
-                try {
-                    return gson.fromJson(input, type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON string into node type " + type, e);
-                }
-            }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
-        }
-    }
-
-    /**
-     * Reads JSON from bytes into target type.
-     */
-    @Override
-    public Object readNode(byte[] input, Type type) {
-        Objects.requireNonNull(input, "input");
-        switch (runtimeMode()) {
-            case SHARED_IO: {
-                return JsonFacade.super.readNode(input, type);
-            }
-            case EXCLUSIVE_IO:
-            {
-                try (JsonReader reader = gson.newJsonReader(new InputStreamReader(
-                        new ByteArrayInputStream(input), StandardCharsets.UTF_8))) {
-                    return StreamingIO.readNode(new GsonReader(reader), type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON byte[] into node type " + type, e);
-                }
-            }
-            case PLUGIN_MODULE: {
-                try {
-                    return gson.fromJson(new InputStreamReader(
-                            new ByteArrayInputStream(input), StandardCharsets.UTF_8), type);
-                } catch (Exception e) {
-                    throw new JsonException("Failed to read JSON byte[] into node type " + type, e);
-                }
-            }
-            default:
-                throw new JsonException("Unsupported read mode '" + streamingMode + "'");
-        }
-    }
 
     /// Write
 
@@ -209,45 +104,13 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
         return new GsonWriter(gson.newJsonWriter(output));
     }
 
-    /**
-     * Writes node as JSON to writer.
-     */
     @Override
-    public void writeNode(Writer output, Object node) {
-        Objects.requireNonNull(output, "output");
-        switch (runtimeMode()) {
-            case SHARED_IO: {
-                JsonFacade.super.writeNode(output, node);
-                break;
-            }
-            case EXCLUSIVE_IO:
-            {
-                try {
-                    JsonWriter writer = gson.newJsonWriter(output);
-                    StreamingIO.writeNode(new GsonWriter(writer), node);
-                    writer.flush();
-                } catch (IOException e) {
-                    throw new JsonException("Failed to write node type " + Types.name(node) + " to JSON streaming", e);
-                }
-                break;
-            }
-            case PLUGIN_MODULE: {
-                gson.toJson(node, output);
-                break;
-            }
-            default:
-                throw new JsonException("Unsupported write mode '" + streamingMode + "'");
+    public void writeNodePlugin(Writer output, Object node) {
+        try {
+            gson.toJson(node, output);
+        } catch (Exception e) {
+            throw failedToWrite(node, e);
         }
     }
-
-    private boolean usesPluginModule() {
-        return streamingMode == StreamingMode.AUTO || streamingMode == StreamingMode.PLUGIN_MODULE;
-    }
-
-    private StreamingMode runtimeMode() {
-        return StreamingFacade.resolveRuntimeMode(streamingMode, true, false);
-    }
-
-
 
 }

@@ -322,7 +322,7 @@ class JsonArrayTest {
 
     public void testForEach() {
         JsonArray ja = JsonArray.of("a", "b", "c");
-        List<Object> collected = new java.util.ArrayList<>();
+        List<Object> collected = new ArrayList<>();
         
         ja.forEach(e -> collected.add(e));
         assertEquals(3, collected.size());
@@ -331,7 +331,7 @@ class JsonArrayTest {
         assertEquals("c", collected.get(2));
         
         // test BiConsumer variant
-        List<String> indices = new java.util.ArrayList<>();
+        List<String> indices = new ArrayList<>();
         ja.forEach((idx, val) -> {
             indices.add(idx + ":" + val);
         });

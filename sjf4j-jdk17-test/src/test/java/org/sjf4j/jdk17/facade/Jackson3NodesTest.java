@@ -6,6 +6,7 @@ import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.facade.jackson3.Jackson3Nodes;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.BinaryNode;
@@ -52,7 +53,7 @@ class Jackson3NodesTest {
         assertEquals(NodeKind.VALUE_STRING_FACADE, Jackson3Nodes.kindOf(StringNode.class));
         assertEquals(NodeKind.VALUE_NUMBER_FACADE, Jackson3Nodes.kindOf(JsonNodeFactory.instance.numberNode(1).getClass()));
         assertEquals(NodeKind.VALUE_BOOLEAN_FACADE, Jackson3Nodes.kindOf(BooleanNode.class));
-        assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(tools.jackson.databind.JsonNode.class));
+        assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(JsonNode.class));
         assertEquals(NodeKind.UNKNOWN, Jackson3Nodes.kindOf(new BinaryNode(new byte[]{1})));
         assertThrows(JsonException.class, () -> Jackson3Nodes.kindOf(new POJONode("x")));
         assertThrows(JsonException.class, () -> Jackson3Nodes.kindOf("x"));

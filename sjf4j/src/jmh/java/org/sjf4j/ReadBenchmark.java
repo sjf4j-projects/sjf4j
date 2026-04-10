@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -31,10 +32,12 @@ import org.sjf4j.facade.gson.GsonModule;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeReference;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +54,7 @@ import java.util.concurrent.TimeUnit;
 public class ReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.Main.main(new String[]{ReadBenchmark.class.getName()});
+        Main.main(new String[]{ReadBenchmark.class.getName()});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
@@ -102,7 +105,7 @@ public class ReadBenchmark {
             "  {\"name\": \"David\", \"friends\": []}\n" +
             "]\n";
 
-    private static final java.lang.reflect.Type JOJO_USER_LIST_TYPE =
+    private static final Type JOJO_USER_LIST_TYPE =
             new TypeReference<List<UserJojo>>() {}.getType();
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
@@ -120,7 +123,7 @@ public class ReadBenchmark {
         builder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
         builder.setFieldNamingStrategy(field -> {
-            String name = org.sjf4j.node.ReflectUtil.getExplicitName(field);
+            String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
         });
         return builder.create();
@@ -148,7 +151,7 @@ public class ReadBenchmark {
     }
 
     @State(Scope.Thread)
-    public static class GsonFacadeState {
+    public static class FacadeState2 {
         @Param({"SHARED_IO", "PLUGIN_MODULE"})
         public String streamingMode;
 
@@ -206,17 +209,17 @@ public class ReadBenchmark {
     }
 
     @Benchmark
-    public Object json_gson_pojo_facade(GsonFacadeState state) {
+    public Object json_gson_pojo_facade(FacadeState2 state) {
         return state.gsonFacade.readNode(JSON_DATA2, UserPojo.class);
     }
 
     @Benchmark
-    public Object json_gson_jojo_facade(GsonFacadeState state) {
+    public Object json_gson_jojo_facade(FacadeState2 state) {
         return state.gsonFacade.readNode(JSON_DATA2, UserJojo.class);
     }
 
     @Benchmark
-    public Object json_gson_map_facade(GsonFacadeState state) {
+    public Object json_gson_map_facade(FacadeState2 state) {
         return state.gsonFacade.readNode(JSON_DATA2, Map.class);
     }
 

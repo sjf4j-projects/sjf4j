@@ -10,9 +10,11 @@ import org.sjf4j.node.Nodes;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 class JsonpFacadeTest {
@@ -35,7 +37,7 @@ class JsonpFacadeTest {
                 StreamingFacade.StreamingMode.SHARED_IO,
                 StreamingFacade.StreamingMode.AUTO
         }) {
-            JsonpJsonFacade facade = new JsonpJsonFacade(mode);
+            JsonpJsonFacade facade = new JsonpJsonFacade();
             Book book = (Book) facade.readNode(new StringReader(json), Book.class);
             String out = facade.writeNodeAsString(book);
             assertEquals(json, out);
@@ -76,7 +78,7 @@ class JsonpFacadeTest {
 
     @Test
     void testWriteNodeToWriter() {
-        JsonpJsonFacade facade = new JsonpJsonFacade(StreamingFacade.StreamingMode.AUTO);
+        JsonpJsonFacade facade = new JsonpJsonFacade();
         Book book = new Book();
         book.id = 1;
         book.name = "n";
@@ -86,14 +88,15 @@ class JsonpFacadeTest {
     }
 
     @Test
-    void testPluginModuleUnsupported() {
-        JsonpJsonFacade facade = new JsonpJsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
-        assertThrows(org.sjf4j.exception.JsonException.class, () -> facade.readNode("{}", Object.class));
+    void testDefaultModeIsSharedIo() {
+        JsonpJsonFacade facade = new JsonpJsonFacade();
+        assertEquals(StreamingFacade.StreamingMode.SHARED_IO, facade.streamingMode());
     }
 
     @Test
-    void testExclusiveIoUnsupported() {
-        JsonpJsonFacade facade = new JsonpJsonFacade(StreamingFacade.StreamingMode.EXCLUSIVE_IO);
-        assertThrows(org.sjf4j.exception.JsonException.class, () -> facade.readNode("{}", Object.class));
+    void testDefaultSharedIoReadsRawObject() {
+        JsonpJsonFacade facade = new JsonpJsonFacade();
+        Object node = facade.readNode("{}", Object.class);
+        assertInstanceOf(Map.class, node);
     }
 }

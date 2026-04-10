@@ -12,6 +12,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -43,8 +45,8 @@ class ReflectUtilTest {
 
     @Test
     void isPojoCandidate_filtersJdkPackage() {
-        assertFalse(ReflectUtil.isPojoCandidate(java.time.Instant.class));
-        assertFalse(ReflectUtil.isPojoCandidate(java.util.ArrayList.class));
+        assertFalse(ReflectUtil.isPojoCandidate(Instant.class));
+        assertFalse(ReflectUtil.isPojoCandidate(ArrayList.class));
     }
 
     @Test

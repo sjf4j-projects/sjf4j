@@ -13,6 +13,7 @@ import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 
 import java.io.StringReader;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -442,7 +443,7 @@ class JsonObjectTest {
         map1.put("int3", 99);
         map1.put("double4", 99.999);
 
-        List<String> list5 = new java.util.ArrayList<>();
+        List<String> list5 = new ArrayList<>();
         list5.add("l1");
         list5.add("l2");
         list5.add("l3");
@@ -639,7 +640,7 @@ class JsonObjectTest {
         });
         
         // test keySet ordering
-        List<String> keys = new java.util.ArrayList<>(jo.keySet());
+        List<String> keys = new ArrayList<>(jo.keySet());
         assertEquals("a", keys.get(0));
         assertEquals("b", keys.get(1));
         assertEquals("c", keys.get(2));

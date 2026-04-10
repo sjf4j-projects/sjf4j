@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 import org.sjf4j.patch.JsonPatch;
 
@@ -429,9 +430,9 @@ class CoverageApiTest {
             visits.incrementAndGet();
             return true;
         });
-        root.walk(org.sjf4j.node.Nodes.WalkTarget.VALUE, (path, node) -> true);
-        root.walk(org.sjf4j.node.Nodes.WalkTarget.CONTAINER, org.sjf4j.node.Nodes.WalkOrder.TOP_DOWN, (path, node) -> true);
-        root.walk(org.sjf4j.node.Nodes.WalkTarget.VALUE, org.sjf4j.node.Nodes.WalkOrder.BOTTOM_UP, 3, (path, node) -> true);
+        root.walk(Nodes.WalkTarget.VALUE, (path, node) -> true);
+        root.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, (path, node) -> true);
+        root.walk(Nodes.WalkTarget.VALUE, Nodes.WalkOrder.BOTTOM_UP, 3, (path, node) -> true);
         assertTrue(visits.get() > 0);
 
         root.apply(sjf4j.fromJson("[{\"op\":\"add\",\"path\":\"/patched\",\"value\":1}]", JsonPatch.class));

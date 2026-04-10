@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.annotation.node.NodeBinding;
@@ -287,7 +288,7 @@ class ReflectUtilCoverageTest {
         assertEquals(AccessStrategy.FIELD_BASED, ReflectUtil.getDeclaredAccessStrategy(FieldBindingPojo.class));
         assertEquals(AccessStrategy.BEAN_BASED, ReflectUtil.getDeclaredAccessStrategy(null));
 
-        assertFalse(ReflectUtil.isPojoCandidate(org.sjf4j.JsonArray.class));
+        assertFalse(ReflectUtil.isPojoCandidate(JsonArray.class));
         assertFalse(ReflectUtil.isPojoCandidate(JsonObject.class));
         assertFalse(ReflectUtil.isPojoCandidate(SampleEnum.class));
         assertFalse(ReflectUtil.isPojoCandidate(SampleInterface.class));

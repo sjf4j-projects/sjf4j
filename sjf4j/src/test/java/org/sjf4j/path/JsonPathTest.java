@@ -487,7 +487,7 @@ public class JsonPathTest {
         assertEquals("baby", holder.babyArrayField[2].name);
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.setField[0].name").ensurePut(holder, "set"));
-        assertTrue(holder.setField instanceof java.util.LinkedHashSet);
+        assertTrue(holder.setField instanceof LinkedHashSet);
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.unsupportedObjectField.name").ensurePut(holder, "x"));
         assertThrows(JsonException.class, () -> JsonPath.compile("$.unsupportedArrayField[0]").ensurePut(holder, "x"));

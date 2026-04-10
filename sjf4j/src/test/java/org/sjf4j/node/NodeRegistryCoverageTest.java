@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.AnyOf;
@@ -15,6 +16,7 @@ import org.sjf4j.exception.JsonException;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -278,7 +280,7 @@ class NodeRegistryCoverageTest {
     interface TypedAnyOf {}
 
     static class TypedObjectSubtype extends JsonObject implements TypedAnyOf {}
-    static class ArraySubtype extends org.sjf4j.JsonArray implements TypedAnyOf {}
+    static class ArraySubtype extends JsonArray implements TypedAnyOf {}
 
     @Test
     void testCreatorInfoPathsAndPrimitiveDefaults() {
@@ -518,7 +520,7 @@ class NodeRegistryCoverageTest {
                 1,
                 new String[]{"plain"},
                 new Class<?>[]{String.class},
-                new java.lang.reflect.Type[]{String.class}
+                new Type[]{String.class}
         );
         assertEquals(1, recordInfo.compCount);
         assertEquals("plain", recordInfo.compNames[0]);
