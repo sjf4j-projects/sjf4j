@@ -75,6 +75,10 @@ public interface FilterExpr {
             this.path = JsonPath.compile(path);
         }
 
+        public PathExpr(JsonPath path) {
+            this.path = Objects.requireNonNull(path, "path");
+        }
+
         /**
          * Evaluates this path against root or current context.
          */

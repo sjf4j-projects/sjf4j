@@ -4,6 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeRegistry;
+import org.sjf4j.node.Numbers;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -128,12 +129,14 @@ public final class Paths {
                     char c = seg.charAt(i);
                     if (c == '~') {
                         if (i + 1 >= seg.length()) {
-                            throw new JsonException("Invalid JSON Pointer expression '" + expr + "': invalid escape '~' in token '" + seg + "'");
+                            throw new JsonException("Invalid JSON Pointer expression '" + expr + 
+                                    "': invalid escape '~' in token '" + seg + "'");
                         }
                         char next = seg.charAt(i + 1);
                         if (next == '0') { sb.append('~'); i++; continue; }
                         if (next == '1') { sb.append('/'); i++; continue; }
-                        throw new JsonException("Invalid JSON Pointer expression '" + expr + "': invalid escape '~" + next + "' in token '" + seg + "'");
+                        throw new JsonException("Invalid JSON Pointer expression '" + expr + 
+                                "': invalid escape '~" + next + "' in token '" + seg + "'");
                     }
                     sb.append(c);
                 }
@@ -466,6 +469,20 @@ public final class Paths {
     private static boolean _isNextTokenChar(char c) {
 //        return Character.isLetterOrDigit(c) || c == '_' || c == '-';
         return c != '.' && c != '[' && c != '(';
+    }
+
+    private static boolean _isSimpleNameStart(char c) {
+        return Character.isLetter(c) || c == '_';
+    }
+
+    private static boolean _isSimpleNamePart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    private static boolean _isFilterPathTerminator(char c) {
+        return c == ')' || c == ']' || c == ',' || c == '!'
+                || c == '=' || c == '<' || c == '>'
+                || c == '&' || c == '|' || Character.isWhitespace(c);
     }
 
     private static int _skipWhitespace(String expr, int i) {
@@ -868,6 +885,8 @@ public final class Paths {
 
         // Path: @.a.b or $.x.y
         if (c == '@' || c == '$') {
+            FilterExpr.PathExpr fast = _tryParseSimpleFilterPathExpr(s, pos);
+            if (fast != null) return fast;
             String path = _parsePath(s, pos);
             return new FilterExpr.PathExpr(path);
         }
@@ -1061,13 +1080,51 @@ public final class Paths {
      * Parses a numeric literal.
      */
     private static Number _parseNumber(String s, int[] pos) {
+        return Numbers.parseSimpleDoubleLiteral(s, pos);
+    }
+
+    private static FilterExpr.PathExpr _tryParseSimpleFilterPathExpr(String s, int[] pos) {
         int start = pos[0];
-        while (pos[0] < s.length() &&
-                (Character.isDigit(s.charAt(pos[0])) || s.charAt(pos[0]) == '.'
-                        || s.charAt(pos[0]) == '-')) {
-            pos[0]++;
+        int i = start;
+        if (i >= s.length()) return null;
+
+        PathSegment current;
+        char head = s.charAt(i++);
+        if (head == '$') {
+            current = PathSegment.Root.INSTANCE;
+        } else if (head == '@') {
+            current = PathSegment.Current.INSTANCE;
+        } else {
+            return null;
         }
-        return Double.valueOf(s.substring(start, pos[0]));
+
+        ArrayList<PathSegment> segments = new ArrayList<>(4);
+        segments.add(current);
+
+        while (i < s.length()) {
+            char c = s.charAt(i);
+            if (_isFilterPathTerminator(c)) {
+                pos[0] = i;
+                return new FilterExpr.PathExpr(new JsonPath(s.substring(start, i),
+                        segments.toArray(new PathSegment[0])));
+            }
+            if (c != '.') {
+                return null;
+            }
+            if (i + 1 >= s.length() || s.charAt(i + 1) == '.' || !_isSimpleNameStart(s.charAt(i + 1))) {
+                return null;
+            }
+
+            int nameStart = i + 1;
+            i += 2;
+            while (i < s.length() && _isSimpleNamePart(s.charAt(i))) i++;
+            current = new PathSegment.Name(current, null, s.substring(nameStart, i));
+            segments.add(current);
+        }
+
+        pos[0] = i;
+        return new FilterExpr.PathExpr(new JsonPath(s.substring(start, i),
+                segments.toArray(new PathSegment[0])));
     }
 
     /**

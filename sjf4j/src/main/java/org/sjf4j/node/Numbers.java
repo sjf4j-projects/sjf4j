@@ -307,6 +307,57 @@ public final class Numbers {
         }
     }
 
+    /**
+     * Parses a simple decimal literal in-place from a character sequence.
+     *
+     * <p>This is a low-allocation helper for parser hot paths that already own
+     * the backing sequence and cursor. It is intentionally not a full
+     * {@link Double#parseDouble(String)} replacement: it accepts only the simple
+     * decimal forms currently used by JSONPath filter literals. In particular,
+     * it does not consume exponent notation, leading plus signs, NaN, or
+     * Infinity.</p>
+     */
+    public static double parseSimpleDoubleLiteral(CharSequence text, int[] pos) {
+        Objects.requireNonNull(text, "text");
+        Objects.requireNonNull(pos, "pos");
+
+        int start = pos[0];
+        boolean negative = false;
+        if (pos[0] < text.length() && text.charAt(pos[0]) == '-') {
+            negative = true;
+            pos[0]++;
+        }
+
+        double value = 0;
+        boolean hasDigit = false;
+        while (pos[0] < text.length()) {
+            char c = text.charAt(pos[0]);
+            if (!Character.isDigit(c)) break;
+            hasDigit = true;
+            value = value * 10 + (c - '0');
+            pos[0]++;
+        }
+
+        if (pos[0] < text.length() && text.charAt(pos[0]) == '.') {
+            pos[0]++;
+            double scale = 0.1d;
+            while (pos[0] < text.length()) {
+                char c = text.charAt(pos[0]);
+                if (!Character.isDigit(c)) break;
+                hasDigit = true;
+                value += (c - '0') * scale;
+                scale *= 0.1d;
+                pos[0]++;
+            }
+        }
+
+        if (!hasDigit) {
+            throw new NumberFormatException("Invalid number literal at pos " + start);
+        }
+
+        return negative ? -value : value;
+    }
+
 
     /**
      * Returns true when the text is a valid numeric literal.
