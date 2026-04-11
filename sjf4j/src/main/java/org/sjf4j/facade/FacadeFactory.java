@@ -11,6 +11,7 @@ import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.facade.simple.SimplePropertiesFacade;
+import org.sjf4j.facade.simple.SimpleYamlFacade;
 import org.sjf4j.facade.snake.SnakeYamlFacade;
 
 
@@ -130,24 +131,32 @@ public final class FacadeFactory {
         if (SNAKE_PRESENT) {
             return new SnakeYamlFacade();
         } else {
-            throw new JsonException("No supported YAML library found. Please include one of SnakeYaml / ...");
+            System.err.println("SJF4J: Failed to detect any supported YAML library (SnakeYAML).");
+            return new SimpleYamlFacade();
         }
     }
 
 
     /**
-     * Returns default properties facade.
+     * Creates a fresh properties facade instance.
      */
     public static PropertiesFacade createPropertiesFacade() {
         return new SimplePropertiesFacade();
     }
 
+    /**
+     * Creates a fresh node facade instance.
+     */
     public static NodeFacade createNodeFacade() {
         return new SimpleNodeFacade();
     }
 
 
     private static final NodeFacade DEFAULT_NODE_FACADE = new SimpleNodeFacade();
+
+    /**
+     * Returns the shared default node facade instance.
+     */
     public static NodeFacade defaultNodeFacade() {
         return DEFAULT_NODE_FACADE;
     }

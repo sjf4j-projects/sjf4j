@@ -23,7 +23,7 @@ import java.util.Properties;
  * Typical object targets are regular POJOs, {@link JsonObject}/{@link JsonArray},
  * and their structured subtypes such as JOJO and JAJO models.
  * <p>
- * Use {@link #global()} for the process-wide default instance, or {@link #builder()}
+ * Use {@link #global()} for the shared process-wide default instance, or {@link #builder()}
  * to create an isolated instance with custom facades and formatting behavior.
  */
 public final class Sjf4j {
@@ -43,11 +43,12 @@ public final class Sjf4j {
         this.nodeFacade = builder.nodeFacade == null ? FacadeFactory.defaultNodeFacade() : builder.nodeFacade;
         this.jsonFacade = builder.jsonFacade == null ? FacadeFactory.createJsonFacade() : builder.jsonFacade;
         this.yamlFacade = builder.yamlFacade == null ? FacadeFactory.createYamlFacade() : builder.yamlFacade;
-        this.propertiesFacade = builder.propertiesFacade == null ? FacadeFactory.createPropertiesFacade() : builder.propertiesFacade;
+        this.propertiesFacade = builder.propertiesFacade == null ?
+                FacadeFactory.createPropertiesFacade() : builder.propertiesFacade;
     }
 
     /**
-     * Returns the immutable process-wide default instance.
+     * Returns the shared process-wide default instance.
      */
     public static Sjf4j global() {
         return GLOBAL;

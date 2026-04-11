@@ -1,9 +1,9 @@
 package org.sjf4j.facade.simple;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 
-import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -62,6 +62,21 @@ class SimpleJsonReaderTest {
     }
 
     @Test
+    void testNumericReadersWithLargeAndExponentValues() throws Exception {
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("[-9223372036854775808,2147483648,1e3,9999999999999999999]"))) {
+            reader.startArray();
+            assertEquals(Long.MIN_VALUE, reader.nextLong());
+            assertEquals(StreamingReader.Token.NUMBER, reader.peekToken());
+            assertEquals(2147483648L, reader.nextLong());
+            assertEquals(StreamingReader.Token.NUMBER, reader.peekToken());
+            assertEquals(1000.0d, reader.nextDouble());
+            assertEquals(StreamingReader.Token.NUMBER, reader.peekToken());
+            assertEquals(new BigInteger("9999999999999999999"), reader.nextBigInteger());
+            reader.endArray();
+        }
+    }
+
+    @Test
     void testEscapesAndSurrogatePairs() throws Exception {
         try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0041\\uD83D\\uDE00\""))) {
             assertEquals("\"\\/\b\f\n\r\tA😀", reader.nextString());
@@ -91,100 +106,117 @@ class SimpleJsonReaderTest {
 
     @Test
     void testErrorPaths() {
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("x"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("["))) {
                 reader.endArray();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{"))) {
                 reader.endObject();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"\\x\""))) {
                 reader.nextString();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"\\u00XZ\""))) {
                 reader.nextString();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"\\uD83D\\u0041\""))) {
                 reader.nextString();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("truX"))) {
                 reader.nextBoolean();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("nulX"))) {
                 reader.nextNull();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{a:1}"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("[1 2]"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"abc"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"\\u12XZ\""))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\" 1}"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\":1]"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("[1}"))) {
                 reader.skipNext();
             }
         });
 
-        assertThrows(IOException.class, () -> {
+        assertThrows(BindingException.class, () -> {
             try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(" t"))) {
                 reader.nextBoolean();
             }
         });
+    }
+
+    @Test
+    void testErrorPathsIncludeResolvedPath() {
+        BindingException missingColon = assertThrows(BindingException.class, () -> {
+            try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\" 1}"))) {
+                reader.skipNext();
+            }
+        });
+        assertEquals("$.a", missingColon.getPathSegment().rootedPathExpr());
+
+        BindingException badArrayElement = assertThrows(BindingException.class, () -> {
+            try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\":[1,}]}"))) {
+                reader.skipNext();
+            }
+        });
+        assertEquals("$.a[1]", badArrayElement.getPathSegment().rootedPathExpr());
     }
 }

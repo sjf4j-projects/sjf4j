@@ -1,6 +1,6 @@
 package org.sjf4j.facade;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.Types;
 
 import java.io.ByteArrayInputStream;
@@ -24,9 +24,24 @@ import java.util.Objects;
 public interface StreamingFacade<R extends StreamingReader, W extends StreamingWriter> {
 
     enum StreamingMode {
+        /**
+         * Lets the facade choose its preferred runtime mode.
+         */
         AUTO,
+
+        /**
+         * Uses the shared SJF4J streaming reader/writer adapters.
+         */
         SHARED_IO,
-        EXCLUSIVE_IO,       // Backend-specific streaming implementation.
+
+        /**
+         * Uses a backend-specific streaming implementation when the facade has one.
+         */
+        EXCLUSIVE_IO,
+
+        /**
+         * Uses the backend's module/plugin binding path instead of shared streaming IO.
+         */
         PLUGIN_MODULE
     }
 
@@ -73,7 +88,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -89,7 +104,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -104,7 +119,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -119,7 +134,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new JsonException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -152,7 +167,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writer.flush();
             writer.flushTo(output);
         } catch (Exception e) {
-            throw new JsonException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
+            throw new BindingException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
     }
 
@@ -169,7 +184,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writer.flush();
             writer.flushTo(output);
         } catch (Exception e) {
-            throw new JsonException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
+            throw new BindingException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
     }
 
@@ -181,7 +196,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writeNode(output, node);
             return output.toString();
         } catch (Exception e) {
-            throw new JsonException(e);
+            throw new BindingException(e);
         }
     }
 
@@ -193,7 +208,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writeNode(output, node);
             return output.toByteArray();
         } catch (Exception e) {
-            throw new JsonException(e);
+            throw new BindingException(e);
         }
     }
 

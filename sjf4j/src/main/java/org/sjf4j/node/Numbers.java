@@ -317,7 +317,7 @@ public final class Numbers {
      * it does not consume exponent notation, leading plus signs, NaN, or
      * Infinity.</p>
      */
-    public static double parseSimpleDoubleLiteral(CharSequence text, int[] pos) {
+    public static double parseDoubleLiteral(CharSequence text, int[] pos) {
         Objects.requireNonNull(text, "text");
         Objects.requireNonNull(pos, "pos");
 

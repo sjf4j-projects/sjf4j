@@ -4,7 +4,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.node.NodeRegistry;
@@ -73,8 +72,10 @@ public class SimpleNodeFacade implements NodeFacade {
         try {
             Class<?> rawBox = Types.rawBox(type);
             return _readNode(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE);
+        } catch (BindingException e) {
+            throw e;
         } catch (Exception e) {
-            throw new JsonException("Failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
+            throw new BindingException("Failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
         }
     }
 

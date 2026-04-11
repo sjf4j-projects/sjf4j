@@ -1080,7 +1080,7 @@ public final class Paths {
      * Parses a numeric literal.
      */
     private static Number _parseNumber(String s, int[] pos) {
-        return Numbers.parseSimpleDoubleLiteral(s, pos);
+        return Numbers.parseDoubleLiteral(s, pos);
     }
 
     private static FilterExpr.PathExpr _tryParseSimpleFilterPathExpr(String s, int[] pos) {

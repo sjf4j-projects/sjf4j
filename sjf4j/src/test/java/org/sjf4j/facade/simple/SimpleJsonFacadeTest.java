@@ -6,11 +6,13 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeValue;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 public class SimpleJsonFacadeTest {
@@ -280,5 +283,17 @@ public class SimpleJsonFacadeTest {
         log.info("pojo={}", Nodes.inspect(pojo));
         assertEquals("Jack", pojo.name);
     }
+
+
+    @Test
+    public void testThrow1() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+
+        String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20---]}},\"sex\":true}";
+
+        BindingException error = assertThrows(BindingException.class, () -> facade.readNode(json1, JsonObject.class));
+        assertTrue(error.getCause().getMessage().contains("'/{friends/{rose/{age/[1'"));
+    }
+
 
 }

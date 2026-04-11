@@ -14,7 +14,7 @@ import java.lang.reflect.Type;
  *
  * <p>Typical usage:
  * <pre>{@code
- * List<User> users = Sjf4j.fromJson(json, new TypeReference<List<User>>() {});
+ * List<User> users = Sjf4j.global().fromJson(json, new TypeReference<List<User>>() {});
  * }</pre>
  */
 public abstract class TypeReference<T> {

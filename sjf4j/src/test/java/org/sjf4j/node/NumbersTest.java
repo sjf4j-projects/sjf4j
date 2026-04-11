@@ -99,35 +99,35 @@ class NumbersTest {
     }
 
     @Test
-    void testParseSimpleDoubleLiteral() {
+    void testParseDoubleLiteral() {
         int[] pos1 = {0};
-        assertEquals(12.0d, Numbers.parseSimpleDoubleLiteral("12", pos1));
+        assertEquals(12.0d, Numbers.parseDoubleLiteral("12", pos1));
         assertEquals(2, pos1[0]);
 
         int[] pos2 = {0};
-        assertEquals(-10.25d, Numbers.parseSimpleDoubleLiteral("-10.25]", pos2));
+        assertEquals(-10.25d, Numbers.parseDoubleLiteral("-10.25]", pos2));
         assertEquals(6, pos2[0]);
 
         int[] pos3 = {2};
-        assertEquals(7.5d, Numbers.parseSimpleDoubleLiteral("x 7.5,", pos3));
+        assertEquals(7.5d, Numbers.parseDoubleLiteral("x 7.5,", pos3));
         assertEquals(5, pos3[0]);
 
         int[] pos4 = {0};
-        assertEquals(12.0d, Numbers.parseSimpleDoubleLiteral("12.", pos4));
+        assertEquals(12.0d, Numbers.parseDoubleLiteral("12.", pos4));
         assertEquals(3, pos4[0]);
 
         int[] pos5 = {0};
-        assertEquals(0.5d, Numbers.parseSimpleDoubleLiteral(".5", pos5));
+        assertEquals(0.5d, Numbers.parseDoubleLiteral(".5", pos5));
         assertEquals(2, pos5[0]);
 
         int[] pos6 = {0};
-        assertEquals(1.0d, Numbers.parseSimpleDoubleLiteral("1e2", pos6));
+        assertEquals(1.0d, Numbers.parseDoubleLiteral("1e2", pos6));
         assertEquals(1, pos6[0]);
 
-        assertThrows(NullPointerException.class, () -> Numbers.parseSimpleDoubleLiteral(null, new int[]{0}));
-        assertThrows(NullPointerException.class, () -> Numbers.parseSimpleDoubleLiteral("1", null));
-        assertThrows(NumberFormatException.class, () -> Numbers.parseSimpleDoubleLiteral("-", new int[]{0}));
-        assertThrows(NumberFormatException.class, () -> Numbers.parseSimpleDoubleLiteral("+1", new int[]{0}));
+        assertThrows(NullPointerException.class, () -> Numbers.parseDoubleLiteral(null, new int[]{0}));
+        assertThrows(NullPointerException.class, () -> Numbers.parseDoubleLiteral("1", null));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseDoubleLiteral("-", new int[]{0}));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseDoubleLiteral("+1", new int[]{0}));
     }
 
     @Test
