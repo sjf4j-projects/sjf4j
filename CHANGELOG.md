@@ -5,8 +5,13 @@ All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
+
+
+## [1.2.0] - 2026.04.12
+### Breaking Changes
+- `Sjf4j` is no longer a static facade. Migrate calls like `Sjf4j.fromJson(...)` to `Sjf4j.global().fromJson(...)` for process-wide defaults, or create an isolated instance with `new Sjf4j()` or `Sjf4j.builder().build()`.
+
 ### Added
 - Added Jackson 3 facade integration with runtime auto-detection, global config entry points, Jackson3 `JsonNode` support, and JDK 17 coverage/JMH evaluation.
 - Added container metadata and factory paths in `NodeRegistry` for concrete `Map`/`List`/`Set` target types.
@@ -19,11 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved Gson facade integration by routing plugin-module reads and writes through shared `StreamingIO`, removing the separate Gson-exclusive streaming path, and aligning `hasAny` write performance with native Gson baselines.
 - Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_BASED`.
 - Improved shared/Jackson/Gson/Fastjson2 streaming readers by separating raw node reads from typed dispatch, reducing duplicated `Object.class` hot-path work and closing the Fastjson2 JOJO gap against native any-setter baselines.
-- Improved benchmark coverage and naming so `ReadBenchmark` and the JDK 17 companion benchmark compare POJO/JOJO/map cases consistently across Jackson, Jackson 3, Gson, Fastjson2, JSON-P, and Simple facade baselines.
 - Improved JSONPath/JSON Pointer handling so numeric pointer tokens preserve object-key semantics, filter strings unescape consistently, regex flags parse more strictly, and `&&` / `||` short-circuit during filter evaluation.
 
 ### Changed
-- Breaking: changed `Sjf4j` from a static facade style to an instance-oriented entry point. Migrate calls like `Sjf4j.fromJson(...)` to `Sjf4j.global().fromJson(...)` for process-wide defaults, or create an isolated instance with `Sjf4j.builder().build()`.
 - Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
 - Changed `NodeRegistry` POJO routing flags from framework-centric reader/writer naming to `requiresPojoReader` / `requiresPojoWriter`, and removed `PojoInfo.newCreationSession()` in favor of direct `PojoCreationSession` construction.
 - Changed POJO metadata analysis to read naming and field-access strategy only from `@NodeBinding`; `@NodeNaming` has been removed.
