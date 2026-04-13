@@ -1478,6 +1478,15 @@ public final class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Gets a value by key from an object-like node and converts it to the
+     * requested target type.
+     */
+    public static <T> T getInObject(Object node, String key, Class<T> clazz) {
+        Objects.requireNonNull(clazz, "clazz");
+        Object sub = getInObject(node, key);
+        return to(sub, clazz);
+    }
 
     /**
      * Gets a value by index from an array-like node.
@@ -1517,6 +1526,16 @@ public final class Nodes {
             return FacadeNodes.getInArray(node, idx);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
+    }
+
+    /**
+     * Gets a value by index from an array-like node and converts it to the
+     * requested target type.
+     */
+    public static <T> T getInArray(Object node, int idx, Class<T> clazz) {
+        Objects.requireNonNull(clazz, "clazz");
+        Object sub = getInArray(node, idx);
+        return to(sub, clazz);
     }
 
     /**

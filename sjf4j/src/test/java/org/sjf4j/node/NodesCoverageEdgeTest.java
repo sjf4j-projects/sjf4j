@@ -239,7 +239,9 @@ class NodesCoverageEdgeTest {
         assertTrue(Nodes.containsInArray(new int[]{1, 2}, -1));
         assertFalse(Nodes.containsInArray(new int[]{1, 2}, 5));
         assertEquals("bean", Nodes.getInObject(bean, "name"));
+        assertEquals(Integer.valueOf(2), Nodes.getInObject(bean, "count", Integer.class));
         assertEquals(2, Nodes.getInArray(new int[]{1, 2}, -1));
+        assertEquals(Integer.valueOf(2), Nodes.getInArray(new int[]{1, 2}, -1, Integer.class));
         assertNull(Nodes.getInArray(new int[]{1, 2}, 5));
         assertThrows(JsonException.class, () -> Nodes.getInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));
 
@@ -320,6 +322,7 @@ class NodesCoverageEdgeTest {
         assertEquals(2, Nodes.entrySetInObject(objectNode).size());
         assertTrue(Nodes.containsInObject(objectNode, "name"));
         assertEquals("han", Nodes.asString(Nodes.getInObject(objectNode, "name")));
+        assertEquals("han", Nodes.getInObject(objectNode, "name", String.class));
 
         Nodes.Access access = new Nodes.Access();
         Nodes.accessInObject(objectNode, null, "name", access);
@@ -333,6 +336,7 @@ class NodesCoverageEdgeTest {
         assertTrue(Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
         assertEquals(2, Nodes.sizeInArray(arrayNode));
         assertEquals("x", Nodes.asString(Nodes.getInArray(arrayNode, 0)));
+        assertEquals(Integer.valueOf(2), Nodes.getInArray(arrayNode, 1, Integer.class));
 
         Iterator<Object> iterator = Nodes.iteratorInArray(arrayNode);
         assertEquals("x", Nodes.asString(iterator.next()));

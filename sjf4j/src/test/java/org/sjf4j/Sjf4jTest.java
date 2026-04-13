@@ -32,6 +32,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class Sjf4jTest {
 
+
+    @Test
+    void testExplicitJsonFacadeStillUsesSharedNodeFacade() {
+        Sjf4j first = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
+        Sjf4j second = Sjf4j.builder().build();
+
+        // The runtime should reuse one node facade regardless of builder entry point.
+        assertSame(first.getNodeFacade(), second.getNodeFacade());
+        assertSame(first.getNodeFacade(), Sjf4j.global().getNodeFacade());
+    }
+
+
+
     // --------- Sample POJO ------------
     @ToString
     public static class Person {

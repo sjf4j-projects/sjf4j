@@ -80,9 +80,9 @@ public final class NodeMapperBuilder<S, T> {
      * <p>Use this overload when the mapped value depends only on the source
      * object graph and not on current target state.
      */
-    public NodeMapperBuilder<S, T> compute(String targetPath, Function<S, Object> computer) {
+    public NodeMapperBuilder<S, T> compute(String multiPath, Function<S, Object> computer) {
         Objects.requireNonNull(computer, "computer");
-        return _addComputeAction(targetPath, false, true,
+        return _addComputeAction(multiPath, false, true,
                 (root, parent, current) -> computer.apply(root));
     }
 
@@ -92,8 +92,8 @@ public final class NodeMapperBuilder<S, T> {
      *
      * <p>Single target paths and multi target paths are both supported.
      */
-    public NodeMapperBuilder<S, T> compute(String targetPath, ComputeFunction<S> computer) {
-        return _addComputeAction(targetPath, false, true, computer);
+    public NodeMapperBuilder<S, T> compute(String multiPath, ComputeFunction<S> computer) {
+        return _addComputeAction(multiPath, false, true, computer);
     }
 
     /**
