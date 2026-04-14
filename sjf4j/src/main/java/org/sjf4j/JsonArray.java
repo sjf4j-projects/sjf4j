@@ -130,14 +130,6 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns the JSON-like string representation of this JsonArray.
-     */
-    @Override
-    public String toString() {
-        return inspect();
-    }
-
-    /**
      * Returns the hash code value for this JsonArray.
      */
     @Override

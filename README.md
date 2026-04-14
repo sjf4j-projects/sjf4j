@@ -22,7 +22,7 @@ offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML),
 and **mapping** across data formats and native object graphs.
 
 ## Install
-SJF4J requires **JDK 8+** and has no external dependencies.
+SJF4J requires **JDK 8+** and has no external dependencies (except for the chosen data parser/backend).
 
 Gradle
 ```groovy
@@ -42,7 +42,7 @@ SJF4J itself has no external runtime dependencies.
 Format support is activated automatically when the corresponding libraries are present.
 
 - **JSON**
-  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or other).  
+  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or others).  
   - By default, SJF4J automatically detects and uses the first available implementation in that order.
   - If none are detected, it falls back to a built-in simple JSON parser (functional but slower).
 

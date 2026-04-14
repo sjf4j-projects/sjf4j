@@ -141,14 +141,6 @@ public class JsonObject extends JsonContainer {
     /// Map
 
     /**
-     * Returns a JSON-like string representation of this JsonObject.
-     */
-    @Override
-    public String toString() {
-        return inspect();
-    }
-
-    /**
      * Computes hash code from both declared fields and dynamic entries.
      */
     @Override

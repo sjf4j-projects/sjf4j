@@ -44,6 +44,13 @@ public abstract class JsonContainer {
         return Nodes.inspect(this);
     }
 
+    /**
+     * Returns a JSON-like string representation of this JsonObject.
+     */
+    @Override
+    public String toString() {
+        return inspect();
+    }
 
     /**
      * Removes null-valued object entries recursively.
