@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
+- Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.
+
 
 ## [1.2.0] - 2026.04.12
 ### Breaking Changes

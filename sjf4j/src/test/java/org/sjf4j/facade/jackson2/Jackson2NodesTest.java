@@ -15,6 +15,7 @@ import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -93,9 +94,29 @@ class Jackson2NodesTest {
 
         Nodes.Access access = new Nodes.Access();
         Jackson2Nodes.accessInObject(objectNode, null, "name", access);
-        assertNotNull(access.node);
+        assertEquals("han", access.node.toString().replace("\"", ""));
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson2Nodes.accessInObject(objectNode, null, "missing", access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
         Jackson2Nodes.accessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson2Nodes.accessInArray(arrayNode, null, null, access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson2Nodes.accessInArray(arrayNode, null, 3, access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson2Nodes.accessInArray(arrayNode, null, 4, access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertFalse(access.insertable);
 
         List<String> keys = new ArrayList<>();
         Jackson2Nodes.visitObject(objectNode, (key, value) -> keys.add(key));
@@ -107,7 +128,7 @@ class Jackson2NodesTest {
 
         List<Integer> indexes = new ArrayList<>();
         Jackson2Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));
-        assertEquals(List.of(0, 1, 2), indexes);
+        assertEquals(Arrays.asList(0, 1, 2), indexes);
         assertTrue(Jackson2Nodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(Jackson2Nodes.anyMatchInArray(arrayNode, (idx, value) -> false));
         assertTrue(Jackson2Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));

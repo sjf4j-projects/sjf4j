@@ -67,7 +67,8 @@ public class JsonPath {
 
         boolean isSingle = true;
         for (PathSegment pt : segments) {
-            if (!(pt instanceof PathSegment.Root || pt instanceof PathSegment.Name || pt instanceof PathSegment.Index)) {
+            if (!(pt instanceof PathSegment.Root || pt instanceof PathSegment.Name ||
+                    pt instanceof PathSegment.Index || pt instanceof PathSegment.Append)) {
                 isSingle = false;
                 break;
             }
@@ -1166,6 +1167,22 @@ public class JsonPath {
                     throw new JsonException("Not an array node, but was '" + curType +
                             "' at '" + ps.rootedInspect() + "'");
                 }
+            } else if (ps instanceof PathSegment.Append) {
+                if (jt.isArray()) {
+                    Nodes.accessInArray(curNode, curType, null, acc);
+                    if (acc.insertable) {
+                        PathSegment nextPt = segments[i + 1];
+                        Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
+                        Nodes.addInArray(curNode, subNode);
+                        curNode = subNode;
+                        curType = acc.type;
+                    } else {
+                        throw new JsonException("Cannot append on an array node '" + curType + "'");
+                    }
+                } else {
+                    throw new JsonException("Not an array node, but was '" + curType +
+                            "' at '" + ps.rootedInspect() + "'");
+                }
             } else {
                 throw new JsonException("Unexpected path token '" + ps + "'");
             }
@@ -1192,7 +1209,7 @@ public class JsonPath {
             }
             throw new JsonException("Cannot create object node with type '" + clazz + "' at '" +
                     ps.rootedInspect() + "'. Only support Map/JsonObject/JOJO/POJO.");
-        } else if (ps instanceof PathSegment.Index) {
+        } else if (ps instanceof PathSegment.Index || ps instanceof PathSegment.Append) {
             if (clazz == Object.class || clazz == List.class) {
                 return new ArrayList<>();
             }
@@ -1202,9 +1219,9 @@ public class JsonPath {
             if (JsonArray.class.isAssignableFrom(clazz)) {
                 return NodeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
             }
-            if (clazz.isArray()) {
+            if (ps instanceof PathSegment.Index && clazz.isArray()) {
                 int idx = ((PathSegment.Index) ps).index;
-                return Array.newInstance(clazz.getComponentType(), idx + 1); // size = idx + 1
+                return Array.newInstance(clazz.getComponentType(), idx + 1);
             }
             if (clazz == Set.class) {
                 return new LinkedHashSet<>();

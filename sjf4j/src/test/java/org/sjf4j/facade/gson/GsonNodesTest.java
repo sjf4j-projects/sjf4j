@@ -1,6 +1,7 @@
 package org.sjf4j.facade.gson;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -11,6 +12,7 @@ import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,9 +83,29 @@ class GsonNodesTest {
 
         Nodes.Access access = new Nodes.Access();
         GsonNodes.accessInObject(objectNode, null, "name", access);
-        assertNotNull(access.node);
+        assertEquals("han", ((JsonPrimitive) access.node).getAsString());
+        assertEquals(JsonElement.class, access.type);
+        assertTrue(access.insertable);
+        GsonNodes.accessInObject(objectNode, null, "missing", access);
+        assertNull(access.node);
+        assertEquals(JsonElement.class, access.type);
+        assertTrue(access.insertable);
         GsonNodes.accessInArray(arrayNode, null, 0, access);
-        assertNotNull(access.node);
+        assertEquals("x", ((JsonPrimitive) access.node).getAsString());
+        assertEquals(JsonElement.class, access.type);
+        assertTrue(access.insertable);
+        GsonNodes.accessInArray(arrayNode, null, null, access);
+        assertNull(access.node);
+        assertEquals(JsonElement.class, access.type);
+        assertTrue(access.insertable);
+        GsonNodes.accessInArray(arrayNode, null, 3, access);
+        assertNull(access.node);
+        assertEquals(JsonElement.class, access.type);
+        assertTrue(access.insertable);
+        GsonNodes.accessInArray(arrayNode, null, 4, access);
+        assertNull(access.node);
+        assertEquals(JsonElement.class, access.type);
+        assertFalse(access.insertable);
 
         List<String> keys = new ArrayList<>();
         GsonNodes.visitObject(objectNode, (key, value) -> keys.add(key));
@@ -95,7 +117,7 @@ class GsonNodesTest {
 
         List<Integer> indexes = new ArrayList<>();
         GsonNodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));
-        assertEquals(List.of(0, 1, 2), indexes);
+        assertEquals(Arrays.asList(0, 1, 2), indexes);
         assertTrue(GsonNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(GsonNodes.anyMatchInArray(arrayNode, (idx, value) -> false));
         assertTrue(GsonNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));

@@ -265,6 +265,11 @@ class NodesCoverageEdgeTest {
         Nodes.accessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), 1, access);
         assertNull(access.node);
         assertTrue(access.insertable);
+        assertEquals(String.class, access.type);
+        Nodes.accessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), null, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        assertEquals(String.class, access.type);
         Nodes.accessInArray(new int[]{1, 2}, int[].class, -1, access);
         assertEquals(2, access.node);
         assertTrue(access.insertable);
@@ -327,7 +332,7 @@ class NodesCoverageEdgeTest {
         Nodes.Access access = new Nodes.Access();
         Nodes.accessInObject(objectNode, null, "name", access);
         assertEquals("han", Nodes.asString(access.node));
-        assertFalse(access.insertable);
+        assertTrue(access.insertable);
 
         List<Integer> indexes = new ArrayList<>();
         Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));

@@ -142,7 +142,7 @@ public class JsonPathTest {
         assertThrows(JsonException.class, () -> JsonPath.compile("/1").add(arrayNode, TextNode.valueOf("c")));
 
         assertTrue(JsonPath.compile("/0").contains(new String[]{"x"}));
-        assertTrue(JsonPath.compile("/0").contains(new LinkedHashSet<>(Set.of("x"))));
+        assertTrue(JsonPath.compile("/0").contains(new LinkedHashSet<>(Collections.singleton("x"))));
     }
 
     @Test
@@ -936,10 +936,10 @@ public class JsonPathTest {
                 "\"title\":\"B\",\"published\":false},{" +
                 "\"title\":\"C\",\"isbn\":null,\"published\":true}]}}");
 
-        assertEquals(List.of("B", "C"), jo.findByPath("$.store.book[?@.isbn == null].title", String.class));
-        assertEquals(List.of("A", "C"), jo.findByPath("$.store.book[?@.published == true].title", String.class));
-        assertEquals(List.of("B"), jo.findByPath("$.store.book[?@.published == false].title", String.class));
-        assertEquals(List.of("D"), JsonObject.fromJson("{\"store\":{\"book\":[{\"title\":\"D\",\"name\":\"a'b\"}]}}")
+        assertEquals(Arrays.asList("B", "C"), jo.findByPath("$.store.book[?@.isbn == null].title", String.class));
+        assertEquals(Arrays.asList("A", "C"), jo.findByPath("$.store.book[?@.published == true].title", String.class));
+        assertEquals(Collections.singletonList("B"), jo.findByPath("$.store.book[?@.published == false].title", String.class));
+        assertEquals(Collections.singletonList("D"), JsonObject.fromJson("{\"store\":{\"book\":[{\"title\":\"D\",\"name\":\"a'b\"}]}}")
                 .findByPath("$.store.book[?@.name == 'a\\'b'].title", String.class));
     }
 
@@ -988,6 +988,21 @@ public class JsonPathTest {
         assertEquals(2, result.size());
         assertEquals("Alice_01", result.get(0).getString("name"));
         assertEquals("ALIcE_02", result.get(1).getString("name"));
+    }
+
+    @Test
+    public void testEnsurePutWithAppend1() {
+        JsonObject jo = new JsonObject();
+        JsonPath.compile("/bool/filter/-/term").ensurePut(jo, "haha");
+        JsonPath.compile("/bool/filter/-/term").ensurePut(jo, "hoho");
+
+        JsonObject bool = jo.getJsonObject("bool");
+        assertNotNull(bool);
+        JsonArray filter = bool.getJsonArray("filter");
+        assertNotNull(filter);
+        assertEquals(2, filter.size());
+        assertEquals("haha", filter.getJsonObject(0).getString("term"));
+        assertEquals("hoho", filter.getJsonObject(1).getString("term"));
     }
 
 }

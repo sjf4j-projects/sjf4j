@@ -1555,15 +1555,6 @@ public final class Nodes {
          * false means the container is locked (e.g. POJO without such field).
          */
         public boolean insertable;
-
-        /**
-         * Sets access payload values.
-         */
-        public void set(Object node, Type type, boolean insertable) {
-            this.node = node;
-            this.type = type;
-            this.insertable = insertable;
-        }
     }
 
     /**
@@ -1623,40 +1614,41 @@ public final class Nodes {
      * <p>
      * Negative indexes are normalized. {@code idx == size} is treated as appendable
      * for List/JsonArray/Set, and reported as insertable with {@code node == null}.
+     * <p>
+     * If {@code idx == null}, it is treated as append-to-tail (equivalent to {@code idx == size}).
      */
     @SuppressWarnings("unchecked")
-    public static void accessInArray(Object node, Type type, int idx, Access out) {
+    public static void accessInArray(Object node, Type type, Integer idx, Access out) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(out, "out");
 
+        out.type = Object.class;
+        out.node = null;
+        out.insertable = true;
         if (node instanceof List) {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
+            if (idx == null) return;
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
             if (idx >= 0 && idx < list.size()) {
                 out.node = list.get(idx);
-                out.insertable = true;
                 return;
             }
             if (idx == list.size()){
-                out.node = null;
-                out.insertable = true;
                 return;
             }
-            out.node = null;
             out.insertable = false;
             return;
         }
         if (node instanceof JsonArray) {
+            if (idx == null) return;
             JsonArray ja = (JsonArray) node;
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx <= ja.size()) {
                 out.node = ja.getNode(idx);
-                out.type = Object.class;
-                out.insertable = true;
                 return;
             }
-            out.set(null, Object.class, false);
+            out.insertable = false;
             return;
         }
         if (node.getClass().isArray()) {
@@ -1665,15 +1657,14 @@ public final class Nodes {
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 && idx < len) {
                 out.node = Array.get(node, idx);
-                out.insertable = true;
                 return;
             }
-            out.node = null;
             out.insertable = false;
             return;
         }
         if (node instanceof Set) {
-            throw new JsonException("Cannot call accessInArray() on an unordered Java Set");
+            if (idx == null) return;
+            throw new JsonException("Cannot call accessInArray() with idx " + idx + " on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.accessInArray(node, type, idx, out);

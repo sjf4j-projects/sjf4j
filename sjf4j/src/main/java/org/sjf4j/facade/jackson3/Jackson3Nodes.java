@@ -253,16 +253,25 @@ public final class Jackson3Nodes {
         if (node instanceof ObjectNode) {
             out.node = ((ObjectNode) node).get(key);
             out.type = JsonNode.class;
-            out.insertable = false;
+            out.insertable = true;
             return;
         }
         throw expected("ObjectNode", node);
     }
 
-    public static void accessInArray(Object node, Type type, int idx, Nodes.Access out) {
+    public static void accessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
         if (node instanceof ArrayNode) {
-            out.node = ((ArrayNode) node).get(idx);
             out.type = JsonNode.class;
+            out.node = null;
+            out.insertable = true;
+            ArrayNode an = (ArrayNode) node;
+            if (idx == null) return;
+            idx = idx < 0 ? an.size() + idx : idx;
+            if (idx >= 0 && idx < an.size()) {
+                out.node = an.get(idx);
+                return;
+            }
+            if (idx == an.size()) return;
             out.insertable = false;
             return;
         }

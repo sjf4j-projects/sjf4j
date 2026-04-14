@@ -331,7 +331,7 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             out.node = ((JsonObject) node).get(key);
             out.type = JsonElement.class;
-            out.insertable = false;
+            out.insertable = true;
             return;
         }
         throw expected("JsonObject", node);
@@ -340,10 +340,19 @@ public final class GsonNodes {
     /**
      * Resolves child access info for Gson array node.
      */
-    public static void accessInArray(Object node, Type type, int idx, Nodes.Access out) {
+    public static void accessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
         if (node instanceof JsonArray) {
-            out.node = ((JsonArray) node).get(idx);
             out.type = JsonElement.class;
+            out.node = null;
+            out.insertable = true;
+            JsonArray ja = (JsonArray) node;
+            if (idx == null) return;
+            idx = idx < 0 ? ja.size() + idx : idx;
+            if (idx >= 0 && idx < ja.size()) {
+                out.node = ja.get(idx);
+                return;
+            }
+            if (idx == ja.size()) return;
             out.insertable = false;
             return;
         }

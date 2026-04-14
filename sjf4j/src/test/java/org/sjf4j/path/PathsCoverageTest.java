@@ -5,6 +5,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,8 +73,8 @@ class PathsCoverageTest {
     void testFunctionArgAndParenHelpers() {
         assertThrows(JsonException.class, () -> Paths._findMatchingParen("(abc", 0));
         assertEquals(4, Paths._findMatchingParen("(')')x", 0));
-        assertEquals(List.of(""), Paths._parseFunctionArgs("   "));
-        assertEquals(List.of("1", "nested(2,3)", "'x,y'", "/a(b)/"), Paths._parseFunctionArgs("1, nested(2,3), 'x,y', /a(b)/"));
+        assertEquals(Collections.singletonList(""), Paths._parseFunctionArgs("   "));
+        assertEquals(Arrays.asList("1", "nested(2,3)", "'x,y'", "/a(b)/"), Paths._parseFunctionArgs("1, nested(2,3), 'x,y', /a(b)/"));
     }
 
     static class SamplePojo {

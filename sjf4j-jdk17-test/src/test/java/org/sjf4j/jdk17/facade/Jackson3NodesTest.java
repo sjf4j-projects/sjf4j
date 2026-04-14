@@ -17,6 +17,7 @@ import tools.jackson.databind.node.POJONode;
 import tools.jackson.databind.node.StringNode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -97,9 +98,29 @@ class Jackson3NodesTest {
 
         Nodes.Access access = new Nodes.Access();
         Jackson3Nodes.accessInObject(objectNode, null, "name", access);
-        assertNotNull(access.node);
+        assertEquals("han", access.node.toString().replace("\"", ""));
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson3Nodes.accessInObject(objectNode, null, "missing", access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
         Jackson3Nodes.accessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson3Nodes.accessInArray(arrayNode, null, null, access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson3Nodes.accessInArray(arrayNode, null, 3, access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertTrue(access.insertable);
+        Jackson3Nodes.accessInArray(arrayNode, null, 4, access);
+        assertNull(access.node);
+        assertEquals(JsonNode.class, access.type);
+        assertFalse(access.insertable);
 
         List<String> keys = new ArrayList<>();
         Jackson3Nodes.visitObject(objectNode, (key, value) -> keys.add(key));
@@ -111,7 +132,7 @@ class Jackson3NodesTest {
 
         List<Integer> indexes = new ArrayList<>();
         Jackson3Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));
-        assertEquals(List.of(0, 1, 2), indexes);
+        assertEquals(Arrays.asList(0, 1, 2), indexes);
         assertTrue(Jackson3Nodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(Jackson3Nodes.anyMatchInArray(arrayNode, (idx, value) -> false));
         assertTrue(Jackson3Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
@@ -189,8 +210,22 @@ class Jackson3NodesTest {
         Nodes.Access access = new Nodes.Access();
         FacadeNodes.accessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInObject(objectNode, null, "missing", access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
         FacadeNodes.accessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, null, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, 3, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, 4, access);
+        assertNull(access.node);
+        assertFalse(access.insertable);
 
         List<String> visitedObject = new ArrayList<>();
         FacadeNodes.visitObject(objectNode, (key, value) -> visitedObject.add(key));
@@ -203,7 +238,7 @@ class Jackson3NodesTest {
 
         List<Integer> visitedArray = new ArrayList<>();
         FacadeNodes.visitArray(arrayNode, (idx, value) -> visitedArray.add(idx));
-        assertEquals(List.of(0, 1, 2), visitedArray);
+        assertEquals(Arrays.asList(0, 1, 2), visitedArray);
         assertTrue(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 9));
         assertTrue(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));

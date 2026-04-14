@@ -17,6 +17,7 @@ import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -111,9 +112,22 @@ class FacadeNodesTest {
         Nodes.Access access = new Nodes.Access();
         FacadeNodes.accessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
-        assertFalse(access.insertable);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInObject(objectNode, null, "missing", access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
         FacadeNodes.accessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, null, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, 3, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, 4, access);
+        assertNull(access.node);
+        assertFalse(access.insertable);
 
         List<String> visitedObject = new ArrayList<>();
         FacadeNodes.visitObject(objectNode, (key, value) -> visitedObject.add(key));
@@ -126,7 +140,7 @@ class FacadeNodesTest {
 
         List<Integer> visitedArray = new ArrayList<>();
         FacadeNodes.visitArray(arrayNode, (idx, value) -> visitedArray.add(idx));
-        assertEquals(List.of(0, 1, 2), visitedArray);
+        assertEquals(Arrays.asList(0, 1, 2), visitedArray);
         assertTrue(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 9));
         assertTrue(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
@@ -179,9 +193,22 @@ class FacadeNodesTest {
         Nodes.Access access = new Nodes.Access();
         FacadeNodes.accessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
-        assertFalse(access.insertable);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInObject(objectNode, null, "missing", access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
         FacadeNodes.accessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, null, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, 3, access);
+        assertNull(access.node);
+        assertTrue(access.insertable);
+        FacadeNodes.accessInArray(arrayNode, null, 4, access);
+        assertNull(access.node);
+        assertFalse(access.insertable);
 
         List<String> visitedObject = new ArrayList<>();
         FacadeNodes.visitObject(objectNode, (key, value) -> visitedObject.add(key));
@@ -194,7 +221,7 @@ class FacadeNodesTest {
 
         List<Integer> visitedArray = new ArrayList<>();
         FacadeNodes.visitArray(arrayNode, (idx, value) -> visitedArray.add(idx));
-        assertEquals(List.of(0, 1, 2), visitedArray);
+        assertEquals(Arrays.asList(0, 1, 2), visitedArray);
         assertTrue(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
         assertFalse(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 9));
         assertTrue(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));

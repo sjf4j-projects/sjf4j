@@ -5,6 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -94,7 +95,7 @@ class FilterExprTest {
         assertEquals("(2 > 1)", new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).toString());
 
         PathFunctionRegistry.register(new PathFunctionRegistry.FunctionDescriptor("joinCount", args -> ((List<?>) args[0]).size()));
-        FilterExpr.FunctionExpr functionExpr = new FilterExpr.FunctionExpr("joinCount", List.of(new FilterExpr.LiteralExpr(List.of(1, 2, 3))));
+        FilterExpr.FunctionExpr functionExpr = new FilterExpr.FunctionExpr("joinCount", Arrays.asList(new FilterExpr.LiteralExpr(Arrays.asList(1, 2, 3))));
         assertEquals(3, functionExpr.eval(root, root));
 
         FilterExpr.RegexExpr regexExpr = new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha"));
