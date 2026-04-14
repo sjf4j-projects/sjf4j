@@ -9,7 +9,6 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -971,9 +970,9 @@ public class JsonPath {
                 }
             } else if (pt instanceof PathSegment.Wildcard) {
                 if (jt.isObject()) {
-                    Nodes.visitObject(node, (k, v) -> _findAll(root, v, nextI, endExclusive, result, converter));
+                    Nodes.forEachObject(node, (k, v) -> _findAll(root, v, nextI, endExclusive, result, converter));
                 } else if (jt.isArray()) {
-                    Nodes.visitArray(node, (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter));
+                    Nodes.forEachArray(node, (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter));
                 }
             } else if (pt instanceof PathSegment.Descendant) {
                 if (i + 1 >= segments.length) throw new JsonException("Descendant '..' cannot appear at the end.");
@@ -982,32 +981,32 @@ public class JsonPath {
                 PathSegment.Slice slicePt = (PathSegment.Slice) pt;
                 if (jt.isArray()) {
                     int size = Nodes.sizeInArray(node);
-                    Nodes.visitArray(node, (j, v) -> {
+                    Nodes.forEachArray(node, (j, v) -> {
                         if (slicePt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter);
                     });
                 }
             } else if (pt instanceof PathSegment.Union) {
                 PathSegment.Union unionPt = (PathSegment.Union) pt;
                 if (jt.isObject()) {
-                    Nodes.visitObject(node, (k, v) -> {
+                    Nodes.forEachObject(node, (k, v) -> {
                         if (unionPt.matchKey(k)) _findAll(root, v, nextI, endExclusive, result, converter);
                     });
                 } else if (jt.isArray()) {
                     int size = Nodes.sizeInArray(node);
-                    Nodes.visitArray(node, (j, v) -> {
+                    Nodes.forEachArray(node, (j, v) -> {
                         if (unionPt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter);
                     });
                 }
             } else if (pt instanceof PathSegment.Filter) {
                 PathSegment.Filter filterPt = (PathSegment.Filter) pt;
                 if (jt.isArray()) {
-                    Nodes.visitArray(node, (j, v) -> {
+                    Nodes.forEachArray(node, (j, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
                             _findAll(root, v, nextI, endExclusive, result, converter);
                         }
                     });
                 } else if (jt.isObject()) {
-                    Nodes.visitObject(node, (k, v) -> {
+                    Nodes.forEachObject(node, (k, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
                             _findAll(root, v, nextI, endExclusive, result, converter);
                         }
@@ -1034,7 +1033,7 @@ public class JsonPath {
         PathSegment pt = segments[startIdx];
         JsonType jt = JsonType.of(current);
         if (jt.isObject()) {
-            Nodes.visitObject(current, (k, v) -> {
+            Nodes.forEachObject(current, (k, v) -> {
                 if (pt.matchKey(k)) {
                     if (startIdx >= endExclusive) {
                         result.add(converter.apply(current));
@@ -1046,7 +1045,7 @@ public class JsonPath {
             });
         } else if (jt.isArray()) {
             int size = Nodes.sizeInArray(current);
-            Nodes.visitArray(current, (j, v) -> {
+            Nodes.forEachArray(current, (j, v) -> {
                 if (pt.matchIndex(j, size)) {
                     if (startIdx >= endExclusive) {
                         result.add(converter.apply(current));
@@ -1199,6 +1198,9 @@ public class JsonPath {
             if (clazz == Object.class || clazz == Map.class) {
                 return new LinkedHashMap<>();
             }
+            if (_isJackson3ObjectClass(clazz)) {
+                return _newJackson3Node(false);
+            }
             if (clazz == JsonObject.class) {
                 return new JsonObject();
             }
@@ -1212,6 +1214,9 @@ public class JsonPath {
             if (clazz == Object.class || clazz == List.class) {
                 return new ArrayList<>();
             }
+            if (_isJackson3ArrayClass(clazz)) {
+                return _newJackson3Node(true);
+            }
             if (clazz == JsonArray.class) {
                 return new JsonArray();
             }
@@ -1222,9 +1227,31 @@ public class JsonPath {
                 return new LinkedHashSet<>();
             }
             throw new JsonException("Cannot create array node with type '" + clazz +
-                    "' at '" + ps.rootedInspect() + "'. Only support List/JsonArray/JAJO/Array/Set.");
+                    "' at '" + ps.rootedInspect() + "'. Only support List/JsonArray/JAJO/Set.");
         } else {
             throw new JsonException("Unexpected path token '" + ps + "'");
+        }
+    }
+
+    private static boolean _isJackson3ObjectClass(Class<?> clazz) {
+        String name = clazz.getName();
+        return "tools.jackson.databind.JsonNode".equals(name) || "tools.jackson.databind.node.ObjectNode".equals(name);
+    }
+
+    private static boolean _isJackson3ArrayClass(Class<?> clazz) {
+        String name = clazz.getName();
+        return "tools.jackson.databind.JsonNode".equals(name) || "tools.jackson.databind.node.ArrayNode".equals(name);
+    }
+
+    private static Object _newJackson3Node(boolean array) {
+        try {
+            Class<?> factoryClass = Class.forName("tools.jackson.databind.node.JsonNodeFactory");
+            Object factory = factoryClass.getField("instance").get(null);
+            return factoryClass.getMethod(array ? "arrayNode" : "objectNode").invoke(factory);
+        } catch (ClassNotFoundException e) {
+            throw new JsonException("Jackson3 JsonNodeFactory is not available", e);
+        } catch (ReflectiveOperationException e) {
+            throw new JsonException("Failed to create Jackson3 " + (array ? "array" : "object") + " node", e);
         }
     }
 

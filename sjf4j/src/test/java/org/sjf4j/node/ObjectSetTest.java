@@ -1,10 +1,8 @@
 package org.sjf4j.node;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.StreamingFacade;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -32,7 +30,7 @@ public class ObjectSetTest {
         set.add("a");
 
         assertEquals(1, Nodes.sizeInArray(set));
-        Nodes.visitArray(set, (i, v) -> {
+        Nodes.forEachArray(set, (i, v) -> {
             assertEquals("a", v);
         });
         assertThrows(JsonException.class, () -> Nodes.getInArray(set, 0));

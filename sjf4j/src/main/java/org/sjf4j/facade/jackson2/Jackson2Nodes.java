@@ -1,5 +1,6 @@
 package org.sjf4j.facade.jackson2;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.BooleanNode;
@@ -30,6 +31,7 @@ import java.util.function.BiPredicate;
  * Jackson2 JsonNode adapter used by {@link org.sjf4j.facade.FacadeNodes}.
  */
 public final class Jackson2Nodes {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Jackson2Nodes() {}
 
@@ -51,7 +53,7 @@ public final class Jackson2Nodes {
      * Resolves node kind for a Jackson JsonNode.
      */
     public static NodeKind kindOf(Object node) {
-        if (!isNode(node)) throw notNode(node);
+        if (!isNode(node)) throw _notNode(node);
         JsonNode jsonNode = (JsonNode) node;
         if (jsonNode.isNull() || jsonNode.isMissingNode()) return NodeKind.VALUE_NULL;
         if (jsonNode.isTextual()) return NodeKind.VALUE_STRING_FACADE;
@@ -67,7 +69,7 @@ public final class Jackson2Nodes {
      * Resolves node kind for a Jackson JsonNode class.
      */
     public static NodeKind kindOf(Class<?> clazz) {
-        if (!isNode(clazz)) throw notNode(clazz);
+        if (!isNode(clazz)) throw _notNode(clazz);
         if (ObjectNode.class.isAssignableFrom(clazz)) return NodeKind.OBJECT_FACADE;
         if (ArrayNode.class.isAssignableFrom(clazz)) return NodeKind.ARRAY_FACADE;
         if (TextNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_STRING_FACADE;
@@ -84,7 +86,7 @@ public final class Jackson2Nodes {
         if (node instanceof TextNode) {
             return ((TextNode) node).textValue();
         }
-        throw expected("TextNode", node);
+        throw _expected("TextNode", node);
     }
 
     /**
@@ -101,7 +103,7 @@ public final class Jackson2Nodes {
         if (node instanceof NumericNode) {
             return ((NumericNode) node).numberValue();
         }
-        throw expected("NumericNode", node);
+        throw _expected("NumericNode", node);
     }
 
     /**
@@ -124,7 +126,7 @@ public final class Jackson2Nodes {
         if (node instanceof BooleanNode) {
             return ((BooleanNode) node).booleanValue();
         }
-        throw expected("BooleanNode", node);
+        throw _expected("BooleanNode", node);
     }
 
     /**
@@ -154,7 +156,7 @@ public final class Jackson2Nodes {
             }
             return jo;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -169,7 +171,7 @@ public final class Jackson2Nodes {
             }
             return map;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -183,7 +185,7 @@ public final class Jackson2Nodes {
             }
             return ja;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
@@ -198,7 +200,7 @@ public final class Jackson2Nodes {
             }
             return list;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
@@ -213,7 +215,7 @@ public final class Jackson2Nodes {
             }
             return arr;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
@@ -228,7 +230,7 @@ public final class Jackson2Nodes {
             }
             return set;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
 
@@ -240,7 +242,7 @@ public final class Jackson2Nodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).size();
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -250,7 +252,7 @@ public final class Jackson2Nodes {
         if (node instanceof ArrayNode) {
             return ((ArrayNode) node).size();
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
@@ -265,7 +267,7 @@ public final class Jackson2Nodes {
             }
             return set;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -280,7 +282,7 @@ public final class Jackson2Nodes {
             }
             return out;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -295,7 +297,7 @@ public final class Jackson2Nodes {
                 @Override public void remove() { it.remove(); }
             };
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
@@ -305,7 +307,7 @@ public final class Jackson2Nodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key) != null;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -315,7 +317,7 @@ public final class Jackson2Nodes {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key);
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -325,7 +327,7 @@ public final class Jackson2Nodes {
         if (node instanceof ArrayNode) {
             return ((ArrayNode) node).get(idx);
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
     
     /**
@@ -338,7 +340,7 @@ public final class Jackson2Nodes {
             out.puttable = true;
             return;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     /**
@@ -360,23 +362,23 @@ public final class Jackson2Nodes {
             out.puttable = false;
             return;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
     
     /**
      * Visits fields of Jackson object node.
      */
-    public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
+    public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         if (node instanceof ObjectNode) {
             for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
-                visitor.accept(entry.getKey(), entry.getValue());
+                consumer.accept(entry.getKey(), entry.getValue());
             }
             return;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
-    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+    public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
         if (node instanceof ObjectNode) {
             for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
                 if (predicate.test(entry.getKey(), entry.getValue())) {
@@ -385,7 +387,7 @@ public final class Jackson2Nodes {
             }
             return false;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
@@ -401,28 +403,28 @@ public final class Jackson2Nodes {
             }
             return changed;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
 
     /**
      * Visits items of Jackson array node.
      */
-    public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
+    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
             for (int i = 0, size = an.size(); i < size; i++) {
-                visitor.accept(i, an.get(i));
+                consumer.accept(i, an.get(i));
             }
             return;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
      * Returns true when any item matches predicate.
      */
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchArray(Object node, BiPredicate<Integer, Object> predicate) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
             for (int i = 0, size = an.size(); i < size; i++) {
@@ -430,80 +432,98 @@ public final class Jackson2Nodes {
             }
             return false;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     /**
-     * Returns true when all items match predicate.
-     */
-    public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        if (node instanceof ArrayNode) {
-            ArrayNode an = (ArrayNode) node;
-            for (int i = 0, size = an.size(); i < size; i++) {
-                if (!predicate.test(i, an.get(i))) return false;
-            }
-            return true;
-        }
-        throw expected("ArrayNode", node);
-    }
-
-    /**
-     * Mutation is unsupported for Jackson JsonNode facade.
+     * Puts a value into a Jackson object node and returns the previous value.
      */
     public static Object putInObject(Object node, String key, Object value) {
-        throw unsupported("putInObject");
+        if (!(node instanceof ObjectNode)) throw _expected("ObjectNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ObjectNode on = (ObjectNode) node;
+        JsonNode old = on.get(key);
+        on.set(key, (JsonNode) value);
+        return old;
     }
 
     /**
-     * Mutation is unsupported for Jackson JsonNode facade.
+     * Sets or appends a value in a Jackson array node.
      */
     public static Object setInArray(Object node, int idx, Object value) {
-        throw unsupported("setInArray");
+        if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ArrayNode an = (ArrayNode) node;
+        idx = idx < 0 ? an.size() + idx : idx;
+        JsonNode vv = (JsonNode) value;
+        if (idx == an.size()) {
+            an.add(vv);
+            return null;
+        }
+        if (idx >= 0 && idx < an.size()) {
+            JsonNode old = an.get(idx);
+            an.set(idx, vv);
+            return old;
+        }
+        throw new JsonException("Cannot set/add index " + idx + " in ArrayNode of size " +
+                an.size() + " (index < size: modify; index == size: append)");
     }
 
     /**
-     * Mutation is unsupported for Jackson JsonNode facade.
+     * Appends a value to a Jackson array node.
      */
     public static void addInArray(Object node, Object value) {
-        throw unsupported("addInArray");
+        if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ((ArrayNode) node).add((JsonNode) value);
     }
 
     /**
-     * Mutation is unsupported for Jackson JsonNode facade.
+     * Inserts a value into a Jackson array node.
      */
     public static void addInArray(Object node, int idx, Object value) {
-        throw unsupported("addInArray");
+        if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ArrayNode an = (ArrayNode) node;
+        idx = idx < 0 ? an.size() + idx : idx;
+        if (idx < 0 || idx > an.size()) {
+            throw new JsonException("Cannot insert index " + idx + " in ArrayNode of size " + an.size());
+        }
+        an.insert(idx, (JsonNode) value);
     }
 
     /**
-     * Mutation is unsupported for Jackson JsonNode facade.
+     * Removes a key from a Jackson object node.
      */
     public static Object removeInObject(Object node, String key) {
-        throw unsupported("removeInObject");
+        if (node instanceof ObjectNode) {
+            return ((ObjectNode) node).remove(key);
+        }
+        throw _expected("ObjectNode", node);
     }
 
     /**
-     * Mutation is unsupported for Jackson JsonNode facade.
+     * Removes an element from a Jackson array node.
      */
     public static Object removeInArray(Object node, int idx) {
-        throw unsupported("removeInArray");
+        if (node instanceof ArrayNode) {
+            ArrayNode an = (ArrayNode) node;
+            idx = idx < 0 ? an.size() + idx : idx;
+            if (idx < 0 || idx >= an.size()) {
+                throw new JsonException("Cannot remove index " + idx + " in ArrayNode of size " + an.size());
+            }
+            return an.remove(idx);
+        }
+        throw _expected("ArrayNode", node);
     }
 
 
-    private static JsonException notNode(Object node) {
-        return new JsonException("Not a Jackson2 JsonNode, but was '" + Types.name(node) + "'");
+    private static JsonException _notNode(Object node) {
+        return new JsonException("Not a Jackson 2.x JsonNode, but was '" + Types.name(node) + "'");
     }
 
-    private static JsonException notNode(Class<?> clazz) {
-        return new JsonException("Not a Jackson2 JsonNode, but was '" + Types.name(clazz) + "'");
-    }
-
-    private static JsonException expected(String expected, Object node) {
+    private static JsonException _expected(String expected, Object node) {
         return new JsonException("Expected " + expected + " but was " + Types.name(node));
-    }
-
-    private static JsonException unsupported(String method) {
-        return new JsonException("'" + method + "' is not supported for `JsonNode` in Jackson2");
     }
 
 

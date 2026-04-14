@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
+
+### Changed
+- Changed node traversal helper naming from `visit*`/`anyMatchIn*` to `forEach*`/`anyMatch*` across shared node utilities and facade adapters.
+- Changed facade-node write operations for Jackson 2 and Jackson 3 to require backend-native `JsonNode` values instead of auto-converting arbitrary OBNT values.
+- Changed JSONPath missing-container creation to recognize Jackson 3 native object/array node types.
+
 ### Fixed
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
 - Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.

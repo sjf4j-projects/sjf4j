@@ -42,7 +42,7 @@ public final class Jackson3Nodes {
     }
 
     public static NodeKind kindOf(Object node) {
-        if (!isNode(node)) throw notNode(node);
+        if (!isNode(node)) throw _notNode(node);
         JsonNode jsonNode = (JsonNode) node;
         if (jsonNode.isNull() || jsonNode.isMissingNode()) return NodeKind.VALUE_NULL;
         if (jsonNode.isString()) return NodeKind.VALUE_STRING_FACADE;
@@ -55,7 +55,7 @@ public final class Jackson3Nodes {
     }
 
     public static NodeKind kindOf(Class<?> clazz) {
-        if (!isNode(clazz)) throw notNode(clazz);
+        if (!isNode(clazz)) throw _notNode(clazz);
         if (ObjectNode.class.isAssignableFrom(clazz)) return NodeKind.OBJECT_FACADE;
         if (ArrayNode.class.isAssignableFrom(clazz)) return NodeKind.ARRAY_FACADE;
         if (StringNode.class.isAssignableFrom(clazz)) return NodeKind.VALUE_STRING_FACADE;
@@ -69,7 +69,7 @@ public final class Jackson3Nodes {
         if (node instanceof StringNode) {
             return ((StringNode) node).stringValue();
         }
-        throw expected("StringNode", node);
+        throw _expected("StringNode", node);
     }
 
     public static String asString(Object node) {
@@ -80,7 +80,7 @@ public final class Jackson3Nodes {
         if (node instanceof NumericNode) {
             return ((NumericNode) node).numberValue();
         }
-        throw expected("NumericNode", node);
+        throw _expected("NumericNode", node);
     }
 
     public static Number asNumber(Object node) {
@@ -97,7 +97,7 @@ public final class Jackson3Nodes {
         if (node instanceof BooleanNode) {
             return ((BooleanNode) node).booleanValue();
         }
-        throw expected("BooleanNode", node);
+        throw _expected("BooleanNode", node);
     }
 
     public static Boolean asBoolean(Object node) {
@@ -121,7 +121,7 @@ public final class Jackson3Nodes {
             }
             return jo;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static Map<String, Object> toMap(Object node) {
@@ -133,7 +133,7 @@ public final class Jackson3Nodes {
             }
             return map;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static JsonArray toJsonArray(Object node) {
@@ -144,7 +144,7 @@ public final class Jackson3Nodes {
             }
             return ja;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static List<Object> toList(Object node) {
@@ -156,7 +156,7 @@ public final class Jackson3Nodes {
             }
             return list;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static Object[] toArray(Object node) {
@@ -168,7 +168,7 @@ public final class Jackson3Nodes {
             }
             return arr;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static Set<Object> toSet(Object node) {
@@ -180,28 +180,28 @@ public final class Jackson3Nodes {
             }
             return set;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static int sizeInObject(Object node) {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).size();
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static int sizeInArray(Object node) {
         if (node instanceof ArrayNode) {
             return ((ArrayNode) node).size();
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static Set<String> keySetInObject(Object node) {
         if (node instanceof ObjectNode) {
             return new LinkedHashSet<>(((ObjectNode) node).propertyNames());
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
@@ -213,7 +213,7 @@ public final class Jackson3Nodes {
             }
             return out;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static Iterator<Object> iteratorInArray(Object node) {
@@ -225,28 +225,28 @@ public final class Jackson3Nodes {
                 @Override public void remove() { it.remove(); }
             };
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static boolean containsInObject(Object node, String key) {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key) != null;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static Object getInObject(Object node, String key) {
         if (node instanceof ObjectNode) {
             return ((ObjectNode) node).get(key);
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static Object getInArray(Object node, int idx) {
         if (node instanceof ArrayNode) {
             return ((ArrayNode) node).get(idx);
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static void accessInObject(Object node, Type type, String key, Nodes.Access out) {
@@ -256,7 +256,7 @@ public final class Jackson3Nodes {
             out.puttable = true;
             return;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static void accessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
@@ -275,20 +275,20 @@ public final class Jackson3Nodes {
             out.puttable = false;
             return;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
-    public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
+    public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         if (node instanceof ObjectNode) {
             for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
-                visitor.accept(entry.getKey(), entry.getValue());
+                consumer.accept(entry.getKey(), entry.getValue());
             }
             return;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
-    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+    public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
         if (node instanceof ObjectNode) {
             for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {
                 if (predicate.test(entry.getKey(), entry.getValue())) {
@@ -297,7 +297,7 @@ public final class Jackson3Nodes {
             }
             return false;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
@@ -313,21 +313,21 @@ public final class Jackson3Nodes {
             }
             return changed;
         }
-        throw expected("ObjectNode", node);
+        throw _expected("ObjectNode", node);
     }
 
-    public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
+    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
             for (int i = 0, size = an.size(); i < size; i++) {
-                visitor.accept(i, an.get(i));
+                consumer.accept(i, an.get(i));
             }
             return;
         }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchArray(Object node, BiPredicate<Integer, Object> predicate) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;
             for (int i = 0, size = an.size(); i < size; i++) {
@@ -335,57 +335,79 @@ public final class Jackson3Nodes {
             }
             return false;
         }
-        throw expected("ArrayNode", node);
-    }
-
-    public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        if (node instanceof ArrayNode) {
-            ArrayNode an = (ArrayNode) node;
-            for (int i = 0, size = an.size(); i < size; i++) {
-                if (!predicate.test(i, an.get(i))) return false;
-            }
-            return true;
-        }
-        throw expected("ArrayNode", node);
+        throw _expected("ArrayNode", node);
     }
 
     public static Object putInObject(Object node, String key, Object value) {
-        throw unsupported("putInObject");
+        if (!(node instanceof ObjectNode)) throw _expected("ObjectNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ObjectNode on = (ObjectNode) node;
+        JsonNode old = on.get(key);
+        on.set(key, (JsonNode) value);
+        return old;
     }
 
     public static Object setInArray(Object node, int idx, Object value) {
-        throw unsupported("setInArray");
+        if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ArrayNode an = (ArrayNode) node;
+        idx = idx < 0 ? an.size() + idx : idx;
+        JsonNode vv = (JsonNode) value;
+        if (idx == an.size()) {
+            an.add(vv);
+            return null;
+        }
+        if (idx >= 0 && idx < an.size()) {
+            JsonNode old = an.get(idx);
+            an.set(idx, vv);
+            return old;
+        }
+        throw new JsonException("Cannot set/add index " + idx + " in ArrayNode of size " +
+                an.size() + " (index < size: modify; index == size: append)");
     }
 
     public static void addInArray(Object node, Object value) {
-        throw unsupported("addInArray");
+        if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ((ArrayNode) node).add((JsonNode) value);
     }
 
     public static void addInArray(Object node, int idx, Object value) {
-        throw unsupported("addInArray");
+        if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
+        if (!(value instanceof JsonNode)) throw _notNode(value);
+        ArrayNode an = (ArrayNode) node;
+        idx = idx < 0 ? an.size() + idx : idx;
+        if (idx < 0 || idx > an.size()) {
+            throw new JsonException("Cannot insert index " + idx + " in ArrayNode of size " + an.size());
+        }
+        an.insert(idx, (JsonNode) value);
     }
 
     public static Object removeInObject(Object node, String key) {
-        throw unsupported("removeInObject");
+        if (node instanceof ObjectNode) {
+            return ((ObjectNode) node).remove(key);
+        }
+        throw _expected("ObjectNode", node);
     }
 
     public static Object removeInArray(Object node, int idx) {
-        throw unsupported("removeInArray");
+        if (node instanceof ArrayNode) {
+            ArrayNode an = (ArrayNode) node;
+            idx = idx < 0 ? an.size() + idx : idx;
+            if (idx < 0 || idx >= an.size()) {
+                throw new JsonException("Cannot remove index " + idx + " in ArrayNode of size " + an.size());
+            }
+            return an.remove(idx);
+        }
+        throw _expected("ArrayNode", node);
     }
 
-    private static JsonException notNode(Object node) {
-        return new JsonException("Not a Jackson3 JsonNode, but was '" + Types.name(node) + "'");
+    private static JsonException _notNode(Object node) {
+        return new JsonException("Not a Jackson 3.x JsonNode, but was '" + Types.name(node) + "'");
     }
 
-    private static JsonException notNode(Class<?> clazz) {
-        return new JsonException("Not a Jackson3 JsonNode, but was '" + Types.name(clazz) + "'");
-    }
-
-    private static JsonException expected(String expected, Object node) {
+    private static JsonException _expected(String expected, Object node) {
         return new JsonException("Expected " + expected + " but was " + Types.name(node));
     }
 
-    private static JsonException unsupported(String method) {
-        return new JsonException("'" + method + "' is not supported for `JsonNode` in Jackson3");
-    }
 }

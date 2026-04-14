@@ -367,7 +367,7 @@ public final class Nodes {
             return (Map<String, T>) node;
         }
         Map<String, T> map = NodeRegistry.newMapContainer(mapType, false);
-        visitObject(node, (k, v) -> {
+        forEachObject(node, (k, v) -> {
             T value = to(v, valueClazz);
             map.put(k, value);
         });
@@ -417,7 +417,7 @@ public final class Nodes {
         if ((listType == null || listType == List.class) && node instanceof List
                 && (valueClazz == null || valueClazz == Object.class)) return (List<T>) node;
         List<T> list = NodeRegistry.newListContainer(listType, false);
-        visitArray(node, (i, v) -> list.add(to(v, valueClazz)));
+        forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
         return list;
     }
 
@@ -428,7 +428,7 @@ public final class Nodes {
         if (node == null) return null;
         Objects.requireNonNull(mapper, "mapper");
         List<T> list = new ArrayList<>();
-        visitArray(node, (i, v) -> list.add(mapper.apply(v)));
+        forEachArray(node, (i, v) -> list.add(mapper.apply(v)));
         return list;
     }
 
@@ -477,7 +477,7 @@ public final class Nodes {
         }
         Class<?> componentType = Types.box(clazz);
         Object[] arr = (Object[]) Array.newInstance(componentType, sizeInArray(node));
-        visitArray(node, (i, v) -> Array.set(arr, i, to(v, componentType)));
+        forEachArray(node, (i, v) -> Array.set(arr, i, to(v, componentType)));
         return (T[]) arr;
     }
 
@@ -513,7 +513,7 @@ public final class Nodes {
         if ((setType == null || setType == Set.class) && node instanceof Set
                 && (valueClazz == null || valueClazz == Object.class)) return (Set<T>) node;
         Set<T> set = NodeRegistry.newSetContainer(setType, false);
-        visitArray(node, (i, v) -> set.add(to(v, valueClazz)));
+        forEachArray(node, (i, v) -> set.add(to(v, valueClazz)));
         return set;
     }
 
@@ -546,7 +546,7 @@ public final class Nodes {
         if (node == null) return null;
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
         JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
-        visitArray(node, jajo::add);
+        forEachArray(node, jajo::add);
         return (T) jajo;
     }
 
@@ -687,7 +687,7 @@ public final class Nodes {
             return source.equals(target);
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
-            return !anyMatchInObject(source, (k, subSource) -> {
+            return !anyMatchObject(source, (k, subSource) -> {
                 Object subTarget = getInObject(target, k);
                 if (subTarget == null && !containsInObject(target, k)) return true;
                 return !equals(subSource, subTarget);
@@ -723,7 +723,7 @@ public final class Nodes {
             return node.hashCode();
         } else if (jt.isObject()) {
             final int[] hash = {1};
-            visitObject(node, (k, v) -> {
+            forEachObject(node, (k, v) -> {
                 // disorder
                 hash[0] += 31 * k.hashCode() + hash(v);
             });
@@ -1009,15 +1009,15 @@ public final class Nodes {
      * Visits each entry in an object-like node.
      */
     @SuppressWarnings("unchecked")
-    public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
+    public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(visitor, "visitor");
+        Objects.requireNonNull(consumer, "consumer");
         if (node instanceof Map) {
-            ((Map<String, Object>) node).forEach(visitor);
+            ((Map<String, Object>) node).forEach(consumer);
             return;
         }
         if (node instanceof JsonObject) {
-            ((JsonObject) node).forEach(visitor);
+            ((JsonObject) node).forEach(consumer);
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
@@ -1027,12 +1027,12 @@ public final class Nodes {
                     continue;
                 }
                 Object value = entry.getValue().invokeGetter(node);
-                visitor.accept(entry.getKey(), value);
+                consumer.accept(entry.getKey(), value);
             }
             return;
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.visitObject(node, visitor);
+            FacadeNodes.forEachObject(node, consumer);
             return;
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
@@ -1043,7 +1043,7 @@ public final class Nodes {
      * Returns true if any object entry matches the predicate.
      */
     @SuppressWarnings("unchecked")
-    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+    public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(predicate, "predicate");
         if (node instanceof Map) {
@@ -1071,7 +1071,7 @@ public final class Nodes {
             return false;
         }
         if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.anyMatchInObject(node, predicate);
+            return FacadeNodes.anyMatchObject(node, predicate);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
@@ -1130,31 +1130,31 @@ public final class Nodes {
      * Visits each element in an array-like node.
      */
     @SuppressWarnings("unchecked")
-    public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
+    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(visitor, "visitor");
+        Objects.requireNonNull(consumer, "consumer");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            for (int i = 0; i < list.size(); i++) visitor.accept(i, list.get(i));
+            for (int i = 0; i < list.size(); i++) consumer.accept(i, list.get(i));
             return;
         }
         if (node instanceof JsonArray) {
-            ((JsonArray) node).forEach(visitor);
+            ((JsonArray) node).forEach(consumer);
             return;
         }
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) visitor.accept(i, Array.get(node, i));
+            for (int i = 0; i < len; i++) consumer.accept(i, Array.get(node, i));
             return;
         }
         if (node instanceof Set) {
             Set<Object> set = (Set<Object>) node;
             int i = 0;
-            for (Object v : set) visitor.accept(i++, v);
+            for (Object v : set) consumer.accept(i++, v);
             return;
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.visitArray(node, visitor);
+            FacadeNodes.forEachArray(node, consumer);
             return;
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
@@ -1164,7 +1164,7 @@ public final class Nodes {
      * Returns true if any element matches the predicate.
      */
     @SuppressWarnings("unchecked")
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchArray(Object node, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(predicate, "predicate");
         if (node instanceof List) {
@@ -1197,88 +1197,7 @@ public final class Nodes {
             return false;
         }
         if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.anyMatchInArray(node, predicate);
-        }
-        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
-    }
-
-    /**
-     * Returns true if all elements match the predicate.
-     */
-    @SuppressWarnings("unchecked")
-    public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(predicate, "predicate");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            for (int i = 0; i < list.size(); i++) {
-                if (!predicate.test(i, list.get(i))) return false;
-            }
-            return true;
-        }
-        if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            for (int i = 0; i < ja.size(); i++) {
-                if (!predicate.test(i, ja.getNode(i))) return false;
-            }
-            return true;
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) {
-                if (!predicate.test(i, Array.get(node, i))) return false;
-            }
-            return true;
-        }
-        if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            int i = 0;
-            for (Object v : set) {
-                if (!predicate.test(i++, v)) return false;
-            }
-            return true;
-        }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.allMatchInArray(node, predicate);
-        }
-        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
-    }
-
-    /**
-     * Returns true if no elements match the predicate.
-     */
-    @SuppressWarnings("unchecked")
-    public static boolean noneMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(predicate, "predicate");
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            for (int i = 0; i < list.size(); i++) {
-                if (predicate.test(i, list.get(i))) return false;
-            }
-            return true;
-        }
-        if (node instanceof JsonArray) {
-            JsonArray ja = (JsonArray) node;
-            for (int i = 0; i < ja.size(); i++) {
-                if (predicate.test(i, ja.getNode(i))) return false;
-            }
-            return true;
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            for (int i = 0; i < len; i++) {
-                if (predicate.test(i, Array.get(node, i))) return false;
-            }
-            return true;
-        }
-        if (node instanceof Set) {
-            Set<Object> set = (Set<Object>) node;
-            int i = 0;
-            for (Object v : set) {
-                if (predicate.test(i++, v)) return false;
-            }
-            return true;
+            return FacadeNodes.anyMatchArray(node, predicate);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1551,7 +1470,8 @@ public final class Nodes {
         /** static Type of child resolved by the access helper */
         public Type type;
         /**
-         * Indicates whether this location allows put or auto-creation.
+         * Indicates whether public Nodes/JsonPath write operations can put or
+         * auto-create at this location.
          * false means the container is locked (e.g. POJO without such field).
          */
         public boolean puttable;
@@ -1561,7 +1481,7 @@ public final class Nodes {
      * Resolves object-child access and fills {@link Access} with node/type metadata.
      * <p>
      * The output describes the current child value, inferred static type, and
-     * whether writing/inserting at this location is allowed.
+     * whether public write APIs can create or replace content at this location.
      */
     @SuppressWarnings("unchecked")
     public static void accessInObject(Object node, Type type, String key, Access out) {
@@ -1758,7 +1678,7 @@ public final class Nodes {
             throw new JsonException("Cannot call setInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.setInArray(node, idx, value);
+            return FacadeNodes.setInArray(node, idx, value);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1788,6 +1708,7 @@ public final class Nodes {
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.addInArray(node, value);
+            return;
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1819,6 +1740,7 @@ public final class Nodes {
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.addInArray(node, idx, value);
+            return;
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1844,7 +1766,7 @@ public final class Nodes {
                     node.getClass().getName() + "'");
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.removeInObject(node, key);
+            return FacadeNodes.removeInObject(node, key);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
@@ -1874,7 +1796,7 @@ public final class Nodes {
             throw new JsonException("Cannot call removeInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.removeInArray(node, idx);
+            return FacadeNodes.removeInArray(node, idx);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
@@ -1941,7 +1863,7 @@ public final class Nodes {
                 if (!visitor.apply(path, container)) return;
             }
 
-            Nodes.visitObject(container, (key, node) -> {
+            Nodes.forEachObject(container, (key, node) -> {
                 PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
@@ -1953,7 +1875,7 @@ public final class Nodes {
                 if (!visitor.apply(path, container)) return;
             }
 
-            Nodes.visitArray(container, (idx, node) -> {
+            Nodes.forEachArray(container, (idx, node) -> {
                 PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });

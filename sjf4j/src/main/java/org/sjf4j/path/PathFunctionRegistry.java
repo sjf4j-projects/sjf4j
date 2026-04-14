@@ -196,7 +196,7 @@ public class PathFunctionRegistry {
             double[] sum = new double[1];
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    Nodes.visitArray(node, (i, v) -> {
+                    Nodes.forEachArray(node, (i, v) -> {
                         Double d = Nodes.toDouble(v);
                         if (d != null) sum[0] += d;
                     });
@@ -212,7 +212,7 @@ public class PathFunctionRegistry {
             Double[] min = new Double[1];
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    Nodes.visitArray(node, (i, n) -> {
+                    Nodes.forEachArray(node, (i, n) -> {
                         Double d = Nodes.toDouble(n);
                         if (d != null) {
                             if (min[0] == null || min[0] > d) min[0] = d;
@@ -230,7 +230,7 @@ public class PathFunctionRegistry {
             Double[] max = new Double[1];
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    Nodes.visitArray(node, (i, n) -> {
+                    Nodes.forEachArray(node, (i, n) -> {
                         Double d = Nodes.toDouble(n);
                         if (d != null) {
                             if (max[0] == null || max[0] < d) max[0] = d;
@@ -249,7 +249,7 @@ public class PathFunctionRegistry {
             int[] cnt = new int[1];
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    Nodes.visitArray(node, (i, n) -> {
+                    Nodes.forEachArray(node, (i, n) -> {
                         Double d = Nodes.toDouble(n);
                         if (d != null) {
                             sum[0] += d;
@@ -270,7 +270,7 @@ public class PathFunctionRegistry {
             int[] cnt = new int[1];
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    Nodes.visitArray(node, (i, n) -> {
+                    Nodes.forEachArray(node, (i, n) -> {
                         Double d = Nodes.toDouble(n);
                         if (d != null) {
                             sum[0] += d;
@@ -284,7 +284,7 @@ public class PathFunctionRegistry {
             double[] qe = new double[1];
             switch (JsonType.of(node)) {
                 case ARRAY:
-                    Nodes.visitArray(node, (i, n) -> {
+                    Nodes.forEachArray(node, (i, n) -> {
                         Double d = Nodes.toDouble(n);
                         if (d != null) {
                             qe[0] += (d - avg) * (d - avg);

@@ -123,20 +123,18 @@ class Jackson3NodesTest {
         assertFalse(access.puttable);
 
         List<String> keys = new ArrayList<>();
-        Jackson3Nodes.visitObject(objectNode, (key, value) -> keys.add(key));
+        Jackson3Nodes.forEachObject(objectNode, (key, value) -> keys.add(key));
         assertEquals(2, keys.size());
-        assertTrue(Jackson3Nodes.anyMatchInObject(objectNode, (key, value) -> key.equals("age")));
-        assertFalse(Jackson3Nodes.anyMatchInObject(objectNode, (key, value) -> false));
+        assertTrue(Jackson3Nodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
+        assertFalse(Jackson3Nodes.anyMatchObject(objectNode, (key, value) -> false));
         assertTrue(Jackson3Nodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
         assertFalse(Jackson3Nodes.transformInObject(objectNode, (key, value) -> value));
 
         List<Integer> indexes = new ArrayList<>();
-        Jackson3Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));
+        Jackson3Nodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
         assertEquals(Arrays.asList(0, 1, 2), indexes);
-        assertTrue(Jackson3Nodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
-        assertFalse(Jackson3Nodes.anyMatchInArray(arrayNode, (idx, value) -> false));
-        assertTrue(Jackson3Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
-        assertFalse(Jackson3Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
+        assertTrue(Jackson3Nodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
+        assertFalse(Jackson3Nodes.anyMatchArray(arrayNode, (idx, value) -> false));
 
         assertThrows(JsonException.class, () -> Jackson3Nodes.toJsonObject(arrayNode));
         assertThrows(JsonException.class, () -> Jackson3Nodes.toMap(arrayNode));
@@ -154,18 +152,23 @@ class Jackson3NodesTest {
         assertThrows(JsonException.class, () -> Jackson3Nodes.getInArray(objectNode, 0));
         assertThrows(JsonException.class, () -> Jackson3Nodes.accessInObject(arrayNode, null, "name", new Nodes.Access()));
         assertThrows(JsonException.class, () -> Jackson3Nodes.accessInArray(objectNode, null, 0, new Nodes.Access()));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.visitObject(arrayNode, (k, v) -> {}));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchInObject(arrayNode, (k, v) -> true));
+        assertThrows(JsonException.class, () -> Jackson3Nodes.forEachObject(arrayNode, (k, v) -> {}));
+        assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchObject(arrayNode, (k, v) -> true));
         assertThrows(JsonException.class, () -> Jackson3Nodes.transformInObject(arrayNode, (k, v) -> v));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.visitArray(objectNode, (i, v) -> {}));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchInArray(objectNode, (i, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.allMatchInArray(objectNode, (i, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.putInObject(objectNode, "x", StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.setInArray(arrayNode, 0, StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.addInArray(arrayNode, StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.addInArray(arrayNode, 0, StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.removeInArray(arrayNode, 0));
+        assertThrows(JsonException.class, () -> Jackson3Nodes.forEachArray(objectNode, (i, v) -> {}));
+        assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchArray(objectNode, (i, v) -> true));
+        assertNull(Jackson3Nodes.putInObject(objectNode, "x", StringNode.valueOf("y")));
+        assertEquals("y", objectNode.get("x").asString());
+        assertEquals(2, Jackson3Nodes.toNumber(Jackson3Nodes.setInArray(arrayNode, 1, JsonNodeFactory.instance.numberNode(9))).intValue());
+        assertEquals(9, arrayNode.get(1).intValue());
+        Jackson3Nodes.addInArray(arrayNode, BooleanNode.TRUE);
+        assertTrue(arrayNode.get(3).booleanValue());
+        Jackson3Nodes.addInArray(arrayNode, -1, StringNode.valueOf("mid"));
+        assertEquals("mid", arrayNode.get(3).asString());
+        assertEquals("jack", Jackson3Nodes.asString(Jackson3Nodes.removeInObject(objectNode, "name")));
+        assertFalse(objectNode.has("name"));
+        assertEquals(true, Jackson3Nodes.toBoolean(Jackson3Nodes.removeInArray(arrayNode, -1)));
+        assertEquals(4, arrayNode.size());
     }
 
     @Test
@@ -228,27 +231,27 @@ class Jackson3NodesTest {
         assertFalse(access.puttable);
 
         List<String> visitedObject = new ArrayList<>();
-        FacadeNodes.visitObject(objectNode, (key, value) -> visitedObject.add(key));
+        FacadeNodes.forEachObject(objectNode, (key, value) -> visitedObject.add(key));
         assertEquals(3, visitedObject.size());
-        assertTrue(FacadeNodes.anyMatchInObject(objectNode, (key, value) -> key.equals("age")));
-        assertFalse(FacadeNodes.anyMatchInObject(objectNode, (key, value) -> key.equals("missing")));
+        assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
+        assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
         assertTrue(FacadeNodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
         assertFalse(FacadeNodes.transformInObject(objectNode, (key, value) -> value));
         assertEquals("jack", objectNode.get("name").asString());
 
         List<Integer> visitedArray = new ArrayList<>();
-        FacadeNodes.visitArray(arrayNode, (idx, value) -> visitedArray.add(idx));
+        FacadeNodes.forEachArray(arrayNode, (idx, value) -> visitedArray.add(idx));
         assertEquals(Arrays.asList(0, 1, 2), visitedArray);
-        assertTrue(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
-        assertFalse(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 9));
-        assertTrue(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
-        assertFalse(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
+        assertTrue(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
+        assertFalse(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 9));
 
-        assertThrows(JsonException.class, () -> FacadeNodes.putInObject(objectNode, "x", StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.setInArray(arrayNode, 0, StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray(arrayNode, StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray(arrayNode, 0, StringNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInArray(arrayNode, 0));
+        assertNull(FacadeNodes.putInObject(objectNode, "x", StringNode.valueOf("y")));
+        assertEquals("y", objectNode.get("x").asString());
+        assertEquals(2, FacadeNodes.toNumber(FacadeNodes.setInArray(arrayNode, 1, JsonNodeFactory.instance.numberNode(9))).intValue());
+        FacadeNodes.addInArray(arrayNode, BooleanNode.TRUE);
+        FacadeNodes.addInArray(arrayNode, -1, StringNode.valueOf("mid"));
+        assertEquals("mid", arrayNode.get(3).asString());
+        assertEquals("jack", FacadeNodes.asString(FacadeNodes.removeInObject(objectNode, "name")));
+        assertEquals(true, FacadeNodes.toBoolean(FacadeNodes.removeInArray(arrayNode, -1)));
     }
 }

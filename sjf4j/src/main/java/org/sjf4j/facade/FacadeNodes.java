@@ -99,7 +99,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.kindOf(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.kindOf(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.kindOf(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -109,7 +109,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(clazz)) return Jackson3Nodes.kindOf(clazz);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(clazz)) return Jackson2Nodes.kindOf(clazz);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(clazz)) return GsonNodes.kindOf(clazz);
-        throw unknownNode(clazz);
+        throw _unknownNode(clazz);
     }
 
 //    public static Object copy(Object node) {
@@ -125,7 +125,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toString(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toString(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toString(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -135,7 +135,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asString(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.asString(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.asString(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -145,7 +145,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toNumber(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toNumber(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toNumber(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -155,7 +155,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asNumber(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.asNumber(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.asNumber(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -165,7 +165,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toBoolean(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toBoolean(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toBoolean(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -175,7 +175,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.asBoolean(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.asBoolean(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.asBoolean(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -185,7 +185,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toJsonObject(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toJsonObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toJsonObject(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -195,7 +195,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toMap(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toMap(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toMap(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -205,7 +205,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toJsonArray(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toJsonArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toJsonArray(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -215,7 +215,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toList(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toList(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toList(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -225,7 +225,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toArray(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toArray(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -235,39 +235,39 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.toSet(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.toSet(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.toSet(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
      * Visits object members of an external node.
      */
-    public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
+    public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            Jackson3Nodes.visitObject(node, visitor);
+            Jackson3Nodes.forEachObject(node, consumer);
             return;
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            Jackson2Nodes.visitObject(node, visitor);
+            Jackson2Nodes.forEachObject(node, consumer);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            GsonNodes.visitObject(node, visitor);
+            GsonNodes.forEachObject(node, consumer);
             return;
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
-    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+    public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            return Jackson3Nodes.anyMatchInObject(node, predicate);
+            return Jackson3Nodes.anyMatchObject(node, predicate);
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            return Jackson2Nodes.anyMatchInObject(node, predicate);
+            return Jackson2Nodes.anyMatchObject(node, predicate);
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            return GsonNodes.anyMatchInObject(node, predicate);
+            return GsonNodes.anyMatchObject(node, predicate);
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
@@ -280,58 +280,42 @@ public class FacadeNodes {
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.transformInObject(node, mapper);
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
      * Visits array elements of an external node.
      */
-    public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
+    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            Jackson3Nodes.visitArray(node, visitor);
+            Jackson3Nodes.forEachArray(node, consumer);
             return;
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            Jackson2Nodes.visitArray(node, visitor);
+            Jackson2Nodes.forEachArray(node, consumer);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            GsonNodes.visitArray(node, visitor);
+            GsonNodes.forEachArray(node, consumer);
             return;
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
      * Returns true when any array element matches predicate.
      */
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchArray(Object node, BiPredicate<Integer, Object> predicate) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            return Jackson3Nodes.anyMatchInArray(node, predicate);
+            return Jackson3Nodes.anyMatchArray(node, predicate);
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            return Jackson2Nodes.anyMatchInArray(node, predicate);
+            return Jackson2Nodes.anyMatchArray(node, predicate);
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            return GsonNodes.anyMatchInArray(node, predicate);
+            return GsonNodes.anyMatchArray(node, predicate);
         }
-        throw unknownNode(node);
-    }
-
-    /**
-     * Returns true when all array elements match predicate.
-     */
-    public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            return Jackson3Nodes.allMatchInArray(node, predicate);
-        }
-        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            return Jackson2Nodes.allMatchInArray(node, predicate);
-        }
-        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            return GsonNodes.allMatchInArray(node, predicate);
-        }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -341,7 +325,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.sizeInObject(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.sizeInObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.sizeInObject(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -351,7 +335,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.sizeInArray(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.sizeInArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.sizeInArray(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -361,7 +345,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.keySetInObject(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.keySetInObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.keySetInObject(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -371,7 +355,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.entrySetInObject(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.entrySetInObject(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.entrySetInObject(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -381,7 +365,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.iteratorInArray(node);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.iteratorInArray(node);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.iteratorInArray(node);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -391,7 +375,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.containsInObject(node, key);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.containsInObject(node, key);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.containsInObject(node, key);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -401,7 +385,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.getInObject(node, key);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.getInObject(node, key);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.getInObject(node, key);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -411,7 +395,7 @@ public class FacadeNodes {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) return Jackson3Nodes.getInArray(node, idx);
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.getInArray(node, idx);
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.getInArray(node, idx);
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
 //    public static Object putInObject(Object node, String key, Object value) {
@@ -478,7 +462,7 @@ public class FacadeNodes {
             GsonNodes.accessInObject(node, type, key, out);
             return;
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -497,7 +481,7 @@ public class FacadeNodes {
             GsonNodes.accessInArray(node, type, idx, out);
             return;
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -513,7 +497,7 @@ public class FacadeNodes {
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.putInObject(node, key, value);
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -529,7 +513,7 @@ public class FacadeNodes {
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.setInArray(node, idx, value);
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -548,7 +532,7 @@ public class FacadeNodes {
             GsonNodes.addInArray(node, value);
             return;
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -567,7 +551,7 @@ public class FacadeNodes {
             GsonNodes.addInArray(node, idx, value);
             return;
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -583,7 +567,7 @@ public class FacadeNodes {
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.removeInObject(node, key);
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
     /**
@@ -599,14 +583,14 @@ public class FacadeNodes {
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
             return GsonNodes.removeInArray(node, idx);
         }
-        throw unknownNode(node);
+        throw _unknownNode(node);
     }
 
-    private static JsonException unknownNode(Object node) {
+    private static JsonException _unknownNode(Object node) {
         return new JsonException("Unknown node type '" + Types.name(node) + "'");
     }
 
-    private static JsonException unknownNode(Class<?> clazz) {
+    private static JsonException _unknownNode(Class<?> clazz) {
         return new JsonException("Unknown node type '" + clazz.getName() + "'");
     }
 

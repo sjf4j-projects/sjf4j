@@ -331,7 +331,7 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             out.node = ((JsonObject) node).get(key);
             out.type = JsonElement.class;
-            out.puttable = true;
+            out.puttable = false;
             return;
         }
         throw expected("JsonObject", node);
@@ -344,7 +344,7 @@ public final class GsonNodes {
         if (node instanceof JsonArray) {
             out.type = JsonElement.class;
             out.node = null;
-            out.puttable = true;
+            out.puttable = false;
             JsonArray ja = (JsonArray) node;
             if (idx == null) return;
             idx = idx < 0 ? ja.size() + idx : idx;
@@ -352,8 +352,6 @@ public final class GsonNodes {
                 out.node = ja.get(idx);
                 return;
             }
-            if (idx == ja.size()) return;
-            out.puttable = false;
             return;
         }
         throw expected("JsonArray", node);
@@ -362,17 +360,17 @@ public final class GsonNodes {
     /**
      * Visits fields of Gson object node.
      */
-    public static void visitObject(Object node, BiConsumer<String, Object> visitor) {
+    public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         if (node instanceof JsonObject) {
             for (Map.Entry<String, JsonElement> entry : ((JsonObject) node).entrySet()) {
-                visitor.accept(entry.getKey(), entry.getValue());
+                consumer.accept(entry.getKey(), entry.getValue());
             }
             return;
         }
         throw expected("JsonObject", node);
     }
 
-    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
+    public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
         if (node instanceof JsonObject) {
             for (Map.Entry<String, JsonElement> entry : ((JsonObject) node).entrySet()) {
                 if (predicate.test(entry.getKey(), entry.getValue())) {
@@ -403,11 +401,11 @@ public final class GsonNodes {
     /**
      * Visits items of Gson array node.
      */
-    public static void visitArray(Object node, BiConsumer<Integer, Object> visitor) {
+    public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         if (node instanceof JsonArray) {
             JsonArray an = (JsonArray) node;
             for (int i = 0, size = an.size(); i < size; i++) {
-                visitor.accept(i, an.get(i));
+                consumer.accept(i, an.get(i));
             }
             return;
         }
@@ -417,27 +415,13 @@ public final class GsonNodes {
     /**
      * Returns true when any item matches predicate.
      */
-    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchArray(Object node, BiPredicate<Integer, Object> predicate) {
         if (node instanceof JsonArray) {
             JsonArray an = (JsonArray) node;
             for (int i = 0, size = an.size(); i < size; i++) {
                 if (predicate.test(i, an.get(i))) return true;
             }
             return false;
-        }
-        throw expected("JsonArray", node);
-    }
-
-    /**
-     * Returns true when all items match predicate.
-     */
-    public static boolean allMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
-        if (node instanceof JsonArray) {
-            JsonArray an = (JsonArray) node;
-            for (int i = 0, size = an.size(); i < size; i++) {
-                if (!predicate.test(i, an.get(i))) return false;
-            }
-            return true;
         }
         throw expected("JsonArray", node);
     }

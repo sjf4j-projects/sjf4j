@@ -212,24 +212,20 @@ class NodesCoverageEdgeTest {
         ArrayNode facadeArray = MAPPER.createArrayNode().add("x").add(2);
 
         List<String> objectKeys = new ArrayList<>();
-        Nodes.visitObject(bean, (key, value) -> objectKeys.add(key));
+        Nodes.forEachObject(bean, (key, value) -> objectKeys.add(key));
         assertEquals(Arrays.asList("name", "count"), objectKeys);
-        assertTrue(Nodes.anyMatchInObject(bean, (key, value) -> key.equals("name")));
-        assertFalse(Nodes.anyMatchInObject(bean, (key, value) -> key.equals("missing")));
+        assertTrue(Nodes.anyMatchObject(bean, (key, value) -> key.equals("name")));
+        assertFalse(Nodes.anyMatchObject(bean, (key, value) -> key.equals("missing")));
         assertTrue(Nodes.replaceInObject(map, (key, value) -> key.equals("name") ? "jack" : value));
         assertTrue(Nodes.replaceInObject(bean, (key, value) -> key.equals("name") ? "bean" : value));
         assertFalse(Nodes.replaceInObject(getterOnlyBean, (key, value) -> "changed"));
         assertTrue(Nodes.replaceInObject(facadeObject, (key, value) -> key.equals("name") ? TextNode.valueOf("node") : value));
 
         List<Integer> visitedIndexes = new ArrayList<>();
-        Nodes.visitArray(new int[]{1, 2}, (idx, value) -> visitedIndexes.add(idx));
+        Nodes.forEachArray(new int[]{1, 2}, (idx, value) -> visitedIndexes.add(idx));
         assertEquals(Arrays.asList(0, 1), visitedIndexes);
-        assertTrue(Nodes.anyMatchInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), (idx, value) -> idx == 1));
-        assertFalse(Nodes.anyMatchInArray(facadeArray, (idx, value) -> idx == 9));
-        assertTrue(Nodes.allMatchInArray(new int[]{1, 2}, (idx, value) -> idx < 2));
-        assertFalse(Nodes.allMatchInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), (idx, value) -> idx == 0));
-        assertTrue(Nodes.noneMatchInArray(new int[]{1, 2}, (idx, value) -> idx == 9));
-        assertFalse(Nodes.noneMatchInArray(new JsonArray(Arrays.asList(1, 2)), (idx, value) -> idx == 1));
+        assertTrue(Nodes.anyMatchArray(new LinkedHashSet<>(Arrays.asList("a", "b")), (idx, value) -> idx == 1));
+        assertFalse(Nodes.anyMatchArray(facadeArray, (idx, value) -> idx == 9));
 
         assertEquals(2, Nodes.sizeInObject(bean));
         assertEquals(2, Nodes.sizeInArray(new int[]{1, 2}));
@@ -319,9 +315,9 @@ class NodesCoverageEdgeTest {
         ArrayNode arrayNode = MAPPER.createArrayNode().add("x").add(2);
 
         List<String> keys = new ArrayList<>();
-        Nodes.visitObject(objectNode, (key, value) -> keys.add(key));
+        Nodes.forEachObject(objectNode, (key, value) -> keys.add(key));
         assertEquals(Arrays.asList("name", "count"), keys);
-        assertTrue(Nodes.anyMatchInObject(objectNode, (key, value) -> key.equals("count")));
+        assertTrue(Nodes.anyMatchObject(objectNode, (key, value) -> key.equals("count")));
         assertEquals(2, Nodes.sizeInObject(objectNode));
         assertTrue(Nodes.keySetInObject(objectNode).contains("name"));
         assertEquals(2, Nodes.entrySetInObject(objectNode).size());
@@ -335,10 +331,9 @@ class NodesCoverageEdgeTest {
         assertTrue(access.puttable);
 
         List<Integer> indexes = new ArrayList<>();
-        Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));
+        Nodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
         assertEquals(Arrays.asList(0, 1), indexes);
-        assertTrue(Nodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
-        assertTrue(Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
+        assertTrue(Nodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
         assertEquals(2, Nodes.sizeInArray(arrayNode));
         assertEquals("x", Nodes.asString(Nodes.getInArray(arrayNode, 0)));
         assertEquals(Integer.valueOf(2), Nodes.getInArray(arrayNode, 1, Integer.class));
@@ -349,14 +344,18 @@ class NodesCoverageEdgeTest {
 
         Nodes.accessInArray(arrayNode, null, 1, access);
         assertEquals(2, Nodes.toNumber(access.node).intValue());
+        assertTrue(access.puttable);
 
         assertThrows(JsonException.class, () -> Nodes.copy(objectNode));
-        assertThrows(JsonException.class, () -> Nodes.putInObject(objectNode, "name", "jack"));
-        assertThrows(JsonException.class, () -> Nodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> Nodes.setInArray(arrayNode, 0, "y"));
-        assertThrows(JsonException.class, () -> Nodes.addInArray(arrayNode, "y"));
-        assertThrows(JsonException.class, () -> Nodes.addInArray(arrayNode, 0, "y"));
-        assertThrows(JsonException.class, () -> Nodes.removeInArray(arrayNode, 0));
+        assertEquals("han", Nodes.asString(Nodes.putInObject(objectNode, "name", MAPPER.valueToTree("jack"))));
+        assertEquals("jack", objectNode.get("name").textValue());
+        assertEquals("jack", Nodes.asString(Nodes.removeInObject(objectNode, "name")));
+        assertFalse(objectNode.has("name"));
+        assertEquals("x", Nodes.asString(Nodes.setInArray(arrayNode, 0, MAPPER.valueToTree("y"))));
+        Nodes.addInArray(arrayNode, MAPPER.valueToTree(true));
+        Nodes.addInArray(arrayNode, -1, MAPPER.valueToTree("mid"));
+        assertEquals("mid", arrayNode.get(2).textValue());
+        assertEquals(true, Nodes.toBoolean(Nodes.removeInArray(arrayNode, -1)));
     }
 
     @Test

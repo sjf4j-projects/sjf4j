@@ -330,7 +330,7 @@ public class SimpleExampleTest {
             System.out.println("key=" + k + " value=" + v);
         });
 
-        Nodes.visitObject(user, (k, v) -> {
+        Nodes.forEachObject(user, (k, v) -> {
             System.out.println("key=" + k + " value=" + v);
         });
     }

@@ -114,38 +114,6 @@ public class JsonPathTest {
     }
 
     @Test
-    public void testJsonPointerFastPathsOnFacadeAndArrayContainers() {
-        ObjectNode objectNode = MAPPER.createObjectNode().put("0", "zero");
-        JsonPath objectKey = JsonPath.compile("/0");
-
-        assertTrue(objectKey.contains(objectNode));
-        assertEquals("zero", objectKey.getString(objectNode));
-        assertNull(objectKey.ensurePutIfAbsent(objectNode, TextNode.valueOf("ignored")));
-        assertThrows(JsonException.class, () -> objectKey.replace(objectNode, TextNode.valueOf("one")));
-        assertThrows(JsonException.class, () -> objectKey.remove(objectNode));
-        assertThrows(JsonException.class, () -> objectKey.add(objectNode, TextNode.valueOf("again")));
-
-        JsonObject target = JsonObject.of("0", "zero");
-        assertNull(objectKey.ensurePutIfAbsent(target, "ignored"));
-        assertEquals("zero", objectKey.replace(target, "one"));
-        assertEquals("one", objectKey.getString(target));
-        assertEquals("one", objectKey.remove(target));
-        objectKey.add(target, "again");
-        assertEquals("again", target.getString("0"));
-
-        ArrayNode arrayNode = MAPPER.createArrayNode().add("a");
-        JsonPath arrayIndex = JsonPath.compile("/0");
-        assertTrue(arrayIndex.contains(arrayNode));
-        assertEquals("a", arrayIndex.getString(arrayNode));
-        assertNull(arrayIndex.ensurePutIfAbsent(arrayNode, TextNode.valueOf("ignored")));
-        assertThrows(JsonException.class, () -> arrayIndex.replace(arrayNode, TextNode.valueOf("b")));
-        assertThrows(JsonException.class, () -> JsonPath.compile("/1").add(arrayNode, TextNode.valueOf("c")));
-
-        assertTrue(JsonPath.compile("/0").contains(new String[]{"x"}));
-        assertTrue(JsonPath.compile("/0").contains(new LinkedHashSet<>(Collections.singleton("x"))));
-    }
-
-    @Test
     public void testCompile3() {
         String s1 = "$..a['b'].c";
         JsonPath p1 = JsonPath.compile(s1);
@@ -482,7 +450,10 @@ public class JsonPathTest {
         assertTrue(holder.autoJsonArrayField instanceof AutoJsonArray);
         assertEquals("jajo", JsonPath.compile("$.autoJsonArrayField[0].name").getString(holder));
 
-        assertThrows(JsonException.class, () -> JsonPath.compile("$.babyArrayField[2].name").ensurePut(holder, "baby"));
+        JsonException babyArrayFailure = assertThrows(JsonException.class,
+                () -> JsonPath.compile("$.babyArrayField[2].name").ensurePut(holder, "baby"));
+        assertTrue(babyArrayFailure.getMessage().contains("Only support List/JsonArray/JAJO/Set."));
+        assertNull(holder.babyArrayField);
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.setField[0].name").ensurePut(holder, "set"));
         assertTrue(holder.setField instanceof LinkedHashSet);

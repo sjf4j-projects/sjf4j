@@ -23,7 +23,8 @@ public final class Types {
      * Returns the class name of an object, or "null".
      */
     public static String name(Object object) {
-        return (object == null) ? "null" : object.getClass().getName();
+        return (object == null) ? "null" :
+                (object instanceof Class ? ((Class<?>) object).getName() : object.getClass().getName());
     }
 
     /**

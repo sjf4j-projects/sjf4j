@@ -41,7 +41,7 @@ public final class Patches {
         JsonType targetJt = JsonType.of(target);
         JsonType patchJt = JsonType.of(patch);
         if (targetJt.isObject() && patchJt.isObject()) {
-            Nodes.visitObject(patch, (key, subPatch) -> {
+            Nodes.forEachObject(patch, (key, subPatch) -> {
                 Object subTarget = Nodes.getInObject(target, key);
                 JsonType subTargetJt = JsonType.of(subTarget);
                 JsonType subPatchJt = JsonType.of(subPatch);
@@ -70,7 +70,7 @@ public final class Patches {
                 }
             });
         } else if (targetJt.isArray() && patchJt.isArray()) {
-            Nodes.visitArray(patch, (i, subPatch) -> {
+            Nodes.forEachArray(patch, (i, subPatch) -> {
                 Object subTarget = Nodes.getInArray(target, i);
                 JsonType subTargetJt = JsonType.of(subTarget);
                 JsonType subPatchJt = JsonType.of(subPatch);
@@ -118,7 +118,7 @@ public final class Patches {
 
         JsonType targetJt = JsonType.of(target);
         Object current = targetJt.isObject() ? target : new JsonObject();
-        Nodes.visitObject(patch, (key, subPatch) -> {
+        Nodes.forEachObject(patch, (key, subPatch) -> {
             if (subPatch == null) {
                 if (Nodes.containsInObject(current, key)) {
                     Nodes.removeInObject(current, key);
@@ -165,7 +165,7 @@ public final class Patches {
             JsonType sourceJt = JsonType.of(source);
             JsonType targetJt = JsonType.of(target);
             if (sourceJt.isObject() && targetJt.isObject()) {
-                Nodes.visitObject(source, (k, v) -> {
+                Nodes.forEachObject(source, (k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, null, k);
                     if (Nodes.containsInObject(target, k)) {
                         Object newTarget = Nodes.getInObject(target, k);
@@ -174,7 +174,7 @@ public final class Patches {
                         operations.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.fromLast(cps), null, null));
                     }
                 });
-                Nodes.visitObject(target, (k, v) -> {
+                Nodes.forEachObject(target, (k, v) -> {
                    if (!Nodes.containsInObject(source, k)) {
                        PathSegment cps = new PathSegment.Name(ps, null, k);
                        operations.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.fromLast(cps), v, null));

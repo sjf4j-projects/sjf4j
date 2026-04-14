@@ -119,20 +119,18 @@ class Jackson2NodesTest {
         assertFalse(access.puttable);
 
         List<String> keys = new ArrayList<>();
-        Jackson2Nodes.visitObject(objectNode, (key, value) -> keys.add(key));
+        Jackson2Nodes.forEachObject(objectNode, (key, value) -> keys.add(key));
         assertEquals(2, keys.size());
-        assertTrue(Jackson2Nodes.anyMatchInObject(objectNode, (key, value) -> key.equals("age")));
-        assertFalse(Jackson2Nodes.anyMatchInObject(objectNode, (key, value) -> false));
+        assertTrue(Jackson2Nodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
+        assertFalse(Jackson2Nodes.anyMatchObject(objectNode, (key, value) -> false));
         assertTrue(Jackson2Nodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? TextNode.valueOf("jack") : value));
         assertFalse(Jackson2Nodes.transformInObject(objectNode, (key, value) -> value));
 
         List<Integer> indexes = new ArrayList<>();
-        Jackson2Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));
+        Jackson2Nodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
         assertEquals(Arrays.asList(0, 1, 2), indexes);
-        assertTrue(Jackson2Nodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
-        assertFalse(Jackson2Nodes.anyMatchInArray(arrayNode, (idx, value) -> false));
-        assertTrue(Jackson2Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
-        assertFalse(Jackson2Nodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
+        assertTrue(Jackson2Nodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
+        assertFalse(Jackson2Nodes.anyMatchArray(arrayNode, (idx, value) -> false));
 
         assertThrows(JsonException.class, () -> Jackson2Nodes.toJsonObject(arrayNode));
         assertThrows(JsonException.class, () -> Jackson2Nodes.toMap(arrayNode));
@@ -150,17 +148,22 @@ class Jackson2NodesTest {
         assertThrows(JsonException.class, () -> Jackson2Nodes.getInArray(objectNode, 0));
         assertThrows(JsonException.class, () -> Jackson2Nodes.accessInObject(arrayNode, null, "name", new Nodes.Access()));
         assertThrows(JsonException.class, () -> Jackson2Nodes.accessInArray(objectNode, null, 0, new Nodes.Access()));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.visitObject(arrayNode, (k, v) -> {}));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.anyMatchInObject(arrayNode, (k, v) -> true));
+        assertThrows(JsonException.class, () -> Jackson2Nodes.forEachObject(arrayNode, (k, v) -> {}));
+        assertThrows(JsonException.class, () -> Jackson2Nodes.anyMatchObject(arrayNode, (k, v) -> true));
         assertThrows(JsonException.class, () -> Jackson2Nodes.transformInObject(arrayNode, (k, v) -> v));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.visitArray(objectNode, (i, v) -> {}));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.anyMatchInArray(objectNode, (i, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.allMatchInArray(objectNode, (i, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.putInObject(objectNode, "x", TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.setInArray(arrayNode, 0, TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.addInArray(arrayNode, TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.addInArray(arrayNode, 0, TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.removeInArray(arrayNode, 0));
+        assertThrows(JsonException.class, () -> Jackson2Nodes.forEachArray(objectNode, (i, v) -> {}));
+        assertThrows(JsonException.class, () -> Jackson2Nodes.anyMatchArray(objectNode, (i, v) -> true));
+        assertNull(Jackson2Nodes.putInObject(objectNode, "x", MAPPER.valueToTree("y")));
+        assertEquals("y", objectNode.get("x").textValue());
+        assertEquals(2, Jackson2Nodes.toNumber(Jackson2Nodes.setInArray(arrayNode, 1, MAPPER.valueToTree(9))).intValue());
+        assertEquals(9, arrayNode.get(1).intValue());
+        Jackson2Nodes.addInArray(arrayNode, MAPPER.valueToTree(true));
+        assertTrue(arrayNode.get(3).booleanValue());
+        Jackson2Nodes.addInArray(arrayNode, -1, MAPPER.valueToTree("mid"));
+        assertEquals("mid", arrayNode.get(3).textValue());
+        assertEquals("jack", Jackson2Nodes.asString(Jackson2Nodes.removeInObject(objectNode, "name")));
+        assertFalse(objectNode.has("name"));
+        assertEquals(true, Jackson2Nodes.toBoolean(Jackson2Nodes.removeInArray(arrayNode, -1)));
+        assertEquals(4, arrayNode.size());
     }
 }

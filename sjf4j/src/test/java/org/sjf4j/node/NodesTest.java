@@ -615,23 +615,6 @@ public class NodesTest {
         assertEquals("z", p2.tags.get(0));
     }
 
-    @Test
-    public void testAllMatchInArray() {
-        JsonArray ja = JsonArray.of(2, 4, 6);
-
-        assertTrue(Nodes.allMatchInArray(ja, (idx, value) -> ((Number) value).intValue() % 2 == 0));
-        assertFalse(Nodes.allMatchInArray(ja, (idx, value) -> idx < 2));
-        assertTrue(Nodes.allMatchInArray(JsonArray.of(), (idx, value) -> false));
-    }
-
-    @Test
-    public void testNoneMatchInArray() {
-        List<Object> list = Arrays.asList(1, 2, 3);
-
-        assertTrue(Nodes.noneMatchInArray(list, (idx, value) -> ((Number) value).intValue() > 3));
-        assertFalse(Nodes.noneMatchInArray(list, (idx, value) -> idx == 1 && Objects.equals(value, 2)));
-        assertTrue(Nodes.noneMatchInArray(new int[0], (idx, value) -> true));
-    }
 
     @Test
     public void testReplaceInObject() {

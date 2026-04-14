@@ -23,6 +23,7 @@ import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.path.JsonPath;
 import org.sjf4j.exception.JsonException;
 import tools.jackson.databind.PropertyName;
 import tools.jackson.databind.cfg.MapperConfig;
@@ -492,5 +493,28 @@ class Jackson3FacadeTest {
         assertEquals("han", FacadeNodes.toString(objectNode.get("name")));
         assertEquals(18, FacadeNodes.toNumber(objectNode.get("age")).intValue());
         assertEquals("x", FacadeNodes.toJsonArray(arrayNode).getString(0));
+    }
+
+    @Test
+    void testJsonPathWritesJackson3Nodes() {
+        JsonMapper mapper = JsonMapper.builderWithJackson2Defaults().build();
+        ObjectNode objectNode = mapper.createObjectNode().put("0", "zero");
+        ArrayNode arrayNode = mapper.createArrayNode().add("a");
+
+        assertNull(JsonPath.compile("/0").ensurePutIfAbsent(objectNode, StringNode.valueOf("ignored")));
+        assertEquals("zero", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").replace(objectNode, StringNode.valueOf("one"))).asString());
+        assertEquals("one", JsonPath.compile("/0").getString(objectNode));
+        assertEquals("one", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").remove(objectNode)).asString());
+        JsonPath.compile("/0").add(objectNode, StringNode.valueOf("again"));
+        assertEquals("again", JsonPath.compile("/0").getString(objectNode));
+        JsonPath.compile("/missing/name").ensurePut(objectNode, StringNode.valueOf("created"));
+        assertEquals("created", JsonPath.compile("/missing/name").getString(objectNode));
+
+        assertNull(JsonPath.compile("/0").ensurePutIfAbsent(arrayNode, StringNode.valueOf("ignored")));
+        assertEquals("a", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").replace(arrayNode, StringNode.valueOf("b"))).asString());
+        JsonPath.compile("/1").add(arrayNode, StringNode.valueOf("c"));
+        assertEquals("c", JsonPath.compile("/1").getString(arrayNode));
+        JsonPath.compile("/-/name").ensurePut(arrayNode, StringNode.valueOf("created"));
+        assertEquals("created", JsonPath.compile("/2/name").getString(arrayNode));
     }
 }

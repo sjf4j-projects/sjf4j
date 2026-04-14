@@ -1,7 +1,6 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Numbers;
 
@@ -341,7 +340,7 @@ public interface FilterExpr {
 
         // Matches if at least one element in the array matches
         if (ajt.isArray()) {
-            return Nodes.anyMatchInArray(a,
+            return Nodes.anyMatchArray(a,
                     (i, v) -> JsonType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
         }
 

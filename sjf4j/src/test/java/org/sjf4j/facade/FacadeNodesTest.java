@@ -130,28 +130,28 @@ class FacadeNodesTest {
         assertFalse(access.puttable);
 
         List<String> visitedObject = new ArrayList<>();
-        FacadeNodes.visitObject(objectNode, (key, value) -> visitedObject.add(key));
+        FacadeNodes.forEachObject(objectNode, (key, value) -> visitedObject.add(key));
         assertEquals(3, visitedObject.size());
-        assertTrue(FacadeNodes.anyMatchInObject(objectNode, (key, value) -> key.equals("age")));
-        assertFalse(FacadeNodes.anyMatchInObject(objectNode, (key, value) -> key.equals("missing")));
+        assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
+        assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
         assertTrue(FacadeNodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? TextNode.valueOf("jack") : value));
         assertFalse(FacadeNodes.transformInObject(objectNode, (key, value) -> value));
         assertEquals("jack", objectNode.get("name").textValue());
 
         List<Integer> visitedArray = new ArrayList<>();
-        FacadeNodes.visitArray(arrayNode, (idx, value) -> visitedArray.add(idx));
+        FacadeNodes.forEachArray(arrayNode, (idx, value) -> visitedArray.add(idx));
         assertEquals(Arrays.asList(0, 1, 2), visitedArray);
-        assertTrue(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
-        assertFalse(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 9));
-        assertTrue(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
-        assertFalse(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
+        assertTrue(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
+        assertFalse(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 9));
 
-        assertThrows(JsonException.class, () -> FacadeNodes.putInObject(objectNode, "x", TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.setInArray(arrayNode, 0, TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray(arrayNode, TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.addInArray(arrayNode, 0, TextNode.valueOf("y")));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInObject(objectNode, "name"));
-        assertThrows(JsonException.class, () -> FacadeNodes.removeInArray(arrayNode, 0));
+        assertNull(FacadeNodes.putInObject(objectNode, "x", MAPPER.valueToTree("y")));
+        assertEquals("y", objectNode.get("x").textValue());
+        assertEquals(2, FacadeNodes.toNumber(FacadeNodes.setInArray(arrayNode, 1, MAPPER.valueToTree(9))).intValue());
+        FacadeNodes.addInArray(arrayNode, MAPPER.valueToTree(true));
+        FacadeNodes.addInArray(arrayNode, -1, MAPPER.valueToTree("mid"));
+        assertEquals("mid", arrayNode.get(3).textValue());
+        assertEquals("jack", FacadeNodes.asString(FacadeNodes.removeInObject(objectNode, "name")));
+        assertEquals(true, FacadeNodes.toBoolean(FacadeNodes.removeInArray(arrayNode, -1)));
     }
 
     @Test
@@ -193,39 +193,37 @@ class FacadeNodesTest {
         Nodes.Access access = new Nodes.Access();
         FacadeNodes.accessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
-        assertTrue(access.puttable);
+        assertFalse(access.puttable);
         FacadeNodes.accessInObject(objectNode, null, "missing", access);
         assertNull(access.node);
-        assertTrue(access.puttable);
+        assertFalse(access.puttable);
         FacadeNodes.accessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
-        assertTrue(access.puttable);
+        assertFalse(access.puttable);
         FacadeNodes.accessInArray(arrayNode, null, null, access);
         assertNull(access.node);
-        assertTrue(access.puttable);
+        assertFalse(access.puttable);
         FacadeNodes.accessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
-        assertTrue(access.puttable);
+        assertFalse(access.puttable);
         FacadeNodes.accessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertFalse(access.puttable);
 
         List<String> visitedObject = new ArrayList<>();
-        FacadeNodes.visitObject(objectNode, (key, value) -> visitedObject.add(key));
+        FacadeNodes.forEachObject(objectNode, (key, value) -> visitedObject.add(key));
         assertEquals(3, visitedObject.size());
-        assertTrue(FacadeNodes.anyMatchInObject(objectNode, (key, value) -> key.equals("age")));
-        assertFalse(FacadeNodes.anyMatchInObject(objectNode, (key, value) -> key.equals("missing")));
+        assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
+        assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
         assertTrue(FacadeNodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? new JsonPrimitive("jack") : value));
         assertFalse(FacadeNodes.transformInObject(objectNode, (key, value) -> value));
         assertEquals("jack", objectNode.get("name").getAsString());
 
         List<Integer> visitedArray = new ArrayList<>();
-        FacadeNodes.visitArray(arrayNode, (idx, value) -> visitedArray.add(idx));
+        FacadeNodes.forEachArray(arrayNode, (idx, value) -> visitedArray.add(idx));
         assertEquals(Arrays.asList(0, 1, 2), visitedArray);
-        assertTrue(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 1));
-        assertFalse(FacadeNodes.anyMatchInArray(arrayNode, (idx, value) -> idx == 9));
-        assertTrue(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 3));
-        assertFalse(FacadeNodes.allMatchInArray(arrayNode, (idx, value) -> idx < 2));
+        assertTrue(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 1));
+        assertFalse(FacadeNodes.anyMatchArray(arrayNode, (idx, value) -> idx == 9));
 
         assertThrows(JsonException.class, () -> FacadeNodes.putInObject(objectNode, "x", new JsonPrimitive("y")));
         assertThrows(JsonException.class, () -> FacadeNodes.setInArray(arrayNode, 0, new JsonPrimitive("y")));
@@ -246,12 +244,11 @@ class FacadeNodesTest {
         assertThrows(JsonException.class, () -> FacadeNodes.toList("x"));
         assertThrows(JsonException.class, () -> FacadeNodes.toArray("x"));
         assertThrows(JsonException.class, () -> FacadeNodes.toSet("x"));
-        assertThrows(JsonException.class, () -> FacadeNodes.visitObject("x", (k, v) -> {}));
-        assertThrows(JsonException.class, () -> FacadeNodes.anyMatchInObject("x", (k, v) -> true));
+        assertThrows(JsonException.class, () -> FacadeNodes.forEachObject("x", (k, v) -> {}));
+        assertThrows(JsonException.class, () -> FacadeNodes.anyMatchObject("x", (k, v) -> true));
         assertThrows(JsonException.class, () -> FacadeNodes.transformInObject("x", (k, v) -> v));
-        assertThrows(JsonException.class, () -> FacadeNodes.visitArray("x", (i, v) -> {}));
-        assertThrows(JsonException.class, () -> FacadeNodes.anyMatchInArray("x", (i, v) -> true));
-        assertThrows(JsonException.class, () -> FacadeNodes.allMatchInArray("x", (i, v) -> true));
+        assertThrows(JsonException.class, () -> FacadeNodes.forEachArray("x", (i, v) -> {}));
+        assertThrows(JsonException.class, () -> FacadeNodes.anyMatchArray("x", (i, v) -> true));
         assertThrows(JsonException.class, () -> FacadeNodes.sizeInObject("x"));
         assertThrows(JsonException.class, () -> FacadeNodes.sizeInArray("x"));
         assertThrows(JsonException.class, () -> FacadeNodes.keySetInObject("x"));
