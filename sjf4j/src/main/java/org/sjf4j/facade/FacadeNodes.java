@@ -270,15 +270,15 @@ public class FacadeNodes {
         throw _unknownNode(node);
     }
 
-    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> replacer) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            return Jackson3Nodes.transformInObject(node, mapper);
+            return Jackson3Nodes.replaceInObject(node, replacer);
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            return Jackson2Nodes.transformInObject(node, mapper);
+            return Jackson2Nodes.replaceInObject(node, replacer);
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            return GsonNodes.transformInObject(node, mapper);
+            return GsonNodes.replaceInObject(node, replacer);
         }
         throw _unknownNode(node);
     }

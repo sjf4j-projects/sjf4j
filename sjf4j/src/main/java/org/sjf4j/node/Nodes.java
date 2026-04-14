@@ -1084,14 +1084,14 @@ public final class Nodes {
      * value to store. Returns true when at least one entry changes by reference.
      */
     @SuppressWarnings("unchecked")
-    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> mapper) {
+    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> replacer) {
         Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(mapper, "mapper");
+        Objects.requireNonNull(replacer, "replacer");
         if (node instanceof Map) {
             boolean changed = false;
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) node).entrySet()) {
                 Object oldValue = entry.getValue();
-                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                Object newValue = replacer.apply(entry.getKey(), oldValue);
                 if (oldValue != newValue) {
                     entry.setValue(newValue);
                     changed = true;
@@ -1100,7 +1100,7 @@ public final class Nodes {
             return changed;
         }
         if (node instanceof JsonObject) {
-            return ((JsonObject) node).transform(mapper);
+            return ((JsonObject) node).replace(replacer);
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
@@ -1111,7 +1111,7 @@ public final class Nodes {
                     continue;
                 }
                 Object oldValue = fi.invokeGetter(node);
-                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                Object newValue = replacer.apply(entry.getKey(), oldValue);
                 if (oldValue != newValue) {
                     fi.invokeSetter(node, newValue);
                     changed = true;
@@ -1120,7 +1120,7 @@ public final class Nodes {
             return changed;
         }
         if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.transformInObject(node, mapper);
+            return FacadeNodes.replaceInObject(node, replacer);
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }

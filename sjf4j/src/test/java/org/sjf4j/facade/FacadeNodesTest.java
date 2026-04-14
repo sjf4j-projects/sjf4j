@@ -134,8 +134,8 @@ class FacadeNodesTest {
         assertEquals(3, visitedObject.size());
         assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
         assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
-        assertTrue(FacadeNodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? TextNode.valueOf("jack") : value));
-        assertFalse(FacadeNodes.transformInObject(objectNode, (key, value) -> value));
+        assertTrue(FacadeNodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? TextNode.valueOf("jack") : value));
+        assertFalse(FacadeNodes.replaceInObject(objectNode, (key, value) -> value));
         assertEquals("jack", objectNode.get("name").textValue());
 
         List<Integer> visitedArray = new ArrayList<>();
@@ -215,8 +215,8 @@ class FacadeNodesTest {
         assertEquals(3, visitedObject.size());
         assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
         assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
-        assertTrue(FacadeNodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? new JsonPrimitive("jack") : value));
-        assertFalse(FacadeNodes.transformInObject(objectNode, (key, value) -> value));
+        assertTrue(FacadeNodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? new JsonPrimitive("jack") : value));
+        assertFalse(FacadeNodes.replaceInObject(objectNode, (key, value) -> value));
         assertEquals("jack", objectNode.get("name").getAsString());
 
         List<Integer> visitedArray = new ArrayList<>();
@@ -246,7 +246,7 @@ class FacadeNodesTest {
         assertThrows(JsonException.class, () -> FacadeNodes.toSet("x"));
         assertThrows(JsonException.class, () -> FacadeNodes.forEachObject("x", (k, v) -> {}));
         assertThrows(JsonException.class, () -> FacadeNodes.anyMatchObject("x", (k, v) -> true));
-        assertThrows(JsonException.class, () -> FacadeNodes.transformInObject("x", (k, v) -> v));
+        assertThrows(JsonException.class, () -> FacadeNodes.replaceInObject("x", (k, v) -> v));
         assertThrows(JsonException.class, () -> FacadeNodes.forEachArray("x", (i, v) -> {}));
         assertThrows(JsonException.class, () -> FacadeNodes.anyMatchArray("x", (i, v) -> true));
         assertThrows(JsonException.class, () -> FacadeNodes.sizeInObject("x"));

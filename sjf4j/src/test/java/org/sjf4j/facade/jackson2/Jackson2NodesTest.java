@@ -123,8 +123,8 @@ class Jackson2NodesTest {
         assertEquals(2, keys.size());
         assertTrue(Jackson2Nodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
         assertFalse(Jackson2Nodes.anyMatchObject(objectNode, (key, value) -> false));
-        assertTrue(Jackson2Nodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? TextNode.valueOf("jack") : value));
-        assertFalse(Jackson2Nodes.transformInObject(objectNode, (key, value) -> value));
+        assertTrue(Jackson2Nodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? TextNode.valueOf("jack") : value));
+        assertFalse(Jackson2Nodes.replaceInObject(objectNode, (key, value) -> value));
 
         List<Integer> indexes = new ArrayList<>();
         Jackson2Nodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
@@ -150,7 +150,7 @@ class Jackson2NodesTest {
         assertThrows(JsonException.class, () -> Jackson2Nodes.accessInArray(objectNode, null, 0, new Nodes.Access()));
         assertThrows(JsonException.class, () -> Jackson2Nodes.forEachObject(arrayNode, (k, v) -> {}));
         assertThrows(JsonException.class, () -> Jackson2Nodes.anyMatchObject(arrayNode, (k, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson2Nodes.transformInObject(arrayNode, (k, v) -> v));
+        assertThrows(JsonException.class, () -> Jackson2Nodes.replaceInObject(arrayNode, (k, v) -> v));
         assertThrows(JsonException.class, () -> Jackson2Nodes.forEachArray(objectNode, (i, v) -> {}));
         assertThrows(JsonException.class, () -> Jackson2Nodes.anyMatchArray(objectNode, (i, v) -> true));
         assertNull(Jackson2Nodes.putInObject(objectNode, "x", MAPPER.valueToTree("y")));

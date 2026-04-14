@@ -382,7 +382,7 @@ public final class GsonNodes {
         throw expected("JsonObject", node);
     }
 
-    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> mapper) {
         if (node instanceof JsonObject) {
             boolean changed = false;
             for (Map.Entry<String, JsonElement> entry : ((JsonObject) node).entrySet()) {

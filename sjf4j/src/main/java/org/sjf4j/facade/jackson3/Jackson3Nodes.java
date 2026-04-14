@@ -300,7 +300,7 @@ public final class Jackson3Nodes {
         throw _expected("ObjectNode", node);
     }
 
-    public static boolean transformInObject(Object node, BiFunction<String, Object, Object> mapper) {
+    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> mapper) {
         if (node instanceof ObjectNode) {
             boolean changed = false;
             for (Map.Entry<String, JsonNode> entry : ((ObjectNode) node).properties()) {

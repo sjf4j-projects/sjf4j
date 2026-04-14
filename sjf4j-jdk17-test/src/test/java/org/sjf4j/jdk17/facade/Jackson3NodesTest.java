@@ -127,8 +127,8 @@ class Jackson3NodesTest {
         assertEquals(2, keys.size());
         assertTrue(Jackson3Nodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
         assertFalse(Jackson3Nodes.anyMatchObject(objectNode, (key, value) -> false));
-        assertTrue(Jackson3Nodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
-        assertFalse(Jackson3Nodes.transformInObject(objectNode, (key, value) -> value));
+        assertTrue(Jackson3Nodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
+        assertFalse(Jackson3Nodes.replaceInObject(objectNode, (key, value) -> value));
 
         List<Integer> indexes = new ArrayList<>();
         Jackson3Nodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
@@ -154,7 +154,7 @@ class Jackson3NodesTest {
         assertThrows(JsonException.class, () -> Jackson3Nodes.accessInArray(objectNode, null, 0, new Nodes.Access()));
         assertThrows(JsonException.class, () -> Jackson3Nodes.forEachObject(arrayNode, (k, v) -> {}));
         assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchObject(arrayNode, (k, v) -> true));
-        assertThrows(JsonException.class, () -> Jackson3Nodes.transformInObject(arrayNode, (k, v) -> v));
+        assertThrows(JsonException.class, () -> Jackson3Nodes.replaceInObject(arrayNode, (k, v) -> v));
         assertThrows(JsonException.class, () -> Jackson3Nodes.forEachArray(objectNode, (i, v) -> {}));
         assertThrows(JsonException.class, () -> Jackson3Nodes.anyMatchArray(objectNode, (i, v) -> true));
         assertNull(Jackson3Nodes.putInObject(objectNode, "x", StringNode.valueOf("y")));
@@ -235,8 +235,8 @@ class Jackson3NodesTest {
         assertEquals(3, visitedObject.size());
         assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
         assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
-        assertTrue(FacadeNodes.transformInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
-        assertFalse(FacadeNodes.transformInObject(objectNode, (key, value) -> value));
+        assertTrue(FacadeNodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
+        assertFalse(FacadeNodes.replaceInObject(objectNode, (key, value) -> value));
         assertEquals("jack", objectNode.get("name").asString());
 
         List<Integer> visitedArray = new ArrayList<>();

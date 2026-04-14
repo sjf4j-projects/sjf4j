@@ -110,7 +110,7 @@ Now `student` exposes two complementary access models:
 
 ```java
 student.getName();                  // Alice
-student.getInteger("age");          // 18
+student.getInt("age");              // 18
 ```
 
 Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
@@ -120,7 +120,7 @@ Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
 Every OBNT node supports declarative structural navigating, expressive querying,
 and precise mutation via `JSON Path` (RFC 9535) or `JSON Pointer` (RFC 6901).
 ```java
-student.getIntegerByPath("$.scores.math");
+student.getIntByPath("$.scores.math");
 // 59
 
 student.findByPath("$..friends[?@.scores.math >= 90].name", String.class);  
@@ -149,7 +149,7 @@ patch.apply(student);
 The changes are applied in-place:
 ```java
 student.getName();                              // "Alice Zhang"
-student.getIntegerByPath("$.scores.physics");   // 91
+student.getIntByPath("$.scores.physics");       // 91
 ```
 
 Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)

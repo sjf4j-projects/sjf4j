@@ -292,7 +292,7 @@ class CoverageApiTest {
         assertTrue(fieldBacked.keySet().contains("name"));
         assertTrue(fieldBacked.entrySet().stream().anyMatch(entry -> "city".equals(entry.getKey())));
         assertTrue(fieldBacked.anyMatch((key, value) -> "city".equals(key)));
-        assertTrue(fieldBacked.transform((key, value) -> "name".equals(key) ? "HAN" : value));
+        assertTrue(fieldBacked.replace((key, value) -> "name".equals(key) ? "HAN" : value));
         assertEquals("HAN", fieldBacked.name);
         assertThrows(JsonException.class, () -> fieldBacked.remove("name"));
         fieldBacked.clear();

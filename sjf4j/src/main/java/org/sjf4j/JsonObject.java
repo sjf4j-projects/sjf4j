@@ -297,7 +297,7 @@ public class JsonObject extends JsonContainer {
         return false;
     }
 
-    public boolean transform(BiFunction<String, Object, Object> mapper) {
+    public boolean replace(BiFunction<String, Object, Object> mapper) {
         Objects.requireNonNull(mapper, "mapper");
         boolean changed = false;
         if (fieldMap != null) {
