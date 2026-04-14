@@ -323,11 +323,16 @@ class ReflectUtilCoverageTest {
         assertEquals("X", ReflectUtil.capitalize("x"));
 
         MethodHandle ctor = lookup.unreflectConstructor(NoArgsCtorPojo.class.getDeclaredConstructor());
-        assertNotNull(ReflectUtil.createLambdaConstructor(lookup, NoArgsCtorPojo.class, ctor));
+        java.util.function.Supplier<NoArgsCtorPojo> noArgsCtor = ReflectUtil.createLambdaConstructor(lookup, NoArgsCtorPojo.class, ctor);
+        assertNotNull(noArgsCtor);
+        assertNotNull(noArgsCtor.get());
         assertNull(ReflectUtil.createLambdaConstructor(lookup, LambdaCtorPojo.class, null));
 
         NodeRegistry.CreatorInfo creatorInfo = ReflectUtil.analyzeCreator(LambdaCtorPojo.class, lookup);
-        assertNotNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, NodeRegistry.Func1.class, 1));
+        NodeRegistry.Func1 creator = ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, NodeRegistry.Func1.class, 1);
+        assertNotNull(creator);
+        LambdaCtorPojo created = (LambdaCtorPojo) creator.apply("han");
+        assertEquals("han", created.name);
         assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, NodeRegistry.Func1.class, 0));
         assertNull(ReflectUtil.createLambdaArgsCreator(lookup, creatorInfo.argsCreatorHandle, null, 1));
 

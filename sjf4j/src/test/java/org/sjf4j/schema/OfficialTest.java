@@ -166,11 +166,19 @@ public final class OfficialTest {
                         store.register(uri, schema);
                         String id = schema.getString("$id", null);
                         if (id != null) {
-                            store.register(URI.create(id), schema);
+                            URI idUri = URI.create(id);
+                            if (!idUri.equals(uri)) {
+                                ObjectSchema existing = store.resolve(idUri);
+                                if (existing == null) {
+                                    store.register(idUri, schema);
+                                } else if (existing != schema) {
+                                    throw new AssertionError("Conflicting remote schema uri: " + idUri);
+                                }
+                            }
                         }
 
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        throw new AssertionError("Failed to load remote schema: " + p, e);
                     }
                 });
         return store;

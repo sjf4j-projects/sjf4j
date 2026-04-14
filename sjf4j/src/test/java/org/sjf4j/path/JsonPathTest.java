@@ -323,9 +323,13 @@ public class JsonPathTest {
             JsonPath.compile("$.a[*]").getNode(jo);
         });
 
-        assertDoesNotThrow(() -> JsonPath.compile("no.invalid"));
+        JsonPath relative = assertDoesNotThrow(() -> JsonPath.compile("no.invalid"));
+        assertEquals("$.no.invalid", relative.toExpr());
+        assertEquals(7, relative.getInt(JsonObject.of("no", JsonObject.of("invalid", 7))));
 
-        assertDoesNotThrow(() -> JsonPath.compile("")); // "" is valid in JSON Pointer
+        JsonPath root = assertDoesNotThrow(() -> JsonPath.compile("")); // "" is valid in JSON Pointer
+        assertEquals("", root.toPointerExpr());
+        assertSame(jo, root.getNode(jo));
         assertThrows(JsonException.class, () -> JsonPath.compile("$.."));
 
         JsonArray ja = JsonArray.fromJson("[1,2,3]");

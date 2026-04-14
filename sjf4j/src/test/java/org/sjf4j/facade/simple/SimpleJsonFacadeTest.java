@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -129,7 +130,11 @@ public class SimpleJsonFacadeTest {
     public void testPojoUnknownKey() {
         String json = "{\"active\": true }";
         SimpleJsonFacade facade = new SimpleJsonFacade();
-        assertDoesNotThrow(() -> facade.readNode(json, User.class));
+        User user = (User) assertDoesNotThrow(() -> facade.readNode(json, User.class));
+        assertNotNull(user);
+        assertNull(user.name);
+        assertNull(user.friends);
+        assertNull(user.ext);
     }
 
 

@@ -191,9 +191,7 @@ class ReflectUtilTest {
         MethodHandles.Lookup root = MethodHandles.lookup();
         MethodHandles.Lookup lookup = root;
         if (!ReflectUtil.IS_JDK8) {
-            try {
-                lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrivateFieldPojo.class, root);
-            } catch (Exception ignored) {}
+            lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrivateFieldPojo.class, root);
         }
 
         Field f = PrivateFieldPojo.class.getDeclaredField("name");
@@ -214,9 +212,7 @@ class ReflectUtilTest {
         MethodHandles.Lookup root = MethodHandles.lookup();
         MethodHandles.Lookup lookup = root;
         if (!ReflectUtil.IS_JDK8) {
-            try {
-                lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrimitiveFieldPojo.class, root);
-            } catch (Exception ignored) {}
+            lookup = (MethodHandles.Lookup) getPrivateLookupIn().invoke(null, PrimitiveFieldPojo.class, root);
         }
 
         Field f = PrimitiveFieldPojo.class.getDeclaredField("age");

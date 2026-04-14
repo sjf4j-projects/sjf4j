@@ -2,10 +2,10 @@ package org.sjf4j.patch;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.path.JsonPointer;
 
@@ -16,6 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -104,6 +105,7 @@ public class JsonPatchTest {
     void testTestOperationSuccess() {
         JsonObject target = new JsonObject();
         target.put("a", 1);
+        JsonObject before = target.copy();
 
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(
@@ -112,7 +114,8 @@ public class JsonPatchTest {
                 1,
                 null
         ));
-        assertDoesNotThrow(() -> patch.apply(target));
+        assertSame(target, assertDoesNotThrow(() -> patch.apply(target)));
+        assertEquals(before, target);
 
         JsonPatch patch2 = new JsonPatch();
         patch2.add(new PatchOperation(
@@ -164,6 +167,8 @@ public class JsonPatchTest {
     void testExistOperation() {
         JsonObject target = new JsonObject();
         target.put("a", 1);
+        target.put("nested", JsonArray.of(1, 2, 3));
+        JsonObject before = target.copy();
 
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(
@@ -173,7 +178,8 @@ public class JsonPatchTest {
                 null
         ));
 
-        assertDoesNotThrow(() -> patch.apply(target));
+        assertSame(target, assertDoesNotThrow(() -> patch.apply(target)));
+        assertEquals(before, target);
     }
 
     @Test
