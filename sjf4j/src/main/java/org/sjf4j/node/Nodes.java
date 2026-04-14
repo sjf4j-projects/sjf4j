@@ -1818,25 +1818,6 @@ public final class Nodes {
     }
 
     /**
-     * Walks the node tree in top-down order with explicit target selection.
-     */
-    public static void walk(Object container,
-                            WalkTarget target,
-                            BiFunction<PathSegment, Object, Boolean> visitor) {
-        walk(container, target, WalkOrder.TOP_DOWN, -1, visitor);
-    }
-
-    /**
-     * Walks the node tree with explicit target and traversal order.
-     */
-    public static void walk(Object container,
-                            WalkTarget target,
-                            WalkOrder order,
-                            BiFunction<PathSegment, Object, Boolean> visitor) {
-        walk(container, target, order, -1, visitor);
-    }
-
-    /**
      * Walks a node tree with full traversal controls.
      * <p>
      * {@code maxDepth < 0} means unlimited depth. Traversal starts at root path.

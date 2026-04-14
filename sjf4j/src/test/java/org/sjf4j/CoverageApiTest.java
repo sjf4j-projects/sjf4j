@@ -430,8 +430,8 @@ class CoverageApiTest {
             visits.incrementAndGet();
             return true;
         });
-        root.walk(Nodes.WalkTarget.VALUE, (path, node) -> true);
-        root.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, (path, node) -> true);
+        root.walk(Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (path, node) -> true);
+        root.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, -1, (path, node) -> true);
         root.walk(Nodes.WalkTarget.VALUE, Nodes.WalkOrder.BOTTOM_UP, 3, (path, node) -> true);
         assertTrue(visits.get() > 0);
 

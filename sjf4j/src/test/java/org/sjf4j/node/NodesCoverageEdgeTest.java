@@ -376,12 +376,12 @@ class NodesCoverageEdgeTest {
         JsonArray arrayTree = JsonArray.of(JsonObject.of("name", "han"), 2);
         List<String> visited = new ArrayList<>();
 
-        Nodes.walk(objectTree, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN,
+        Nodes.walk(objectTree, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, -1,
                 (path, node) -> {
                     visited.add(path.toString());
                     return false;
                 });
-        Nodes.walk(arrayTree, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN,
+        Nodes.walk(arrayTree, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.TOP_DOWN, -1,
                 (path, node) -> {
                     visited.add(path.toString());
                     return false;

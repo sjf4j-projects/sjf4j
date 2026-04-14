@@ -36,7 +36,8 @@ public class SimplePropertiesFacade implements PropertiesFacade {
     @Override
     public void writeNode(Properties properties, Object node) {
         Objects.requireNonNull(properties, "properties");
-        Nodes.walk(node, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, (ps, value) -> {
+        Nodes.walk(node, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1,
+                (ps, value) -> {
             if (value != null) {
                 properties.setProperty(jsonPath2PropKey(Paths.rootedPathExpr(ps)), value.toString());
             }

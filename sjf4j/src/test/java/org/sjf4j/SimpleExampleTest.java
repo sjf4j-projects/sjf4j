@@ -131,7 +131,7 @@ public class SimpleExampleTest {
 
         /// Walk and stream
 
-        jo.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, (path, node) -> {
+        jo.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1, (path, node) -> {
             // Target: CONTAINER or VALUE
             // Order: BOTTOM_UP (leaf-to-root) or TOP_DOWN (root-to-leaf)
             System.out.println("path=" + path + ", node=" + node);

@@ -26,7 +26,7 @@ public class NodeWalkerTest {
         List<String> paths = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         
-        Nodes.walk(jo, Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk(jo, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             values.add(value);
             return true;
@@ -53,7 +53,7 @@ public class NodeWalkerTest {
         
         List<String> containerPaths = new ArrayList<>();
         
-        Nodes.walk(jo, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP,
+        Nodes.walk(jo, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1,
                 (ps, container) -> {
             containerPaths.add(ps.rootedPathExpr());
             assertNotNull(container);
@@ -74,7 +74,8 @@ public class NodeWalkerTest {
         AtomicInteger count = new AtomicInteger(0);
         List<String> paths = new ArrayList<>();
         
-        Nodes.walk(ja, Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk(ja, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1,
+                (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             count.incrementAndGet();
             return true;
@@ -100,7 +101,7 @@ public class NodeWalkerTest {
         map.put("nested", nested);
         
         List<String> paths = new ArrayList<>();
-        Nodes.walk(map, Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk(map, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             return true;
         });
@@ -120,7 +121,7 @@ public class NodeWalkerTest {
         list.add(nested);
         
         List<String> paths = new ArrayList<>();
-        Nodes.walk(list, Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk(list, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             return true;
         });
@@ -136,7 +137,7 @@ public class NodeWalkerTest {
         int[] array = {1, 2, 3};
         
         List<String> paths = new ArrayList<>();
-        Nodes.walk(array, Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk(array, (ps, value) -> {
             paths.add(Paths.rootedPathExpr(ps));
             return true;
         });
@@ -151,7 +152,7 @@ public class NodeWalkerTest {
     public void testWalkPrimitive() {
         AtomicInteger count = new AtomicInteger(0);
         
-        Nodes.walk("test", Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk("test", (ps, value) -> {
             count.incrementAndGet();
             assertEquals("test", value);
             return true;
@@ -174,7 +175,7 @@ public class NodeWalkerTest {
                 "}");
         
         AtomicInteger count = new AtomicInteger(0);
-        Nodes.walk(jo, Nodes.WalkTarget.VALUE, (ps, value) -> {
+        Nodes.walk(jo, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
             count.incrementAndGet();
             log.debug("PathSegment: {}, Value: {}", ps, value);
             return true;
@@ -214,7 +215,7 @@ public class NodeWalkerTest {
         log.info("person={}", person);
 
         List<String> values1 = new ArrayList<>();
-        Nodes.walk(person, Nodes.WalkTarget.VALUE, (ps, node) -> {
+        Nodes.walk(person, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, node) -> {
             log.info("walk1 ps={}, node={}", ps, node);
             values1.add(ps.rootedPathExpr());
             return true;
@@ -222,7 +223,7 @@ public class NodeWalkerTest {
         assertTrue(values1.contains("$.babies[1].name"));
 
         List<String> values2 = new ArrayList<>();
-        Nodes.walk(person, Nodes.WalkTarget.ANY, Nodes.WalkOrder.BOTTOM_UP, (ps, node) -> {
+        Nodes.walk(person, Nodes.WalkTarget.ANY, Nodes.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
             log.info("walk2 ps={}, node={}", ps, node);
             values2.add(Paths.rootedPathExpr(ps));
             return true;

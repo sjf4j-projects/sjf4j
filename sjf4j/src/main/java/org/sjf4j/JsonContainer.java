@@ -49,7 +49,7 @@ public abstract class JsonContainer {
      * Removes null-valued object entries recursively.
      */
     public void deepPruneNulls() {
-        Nodes.walk(this, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP,
+        Nodes.walk(this, Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1,
                 (path, node) -> {
                     if (node instanceof JsonObject) {
                         ((JsonObject) node).removeIf(e -> e.getValue() == null);
@@ -696,22 +696,6 @@ public abstract class JsonContainer {
      */
     public void walk(BiFunction<PathSegment, Object, Boolean> visitor) {
         Nodes.walk(this, visitor);
-    }
-
-    /**
-     * Walks nodes filtered by target kind.
-     */
-    public void walk(Nodes.WalkTarget target,
-                     BiFunction<PathSegment, Object, Boolean> visitor) {
-        Nodes.walk(this, target, visitor);
-    }
-
-    /**
-     * Walks nodes with specified target and order.
-     */
-    public void walk(Nodes.WalkTarget target, Nodes.WalkOrder order,
-                     BiFunction<PathSegment, Object, Boolean> visitor) {
-        Nodes.walk(this, target, order, visitor);
     }
 
     /**
