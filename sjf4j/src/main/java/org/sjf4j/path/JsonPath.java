@@ -2,7 +2,6 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.Nodes;
@@ -1120,7 +1119,7 @@ public class JsonPath {
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
-                    } else if (acc.insertable) {
+                    } else if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
                         Nodes.putInObject(curNode, key, subNode);
@@ -1140,7 +1139,7 @@ public class JsonPath {
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
-                    } else if (acc.insertable) {
+                    } else if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
                         Nodes.setInArray(curNode, index.index, subNode);
@@ -1154,7 +1153,7 @@ public class JsonPath {
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
-                    } else if (acc.insertable) {
+                    } else if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
                         Nodes.putInObject(curNode, index.pointerToken, subNode);
@@ -1170,7 +1169,7 @@ public class JsonPath {
             } else if (ps instanceof PathSegment.Append) {
                 if (jt.isArray()) {
                     Nodes.accessInArray(curNode, curType, null, acc);
-                    if (acc.insertable) {
+                    if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
                         Nodes.addInArray(curNode, subNode);
@@ -1218,10 +1217,6 @@ public class JsonPath {
             }
             if (JsonArray.class.isAssignableFrom(clazz)) {
                 return NodeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
-            }
-            if (ps instanceof PathSegment.Index && clazz.isArray()) {
-                int idx = ((PathSegment.Index) ps).index;
-                return Array.newInstance(clazz.getComponentType(), idx + 1);
             }
             if (clazz == Set.class) {
                 return new LinkedHashSet<>();

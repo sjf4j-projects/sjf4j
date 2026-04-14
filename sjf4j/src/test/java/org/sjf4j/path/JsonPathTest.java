@@ -482,9 +482,7 @@ public class JsonPathTest {
         assertTrue(holder.autoJsonArrayField instanceof AutoJsonArray);
         assertEquals("jajo", JsonPath.compile("$.autoJsonArrayField[0].name").getString(holder));
 
-        JsonPath.compile("$.babyArrayField[2].name").ensurePut(holder, "baby");
-        assertEquals(3, holder.babyArrayField.length);
-        assertEquals("baby", holder.babyArrayField[2].name);
+        assertThrows(JsonException.class, () -> JsonPath.compile("$.babyArrayField[2].name").ensurePut(holder, "baby"));
 
         assertThrows(JsonException.class, () -> JsonPath.compile("$.setField[0].name").ensurePut(holder, "set"));
         assertTrue(holder.setField instanceof LinkedHashSet);

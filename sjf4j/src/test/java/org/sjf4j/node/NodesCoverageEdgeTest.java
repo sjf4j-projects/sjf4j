@@ -254,28 +254,28 @@ class NodesCoverageEdgeTest {
         Nodes.Access access = new Nodes.Access();
         Nodes.accessInObject(bean, Bean.class, "name", access);
         assertEquals("bean", access.node);
-        assertTrue(access.insertable);
+        assertTrue(access.puttable);
         Nodes.accessInObject(dynamicBean, DynamicBean.class, "extra", access);
         assertEquals(true, access.node);
-        assertTrue(access.insertable);
+        assertTrue(access.puttable);
         Nodes.accessInObject(bean, Bean.class, "missing", access);
         assertNull(access.node);
-        assertFalse(access.insertable);
+        assertFalse(access.puttable);
 
         Nodes.accessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), 1, access);
         assertNull(access.node);
-        assertTrue(access.insertable);
+        assertTrue(access.puttable);
         assertEquals(String.class, access.type);
         Nodes.accessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), null, access);
         assertNull(access.node);
-        assertTrue(access.insertable);
+        assertTrue(access.puttable);
         assertEquals(String.class, access.type);
         Nodes.accessInArray(new int[]{1, 2}, int[].class, -1, access);
         assertEquals(2, access.node);
-        assertTrue(access.insertable);
+        assertTrue(access.puttable);
         Nodes.accessInArray(new int[]{1, 2}, int[].class, 2, access);
         assertNull(access.node);
-        assertFalse(access.insertable);
+        assertFalse(access.puttable);
         assertThrows(JsonException.class, () -> Nodes.accessInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
 
         assertEquals("jack", Nodes.putInObject(map, "name", "map"));
@@ -332,7 +332,7 @@ class NodesCoverageEdgeTest {
         Nodes.Access access = new Nodes.Access();
         Nodes.accessInObject(objectNode, null, "name", access);
         assertEquals("han", Nodes.asString(access.node));
-        assertTrue(access.insertable);
+        assertTrue(access.puttable);
 
         List<Integer> indexes = new ArrayList<>();
         Nodes.visitArray(arrayNode, (idx, value) -> indexes.add(idx));

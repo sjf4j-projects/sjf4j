@@ -253,7 +253,7 @@ public final class Jackson3Nodes {
         if (node instanceof ObjectNode) {
             out.node = ((ObjectNode) node).get(key);
             out.type = JsonNode.class;
-            out.insertable = true;
+            out.puttable = true;
             return;
         }
         throw expected("ObjectNode", node);
@@ -263,7 +263,7 @@ public final class Jackson3Nodes {
         if (node instanceof ArrayNode) {
             out.type = JsonNode.class;
             out.node = null;
-            out.insertable = true;
+            out.puttable = true;
             ArrayNode an = (ArrayNode) node;
             if (idx == null) return;
             idx = idx < 0 ? an.size() + idx : idx;
@@ -272,7 +272,7 @@ public final class Jackson3Nodes {
                 return;
             }
             if (idx == an.size()) return;
-            out.insertable = false;
+            out.puttable = false;
             return;
         }
         throw expected("ArrayNode", node);

@@ -1551,10 +1551,10 @@ public final class Nodes {
         /** static Type of child resolved by the access helper */
         public Type type;
         /**
-         * Indicates whether this location allows insertion or auto-creation.
+         * Indicates whether this location allows put or auto-creation.
          * false means the container is locked (e.g. POJO without such field).
          */
-        public boolean insertable;
+        public boolean puttable;
     }
 
     /**
@@ -1572,13 +1572,13 @@ public final class Nodes {
         if (node instanceof Map) {
             out.node = ((Map<String, Object>) node).get(key);
             out.type = Types.resolveTypeArgument(type, Map.class, 1);
-            out.insertable = true;
+            out.puttable = true;
             return;
         }
         if (node.getClass() == JsonObject.class) {
             out.node = ((JsonObject) node).getNode(key);
             out.type = Object.class;
-            out.insertable = true;
+            out.puttable = true;
             return;
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
@@ -1587,18 +1587,18 @@ public final class Nodes {
             if (fi != null) {
                 out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 out.type = fi.type;
-                out.insertable = fi.hasSetter();
+                out.puttable = fi.hasSetter();
                 return;
             }
             if (node instanceof JsonObject) {
                 out.node = ((JsonObject) node).getNode(key);
                 out.type = Object.class;
-                out.insertable = true;
+                out.puttable = true;
                 return;
             }
             out.node = null;
             out.type = Object.class;
-            out.insertable = false;
+            out.puttable = false;
             return;
         }
         if (FacadeNodes.isNode(node)) {
@@ -1613,7 +1613,7 @@ public final class Nodes {
      * Resolves array-child access and fills {@link Access} with node/type metadata.
      * <p>
      * Negative indexes are normalized. {@code idx == size} is treated as appendable
-     * for List/JsonArray/Set, and reported as insertable with {@code node == null}.
+     * for List/JsonArray/Set, and reported as puttable with {@code node == null}.
      * <p>
      * If {@code idx == null}, it is treated as append-to-tail (equivalent to {@code idx == size}).
      */
@@ -1624,7 +1624,7 @@ public final class Nodes {
 
         out.type = Object.class;
         out.node = null;
-        out.insertable = true;
+        out.puttable = true;
         if (node instanceof List) {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
             if (idx == null) return;
@@ -1637,7 +1637,7 @@ public final class Nodes {
             if (idx == list.size()){
                 return;
             }
-            out.insertable = false;
+            out.puttable = false;
             return;
         }
         if (node instanceof JsonArray) {
@@ -1648,7 +1648,7 @@ public final class Nodes {
                 out.node = ja.getNode(idx);
                 return;
             }
-            out.insertable = false;
+            out.puttable = false;
             return;
         }
         if (node.getClass().isArray()) {
@@ -1659,7 +1659,7 @@ public final class Nodes {
                 out.node = Array.get(node, idx);
                 return;
             }
-            out.insertable = false;
+            out.puttable = false;
             return;
         }
         if (node instanceof Set) {

@@ -331,7 +331,7 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             out.node = ((JsonObject) node).get(key);
             out.type = JsonElement.class;
-            out.insertable = true;
+            out.puttable = true;
             return;
         }
         throw expected("JsonObject", node);
@@ -344,7 +344,7 @@ public final class GsonNodes {
         if (node instanceof JsonArray) {
             out.type = JsonElement.class;
             out.node = null;
-            out.insertable = true;
+            out.puttable = true;
             JsonArray ja = (JsonArray) node;
             if (idx == null) return;
             idx = idx < 0 ? ja.size() + idx : idx;
@@ -353,7 +353,7 @@ public final class GsonNodes {
                 return;
             }
             if (idx == ja.size()) return;
-            out.insertable = false;
+            out.puttable = false;
             return;
         }
         throw expected("JsonArray", node);
