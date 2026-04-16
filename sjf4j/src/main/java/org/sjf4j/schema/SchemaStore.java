@@ -5,6 +5,7 @@ import org.sjf4j.exception.SchemaException;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -188,7 +189,8 @@ public class SchemaStore {
     /**
      * Loads a schema from local URI.
      * <p>
-     * Supported schemes: {@code file}, {@code classpath}.
+     * Supported schemes: {@code file}, {@code classpath}. Returns {@code null}
+     * when the target does not exist.
      */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
         Objects.requireNonNull(uri, "uri");
@@ -204,6 +206,7 @@ public class SchemaStore {
         } else {
             throw new SchemaException("Unsupported local schema uri: " + uri);
         }
+        if (schema == null) return null;
         // Preserve the retrieval URI. During compile, a root `$id` may resolve
         // against this retrieval URI and produce a distinct canonical URI.
         schema.setRetrievalUri(CompileUtil.withoutFragment(uri));
@@ -211,23 +214,27 @@ public class SchemaStore {
     }
 
     /**
-     * Loads a schema from a file path.
+     * Loads a schema from a file path. Returns {@code null} when the file does
+     * not exist.
      */
     public static ObjectSchema loadSchemaFromFile(String filePath) {
         try (InputStream in = Files.newInputStream(Paths.get(filePath))) {
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
+        } catch (NoSuchFileException e) {
+            return null;
         } catch (Exception e) {
             throw new SchemaException("Failed to load schema file: " + filePath, e);
         }
     }
 
     /**
-     * Loads a schema from a classpath resource path.
+     * Loads a schema from a classpath resource path. Returns {@code null} when
+     * the resource does not exist.
      */
     public static ObjectSchema loadSchemaFromResource(String resourcePath) {
         if (resourcePath.startsWith("/")) resourcePath = resourcePath.substring(1);
         try (InputStream in = SchemaStore.class.getClassLoader().getResourceAsStream(resourcePath)) {
-            if (in == null) throw new SchemaException("Not found schema resource: " + resourcePath);
+            if (in == null) return null;
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
             throw new SchemaException("Failed to load schema resource: " + resourcePath, e);

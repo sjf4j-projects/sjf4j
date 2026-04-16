@@ -4,12 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
+import org.sjf4j.exception.SchemaException;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ValidJsonSchemaTest {
@@ -55,6 +57,11 @@ public class ValidJsonSchemaTest {
     @ValidJsonSchema(ref = "user.json")
     public static class ExternalRefUser {
         public int id;
+        public String name;
+    }
+
+    @ValidJsonSchema(ref = "missing.json")
+    public static class MissingRefUser {
         public String name;
     }
 
@@ -186,6 +193,16 @@ public class ValidJsonSchemaTest {
     }
 
     @ValidJsonSchema
+    public static class MetaplusDoc {
+        public String name;
+    }
+
+    @ValidJsonSchema
+    public static class FullNameOnlyUser {
+        public String name;
+    }
+
+    @ValidJsonSchema
     public static class PreloadUser {
         public int id;
         public String name;
@@ -209,6 +226,43 @@ public class ValidJsonSchemaTest {
         assertTrue(validator.validate(ok).isValid());
     }
 
+    @Test
+    public void testExternalBaseDirSnakeName(@TempDir Path tempDir) throws Exception {
+        String schema = "{" +
+                "\"type\":\"object\"," +
+                "\"required\":[\"name\"]," +
+                "\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1}}," +
+                "\"additionalProperties\":false" +
+                "}";
+        Path schemaPath = tempDir.resolve("metaplus_doc.json");
+        Files.write(schemaPath, schema.getBytes(StandardCharsets.UTF_8));
+
+        String baseDir = "file:" + tempDir.toString();
+        SchemaValidator validator = new SchemaValidator(baseDir, null, null);
+        MetaplusDoc ok = new MetaplusDoc();
+        ok.name = "han";
+        assertTrue(validator.validate(ok).isValid());
+    }
+
+    @Test
+    public void testConventionDoesNotUseFullClassName(@TempDir Path tempDir) throws Exception {
+        String schema = "{" +
+                "\"type\":\"object\"," +
+                "\"required\":[\"name\"]," +
+                "\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1}}," +
+                "\"additionalProperties\":false" +
+                "}";
+        Path schemaPath = tempDir.resolve(FullNameOnlyUser.class.getName() + ".json");
+        Files.write(schemaPath, schema.getBytes(StandardCharsets.UTF_8));
+
+        String baseDir = "file:" + tempDir.toString();
+        SchemaValidator validator = new SchemaValidator(baseDir, null, null);
+        FullNameOnlyUser ok = new FullNameOnlyUser();
+        ok.name = "han";
+
+        assertThrows(SchemaException.class, () -> validator.validate(ok));
+    }
+
 
     @Test
     public void testPreloadRefs(@TempDir Path tempDir) throws Exception {
@@ -223,6 +277,22 @@ public class ValidJsonSchemaTest {
         ok.id = 1;
         ok.name = "han";
         assertTrue(validator.validate(ok).isValid());
+    }
+
+    @Test
+    public void testPreloadMissingRefThrows(@TempDir Path tempDir) {
+        String baseDir = "file:" + tempDir.toString();
+        SchemaValidator validator = new SchemaValidator(baseDir, null, null);
+        assertThrows(SchemaException.class, () -> validator.preload("missing.json"));
+    }
+
+    @Test
+    public void testExplicitMissingRefThrows(@TempDir Path tempDir) {
+        String baseDir = "file:" + tempDir.toString();
+        SchemaValidator validator = new SchemaValidator(baseDir, null, null);
+        MissingRefUser user = new MissingRefUser();
+        user.name = "han";
+        assertThrows(SchemaException.class, () -> validator.validate(user));
     }
 
     @Test

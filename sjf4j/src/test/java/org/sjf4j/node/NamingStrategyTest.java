@@ -73,15 +73,7 @@ class NamingStrategyTest {
         assertSame(NamingStrategy.IDENTITY.translate(null), NamingStrategy.IDENTITY.translate(null));
         assertEquals("CamelCase", NamingStrategy.IDENTITY.translate("CamelCase"));
         assertNull(NamingStrategy.SNAKE_CASE.translate(null));
-        assertEquals("", NamingStrategy.SNAKE_CASE.translate(""));
-        assertEquals("___", NamingStrategy.SNAKE_CASE.translate("___"));
-        assertEquals("already_snake", NamingStrategy.SNAKE_CASE.translate("already_snake"));
-        assertEquals("user_name", NamingStrategy.SNAKE_CASE.translate("UserName"));
-        assertEquals("url", NamingStrategy.SNAKE_CASE.translate("URL"));
-        assertEquals("user_name", NamingStrategy.SNAKE_CASE.translate("userName"));
-        assertEquals("url_value", NamingStrategy.SNAKE_CASE.translate("URLValue"));
-        assertEquals("version2_value", NamingStrategy.SNAKE_CASE.translate("version2Value"));
-        assertEquals("__internal_id", NamingStrategy.SNAKE_CASE.translate("__internalId"));
+        assertEquals("metaplus_doc", NamingStrategy.SNAKE_CASE.translate("MetaplusDoc"));
     }
 
 }

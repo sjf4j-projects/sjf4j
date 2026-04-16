@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 
 ### Changed
+- Changed snake-case conversion to live in `Strings.toSnakeCase(...)`, with `NamingStrategy.SNAKE_CASE` delegating to the shared helper.
+- Changed `SchemaValidator` convention lookup to try `<simple-name>.json` first and then `<snake-name>.json`, instead of probing `<full-class-name>.json`.
+- Changed `SchemaStore` local schema loaders to return `null` for missing files/resources so missing-schema decisions stay in higher-level callers.
 - Changed node traversal helper naming from `visit*`/`anyMatchIn*` to `forEach*`/`anyMatch*` across shared node utilities and facade adapters.
 - Changed facade-node write operations for Jackson 2 and Jackson 3 to require backend-native `JsonNode` values instead of auto-converting arbitrary OBNT values.
 - Changed JSONPath missing-container creation to recognize Jackson 3 native object/array node types.

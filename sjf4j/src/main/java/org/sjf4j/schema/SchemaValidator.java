@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.exception.SchemaException;
 import org.sjf4j.path.JsonPointer;
+import org.sjf4j.util.Strings;
 
 import java.io.IOException;
 import java.net.URI;
@@ -87,6 +88,9 @@ public final class SchemaValidator {
             if (ref == null || ref.trim().isEmpty()) continue;
             URI uri = baseUri.resolve(ref);
             JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
+            if (schema == null) {
+                throw new SchemaException("Schema preload target not found: " + uri);
+            }
             _compileAndRegister(schema);
         }
         return this;
@@ -140,7 +144,7 @@ public final class SchemaValidator {
      * Loads schema for a POJO from annotation value/ref or naming convention.
      * <p>
      * Resolution order: inline schema text, explicit ref, then
-     * {@code <full-class-name>.schema.json}, then {@code <simple-name>.schema.json}.
+     * {@code <simple-name>.json}, then {@code <snake-name>.json}.
      */
     private JsonSchema _loadPojoSchema(Class<?> clazz, ValidJsonSchema anno) {
         // From value
@@ -155,6 +159,9 @@ public final class SchemaValidator {
         if (!ref.isEmpty()) {
             URI uri = baseUri.resolve(ref);
             JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
+            if (schema == null) {
+                throw new SchemaException("Schema ref not found: " + uri);
+            }
             _compileAndRegister(schema);
 
             String refFragment = uri.getFragment();
@@ -166,21 +173,27 @@ public final class SchemaValidator {
         }
 
         // From convention
-        URI fullNameUri = baseUri.resolve(clazz.getName() + SCHEMA_FILE_SUFFIX);
-        try {
-            ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(fullNameUri);
+        URI simpleNameUri = baseUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX);
+        String snakeName = Strings.toSnakeCase(clazz.getSimpleName());
+        URI snakeNameUri = baseUri.resolve(snakeName + SCHEMA_FILE_SUFFIX);
+        ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(simpleNameUri);
+        if (schema != null) {
             return _compileAndRegister(schema);
-        } catch (Exception e) {
-            URI simpleNameUri = baseUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX);
-            try {
-                ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(simpleNameUri);
-                return _compileAndRegister(schema);
-            } catch (Exception e2) {
-                throw new SchemaException("No schema found for @ValidJsonSchema on " + clazz.getName() +
-                        ": neither 'value' nor 'ref' is specified, and no schema file exists at '" +
-                        fullNameUri + "' or '" + simpleNameUri + "'.");
-            }
         }
+
+        if (snakeNameUri.equals(simpleNameUri)) {
+            throw new SchemaException("No schema found for @ValidJsonSchema on " + clazz.getName() +
+                    ": neither 'value' nor 'ref' is specified, and no schema file exists at '" +
+                    simpleNameUri + "'.");
+        }
+
+        schema = SchemaStore.loadSchemaFromLocalUri(snakeNameUri);
+        if (schema != null) {
+            return _compileAndRegister(schema);
+        }
+        throw new SchemaException("No schema found for @ValidJsonSchema on " + clazz.getName() +
+                ": neither 'value' nor 'ref' is specified, and no schema file exists at '" +
+                simpleNameUri + "' or '" + snakeNameUri + "'.");
     }
 
     /**
