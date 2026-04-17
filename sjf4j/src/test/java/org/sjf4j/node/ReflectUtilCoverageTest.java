@@ -283,10 +283,12 @@ class ReflectUtilCoverageTest {
                 MissingWhenAnyOf.class.getAnnotation(AnyOf.class)
         ));
 
-        assertNull(ReflectUtil.getDeclaredNamingStrategy(null));
-        assertNull(ReflectUtil.getDeclaredNamingStrategy(IdentityNamingPojo.class));
-        assertEquals(AccessStrategy.FIELD_BASED, ReflectUtil.getDeclaredAccessStrategy(FieldBindingPojo.class));
-        assertEquals(AccessStrategy.BEAN_BASED, ReflectUtil.getDeclaredAccessStrategy(null));
+        assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(null));
+        assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(IdentityNamingPojo.class));
+        assertEquals(AccessStrategy.FIELD_BASED,
+                ReflectUtil.analyzePojo(FieldBindingPojo.class, true).accessStrategy);
+        assertEquals(AccessStrategy.BEAN_BASED,
+                ReflectUtil.analyzePojo(IdentityNamingPojo.class, true).accessStrategy);
 
         assertFalse(ReflectUtil.isPojoCandidate(JsonArray.class));
         assertFalse(ReflectUtil.isPojoCandidate(JsonObject.class));
@@ -296,7 +298,6 @@ class ReflectUtilCoverageTest {
         try {
             Field field = FastjsonOnlyPojo.class.getDeclaredField("name");
             assertEquals("fast_name", ReflectUtil.getExplicitName(field));
-            assertEquals("fast_name", ReflectUtil.getFieldName(field, FastjsonOnlyPojo.class));
             assertEquals(2, ReflectUtil.getAliases(field).length);
         } catch (NoSuchFieldException e) {
             throw new AssertionError(e);

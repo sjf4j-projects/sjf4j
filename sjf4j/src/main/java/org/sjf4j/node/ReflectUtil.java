@@ -58,7 +58,7 @@ public final class ReflectUtil {
     /**
      * Returns true when class can be treated as a POJO node type.
      */
-    public static boolean  isPojoCandidate(Class<?> clazz) {
+    public static boolean isPojoCandidate(Class<?> clazz) {
         if (clazz == null || clazz == Object.class || clazz.isPrimitive() || clazz == String.class ||
                 Number.class.isAssignableFrom(clazz) || clazz == Boolean.class) {
             return false;
@@ -71,7 +71,7 @@ public final class ReflectUtil {
             return false;
         }
 
-        return !isFrameworkPackage(clazz.getName());
+        return !_isFrameworkPackage(clazz.getName());
     }
 
 
@@ -91,7 +91,7 @@ public final class ReflectUtil {
             return null;
         }
 
-        MethodHandles.Lookup lookup = resolveLookup(clazz);
+        MethodHandles.Lookup lookup = _resolveLookup(clazz);
         try {
             Constructor<?> ctor = clazz.getDeclaredConstructor();
             try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
@@ -117,7 +117,7 @@ public final class ReflectUtil {
             else return null;
         }
 
-        MethodHandles.Lookup lookup = resolveLookup(clazz);
+        MethodHandles.Lookup lookup = _resolveLookup(clazz);
 
         // Creator constructor (for final fields / record-style)
         NodeRegistry.CreatorInfo creatorInfo = null;
@@ -128,8 +128,20 @@ public final class ReflectUtil {
             else return null;
         }
 
-        NamingStrategy namingStrategy = getDeclaredNamingStrategy(clazz);
-        AccessStrategy accessStrategy = getDeclaredAccessStrategy(clazz);
+        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
+        NamingStrategy namingStrategy = null;
+        AccessStrategy accessStrategy = AccessStrategy.BEAN_BASED;
+        boolean readDynamic = true;
+        boolean writeDynamic = true;
+        if (nodeBinding != null) {
+            namingStrategy = nodeBinding.naming();
+            if (namingStrategy == NamingStrategy.IDENTITY) {
+                namingStrategy = null;
+            }
+            accessStrategy = nodeBinding.access();
+            readDynamic = nodeBinding.readDynamic();
+            writeDynamic = nodeBinding.writeDynamic();
+        }
 
         // Fields
         Map<String, NodeRegistry.FieldInfo> fields = new LinkedHashMap<>();
@@ -157,13 +169,15 @@ public final class ReflectUtil {
                 }
                 boolean forceFieldBinding = nodeProperty != null;
                 boolean nonPublicField = !Modifier.isPublic(mod);
+                Method publicGetterMethod = null;
+                Method publicSetterMethod = null;
                 boolean fieldReaderGap = false;
                 boolean fieldWriterGap = false;
                 if (nonPublicField) {
-                    boolean publicGetter = hasPublicGetter(clazz, field);
-                    boolean publicSetter = hasPublicSetter(clazz, field);
-                    fieldReaderGap = !publicSetter;
-                    fieldWriterGap = !publicGetter;
+                    publicGetterMethod = _findPublicGetterMethod(clazz, field);
+                    publicSetterMethod = _findPublicSetterMethod(clazz, field);
+                    fieldReaderGap = publicSetterMethod == null;
+                    fieldWriterGap = publicGetterMethod == null;
                 }
                 if (forceFieldBinding) {
                     hasExplicitBinding = true;
@@ -190,10 +204,9 @@ public final class ReflectUtil {
                         // log.warn("Failed to get getter for '{}' of {}", field.getName(), curClazz, e);
                     }
                 } else {
-                    Method getterMethod = findPublicGetterMethod(clazz, field);
-                    if (getterMethod != null) {
+                    if (publicGetterMethod != null) {
                         try {
-                            getter = lookup.unreflect(getterMethod);
+                            getter = lookup.unreflect(publicGetterMethod);
                         } catch (Exception e) {
                             // log.warn("Failed to get method getter for '{}' of {}", field.getName(), curClazz, e);
                         }
@@ -211,10 +224,9 @@ public final class ReflectUtil {
                             // log.warn("Failed to get setter for '{}' of {}", field.getName(), curClazz, e);
                         }
                     } else {
-                        Method setterMethod = findPublicSetterMethod(clazz, field);
-                        if (setterMethod != null) {
+                        if (publicSetterMethod != null) {
                             try {
-                                setter = lookup.unreflect(setterMethod);
+                                setter = lookup.unreflect(publicSetterMethod);
                             } catch (Exception e) {
                                 // log.warn("Failed to get method setter for '{}' of {}", field.getName(), curClazz, e);
                             }
@@ -238,7 +250,7 @@ public final class ReflectUtil {
                     }
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
-                    String fieldName = getFieldName(field, curClazz);
+                    String fieldName = _getFieldName(field, curClazz);
                     NodeRegistry.FieldInfo oldFi = fields.putIfAbsent(fieldName, fi);
                     if (oldFi != null) {
                         continue;
@@ -271,30 +283,27 @@ public final class ReflectUtil {
             }
         }
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, namingStrategy, accessStrategy, fields, aliasFields,
+        return new NodeRegistry.PojoInfo(clazz, creatorInfo, namingStrategy, accessStrategy,
+                readDynamic, writeDynamic, fields, aliasFields,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
     }
 
-    private static boolean hasPublicGetter(Class<?> ownerClass, Field field) {
-        return findPublicGetterMethod(ownerClass, field) != null;
-    }
-
-    private static Method findPublicGetterMethod(Class<?> ownerClass, Field field) {
+    private static Method _findPublicGetterMethod(Class<?> ownerClass, Field field) {
         String capitalized = capitalize(field.getName());
         String getterName = "get" + capitalized;
-        Method getter = findPublicMethod(ownerClass, getterName);
+        Method getter = _findPublicMethod(ownerClass, getterName);
         if (getter != null && getter.getReturnType() != void.class) {
             return getter;
         }
         if (isRecord(ownerClass)) {
-            Method componentGetter = findPublicMethod(ownerClass, field.getName());
+            Method componentGetter = _findPublicMethod(ownerClass, field.getName());
             if (componentGetter != null && componentGetter.getReturnType() != void.class) {
                 return componentGetter;
             }
         }
         Class<?> fieldClass = field.getType();
         if (fieldClass == boolean.class || fieldClass == Boolean.class) {
-            Method booleanGetter = findPublicMethod(ownerClass, "is" + capitalized);
+            Method booleanGetter = _findPublicMethod(ownerClass, "is" + capitalized);
             if (booleanGetter != null &&
                     (booleanGetter.getReturnType() == boolean.class || booleanGetter.getReturnType() == Boolean.class)) {
                 return booleanGetter;
@@ -303,18 +312,14 @@ public final class ReflectUtil {
         return null;
     }
 
-    private static boolean hasPublicSetter(Class<?> ownerClass, Field field) {
-        return findPublicSetterMethod(ownerClass, field) != null;
-    }
-
-    private static Method findPublicSetterMethod(Class<?> ownerClass, Field field) {
+    private static Method _findPublicSetterMethod(Class<?> ownerClass, Field field) {
         if (Modifier.isFinal(field.getModifiers())) {
             return null;
         }
-        return findPublicMethod(ownerClass, "set" + capitalize(field.getName()), field.getType());
+        return _findPublicMethod(ownerClass, "set" + capitalize(field.getName()), field.getType());
     }
 
-    private static Method findPublicMethod(Class<?> ownerClass, String name, Class<?>... parameterTypes) {
+    private static Method _findPublicMethod(Class<?> ownerClass, String name, Class<?>... parameterTypes) {
         try {
             Method method = ownerClass.getMethod(name, parameterTypes);
             return Modifier.isPublic(method.getModifiers()) ? method : null;
@@ -323,84 +328,58 @@ public final class ReflectUtil {
         }
     }
 
-    public static String getFieldName(Field field, Class<?> ownerClass) {
+    private static String _getFieldName(Field field, Class<?> ownerClass) {
         String fname = getExplicitName(field);
         if (fname != null) return fname;
         return getNamingStrategy(ownerClass).translate(field.getName());
     }
 
-    public static String getFieldName(Field field) {
-        return getFieldName(field, field.getDeclaringClass());
-    }
-
-    public static String[] getFieldAliases(Field field) {
-        return getAliases(field);
-    }
-
-    public static String getParameterName(Parameter parameter, Class<?> ownerClass) {
+    private static String _getParameterName(Parameter parameter, Class<?> ownerClass) {
         String fname = getExplicitName(parameter);
         if (fname != null) return fname;
         if (parameter.isNamePresent()) return getNamingStrategy(ownerClass).translate(parameter.getName());
         return null;
     }
 
-    public static String getParameterName(Parameter parameter) {
-        return getParameterName(parameter, parameter.getDeclaringExecutable().getDeclaringClass());
-    }
-
-    public static String[] getParameterAliases(Parameter parameter) {
-        return getAliases(parameter);
-    }
-
-    public static NamingStrategy getDeclaredNamingStrategy(Class<?> clazz) {
-        if (clazz == null) return null;
-        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
-        if (nodeBinding != null) {
-            NamingStrategy strategy = nodeBinding.naming();
-            return strategy == NamingStrategy.IDENTITY ? null : strategy;
-        }
-        return null;
-    }
-
-    public static AccessStrategy getDeclaredAccessStrategy(Class<?> clazz) {
-        if (clazz == null) return AccessStrategy.BEAN_BASED;
-        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
-        if (nodeBinding == null) return AccessStrategy.BEAN_BASED;
-        return nodeBinding.access();
-    }
-
     public static NamingStrategy getNamingStrategy(Class<?> clazz) {
-        NamingStrategy strategy = getDeclaredNamingStrategy(clazz);
-        return strategy != null ? strategy : NamingStrategy.IDENTITY;
+        if (clazz == null) return NamingStrategy.IDENTITY;
+        NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
+        if (nodeBinding == null) return NamingStrategy.IDENTITY;
+        NamingStrategy strategy = nodeBinding.naming();
+        return strategy != NamingStrategy.IDENTITY ? strategy : NamingStrategy.IDENTITY;
     }
 
     public static String getExplicitName(AnnotatedElement element) {
-        String fname = getNodeProperty(element);
+        String fname = _getNodeProperty(element);
         if (fname != null && !fname.isEmpty()) return fname;
-        fname = getJacksonProperty(element);
+        fname = _getAnnotationString(element, CLASS_JACKSON3_JSON_PROPERTY, "value");
         if (fname != null && !fname.isEmpty()) return fname;
-        fname = getFastjson2Property(element);
+        fname = _getAnnotationString(element, CLASS_JACKSON2_JSON_PROPERTY, "value");
+        if (fname != null && !fname.isEmpty()) return fname;
+        fname = _getAnnotationString(element, CLASS_FASTJSON2_JSON_FIELD, "name");
         if (fname != null && !fname.isEmpty()) return fname;
         return null;
     }
 
     public static String[] getAliases(AnnotatedElement element) {
-        String[] aliases = getNodeAliases(element);
+        String[] aliases = _getNodeAliases(element);
         if (aliases != null && aliases.length > 0) return aliases;
-        aliases = getJacksonAliases(element);
+        aliases = _getAnnotationStringArray(element, CLASS_JACKSON3_JSON_ALIAS, "value");
         if (aliases != null && aliases.length > 0) return aliases;
-        aliases = getFastjson2Aliases(element);
+        aliases = _getAnnotationStringArray(element, CLASS_JACKSON2_JSON_ALIAS, "value");
+        if (aliases != null && aliases.length > 0) return aliases;
+        aliases = _getAnnotationStringArray(element, CLASS_FASTJSON2_JSON_FIELD, "alternateNames");
         if (aliases != null && aliases.length > 0) return aliases;
         return null;
     }
 
-    private static String getNodeProperty(AnnotatedElement element) {
+    private static String _getNodeProperty(AnnotatedElement element) {
         NodeProperty ann = element.getAnnotation(NodeProperty.class);
         if (ann != null) return ann.value();
         return null;
     }
 
-    private static String[] getNodeAliases(AnnotatedElement element) {
+    private static String[] _getNodeAliases(AnnotatedElement element) {
         NodeProperty ann = element.getAnnotation(NodeProperty.class);
         if (ann != null) return ann.aliases();
         return null;
@@ -412,7 +391,7 @@ public final class ReflectUtil {
             "com.fasterxml.jackson.", "tools.jackson.", "com.google.gson."
     };
 
-    private static boolean isFrameworkPackage(String clazzName) {
+    private static boolean _isFrameworkPackage(String clazzName) {
         for (String prefix : FRAMEWORK_PREFIX) if (clazzName.startsWith(prefix)) return true;
         return false;
     }
@@ -430,7 +409,7 @@ public final class ReflectUtil {
         PRIVATE_LOOKUP_IN = privateLookupIn;
     }
 
-    private static MethodHandles.Lookup resolveLookup(Class<?> clazz) {
+    private static MethodHandles.Lookup _resolveLookup(Class<?> clazz) {
         MethodHandles.Lookup lookup = ROOT_LOOKUP;
         if (!IS_JDK8 && PRIVATE_LOOKUP_IN != null) {
             try {
@@ -462,8 +441,7 @@ public final class ReflectUtil {
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
         for (Constructor<?> ctor : ctors) {
-            if (ctor.isAnnotationPresent(NodeCreator.class)
-                    || hasJacksonCreator(ctor) || hasFastjson2Creator(ctor)) {
+            if (ctor.isAnnotationPresent(NodeCreator.class) || hasCreatorAnnotation(ctor)) {
                 if (creator != null) {
                     throw new JsonException("Multiple creator definitions found in " + clazz.getName());
                 }
@@ -479,8 +457,7 @@ public final class ReflectUtil {
 
         for (Method method : clazz.getDeclaredMethods()) {
             if (!Modifier.isStatic(method.getModifiers())) continue;
-            if (method.isAnnotationPresent(NodeCreator.class)
-                    || hasJacksonCreator(method) || hasFastjson2Creator(method)) {
+            if (method.isAnnotationPresent(NodeCreator.class) || hasCreatorAnnotation(method)) {
                 if (creator != null) {
                     throw new JsonException("Multiple creator definitions found in " + clazz.getName());
                 }
@@ -552,7 +529,7 @@ public final class ReflectUtil {
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
             for (int i = 0; i < params.length; i++) {
-                String name = getParameterName(params[i], creator.getDeclaringClass());
+                String name = _getParameterName(params[i], creator.getDeclaringClass());
                 if (name == null || name.isEmpty())
                     throw new JsonException("Missing parameter name for creator in " + clazz.getName() +
                             ": parameter index " + i + " (from 0). Use @NodeProperty or @JsonProperty on parameters.");
@@ -606,12 +583,7 @@ public final class ReflectUtil {
         if (!clazz.isAnnotationPresent(NodeValue.class)) return null;
 
         MethodHandle valueToRawHandle = null, rawToValueHandle = null, valueCopyHandle = null;
-        MethodHandles.Lookup lookup = ROOT_LOOKUP;
-        if (!IS_JDK8) {
-            try {
-                lookup = (MethodHandles.Lookup) PRIVATE_LOOKUP_IN.invoke(null, clazz, ROOT_LOOKUP);
-            } catch (Exception ignored) {}
-        }
+        MethodHandles.Lookup lookup = _resolveLookup(clazz);
 
         Class<?> current = clazz;
         while (current != null && current != Object.class &&
@@ -641,7 +613,7 @@ public final class ReflectUtil {
                         throw new JsonException("Cannot use @" + ValueToRaw.class.getName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
-                        Method override = findOverride(m, clazz);
+                        Method override = _findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
@@ -660,7 +632,7 @@ public final class ReflectUtil {
                         throw new JsonException("Must use @" + RawToValue.class.getName() +
                                 " on constructor or static methods in " + clazz.getName());
                     if (current != clazz) {
-                        Method override = findOverride(m, clazz);
+                        Method override = _findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
@@ -678,7 +650,7 @@ public final class ReflectUtil {
                         throw new JsonException("Cannot use @" + ValueCopy.class.getName() +
                                 " on static methods in " + clazz.getName());
                     if (current != clazz) {
-                        Method override = findOverride(m, clazz);
+                        Method override = _findOverride(m, clazz);
                         if (override != null) { m = override; }
                     }
                     try {
@@ -732,7 +704,7 @@ public final class ReflectUtil {
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 
-    private static Method findOverride(Method baseMethod, Class<?> clazz) {
+    private static Method _findOverride(Method baseMethod, Class<?> clazz) {
         try {
             Method m = clazz.getDeclaredMethod(
                     baseMethod.getName(),
@@ -746,25 +718,40 @@ public final class ReflectUtil {
     }
 
     /// Third part annotation
-    private static final Class<? extends Annotation> CLASS_JACKSON_JSON_CREATOR;
-    private static final Class<? extends Annotation> CLASS_JACKSON_JSON_PROPERTY;
-    private static final Class<? extends Annotation> CLASS_JACKSON_JSON_ALIAS;
+    private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_CREATOR;
+    private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_PROPERTY;
+    private static final Class<? extends Annotation> CLASS_JACKSON3_JSON_ALIAS;
+    private static final Class<? extends Annotation> CLASS_JACKSON2_JSON_CREATOR;
+    private static final Class<? extends Annotation> CLASS_JACKSON2_JSON_PROPERTY;
+    private static final Class<? extends Annotation> CLASS_JACKSON2_JSON_ALIAS;
     private static final Class<? extends Annotation> CLASS_FASTJSON2_JSON_CREATOR;
     private static final Class<? extends Annotation> CLASS_FASTJSON2_JSON_FIELD;
     static {
-        Class<?> jacksonJsonCreator = null;
-        Class<?> jacksonJsonProperty = null;
-        Class<?> jacksonJsonAlias = null;
+        Class<?> jackson3JsonCreator = null;
+        Class<?> jackson3JsonProperty = null;
+        Class<?> jackson3JsonAlias = null;
+        Class<?> jackson2JsonCreator = null;
+        Class<?> jackson2JsonProperty = null;
+        Class<?> jackson2JsonAlias = null;
         Class<?> fastjson2JsonCreator = null;
         Class<?> fastJson2JsonField = null;
         try {
-            jacksonJsonCreator = Class.forName("com.fasterxml.jackson.annotation.JsonCreator");
+            jackson3JsonCreator = Class.forName("tools.jackson.annotation.JsonCreator");
         } catch (ClassNotFoundException ignore) {}
         try {
-            jacksonJsonProperty = Class.forName("com.fasterxml.jackson.annotation.JsonProperty");
+            jackson3JsonProperty = Class.forName("tools.jackson.annotation.JsonProperty");
         } catch (ClassNotFoundException ignore) {}
         try {
-            jacksonJsonAlias = Class.forName("com.fasterxml.jackson.annotation.JsonAlias");
+            jackson3JsonAlias = Class.forName("tools.jackson.annotation.JsonAlias");
+        } catch (ClassNotFoundException ignore) {}
+        try {
+            jackson2JsonCreator = Class.forName("com.fasterxml.jackson.annotation.JsonCreator");
+        } catch (ClassNotFoundException ignore) {}
+        try {
+            jackson2JsonProperty = Class.forName("com.fasterxml.jackson.annotation.JsonProperty");
+        } catch (ClassNotFoundException ignore) {}
+        try {
+            jackson2JsonAlias = Class.forName("com.fasterxml.jackson.annotation.JsonAlias");
         } catch (ClassNotFoundException ignore) {}
         try {
             fastjson2JsonCreator = Class.forName("com.alibaba.fastjson2.annotation.JSONCreator");
@@ -773,37 +760,39 @@ public final class ReflectUtil {
             fastJson2JsonField = Class.forName("com.alibaba.fastjson2.annotation.JSONField");
         } catch (ClassNotFoundException ignore) {}
 
-        CLASS_JACKSON_JSON_CREATOR = (Class<? extends Annotation>) jacksonJsonCreator;
-        CLASS_JACKSON_JSON_PROPERTY = (Class<? extends Annotation>) jacksonJsonProperty;
-        CLASS_JACKSON_JSON_ALIAS = (Class<? extends Annotation>) jacksonJsonAlias;
+        CLASS_JACKSON3_JSON_CREATOR = (Class<? extends Annotation>) jackson3JsonCreator;
+        CLASS_JACKSON3_JSON_PROPERTY = (Class<? extends Annotation>) jackson3JsonProperty;
+        CLASS_JACKSON3_JSON_ALIAS = (Class<? extends Annotation>) jackson3JsonAlias;
+        CLASS_JACKSON2_JSON_CREATOR = (Class<? extends Annotation>) jackson2JsonCreator;
+        CLASS_JACKSON2_JSON_PROPERTY = (Class<? extends Annotation>) jackson2JsonProperty;
+        CLASS_JACKSON2_JSON_ALIAS = (Class<? extends Annotation>) jackson2JsonAlias;
         CLASS_FASTJSON2_JSON_CREATOR = (Class<? extends Annotation>) fastjson2JsonCreator;
         CLASS_FASTJSON2_JSON_FIELD = (Class<? extends Annotation>) fastJson2JsonField;
     }
 
-    private static boolean hasJacksonCreator(AccessibleObject obj) {
-        if (CLASS_JACKSON_JSON_CREATOR == null) return false;
+    private static boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationClass) {
+        if (annotationClass == null) return false;
         try {
-            return obj.isAnnotationPresent(CLASS_JACKSON_JSON_CREATOR);
+            return element.isAnnotationPresent(annotationClass);
         } catch (Exception e) {
             return false;
         }
     }
 
-    private static boolean hasFastjson2Creator(AccessibleObject obj) {
-        if (CLASS_FASTJSON2_JSON_CREATOR == null) return false;
-        try {
-            return obj.isAnnotationPresent(CLASS_FASTJSON2_JSON_CREATOR);
-        } catch (Exception e) {
-            return false;
-        }
+    private static boolean hasCreatorAnnotation(AccessibleObject obj) {
+        return hasAnnotation(obj, CLASS_JACKSON3_JSON_CREATOR)
+                || hasAnnotation(obj, CLASS_JACKSON2_JSON_CREATOR)
+                || hasAnnotation(obj, CLASS_FASTJSON2_JSON_CREATOR);
     }
 
-    private static String getJacksonProperty(AnnotatedElement element) {
-        if (CLASS_JACKSON_JSON_PROPERTY == null) return null;
+    private static String _getAnnotationString(AnnotatedElement element,
+                                               Class<? extends Annotation> annotationClass,
+                                               String methodName) {
+        if (annotationClass == null) return null;
         try {
-            Annotation ann = element.getAnnotation(CLASS_JACKSON_JSON_PROPERTY);
+            Annotation ann = element.getAnnotation(annotationClass);
             if (ann == null) return null;
-            Method valueMethod = ann.annotationType().getMethod("value");
+            Method valueMethod = ann.annotationType().getMethod(methodName);
             Object value = valueMethod.invoke(ann);
             return value instanceof String ? (String) value : null;
         } catch (Exception e) {
@@ -811,40 +800,16 @@ public final class ReflectUtil {
         }
     }
 
-    private static String getFastjson2Property(AnnotatedElement element) {
-        if (CLASS_FASTJSON2_JSON_FIELD  == null) return null;
+    private static String[] _getAnnotationStringArray(AnnotatedElement element,
+                                                      Class<? extends Annotation> annotationClass,
+                                                      String methodName) {
+        if (annotationClass == null) return null;
         try {
-            Annotation ann = element.getAnnotation(CLASS_FASTJSON2_JSON_FIELD);
+            Annotation ann = element.getAnnotation(annotationClass);
             if (ann == null) return null;
-            Method valueMethod = ann.annotationType().getMethod("name");
-            Object value = valueMethod.invoke(ann);
-            return value instanceof String ? (String) value : null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String[] getJacksonAliases(AnnotatedElement element) {
-        if (CLASS_JACKSON_JSON_ALIAS  == null) return null;
-        try {
-            Annotation ann = element.getAnnotation(CLASS_JACKSON_JSON_ALIAS);
-            if (ann == null) return null;
-            Method valueMethod = ann.annotationType().getMethod("value");
+            Method valueMethod = ann.annotationType().getMethod(methodName);
             Object value = valueMethod.invoke(ann);
             return value instanceof String[] ? (String[]) value : null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String[] getFastjson2Aliases(AnnotatedElement element) {
-        if (CLASS_FASTJSON2_JSON_FIELD  == null) return null;
-        try {
-            Annotation ann = element.getAnnotation(CLASS_FASTJSON2_JSON_FIELD);
-            if (ann == null) return null;
-            Method method = ann.annotationType().getMethod("alternateNames");
-            Object aliases = method.invoke(ann);
-            return aliases instanceof String[] ? (String[]) aliases : null;
         } catch (Exception e) {
             return null;
         }

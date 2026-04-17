@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
@@ -126,6 +127,18 @@ public class SimpleJsonFacadeTest {
         public Map<String, Object> ext;
     }
 
+    @NodeBinding(readDynamic = false)
+    static class ReadDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
     @Test
     public void testPojoUnknownKey() {
         String json = "{\"active\": true }";
@@ -135,6 +148,26 @@ public class SimpleJsonFacadeTest {
         assertNull(user.name);
         assertNull(user.friends);
         assertNull(user.ext);
+    }
+
+    @Test
+    void jojo_read_dynamic_can_be_disabled() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        ReadDisabledBook book = (ReadDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                ReadDisabledBook.class);
+        assertNull(book.get("extra"));
+        book.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\",\"runtime\":3}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void jojo_write_dynamic_can_be_disabled() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        WriteDisabledBook book = (WriteDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                WriteDisabledBook.class);
+        assertEquals(2, book.getInt("extra"));
+        book.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(book));
     }
 
 

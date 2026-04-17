@@ -546,7 +546,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 continue;
             }
 
-            if (pi.isJojo) {
+            if (pi.isJojo && pi.readDynamic) {
                 if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
                 PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                 Object vv = _readNode(rawValue, Object.class, Object.class, null, deepCopy, cps);
@@ -797,6 +797,18 @@ public class SimpleNodeFacade implements NodeFacade {
             if (node instanceof JsonObject) {
                 JsonObject jo = (JsonObject) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
+                if (rawClazz != JsonObject.class) {
+                    NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+                    if (!pi.writeDynamic) {
+                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                            String key = entry.getKey();
+                            PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
+                            Object vv = _writeNode(entry.getValue().invokeGetter(node), cps);
+                            newMap.put(key, vv);
+                        }
+                        return newMap;
+                    }
+                }
                 jo.forEach((k, v) -> {
                     PathSegment cps = new PathSegment.Name(ps, rawClazz, k);
                     Object vv = _writeNode(v, cps);

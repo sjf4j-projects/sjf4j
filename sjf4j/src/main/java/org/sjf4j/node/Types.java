@@ -33,6 +33,7 @@ public final class Types {
     public static Class<?> box(Class<?> clazz) {
         if (clazz == null) return Object.class;
         if (!clazz.isPrimitive()) return clazz;
+        if (clazz == void.class) return Void.class;
         if (clazz == int.class) return Integer.class;
         if (clazz == long.class) return Long.class;
         if (clazz == double.class) return Double.class;
@@ -184,11 +185,7 @@ public final class Types {
                 replaced[i] = substitute(args[i], map);
             }
 
-            return newResolvedParameterizedType(
-                    (Class<?>) pt.getRawType(),
-                    replaced,
-                    pt.getOwnerType()
-            );
+            return new ParameterizedTypeImpl((Class<?>) pt.getRawType(), replaced, pt.getOwnerType());
         }
         if (type instanceof GenericArrayType) {
             GenericArrayType gat = (GenericArrayType) type;
@@ -196,17 +193,6 @@ public final class Types {
             return new GenericArrayTypeImpl(ct);
         }
         return type;
-    }
-
-    /**
-     * Creates a resolved ParameterizedType instance.
-     */
-    private static ParameterizedType newResolvedParameterizedType(Class<?> raw, Type[] args, Type owner) {
-        return new ParameterizedType() {
-            @Override public Type[] getActualTypeArguments() { return args; }
-            @Override public Type getRawType() { return raw; }
-            @Override public Type getOwnerType() { return owner; }
-        };
     }
 
 
@@ -217,18 +203,7 @@ public final class Types {
         if (type == null || field == null) return Object.class;
 
         if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
-            Class<?> rawClass = (Class<?>) parameterizedType.getRawType();
-            TypeVariable<?>[] typeVars = rawClass.getTypeParameters();
-            Type[] actualArgs = parameterizedType.getActualTypeArguments();
-
-            Map<TypeVariable<?>, Type> typeMap = new HashMap<>();
-            for (int i = 0; i < typeVars.length && i < actualArgs.length; i++) {
-                typeMap.put(typeVars[i], actualArgs[i]);
-            }
-
-            Type fieldType = field.getGenericType();
-            return resolveType(fieldType, typeMap);
+            return resolveMemberType(type, (Class<?>) ((ParameterizedType) type).getRawType(), field.getGenericType());
         }
 
         return field.getGenericType();

@@ -273,6 +273,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
         try (SegmentedStringWriter sw = new SegmentedStringWriter(br)) {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(sw);
             Jackson2StreamingIO.writeNode(gen, node);
+            gen.flush();
             return sw.getAndClear();
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -287,6 +288,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
         try (ByteArrayBuilder bb = new ByteArrayBuilder(br)) {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(bb);
             Jackson2StreamingIO.writeNode(gen, node);
+            gen.flush();
             final byte[] result = bb.toByteArray();
             bb.release();
             return result;

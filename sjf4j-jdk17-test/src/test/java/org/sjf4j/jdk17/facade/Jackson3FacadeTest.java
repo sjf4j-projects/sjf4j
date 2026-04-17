@@ -67,6 +67,18 @@ class Jackson3FacadeTest {
         String userName;
     }
 
+    @NodeBinding(readDynamic = false)
+    static class ReadDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     @interface LegacyName {
@@ -315,6 +327,20 @@ class Jackson3FacadeTest {
         assertEquals(json, sw.toString());
     }
 
+    private static void assertDynamicBinding(Jackson3JsonFacade facade) {
+        ReadDisabledBook readBook = (ReadDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                ReadDisabledBook.class);
+        assertNull(readBook.get("extra"));
+        readBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\",\"runtime\":3}", facade.writeNodeAsString(readBook));
+
+        WriteDisabledBook writeBook = (WriteDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                WriteDisabledBook.class);
+        assertEquals(2, writeBook.getInt("extra"));
+        writeBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
+    }
+
     private static void assertCreatorExtraField(Jackson3JsonFacade facade) {
         Ctor2PlusField pojo = (Ctor2PlusField) facade.readNode("{\"name\":\"a\",\"age\":1,\"city\":\"sh\"}",
                 Ctor2PlusField.class);
@@ -377,6 +403,7 @@ class Jackson3FacadeTest {
                 modeTests("node-value", Jackson3FacadeTest::assertNodeValue),
                 modeTests("node-field", Jackson3FacadeTest::assertNodeField),
                 modeTests("node-naming", Jackson3FacadeTest::assertNodeNaming),
+                modeTests("dynamic-binding", Jackson3FacadeTest::assertDynamicBinding),
                 modeTests("creator-extra-field", Jackson3FacadeTest::assertCreatorExtraField),
                 modeTests("creator-alias", Jackson3FacadeTest::assertCreatorAlias),
                 modeTests("anyof", Jackson3FacadeTest::assertAnyOf),

@@ -246,7 +246,7 @@ public final class StreamingIO {
                 if (fi != null) {
                     Object vv = _readField(reader, fi, ownerType, ownerRawClazz);
                     fi.invokeSetterIfPresent(pojo, vv);
-                } else if (pi.isJojo) {
+                } else if (pi.isJojo && pi.readDynamic) {
                     if (dynamicMap == null) {
                         dynamicMap = new LinkedHashMap<>();
                     }
@@ -321,7 +321,7 @@ public final class StreamingIO {
                 continue;
             }
 
-            if (pi.isJojo) {
+            if (pi.isJojo && pi.readDynamic) {
                 Object vv = _readRawNode(reader);
                 session.acceptResolvedJsonEntry(-1, key, vv);
                 if (parentAnyOfKey != null && parentAnyOfKey.equals(key)) {
@@ -616,6 +616,21 @@ public final class StreamingIO {
             }
 
             if (node instanceof JsonObject) {
+                if (rawClazz != JsonObject.class) {
+                    NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
+                    if (!pi.writeDynamic) {
+                        writer.startObject();
+                        boolean veryStart = true;
+                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                            if (veryStart) veryStart = false;
+                            else writer.writeObjectComma();
+                            writer.writeName(entry.getKey());
+                            _writeNode(writer, entry.getValue().invokeGetter(node));
+                        }
+                        writer.endObject();
+                        return;
+                    }
+                }
                 writer.startObject();
                 boolean veryStart = true;
                 for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {

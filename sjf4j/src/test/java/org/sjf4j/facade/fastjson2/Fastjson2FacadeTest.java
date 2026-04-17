@@ -70,6 +70,7 @@ public class Fastjson2FacadeTest {
                 modeTests("serde", Fastjson2FacadeTest::assertSerDe),
                 modeTests("read-module", Fastjson2FacadeTest::assertReadModule),
                 modeTests("write", Fastjson2FacadeTest::assertWrite),
+                modeTests("dynamic-binding", Fastjson2FacadeTest::assertDynamicBinding),
                 modeTests("node-value", Fastjson2FacadeTest::assertNodeValue),
                 modeTests("node-field", Fastjson2FacadeTest::assertNodeField),
                 modeTests("node-naming", Fastjson2FacadeTest::assertNodeNaming),
@@ -97,6 +98,18 @@ public class Fastjson2FacadeTest {
         private String name;
     }
 
+    @NodeBinding(readDynamic = false)
+    public static class ReadDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
+    @NodeBinding(writeDynamic = false)
+    public static class WriteDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
     private static void assertReadModule(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(json1, JsonObject.class);
@@ -121,6 +134,20 @@ public class Fastjson2FacadeTest {
         StringWriter output = new StringWriter();
         facade.writeNode(output, jo1);
         assertEquals(json1, output.toString());
+    }
+
+    private static void assertDynamicBinding(Fastjson2JsonFacade facade) {
+        ReadDisabledBook readBook = (ReadDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                ReadDisabledBook.class);
+        assertNull(readBook.get("extra"));
+        readBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\",\"runtime\":3}", facade.writeNodeAsString(readBook));
+
+        WriteDisabledBook writeBook = (WriteDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                WriteDisabledBook.class);
+        assertEquals(2, writeBook.getInt("extra"));
+        writeBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
     }
 
 

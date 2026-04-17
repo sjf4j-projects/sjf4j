@@ -178,6 +178,18 @@ public class Jackson2FacadeTest {
         private String name;
     }
 
+    @NodeBinding(readDynamic = false)
+    static class ReadDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     @interface LegacyName {
@@ -433,6 +445,20 @@ public class Jackson2FacadeTest {
         assertEquals("a", pojo.name);
     }
 
+    private static void assertDynamicBinding(Jackson2JsonFacade facade) {
+        ReadDisabledBook readBook = (ReadDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                ReadDisabledBook.class);
+        assertNull(readBook.get("extra"));
+        readBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\",\"runtime\":3}", facade.writeNodeAsString(readBook));
+
+        WriteDisabledBook writeBook = (WriteDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                WriteDisabledBook.class);
+        assertEquals(2, writeBook.getInt("extra"));
+        writeBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
+    }
+
     static class User {
         public String name;
         public List<User> friends;
@@ -466,6 +492,7 @@ public class Jackson2FacadeTest {
                 modeTests("serde", Jackson2FacadeTest::assertSerDe),
                 modeTests("read-module", Jackson2FacadeTest::assertReadModule),
                 modeTests("write", Jackson2FacadeTest::assertWrite),
+                modeTests("dynamic-binding", Jackson2FacadeTest::assertDynamicBinding),
                 modeTests("node-value", Jackson2FacadeTest::assertNodeValue),
                 modeTests("node-field", Jackson2FacadeTest::assertNodeField),
                 modeTests("node-naming", Jackson2FacadeTest::assertNodeNaming),

@@ -374,6 +374,8 @@ public final class NodeRegistry {
         public final CreatorInfo creatorInfo;
         public final NamingStrategy namingStrategy;
         public final AccessStrategy accessStrategy;
+        public final boolean readDynamic;
+        public final boolean writeDynamic;
         public final Map<String, FieldInfo> fields;
         public final int fieldCount;
         public final Map<String, FieldInfo> aliasFields;
@@ -394,6 +396,8 @@ public final class NodeRegistry {
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
                         NamingStrategy namingStrategy,
                         AccessStrategy accessStrategy,
+                        boolean readDynamic,
+                        boolean writeDynamic,
                         Map<String, FieldInfo> fields,
                         Map<String, FieldInfo> aliasFields,
                         boolean hasExplicitBinding,
@@ -404,6 +408,8 @@ public final class NodeRegistry {
             this.creatorInfo = creatorInfo;
             this.namingStrategy = namingStrategy;
             this.accessStrategy = accessStrategy;
+            this.readDynamic = readDynamic;
+            this.writeDynamic = writeDynamic;
             this.fields = fields;
             this.fieldCount = fields.size();
             this.aliasFields = aliasFields;
@@ -424,9 +430,12 @@ public final class NodeRegistry {
             this.hasNonPublicReaderGap = hasNonPublicReaderGap;
             this.hasNonPublicWriterGap = hasNonPublicWriterGap;
             boolean hasTypeOwnedBinding = namingStrategy != null || accessStrategy == AccessStrategy.FIELD_BASED;
+            boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
+            boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
             this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeAnyOf
-                    || hasExplicitBinding || this.hasCreatorBinding || hasNonPublicReaderGap;
-            this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicWriterGap;
+                    || hasExplicitBinding || this.hasCreatorBinding || hasNonPublicReaderGap || hasCustomDynamicReader;
+            this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicWriterGap
+                    || hasCustomDynamicWriter;
         }
 
     }

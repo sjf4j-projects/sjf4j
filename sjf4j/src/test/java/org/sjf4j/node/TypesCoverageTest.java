@@ -54,6 +54,7 @@ class TypesCoverageTest {
 
         assertEquals(Integer.class, Types.rawBox(int.class));
         assertEquals(List.class, Types.rawBox(new TypeReference<List<String>>() {}.getType()));
+        assertEquals(Void.class, Types.box(void.class));
 
         Type unsupported = new Type() {
             @Override

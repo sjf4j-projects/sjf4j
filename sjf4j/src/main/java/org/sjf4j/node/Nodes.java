@@ -522,8 +522,9 @@ public final class Nodes {
      * <p>
      * A JOJO is any concrete {@link JsonObject} subclass other than
      * {@link JsonObject} itself. During conversion, declared fields are bound by
-     * normal POJO rules, and object members that do not match declared fields are
-     * retained as dynamic properties on the target object.
+     * normal POJO rules. Unknown object members are retained as dynamic
+     * properties unless {@link org.sjf4j.annotation.node.NodeBinding#readDynamic()}
+     * disables that behavior.
      */
     public static <T> T toJojo(Object node, Class<T> clazz) {
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
@@ -567,8 +568,8 @@ public final class Nodes {
      * through setters when available.
      *
      * <p>For JOJO targets, object members that are not declared fields are
-     * preserved in the dynamic map. For JAJO targets, array items are appended to
-     * the target subtype in order.
+     * preserved in the dynamic map unless type binding disables dynamic reads.
+     * For JAJO targets, array items are appended to the target subtype in order.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {

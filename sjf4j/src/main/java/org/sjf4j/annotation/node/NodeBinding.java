@@ -33,4 +33,14 @@ public @interface NodeBinding {
      * Access policy for non-public POJO fields during framework-owned binding.
      */
     AccessStrategy access() default AccessStrategy.BEAN_BASED;
+
+    /**
+     * Whether JOJO reads retain unknown JSON object members as dynamic properties.
+     */
+    boolean readDynamic() default true;
+
+    /**
+     * Whether JOJO writes emit dynamic properties in addition to declared fields.
+     */
+    boolean writeDynamic() default true;
 }

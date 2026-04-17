@@ -72,6 +72,18 @@ public class GsonFacadeTest {
         private String name;
     }
 
+    @NodeBinding(readDynamic = false)
+    public static class ReadDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
+    @NodeBinding(writeDynamic = false)
+    public static class WriteDisabledBook extends JsonObject {
+        public int id;
+        public String name;
+    }
+
     private static void assertReadModule(GsonJsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
@@ -98,6 +110,20 @@ public class GsonFacadeTest {
         StringWriter output = new StringWriter();
         facade.writeNode(output, jo1);
         assertEquals(json1, output.toString());
+    }
+
+    private static void assertDynamicBinding(GsonJsonFacade facade) {
+        ReadDisabledBook readBook = (ReadDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                ReadDisabledBook.class);
+        assertNull(readBook.get("extra"));
+        readBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\",\"runtime\":3}", facade.writeNodeAsString(readBook));
+
+        WriteDisabledBook writeBook = (WriteDisabledBook) facade.readNode("{\"id\":1,\"name\":\"a\",\"extra\":2}",
+                WriteDisabledBook.class);
+        assertEquals(2, writeBook.getInt("extra"));
+        writeBook.put("runtime", 3);
+        assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
     }
 
     @Test
@@ -247,6 +273,7 @@ public class GsonFacadeTest {
                 modeTests("serde", GsonFacadeTest::assertSerDe),
                 modeTests("read-module", GsonFacadeTest::assertReadModule),
                 modeTests("write", GsonFacadeTest::assertWrite),
+                modeTests("dynamic-binding", GsonFacadeTest::assertDynamicBinding),
                 modeTests("node-value", GsonFacadeTest::assertNodeValue),
                 modeTests("node-field", GsonFacadeTest::assertNodeField),
                 modeTests("node-naming", GsonFacadeTest::assertNodeNaming)
