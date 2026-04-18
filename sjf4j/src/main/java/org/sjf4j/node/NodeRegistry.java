@@ -318,6 +318,10 @@ public final class NodeRegistry {
             this.pojoInfo = pojoInfo;
         }
 
+        public boolean isNone() {
+            return this == NONE_INFO;
+        }
+
         /**
          * Returns true when POJO reads must stay on the framework-owned path.
          * Native backend modules may only bypass SJF4J when this is false.

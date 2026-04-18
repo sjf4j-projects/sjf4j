@@ -635,7 +635,9 @@ public final class Nodes {
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        if (ti.pojoInfo != null || ti.anyOfInfo != null) return toPojo(node, clazz);
+        if (!ti.isNone()) {
+            return Sjf4j.global().getNodeFacade().readNode(node, clazz, false);
+        }
 
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + clazz.getName());
     }
