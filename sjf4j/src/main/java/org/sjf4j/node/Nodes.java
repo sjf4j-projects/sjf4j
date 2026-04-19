@@ -526,11 +526,12 @@ public final class Nodes {
      * properties unless {@link org.sjf4j.annotation.node.NodeBinding#readDynamic()}
      * disables that behavior.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T toJojo(Object node, Class<T> clazz) {
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
-            throw new JsonException("Type mismatch: expected <JOJO>, but was " + clazz.getName());
+            throw new JsonException("Type mismatch: expected JOJO, but was " + clazz.getName());
         if (node == null) return null;
-        return toPojo(node, clazz);
+        return (T) Sjf4j.global().getNodeFacade().readNode(node, clazz, false);
     }
 
     /**
@@ -543,7 +544,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static <T> T toJajo(Object node, Class<T> clazz) {
         if (!JsonArray.class.isAssignableFrom(clazz) || clazz == JsonArray.class)
-            throw new JsonException("Type mismatch: expected <JAJO>, but was " + clazz.getName());
+            throw new JsonException("Type mismatch: expected JAJO, but was " + clazz.getName());
         if (node == null) return null;
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(clazz);
         JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
