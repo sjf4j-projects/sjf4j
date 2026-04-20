@@ -237,12 +237,17 @@ Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally close
 **JSON Schema Validating Benchmark**  
 SJF4J fully supports JSON Schema Draft 2020-12 and consistently ranks
 among the top-performing Java implementations in
-[Bowtie](https://bowtie.report/#/implementations/java-sjf4j) benchmarks.
+[Bowtie](https://bowtie.report/) benchmarks.
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
-Given that JSON has evolved into a well-defined and widely adopted specification,
-SJF4J began as an exploration of *What JSON-Oriented development might look like in Java*.
+As JSON has become a well-defined and widely adopted specification,  
+Java still lacks the same level of fluency in working with JSON as scripting languages.
 
-Contributions of code, docs, bug reports, examples, benchmarks, and careful feedback are all valuable.
+So, *what might JSON-oriented development look like in Java?*  
+SJF4J is an attempt to answer that question.
+
+Contributions are welcome in many forms, including code, documentation, bug reports, examples, benchmarks, 
+and thoughtful feedback.  
+A good place to start is by [opening an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
