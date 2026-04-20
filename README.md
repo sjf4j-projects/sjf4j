@@ -19,7 +19,7 @@ and Java Properties (built-in).
 SJF4J provides **a unified JSON-semantic structural processing layer**, 
 offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML), 
 **navigating** (JSON Path), **patching** (JSON Patch), **validating** (JSON Schema), 
-and **mapping** across data formats and native object graphs.
+and **mapping** (Transformation) across data formats and native object graphs.
 
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies (except for the chosen data parser).
@@ -243,7 +243,7 @@ Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
 As JSON has become a well-defined and widely adopted specification,  
-Java still lacks the same level of fluency in working with JSON as scripting languages.
+Java still lacks a smooth experience when working with JSON.
 
 So, *what might JSON-oriented development look like in Java?*  
 SJF4J is an attempt to answer that question.
