@@ -63,6 +63,36 @@ class NodesCoverageEdgeTest {
         }
     }
 
+    static class AccessModeBean {
+        private String readWrite;
+        private String readOnly = "ro";
+        private String writeOnly;
+
+        public String getReadWrite() {
+            return readWrite;
+        }
+
+        public void setReadWrite(String readWrite) {
+            this.readWrite = readWrite;
+        }
+
+        public String getReadOnly() {
+            return readOnly;
+        }
+
+        public void setReadOnly(String readOnly) {
+            this.readOnly = readOnly;
+        }
+
+        public void setWriteOnly(String writeOnly) {
+            this.writeOnly = writeOnly;
+        }
+
+        public String peekWriteOnly() {
+            return writeOnly;
+        }
+    }
+
     static class DynamicBean extends JsonObject {
         private String name;
 
@@ -388,5 +418,51 @@ class NodesCoverageEdgeTest {
                 });
 
         assertEquals(2, visited.size());
+    }
+
+    @Test
+    void testPojoObjectViewsSeparateStructuralReadableAndWritableMembers() {
+        AccessModeBean bean = new AccessModeBean();
+        bean.setReadWrite("rw");
+        bean.setWriteOnly("secret-1");
+
+        assertEquals(2, Nodes.sizeInObject(bean));
+        assertEquals(Arrays.asList("readWrite", "readOnly"), new ArrayList<>(Nodes.keySetInObject(bean)));
+        assertFalse(Nodes.containsInObject(bean, "writeOnly"));
+
+        assertEquals(2, Nodes.entrySetInObject(bean).size());
+        List<String> readableKeys = new ArrayList<>();
+        Nodes.forEachObject(bean, (key, value) -> readableKeys.add(key));
+        assertEquals(Arrays.asList("readWrite", "readOnly"), readableKeys);
+        assertTrue(Nodes.anyMatchObject(bean, (key, value) -> key.equals("readOnly")));
+        assertFalse(Nodes.anyMatchObject(bean, (key, value) -> key.equals("writeOnly")));
+
+        assertEquals("rw", Nodes.getInObject(bean, "readWrite"));
+        assertEquals("ro", Nodes.getInObject(bean, "readOnly"));
+        assertNull(Nodes.getInObject(bean, "writeOnly"));
+
+        assertTrue(Nodes.replaceInObject(bean, (key, value) -> {
+            if (key.equals("readWrite")) return "rw-2";
+            if (key.equals("writeOnly")) return "secret-2";
+            return value;
+        }));
+        assertEquals("rw-2", bean.getReadWrite());
+        assertEquals("ro", bean.getReadOnly());
+        assertEquals("secret-1", bean.peekWriteOnly());
+
+        Nodes.Access access = new Nodes.Access();
+        Nodes.accessInObject(bean, AccessModeBean.class, "writeOnly", access);
+        assertNull(access.node);
+        assertTrue(access.puttable);
+
+        assertNull(Nodes.putInObject(bean, "writeOnly", "secret-3"));
+        assertEquals("secret-3", bean.peekWriteOnly());
+
+        AccessModeBean sameReadable = new AccessModeBean();
+        sameReadable.setReadWrite("rw-2");
+        sameReadable.setReadOnly("ro");
+        sameReadable.setWriteOnly("different-secret");
+        assertTrue(Nodes.equals(bean, sameReadable));
+        assertEquals(Nodes.hash(bean), Nodes.hash(sameReadable));
     }
 }

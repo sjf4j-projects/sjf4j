@@ -13,6 +13,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -382,6 +383,8 @@ public final class NodeRegistry {
         public final boolean writeDynamic;
         public final Map<String, FieldInfo> fields;
         public final int fieldCount;
+        public final Map<String, FieldInfo> readableFields;
+        public final int readableFieldCount;
         public final Map<String, FieldInfo> aliasFields;
         public final boolean isJojo;
         public final boolean isJajo;
@@ -416,6 +419,18 @@ public final class NodeRegistry {
             this.writeDynamic = writeDynamic;
             this.fields = fields;
             this.fieldCount = fields.size();
+            Map<String, FieldInfo> readableFields = null;
+            for (Map.Entry<String, FieldInfo> entry : fields.entrySet()) {
+                if (!entry.getValue().hasGetter()) {
+                    continue;
+                }
+                if (readableFields == null) {
+                    readableFields = new LinkedHashMap<>();
+                }
+                readableFields.put(entry.getKey(), entry.getValue());
+            }
+            this.readableFields = readableFields == null ? Collections.emptyMap() : readableFields;
+            this.readableFieldCount = this.readableFields.size();
             this.aliasFields = aliasFields;
             this.isJojo = JsonObject.class.isAssignableFrom(clazz);
             this.isJajo = JsonArray.class.isAssignableFrom(clazz);

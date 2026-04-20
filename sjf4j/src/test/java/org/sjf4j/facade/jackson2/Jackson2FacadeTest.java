@@ -190,6 +190,41 @@ public class Jackson2FacadeTest {
         public String name;
     }
 
+    static class WriteOnlyPojo {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteOnlyJojo extends JsonObject {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     @interface LegacyName {
@@ -459,6 +494,19 @@ public class Jackson2FacadeTest {
         assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
     }
 
+    private static void assertWriteOnlyMembersAreNotSerialized(Jackson2JsonFacade facade) {
+        WriteOnlyPojo pojo = new WriteOnlyPojo();
+        pojo.setName("han");
+        pojo.setSecret("hidden");
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(pojo));
+
+        WriteOnlyJojo jojo = new WriteOnlyJojo();
+        jojo.setName("han");
+        jojo.setSecret("hidden");
+        jojo.put("runtime", 1);
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(jojo));
+    }
+
     static class User {
         public String name;
         public List<User> friends;
@@ -493,6 +541,7 @@ public class Jackson2FacadeTest {
                 modeTests("read-module", Jackson2FacadeTest::assertReadModule),
                 modeTests("write", Jackson2FacadeTest::assertWrite),
                 modeTests("dynamic-binding", Jackson2FacadeTest::assertDynamicBinding),
+                modeTests("write-only-hidden", Jackson2FacadeTest::assertWriteOnlyMembersAreNotSerialized),
                 modeTests("node-value", Jackson2FacadeTest::assertNodeValue),
                 modeTests("node-field", Jackson2FacadeTest::assertNodeField),
                 modeTests("node-naming", Jackson2FacadeTest::assertNodeNaming),

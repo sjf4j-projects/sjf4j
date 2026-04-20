@@ -749,7 +749,7 @@ public class Jackson2StreamingIO {
                     NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
                         gen.writeStartObject();
-                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                             gen.writeFieldName(entry.getKey());
                             _writeNode(gen, entry.getValue().invokeGetter(node));
                         }
@@ -810,10 +810,7 @@ public class Jackson2StreamingIO {
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 gen.writeStartObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                    if (!entry.getValue().hasGetter()) {
-                        continue;
-                    }
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                     String key = entry.getKey();
                     gen.writeFieldName(key);
                     Object vv = entry.getValue().invokeGetter(node);

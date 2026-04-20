@@ -608,7 +608,7 @@ public class Fastjson2StreamingIO {
                     NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
                         writer.startObject();
-                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                             writer.writeName(entry.getKey());
                             writer.writeColon();
                             _writeNode(writer, entry.getValue().invokeGetter(node));
@@ -683,10 +683,7 @@ public class Fastjson2StreamingIO {
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 writer.startObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                    if (!entry.getValue().hasGetter()) {
-                        continue;
-                    }
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                     String key = entry.getKey();
                     writer.writeName(key);
                     writer.writeColon();

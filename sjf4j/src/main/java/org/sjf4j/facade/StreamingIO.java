@@ -621,7 +621,7 @@ public final class StreamingIO {
                     if (!pi.writeDynamic) {
                         writer.startObject();
                         boolean veryStart = true;
-                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                             if (veryStart) veryStart = false;
                             else writer.writeObjectComma();
                             writer.writeName(entry.getKey());
@@ -688,10 +688,7 @@ public final class StreamingIO {
             if (pi != null) {
                 writer.startObject();
                 boolean veryStart = true;
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                    if (!entry.getValue().hasGetter()) {
-                        continue;
-                    }
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                     if (veryStart) veryStart = false;
                     else writer.writeObjectComma();
                     String key = entry.getKey();

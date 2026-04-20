@@ -18,11 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed node traversal helper naming from `visit*`/`anyMatchIn*` to `forEach*`/`anyMatch*` across shared node utilities and facade adapters.
 - Changed facade-node write operations for Jackson 2 and Jackson 3 to require backend-native `JsonNode` values instead of auto-converting arbitrary OBNT values.
 - Changed JSONPath missing-container creation to recognize Jackson 3 native object/array node types.
+- Changed `Nodes` and `JsonObject` object views to expose readable members only, while keeping direct write paths available for writable-only bindings.
 
 ### Fixed
 - Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
 - Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.
+- Fixed shared/simple/Jackson/Fastjson2 readable-member serialization and POJO projection paths so write-only bindings no longer leak into object traversal or output.
 
 
 ## [1.2.0] - 2026.04.12

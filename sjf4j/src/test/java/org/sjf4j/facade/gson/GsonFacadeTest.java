@@ -84,6 +84,41 @@ public class GsonFacadeTest {
         public String name;
     }
 
+    static class WriteOnlyPojo {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteOnlyJojo extends JsonObject {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
     private static void assertReadModule(GsonJsonFacade facade) {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
         JsonObject jo1 = (JsonObject) facade.readNode(new StringReader(json1), JsonObject.class);
@@ -124,6 +159,21 @@ public class GsonFacadeTest {
         assertEquals(2, writeBook.getInt("extra"));
         writeBook.put("runtime", 3);
         assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
+    }
+
+    private static void assertWriteOnlyMembersAreNotSerialized(GsonJsonFacade facade) {
+        WriteOnlyPojo pojo = new WriteOnlyPojo();
+        pojo.setName("han");
+        pojo.setSecret("hidden");
+        if (facade.streamingMode() != StreamingFacade.StreamingMode.PLUGIN_MODULE) {
+            assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(pojo));
+        }
+
+        WriteOnlyJojo jojo = new WriteOnlyJojo();
+        jojo.setName("han");
+        jojo.setSecret("hidden");
+        jojo.put("runtime", 1);
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(jojo));
     }
 
     @Test
@@ -274,6 +324,7 @@ public class GsonFacadeTest {
                 modeTests("read-module", GsonFacadeTest::assertReadModule),
                 modeTests("write", GsonFacadeTest::assertWrite),
                 modeTests("dynamic-binding", GsonFacadeTest::assertDynamicBinding),
+                modeTests("write-only-hidden", GsonFacadeTest::assertWriteOnlyMembersAreNotSerialized),
                 modeTests("node-value", GsonFacadeTest::assertNodeValue),
                 modeTests("node-field", GsonFacadeTest::assertNodeField),
                 modeTests("node-naming", GsonFacadeTest::assertNodeNaming)

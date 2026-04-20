@@ -13,6 +13,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.AbstractMap;
 import java.util.Iterator;
@@ -339,10 +340,7 @@ public final class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             Map<String, Object> map = new LinkedHashMap<>();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                if (!entry.getValue().hasGetter()) {
-                    continue;
-                }
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 Object v = entry.getValue().invokeGetter(node);
                 map.put(entry.getKey(), v);
             }
@@ -673,9 +671,9 @@ public final class Nodes {
     /**
      * Compares two values using node semantics instead of Java type identity.
      * <p>
-     * Object-like nodes are compared by key/value pairs, array-like nodes are
-     * compared by order and element values, and number values are compared by
-     * numeric value (not boxed type).
+     * Object-like nodes are compared by readable key/value pairs, array-like
+     * nodes are compared by order and element values, and number values are
+     * compared by numeric value (not boxed type).
      */
     public static boolean equals(Object source, Object target) {
         if (target == source) return true;
@@ -715,8 +713,8 @@ public final class Nodes {
     /**
      * Computes a hash code aligned with {@link #equals(Object, Object)} node semantics.
      * <p>
-     * Object-like nodes are hashed in key/value form (order-insensitive for object
-     * members), while array-like nodes are hashed in iteration order.
+     * Object-like nodes are hashed from readable key/value pairs (order-insensitive
+     * for object members), while array-like nodes are hashed in iteration order.
      */
     public static int hash(Object node) {
         if (node == null) return 0;
@@ -815,13 +813,9 @@ public final class Nodes {
             NodeRegistry.PojoPendingApplier applyPojoField = (target, pendingKey, pendingValue) ->
                     ((NodeRegistry.FieldInfo) pendingKey).invokeSetterIfPresent(target, pendingValue);
 
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 String key = entry.getKey();
                 NodeRegistry.FieldInfo fi = entry.getValue();
-                if (!fi.hasGetter()) {
-                    continue;
-                }
-
                 Object v = fi.invokeGetter(node);
                 session.accept(key, v, fi, applyPojoField);
             }
@@ -984,10 +978,7 @@ public final class Nodes {
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
             int idx = 0;
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                if (!entry.getValue().hasGetter()) {
-                    continue;
-                }
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 if (idx++ > 0) sb.append(", ");
                 sb.append("*").append(entry.getKey()).append("=");
                 Object v = entry.getValue().invokeGetter(node);
@@ -1010,7 +1001,7 @@ public final class Nodes {
     /// Visit
 
     /**
-     * Visits each entry in an object-like node.
+     * Visits each readable entry in an object-like node.
      */
     @SuppressWarnings("unchecked")
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
@@ -1026,10 +1017,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                if (!entry.getValue().hasGetter()) {
-                    continue;
-                }
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
                 consumer.accept(entry.getKey(), value);
             }
@@ -1044,7 +1032,7 @@ public final class Nodes {
 
 
     /**
-     * Returns true if any object entry matches the predicate.
+     * Returns true if any readable object entry matches the predicate.
      */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
@@ -1063,10 +1051,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                if (!entry.getValue().hasGetter()) {
-                    continue;
-                }
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
                 if (predicate.test(entry.getKey(), value)) {
                     return true;
@@ -1084,8 +1069,9 @@ public final class Nodes {
     /**
      * Replaces object-entry values in place using the given mapper.
      * <p>
-     * The mapper receives each entry key and current value, and returns the new
-     * value to store. Returns true when at least one entry changes by reference.
+     * The mapper receives each readable-and-writable entry key and current value,
+     * and returns the new value to store. Returns true when at least one entry
+     * changes by reference.
      */
     @SuppressWarnings("unchecked")
     public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> replacer) {
@@ -1109,9 +1095,9 @@ public final class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             boolean changed = false;
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 NodeRegistry.FieldInfo fi = entry.getValue();
-                if (!fi.hasGetter() || !fi.hasSetter()) {
+                if (!fi.hasSetter()) {
                     continue;
                 }
                 Object oldValue = fi.invokeGetter(node);
@@ -1207,7 +1193,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the number of entries in an object-like node.
+     * Returns the number of readable members in an object-like node.
      */
     public static int sizeInObject(Object node) {
         Objects.requireNonNull(node, "node");
@@ -1219,7 +1205,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            return pi.fieldCount;
+            return pi.readableFieldCount;
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.sizeInObject(node);
@@ -1251,7 +1237,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the key set for an object-like node.
+     * Returns the readable key set for an object-like node.
      */
     @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
@@ -1264,7 +1250,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            return pi.fields.keySet();
+            return pi.readableFields.keySet();
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.keySetInObject(node);
@@ -1273,7 +1259,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the entry set for an object-like node.
+     * Returns the readable entry set for an object-like node.
      */
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
@@ -1286,15 +1272,37 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            Set<Map.Entry<String, Object>> entrySet = new LinkedHashSet<>(pi.fieldCount);
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
-                if (!entry.getValue().hasGetter()) {
-                    continue;
+            return new AbstractSet<Map.Entry<String, Object>>() {
+                @SuppressWarnings("NullableProblems")
+                @Override
+                public Iterator<Map.Entry<String, Object>> iterator() {
+                    return new Iterator<Map.Entry<String, Object>>() {
+                        private final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
+                                pi.readableFields.entrySet().iterator();
+                        private Map.Entry<String, NodeRegistry.FieldInfo> nextField;
+
+                        @Override
+                        public boolean hasNext() {
+                            if (nextField != null) return true;
+                            return (nextField = fieldIterator.hasNext() ? fieldIterator.next() : null) != null;
+                        }
+
+                        @Override
+                        public Map.Entry<String, Object> next() {
+                            if (!hasNext()) throw new NoSuchElementException();
+                            Map.Entry<String, NodeRegistry.FieldInfo> entry = nextField;
+                            nextField = null;
+                            Object value = entry.getValue().invokeGetter(node);
+                            return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
+                        }
+                    };
                 }
-                Object value = entry.getValue().invokeGetter(node);
-                entrySet.add(new AbstractMap.SimpleEntry<>(entry.getKey(), value));
-            }
-            return entrySet;
+
+                @Override
+                public int size() {
+                    return pi.readableFieldCount;
+                }
+            };
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.entrySetInObject(node);
@@ -1345,7 +1353,7 @@ public final class Nodes {
 
 
     /**
-     * Returns true when object-like node contains the key.
+     * Returns true when an object-like node contains a readable key.
      */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
@@ -1359,7 +1367,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            return pi.fields.containsKey(key);
+            return pi.readableFields.containsKey(key);
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.containsInObject(node, key);
@@ -1380,6 +1388,9 @@ public final class Nodes {
 
     /**
      * Gets a value by key from an object-like node.
+     * <p>
+     * Only readable members participate in this view. For POJO nodes, fields
+     * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {
         Objects.requireNonNull(node, "node");
@@ -1392,8 +1403,8 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
-            NodeRegistry.FieldInfo fi = pi.fields.get(key);
-            return fi != null && fi.hasGetter() ? fi.invokeGetter(node) : null;
+            NodeRegistry.FieldInfo fi = pi.readableFields.get(key);
+            return fi != null ? fi.invokeGetter(node) : null;
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.getInObject(node, key);

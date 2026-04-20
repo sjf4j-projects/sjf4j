@@ -139,6 +139,41 @@ public class SimpleJsonFacadeTest {
         public String name;
     }
 
+    static class WriteOnlyPojo {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteOnlyJojo extends JsonObject {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
     @Test
     public void testPojoUnknownKey() {
         String json = "{\"active\": true }";
@@ -168,6 +203,22 @@ public class SimpleJsonFacadeTest {
         assertEquals(2, book.getInt("extra"));
         book.put("runtime", 3);
         assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(book));
+    }
+
+    @Test
+    void write_only_members_are_not_serialized() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+
+        WriteOnlyPojo pojo = new WriteOnlyPojo();
+        pojo.setName("han");
+        pojo.setSecret("hidden");
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(pojo));
+
+        WriteOnlyJojo jojo = new WriteOnlyJojo();
+        jojo.setName("han");
+        jojo.setSecret("hidden");
+        jojo.put("runtime", 1);
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(jojo));
     }
 
 

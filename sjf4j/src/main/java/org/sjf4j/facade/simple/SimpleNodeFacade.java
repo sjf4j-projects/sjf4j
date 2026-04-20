@@ -350,9 +350,9 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(nodeClazz);
             if (pi != null) {
                 NodeRegistry.CreatorInfo ci = pi.creatorInfo;
-                NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
+                NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.readableFieldCount);
 
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                     String key = entry.getKey();
                     NodeRegistry.FieldInfo fi = entry.getValue();
 
@@ -703,7 +703,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.readableFields.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
@@ -715,7 +715,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
         if (rawClazz == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.readableFields.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
@@ -727,8 +727,8 @@ public class SimpleNodeFacade implements NodeFacade {
 
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(rawClazz);
         if (pi != null && !pi.isJajo) {
-            Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.fieldCount);
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.fields.entrySet()) {
+            Map<String, Object> sourceValues = new LinkedHashMap<>(oldPi.readableFieldCount);
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.readableFields.entrySet()) {
                 sourceValues.put(entry.getKey(), entry.getValue().invokeGetter(node));
             }
             return _readPojoFromObjectEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
@@ -800,7 +800,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 if (rawClazz != JsonObject.class) {
                     NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
                     if (!pi.writeDynamic) {
-                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                             String key = entry.getKey();
                             PathSegment cps = new PathSegment.Name(ps, rawClazz, key);
                             Object vv = _writeNode(entry.getValue().invokeGetter(node), cps);
@@ -859,8 +859,8 @@ public class SimpleNodeFacade implements NodeFacade {
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                Map<String, Object> newMap = new LinkedHashMap<>(pi.fieldCount);
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.fields.entrySet()) {
+                Map<String, Object> newMap = new LinkedHashMap<>(pi.readableFieldCount);
+                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                     String key = entry.getKey();
                     Object v = entry.getValue().invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, rawClazz, key);

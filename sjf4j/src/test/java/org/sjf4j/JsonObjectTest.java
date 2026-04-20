@@ -61,6 +61,7 @@ class JsonObjectTest {
         testWrapFacadeObjectNodes();
         testWrapSemantics();
         testEntrySetKeySet();
+        testReadableAndWritableViews();
         testRemoveByPath();
         testEdgeCases();
         testSupplier1();
@@ -224,6 +225,36 @@ class JsonObjectTest {
 
     static class WrapJojo extends JsonObject {
         public String name;
+    }
+
+    static class AccessModeJojo extends JsonObject {
+        private String readWrite;
+        private String readOnly = "ro";
+        private String writeOnly;
+
+        public String getReadWrite() {
+            return readWrite;
+        }
+
+        public void setReadWrite(String readWrite) {
+            this.readWrite = readWrite;
+        }
+
+        public String getReadOnly() {
+            return readOnly;
+        }
+
+        public void setReadOnly(String readOnly) {
+            this.readOnly = readOnly;
+        }
+
+        public void setWriteOnly(String writeOnly) {
+            this.writeOnly = writeOnly;
+        }
+
+        public String peekWriteOnly() {
+            return writeOnly;
+        }
     }
 
     public void testWrapFacadeObjectNodes() {
@@ -644,6 +675,52 @@ class JsonObjectTest {
         assertEquals("a", keys.get(0));
         assertEquals("b", keys.get(1));
         assertEquals("c", keys.get(2));
+    }
+
+    public void testReadableAndWritableViews() {
+        AccessModeJojo jo = new AccessModeJojo();
+        jo.setReadWrite("rw");
+        jo.setWriteOnly("secret-1");
+        jo.put("extra", 1);
+
+        assertEquals(3, jo.size());
+        assertFalse(jo.keySet().contains("writeOnly"));
+        assertFalse(jo.containsKey("writeOnly"));
+
+        assertEquals(3, jo.entrySet().size());
+        List<String> readableKeys = new ArrayList<>();
+        jo.forEach((key, value) -> readableKeys.add(key));
+        assertEquals(java.util.Arrays.asList("readWrite", "readOnly", "extra"), readableKeys);
+        assertTrue(jo.anyMatch((key, value) -> key.equals("readOnly")));
+        assertFalse(jo.anyMatch((key, value) -> key.equals("writeOnly")));
+
+        assertEquals("rw", jo.getNode("readWrite"));
+        assertEquals("ro", jo.getNode("readOnly"));
+        assertNull(jo.getNode("writeOnly"));
+
+        Map<String, Object> map = jo.toMap();
+        assertEquals(3, map.size());
+        assertFalse(map.containsKey("writeOnly"));
+        assertEquals(1, map.get("extra"));
+
+        assertNull(jo.put("writeOnly", "secret-2"));
+        assertEquals("secret-2", jo.peekWriteOnly());
+        assertFalse(jo.replace((key, value) -> key.equals("writeOnly") ? "secret-3" : value));
+        assertEquals("secret-2", jo.peekWriteOnly());
+
+        AccessModeJojo sameReadable = new AccessModeJojo();
+        sameReadable.setReadWrite("rw");
+        sameReadable.setReadOnly("ro");
+        sameReadable.setWriteOnly("different-secret");
+        sameReadable.put("extra", 1);
+        assertEquals(jo, sameReadable);
+        assertEquals(jo.hashCode(), sameReadable.hashCode());
+
+        JsonObject copied = new JsonObject(jo);
+        assertEquals(3, copied.size());
+        assertFalse(copied.containsKey("writeOnly"));
+        assertEquals("rw", copied.getString("readWrite"));
+        assertEquals(1, copied.getInt("extra"));
     }
 
     public void testRemoveByPath() {

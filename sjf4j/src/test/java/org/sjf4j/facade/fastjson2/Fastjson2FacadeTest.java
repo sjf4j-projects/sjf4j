@@ -71,6 +71,7 @@ public class Fastjson2FacadeTest {
                 modeTests("read-module", Fastjson2FacadeTest::assertReadModule),
                 modeTests("write", Fastjson2FacadeTest::assertWrite),
                 modeTests("dynamic-binding", Fastjson2FacadeTest::assertDynamicBinding),
+                modeTests("write-only-hidden", Fastjson2FacadeTest::assertWriteOnlyMembersAreNotSerialized),
                 modeTests("node-value", Fastjson2FacadeTest::assertNodeValue),
                 modeTests("node-field", Fastjson2FacadeTest::assertNodeField),
                 modeTests("node-naming", Fastjson2FacadeTest::assertNodeNaming),
@@ -108,6 +109,41 @@ public class Fastjson2FacadeTest {
     public static class WriteDisabledBook extends JsonObject {
         public int id;
         public String name;
+    }
+
+    static class WriteOnlyPojo {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
+    @NodeBinding(writeDynamic = false)
+    static class WriteOnlyJojo extends JsonObject {
+        private String name;
+        private String secret;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
     }
 
     private static void assertReadModule(Fastjson2JsonFacade facade) {
@@ -148,6 +184,19 @@ public class Fastjson2FacadeTest {
         assertEquals(2, writeBook.getInt("extra"));
         writeBook.put("runtime", 3);
         assertEquals("{\"id\":1,\"name\":\"a\"}", facade.writeNodeAsString(writeBook));
+    }
+
+    private static void assertWriteOnlyMembersAreNotSerialized(Fastjson2JsonFacade facade) {
+        WriteOnlyPojo pojo = new WriteOnlyPojo();
+        pojo.setName("han");
+        pojo.setSecret("hidden");
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(pojo));
+
+        WriteOnlyJojo jojo = new WriteOnlyJojo();
+        jojo.setName("han");
+        jojo.setSecret("hidden");
+        jojo.put("runtime", 1);
+        assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(jojo));
     }
 
 
