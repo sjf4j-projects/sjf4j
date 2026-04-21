@@ -24,11 +24,11 @@ and **mapping** (Transformation) across data formats and native object graphs.
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies (except for the chosen data parser).
 
-Gradle
+Gradle:
 ```groovy
 implementation("org.sjf4j:sjf4j:{version}")
 ```
-Maven
+Maven:
 ```xml
 <dependency>
     <groupId>org.sjf4j</groupId>
@@ -37,25 +37,28 @@ Maven
 </dependency>
 ```
 
-**Optional Runtime Backends**  
-SJF4J itself has no external runtime dependencies.  
-Format support is activated automatically when the corresponding libraries are present.
+**Optional Runtime Dependencies**  
+Data parsers are enabled automatically when their corresponding libraries are present, 
+and can also be configured explicitly if needed.
 
 - **JSON**
   - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or others).  
   - By default, SJF4J automatically detects and uses the first available implementation in that order.
   - If none are detected, it falls back to a built-in simple JSON parser (functional but slower).
+  - Or use `Sjf4j.builder().jsonFacade(...).build()` to explicitly specify the backend.
 
 - **YAML**
-  - Include: `SnakeYAML`.
+  - Include `SnakeYAML`(The only YAML 1.1 backend).
 
 - **Java Properties**
-  - Built-in supported.
-  - Conversions from Java Properties are inherently constrained by its flat key-value structure.
+  - Built-in support.
+  - Conversion is inherently limited by its flat key-value structure.
 
-- **In-Memory** (no external data)  
-  - SJF4J can operate directly on in-memory object graphs through OBNT,
-    providing the same JSON-semantic APIs.
+- **In-Memory** 
+  - Built-in support.
+  - Provides the same JSON-semantic APIs on in-memory object graphs via OBNT. 
+  - Useful even without external data sources (e.g., DB result mapping, complex nested data processing).
+
 
 ## Quickstart
 
@@ -66,7 +69,10 @@ SJF4J is built around a single structural model: the **Object-Based Node Tree (O
 - All APIs follow -- or extend -- standard JSON semantics.
 
 The following example demonstrates a complete lifecycle for processing structured data:
-> **Modeling → Parsing → Navigating → Patching → Validating → Mapping**
+```
+Modeling  →  Parsing  →  Navigating  →  Patching  →  Validating  →  Mapping
+```
+
 
 ### Modeling
 
