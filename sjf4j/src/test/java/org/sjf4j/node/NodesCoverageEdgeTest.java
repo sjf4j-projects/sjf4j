@@ -275,7 +275,7 @@ class NodesCoverageEdgeTest {
         assertTrue(iterator.hasNext());
         assertEquals(1, iterator.next());
         assertEquals(2, iterator.next());
-        assertThrows(NoSuchElementException.class, iterator::next);
+        assertThrows(ArrayIndexOutOfBoundsException.class, iterator::next);
 
         Nodes.Access access = new Nodes.Access();
         Nodes.accessInObject(bean, Bean.class, "name", access);
@@ -418,6 +418,20 @@ class NodesCoverageEdgeTest {
                 });
 
         assertEquals(2, visited.size());
+    }
+
+    @Test
+    void testShapeCoversFacadeAndUnknownNodes() {
+        ObjectNode objectNode = MAPPER.createObjectNode();
+        objectNode.put("name", "han");
+        ArrayNode arrayNode = MAPPER.createArrayNode();
+        arrayNode.add(1);
+        arrayNode.add(2);
+        objectNode.set("scores", arrayNode);
+
+        assertEquals("{name=string, scores=[number, ...](2)}", Nodes.shape(objectNode));
+        assertEquals("string", Nodes.shape(TextNode.valueOf("x")));
+        assertEquals("!UnknownValue", Nodes.shape(new UnknownValue("v")));
     }
 
     @Test

@@ -695,4 +695,49 @@ public class NodesTest {
         assertEquals("@LocalDate#" + date1.toString(), Nodes.inspect(date2));
     }
 
+    @Test
+    public void testShape1() {
+        JsonObject jo = JsonObject.of(
+                "name", "Alice",
+                "age", 30,
+                "active", true,
+                "child", JsonObject.of("id", 1),
+                "tags", JsonArray.of("java", "json"),
+                "items", Arrays.asList(null, JsonObject.of("score", 9), JsonObject.of("score", 10, "extra", "x")),
+                "empty", JsonArray.of());
+
+        String expected = "J{name=string, age=number, active=boolean, child=J{id=number}, tags=J[string, ...](2), items=[J{score=number}, ...](3), empty=J[](0)}";
+        assertEquals(expected, Nodes.shape(jo));
+        assertEquals(expected, jo.shape());
+    }
+
+    @Test
+    public void testShape2() {
+        NodeRegistry.overrideValueCodec(new ValueCodec<LocalDate, String>() {
+            @Override
+            public String valueToRaw(LocalDate node) {
+                return node.toString();
+            }
+
+            @Override
+            public LocalDate rawToValue(String raw) {
+                return LocalDate.parse(raw);
+            }
+
+            @Override
+            public Class<LocalDate> valueClass() {
+                return LocalDate.class;
+            }
+
+            @Override
+            public Class<String> rawClass() {
+                return String.class;
+            }
+        });
+
+        LocalDate date = LocalDate.now();
+        assertEquals("@LocalDate#string", Nodes.shape(date));
+        assertEquals("J[J{id=number}, ...](3)", JsonArray.of(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")).shape());
+    }
+
 }

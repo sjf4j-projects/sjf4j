@@ -45,6 +45,17 @@ public abstract class JsonContainer {
     }
 
     /**
+     * Returns a structural shape string using node shape output.
+     * <p>
+     * Example: {@code JsonObject.of("name", "han", "age", 18).shape()} returns
+     * {@code J{name=string, age=number}}, while
+     * {@code JsonArray.of("a", "b").shape()} returns {@code J[string, ...](2)}.
+     */
+    public String shape() {
+        return Nodes.shape(this);
+    }
+
+    /**
      * Returns a JSON-like string representation of this JsonObject.
      */
     @Override

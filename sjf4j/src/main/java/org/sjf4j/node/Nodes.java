@@ -831,6 +831,209 @@ public final class Nodes {
     }
 
     /**
+     * Returns a compact JSON-shape summary of the given object.
+     * <p>
+     * The output follows the same structural notation as {@link #inspect(Object)},
+     * but leaf values are replaced with JSON-semantic type names such as
+     * {@code string}, {@code number}, {@code boolean}, and {@code null}.
+     *
+     * <p>Array-like nodes are summarized using the first non-null element shape.
+     * When an array contains elements, its size is appended after the closing
+     * bracket (for example {@code J[string, ...](3)}). The inner {@code ...}
+     * indicates that remaining elements are not expanded.
+     *
+     * <h3>Examples</h3>
+     * <pre>{@code
+     * Nodes.shape(JsonObject.of("name", "han", "age", 18))
+     * // => J{name=string, age=number}
+     *
+     * Nodes.shape(JsonArray.of("a", "b"))
+     * // => J[string, ...](2)
+     *
+     * Nodes.shape(Arrays.asList(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")))
+     * // => [J{id=number}, ...](3)
+     * }</pre>
+     *
+     * @param node the object to inspect structurally
+     * @return a compact structural shape string
+     */
+    public static String shape(Object node) {
+        StringBuilder sb = new StringBuilder();
+        _shape(node, sb);
+        return sb.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void _shape(Object node, StringBuilder sb) {
+        if (node == null) {
+            sb.append("null");
+            return;
+        }
+        Class<?> rawClazz = node.getClass();
+        if (node instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) node;
+            sb.append("{");
+            int idx = 0;
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                if (idx++ > 0) sb.append(", ");
+                sb.append(entry.getKey()).append("=");
+                _shape(entry.getValue(), sb);
+            }
+            sb.append("}");
+            return;
+        }
+        if (rawClazz == JsonObject.class) {
+            JsonObject jo = (JsonObject) node;
+            sb.append("J{");
+            int idx = 0;
+            for (Map.Entry<String, Object> entry : jo.entrySet()) {
+                if (idx++ > 0) sb.append(", ");
+                sb.append(entry.getKey()).append("=");
+                _shape(entry.getValue(), sb);
+            }
+            sb.append("}");
+            return;
+        }
+        if (node instanceof JsonObject) {
+            JsonObject jo = (JsonObject) node;
+            sb.append("@").append(rawClazz.getSimpleName()).append("{");
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+            int[] idx = new int[1];
+            jo.forEach((k, v) -> {
+                if (idx[0]++ > 0) sb.append(", ");
+                if (pi != null && pi.fields.containsKey(k)) {
+                    sb.append("*");
+                }
+                sb.append(k).append("=");
+                _shape(v, sb);
+            });
+            sb.append("}");
+            return;
+        }
+        if (node instanceof List) {
+            sb.append("[");
+            int size = _shapeRepresentativeArray(node, sb);
+            sb.append("]");
+            sb.append("(").append(size).append(")");
+            return;
+        }
+        if (rawClazz == JsonArray.class) {
+            sb.append("J[");
+            int size = _shapeRepresentativeArray(node, sb);
+            sb.append("]");
+            sb.append("(").append(size).append(")");
+            return;
+        }
+        if (node instanceof JsonArray) {
+            sb.append("@").append(rawClazz.getSimpleName()).append("[");
+            int size = _shapeRepresentativeArray(node, sb);
+            sb.append("]");
+            sb.append("(").append(size).append(")");
+            return;
+        }
+        if (rawClazz.isArray()) {
+            sb.append("A[");
+            int size = _shapeRepresentativeArray(node, sb);
+            sb.append("]");
+            sb.append("(").append(size).append(")");
+            return;
+        }
+        if (node instanceof Set) {
+            sb.append("S[");
+            int size = _shapeRepresentativeArray(node, sb);
+            sb.append("]");
+            sb.append("(").append(size).append(")");
+            return;
+        }
+
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        if (ti.valueCodecInfo != null) {
+            Object raw = ti.valueCodecInfo.valueToRaw(node);
+            sb.append("@").append(rawClazz.getSimpleName()).append("#");
+            _shape(raw, sb);
+            return;
+        }
+        if (ti.pojoInfo != null) {
+            NodeRegistry.PojoInfo pi = ti.pojoInfo;
+            sb.append("@").append(rawClazz.getSimpleName()).append("{");
+            int idx = 0;
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+                if (idx++ > 0) sb.append(", ");
+                sb.append("*").append(entry.getKey()).append("=");
+                Object v = entry.getValue().invokeGetter(node);
+                _shape(v, sb);
+            }
+            sb.append("}");
+            return;
+        }
+
+        JsonType jt = JsonType.of(node);
+        if (jt.isObject()) {
+            sb.append("{");
+            int[] idx = new int[1];
+            forEachObject(node, (k, v) -> {
+                if (idx[0]++ > 0) sb.append(", ");
+                sb.append(k).append("=");
+                _shape(v, sb);
+            });
+            sb.append("}");
+            return;
+        }
+        if (jt.isArray()) {
+            sb.append("[");
+            int size = _shapeRepresentativeArray(node, sb);
+            sb.append("]");
+            sb.append("(").append(size).append(")");
+            return;
+        }
+        if (jt.isString()) {
+            sb.append("string");
+            return;
+        }
+        if (jt.isNumber()) {
+            sb.append("number");
+            return;
+        }
+        if (jt.isBoolean()) {
+            sb.append("boolean");
+            return;
+        }
+        if (jt.isNull()) {
+            sb.append("null");
+            return;
+        }
+
+        sb.append("!").append(rawClazz.getSimpleName());
+    }
+
+    private static int _shapeRepresentativeArray(Object node, StringBuilder sb) {
+        int size = sizeInArray(node);
+        if (size <= 0) {
+            return 0;
+        }
+        Iterator<Object> it = iteratorInArray(node);
+        Object first = null;
+        Object sample = null;
+        boolean hasFirst = false;
+        while (it.hasNext()) {
+            Object value = it.next();
+            if (!hasFirst) {
+                first = value;
+                hasFirst = true;
+            }
+            if (value != null) {
+                sample = value;
+                break;
+            }
+        }
+        _shape(sample != null ? sample : first, sb);
+        if (size > 1) {
+            sb.append(", ...");
+        }
+        return size;
+    }
+
+    /**
      * Returns a compact, human-readable representation of the given object.
      * <p>
      * This method is mainly used for debugging and logging. It prints objects
@@ -1273,25 +1476,19 @@ public final class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
         if (pi != null) {
             return new AbstractSet<Map.Entry<String, Object>>() {
-                @SuppressWarnings("NullableProblems")
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
                     return new Iterator<Map.Entry<String, Object>>() {
                         private final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
                                 pi.readableFields.entrySet().iterator();
-                        private Map.Entry<String, NodeRegistry.FieldInfo> nextField;
-
                         @Override
                         public boolean hasNext() {
-                            if (nextField != null) return true;
-                            return (nextField = fieldIterator.hasNext() ? fieldIterator.next() : null) != null;
+                            return fieldIterator.hasNext();
                         }
 
                         @Override
                         public Map.Entry<String, Object> next() {
-                            if (!hasNext()) throw new NoSuchElementException();
-                            Map.Entry<String, NodeRegistry.FieldInfo> entry = nextField;
-                            nextField = null;
+                            Map.Entry<String, NodeRegistry.FieldInfo> entry = fieldIterator.next();
                             Object value = entry.getValue().invokeGetter(node);
                             return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
                         }
@@ -1323,7 +1520,16 @@ public final class Nodes {
             return ((JsonArray) node).iterator();
         }
         if (node.getClass().isArray()) {
-            return _arrayIterator(node);
+            int len = Array.getLength(node);
+            return new Iterator<Object>() {
+                int i = 0;
+                public boolean hasNext() {
+                    return i < len;
+                }
+                public Object next() {
+                    return Array.get(node, i++);
+                }
+            };
         }
         if (node instanceof Set) {
             return ((Set<Object>) node).iterator();
@@ -1333,24 +1539,6 @@ public final class Nodes {
         }
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an array node");
     }
-
-    /**
-     * Creates an iterator for a raw Java array.
-     */
-    private static Iterator<Object> _arrayIterator(Object array) {
-        int len = Array.getLength(array);
-        return new Iterator<Object>() {
-            int i = 0;
-            public boolean hasNext() {
-                return i < len;
-            }
-            public Object next() {
-                if (!hasNext()) throw new NoSuchElementException();
-                return Array.get(array, i++);
-            }
-        };
-    }
-
 
     /**
      * Returns true when an object-like node contains a readable key.
