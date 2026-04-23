@@ -167,6 +167,20 @@ class NodeRegistryCoverageTest {
         }
     }
 
+    static class InstantFieldPojo {
+        @NodeProperty(valueFormat = "epochMillis")
+        Instant createdAt;
+    }
+
+    static class InstantCreatorPojo {
+        final Instant createdAt;
+
+        @NodeCreator
+        InstantCreatorPojo(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt) {
+            this.createdAt = createdAt;
+        }
+    }
+
     static class JsonSessionPojo extends JsonObject {
         final String id;
 
@@ -184,6 +198,29 @@ class NodeRegistryCoverageTest {
         public void setName(String value) {
             throw new IllegalStateException("setter boom");
         }
+    }
+
+    @Test
+    void testNamedValueCodecsAndValueFormatMetadata() {
+        NodeRegistry.ValueCodecInfo defaultCodec = NodeRegistry.registerTypeInfo(Instant.class).valueCodecInfo;
+        NodeRegistry.ValueCodecInfo isoCodec = NodeRegistry.resolveValueCodecOrElseThrow(Instant.class, "iso");
+        NodeRegistry.ValueCodecInfo epochCodec = NodeRegistry.resolveValueCodecOrElseThrow(Instant.class, "epochMillis");
+
+        assertEquals("", defaultCodec.valueFormat);
+        assertEquals("iso", isoCodec.valueFormat);
+        assertEquals("epochMillis", epochCodec.valueFormat);
+        assertEquals(String.class, isoCodec.rawClazz);
+        assertEquals(Long.class, epochCodec.rawClazz);
+
+        NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(InstantFieldPojo.class, "createdAt");
+        assertEquals("epochMillis", fi.valueFormat);
+        assertNotNull(fi.resolvedValueCodec);
+        assertEquals(Long.class, fi.resolvedValueCodec.rawClazz);
+
+        NodeRegistry.CreatorInfo creatorInfo = NodeRegistry.registerPojoOrElseThrow(InstantCreatorPojo.class).creatorInfo;
+        assertEquals("epochMillis", creatorInfo.argValueFormats[0]);
+        assertNotNull(creatorInfo.argValueCodecs[0]);
+        assertEquals(Long.class, creatorInfo.argValueCodecs[0].rawClazz);
     }
 
     static class ThrowingHandleValue {
@@ -327,7 +364,7 @@ class NodeRegistryCoverageTest {
 
         NodeRegistry.CreatorInfo badNoArgs = new NodeRegistry.CreatorInfo(NoArgsPojo.class, null, null,
                 null, null, null, null, null, null, null,
-                null, null, null, null);
+                null, null, null, null, null, null);
         assertThrows(JsonException.class, badNoArgs::newPojoNoArgs);
         assertThrows(JsonException.class, () -> badNoArgs.newPojoWithArgs(new Object[0]));
     }
@@ -437,7 +474,7 @@ class NodeRegistryCoverageTest {
         assertThrows(JsonException.class, () -> readOnlyField.invokeSetter(pojo, "x"));
         assertThrows(NullPointerException.class, () -> plainField.invokeGetter(null));
 
-        NodeRegistry.FieldInfo missingGetter = new NodeRegistry.FieldInfo("name", String.class, null, null, null, null, null);
+        NodeRegistry.FieldInfo missingGetter = new NodeRegistry.FieldInfo("name", String.class, null, null, null, null, null, null, null);
         assertThrows(JsonException.class, () -> missingGetter.invokeGetter(new Object()));
 
         MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -450,30 +487,33 @@ class NodeRegistryCoverageTest {
                 null,
                 lookup.unreflect(setterMethod),
                 null,
+                null,
+                null,
                 null
         );
         ThrowingAccessor accessor = new ThrowingAccessor();
         assertThrows(JsonException.class, () -> throwingField.invokeGetter(accessor));
         assertThrows(JsonException.class, () -> throwingField.invokeSetter(accessor, "x"));
 
-        NodeRegistry.ValueCodecInfo codecInfo = NodeRegistry.registerValueCodecInfo(MiniValue.class);
+        NodeRegistry.ValueCodecInfo codecInfo = NodeRegistry.registerTypeInfo(MiniValue.class).valueCodecInfo;
         MiniValue value = new MiniValue("v");
         assertEquals("v", codecInfo.valueToRaw(value));
         assertEquals("v", ((MiniValue) codecInfo.rawToValue("v")).value);
         assertEquals("v", ((MiniValue) codecInfo.valueCopy(value)).value);
 
-        NodeRegistry.ValueCodecInfo throwing = new NodeRegistry.ValueCodecInfo(String.class, String.class, new ThrowingCodec());
+        NodeRegistry.ValueCodecInfo throwing = new NodeRegistry.ValueCodecInfo("", String.class, String.class, new ThrowingCodec(), null, null, null);
         assertThrows(JsonException.class, () -> throwing.valueToRaw("x"));
         assertThrows(JsonException.class, () -> throwing.rawToValue("x"));
         assertThrows(JsonException.class, () -> throwing.valueCopy("x"));
         assertThrows(JsonException.class, () -> throwing.rawToValue(1));
 
-        NodeRegistry.ValueCodecInfo none = new NodeRegistry.ValueCodecInfo(String.class, String.class, null);
+        NodeRegistry.ValueCodecInfo none = new NodeRegistry.ValueCodecInfo("", String.class, String.class, null, null, null, null);
         assertThrows(JsonException.class, () -> none.valueToRaw("x"));
         assertThrows(JsonException.class, () -> none.rawToValue("x"));
         assertThrows(JsonException.class, () -> none.valueCopy("x"));
 
         NodeRegistry.ValueCodecInfo throwingHandles = new NodeRegistry.ValueCodecInfo(
+                "",
                 ThrowingHandleValue.class,
                 String.class,
                 null,

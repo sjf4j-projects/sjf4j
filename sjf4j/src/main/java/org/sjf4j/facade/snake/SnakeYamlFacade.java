@@ -1,6 +1,9 @@
 package org.sjf4j.facade.snake;
 
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.YamlFacade;
+import org.sjf4j.node.ValueFormatMapping;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.emitter.Emitter;
@@ -16,23 +19,35 @@ import java.io.Writer;
  * SnakeYAML-based YAML facade.
  */
 public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
-
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
+    private final StreamingContext streamingContext;
 
-    /**
-     * Creates SnakeYAML facade with default loader/dumper options.
-     */
     public SnakeYamlFacade() {
-        this(new LoaderOptions(), new DumperOptions());
+        this(new LoaderOptions(), new DumperOptions(), StreamingContext.EMPTY);
     }
 
     /**
      * Creates SnakeYAML facade with custom loader/dumper options.
      */
-    public SnakeYamlFacade(LoaderOptions loaderOptions, DumperOptions dumperOptions) {
+    public SnakeYamlFacade(LoaderOptions loaderOptions, DumperOptions dumperOptions,
+                           StreamingContext streamingContext) {
         this.loaderOptions = loaderOptions;
         this.dumperOptions = dumperOptions;
+        this.streamingContext = streamingContext;
+    }
+
+    public static FacadeProvider<YamlFacade<?, ?>> provider() {
+        return context -> new SnakeYamlFacade(new LoaderOptions(), new DumperOptions(), context);
+    }
+
+    public static FacadeProvider<YamlFacade<?, ?>> provider(LoaderOptions loaderOptions, DumperOptions dumperOptions) {
+        return context -> new SnakeYamlFacade(loaderOptions, dumperOptions, context);
+    }
+
+    @Override
+    public StreamingContext streamingContext() {
+        return streamingContext;
     }
 
     /**

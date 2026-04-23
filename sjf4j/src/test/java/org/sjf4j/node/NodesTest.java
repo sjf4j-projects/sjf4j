@@ -664,28 +664,6 @@ public class NodesTest {
 
     @Test
     public void testInspect2() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.overrideValueCodec(new ValueCodec<LocalDate, String>() {
-            @Override
-            public String valueToRaw(LocalDate node) {
-                return node.toString();
-            }
-
-            @Override
-            public LocalDate rawToValue(String raw) {
-                return LocalDate.parse(raw);
-            }
-
-            @Override
-            public Class<LocalDate> valueClass() {
-                return LocalDate.class;
-            }
-
-            @Override
-            public Class<String> rawClass() {
-                return String.class;
-            }
-        });
-
         LocalDate date1 = LocalDate.now();
         LocalDate date2 = Sjf4j.global().fromNode(date1.toString(), LocalDate.class);
         log.info("date2={}", date2);
@@ -713,28 +691,6 @@ public class NodesTest {
 
     @Test
     public void testShape2() {
-        NodeRegistry.overrideValueCodec(new ValueCodec<LocalDate, String>() {
-            @Override
-            public String valueToRaw(LocalDate node) {
-                return node.toString();
-            }
-
-            @Override
-            public LocalDate rawToValue(String raw) {
-                return LocalDate.parse(raw);
-            }
-
-            @Override
-            public Class<LocalDate> valueClass() {
-                return LocalDate.class;
-            }
-
-            @Override
-            public Class<String> rawClass() {
-                return String.class;
-            }
-        });
-
         LocalDate date = LocalDate.now();
         assertEquals("@LocalDate#string", Nodes.shape(date));
         assertEquals("J[J{id=number}, ...](3)", JsonArray.of(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")).shape());

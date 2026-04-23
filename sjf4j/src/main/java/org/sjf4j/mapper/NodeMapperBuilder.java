@@ -1,12 +1,12 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.FacadeFactory;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
-import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 
@@ -34,6 +34,7 @@ public final class NodeMapperBuilder<S, T> {
 
     private final Class<S> sourceType;
     private final Class<T> targetType;
+    private final StreamingContext streamingContext;
     private final List<MappingAction<S, T>> actions = new ArrayList<>();
     private final List<NodeMapper<?, ?>> nestedMappers = new ArrayList<>();
 
@@ -41,8 +42,13 @@ public final class NodeMapperBuilder<S, T> {
      * Creates a builder for the given source and target types.
      */
     public NodeMapperBuilder(Class<S> sourceType, Class<T> targetType) {
+        this(sourceType, targetType, StreamingContext.EMPTY);
+    }
+
+    public NodeMapperBuilder(Class<S> sourceType, Class<T> targetType, StreamingContext streamingContext) {
         this.sourceType = Objects.requireNonNull(sourceType, "sourceType");
         this.targetType = Objects.requireNonNull(targetType, "targetType");
+        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
     }
 
     /**
@@ -141,8 +147,8 @@ public final class NodeMapperBuilder<S, T> {
             public T map(S source) {
                 if (source == null) return null;
                 T target = targetType.cast(facade.readNode(source, targetType, true));
-                for (int i = 0; i < builtActions.length; i++) {
-                    builtActions[i].apply(source, target);
+                for (MappingAction<S, T> builtAction : builtActions) {
+                    builtAction.apply(source, target);
                 }
                 return target;
             }
@@ -151,7 +157,7 @@ public final class NodeMapperBuilder<S, T> {
 
     private NodeFacade _buildFacade() {
         if (nestedMappers.isEmpty()) {
-            return FacadeFactory.defaultNodeFacade();
+            return streamingContext.nodeFacade;
         }
         NodeConverter<?, ?>[] converters = new NodeConverter[nestedMappers.size()];
         for (int i = 0; i < nestedMappers.size(); i++) {
@@ -162,7 +168,7 @@ public final class NodeMapperBuilder<S, T> {
             }
             converters[i] = _toConverter(nestedMapper);
         }
-        return new SimpleNodeFacade(converters);
+        return new SimpleNodeFacade(streamingContext.valueFormatMapping, converters);
     }
 
     @SuppressWarnings("unchecked")

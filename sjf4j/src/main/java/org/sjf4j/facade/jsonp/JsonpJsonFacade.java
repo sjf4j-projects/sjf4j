@@ -2,37 +2,39 @@ package org.sjf4j.facade.jsonp;
 
 
 import jakarta.json.spi.JsonProvider;
-import jakarta.json.stream.JsonGenerator;
-import jakarta.json.stream.JsonParser;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.node.Types;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.util.Objects;
 
 
 public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     private final JsonProvider jsonProvider;
+    private final StreamingContext streamingContext;
 
     public JsonpJsonFacade() {
+        this(StreamingContext.EMPTY);
+    }
+
+    public JsonpJsonFacade(StreamingContext context) {
+        Objects.requireNonNull(context, "context");
         this.jsonProvider = JsonProvider.provider();
+        this.streamingContext = context;
+    }
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider() {
+        return JsonpJsonFacade::new;
     }
 
     @Override
-    public StreamingMode streamingMode() {
-        // JSON-P only participates through the shared StreamingIO path in this facade.
-        return StreamingMode.SHARED_IO;
+    public StreamingContext streamingContext() {
+        return streamingContext;
     }
 
 
@@ -54,24 +56,6 @@ public class JsonpJsonFacade implements JsonFacade<JsonpReader, JsonpWriter> {
     public JsonpReader createReader(InputStream input) throws IOException {
         Objects.requireNonNull(input, "input");
         return new JsonpReader(jsonProvider.createParser(input));
-    }
-
-    /**
-     * Creates a streaming reader from JSON string.
-     */
-    @Override
-    public JsonpReader createReader(String input) throws IOException {
-        Objects.requireNonNull(input, "input");
-        return new JsonpReader(jsonProvider.createParser(new StringReader(input)));
-    }
-
-    /**
-     * Creates a streaming reader from JSON bytes.
-     */
-    @Override
-    public JsonpReader createReader(byte[] input) throws IOException {
-        Objects.requireNonNull(input, "input");
-        return new JsonpReader(jsonProvider.createParser(new ByteArrayInputStream(input)));
     }
 
 

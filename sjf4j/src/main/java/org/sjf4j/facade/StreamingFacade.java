@@ -23,26 +23,8 @@ import java.util.Objects;
  */
 public interface StreamingFacade<R extends StreamingReader, W extends StreamingWriter> {
 
-    enum StreamingMode {
-        /**
-         * Lets the facade choose its preferred runtime mode.
-         */
-        AUTO,
-
-        /**
-         * Uses the shared SJF4J streaming reader/writer adapters.
-         */
-        SHARED_IO,
-
-        /**
-         * Uses a backend-specific streaming implementation when the facade has one.
-         */
-        EXCLUSIVE_IO,
-
-        /**
-         * Uses the backend's module/plugin binding path instead of shared streaming IO.
-         */
-        PLUGIN_MODULE
+    default StreamingContext streamingContext() {
+        return StreamingContext.EMPTY;
     }
 
     /// Reader
@@ -84,7 +66,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -100,7 +82,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         try {
             StreamingReader reader = createReader(input);
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -115,7 +97,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         Objects.requireNonNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -130,7 +112,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         Objects.requireNonNull(input, "input");
         try (StreamingReader reader = createReader(input)) {
             reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type);
+            Object node = StreamingIO.readNode(reader, type, streamingContext());
             reader.endDocument();
             return node;
         } catch (Exception e) {
@@ -162,7 +144,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
-            StreamingIO.writeNode(writer, node);
+            StreamingIO.writeNode(writer, node, streamingContext());
             writer.endDocument();
             writer.flush();
             writer.flushTo(output);
@@ -179,7 +161,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
         try {
             StreamingWriter writer = createWriter(output);
             writer.startDocument();
-            StreamingIO.writeNode(writer, node);
+            StreamingIO.writeNode(writer, node, streamingContext());
             writer.endDocument();
             writer.flush();
             writer.flushTo(output);

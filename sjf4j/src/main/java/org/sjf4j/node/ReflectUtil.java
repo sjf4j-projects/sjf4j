@@ -248,8 +248,14 @@ public final class ReflectUtil {
                     } else {
                         anyOfInfo = resolveAnyOfInfo(fieldClazz);
                     }
+                    NodeRegistry.ValueCodecInfo resolvedValueCodec = null;
+                    String valueFormat = getValueFormat(field);
+                    if (valueFormat != null) {
+                        resolvedValueCodec = NodeRegistry.resolveValueCodecOrElseThrow(fieldClazz, valueFormat);
+                    }
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
-                            fieldType, getter, lambdaGetter, setter, lambdaSetter, anyOfInfo);
+                            fieldType, getter, lambdaGetter, setter, lambdaSetter,
+                            anyOfInfo, valueFormat, resolvedValueCodec);
                     String fieldName = _getFieldName(field, curClazz);
                     NodeRegistry.FieldInfo oldFi = fields.putIfAbsent(fieldName, fi);
                     if (oldFi != null) {
@@ -334,23 +340,17 @@ public final class ReflectUtil {
         return getNamingStrategy(ownerClass).translate(field.getName());
     }
 
-    private static String _getParameterName(Parameter parameter, Class<?> ownerClass) {
-        String fname = getExplicitName(parameter);
-        if (fname != null) return fname;
-        if (parameter.isNamePresent()) return getNamingStrategy(ownerClass).translate(parameter.getName());
-        return null;
-    }
-
     public static NamingStrategy getNamingStrategy(Class<?> clazz) {
         if (clazz == null) return NamingStrategy.IDENTITY;
         NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
         if (nodeBinding == null) return NamingStrategy.IDENTITY;
-        NamingStrategy strategy = nodeBinding.naming();
-        return strategy != NamingStrategy.IDENTITY ? strategy : NamingStrategy.IDENTITY;
+        return nodeBinding.naming();
     }
 
     public static String getExplicitName(AnnotatedElement element) {
-        String fname = _getNodeProperty(element);
+        String fname = null;
+        NodeProperty ann = element.getAnnotation(NodeProperty.class);
+        if (ann != null) fname = ann.value();
         if (fname != null && !fname.isEmpty()) return fname;
         fname = _getAnnotationString(element, CLASS_JACKSON3_JSON_PROPERTY, "value");
         if (fname != null && !fname.isEmpty()) return fname;
@@ -362,7 +362,9 @@ public final class ReflectUtil {
     }
 
     public static String[] getAliases(AnnotatedElement element) {
-        String[] aliases = _getNodeAliases(element);
+        String[] aliases = null;
+        NodeProperty ann = element.getAnnotation(NodeProperty.class);
+        if (ann != null) aliases = ann.aliases();
         if (aliases != null && aliases.length > 0) return aliases;
         aliases = _getAnnotationStringArray(element, CLASS_JACKSON3_JSON_ALIAS, "value");
         if (aliases != null && aliases.length > 0) return aliases;
@@ -373,16 +375,11 @@ public final class ReflectUtil {
         return null;
     }
 
-    private static String _getNodeProperty(AnnotatedElement element) {
+    public static String getValueFormat(AnnotatedElement element) {
         NodeProperty ann = element.getAnnotation(NodeProperty.class);
-        if (ann != null) return ann.value();
-        return null;
-    }
-
-    private static String[] _getNodeAliases(AnnotatedElement element) {
-        NodeProperty ann = element.getAnnotation(NodeProperty.class);
-        if (ann != null) return ann.aliases();
-        return null;
+        if (ann == null) return null;
+        String valueFormat = ann.valueFormat();
+        return NodeProperty.VALUE_FORMAT_UNSET.equals(valueFormat) ? null : valueFormat;
     }
 
 
@@ -437,6 +434,8 @@ public final class ReflectUtil {
         Map<String, String> aliasMap = null;
         MethodHandle noArgsCtor = null;
         Supplier<?> noArgsLambdaCtor = null;
+        String[] argValueFormats = null;
+        NodeRegistry.ValueCodecInfo[] argValueCodecs = null;
 
         // 1. Find defined creator
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
@@ -490,9 +489,6 @@ public final class ReflectUtil {
         if (recordInfo != null && (creator == null || creator == recordInfo.compCtor)) {
             if (creator == null) creator = recordInfo.compCtor;
             if (creatorHandle == null) creatorHandle = recordInfo.compCtorHandle;
-//            argNames = recordInfo.getCompNames();
-//            argTypes = recordInfo.getCompTypes();
-//            argIndexes = createArgIndexes(argNames);
         }
         if (creator != null && creator.getParameterCount() > 0) {
             boolean hasPrimitiveArg = false;
@@ -528,12 +524,24 @@ public final class ReflectUtil {
             Parameter[] params = creator.getParameters();
             argTypes = creator.getGenericParameterTypes();
             argNames = new String[params.length];
+            argValueFormats = new String[params.length];
+            argValueCodecs = new NodeRegistry.ValueCodecInfo[params.length];
             for (int i = 0; i < params.length; i++) {
-                String name = _getParameterName(params[i], creator.getDeclaringClass());
+                String name = getExplicitName(params[i]);
+                if (name == null) {
+                    if (params[i].isNamePresent()) {
+                        name = getNamingStrategy(creator.getDeclaringClass()).translate(params[i].getName());
+                    }
+                }
                 if (name == null || name.isEmpty())
                     throw new JsonException("Missing parameter name for creator in " + clazz.getName() +
-                            ": parameter index " + i + " (from 0). Use @NodeProperty or @JsonProperty on parameters.");
+                            ": parameter index " + i + " (from 0). Use @NodeProperty on parameters.");
                 argNames[i] = name;
+                String valueFormat = getValueFormat(params[i]);
+                argValueFormats[i] = valueFormat;
+                if (valueFormat != null) {
+                    argValueCodecs[i] = NodeRegistry.resolveValueCodecOrElseThrow(Types.rawBox(argTypes[i]), valueFormat);
+                }
             }
             argIndexes = createArgIndexes(argNames);
         }
@@ -574,7 +582,7 @@ public final class ReflectUtil {
         return new NodeRegistry.CreatorInfo(clazz, noArgsCtor, noArgsLambdaCtor,
                 creator, creatorHandle,
                 creatorLambda1, creatorLambda2, creatorLambda3, creatorLambda4, creatorLambda5,
-                argNames, argTypes, argIndexes, aliasMap);
+                argNames, argTypes, argValueFormats, argValueCodecs, argIndexes, aliasMap);
     }
 
     /// NodeValue
@@ -700,7 +708,7 @@ public final class ReflectUtil {
                         ", but found " + copyReturnClazz.getName());
         }
 
-        return new NodeRegistry.ValueCodecInfo(clazz, valueToRawReturnBox, null,
+        return new NodeRegistry.ValueCodecInfo("", clazz, valueToRawReturnBox, null,
                 valueToRawHandle, rawToValueHandle, valueCopyHandle);
     }
 

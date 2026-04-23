@@ -2,51 +2,35 @@ package org.sjf4j.facade.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.sjf4j.exception.BindingException;
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.node.ReflectUtil;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
  * Gson-based JSON facade with selectable streaming modes.
  */
 public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
-    private final StreamingMode streamingMode;
     private final Gson gson;
+    private final StreamingContext streamingContext;
 
     public GsonJsonFacade() {
-        this(new GsonBuilder(), null);
-    }
-
-    public GsonJsonFacade(StreamingMode streamingMode) {
-        this(new GsonBuilder(), streamingMode);
+        this(new GsonBuilder(), StreamingContext.EMPTY);
     }
 
     public GsonJsonFacade(GsonBuilder gsonBuilder) {
-        this(gsonBuilder, null);
+        this(gsonBuilder, StreamingContext.EMPTY);
     }
 
-    /**
-     * Creates facade with configured GsonBuilder and optional plugin module.
-     */
-    public GsonJsonFacade(GsonBuilder gsonBuilder, StreamingMode streamingMode) {
+    public GsonJsonFacade(GsonBuilder gsonBuilder, StreamingContext context) {
         Objects.requireNonNull(gsonBuilder, "gsonBuilder");
-        // Gson has no separate exclusive streaming implementation, so AUTO resolves to plugin-backed binding.
-        this.streamingMode = streamingMode == null || streamingMode == StreamingMode.AUTO ?
-                StreamingMode.PLUGIN_MODULE : streamingMode;
-
-        if (this.streamingMode == StreamingMode.PLUGIN_MODULE) {
-            gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory());
-        }
+        Objects.requireNonNull(context, "context");
 
         gsonBuilder.setNumberToNumberStrategy(new GsonModule.MyToNumberStrategy());
         gsonBuilder.setObjectToNumberStrategy(new GsonModule.MyToNumberStrategy());
@@ -54,14 +38,38 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
             String name = ReflectUtil.getExplicitName(field);
             return name != null ? name : field.getName();
         });
+        if (context.streamingMode == StreamingContext.StreamingMode.PLUGIN_MODULE ||
+                context.streamingMode == StreamingContext.StreamingMode.AUTO) {
+            gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory(context));
+        }
         this.gson = gsonBuilder.create();
+        this.streamingContext = context;
+    }
+
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider() {
+        return config -> new GsonJsonFacade(new GsonBuilder(), config);
+    }
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider(GsonBuilder gsonBuilder) {
+        return config -> new GsonJsonFacade(gsonBuilder, config);
     }
 
     @Override
-    public StreamingMode streamingMode() {
-        return streamingMode;
+    public StreamingContext streamingContext() {
+        return streamingContext;
     }
 
+
+    @Override
+    public StreamingContext.StreamingMode realStreamingMode() {
+        StreamingContext.StreamingMode mode = streamingContext.streamingMode;
+        if (mode == StreamingContext.StreamingMode.AUTO) {
+            // Gson has no separate exclusive streaming implementation, so AUTO resolves to plugin-backed binding.
+            return StreamingContext.StreamingMode.PLUGIN_MODULE;
+        }
+        return mode;
+    }
 
     /// Read
 

@@ -11,10 +11,9 @@ import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
-import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,46 +27,56 @@ import java.util.Objects;
  * Jackson2-based JSON facade with selectable streaming modes.
  */
 public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Writer> {
-    private final StreamingMode streamingMode;
     private final ObjectMapper objectMapper;
+    private final StreamingContext streamingContext;
 
     public Jackson2JsonFacade() {
-        this(new ObjectMapper(), null);
+        this(new ObjectMapper(), StreamingContext.EMPTY);
     }
 
     public Jackson2JsonFacade(ObjectMapper objectMapper) {
-        this(objectMapper, null);
-    }
-
-    public Jackson2JsonFacade(StreamingMode streamingMode) {
-        this(new ObjectMapper(), streamingMode);
+        this(objectMapper, StreamingContext.EMPTY);
     }
 
     /**
      * Creates facade with configured ObjectMapper and SJF4J module.
      */
-    public Jackson2JsonFacade(ObjectMapper objectMapper, StreamingMode streamingMode) {
+    public Jackson2JsonFacade(ObjectMapper objectMapper, StreamingContext context) {
         Objects.requireNonNull(objectMapper, "objectMapper");
-        // Jackson defaults to module-backed read/write so AUTO matches the highest-fidelity path.
-        this.streamingMode = streamingMode == null || streamingMode == StreamingMode.AUTO ?
-                StreamingMode.PLUGIN_MODULE : streamingMode;
+        Objects.requireNonNull(context, "context");
 
-        this.objectMapper = objectMapper;
-        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        AnnotationIntrospector serializationAi = this.objectMapper.getSerializationConfig().getAnnotationIntrospector();
-        AnnotationIntrospector deserializationAi = this.objectMapper.getDeserializationConfig().getAnnotationIntrospector();
-        this.objectMapper.setAnnotationIntrospectors(
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        AnnotationIntrospector serializationAi = objectMapper.getSerializationConfig().getAnnotationIntrospector();
+        AnnotationIntrospector deserializationAi = objectMapper.getDeserializationConfig().getAnnotationIntrospector();
+        objectMapper.setAnnotationIntrospectors(
                 AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), serializationAi),
                 AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), deserializationAi)
         );
-        if (this.streamingMode == StreamingMode.PLUGIN_MODULE) {
-            this.objectMapper.registerModule(new Jackson2Module.MySimpleModule());
-        }
+        objectMapper.registerModule(new Jackson2Module.TwoSimpleModule(context));
+        this.objectMapper = objectMapper;
+        this.streamingContext = context;
+    }
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider() {
+        return context -> new Jackson2JsonFacade(new ObjectMapper(), context);
+    }
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider(ObjectMapper objectMapper) {
+        return context -> new Jackson2JsonFacade(objectMapper, context);
     }
 
     @Override
-    public StreamingMode streamingMode() {
-        return streamingMode;
+    public StreamingContext streamingContext() {
+        return streamingContext;
+    }
+
+    @Override
+    public StreamingContext.StreamingMode realStreamingMode() {
+        if (streamingContext.streamingMode == StreamingContext.StreamingMode.AUTO) {
+            // Jackson defaults to module-backed read/write so AUTO matches the highest-fidelity path.
+            return StreamingContext.StreamingMode.PLUGIN_MODULE;
+        }
+        return streamingContext.streamingMode;
     }
 
 
@@ -153,7 +162,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
     public Object readNodeExclusive(Reader input, Type type) {
         try {
             JsonParser parser = objectMapper.getFactory().createParser(input);
-            return Jackson2StreamingIO.readNode(parser, type);
+            return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -163,7 +172,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
     public Object readNodeExclusive(InputStream input, Type type) {
         try {
             JsonParser parser = objectMapper.getFactory().createParser(input);
-            return Jackson2StreamingIO.readNode(parser, type);
+            return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -173,7 +182,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
     public Object readNodeExclusive(String input, Type type) {
         try {
             JsonParser parser = objectMapper.getFactory().createParser(input);
-            return Jackson2StreamingIO.readNode(parser, type);
+            return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -182,7 +191,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
     public Object readNodeExclusive(byte[] input, Type type) {
         try {
             JsonParser parser = objectMapper.getFactory().createParser(input);
-            return Jackson2StreamingIO.readNode(parser, type);
+            return Jackson2StreamingIO.readNode(parser, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -249,7 +258,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
     public void writeNodeExclusive(Writer output, Object node) {
         try {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
-            Jackson2StreamingIO.writeNode(gen, node);
+            Jackson2StreamingIO.writeNode(gen, node, streamingContext);
             gen.flush();
         } catch (IOException e) {
             throw failedToWrite(node, e);
@@ -260,7 +269,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
     public void writeNodeExclusive(OutputStream output, Object node) {
         try {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(output);
-            Jackson2StreamingIO.writeNode(gen, node);
+            Jackson2StreamingIO.writeNode(gen, node, streamingContext);
             gen.flush();
         } catch (IOException e) {
             throw failedToWrite(node, e);
@@ -272,7 +281,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
         final BufferRecycler br = objectMapper.getFactory()._getBufferRecycler();
         try (SegmentedStringWriter sw = new SegmentedStringWriter(br)) {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(sw);
-            Jackson2StreamingIO.writeNode(gen, node);
+            Jackson2StreamingIO.writeNode(gen, node, streamingContext);
             gen.flush();
             return sw.getAndClear();
         } catch (Exception e) {
@@ -287,7 +296,7 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
         final BufferRecycler br = objectMapper.getFactory()._getBufferRecycler();
         try (ByteArrayBuilder bb = new ByteArrayBuilder(br)) {
             JsonGenerator gen = objectMapper.getFactory().createGenerator(bb);
-            Jackson2StreamingIO.writeNode(gen, node);
+            Jackson2StreamingIO.writeNode(gen, node, streamingContext);
             gen.flush();
             final byte[] result = bb.toByteArray();
             bb.release();

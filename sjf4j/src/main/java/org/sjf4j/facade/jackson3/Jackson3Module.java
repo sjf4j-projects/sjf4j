@@ -5,6 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
@@ -46,7 +47,10 @@ import java.util.Map;
 public interface Jackson3Module {
 
     class TwoSimpleModule extends SimpleModule {
-        public TwoSimpleModule() {
+        private final StreamingContext streamingContext;
+
+        public TwoSimpleModule(StreamingContext streamingContext) {
+            this.streamingContext = streamingContext;
             setDeserializerModifier(new ValueDeserializerModifier() {
                 @Override
                 public BeanDeserializerBuilder updateBuilder(DeserializationConfig config,
@@ -67,21 +71,22 @@ public interface Jackson3Module {
                                                                ValueDeserializer<?> deserializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
                     if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new JsonObjectDeserializer<>(beanDesc.getType());
+                        return new JsonObjectDeserializer<>(beanDesc.getType(), streamingContext);
                     }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(clazz);
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (ti.anyOfInfo != null) {
-                        return new AnyOfDeserializer<>(ti.anyOfInfo);
+                        return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
                     }
-                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                     if (vci != null) {
                         return new NodeValueDeserializer<>(vci);
                     }
                     if (ti.requiresPojoReader()) {
-                        return new PojoDeserializer<>(ti.pojoInfo);
+                        return new PojoDeserializer<>(ti.pojoInfo, streamingContext);
                     }
                     return deserializer;
                 }
@@ -94,18 +99,19 @@ public interface Jackson3Module {
                                                            ValueSerializer<?> serializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
                     if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new StreamingSerializer();
+                        return new StreamingSerializer(streamingContext);
                     }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
                     }
                     if (ti.requiresPojoWriter()) {
-                        return new StreamingSerializer();
+                        return new StreamingSerializer(streamingContext);
                     }
                     return serializer;
                 }
@@ -117,11 +123,13 @@ public interface Jackson3Module {
         private final Type ownerType;
         private final Class<?> ownerRawClazz;
         private final NodeRegistry.PojoInfo pi;
+        private final StreamingContext streamingContext;
 
-        public JsonObjectDeserializer(JavaType javaType) {
+        public JsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
             this.ownerType = _toType(javaType);
             this.ownerRawClazz = Types.rawBox(ownerType);
             this.pi = ownerRawClazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(ownerRawClazz);
+            this.streamingContext = streamingContext;
         }
 
         @SuppressWarnings("unchecked")
@@ -137,7 +145,7 @@ public interface Jackson3Module {
                 return null;
             }
             try {
-                return (T) StreamingIO.readPojo(new Jackson3Reader(p), ownerType, ownerRawClazz, pi);
+                return (T) StreamingIO.readPojo(new Jackson3Reader(p), ownerType, ownerRawClazz, pi, streamingContext);
             } catch (IOException e) {
                 throw new BindingException(e);
             }
@@ -225,16 +233,18 @@ public interface Jackson3Module {
 
     class AnyOfDeserializer<T> extends ValueDeserializer<T> {
         private final NodeRegistry.AnyOfInfo anyOfInfo;
+        private final StreamingContext streamingContext;
 
-        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo) {
+        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
             this.anyOfInfo = anyOfInfo;
+            this.streamingContext = streamingContext;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
-                return (T) StreamingIO.readAnyOf(new Jackson3Reader(p), anyOfInfo);
+                return (T) StreamingIO.readAnyOf(new Jackson3Reader(p), anyOfInfo, streamingContext);
             } catch (IOException e) {
                 throw new BindingException(e);
             }
@@ -243,16 +253,18 @@ public interface Jackson3Module {
 
     class PojoDeserializer<T> extends ValueDeserializer<T> {
         private final NodeRegistry.PojoInfo pi;
+        private final StreamingContext streamingContext;
 
-        public PojoDeserializer(NodeRegistry.PojoInfo pi) {
+        public PojoDeserializer(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
+            this.streamingContext = streamingContext;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
-                return (T) StreamingIO.readPojo(new Jackson3Reader(p), pi.clazz, pi.clazz, pi);
+                return (T) StreamingIO.readPojo(new Jackson3Reader(p), pi.clazz, pi.clazz, pi, streamingContext);
             } catch (IOException e) {
                 throw new BindingException(e);
             }
@@ -260,10 +272,16 @@ public interface Jackson3Module {
     }
 
     class StreamingSerializer extends ValueSerializer<Object> {
+        private final StreamingContext streamingContext;
+
+        public StreamingSerializer(StreamingContext streamingContext) {
+            this.streamingContext = streamingContext;
+        }
+
         @Override
         public void serialize(Object value, JsonGenerator gen, SerializationContext serializers) {
             try {
-                StreamingIO.writeNode(new Jackson3Writer(gen), value);
+                StreamingIO.writeNode(new Jackson3Writer(gen), value, streamingContext);
             } catch (IOException e) {
                 throw new BindingException(e);
             }

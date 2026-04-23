@@ -1,5 +1,7 @@
 package org.sjf4j.node;
 
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,7 +21,7 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
@@ -150,6 +152,14 @@ public class NodeRegistryTest {
         }
     }
 
+    public static class CodecDay {
+        protected final LocalDate localDate;
+
+        public CodecDay(LocalDate localDate) {
+            this.localDate = localDate;
+        }
+    }
+
     public static class CreatorPojo {
         private final String name;
         private final int age;
@@ -251,7 +261,43 @@ public class NodeRegistryTest {
 
     @Test
     public void testNodeValue2() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.overrideValueCodec(new ValueCodec<LocalDate, String>() {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerValueCodec(new ValueCodec<CodecDay, String>() {
+            @Override
+            public String valueToRaw(CodecDay node) {
+                return node.localDate.toString();
+            }
+
+            @Override
+            public CodecDay rawToValue(String raw) {
+                return new CodecDay(LocalDate.parse(raw));
+            }
+
+            @Override
+            public Class<CodecDay> valueClass() {
+                return CodecDay.class;
+            }
+
+            @Override
+            public Class<String> rawClass() {
+                return String.class;
+            }
+        });
+        log.info("vci={}", vci);
+        assertNotNull(vci);
+
+        CodecDay now = new CodecDay(LocalDate.now());
+        String raw = (String) vci.valueToRaw(now);
+        log.info("raw={} type={}", raw, raw.getClass());
+        assertEquals(now.localDate.toString(), raw);
+
+        CodecDay now2 = (CodecDay) vci.rawToValue(raw);
+        log.info("now2={}", now2);
+        assertEquals(now.localDate, now2.localDate);
+    }
+
+    @Test
+    public void testRegisterValueCodecDuplicateFails() {
+        assertThrows(JsonException.class, () -> NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
             @Override
             public String valueToRaw(LocalDate node) {
                 return node.toString();
@@ -271,25 +317,14 @@ public class NodeRegistryTest {
             public Class<String> rawClass() {
                 return String.class;
             }
-        });
-        log.info("vci={}", vci);
-        assertNotNull(vci);
-
-        LocalDate now = LocalDate.now();
-        String raw = (String) vci.valueToRaw(now);
-        log.info("raw={} type={}", raw, raw.getClass());
-        assertEquals(now.toString(), raw);
-
-        LocalDate now2 = (LocalDate) vci.rawToValue(raw);
-        log.info("now2={}", now2);
-        assertEquals(now, now2);
+        }));
     }
 
     /// Creator
 
     @Test
     public void testCreatorPojo() {
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new JsonpJsonFacade()).build();
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(JsonpJsonFacade.provider()).build();
         String json = "{\"name\":\"Alice\",\"age\":18}";
         CreatorPojo pojo = sjf4j.fromJson(json, CreatorPojo.class);
         assertEquals("Alice", pojo.getName());
@@ -300,7 +335,8 @@ public class NodeRegistryTest {
     public void testCreatorPojoMissingParamName() {
         String json = "{\"name\":\"Alice\"}";
 
-        Fastjson2JsonFacade fastjson2 = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade fastjson2 = new Fastjson2JsonFacade(new JSONReader.Feature[0], new JSONWriter.Feature[0],
+                new StreamingContext(StreamingContext.StreamingMode.PLUGIN_MODULE));
         CreatorPojoNoMatch obj1 = (CreatorPojoNoMatch) fastjson2.readNode(json, CreatorPojoNoMatch.class);
         log.info("obj1={}", Nodes.inspect(obj1));
         log.info("obj1.name={}", obj1.name);

@@ -41,11 +41,8 @@ import java.util.function.Supplier;
  * {@link Nodes}, {@link org.sjf4j.Sjf4j}, and facade integrations.
  */
 public final class NodeRegistry {
-
     // All in TypeInfo
     private static final Map<Class<?>, TypeInfo> TYPE_INFO_CACHE = new ConcurrentHashMap<>();
-
-    private static final TypeInfo NONE_INFO = new TypeInfo(Object.class, null, null, null, null);
 
 
     /**
@@ -66,7 +63,7 @@ public final class NodeRegistry {
      * @param mustPojo when true, non-POJO results are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean mustPojo) {
-        if (_fastNoType(clazz)) return NONE_INFO;
+        if (_fastNoneInfo(clazz)) return TypeInfo.NONE;
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
             if (mustPojo && ti.pojoInfo == null) {
@@ -80,7 +77,7 @@ public final class NodeRegistry {
             if (mustPojo) {
                 throw new JsonException("Class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
             }
-            ti = new TypeInfo(clazz, vci, null, null, null);
+            ti = new TypeInfo(clazz, vci, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -88,7 +85,7 @@ public final class NodeRegistry {
         AnyOf ann = clazz.getAnnotation(AnyOf.class);
         if (ann != null) {
             AnyOfInfo aoi = ReflectUtil.analyzeAnyOf(clazz, ann);
-            ti = new TypeInfo(clazz, null, aoi, null, null);
+            ti = new TypeInfo(clazz, null, null, aoi, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
@@ -98,23 +95,23 @@ public final class NodeRegistry {
             if (mustPojo) {
                 throw new JsonException("Class '" + clazz.getName() + "' is a container, not a POJO");
             }
-            ti = new TypeInfo(clazz, null, null, ci, null);
+            ti = new TypeInfo(clazz, null, null, null, ci, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
         PojoInfo pi = ReflectUtil.analyzePojo(clazz, mustPojo);
         if (pi != null) {
-            ti = new TypeInfo(clazz, null, null, null, pi);
+            ti = new TypeInfo(clazz, null, null, null, null, pi);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
         }
 
-        TYPE_INFO_CACHE.put(clazz, NONE_INFO);
-        return NONE_INFO;
+        TYPE_INFO_CACHE.put(clazz, TypeInfo.NONE);
+        return TypeInfo.NONE;
     }
 
-    private static boolean _fastNoType(Class<?> clazz) {
+    private static boolean _fastNoneInfo(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || clazz == Map.class || clazz == List.class || clazz == Set.class || clazz.isPrimitive()
                 || clazz == JsonObject.class || clazz == JsonArray.class;
@@ -131,6 +128,8 @@ public final class NodeRegistry {
         registerValueCodec(new ValueCodec.CurrencyValueCodec());
         registerValueCodec(new ValueCodec.ZoneIdValueCodec());
         registerValueCodec(new ValueCodec.InstantStringValueCodec());
+        registerValueCodec("iso", new ValueCodec.InstantStringValueCodec());
+        registerValueCodec("epochMillis", new ValueCodec.InstantEpochMillisValueCodec());
         registerValueCodec(new ValueCodec.LocalDateValueCodec());
         registerValueCodec(new ValueCodec.LocalDateTimeValueCodec());
         registerValueCodec(new ValueCodec.OffsetDateTimeValueCodec());
@@ -152,20 +151,15 @@ public final class NodeRegistry {
      * Boolean, Map, List, or Object).
      */
     public static <N, R> ValueCodecInfo registerValueCodec(ValueCodec<N, R> valueCodec) {
-        return _registerValueCodec(valueCodec, false);
+        return registerValueCodec("", valueCodec);
     }
 
     /**
-     * Replaces an existing codec for the same value type.
-     * <p>
-     * This is the explicit "I know I am changing global codec semantics" path.
-     * Use {@link #registerValueCodec(ValueCodec)} when duplicates should fail fast.
+     * Registers a named custom {@link ValueCodec} and returns codec metadata.
      */
-    public static <N, R> ValueCodecInfo overrideValueCodec(ValueCodec<N, R> valueCodec) {
-        return _registerValueCodec(valueCodec, true);
-    }
-
-    private static <N, R> ValueCodecInfo _registerValueCodec(ValueCodec<N, R> valueCodec, boolean override) {
+    public static <N, R> ValueCodecInfo registerValueCodec(String valueFormat,
+                                                             ValueCodec<N, R> valueCodec) {
+        Objects.requireNonNull(valueFormat, "valueFormat");
         Objects.requireNonNull(valueCodec, "valueCodec");
         Class<R> rawClazz = valueCodec.rawClass();
         if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
@@ -174,69 +168,65 @@ public final class NodeRegistry {
         Class<N> valueClazz = valueCodec.valueClass();
         Objects.requireNonNull(valueClazz, "valueClazz");
 
-        ValueCodecInfo vci = new ValueCodecInfo(valueClazz, rawClazz, valueCodec);
-        _storeValueCodecInfo(vci, override);
+        ValueCodecInfo vci = new ValueCodecInfo(valueFormat, valueClazz, rawClazz, valueCodec, null, null, null);
+        _putValueCodecInfo(vci);
         return vci;
     }
 
-    private static void _storeValueCodecInfo(ValueCodecInfo vci, boolean override) {
+    private static void _putValueCodecInfo(ValueCodecInfo vci) {
         Class<?> valueClazz = vci.valueClazz;
-        // Retry until we observe a stable slot so concurrent type analysis/codec registration stays correct.
-        while (true) {
-            TypeInfo oldTi = TYPE_INFO_CACHE.get(valueClazz);
-            if (oldTi == null) {
-                TypeInfo newTi = new TypeInfo(valueClazz, vci, null, null, null);
-                if (TYPE_INFO_CACHE.putIfAbsent(valueClazz, newTi) == null) {
-                    return;
-                }
-                continue;
+        TypeInfo oldTi = TYPE_INFO_CACHE.get(valueClazz);
+        if (oldTi == null || oldTi.isNone()) {
+            TYPE_INFO_CACHE.put(valueClazz,
+                    new TypeInfo(valueClazz, vci, null, null, null, null));
+            return;
+        }
+        if (oldTi.pojoInfo != null || oldTi.anyOfInfo != null || oldTi.containerInfo != null) {
+            throw new JsonException("Type '" + valueClazz.getName() +
+                    "' is already classified as a non-ValueCodec node type");
+        }
+        TYPE_INFO_CACHE.put(valueClazz, _newTypeInfoWithValueCodec(oldTi, vci));
+    }
+
+    private static TypeInfo _newTypeInfoWithValueCodec(TypeInfo ti, ValueCodecInfo vci) {
+        if (vci.isDefaultFormat()) {
+            if (ti.valueCodecInfo != null) {
+                throw new JsonException("ValueCodec already registered for type '" + vci.valueClazz.getName() +
+                        "' and default format ''");
             }
-            if (oldTi == NONE_INFO) {
-                TypeInfo newTi = new TypeInfo(valueClazz, vci, null, null, null);
-                if (TYPE_INFO_CACHE.replace(valueClazz, oldTi, newTi)) {
-                    return;
-                }
-                continue;
-            }
-            if (oldTi.pojoInfo != null || oldTi.anyOfInfo != null || oldTi.containerInfo != null) {
-                throw new JsonException("Type '" + valueClazz.getName() +
-                        "' is already classified as a non-ValueCodec node type");
-            }
-            if (!override && oldTi.valueCodecInfo != null) {
-                throw new JsonException("ValueCodec already registered for type '" + valueClazz.getName() +
-                        "'. Use overrideValueCodec() to replace it");
-            }
-            TypeInfo newTi = new TypeInfo(valueClazz, vci, null, null, null);
-            if (TYPE_INFO_CACHE.replace(valueClazz, oldTi, newTi)) {
-                return;
+            return new TypeInfo(ti.clazz, vci, ti.formattedValueCodecs,
+                    ti.anyOfInfo, ti.containerInfo, ti.pojoInfo);
+        }
+
+        for (int i = 0; i < ti.formattedValueCodecs.length; i++) {
+            ValueCodecInfo cur = ti.formattedValueCodecs[i];
+            if (cur.valueFormat.equals(vci.valueFormat)) {
+                throw new JsonException("ValueCodec already registered for type '" + vci.valueClazz.getName() +
+                        "' and valueFormat '" + vci.valueFormat + "'");
             }
         }
+        ValueCodecInfo[] appended = new ValueCodecInfo[ti.formattedValueCodecs.length + 1];
+        System.arraycopy(ti.formattedValueCodecs, 0, appended, 0, ti.formattedValueCodecs.length);
+        appended[ti.formattedValueCodecs.length] = vci;
+        return new TypeInfo(ti.clazz, ti.valueCodecInfo, appended,
+                ti.anyOfInfo, ti.containerInfo, ti.pojoInfo);
     }
 
     /**
-     * Replaces an existing codec using the type's {@code @NodeValue} declaration.
+     * Returns value codec metadata for a class and named format.
      */
-    public static ValueCodecInfo overrideValueCodec(Class<?> clazz) {
-        ValueCodecInfo vci = ReflectUtil.analyzeNodeValue(clazz);
+    public static ValueCodecInfo resolveValueCodecOrElseThrow(Class<?> clazz, String valueFormat) {
+        Objects.requireNonNull(valueFormat, "valueFormat");
+        TypeInfo ti = registerTypeInfo(clazz);
+        ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
         if (vci == null) {
-            throw new JsonException("Class '" + clazz.getName() + "' is not annotated with @NodeValue");
+            throw new JsonException("No ValueCodec registered for type '" + clazz.getName() +
+                    "' with valueFormat '" + valueFormat + "'");
         }
-        _storeValueCodecInfo(vci, true);
         return vci;
-    }
-
-    /**
-     * Returns value codec metadata for a class.
-     */
-    public static ValueCodecInfo registerValueCodecInfo(Class<?> clazz) {
-        return registerTypeInfo(clazz).valueCodecInfo;
     }
 
     /// POJO
-
-    public static PojoInfo registerPojo(Class<?> clazz) {
-        return registerTypeInfo(clazz, false).pojoInfo;
-    }
 
     /**
      * Registers POJO metadata or throws if class is not a POJO.
@@ -303,24 +293,29 @@ public final class NodeRegistry {
     public static class TypeInfo {
         public final Class<?> clazz;
         public final ValueCodecInfo valueCodecInfo;
+        public final ValueCodecInfo[] formattedValueCodecs;
         public final AnyOfInfo anyOfInfo;
         public final ContainerInfo containerInfo;
         public final PojoInfo pojoInfo;
 
+        private static final ValueCodecInfo[] EMPTY_VALUE_CODECS = new ValueCodecInfo[0];
+        private static final TypeInfo NONE = new TypeInfo(Object.class, null, EMPTY_VALUE_CODECS, null, null, null);
+
         /**
          * Creates immutable type metadata holder.
          */
-        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, AnyOfInfo anyOfInfo,
-                        ContainerInfo containerInfo, PojoInfo pojoInfo) {
+        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] formattedValueCodecs,
+                        AnyOfInfo anyOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo) {
             this.clazz = clazz;
             this.valueCodecInfo = valueCodecInfo;
+            this.formattedValueCodecs = formattedValueCodecs == null ? EMPTY_VALUE_CODECS : formattedValueCodecs;
             this.anyOfInfo = anyOfInfo;
             this.containerInfo = containerInfo;
             this.pojoInfo = pojoInfo;
         }
 
         public boolean isNone() {
-            return this == NONE_INFO;
+            return this == NONE;
         }
 
         /**
@@ -338,6 +333,17 @@ public final class NodeRegistry {
         public boolean requiresPojoWriter() {
             return pojoInfo != null && pojoInfo.requiresPojoWriter;
         }
+
+        public ValueCodecInfo getFormattedValueCodecInfo(String valueFormat) {
+            if (valueFormat == null || valueFormat.isEmpty()) return valueCodecInfo;
+            for (ValueCodecInfo vci : formattedValueCodecs) {
+                if (vci.valueFormat.equals(valueFormat)) {
+                    return vci;
+                }
+            }
+            return null;
+        }
+
     }
 
     // Map / List / Set
@@ -394,6 +400,7 @@ public final class NodeRegistry {
         public final boolean hasNonPublicFields;
         public final boolean hasNonPublicReaderGap;
         public final boolean hasNonPublicWriterGap;
+        public final boolean hasFieldValueFormatBinding;
         public final boolean requiresPojoReader;
         public final boolean requiresPojoWriter;
 
@@ -448,13 +455,23 @@ public final class NodeRegistry {
             this.hasNonPublicFields = hasNonPublicFields;
             this.hasNonPublicReaderGap = hasNonPublicReaderGap;
             this.hasNonPublicWriterGap = hasNonPublicWriterGap;
+            boolean hasFieldValueFormatBinding = false;
+            for (FieldInfo fi : fields.values()) {
+                if (fi.valueFormat != null) {
+                    hasFieldValueFormatBinding = true;
+                    break;
+                }
+            }
+            this.hasFieldValueFormatBinding = hasFieldValueFormatBinding;
             boolean hasTypeOwnedBinding = namingStrategy != null || accessStrategy == AccessStrategy.FIELD_BASED;
             boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
             boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
             this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeAnyOf
-                    || hasExplicitBinding || this.hasCreatorBinding || hasNonPublicReaderGap || hasCustomDynamicReader;
+                    || hasExplicitBinding || this.hasCreatorBinding
+                    || (creatorInfo != null && creatorInfo.hasValueFormatBinding)
+                    || hasNonPublicReaderGap || hasCustomDynamicReader || hasFieldValueFormatBinding;
             this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicWriterGap
-                    || hasCustomDynamicWriter;
+                    || hasCustomDynamicWriter || hasFieldValueFormatBinding;
         }
 
     }
@@ -733,8 +750,11 @@ public final class NodeRegistry {
         public final Func5 argsCreatorLambda5;
         public final String[] argNames;
         public final Type[] argTypes;
+        public final String[] argValueFormats;
+        public final ValueCodecInfo[] argValueCodecs;
         public final Map<String, Integer> argIndexes;
         public final Map<String, String> aliasMap;
+        public final boolean hasValueFormatBinding;
         /**
          * Creates immutable creator metadata holder.
          */
@@ -742,7 +762,9 @@ public final class NodeRegistry {
                            Executable argsCreator, MethodHandle argsCreatorHandle,
                            Func1 argsCreatorLambda1, Func2 argsCreatorLambda2,
                            Func3 argsCreatorLambda3, Func4 argsCreatorLambda4, Func5 argsCreatorLambda5,
-                           String[] argNames, Type[] argTypes, Map<String, Integer> argIndexes,
+                           String[] argNames, Type[] argTypes,
+                           String[] argValueFormats, ValueCodecInfo[] argValueCodecs,
+                           Map<String, Integer> argIndexes,
                            Map<String, String> aliasMap) {
             this.clazz = clazz;
             this.noArgsCtorHandle = noArgsCtorHandle;
@@ -756,8 +778,20 @@ public final class NodeRegistry {
             this.argsCreatorLambda5 = argsCreatorLambda5;
             this.argNames = argNames;
             this.argTypes = argTypes;
+            this.argValueFormats = argValueFormats;
+            this.argValueCodecs = argValueCodecs;
             this.argIndexes = argIndexes;
             this.aliasMap = aliasMap;
+            boolean hasValueFormatBinding = false;
+            if (argValueFormats != null) {
+                for (String argValueFormat : argValueFormats) {
+                    if (argValueFormat != null) {
+                        hasValueFormatBinding = true;
+                        break;
+                    }
+                }
+            }
+            this.hasValueFormatBinding = hasValueFormatBinding;
         }
 
         /**
@@ -916,6 +950,8 @@ public final class NodeRegistry {
         public final BiConsumer<Object, Object> lambdaSetter;
 
         public final AnyOfInfo anyOfInfo;
+        public final String valueFormat;
+        public final ValueCodecInfo resolvedValueCodec;
 
         /**
          * Creates immutable field metadata holder.
@@ -923,7 +959,9 @@ public final class NodeRegistry {
         public FieldInfo(String name, Type type,
                          MethodHandle getter, Function<Object, Object> lambdaGetter,
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter,
-                         AnyOfInfo anyOfInfo) {
+                         AnyOfInfo anyOfInfo,
+                         String valueFormat,
+                         ValueCodecInfo resolvedValueCodec) {
             this.name = name;
             this.type = type;
             this.rawClazz = Types.rawBox(type);
@@ -956,6 +994,8 @@ public final class NodeRegistry {
             this.setter = setter;
             this.lambdaSetter = lambdaSetter;
             this.anyOfInfo = anyOfInfo;
+            this.valueFormat = valueFormat;
+            this.resolvedValueCodec = resolvedValueCodec;
         }
 
         /**
@@ -1023,6 +1063,7 @@ public final class NodeRegistry {
     // ValueCodecInfo
 
     public static class ValueCodecInfo {
+        public final String valueFormat;
         public final Class<?> valueClazz;
         public final Class<?> rawClazz;
         public final ValueCodec<Object, Object> valueCodec;
@@ -1033,8 +1074,9 @@ public final class NodeRegistry {
          * Creates immutable value-codec metadata holder.
          */
         @SuppressWarnings("unchecked")
-        public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
+        public ValueCodecInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
                               MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
+            this.valueFormat = valueFormat == null ? "" : valueFormat;
             this.valueClazz = valueClazz;
             this.rawClazz = rawClazz;
             this.valueCodec = (ValueCodec<Object, Object>) valueCodec;
@@ -1042,11 +1084,9 @@ public final class NodeRegistry {
             this.rawToValueHandle = rawToValueHandle;
             this.valueCopyHandle = valueCopyHandle;
         }
-        /**
-         * Creates value-codec metadata from codec instance.
-         */
-        public ValueCodecInfo(Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec) {
-            this(valueClazz, rawClazz, valueCodec, null, null, null);
+
+        public boolean isDefaultFormat() {
+            return valueFormat.isEmpty();
         }
 
         /**

@@ -10,6 +10,7 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
@@ -17,7 +18,6 @@ import org.sjf4j.node.Types;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.Map;
 
 /**
  * Gson adapters for JsonObject/JsonArray and @NodeValue types.
@@ -28,6 +28,12 @@ public interface GsonModule {
      * Adapter factory for JsonObject/JsonArray and @NodeValue types.
      */
     class MyTypeAdapterFactory implements TypeAdapterFactory {
+        private final StreamingContext streamingContext;
+
+        public MyTypeAdapterFactory(StreamingContext streamingContext) {
+            this.streamingContext = streamingContext;
+        }
+
         /**
          * Returns adapter for supported framework types.
          */
@@ -36,7 +42,7 @@ public interface GsonModule {
         public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
             Class<?> rawClazz = type.getRawType();
             if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                return (TypeAdapter<T>) new JsonObjectAdapter(gson, type.getType());
+                return (TypeAdapter<T>) new JsonObjectAdapter(gson, type.getType(), streamingContext);
             }
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return (TypeAdapter<T>) new JsonArrayAdapter(gson, rawClazz);
@@ -44,16 +50,17 @@ public interface GsonModule {
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.anyOfInfo != null) {
-                return new AnyOfAdapter<>(ti.anyOfInfo);
+                return new AnyOfAdapter<>(ti.anyOfInfo, streamingContext);
             }
 
-            NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(rawClazz);
+            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
             if (vci != null) {
                 return new NodeValueAdapter<>(gson, vci);
             }
 
             if (ti.requiresPojoReader()) {
-                return new PojoAdapter<>(type.getType(), ti.pojoInfo);
+                return new PojoAdapter<>(type.getType(), ti.pojoInfo, streamingContext);
             }
             return null;
         }
@@ -62,13 +69,15 @@ public interface GsonModule {
     class JsonObjectAdapter<T extends JsonObject> extends TypeAdapter<T> {
         private final Gson gson;
         private final Type ownerType;
+        private final StreamingContext streamingContext;
 
         /**
          * Creates adapter for JsonObject or subclass.
          */
-        public JsonObjectAdapter(Gson gson, Type ownerType) {
+        public JsonObjectAdapter(Gson gson, Type ownerType, StreamingContext streamingContext) {
             this.gson = gson;
             this.ownerType = ownerType;
+            this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;
         }
 
         /**
@@ -81,16 +90,15 @@ public interface GsonModule {
                 in.nextNull();
                 return null;
             }
-            return (T) StreamingIO.readNode(new GsonReader(in), ownerType);
+            return (T) StreamingIO.readNode(new GsonReader(in), ownerType, streamingContext);
         }
 
         /**
          * Writes JsonObject entries as JSON object fields.
          */
-        @SuppressWarnings("unchecked")
         @Override
         public void write(JsonWriter out, JsonObject jo) throws IOException {
-            StreamingIO.writeNode(new GsonWriter(out), jo);
+            StreamingIO.writeNode(new GsonWriter(out), jo, streamingContext);
         }
     }
 
@@ -142,9 +150,15 @@ public interface GsonModule {
 
     class AnyOfAdapter<T> extends TypeAdapter<T> {
         private final NodeRegistry.AnyOfInfo anyOfInfo;
+        private final StreamingContext streamingContext;
 
         public AnyOfAdapter(NodeRegistry.AnyOfInfo anyOfInfo) {
+            this(anyOfInfo, StreamingContext.EMPTY);
+        }
+
+        public AnyOfAdapter(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
             this.anyOfInfo = anyOfInfo;
+            this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;
         }
 
         @SuppressWarnings("unchecked")
@@ -154,22 +168,24 @@ public interface GsonModule {
                 in.nextNull();
                 return null;
             }
-            return (T) StreamingIO.readAnyOf(new GsonReader(in), anyOfInfo);
+            return (T) StreamingIO.readAnyOf(new GsonReader(in), anyOfInfo, streamingContext);
         }
 
         @Override
         public void write(JsonWriter out, T value) throws IOException {
-            StreamingIO.writeNode(new GsonWriter(out), value);
+            StreamingIO.writeNode(new GsonWriter(out), value, streamingContext);
         }
     }
 
     class PojoAdapter<T> extends TypeAdapter<T> {
         private final Type ownerType;
         private final NodeRegistry.PojoInfo pojoInfo;
+        private final StreamingContext streamingContext;
 
-        public PojoAdapter(Type ownerType, NodeRegistry.PojoInfo pojoInfo) {
+        public PojoAdapter(Type ownerType, NodeRegistry.PojoInfo pojoInfo, StreamingContext streamingContext) {
             this.ownerType = ownerType;
             this.pojoInfo = pojoInfo;
+            this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;
         }
 
         @SuppressWarnings("unchecked")
@@ -181,12 +197,12 @@ public interface GsonModule {
             }
             Type resolvedOwnerType = ownerType != null ? ownerType : pojoInfo.clazz;
             Class<?> ownerRawClass = Types.rawBox(resolvedOwnerType);
-            return (T) StreamingIO.readPojo(new GsonReader(in), resolvedOwnerType, ownerRawClass, pojoInfo);
+            return (T) StreamingIO.readPojo(new GsonReader(in), resolvedOwnerType, ownerRawClass, pojoInfo, streamingContext);
         }
 
         @Override
         public void write(JsonWriter out, T value) throws IOException {
-            StreamingIO.writeNode(new GsonWriter(out), value);
+            StreamingIO.writeNode(new GsonWriter(out), value, streamingContext);
         }
     }
 

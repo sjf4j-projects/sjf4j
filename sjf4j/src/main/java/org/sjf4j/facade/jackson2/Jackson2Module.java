@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
@@ -16,9 +18,11 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
+import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
 import com.fasterxml.jackson.databind.introspect.Annotated;
 import com.fasterxml.jackson.databind.introspect.AnnotatedField;
+import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.AnnotatedParameter;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -26,6 +30,8 @@ import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
@@ -34,6 +40,7 @@ import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,11 +53,18 @@ public interface Jackson2Module {
     /**
      * SimpleModule that wires framework serializers/deserializers.
      */
-    class MySimpleModule extends SimpleModule {
+    class TwoSimpleModule extends SimpleModule {
+        private final StreamingContext streamingContext;
+
         /**
          * Creates module and installs reader/writer modifiers.
          */
-        public MySimpleModule() {
+        public TwoSimpleModule(StreamingContext streamingContext) {
+            this.streamingContext = streamingContext;
+
+            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(Instant.class);
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(Instant.class).getFormattedValueCodecInfo(valueFormat);
+            addDeserializer(Instant.class, new NodeValueDeserializer<>(vci));
 
             setDeserializerModifier(new BeanDeserializerModifier() {
                 @Override
@@ -72,21 +86,22 @@ public interface Jackson2Module {
                                                               JsonDeserializer<?> deserializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
                     if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new JsonObjectDeserializer<>(beanDesc.getType());
+                        return new JsonObjectDeserializer<>(beanDesc.getType(), streamingContext);
                     }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(clazz);
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (ti.anyOfInfo != null) {
-                        return new AnyOfDeserializer<>(ti.anyOfInfo);
+                        return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
                     }
-                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                     if (vci != null) {
                         return new NodeValueDeserializer<>(vci);
                     }
                     if (ti.requiresPojoReader()) {
-                        return new PojoDeserializer<>(ti.pojoInfo);
+                        return new PojoDeserializer<>(ti.pojoInfo, streamingContext);
                     }
                     return deserializer;
                 }
@@ -99,18 +114,19 @@ public interface Jackson2Module {
                                                           JsonSerializer<?> serializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
                     if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new StreamingSerializer();
+                        return new StreamingSerializer(streamingContext);
                     }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArraySerializer();
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    NodeRegistry.ValueCodecInfo vci = ti.valueCodecInfo;
+                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                     if (vci != null) {
                         return new NodeValueSerializer<>(vci);
                     }
                     if (ti.requiresPojoWriter()) {
-                        return new StreamingSerializer();
+                        return new StreamingSerializer(streamingContext);
                     }
 
                     return serializer;
@@ -125,11 +141,13 @@ public interface Jackson2Module {
         private final Type ownerType;
         private final Class<?> ownerRawClazz;
         private final NodeRegistry.PojoInfo pi;
+        private final StreamingContext streamingContext;
 
-        public JsonObjectDeserializer(JavaType javaType) {
+        public JsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
             this.ownerType = _toType(javaType);
             this.ownerRawClazz = Types.rawBox(ownerType);
             this.pi = ownerRawClazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(ownerRawClazz);
+            this.streamingContext = streamingContext;
         }
 
         @SuppressWarnings("unchecked")
@@ -142,7 +160,7 @@ public interface Jackson2Module {
                 if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
                 throw new IOException("Expected object value for JsonObject, but got " + value.getClass().getName());
             }
-            return (T) Jackson2StreamingIO.readPojo(p, ownerType, ownerRawClazz, pi);
+            return (T) Jackson2StreamingIO.readPojo(p, ownerType, ownerRawClazz, pi, streamingContext);
         }
 
         private static Type _toType(JavaType javaType) {
@@ -263,11 +281,13 @@ public interface Jackson2Module {
 
     class AnyOfDeserializer<T> extends JsonDeserializer<T> {
         private final NodeRegistry.AnyOfInfo anyOfInfo;
+        private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo) {
+        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
             this.anyOfInfo = anyOfInfo;
+            this.streamingContext = streamingContext;
         }
 
         /**
@@ -276,17 +296,19 @@ public interface Jackson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) Jackson2StreamingIO.readAnyOf(p, anyOfInfo);
+            return (T) Jackson2StreamingIO.readAnyOf(p, anyOfInfo, streamingContext);
         }
     }
 
     class PojoDeserializer<T> extends JsonDeserializer<T> {
         private final NodeRegistry.PojoInfo pi;
+        private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public PojoDeserializer(NodeRegistry.PojoInfo pi) {
+        public PojoDeserializer(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
             this.pi = pi;
+            this.streamingContext = streamingContext;
         }
 
         /**
@@ -295,7 +317,7 @@ public interface Jackson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) Jackson2StreamingIO.readPojo(p, pi.clazz, pi.clazz, pi);
+            return (T) Jackson2StreamingIO.readPojo(p, pi.clazz, pi.clazz, pi, streamingContext);
         }
     }
 
@@ -305,9 +327,15 @@ public interface Jackson2Module {
      * Serializer for JsonObject preserving framework semantics.
      */
     class StreamingSerializer extends JsonSerializer<Object> {
+        private final StreamingContext streamingContext;
+
+        public StreamingSerializer(StreamingContext streamingContext) {
+            this.streamingContext = streamingContext;
+        }
+
         @Override
         public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-            Jackson2StreamingIO.writeNode(gen, value);
+            Jackson2StreamingIO.writeNode(gen, value, streamingContext);
         }
     }
 
@@ -404,8 +432,8 @@ public interface Jackson2Module {
             }
             if (aliases != null && aliases.length > 0) {
                 List<PropertyName> result = new ArrayList<>(aliases.length);
-                for (int i = 0; i < aliases.length; ++i) {
-                    result.add(PropertyName.construct(aliases[i]));
+                for (String alias : aliases) {
+                    result.add(PropertyName.construct(alias));
                 }
                 return result;
             }

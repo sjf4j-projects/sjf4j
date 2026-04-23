@@ -22,6 +22,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface NodeProperty {
+
     /**
      * Primary JSON property name.
      */
@@ -31,4 +32,18 @@ public @interface NodeProperty {
      * Additional input names accepted during reads.
      */
     String[] aliases() default {};
+
+    /**
+     * Explicit value codec format for this field or creator parameter.
+     * <p>
+     * Use {@code ""} to force the default value codec slot. The sentinel default
+     * means "not configured".
+     */
+    String valueFormat() default VALUE_FORMAT_UNSET;
+
+    /**
+     * Sentinel meaning valueFormat was not specified.
+     */
+    String VALUE_FORMAT_UNSET = "\u0000";
+
 }

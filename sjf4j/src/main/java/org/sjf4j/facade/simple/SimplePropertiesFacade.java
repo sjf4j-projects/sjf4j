@@ -1,6 +1,7 @@
 package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonObject;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.Paths;
@@ -13,6 +14,10 @@ import java.util.TreeSet;
  * Properties facade based on JSONPath expansion.
  */
 public class SimplePropertiesFacade implements PropertiesFacade {
+
+    public static FacadeProvider<PropertiesFacade> provider() {
+        return context -> new SimplePropertiesFacade();
+    }
 
     /**
      * Reads flat properties into JsonObject by path expansion.

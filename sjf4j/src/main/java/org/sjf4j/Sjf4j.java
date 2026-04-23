@@ -1,18 +1,24 @@
 package org.sjf4j;
 
 
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeFactory;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.facade.YamlFacade;
-import org.sjf4j.node.Nodes;
+import org.sjf4j.mapper.NodeMapperBuilder;
+import org.sjf4j.node.Types;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -30,21 +36,37 @@ public final class Sjf4j {
 
     private static final Sjf4j GLOBAL = new Builder().build();
 
+    private final StreamingContext streamingContext;
+    private final FacadeProvider<? extends NodeFacade> nodeFacadeProvider;
+    private final FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider;
+    private final FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider;
+    private final FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider;
+    private final NodeFacade nodeFacade;
     private final JsonFacade<?, ?> jsonFacade;
     private final YamlFacade<?, ?> yamlFacade;
     private final PropertiesFacade propertiesFacade;
-    private final NodeFacade nodeFacade;
 
     public Sjf4j() {
         this(new Builder());
     }
 
     private Sjf4j(Builder builder) {
-        this.nodeFacade = builder.nodeFacade == null ? FacadeFactory.defaultNodeFacade() : builder.nodeFacade;
-        this.jsonFacade = builder.jsonFacade == null ? FacadeFactory.createJsonFacade() : builder.jsonFacade;
-        this.yamlFacade = builder.yamlFacade == null ? FacadeFactory.createYamlFacade() : builder.yamlFacade;
-        this.propertiesFacade = builder.propertiesFacade == null ?
-                FacadeFactory.createPropertiesFacade() : builder.propertiesFacade;
+        ValueFormatMapping valueFormatMapping = ValueFormatMapping.of(builder.defaultValueFormats);
+        this.streamingContext = new StreamingContext(valueFormatMapping, builder.streamingMode);
+
+        this.nodeFacadeProvider = builder.nodeFacadeProvider == null
+                ? FacadeFactory.nodeFacadeProvider() : builder.nodeFacadeProvider;
+        this.jsonFacadeProvider = builder.jsonFacadeProvider == null
+                ? FacadeFactory.jsonFacadeProvider() : builder.jsonFacadeProvider;
+        this.yamlFacadeProvider = builder.yamlFacadeProvider == null
+                ? FacadeFactory.yamlFacadeProvider() : builder.yamlFacadeProvider;
+        this.propertiesFacadeProvider = builder.propertiesFacadeProvider == null
+                ? FacadeFactory.propertiesFacadeProvider() : builder.propertiesFacadeProvider;
+
+        this.nodeFacade = Objects.requireNonNull(nodeFacadeProvider.create(streamingContext), "nodeFacade");
+        this.jsonFacade = Objects.requireNonNull(jsonFacadeProvider.create(streamingContext), "jsonFacade");
+        this.yamlFacade = Objects.requireNonNull(yamlFacadeProvider.create(streamingContext), "yamlFacade");
+        this.propertiesFacade = Objects.requireNonNull(propertiesFacadeProvider.create(streamingContext), "propertiesFacade");
     }
 
     /**
@@ -68,20 +90,22 @@ public final class Sjf4j {
         return new Builder(sjf4j);
     }
 
-    public JsonFacade<?, ?> getJsonFacade() {
+    /// Getter
+
+    public NodeFacade nodeFacade() {
+        return nodeFacade;
+    }
+
+    public JsonFacade<?, ?> jsonFacade() {
         return jsonFacade;
     }
 
-    public YamlFacade<?, ?> getYamlFacade() {
+    public YamlFacade<?, ?> yamlFacade() {
         return yamlFacade;
     }
 
-    public PropertiesFacade getPropertiesFacade() {
+    public PropertiesFacade propertiesFacade() {
         return propertiesFacade;
-    }
-
-    public NodeFacade getNodeFacade() {
-        return nodeFacade;
     }
 
     /// JSON
@@ -244,46 +268,68 @@ public final class Sjf4j {
         return props;
     }
 
-    public String inspect() {
-        return Nodes.inspect(this);
-    }
+    /// NodeMapper
 
+    public <S, T> NodeMapperBuilder<S, T> nodeMapperBuilder(Class<S> sourceClass, Class<T> targetClass) {
+        return new NodeMapperBuilder<>(sourceClass, targetClass, streamingContext);
+    }
 
     /// Builder
 
     public static final class Builder {
-        private JsonFacade<?, ?> jsonFacade;
-        private YamlFacade<?, ?> yamlFacade;
-        private PropertiesFacade propertiesFacade;
-        private NodeFacade nodeFacade;
+        private FacadeProvider<? extends NodeFacade> nodeFacadeProvider;
+        private FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider;
+        private FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider;
+        private FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider;
+        private StreamingContext.StreamingMode streamingMode = StreamingContext.StreamingMode.AUTO;
+        private final Map<Class<?>, String> defaultValueFormats = new LinkedHashMap<>();
 
         public Builder() {}
 
         public Builder(Sjf4j sjf4j) {
             Objects.requireNonNull(sjf4j, "sjf4j");
-            this.jsonFacade = sjf4j.jsonFacade;
-            this.yamlFacade = sjf4j.yamlFacade;
-            this.propertiesFacade = sjf4j.propertiesFacade;
-            this.nodeFacade = sjf4j.nodeFacade;
+            this.nodeFacadeProvider = sjf4j.nodeFacadeProvider;
+            this.jsonFacadeProvider = sjf4j.jsonFacadeProvider;
+            this.yamlFacadeProvider = sjf4j.yamlFacadeProvider;
+            this.propertiesFacadeProvider = sjf4j.propertiesFacadeProvider;
+            this.streamingMode = sjf4j.streamingContext.streamingMode;
+            this.defaultValueFormats.putAll(sjf4j.streamingContext.valueFormatMapping.asMap());
         }
 
-        public Builder jsonFacade(JsonFacade<?, ?> jsonFacade) {
-            this.jsonFacade = jsonFacade;
+        public Builder nodeFacadeProvider(FacadeProvider<? extends NodeFacade> nodeFacadeProvider) {
+            this.nodeFacadeProvider = Objects.requireNonNull(nodeFacadeProvider, "nodeFacadeProvider");
             return this;
         }
 
-        public Builder yamlFacade(YamlFacade<?, ?> yamlFacade) {
-            this.yamlFacade = yamlFacade;
+        public Builder jsonFacadeProvider(FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider) {
+            this.jsonFacadeProvider = Objects.requireNonNull(jsonFacadeProvider, "jsonFacadeProvider");
             return this;
         }
 
-        public Builder propertiesFacade(PropertiesFacade propertiesFacade) {
-            this.propertiesFacade = propertiesFacade;
+        public Builder yamlFacadeProvider(FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider) {
+            this.yamlFacadeProvider = Objects.requireNonNull(yamlFacadeProvider, "yamlFacadeProvider");
             return this;
         }
 
-        public Builder nodeFacade(NodeFacade nodeFacade) {
-            this.nodeFacade = nodeFacade;
+        public Builder propertiesFacadeProvider(FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider) {
+            this.propertiesFacadeProvider = Objects.requireNonNull(propertiesFacadeProvider,
+                    "propertiesFacadeProvider");
+            return this;
+        }
+
+        public Builder streamingMode(StreamingContext.StreamingMode streamingMode) {
+            this.streamingMode = Objects.requireNonNull(streamingMode, "streamingMode");
+            return this;
+        }
+
+        public Builder defaultValueFormat(Class<?> valueType, String valueFormat) {
+            Class<?> checkedValueType = Objects.requireNonNull(valueType, "valueType");
+            if (checkedValueType.isPrimitive()) {
+                throw new IllegalArgumentException("defaultValueFormat does not support primitive type '"
+                        + checkedValueType.getName() + "'; use boxed type '"
+                        + Types.box(checkedValueType).getName() + "'");
+            }
+            defaultValueFormats.put(checkedValueType, Objects.requireNonNull(valueFormat, "valueFormat"));
             return this;
         }
 

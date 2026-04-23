@@ -5,12 +5,10 @@ import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
 import com.alibaba.fastjson2.writer.ObjectWriterProvider;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.facade.StreamingFacade;
-import org.sjf4j.node.Types;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -23,66 +21,65 @@ import java.util.Objects;
  * Fastjson2-based JSON facade with selectable streaming modes.
  */
 public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson2Writer> {
-    private final StreamingMode streamingMode;
-
     private final JSONReader.Context readerContext;
     private final JSONWriter.Context writerContext;
+    private final StreamingContext streamingContext;
 
     /**
      * Creates facade with default reader/writer features.
      */
     public Fastjson2JsonFacade() {
-        this(new JSONReader.Feature[0], new JSONWriter.Feature[0], null);
-    }
-
-    public Fastjson2JsonFacade(StreamingMode streamingMode) {
-        this(new JSONReader.Feature[0], new JSONWriter.Feature[0], streamingMode);
-    }
-
-    /**
-     * Creates facade with custom writer features.
-     */
-    public Fastjson2JsonFacade(JSONWriter.Feature... writerFeatures) {
-        this(new JSONReader.Feature[0], writerFeatures, null);
-    }
-
-    /**
-     * Creates facade with custom reader features.
-     */
-    public Fastjson2JsonFacade(JSONReader.Feature... readerFeatures) {
-        this(readerFeatures, new JSONWriter.Feature[0], null);
+        this(new JSONReader.Feature[0], new JSONWriter.Feature[0], StreamingContext.EMPTY);
     }
 
     /**
      * Creates facade with custom reader and writer features.
      */
+    public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures, JSONWriter.Feature[] writerFeatures) {
+        this(readerFeatures, writerFeatures, StreamingContext.EMPTY);
+    }
+
     public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures, JSONWriter.Feature[] writerFeatures,
-                               StreamingMode streamingMode) {
+                               StreamingContext context) {
         Objects.requireNonNull(readerFeatures, "readerFeatures");
         Objects.requireNonNull(writerFeatures, "writerFeatures");
-        // Fastjson2 defaults to provider modules because they preserve framework annotations and codecs.
-        this.streamingMode = streamingMode == null || streamingMode == StreamingMode.AUTO ?
-                StreamingMode.PLUGIN_MODULE : streamingMode;
+        Objects.requireNonNull(context, "context");
 
-        Fastjson2Module.MyReaderModule readerModule = new Fastjson2Module.MyReaderModule();
-        Fastjson2Module.MyWriterModule writerModule = new Fastjson2Module.MyWriterModule();
+        Fastjson2Module.SimpleReaderModule readerModule = new Fastjson2Module.SimpleReaderModule(context);
+        Fastjson2Module.SimpleWriterModule writerModule = new Fastjson2Module.SimpleWriterModule(context);
         ObjectReaderProvider readerProvider = new ObjectReaderProvider();
         ObjectWriterProvider writerProvider = new ObjectWriterProvider();
-        if (this.streamingMode == StreamingMode.PLUGIN_MODULE) {
-            readerProvider.register(readerModule);
-            writerProvider.register(writerModule);
-        }
-
+        readerProvider.register(readerModule);
+        writerProvider.register(writerModule);
         this.readerContext = JSONFactory.createReadContext(readerProvider, readerFeatures);
         this.writerContext = JSONFactory.createWriteContext(writerProvider, writerFeatures);
-
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
         this.writerContext.config(JSONWriter.Feature.WriteNulls);
+        this.streamingContext = context;
+    }
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider() {
+        return context -> new Fastjson2JsonFacade(new JSONReader.Feature[0], new JSONWriter.Feature[0], context);
+    }
+
+    public static FacadeProvider<JsonFacade<?, ?>> provider(JSONReader.Feature[] readerFeatures,
+                                                            JSONWriter.Feature[] writerFeatures) {
+        return context -> new Fastjson2JsonFacade(readerFeatures, writerFeatures, context);
     }
 
     @Override
-    public StreamingMode streamingMode() {
-        return streamingMode;
+    public StreamingContext streamingContext() {
+        return streamingContext;
+    }
+
+
+    @Override
+    public StreamingContext.StreamingMode realStreamingMode() {
+        if (streamingContext.streamingMode == StreamingContext.StreamingMode.AUTO) {
+            // Fastjson2 defaults to module-backed read/write so AUTO matches the highest-fidelity path.
+            return StreamingContext.StreamingMode.PLUGIN_MODULE;
+        }
+        return streamingContext.streamingMode;
     }
 
 
@@ -172,7 +169,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     public Object readNodeExclusive(Reader input, Type type) {
         try {
             JSONReader reader = JSONReader.of(input, readerContext);
-            return Fastjson2StreamingIO.readNode(reader, type);
+            return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -182,7 +179,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     public Object readNodeExclusive(InputStream input, Type type) {
         try {
             JSONReader reader = JSONReader.of(input, StandardCharsets.UTF_8, readerContext);
-            return Fastjson2StreamingIO.readNode(reader, type);
+            return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -191,7 +188,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNodeExclusive(String input, Type type) {
         try (JSONReader reader = JSONReader.of(input, readerContext)) {
-            return Fastjson2StreamingIO.readNode(reader, type);
+            return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -200,7 +197,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public Object readNodeExclusive(byte[] input, Type type) {
         try (JSONReader reader = JSONReader.of(input, readerContext)) {
-            return Fastjson2StreamingIO.readNode(reader, type);
+            return Fastjson2StreamingIO.readNode(reader, type, streamingContext);
         } catch (Exception e) {
             throw failedToRead(type, e);
         }
@@ -276,7 +273,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNodeExclusive(Writer output, Object node) {
         try (JSONWriter writer = JSONWriter.of(writerContext)) {
-            Fastjson2StreamingIO.writeNode(writer, node);
+            Fastjson2StreamingIO.writeNode(writer, node, streamingContext);
             writer.flushTo(output);
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -286,7 +283,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public void writeNodeExclusive(OutputStream output, Object node) {
         try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
-            Fastjson2StreamingIO.writeNode(writer, node);
+            Fastjson2StreamingIO.writeNode(writer, node, streamingContext);
             writer.flushTo(output);
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -296,7 +293,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public String writeNodeAsStringExclusive(Object node) {
         try (JSONWriter writer = JSONWriter.of(writerContext)) {
-            Fastjson2StreamingIO.writeNode(writer, node);
+            Fastjson2StreamingIO.writeNode(writer, node, streamingContext);
             return writer.toString();
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -307,7 +304,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
     @Override
     public byte[] writeNodeAsBytesExclusive(Object node) {
         try (JSONWriter writer = JSONWriter.ofUTF8(writerContext)) {
-            Fastjson2StreamingIO.writeNode(writer, node);
+            Fastjson2StreamingIO.writeNode(writer, node, streamingContext);
             return writer.getBytes();
         } catch (Exception e) {
             throw failedToWrite(node, e);

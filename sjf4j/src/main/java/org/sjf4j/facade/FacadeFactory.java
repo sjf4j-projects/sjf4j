@@ -1,8 +1,6 @@
 package org.sjf4j.facade;
 
 
-import jakarta.json.spi.JsonProvider;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
@@ -19,7 +17,6 @@ import org.sjf4j.facade.snake.SnakeYamlFacade;
  * Factory for facade implementations (JSON/YAML/properties).
  */
 public final class FacadeFactory {
-
 
     /**
      * Flag indicating whether Jackson3 library is present in the classpath.
@@ -51,9 +48,7 @@ public final class FacadeFactory {
      */
     private static final boolean SNAKE_PRESENT;
 
-    /**
-     * Detects optional facade dependencies available in classpath.
-     */
+    // Detects optional facade dependencies available in classpath.
     static {
         ClassLoader loader = FacadeFactory.class.getClassLoader();
 
@@ -88,7 +83,6 @@ public final class FacadeFactory {
         boolean jsonpPresent = false;
         try {
             loader.loadClass("jakarta.json.spi.JsonProvider");
-            JsonProvider.provider();
             jsonpPresent = true;
         } catch (Throwable ignored) {}
         JSONP_PRESENT = jsonpPresent;
@@ -105,21 +99,21 @@ public final class FacadeFactory {
     /**
      * Returns default JSON facade by priority: Jackson3 > Jackson2 > Gson > Fastjson2 > JSON-P > Simple.
      */
-    public static JsonFacade<?, ?> createJsonFacade() {
+    public static FacadeProvider<JsonFacade<?, ?>> jsonFacadeProvider() {
         if (JACKSON3_PRESENT) {
-            return new Jackson3JsonFacade();
+            return Jackson3JsonFacade.provider();
         } else if (JACKSON2_PRESENT) {
-            return new Jackson2JsonFacade();
+            return Jackson2JsonFacade.provider();
         } else if (GSON_PRESENT) {
-            return new GsonJsonFacade();
+            return GsonJsonFacade.provider();
         } else if (FASTJSON2_PRESENT) {
-            return new Fastjson2JsonFacade();
+            return Fastjson2JsonFacade.provider();
         } else if (JSONP_PRESENT) {
-            return new JsonpJsonFacade();
+            return JsonpJsonFacade.provider();
         } else {
             System.err.println("SJF4J: Failed to detect any supported JSON library (Jackson3, Jackson2, Gson, " +
-                    "Fastjson2, JSON-P), falling back to build-in slower JSON implementation.");
-            return new SimpleJsonFacade();
+                    "Fastjson2, JSON-P), falling back to build-in simple JSON implementation.");
+            return SimpleJsonFacade.provider();
         }
     }
 
@@ -127,12 +121,12 @@ public final class FacadeFactory {
     /**
      * Returns default YAML facade (SnakeYAML).
      */
-    public static YamlFacade<?, ?> createYamlFacade() {
+    public static FacadeProvider<YamlFacade<?, ?>> yamlFacadeProvider() {
         if (SNAKE_PRESENT) {
-            return new SnakeYamlFacade();
+            return SnakeYamlFacade.provider();
         } else {
             System.err.println("SJF4J: Failed to detect any supported YAML library (SnakeYAML).");
-            return new SimpleYamlFacade();
+            return SimpleYamlFacade.provider();
         }
     }
 
@@ -140,25 +134,17 @@ public final class FacadeFactory {
     /**
      * Creates a fresh properties facade instance.
      */
-    public static PropertiesFacade createPropertiesFacade() {
-        return new SimplePropertiesFacade();
+    public static FacadeProvider<PropertiesFacade> propertiesFacadeProvider() {
+        return SimplePropertiesFacade.provider();
     }
 
     /**
      * Creates a fresh node facade instance.
      */
-    public static NodeFacade createNodeFacade() {
-        return new SimpleNodeFacade();
+    public static FacadeProvider<NodeFacade> nodeFacadeProvider() {
+        return SimpleNodeFacade.provider();
     }
 
 
-    private static final NodeFacade DEFAULT_NODE_FACADE = new SimpleNodeFacade();
-
-    /**
-     * Returns the shared default node facade instance.
-     */
-    public static NodeFacade defaultNodeFacade() {
-        return DEFAULT_NODE_FACADE;
-    }
 
 }

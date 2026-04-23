@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
@@ -14,16 +13,20 @@ import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -125,6 +128,24 @@ public class SimpleJsonFacadeTest {
         public String name;
         public List<User> friends;
         public Map<String, Object> ext;
+    }
+
+    static class InstantFieldBook {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant createdAt;
+        public Instant updatedAt;
+    }
+
+    static class InstantCreatorBook {
+        public final Instant createdAt;
+        public final Instant updatedAt;
+
+        @NodeCreator
+        InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
+                           @NodeProperty("updatedAt") Instant updatedAt) {
+            this.createdAt = createdAt;
+            this.updatedAt = updatedAt;
+        }
     }
 
     @NodeBinding(readDynamic = false)
@@ -381,7 +402,29 @@ public class SimpleJsonFacadeTest {
         String json1 = "{\"id\":123,\"height\":175.3,\"name\":\"han\",\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20---]}},\"sex\":true}";
 
         BindingException error = assertThrows(BindingException.class, () -> facade.readNode(json1, JsonObject.class));
-        assertTrue(error.getCause().getMessage().contains("'/{friends/{rose/{age/[1'"));
+        assertTrue(error.getCause().getMessage().contains("'$.friends.rose.age[1]'"));
+    }
+
+    @Test
+    public void testValueFormat() {
+        SimpleJsonFacade facade = new SimpleJsonFacade();
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
+        String json = "{\"createdAt\":" + epochMillis + ",\"updatedAt\":\"" + instant + "\"}";
+
+        InstantFieldBook book = (InstantFieldBook) facade.readNode(new StringReader(json), InstantFieldBook.class);
+        assertEquals(instant, book.createdAt);
+        assertEquals(instant, book.updatedAt);
+        assertEquals(json, facade.writeNodeAsString(book));
+
+        InstantCreatorBook creatorBook = (InstantCreatorBook) facade.readNode(new StringReader(json), InstantCreatorBook.class);
+        assertEquals(instant, creatorBook.createdAt);
+        assertEquals(instant, creatorBook.updatedAt);
+
+        StreamingContext context = new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")));
+        SimpleJsonFacade configured = new SimpleJsonFacade(context);
+        assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
+        assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
     }
 
 

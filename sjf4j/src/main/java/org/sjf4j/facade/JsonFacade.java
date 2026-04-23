@@ -20,23 +20,21 @@ import java.util.Objects;
 /**
  * JSON facade interface with streaming support and runtime mode dispatch.
  *
- * <p>Implementations expose a concrete {@link StreamingMode} and can override
+ * <p>Implementations expose a concrete {@link StreamingContext.StreamingMode} and can override
  * the plugin-module and exclusive-IO hooks when they provide backend-native
  * read/write paths. The default methods in this interface route reads and writes
  * through the appropriate path and normalize common exception handling.</p>
  */
 public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter> extends StreamingFacade<R, W> {
 
-    /**
-     * Returns the concrete runtime mode this facade uses after resolving
-     * {@link StreamingMode#AUTO}.
-     */
-    StreamingMode streamingMode();
+    default StreamingContext.StreamingMode realStreamingMode() {
+        return StreamingContext.StreamingMode.SHARED_IO;
+    }
 
     @Override
     default Object readNode(Reader input, Type type) {
         Objects.requireNonNull(input, "input");
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 return StreamingFacade.super.readNode(input, type);
@@ -52,7 +50,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     @Override
     default Object readNode(InputStream input, Type type) {
         Objects.requireNonNull(input, "input");
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 return StreamingFacade.super.readNode(input, type);
@@ -68,7 +66,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     @Override
     default Object readNode(String input, Type type) {
         Objects.requireNonNull(input, "input");
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 return StreamingFacade.super.readNode(input, type);
@@ -84,7 +82,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     @Override
     default Object readNode(byte[] input, Type type) {
         Objects.requireNonNull(input, "input");
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 return StreamingFacade.super.readNode(input, type);
@@ -98,7 +96,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default Object readNodeExclusive(Reader input, Type type) {
-        throw unsupportedMode(StreamingMode.EXCLUSIVE_IO);
+        throw unsupportedMode(StreamingContext.StreamingMode.EXCLUSIVE_IO);
     }
 
     default Object readNodeExclusive(InputStream input, Type type) {
@@ -114,7 +112,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default Object readNodePlugin(Reader input, Type type) {
-        throw unsupportedMode(StreamingMode.PLUGIN_MODULE);
+        throw unsupportedMode(StreamingContext.StreamingMode.PLUGIN_MODULE);
     }
 
     default Object readNodePlugin(InputStream input, Type type) {
@@ -132,7 +130,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     @Override
     default void writeNode(Writer output, Object node) {
         Objects.requireNonNull(output, "output");
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 StreamingFacade.super.writeNode(output, node);
@@ -151,7 +149,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     @Override
     default void writeNode(OutputStream output, Object node) {
         Objects.requireNonNull(output, "output");
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 StreamingFacade.super.writeNode(output, node);
@@ -169,7 +167,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default String writeNodeAsString(Object node) {
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 return StreamingFacade.super.writeNodeAsString(node);
@@ -184,7 +182,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
 
     @Override
     default byte[] writeNodeAsBytes(Object node) {
-        StreamingMode mode = streamingMode();
+        StreamingContext.StreamingMode mode = realStreamingMode();
         switch (mode) {
             case SHARED_IO:
                 return StreamingFacade.super.writeNodeAsBytes(node);
@@ -198,7 +196,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default void writeNodeExclusive(Writer output, Object node) {
-        throw unsupportedMode(StreamingMode.EXCLUSIVE_IO);
+        throw unsupportedMode(StreamingContext.StreamingMode.EXCLUSIVE_IO);
     }
 
     default void writeNodeExclusive(OutputStream output, Object node) {
@@ -230,7 +228,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default void writeNodePlugin(Writer output, Object node) {
-        throw unsupportedMode(StreamingMode.PLUGIN_MODULE);
+        throw unsupportedMode(StreamingContext.StreamingMode.PLUGIN_MODULE);
     }
 
     default void writeNodePlugin(OutputStream output, Object node) {
@@ -261,7 +259,7 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
         }
     }
 
-    default BindingException unsupportedMode(StreamingMode mode) {
+    default BindingException unsupportedMode(StreamingContext.StreamingMode mode) {
         return new BindingException("Unsupported streaming mode '" + mode + "'");
     }
 
