@@ -17,40 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PathsCoverageTest {
 
-    @Test
-    void testRootedHelpersAndInspect() {
-        assertEquals("", Paths.rootedInspect(null));
-        assertEquals("", Paths.rootedPathExpr(null));
-        assertEquals("", Paths.rootedPointerExpr(null));
-
-        PathSegment root = PathSegment.Root.INSTANCE;
-        PathSegment mapName = new PathSegment.Name(root, Map.class, "field");
-        PathSegment joName = new PathSegment.Name(root, JsonObject.class, "field");
-        PathSegment pojoName = new PathSegment.Name(root, SamplePojo.class, "value");
-        PathSegment listIndex = new PathSegment.Index(root, List.class, 1);
-        PathSegment jaIndex = new PathSegment.Index(root, JsonArray.class, 2);
-        PathSegment arrayIndex = new PathSegment.Index(root, String[].class, 3);
-        PathSegment setIndex = new PathSegment.Index(root, Set.class, 4);
-        PathSegment otherIndex = new PathSegment.Index(root, SamplePojo.class, 5);
-
-        assertEquals("/{field", Paths.inspect(new PathSegment[]{root, mapName}));
-        assertEquals("/J{field", Paths.inspect(new PathSegment[]{root, joName}));
-        assertTrue(Paths.inspect(new PathSegment[]{root, pojoName}).startsWith("/@SamplePojo{"));
-        assertEquals("/[1", Paths.inspect(new PathSegment[]{root, listIndex}));
-        assertEquals("/J[2", Paths.inspect(new PathSegment[]{root, jaIndex}));
-        assertEquals("/A[3", Paths.inspect(new PathSegment[]{root, arrayIndex}));
-        assertEquals("/S[4", Paths.inspect(new PathSegment[]{root, setIndex}));
-        assertEquals("/@SamplePojo[5", Paths.inspect(new PathSegment[]{root, otherIndex}));
-        assertEquals("$.field", Paths.rootedPathExpr(mapName));
-        assertEquals("/field", Paths.rootedPointerExpr(mapName));
-        assertEquals("/{field", Paths.rootedInspect(mapName));
-    }
 
     @Test
     void testPointerFormattingErrors() {
-        assertThrows(JsonException.class, () -> Paths.toPointerExpr(new PathSegment[]{new PathSegment.Name(PathSegment.Root.INSTANCE, null, "a"), PathSegment.Root.INSTANCE}));
-        assertThrows(JsonException.class, () -> Paths.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Append(PathSegment.Root.INSTANCE, null), new PathSegment.Name(PathSegment.Root.INSTANCE, null, "a")}));
-        assertThrows(JsonException.class, () -> Paths.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Descendant(PathSegment.Root.INSTANCE, null)}));
+        assertThrows(JsonException.class, () -> Paths.toPointerExpr(new PathSegment[]{new PathSegment.Name(PathSegment.Root.INSTANCE, "a"), PathSegment.Root.INSTANCE}));
+        assertThrows(JsonException.class, () -> Paths.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Append(PathSegment.Root.INSTANCE), new PathSegment.Name(PathSegment.Root.INSTANCE, "a")}));
+        assertThrows(JsonException.class, () -> Paths.toPointerExpr(new PathSegment[]{PathSegment.Root.INSTANCE, new PathSegment.Descendant(PathSegment.Root.INSTANCE)}));
     }
 
     @Test

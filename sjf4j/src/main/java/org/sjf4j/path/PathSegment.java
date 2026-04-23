@@ -12,23 +12,18 @@ import java.util.List;
  */
 public abstract class PathSegment {
     protected final PathSegment parent;
-    protected final Class<?> clazz;
 
     /**
      * Creates a path segment with parent and container type.
      */
-    public PathSegment(PathSegment parent, Class<?> clazz) {
+    public PathSegment(PathSegment parent) {
         this.parent = parent;
-        this.clazz = clazz;
     }
+
     /**
      * Returns the parent segment in the chain.
      */
     public PathSegment parent() {return parent;}
-    /**
-     * Returns the declared container type for this segment, if any.
-     */
-    public Class<?> clazz() {return clazz;}
 
     /**
      * Returns true if this segment matches the given object key.
@@ -39,18 +34,14 @@ public abstract class PathSegment {
      */
     public boolean matchIndex(int idx, int size) { return false; }
 
-    /**
-     * Returns a human-readable inspection string rooted at this segment.
-     */
-    public String rootedInspect() {
-        return Paths.rootedInspect(this);
-    }
+
     /**
      * Returns a JSON Pointer expression rooted at this segment.
      */
     public String rootedPointerExpr() {
         return Paths.rootedPointerExpr(this);
     }
+
     /**
      * Returns a JSONPath expression rooted at this segment.
      */
@@ -64,8 +55,7 @@ public abstract class PathSegment {
      * Represents the root token ($) in a JSON path expression.
      */
     public static final class Root extends PathSegment {
-        private Root() {super(null, null);}
-        public Root(PathSegment parent, Class<?> clazz) {super(parent, clazz);}
+        private Root() {super(null);}
         public static final Root INSTANCE = new Root();
         @Override public String toString() { return "$"; }
     }
@@ -76,7 +66,7 @@ public abstract class PathSegment {
      * This token is used only inside filter expressions.
      */
     public static final class Current extends PathSegment {
-        private Current() {super(null, null);}
+        private Current() {super(null);}
         public static final Current INSTANCE = new Current();
         @Override public String toString() { return "@"; }
     }
@@ -90,8 +80,8 @@ public abstract class PathSegment {
         /**
          * Creates a property-name segment.
          */
-        public Name(PathSegment parent, Class<?> clazz, String name) {
-            super(parent, clazz);
+        public Name(PathSegment parent, String name) {
+            super(parent);
             this.name = name;
         }
         @Override public boolean matchKey(String key) { return name.equals(key); }
@@ -116,15 +106,15 @@ public abstract class PathSegment {
         /**
          * Creates an array-index segment.
          */
-        public Index(PathSegment parent, Class<?> clazz, int index) {
-            this(parent, clazz, index, null);
+        public Index(PathSegment parent, int index) {
+            this(parent, index, null);
         }
 
         /**
          * Creates an index segment with optional original JSON Pointer token.
          */
-        public Index(PathSegment parent, Class<?> clazz, int index, String pointerToken) {
-            super(parent, clazz);
+        public Index(PathSegment parent, int index, String pointerToken) {
+            super(parent);
             this.index = index;
             this.pointerToken = pointerToken;
         }
@@ -149,8 +139,8 @@ public abstract class PathSegment {
         /**
          * Creates a wildcard segment.
          */
-        public Wildcard(PathSegment parent, Class<?> clazz) {
-            super(parent, clazz);
+        public Wildcard(PathSegment parent) {
+            super(parent);
         }
         @Override public boolean matchKey(String key) { return true; }
         @Override public boolean matchIndex(int index, int size) { return true; }
@@ -167,8 +157,8 @@ public abstract class PathSegment {
         /**
          * Creates an array-slice segment.
          */
-        public Slice(PathSegment parent, Class<?> clazz, Integer s, Integer e, Integer st) {
-            super(parent, clazz);
+        public Slice(PathSegment parent, Integer s, Integer e, Integer st) {
+            super(parent);
             start = s; end = e; step = st;
         }
 
@@ -230,8 +220,8 @@ public abstract class PathSegment {
         /**
          * Creates a union segment.
          */
-        public Union(PathSegment parent, Class<?> clazz, PathSegment[] union) {
-            super(parent, clazz);
+        public Union(PathSegment parent, PathSegment[] union) {
+            super(parent);
             this.union = union;
         }
         @Override public boolean matchKey(String key) {
@@ -269,8 +259,8 @@ public abstract class PathSegment {
         /**
          * Creates a descendant segment.
          */
-        public Descendant(PathSegment parent, Class<?> clazz) {
-            super(parent, clazz);
+        public Descendant(PathSegment parent) {
+            super(parent);
         }
         @Override public String toString() {
             return "..";
@@ -287,8 +277,8 @@ public abstract class PathSegment {
         /**
          * Creates a function-call segment.
          */
-        public Function(PathSegment parent, Class<?> clazz, String name, List<String> args) {
-            super(parent, clazz);
+        public Function(PathSegment parent, String name, List<String> args) {
+            super(parent);
             this.name = name;
             this.args = args;
         }
@@ -307,8 +297,8 @@ public abstract class PathSegment {
         /**
          * Creates a filter-expression segment.
          */
-        public Filter(PathSegment parent, Class<?> clazz, FilterExpr filterExpr) {
-            super(parent, clazz);
+        public Filter(PathSegment parent, FilterExpr filterExpr) {
+            super(parent);
             this.filterExpr = filterExpr;
         }
         public String toString() { return "[?" + filterExpr + "]"; }
@@ -321,8 +311,8 @@ public abstract class PathSegment {
         /**
          * Creates an append segment.
          */
-        public Append(PathSegment parent, Class<?> clazz) {
-            super(parent, clazz);
+        public Append(PathSegment parent) {
+            super(parent);
         }
         @Override public String toString() {
             return "[+]";

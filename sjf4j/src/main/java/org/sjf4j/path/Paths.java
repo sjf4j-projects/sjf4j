@@ -1,18 +1,13 @@
 package org.sjf4j.path;
 
-import org.sjf4j.JsonArray;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Numbers;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -22,14 +17,6 @@ import java.util.regex.Pattern;
  * {@link JsonPath} can focus on execution semantics.
  */
 public final class Paths {
-
-    /**
-     * Converts a segment chain to rooted debug inspect text.
-     */
-    public static String rootedInspect(PathSegment lastSegment) {
-        if (lastSegment == null) return "";
-        return inspect(linearize(lastSegment));
-    }
 
     /**
      * Converts a segment chain to a rooted JSONPath expression.
@@ -61,40 +48,6 @@ public final class Paths {
             segments[idx--] = p;
         }
         return segments;
-    }
-
-    /**
-     * Builds a debug-friendly representation of the path segments.
-     */
-    public static String inspect(PathSegment[] segments) {
-        Objects.requireNonNull(segments, "segments");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 1; i < segments.length; i++) {
-            PathSegment ps = segments[i];
-            sb.append("/");
-            if (ps instanceof PathSegment.Name) {
-                Class<?> clazz = ps.clazz();
-                String name = ((PathSegment.Name) ps).name;
-                if (clazz == null || Map.class.isAssignableFrom(clazz)) sb.append("{").append(name);
-                else if (clazz == JsonObject.class) sb.append("J{").append(name);
-                else {
-                    sb.append("@").append(clazz.getSimpleName()).append("{");
-                    if (NodeRegistry.registerPojoOrElseThrow(clazz).fields.containsKey(name)) sb.append("*");
-                    sb.append(name);
-                }
-            } else if (ps instanceof PathSegment.Index) {
-                Class<?> clazz = ps.clazz();
-                int idx = ((PathSegment.Index) ps).index;
-                if (clazz == null || List.class.isAssignableFrom(clazz)) sb.append("[").append(idx);
-                else if (clazz == JsonArray.class) sb.append("J[").append(idx);
-                else if (clazz.isArray()) sb.append("A[").append(idx);
-                else if (Set.class.isAssignableFrom(clazz)) sb.append("S[").append(idx);
-                else sb.append("@").append(clazz.getSimpleName()).append("[").append(idx);
-            } else {
-                sb.append("!").append(ps);
-            }
-        }
-        return sb.toString();
     }
 
     /// JSON Pointer
@@ -157,14 +110,14 @@ public final class Paths {
 
             if (isNumber) {
                 try {
-                    segments.addLast(new PathSegment.Index(segments.peekLast(), null, Integer.parseInt(name), seg));
+                    segments.addLast(new PathSegment.Index(segments.peekLast(), Integer.parseInt(name), seg));
                 } catch (NumberFormatException e) {
-                    segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
+                    segments.addLast(new PathSegment.Name(segments.peekLast(), name));
                 }
             } else if (name.equals("-")) {
-                segments.addLast(new PathSegment.Append(segments.peekLast(), null));
+                segments.addLast(new PathSegment.Append(segments.peekLast()));
             } else {
-                segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
+                segments.addLast(new PathSegment.Name(segments.peekLast(), name));
             }
 
             start = end + 1;
@@ -277,7 +230,7 @@ public final class Paths {
 
             // Descendant ..
             if (c == '.' && i + 1 < expr.length() && expr.charAt(i + 1) == '.') {
-                segments.addLast(new PathSegment.Descendant(segments.peekLast(), null));
+                segments.addLast(new PathSegment.Descendant(segments.peekLast()));
                 if (i + 2 == expr.length()) {
                     throw new JsonException("Descendant '..' cannot appear at the end.");
                 } else if (expr.charAt(i + 2) == '[') {
@@ -349,22 +302,22 @@ public final class Paths {
                     // Filter
                     int filterStart = _skipWhitespace(expr, contentStart + 1);
                     FilterExpr filterExpr = _parseFilterRange(expr, filterStart, contentEnd);
-                    segments.addLast(new PathSegment.Filter(segments.peekLast(), null, filterExpr));
+                    segments.addLast(new PathSegment.Filter(segments.peekLast(), filterExpr));
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
                     PathSegment[] unionTokens = _parseUnionTokens(expr, contentStart, contentEnd);
-                    segments.addLast(new PathSegment.Union(segments.peekLast(), null, unionTokens));
+                    segments.addLast(new PathSegment.Union(segments.peekLast(), unionTokens));
                 } else {
                     if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '*') {
                         // [*]
-                        segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
+                        segments.addLast(new PathSegment.Wildcard(segments.peekLast()));
                     } else if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '+') {
                         // [+]
-                        segments.addLast(new PathSegment.Append(segments.peekLast(), null));
+                        segments.addLast(new PathSegment.Append(segments.peekLast()));
                     } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
                         String name = _parseQuotedContent(expr, contentStart, contentEnd, null, "name");
-                        segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
+                        segments.addLast(new PathSegment.Name(segments.peekLast(), name));
                     } else if (_containsChar(expr, contentStart, contentEnd, ':')) {
                         // Slice [start:end:step]
                         segments.addLast(_parseSlice(segments.peekLast(), expr, contentStart, contentEnd,
@@ -373,7 +326,7 @@ public final class Paths {
                         try {
                             // Try to parse as numeric index
                             int idx = _parseInt(expr, contentStart, contentEnd);
-                            segments.addLast(new PathSegment.Index(segments.peekLast(), null, idx));
+                            segments.addLast(new PathSegment.Index(segments.peekLast(), idx));
                         } catch (NumberFormatException e) {
                             String content = expr.substring(contentStart, contentEnd);
                             throw new JsonException("Invalid name or index '" + content + "' in path '" + expr + "'");
@@ -389,7 +342,7 @@ public final class Paths {
 
                 // Wildcard
                 if (expr.charAt(i) == '*') {
-                    segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
+                    segments.addLast(new PathSegment.Wildcard(segments.peekLast()));
                     i++;
                     continue;
                 }
@@ -407,14 +360,14 @@ public final class Paths {
                     }
                     String funcName = expr.substring(start, i);
                     String args = expr.substring(i + 1, end); // inside (...)
-                    segments.addLast(new PathSegment.Function(segments.peekLast(), null, funcName, _parseFunctionArgs(args)));
+                    segments.addLast(new PathSegment.Function(segments.peekLast(), funcName, _parseFunctionArgs(args)));
                     i = end + 1;
                     continue;
                 }
 
                 // Name
                 String name = expr.substring(start, i);
-                segments.addLast(new PathSegment.Name(segments.peekLast(), null, name));
+                segments.addLast(new PathSegment.Name(segments.peekLast(), name));
             }
             else {
                 throw new JsonException("Unexpected char '" + c + "' in path '" + expr + "' at position " + i);
@@ -434,7 +387,7 @@ public final class Paths {
         if (c == '*') {
             int tokenEnd = _skipWhitespace(expr, i + 1);
             if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
-                segments.addLast(new PathSegment.Wildcard(segments.peekLast(), null));
+                segments.addLast(new PathSegment.Wildcard(segments.peekLast()));
                 return tokenEnd + 1;
             }
             return -1;
@@ -449,8 +402,7 @@ public final class Paths {
             int tokenEnd = _skipWhitespace(expr, i);
             if (tokenEnd < len && expr.charAt(tokenEnd) == ']') {
                 try {
-                    segments.addLast(new PathSegment.Index(segments.peekLast(), null,
-                            Integer.parseInt(expr.substring(start, i))));
+                    segments.addLast(new PathSegment.Index(segments.peekLast(), Integer.parseInt(expr.substring(start, i))));
                     return tokenEnd + 1;
                 } catch (NumberFormatException ignored) {
                     return -1;
@@ -546,7 +498,7 @@ public final class Paths {
                 // Quoted name
                 int[] quotedEnd = new int[1];
                 String name = _parseQuotedContent(content, i, end, quotedEnd, "union name");
-                segments.add(new PathSegment.Name(null, null, name));
+                segments.add(new PathSegment.Name(null, name));
                 i = quotedEnd[0];
                 // Find next comma or end
                 while (i < end && content.charAt(i) != ',') i++;
@@ -571,7 +523,7 @@ public final class Paths {
                     // Numeric index
                     try {
                         int idx = _parseInt(content, tokenContentStart, tokenContentEnd);
-                        segments.add(new PathSegment.Index(null, null, idx));
+                        segments.add(new PathSegment.Index(null, idx));
                     } catch (NumberFormatException e) {
                         throw new JsonException("Invalid index '" + part + "' in union");
                     }
@@ -602,7 +554,7 @@ public final class Paths {
         if (step != null && step == 0) {
             throw new JsonException("Slice step cannot be 0" + errorContext);
         }
-        return new PathSegment.Slice(parent, null, startIdx, endIdx, step);
+        return new PathSegment.Slice(parent, startIdx, endIdx, step);
     }
 
     private static String _parseQuotedContent(String content, int start, int limit, int[] end, String errorContext) {
@@ -1118,7 +1070,7 @@ public final class Paths {
             int nameStart = i + 1;
             i += 2;
             while (i < s.length() && _isSimpleNamePart(s.charAt(i))) i++;
-            current = new PathSegment.Name(current, null, s.substring(nameStart, i));
+            current = new PathSegment.Name(current, s.substring(nameStart, i));
             segments.add(current);
         }
 

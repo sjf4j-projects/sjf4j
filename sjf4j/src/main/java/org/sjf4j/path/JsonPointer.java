@@ -85,7 +85,7 @@ public class JsonPointer extends JsonPath {
     public JsonPointer childIndex(int index) {
         PathSegment[] childSegs = Arrays.copyOf(segments, segments.length + 1);
         PathSegment parent = segments[segments.length - 1];
-        childSegs[segments.length] = new PathSegment.Index(parent, null, index);
+        childSegs[segments.length] = new PathSegment.Index(parent, index);
         return new JsonPointer(null, childSegs);
     }
 

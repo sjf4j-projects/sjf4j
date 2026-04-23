@@ -22,7 +22,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -337,7 +336,7 @@ public final class Nodes {
         if (node == null) return null;
         if (node instanceof Map) return (Map<String, Object>) node;
         if (node instanceof JsonObject) return ((JsonObject) node).toMap();
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             Map<String, Object> map = new LinkedHashMap<>();
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
@@ -529,7 +528,7 @@ public final class Nodes {
         if (!JsonObject.class.isAssignableFrom(clazz) || clazz == JsonObject.class)
             throw new JsonException("Type mismatch: expected JOJO, but was " + clazz.getName());
         if (node == null) return null;
-        return (T) Sjf4j.global().getNodeFacade().readNode(node, clazz, false);
+        return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);
     }
 
     /**
@@ -576,7 +575,7 @@ public final class Nodes {
         if (ti.pojoInfo == null && ti.anyOfInfo == null) {
             throw new JsonException("Class '" + clazz.getName() + "' is not a POJO");
         }
-        return (T) Sjf4j.global().getNodeFacade().readNode(node, clazz, false);
+        return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);
     }
 
     /**
@@ -635,7 +634,7 @@ public final class Nodes {
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (!ti.isNone()) {
-            return Sjf4j.global().getNodeFacade().readNode(node, clazz, false);
+            return Sjf4j.global().nodeFacade().readNode(node, clazz, false);
         }
 
         throw new JsonException("Type mismatch: cannot convert " + Types.name(node) + " to " + clazz.getName());
@@ -787,7 +786,7 @@ public final class Nodes {
             return (T) new JsonArray(((JsonArray) node).toList());
         }
         if (node instanceof JsonArray) {
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
             jajo.addAll((JsonArray) node);
             return (T) jajo;
@@ -897,7 +896,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             JsonObject jo = (JsonObject) node;
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
             int[] idx = new int[1];
             jo.forEach((k, v) -> {
                 if (idx[0]++ > 0) sb.append(", ");
@@ -1102,7 +1101,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             JsonObject jo = (JsonObject) node;
             sb.append("@").append(node.getClass().getSimpleName()).append("{");
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
             int[] idx = new int[1];
             jo.forEach((k, v) -> {
                 if (idx[0]++ > 0) sb.append(", ");
@@ -1218,7 +1217,7 @@ public final class Nodes {
             ((JsonObject) node).forEach(consumer);
             return;
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
@@ -1252,7 +1251,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).anyMatch(predicate);
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
@@ -1295,7 +1294,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).replace(replacer);
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             boolean changed = false;
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
@@ -1406,7 +1405,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).size();
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             return pi.readableFieldCount;
         }
@@ -1451,7 +1450,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).keySet();
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             return pi.readableFields.keySet();
         }
@@ -1473,7 +1472,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).entrySet();
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             return new AbstractSet<Map.Entry<String, Object>>() {
                 @Override
@@ -1553,7 +1552,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).containsKey(key);
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             return pi.readableFields.containsKey(key);
         }
@@ -1589,7 +1588,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).getNode(key);
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             NodeRegistry.FieldInfo fi = pi.readableFields.get(key);
             return fi != null ? fi.invokeGetter(node) : null;
@@ -1704,7 +1703,7 @@ public final class Nodes {
             out.puttable = true;
             return;
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             NodeRegistry.FieldInfo fi = pi.fields.get(key);
             if (fi != null) {
@@ -1812,7 +1811,7 @@ public final class Nodes {
         if (node instanceof JsonObject) {
             return ((JsonObject) node).put(key, value);
         }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(node.getClass());
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             NodeRegistry.FieldInfo fi = pi.fields.get(key);
             if (fi != null) {
@@ -1964,7 +1963,7 @@ public final class Nodes {
         if (node instanceof Map) {
             return ((Map<String, Object>) node).remove(key);
         }
-        if (NodeRegistry.registerPojo(node.getClass()) != null) {
+        if (NodeRegistry.registerTypeInfo(node.getClass()).anyOfInfo != null) {
             throw new JsonException("Cannot remove field '" + key + "' in POJO node '" +
                     node.getClass().getName() + "'");
         }
@@ -2033,7 +2032,7 @@ public final class Nodes {
         Objects.requireNonNull(target, "target");
         Objects.requireNonNull(order, "order");
         Objects.requireNonNull(visitor, "visitor");
-        _walk(container, new PathSegment.Root(null, container.getClass()), visitor, target, order, maxDepth);
+        _walk(container, PathSegment.Root.INSTANCE, visitor, target, order, maxDepth);
     }
 
     private static void _walk(Object container, PathSegment path,
@@ -2048,7 +2047,7 @@ public final class Nodes {
             }
 
             Nodes.forEachObject(container, (key, node) -> {
-                PathSegment childPath = new PathSegment.Name(path, container.getClass(), key);
+                PathSegment childPath = new PathSegment.Name(path, key);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
@@ -2060,7 +2059,7 @@ public final class Nodes {
             }
 
             Nodes.forEachArray(container, (idx, node) -> {
-                PathSegment childPath = new PathSegment.Index(path, container.getClass(), idx);
+                PathSegment childPath = new PathSegment.Index(path, idx);
                 _walk(node, childPath, visitor, target, order, remainingDepth - 1);
             });
             if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {

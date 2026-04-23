@@ -141,13 +141,6 @@ public class JsonPath {
     }
 
     /**
-     * Returns internal parsed segments for subclass extensions.
-     */
-    protected PathSegment[] segments() {
-        return segments;
-    }
-
-    /**
      * Returns the first token in the path without removing it.
      *
      * @return the first path token
@@ -1129,7 +1122,7 @@ public class JsonPath {
                     }
                 } else {
                     throw new JsonException("Not an object node, but was '" + curType +
-                            "' at '" + ps.rootedInspect() + "'");
+                            "' at '" + ps.rootedPathExpr() + "'");
                 }
             } else if (ps instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) ps;
@@ -1163,7 +1156,7 @@ public class JsonPath {
                     }
                 } else {
                     throw new JsonException("Not an array node, but was '" + curType +
-                            "' at '" + ps.rootedInspect() + "'");
+                            "' at '" + ps.rootedPathExpr() + "'");
                 }
             } else if (ps instanceof PathSegment.Append) {
                 if (jt.isArray()) {
@@ -1179,7 +1172,7 @@ public class JsonPath {
                     }
                 } else {
                     throw new JsonException("Not an array node, but was '" + curType +
-                            "' at '" + ps.rootedInspect() + "'");
+                            "' at '" + ps.rootedPathExpr() + "'");
                 }
             } else {
                 throw new JsonException("Unexpected path token '" + ps + "'");
@@ -1198,24 +1191,18 @@ public class JsonPath {
             if (clazz == Object.class || clazz == Map.class) {
                 return new LinkedHashMap<>();
             }
-            if (_isJackson3ObjectClass(clazz)) {
-                return _newJackson3Node(false);
-            }
             if (clazz == JsonObject.class) {
                 return new JsonObject();
             }
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerPojo(clazz);
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(clazz).pojoInfo;
             if (pi != null) {
                 return pi.creatorInfo.forceNewPojo();
             }
             throw new JsonException("Cannot create object node with type '" + clazz + "' at '" +
-                    ps.rootedInspect() + "'. Only support Map/JsonObject/JOJO/POJO.");
+                    ps.rootedPathExpr() + "'. Only support Map/JsonObject/JOJO/POJO.");
         } else if (ps instanceof PathSegment.Index || ps instanceof PathSegment.Append) {
             if (clazz == Object.class || clazz == List.class) {
                 return new ArrayList<>();
-            }
-            if (_isJackson3ArrayClass(clazz)) {
-                return _newJackson3Node(true);
             }
             if (clazz == JsonArray.class) {
                 return new JsonArray();
@@ -1227,31 +1214,9 @@ public class JsonPath {
                 return new LinkedHashSet<>();
             }
             throw new JsonException("Cannot create array node with type '" + clazz +
-                    "' at '" + ps.rootedInspect() + "'. Only support List/JsonArray/JAJO/Set.");
+                    "' at '" + ps.rootedPathExpr() + "'. Only support List/JsonArray/JAJO/Set.");
         } else {
             throw new JsonException("Unexpected path token '" + ps + "'");
-        }
-    }
-
-    private static boolean _isJackson3ObjectClass(Class<?> clazz) {
-        String name = clazz.getName();
-        return "tools.jackson.databind.JsonNode".equals(name) || "tools.jackson.databind.node.ObjectNode".equals(name);
-    }
-
-    private static boolean _isJackson3ArrayClass(Class<?> clazz) {
-        String name = clazz.getName();
-        return "tools.jackson.databind.JsonNode".equals(name) || "tools.jackson.databind.node.ArrayNode".equals(name);
-    }
-
-    private static Object _newJackson3Node(boolean array) {
-        try {
-            Class<?> factoryClass = Class.forName("tools.jackson.databind.node.JsonNodeFactory");
-            Object factory = factoryClass.getField("instance").get(null);
-            return factoryClass.getMethod(array ? "arrayNode" : "objectNode").invoke(factory);
-        } catch (ClassNotFoundException e) {
-            throw new JsonException("Jackson3 JsonNodeFactory is not available", e);
-        } catch (ReflectiveOperationException e) {
-            throw new JsonException("Failed to create Jackson3 " + (array ? "array" : "object") + " node", e);
         }
     }
 

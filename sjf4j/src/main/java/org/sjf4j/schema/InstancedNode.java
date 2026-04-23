@@ -18,11 +18,12 @@ import java.util.Map;
  * and recursion-detection stack.
  */
 public final class InstancedNode {
-    private final Object node;
-    private final Class<?> objectType;
-    private final JsonType jsonType;
-    private final NodeKind nodeKind;
-    private final boolean converted;
+    final Object node;
+    final Class<?> objectType;
+    final JsonType jsonType;
+    final NodeKind nodeKind;
+    final boolean converted;
+
     private Map<Object, InstancedNode> subInstanceCache;
 
     // runtime state
@@ -44,7 +45,7 @@ public final class InstancedNode {
      * <p>
      * Node/type metadata is preserved.
      */
-    public InstancedNode reset() {
+    InstancedNode reset() {
         this.evaluatedStack = null;
         this.refSchemaTimes = 0;
         this.refSchemaStack = null;
@@ -52,7 +53,7 @@ public final class InstancedNode {
     }
 
     // NULL
-    public static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, null, false);
+    static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, null, false);
 
     /**
      * Infers node metadata and wraps it as an InstancedNode.
@@ -60,98 +61,87 @@ public final class InstancedNode {
      * Registered value-node types are first encoded to raw values for schema
      * validation against JSON-compatible representation.
      */
-    public static InstancedNode infer(Object node) {
+    static InstancedNode infer(Object node) {
         if (node == null) return NULL.reset();
-        NodeKind nodeKind = NodeKind.of(node);
         boolean encoded = false;
+        NodeKind nodeKind = NodeKind.of(node);
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
-            node = NodeRegistry.registerValueCodecInfo(node.getClass()).valueToRaw(node);
-            nodeKind = NodeKind.of(node);
-            encoded = true;
+            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(node.getClass()).valueCodecInfo;
+            if (vci != null) {
+                node = vci.valueToRaw(node);
+                encoded = true;
+                nodeKind = NodeKind.of(node);
+            }
         }
         return new InstancedNode(node, JsonType.of(nodeKind), nodeKind, encoded);
     }
 
     /**
-     * Returns the wrapped runtime node.
-     */
-    public Object getNode() {return node;}
-    /**
-     * Returns the runtime object type.
-     */
-    public Class<?> getObjectType() {return objectType;}
-    /**
-     * Returns the inferred JSON type.
-     */
-    public JsonType getJsonType() {return jsonType;}
-    /**
-     * Returns the inferred node kind.
-     */
-    public NodeKind getNodeType() {return nodeKind;}
-    /**
-     * Returns true when value-codec encoding was applied in {@link #infer(Object)}.
-     */
-    public boolean isConverted() {return converted;}
-
-    /**
      * Marks one property/item index as evaluated.
      */
-    public void markEvaluated(int propIdx) {
+    void markEvaluated(int propIdx) {
         if (evaluatedStack == null) return;
         BitSet evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(propIdx);
     }
+    
     /**
      * Marks a range of property/item indexes as evaluated.
      */
-    public void markEvaluated(int fromIdx, int toIdx) {
+    void markEvaluated(int fromIdx, int toIdx) {
         if (evaluatedStack == null) return;
         BitSet evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(fromIdx, toIdx);
     }
+
     /**
      * Initializes evaluated tracking with a fresh frame.
      * <p>
      * Called only when unevaluated* keywords are present.
      */
-    public void createEvaluated() {
+    void createEvaluated() {
         if (evaluatedStack == null) evaluatedStack = new ArrayDeque<>();
         evaluatedStack.push(new BitSet());
     }
+
     /**
      * Pushes an empty evaluated frame.
      */
-    public void pushEvaluated() {
+    void pushEvaluated() {
         if (evaluatedStack == null) return;
         evaluatedStack.push(new BitSet());
     }
+
     /**
      * Pushes an existing evaluated frame.
      */
-    public void pushEvaluated(BitSet evaluated) {
+    void pushEvaluated(BitSet evaluated) {
         if (evaluatedStack == null) return;
         evaluatedStack.push(evaluated);
     }
+
     /**
      * Pops the current evaluated frame.
      */
-    public BitSet popEvaluated() {
+    BitSet popEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.pop();
     }
+
     /**
      * Returns the current evaluated frame.
      */
-    public BitSet peekEvaluated() {
+    BitSet peekEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.peek();
     }
+
     /**
      * Merges all evaluated frames into one BitSet snapshot.
      */
-    public BitSet mergedEvaluated() {
+    BitSet mergedEvaluated() {
         BitSet merged = new BitSet();
         if (evaluatedStack != null) {
             for (BitSet bs : evaluatedStack) merged.or(bs);
@@ -159,33 +149,33 @@ public final class InstancedNode {
         return merged;
     }
 
-//    public void addEvaluatedProperty(String key) {
+//    void addEvaluatedProperty(String key) {
 //        if (evaluatedProperties == null)
 //            evaluatedProperties = new HashSet<>();
 //        evaluatedProperties.add(key);
 //    }
-//    public Set<String> getEvaluatedProperties() {return evaluatedProperties;}
+//    Set<String> getEvaluatedProperties() {return evaluatedProperties;}
 //
-//    public void addEvaluatedItem(int idx) {
+//    void addEvaluatedItem(int idx) {
 //        if (evaluatedItems == null) {
 //            evaluatedItems = new BitSet();
 //        }
 //        evaluatedItems.set(idx);
 //    }
-//    public void addEvaluatedItems(int fromIdx, int toIdx) {
+//    void addEvaluatedItems(int fromIdx, int toIdx) {
 //        if (evaluatedItems == null) {
 //            evaluatedItems = new BitSet();
 //        }
 //        evaluatedItems.set(fromIdx, toIdx);
 //    }
-//    public BitSet getEvaluatedItems() {return evaluatedItems;}
+//    BitSet getEvaluatedItems() {return evaluatedItems;}
 
     /**
      * Returns child instance for an object key.
      * <p>
      * Encoded children are cached by key to avoid repeated value-codec encoding.
      */
-    public InstancedNode inferSubByKey(String key, Object subNode) {
+    InstancedNode inferSubByKey(String key, Object subNode) {
         if (jsonType != JsonType.OBJECT)
             throw new JsonException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         InstancedNode subInstance = null;
@@ -193,7 +183,7 @@ public final class InstancedNode {
         if (subInstance == null) {
             if (subNode != null) {
                 subInstance = InstancedNode.infer(subNode);
-                if (subInstance.isConverted()) {
+                if (subInstance.converted) {
                     if (subInstanceCache == null) subInstanceCache = new HashMap<>();
                     subInstanceCache.put(key, subInstance);
                 }
@@ -207,7 +197,7 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by index key to avoid repeated encoding.
      */
-    public InstancedNode inferSubByIndex(int idx, Object subNode) {
+    InstancedNode inferSubByIndex(int idx, Object subNode) {
         if (jsonType != JsonType.ARRAY)
             throw new JsonException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         InstancedNode subInstance = null;
@@ -215,7 +205,7 @@ public final class InstancedNode {
         if (subInstance == null) {
             if (subNode != null) {
                 subInstance = InstancedNode.infer(subNode);
-                if (subInstance.isConverted()) {
+                if (subInstance.converted) {
                     if (subInstanceCache == null) subInstanceCache = new HashMap<>();
                     subInstanceCache.put(idx, subInstance);
                 }
@@ -231,7 +221,7 @@ public final class InstancedNode {
      * First invocation initializes tracking; subsequent invocations check whether
      * the same schema object appears again in current reference chain.
      */
-    public boolean isRecursiveRef(Object schema) {
+    boolean isRecursiveRef(Object schema) {
         if (refSchemaTimes++ > 0) {
             if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();
             if (refSchemaStack.contains(schema)) return true;

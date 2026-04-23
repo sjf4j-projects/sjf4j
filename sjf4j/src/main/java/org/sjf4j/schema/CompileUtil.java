@@ -300,12 +300,12 @@ public final class CompileUtil {
         Object schemaMapNode = schema.getNode(key);
         if (schemaMapNode == null) return null;
 
-        PathSegment cps = new PathSegment.Name(ps, null, key);
+        PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(schemaMapNode).isObject())
             throw new SchemaException("Schema node at " + JsonPointer.fromLast(cps) + " must be a JSON Object");
         Map<String, JsonSchema> schemaMap = new HashMap<>();
         Nodes.replaceInObject(schemaMapNode, (k, subNode) -> {
-            PathSegment ccps = new PathSegment.Name(cps, null, k);
+            PathSegment ccps = new PathSegment.Name(cps, k);
             if (subNode == null) throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ccps) +
                     "': null is not allowed");
             JsonSchema subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
@@ -325,7 +325,7 @@ public final class CompileUtil {
         Object schemaArrayNode = schema.getNode(key);
         if (schemaArrayNode == null) return null;
 
-        PathSegment cps = new PathSegment.Name(ps, null, key);
+        PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(schemaArrayNode).isArray()) {
             throw new SchemaException("Schema node at " + Paths.rootedPointerExpr(cps) + " must be a JSON Array");
         }
@@ -333,7 +333,7 @@ public final class CompileUtil {
         JsonSchema[] schemaArr = new JsonSchema[size];
         for (int i = 0; i < size; i++) {
             Object subNode = Nodes.getInArray(schemaArrayNode, i);
-            PathSegment ccps = new PathSegment.Index(cps, null, i);
+            PathSegment ccps = new PathSegment.Index(cps, i);
             if (subNode == null) throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ccps) +
                     "': null is not allowed");
             JsonSchema subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
@@ -349,7 +349,7 @@ public final class CompileUtil {
     static JsonSchema compileSchemaByKey(String key, PathSegment ps,
                                       ObjectSchema schema, ObjectSchema idSchema, ObjectSchema rootSchema) {
         Object subNode = schema.getNode(key);
-        PathSegment cps = new PathSegment.Name(ps, null, key);
+        PathSegment cps = new PathSegment.Name(ps, key);
         if (subNode == null) {
             if (!schema.containsKey(key)) return null;
             throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(cps) +

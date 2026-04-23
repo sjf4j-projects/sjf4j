@@ -372,7 +372,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     public ValidationResult validate(Object node, ValidationOptions options) {
         InstancedNode instance = InstancedNode.infer(node);
         ValidationContext ctx = new ValidationContext(this, options);
-        PathSegment ps = options.isFailFast() ? null : new PathSegment.Root(null, instance.getObjectType());
+        PathSegment ps = options.isFailFast() ? null : PathSegment.Root.INSTANCE;
         evaluate(instance, ps, ctx);
         return ctx.toResult();
     }

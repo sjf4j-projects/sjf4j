@@ -166,7 +166,7 @@ public final class Patches {
             JsonType targetJt = JsonType.of(target);
             if (sourceJt.isObject() && targetJt.isObject()) {
                 Nodes.forEachObject(source, (k, v) -> {
-                    PathSegment cps = new PathSegment.Name(ps, null, k);
+                    PathSegment cps = new PathSegment.Name(ps, k);
                     if (Nodes.containsInObject(target, k)) {
                         Object newTarget = Nodes.getInObject(target, k);
                         _diff(operations, cps, v, newTarget);
@@ -176,7 +176,7 @@ public final class Patches {
                 });
                 Nodes.forEachObject(target, (k, v) -> {
                    if (!Nodes.containsInObject(source, k)) {
-                       PathSegment cps = new PathSegment.Name(ps, null, k);
+                       PathSegment cps = new PathSegment.Name(ps, k);
                        operations.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.fromLast(cps), v, null));
                    }
                 });
@@ -185,11 +185,11 @@ public final class Patches {
                 int targetSize = Nodes.sizeInArray(target);
                 int size = Math.min(sourceSize, targetSize);
                 for (int i = 0; i < size; i++) {
-                    PathSegment cps = new PathSegment.Index(ps, null, i);
+                    PathSegment cps = new PathSegment.Index(ps, i);
                     _diff(operations, cps, Nodes.getInArray(source, i), Nodes.getInArray(target, i));
                 }
                 if (targetSize > sourceSize) {  // add with '/xx/-'
-                    PathSegment cps = new PathSegment.Append(ps, null);
+                    PathSegment cps = new PathSegment.Append(ps);
                     for (int i = sourceSize; i < targetSize; i++) {
                         operations.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.fromLast(cps),
                                 Nodes.getInArray(target, i), null));
@@ -197,7 +197,7 @@ public final class Patches {
                 }
                 if (targetSize < sourceSize) {  // Remove from back to front
                     for (int i = sourceSize - 1; i >= targetSize; i--) {
-                        PathSegment cps = new PathSegment.Index(ps, null, i);
+                        PathSegment cps = new PathSegment.Index(ps, i);
                         operations.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.fromLast(cps), null, null));
                     }
                 }
