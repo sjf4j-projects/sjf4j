@@ -132,7 +132,7 @@ public class SimpleJsonReader implements StreamingReader {
         PathSegment parent = _containerPath();
         activePath = parent;
         String s = _readString();
-        PathSegment namePath = new PathSegment.Name(parent, Map.class, s);
+        PathSegment namePath = new PathSegment.Name(parent, s);
         activePath = namePath;
         _skipWhitespace();
         int c = _read();
@@ -319,7 +319,7 @@ public class SimpleJsonReader implements StreamingReader {
             return _containerPath();
         }
         containerStateStack[idx] = state + 1;
-        return new PathSegment.Index(_containerPath(), List.class, state);
+        return new PathSegment.Index(_containerPath(), state);
     }
 
     private <T> T _readNumberValue(String error, NumberParser<T> parser) throws IOException {
@@ -571,7 +571,7 @@ public class SimpleJsonReader implements StreamingReader {
             activePath = parent;
             if (_peek() != '"') throw _error("Expected '\"' for object key", _peek());
             String key = _readString();
-            PathSegment keyPs = new PathSegment.Name(parent, Map.class, key);
+            PathSegment keyPs = new PathSegment.Name(parent, key);
             activePath = keyPs;
             _skipWhitespace();
             c = _read();
@@ -609,7 +609,7 @@ public class SimpleJsonReader implements StreamingReader {
             int idx = depth - 1;
             int nextIndex = containerStateStack[idx];
             containerStateStack[idx] = nextIndex + 1;
-            PathSegment elementPs = new PathSegment.Index(_containerPath(), List.class, nextIndex);
+            PathSegment elementPs = new PathSegment.Index(_containerPath(), nextIndex);
             _skipValue(elementPs);
             _skipWhitespace();
             activePath = _containerPath();

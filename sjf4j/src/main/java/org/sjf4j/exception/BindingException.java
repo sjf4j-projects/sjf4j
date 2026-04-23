@@ -64,7 +64,7 @@ public class BindingException extends JsonException {
     @Override
     public String getMessage() {
         if (ps == null) return super.getMessage();
-        return super.getMessage() + ", at path '" + Paths.rootedInspect(ps) + "'";
+        return super.getMessage() + ", at path '" + Paths.rootedPathExpr(ps) + "'";
     }
 
     /**
