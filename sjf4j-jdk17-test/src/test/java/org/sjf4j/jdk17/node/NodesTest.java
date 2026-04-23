@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class NodesTest {
 
     private final Sjf4j sjf4j = Sjf4j.builder()
-            .jsonFacade(new SimpleJsonFacade())
+            .jsonFacadeProvider(SimpleJsonFacade.provider())
             .build();
 
     record PlainRecord(String msg, LocalDate date) {}

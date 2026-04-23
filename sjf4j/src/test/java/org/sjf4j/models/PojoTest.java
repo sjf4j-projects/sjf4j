@@ -68,7 +68,7 @@ public class PojoTest {
 
     @Test
     public void testCreatorPojoWithJsonProperty() {
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
         String json = "{\"name\":\"Alice\",\"decimal\":12.5,\"anEnum\":\"THIS\"," +
                 "\"list\":[\"a\",\"b\"],\"polymorphicTypes\":[1,2]}";
         TestModel model = sjf4j.fromJson(json, TestModel.class);

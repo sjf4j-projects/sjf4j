@@ -16,9 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @Execution(ExecutionMode.SAME_THREAD)
 class NamingStrategyTest {
 
-    private final Sjf4j sjf4j = Sjf4j.builder()
-            .jsonFacade(new SimpleJsonFacade())
-            .build();
+    private final Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
 
     @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeUser extends JsonObject {

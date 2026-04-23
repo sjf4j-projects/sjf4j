@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact JSON-semantic structural summaries for objects, arrays, facade nodes, POJOs, and value-codec types.
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
+- Added instance-scoped `StreamingContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
+- Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
 
 ### Changed
 - Changed snake-case conversion to live in `Strings.toSnakeCase(...)`, with `NamingStrategy.SNAKE_CASE` delegating to the shared helper.
@@ -20,12 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed facade-node write operations for Jackson 2 and Jackson 3 to require backend-native `JsonNode` values instead of auto-converting arbitrary OBNT values.
 - Changed JSONPath missing-container creation to recognize Jackson 3 native object/array node types.
 - Changed `Nodes` and `JsonObject` object views to expose readable members only, while keeping direct write paths available for writable-only bindings.
+- Changed shared and backend-native facade integrations to route through context-aware `StreamingIO`, with plugin-module fallbacks for SJF4J-managed value-codec and `AnyOf` cases.
+- Changed path/schema traversal internals to use lighter `PathSegment` and `InstancedNode` metadata while standardizing rooted error-path reporting on JSONPath and JSON Pointer expressions.
 
 ### Fixed
 - Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
 - Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.
 - Fixed shared/simple/Jackson/Fastjson2 readable-member serialization and POJO projection paths so write-only bindings no longer leak into object traversal or output.
+- Fixed field- and creator-bound non-default value formats so shared IO, exclusive IO, plugin-module reads/writes, node conversion, and `Sjf4j` runtime APIs all honor the same codec selection.
+- Fixed deferred parent-scope `AnyOf` binding and runtime node conversion paths to use the owning `Sjf4j` instance instead of process-global facade defaults.
 
 
 ## [1.2.0] - 2026.04.12

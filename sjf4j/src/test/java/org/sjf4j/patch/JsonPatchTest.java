@@ -306,7 +306,7 @@ public class JsonPatchTest {
                 "  { \"op\": \"replace\", \"path\": \"/meta/active\", \"value\": false }\n" +
                 "]";
 
-        Sjf4j sjf4j = Sjf4j.builder().jsonFacade(new Fastjson2JsonFacade()).build();
+        Sjf4j sjf4j = Sjf4j.builder().jsonFacadeProvider(Fastjson2JsonFacade.provider()).build();
         JsonObject jo1 = sjf4j.fromJson(json1, JsonObject.class);
         log.info("jo1={}", jo1);
         JsonPatch patch = sjf4j.fromJson(jsonPatch, JsonPatch.class);

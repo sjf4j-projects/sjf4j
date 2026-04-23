@@ -10,7 +10,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
@@ -19,10 +19,13 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -34,15 +37,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class GsonFacadeTest {
 
-    private static Stream<StreamingFacade.StreamingMode> allModes() {
+    private static StreamingContext ctx(StreamingContext.StreamingMode mode) {
+        return new StreamingContext(mode);
+    }
+
+    private static Stream<StreamingContext.StreamingMode> allModes() {
         return Stream.of(
-                StreamingFacade.StreamingMode.SHARED_IO,
-                StreamingFacade.StreamingMode.PLUGIN_MODULE
+                StreamingContext.StreamingMode.SHARED_IO,
+                StreamingContext.StreamingMode.PLUGIN_MODULE
         );
     }
 
-    private static GsonJsonFacade newFacade(StreamingFacade.StreamingMode mode) {
-        return new GsonJsonFacade(new GsonBuilder(), mode);
+    private static GsonJsonFacade newFacade(StreamingContext.StreamingMode mode) {
+        return new GsonJsonFacade(new GsonBuilder(), ctx(mode));
     }
 
     @FunctionalInterface
@@ -165,7 +172,7 @@ public class GsonFacadeTest {
         WriteOnlyPojo pojo = new WriteOnlyPojo();
         pojo.setName("han");
         pojo.setSecret("hidden");
-        if (facade.streamingMode() != StreamingFacade.StreamingMode.PLUGIN_MODULE) {
+        if (facade.realStreamingMode() != StreamingContext.StreamingMode.PLUGIN_MODULE) {
             assertEquals("{\"name\":\"han\"}", facade.writeNodeAsString(pojo));
         }
 
@@ -178,7 +185,7 @@ public class GsonFacadeTest {
 
     @Test
     void testExclusiveIoIsRejectedAtRuntime() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.EXCLUSIVE_IO));
         JsonException ex = assertThrows(JsonException.class,
                 () -> facade.readNode("{}", Object.class));
         assertTrue(ex.getMessage().contains("EXCLUSIVE_IO"));
@@ -226,6 +233,24 @@ public class GsonFacadeTest {
         private transient int transientHeight;
     }
 
+    public static class InstantFieldBook {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant createdAt;
+        public Instant updatedAt;
+    }
+
+    public static class InstantCreatorBook {
+        public final Instant createdAt;
+        public final Instant updatedAt;
+
+        @org.sjf4j.annotation.node.NodeCreator
+        public InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
+                                  @NodeProperty("updatedAt") Instant updatedAt) {
+            this.createdAt = createdAt;
+            this.updatedAt = updatedAt;
+        }
+    }
+
     private static void assertNodeField(GsonJsonFacade facade) {
         String json1 = "{\"id\":123,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
         String json2 = "{\"user_name\":\"han\",\"id\":123,\"height\":175.5,\"transientHeight\":189.9}";
@@ -240,6 +265,27 @@ public class GsonFacadeTest {
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         assertEquals(json2, sw.toString());
+    }
+
+    private static void assertValueFormat(GsonJsonFacade facade) {
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
+        String json = "{\"createdAt\":" + epochMillis + ",\"updatedAt\":\"" + instant + "\"}";
+
+        InstantFieldBook book = (InstantFieldBook) facade.readNode(new StringReader(json), InstantFieldBook.class);
+        assertEquals(instant, book.createdAt);
+        assertEquals(instant, book.updatedAt);
+        assertEquals(json, facade.writeNodeAsString(book));
+
+        InstantCreatorBook creatorBook = (InstantCreatorBook) facade.readNode(new StringReader(json), InstantCreatorBook.class);
+        assertEquals(instant, creatorBook.createdAt);
+        assertEquals(instant, creatorBook.updatedAt);
+
+        GsonJsonFacade configured = new GsonJsonFacade(new GsonBuilder(),
+                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                        facade.realStreamingMode()));
+        assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
+        assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
     }
 
     @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
@@ -327,13 +373,14 @@ public class GsonFacadeTest {
                 modeTests("write-only-hidden", GsonFacadeTest::assertWriteOnlyMembersAreNotSerialized),
                 modeTests("node-value", GsonFacadeTest::assertNodeValue),
                 modeTests("node-field", GsonFacadeTest::assertNodeField),
+                modeTests("value-format", GsonFacadeTest::assertValueFormat),
                 modeTests("node-naming", GsonFacadeTest::assertNodeNaming)
         ).flatMap(s -> s);
     }
 
     @Test
     void testSkipNode1() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.SHARED_IO));
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +
@@ -354,7 +401,7 @@ public class GsonFacadeTest {
 
     @Test
     void testPluginModuleAllowsNativeEquivalentPublicPojo() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PublicPlainBook.class);
         assertEquals("han", book.userName);
@@ -364,7 +411,7 @@ public class GsonFacadeTest {
 
     @Test
     void testPluginModuleAllowsBeanAccessorPojo() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         AccessorBook book = (AccessorBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 AccessorBook.class);
         assertEquals("han", book.getUserName());
@@ -374,7 +421,7 @@ public class GsonFacadeTest {
 
     @Test
     void testPluginModuleBeanOnlySkipsNonPublicPlainPojo() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);
@@ -394,7 +441,7 @@ public class GsonFacadeTest {
 
     @Test
     void testPluginModuleFieldBasedAnnotatedAllowsNonPublicPlainPojo() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         FieldBasedPrivateBook book = (FieldBasedPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 FieldBasedPrivateBook.class);
         assertEquals("han", book.userName);

@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.Nodes;
 
 import java.io.StringReader;
@@ -33,11 +33,11 @@ class JsonpFacadeTest {
     void testReadWriteAllModes() {
         String json = "{\"id\":123,\"name\":\"han\",\"height\":175.3,\"friends\":{\"jack\":\"good\",\"rose\":{\"age\":[18,20]}},\"sex\":true}";
 
-        for (StreamingFacade.StreamingMode mode : new StreamingFacade.StreamingMode[]{
-                StreamingFacade.StreamingMode.SHARED_IO,
-                StreamingFacade.StreamingMode.AUTO
+        for (StreamingContext.StreamingMode mode : new StreamingContext.StreamingMode[]{
+                StreamingContext.StreamingMode.SHARED_IO,
+                StreamingContext.StreamingMode.AUTO
         }) {
-            JsonpJsonFacade facade = new JsonpJsonFacade();
+            JsonpJsonFacade facade = new JsonpJsonFacade(new StreamingContext(mode));
             Book book = (Book) facade.readNode(new StringReader(json), Book.class);
             String out = facade.writeNodeAsString(book);
             assertEquals(json, out);
@@ -90,7 +90,7 @@ class JsonpFacadeTest {
     @Test
     void testDefaultModeIsSharedIo() {
         JsonpJsonFacade facade = new JsonpJsonFacade();
-        assertEquals(StreamingFacade.StreamingMode.SHARED_IO, facade.streamingMode());
+        assertEquals(StreamingContext.StreamingMode.SHARED_IO, facade.realStreamingMode());
     }
 
     @Test

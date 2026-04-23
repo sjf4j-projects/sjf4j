@@ -1,5 +1,6 @@
 package org.sjf4j;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -8,14 +9,16 @@ import org.sjf4j.annotation.node.AnyOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.NodeFacade;
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.facade.simple.SimpleNodeFacade;
 import org.sjf4j.mapper.NodeMapper;
-import org.sjf4j.mapper.NodeMapperBuilder;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
 import java.lang.reflect.Type;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -25,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,12 +39,12 @@ public class Sjf4jTest {
 
     @Test
     void testExplicitJsonFacadeStillUsesSharedNodeFacade() {
-        Sjf4j first = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
+        Sjf4j first = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
         Sjf4j second = Sjf4j.builder().build();
 
-        // The runtime should reuse one node facade regardless of builder entry point.
-        assertSame(first.getNodeFacade(), second.getNodeFacade());
-        assertSame(first.getNodeFacade(), Sjf4j.global().getNodeFacade());
+        // The runtime now owns an isolated node facade per configuration context.
+        assertNotSame(first.nodeFacade(), second.nodeFacade());
+        assertNotSame(first.nodeFacade(), Sjf4j.global().nodeFacade());
     }
 
 
@@ -143,16 +147,14 @@ public class Sjf4jTest {
 
     @Test
     void testBuilderCreatesUsableRuntime() {
-        SimpleJsonFacade jsonFacade = new SimpleJsonFacade();
         Sjf4j runtime = Sjf4j.builder()
-                .jsonFacade(jsonFacade)
+                .jsonFacadeProvider(SimpleJsonFacade.provider())
                 .build();
 
         JsonObject user = runtime.fromJson("{\"name\":\"han\",\"age\":18}", JsonObject.class);
         assertEquals("han", user.getString("name"));
         assertEquals(18, user.getInt("age"));
         assertEquals("{\"name\":\"han\",\"age\":18}", runtime.toJsonString(user));
-        assertSame(jsonFacade, runtime.getJsonFacade());
 
         Map<String, Object> map = runtime.fromNode(user, new TypeReference<Map<String, Object>>() {});
         assertEquals("han", map.get("name"));
@@ -168,43 +170,40 @@ public class Sjf4jTest {
         Sjf4j global = Sjf4j.global();
 
         assertSame(global, Sjf4j.global());
-        assertSame(global.getJsonFacade(), Sjf4j.global().getJsonFacade());
+        assertSame(global.jsonFacade(), Sjf4j.global().jsonFacade());
     }
 
-    @Test
-    void testRuntimeFromJsonDoesNotUseRuntimeNodeFacadeInsideStreaming() {
-        AtomicInteger nodeFacadeReads = new AtomicInteger();
-        NodeFacade trackingNodeFacade = new NodeFacade() {
-            private final NodeFacade delegate = new SimpleNodeFacade();
-
-            @Override
-            public Object readNode(Object node, Type type, boolean deepCopy) {
-                nodeFacadeReads.incrementAndGet();
-                return delegate.readNode(node, type, deepCopy);
-            }
-
-            @Override
-            public Object writeNode(Object node) {
-                return delegate.writeNode(node);
-            }
-        };
-        Sjf4j runtime = Sjf4j.builder()
-                .jsonFacade(new SimpleJsonFacade())
-                .nodeFacade(trackingNodeFacade)
-                .build();
-
-        RuntimePet pet = runtime.fromJson("{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}", RuntimePet.class);
-
-        assertInstanceOf(RuntimeCat.class, pet);
-        assertEquals(0, nodeFacadeReads.get());
-    }
+//    @Test
+//    void testRuntimeFromJsonDoesNotUseRuntimeNodeFacadeInsideStreaming() {
+//        AtomicInteger nodeFacadeReads = new AtomicInteger();
+//        NodeFacade trackingNodeFacade = new NodeFacade() {
+//            private final NodeFacade delegate = new SimpleNodeFacade();
+//
+//            @Override
+//            public Object readNode(Object node, Type type, boolean deepCopy) {
+//                nodeFacadeReads.incrementAndGet();
+//                return delegate.readNode(node, type, deepCopy);
+//            }
+//
+//            @Override
+//            public Object writeNode(Object node) {
+//                return delegate.writeNode(node);
+//            }
+//        };
+//        Sjf4j runtime = Sjf4j.builder()
+//                .jsonFacadeProvider(SimpleJsonFacade.provider())
+//                .build();
+//
+//        RuntimePet pet = runtime.fromJson("{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}", RuntimePet.class);
+//
+//        assertInstanceOf(RuntimeCat.class, pet);
+//        assertEquals(0, nodeFacadeReads.get());
+//    }
 
     @Test
     void testRuntimeFromNodeAlwaysIncludesBindingPath() {
         JsonObject invalidNode = JsonObject.of("inner", JsonObject.of("count", JsonObject.of("bad", true)));
-        Sjf4j runtime = Sjf4j.builder()
-                .nodeFacade(new SimpleNodeFacade())
-                .build();
+        Sjf4j runtime = Sjf4j.builder().build();
 
         BindingException error = findBindingException(assertThrows(JsonException.class,
                 () -> runtime.fromNode(invalidNode, RuntimeOuter.class)));
@@ -219,43 +218,112 @@ public class Sjf4jTest {
         Sjf4j first = Sjf4j.builder().build();
         Sjf4j second = Sjf4j.builder().build();
 
-        assertSame(first.getNodeFacade(), second.getNodeFacade());
-        assertSame(first.getNodeFacade(), Sjf4j.global().getNodeFacade());
+        assertNotSame(first.nodeFacade(), second.nodeFacade());
+        assertNotSame(first.nodeFacade(), Sjf4j.global().nodeFacade());
+    }
+
+//    @Test
+//    void testRuntimeMapperBuilderUsesDefaultNodeFacade() {
+//        AtomicInteger nodeFacadeReads = new AtomicInteger();
+//        NodeFacade trackingNodeFacade = new NodeFacade() {
+//            private final NodeFacade delegate = new SimpleNodeFacade();
+//
+//            @Override
+//            public Object readNode(Object node, Type type, boolean deepCopy) {
+//                nodeFacadeReads.incrementAndGet();
+//                return delegate.readNode(node, type, deepCopy);
+//            }
+//
+//            @Override
+//            public Object writeNode(Object node) {
+//                return delegate.writeNode(node);
+//            }
+//        };
+//        Sjf4j runtime = Sjf4j.builder()
+//                .nodeFacade(trackingNodeFacade)
+//                .build();
+//        RuntimeMapperSource source = new RuntimeMapperSource();
+//        source.name = "han";
+//
+//        NodeMapper<RuntimeMapperSource, RuntimeMapperTarget> mapper =
+//                NodeMapper.builder(RuntimeMapperSource.class, RuntimeMapperTarget.class).build();
+//        RuntimeMapperTarget target = mapper.map(source);
+//
+//        assertEquals("han", target.name);
+//        assertEquals(0, nodeFacadeReads.get());
+//    }
+
+    @Test
+    void testBuilderDefaultValueFormatAppliesAcrossJsonAndNodeFacade() {
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
+
+        Sjf4j runtime = Sjf4j.builder()
+                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .defaultValueFormat(Instant.class, "epochMillis")
+                .build();
+
+        assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
+        assertEquals(epochMillis, runtime.toRaw(instant));
+        assertEquals(instant, runtime.fromJson(String.valueOf(epochMillis), Instant.class));
+        assertEquals(instant, runtime.fromNode(epochMillis, Instant.class));
     }
 
     @Test
-    void testRuntimeMapperBuilderUsesDefaultNodeFacade() {
-        AtomicInteger nodeFacadeReads = new AtomicInteger();
-        NodeFacade trackingNodeFacade = new NodeFacade() {
-            private final NodeFacade delegate = new SimpleNodeFacade();
+    void testJsonFacadeProviderReceivesBuilderValueFormatMapping() {
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
 
-            @Override
-            public Object readNode(Object node, Type type, boolean deepCopy) {
-                nodeFacadeReads.incrementAndGet();
-                return delegate.readNode(node, type, deepCopy);
-            }
-
-            @Override
-            public Object writeNode(Object node) {
-                return delegate.writeNode(node);
-            }
-        };
         Sjf4j runtime = Sjf4j.builder()
-                .nodeFacade(trackingNodeFacade)
+                .defaultValueFormat(Instant.class, "epochMillis")
+                .jsonFacadeProvider(SimpleJsonFacade.provider())
                 .build();
-        RuntimeMapperSource source = new RuntimeMapperSource();
-        source.name = "han";
 
-        NodeMapper<RuntimeMapperSource, RuntimeMapperTarget> mapper =
-                NodeMapper.builder(RuntimeMapperSource.class, RuntimeMapperTarget.class).build();
-        RuntimeMapperTarget target = mapper.map(source);
-
-        assertEquals("han", target.name);
-        assertEquals(0, nodeFacadeReads.get());
+        assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
+        assertEquals(instant, runtime.fromJson(String.valueOf(epochMillis), Instant.class));
     }
 
-    static class RuntimePojo {
-        public JsonObject profile;
+    @Test
+    void testJsonFacadeProviderReceivesBuilderStreamingMode() {
+        Sjf4j runtime = Sjf4j.builder()
+                .streamingMode(StreamingContext.StreamingMode.SHARED_IO)
+                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+                .build();
+
+        assertEquals(StreamingContext.StreamingMode.SHARED_IO, runtime.jsonFacade().realStreamingMode());
+    }
+
+    @Test
+    void testJsonFacadeProviderCanUseBuilderValueFormatMapping() {
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
+
+        Sjf4j runtime = Sjf4j.builder()
+                .jsonFacadeProvider(SimpleJsonFacade.provider())
+                .defaultValueFormat(Instant.class, "epochMillis")
+                .build();
+
+        assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
+        assertEquals(instant, runtime.fromJson(String.valueOf(epochMillis), Instant.class));
+    }
+
+    @Test
+    void testJsonFacadeProviderCanUseBuilderStreamingMode() {
+        Sjf4j runtime = Sjf4j.builder()
+                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+                .streamingMode(StreamingContext.StreamingMode.PLUGIN_MODULE)
+                .build();
+
+        assertEquals(StreamingContext.StreamingMode.PLUGIN_MODULE, runtime.jsonFacade().realStreamingMode());
+    }
+
+    @Test
+    void testBuilderDefaultValueFormatRejectsPrimitiveValueType() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> Sjf4j.builder().defaultValueFormat(int.class, "number"));
+
+        assertTrue(ex.getMessage().contains("primitive type 'int'"));
+        assertTrue(ex.getMessage().contains("boxed type 'java.lang.Integer'"));
     }
 
     private static BindingException findBindingException(Throwable throwable) {

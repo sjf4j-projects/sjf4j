@@ -15,14 +15,15 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.FacadeNodes;
-import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.ValueFormatMapping;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.exception.JsonException;
 import tools.jackson.databind.PropertyName;
@@ -43,7 +44,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -57,7 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson3FacadeTest {
 
     private final Sjf4j sjf4j = Sjf4j.builder()
-            .jsonFacade(new Jackson3JsonFacade())
+            .jsonFacadeProvider(Jackson3JsonFacade.provider())
             .build();
 
     static class Book extends JsonObject {
@@ -176,6 +179,24 @@ class Jackson3FacadeTest {
         transient int transientHeight;
     }
 
+    static class InstantFieldBook {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant createdAt;
+        public Instant updatedAt;
+    }
+
+    static class InstantCreatorBook {
+        public final Instant createdAt;
+        public final Instant updatedAt;
+
+        @NodeCreator
+        public InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
+                                  @NodeProperty("updatedAt") Instant updatedAt) {
+            this.createdAt = createdAt;
+            this.updatedAt = updatedAt;
+        }
+    }
+
     @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
     static class SnakeBook extends JsonObject {
         public String userName;
@@ -249,10 +270,14 @@ class Jackson3FacadeTest {
         public Map<String, Object> ext;
     }
 
-    private static Stream<StreamingFacade.StreamingMode> allModes() {
+    private static StreamingContext ctx(StreamingContext.StreamingMode mode) {
+        return new StreamingContext(mode);
+    }
+
+    private static Stream<StreamingContext.StreamingMode> allModes() {
         return Stream.of(
-                StreamingFacade.StreamingMode.SHARED_IO,
-                StreamingFacade.StreamingMode.PLUGIN_MODULE
+                StreamingContext.StreamingMode.SHARED_IO,
+                StreamingContext.StreamingMode.PLUGIN_MODULE
         );
     }
 
@@ -261,8 +286,8 @@ class Jackson3FacadeTest {
         void run(Jackson3JsonFacade facade) throws Exception;
     }
 
-    private static Jackson3JsonFacade newFacade(StreamingFacade.StreamingMode mode) {
-        return new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(), mode);
+    private static Jackson3JsonFacade newFacade(StreamingContext.StreamingMode mode) {
+        return new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(), ctx(mode));
     }
 
     private static Stream<DynamicTest> modeTests(String caseName, ModeCase caze) {
@@ -270,7 +295,7 @@ class Jackson3FacadeTest {
     }
 
     private static Stream<DynamicTest> modeTests(String caseName,
-                                                 Stream<StreamingFacade.StreamingMode> modes,
+                                                 Stream<StreamingContext.StreamingMode> modes,
                                                  ModeCase caze) {
         return modes.map(mode -> DynamicTest.dynamicTest(caseName + " mode=" + mode, () -> {
             Jackson3JsonFacade facade = newFacade(mode);
@@ -305,6 +330,27 @@ class Jackson3FacadeTest {
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         assertEquals(expected, sw.toString());
+    }
+
+    private static void assertValueFormat(Jackson3JsonFacade facade) {
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
+        String json = "{\"createdAt\":" + epochMillis + ",\"updatedAt\":\"" + instant + "\"}";
+
+        InstantFieldBook book = (InstantFieldBook) facade.readNode(new StringReader(json), InstantFieldBook.class);
+        assertEquals(instant, book.createdAt);
+        assertEquals(instant, book.updatedAt);
+        assertEquals(json, facade.writeNodeAsString(book));
+
+        InstantCreatorBook creatorBook = (InstantCreatorBook) facade.readNode(new StringReader(json), InstantCreatorBook.class);
+        assertEquals(instant, creatorBook.createdAt);
+        assertEquals(instant, creatorBook.updatedAt);
+
+        Jackson3JsonFacade configured = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
+                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                        facade.realStreamingMode()));
+        assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
+        assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
     }
 
     private static void assertNodeNaming(Jackson3JsonFacade facade) {
@@ -402,6 +448,7 @@ class Jackson3FacadeTest {
         return Stream.of(
                 modeTests("node-value", Jackson3FacadeTest::assertNodeValue),
                 modeTests("node-field", Jackson3FacadeTest::assertNodeField),
+                modeTests("value-format", Jackson3FacadeTest::assertValueFormat),
                 modeTests("node-naming", Jackson3FacadeTest::assertNodeNaming),
                 modeTests("dynamic-binding", Jackson3FacadeTest::assertDynamicBinding),
                 modeTests("creator-extra-field", Jackson3FacadeTest::assertCreatorExtraField),
@@ -424,7 +471,7 @@ class Jackson3FacadeTest {
                 .annotationIntrospector(new LegacyNameIntrospector())
                 .build();
 
-        Jackson3JsonFacade facade = new Jackson3JsonFacade(mapper, StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Jackson3JsonFacade facade = new Jackson3JsonFacade(mapper, ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         NativeLegacyBook book = (NativeLegacyBook) facade.readNode("{\"legacy_name\":\"legacy\"}",
                 NativeLegacyBook.class);
         assertEquals("legacy", book.legacyName);
@@ -437,7 +484,7 @@ class Jackson3FacadeTest {
     @Test
     void testPluginModuleFallsBackForNonPublicPlainPojo() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                StreamingFacade.StreamingMode.PLUGIN_MODULE);
+                ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);
@@ -458,7 +505,7 @@ class Jackson3FacadeTest {
     @Test
     void testExclusiveIoUnsupportedAtRuntime() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                StreamingFacade.StreamingMode.EXCLUSIVE_IO);
+                ctx(StreamingContext.StreamingMode.EXCLUSIVE_IO));
         JsonException ex = assertThrows(JsonException.class,
                 () -> facade.readNode("{}", Object.class));
         assertTrue(ex.getMessage().contains("Unsupported"));
@@ -467,7 +514,7 @@ class Jackson3FacadeTest {
     @Test
     void testPluginModuleAllowsNativeEquivalentPublicPojo() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                StreamingFacade.StreamingMode.PLUGIN_MODULE);
+                ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PublicPlainBook.class);
         assertEquals("han", book.userName);
@@ -478,7 +525,7 @@ class Jackson3FacadeTest {
     @Test
     void testPluginModuleAllowsNativeEquivalentAccessorPojo() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                StreamingFacade.StreamingMode.PLUGIN_MODULE);
+                ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         AccessorBook book = (AccessorBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 AccessorBook.class);
         assertEquals("han", book.getUserName());
@@ -489,7 +536,7 @@ class Jackson3FacadeTest {
     @Test
     void testFieldBasedAnnotatedAllowsNonPublicPlainPojo() {
         Jackson3JsonFacade facade = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                StreamingFacade.StreamingMode.PLUGIN_MODULE);
+                ctx(StreamingContext.StreamingMode.PLUGIN_MODULE));
         FieldBasedPrivateBook book = (FieldBasedPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 FieldBasedPrivateBook.class);
         assertEquals("han", book.userName);
@@ -499,7 +546,7 @@ class Jackson3FacadeTest {
 
     @Test
     void testDefaultFacadePrefersJackson3() {
-        assertTrue(FacadeFactory.createJsonFacade() instanceof Jackson3JsonFacade);
+        assertTrue(FacadeFactory.jsonFacadeProvider().create(StreamingContext.EMPTY) instanceof Jackson3JsonFacade);
     }
 
     @Test
@@ -534,14 +581,12 @@ class Jackson3FacadeTest {
         assertEquals("one", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").remove(objectNode)).asString());
         JsonPath.compile("/0").add(objectNode, StringNode.valueOf("again"));
         assertEquals("again", JsonPath.compile("/0").getString(objectNode));
-        JsonPath.compile("/missing/name").ensurePut(objectNode, StringNode.valueOf("created"));
-        assertEquals("created", JsonPath.compile("/missing/name").getString(objectNode));
+        assertThrows(JsonException.class, () -> JsonPath.compile("/missing/name").ensurePut(objectNode, StringNode.valueOf("created")));
 
         assertNull(JsonPath.compile("/0").ensurePutIfAbsent(arrayNode, StringNode.valueOf("ignored")));
         assertEquals("a", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").replace(arrayNode, StringNode.valueOf("b"))).asString());
         JsonPath.compile("/1").add(arrayNode, StringNode.valueOf("c"));
         assertEquals("c", JsonPath.compile("/1").getString(arrayNode));
-        JsonPath.compile("/-/name").ensurePut(arrayNode, StringNode.valueOf("created"));
-        assertEquals("created", JsonPath.compile("/2/name").getString(arrayNode));
+        assertThrows(JsonException.class, () -> JsonPath.compile("/-/name").ensurePut(arrayNode, StringNode.valueOf("created")));
     }
 }

@@ -47,21 +47,24 @@ public class StreamingIOTest {
 
     private Sjf4j sjf4j = Sjf4j.global();
 
-    private void useJackson2(StreamingFacade.StreamingMode mode) {
+    private void useJackson2(StreamingContext.StreamingMode mode) {
         sjf4j = Sjf4j.builder(Sjf4j.global())
-                .jsonFacade(new Jackson2JsonFacade(new ObjectMapper(), mode))
+                .streamingMode(mode)
+                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
                 .build();
     }
 
-    private void useGson(StreamingFacade.StreamingMode mode) {
+    private void useGson(StreamingContext.StreamingMode mode) {
         sjf4j = Sjf4j.builder(Sjf4j.global())
-                .jsonFacade(new GsonJsonFacade(new GsonBuilder(), mode))
+                .streamingMode(mode)
+                .jsonFacadeProvider(GsonJsonFacade.provider(new GsonBuilder()))
                 .build();
     }
 
-    private void useFastjson2(StreamingFacade.StreamingMode mode) {
+    private void useFastjson2(StreamingContext.StreamingMode mode) {
         sjf4j = Sjf4j.builder(Sjf4j.global())
-                .jsonFacade(new Fastjson2JsonFacade(mode))
+                .streamingMode(mode)
+                .jsonFacadeProvider(Fastjson2JsonFacade.provider())
                 .build();
     }
 
@@ -232,7 +235,7 @@ public class StreamingIOTest {
 
     @Test
     void testSkipNode1() {
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\n" +
                 "  \"id\": 7,\n" +
                 "  \"skipObj\": {\n" +
@@ -254,7 +257,8 @@ public class StreamingIOTest {
 
     @Test
     public void testExceptionWithPathSegment1() {
-        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(), StreamingFacade.StreamingMode.SHARED_IO);
+        Jackson2JsonFacade facade = new Jackson2JsonFacade(new ObjectMapper(),
+                new StreamingContext(StreamingContext.StreamingMode.SHARED_IO));
         String json = "{\n" +
                 "  \"name\": \"Alice\",\n" +
                 "  \"friends\": [\n" +
@@ -284,12 +288,12 @@ public class StreamingIOTest {
         }
         assertNotNull(inner, "JsonBindingException not found in cause chain");
         log.info("inner:", inner);
-//        assertTrue(inner.getMessage().contains("/@UserJojo{*friends/[1/@UserJojo{*friends/[0/@UserJojo{*name"));
     }
 
     @Test
     public void testExceptionWithPathSegment2() {
-        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(), StreamingFacade.StreamingMode.SHARED_IO);
+        GsonJsonFacade facade = new GsonJsonFacade(new GsonBuilder(),
+                new StreamingContext(StreamingContext.StreamingMode.SHARED_IO));
 
         UserJojo user1 = new UserJojo();
         user1.name = "Alice";
@@ -314,67 +318,67 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfByDiscriminatorOnField() {
-        useGson(StreamingFacade.StreamingMode.SHARED_IO);
+        useGson(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}";
 
         Zoo zoo = sjf4j.fromJson(json, Zoo.class);
         assertNotNull(zoo);
-        assertTrue(zoo.pet instanceof Cat);
+        assertInstanceOf(Cat.class, zoo.pet);
         assertEquals("Mimi", zoo.pet.getName());
         assertEquals(9, ((Cat) zoo.pet).getLives());
     }
 
     @Test
     void testAnyOfByDiscriminatorOnRootType() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"kind\":\"dog\",\"name\":\"Lucky\",\"bark\":3}";
 
         Animal animal = sjf4j.fromJson(json, Animal.class);
         assertNotNull(animal);
-        assertTrue(animal instanceof Dog);
+        assertInstanceOf(Dog.class, animal);
         assertEquals("Lucky", animal.getName());
         assertEquals(3, ((Dog) animal).getBark());
     }
 
     @Test
     void testAnyOfByJsonTypeWithoutDiscriminator() {
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
 
         Poly p1 = sjf4j.fromJson("{\"a\":1}", Poly.class);
         Poly p2 = sjf4j.fromJson("[1,2,3]", Poly.class);
 
-        assertTrue(p1 instanceof PolyObj);
-        assertTrue(p2 instanceof PolyArr);
+        assertInstanceOf(PolyObj.class, p1);
+        assertInstanceOf(PolyArr.class, p2);
     }
 
     @Test
     void testAnyOfParentDiscriminatorEarly() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
         ParentZoo zoo = sjf4j.fromJson(json, ParentZoo.class);
         assertNotNull(zoo);
-        assertTrue(zoo.pet instanceof Cat);
+        assertInstanceOf(Cat.class, zoo.pet);
         assertEquals("Mimi", zoo.pet.getName());
         assertEquals(9, ((Cat) zoo.pet).getLives());
     }
 
     @Test
     void testAnyOfParentDiscriminatorLate() {
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
 
         ParentZoo zoo = sjf4j.fromJson(json, ParentZoo.class);
         assertNotNull(zoo);
-        assertTrue(zoo.pet instanceof Dog);
+        assertInstanceOf(Dog.class, zoo.pet);
         assertEquals("Lucky", zoo.pet.getName());
         assertEquals(3, ((Dog) zoo.pet).getBark());
     }
 
     @Test
     void testAnyOfParentPathNotSupported() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
-        System.out.println(sjf4j.inspect());
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
+        System.out.println(Nodes.inspect(sjf4j));
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
         assertThrows(JsonException.class, () -> sjf4j.fromJson(json, ParentZooPath.class));
@@ -384,7 +388,7 @@ public class StreamingIOTest {
         String json = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}";
         Zoo zoo = sjf4j.fromJson(json, Zoo.class);
         assertNotNull(zoo);
-        assertTrue(zoo.pet instanceof Cat);
+        assertInstanceOf(Cat.class, zoo.pet);
         assertEquals("Mimi", zoo.pet.getName());
         assertEquals(9, ((Cat) zoo.pet).getLives());
     }
@@ -395,23 +399,23 @@ public class StreamingIOTest {
                 + "\"petMap\":{\"a\":{\"kind\":\"cat\",\"name\":\"Mini\",\"lives\":7}}}";
         ZooGroup zoo = sjf4j.fromJson(json, ZooGroup.class);
         assertNotNull(zoo);
-        assertTrue(zoo.pets.get(0) instanceof Cat);
-        assertTrue(zoo.pets.get(1) instanceof Dog);
-        assertTrue(zoo.petMap.get("a") instanceof Cat);
+        assertInstanceOf(Cat.class, zoo.pets.get(0));
+        assertInstanceOf(Dog.class, zoo.pets.get(1));
+        assertInstanceOf(Cat.class, zoo.petMap.get("a"));
     }
 
     private void assertAnyOfByJsonTypeOnRoot() {
         Poly p1 = sjf4j.fromJson("{\"a\":1}", Poly.class);
         Poly p2 = sjf4j.fromJson("[1,2,3]", Poly.class);
-        assertTrue(p1 instanceof PolyObj);
-        assertTrue(p2 instanceof PolyArr);
+        assertInstanceOf(PolyObj.class, p1);
+        assertInstanceOf(PolyArr.class, p2);
     }
 
     private void assertAnyOfByCurrentPath() {
         String json = "{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mimi\",\"lives\":9}";
         PathAnimal animal = sjf4j.fromJson(json, PathAnimal.class);
         assertNotNull(animal);
-        assertTrue(animal instanceof PathCat);
+        assertInstanceOf(PathCat.class, animal);
         assertEquals("Mimi", animal.getName());
         assertEquals(9, ((PathCat) animal).getLives());
     }
@@ -425,104 +429,104 @@ public class StreamingIOTest {
         String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
         ParentZoo zoo = sjf4j.fromJson(json, ParentZoo.class);
         assertNotNull(zoo);
-        assertTrue(zoo.pet instanceof Dog);
+        assertInstanceOf(Dog.class, zoo.pet);
         assertEquals("Lucky", zoo.pet.getName());
         assertEquals(3, ((Dog) zoo.pet).getBark());
     }
 
     @Test
     void testAnyOfPluginModuleByDiscriminatorOnFieldAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByDiscriminatorOnField();
 
-        useGson(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByDiscriminatorOnField();
 
-        useFastjson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByDiscriminatorOnField();
     }
 
     @Test
     void testAnyOfPluginModuleByJsonTypeOnRootAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByJsonTypeOnRoot();
 
-        useGson(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByJsonTypeOnRoot();
 
-        useFastjson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByJsonTypeOnRoot();
     }
 
     @Test
     void testAnyOfCurrentPathSharedIoAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfByCurrentPath();
 
-        useGson(StreamingFacade.StreamingMode.SHARED_IO);
+        useGson(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfByCurrentPath();
 
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfByCurrentPath();
     }
 
     @Test
     void testAnyOfCurrentPathPluginModuleAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByCurrentPath();
 
-        useGson(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByCurrentPath();
 
-        useFastjson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfByCurrentPath();
     }
 
     @Test
     void testAnyOfFailbackNullSharedIoAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfFailbackNull();
 
-        useGson(StreamingFacade.StreamingMode.SHARED_IO);
+        useGson(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfFailbackNull();
 
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfFailbackNull();
     }
 
     @Test
     void testAnyOfFailbackNullPluginModuleAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfFailbackNull();
 
-        useGson(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfFailbackNull();
 
-        useFastjson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfFailbackNull();
     }
 
     @Test
     void testAnyOfPluginModuleParentDiscriminatorLateAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
 
-        useGson(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
 
-        useFastjson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertAnyOfParentDiscriminatorLateCase();
     }
 
     @Test
     void testAnyOfInContainersSharedIoAllBackends() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfInContainers();
 
-        useGson(StreamingFacade.StreamingMode.SHARED_IO);
+        useGson(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfInContainers();
 
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         assertAnyOfInContainers();
     }
 
@@ -575,48 +579,48 @@ public class StreamingIOTest {
 
     @Test
     void testGenericJojoBindingSharedIo() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
 
-        useGson(StreamingFacade.StreamingMode.SHARED_IO);
+        useGson(StreamingContext.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
 
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }
 
     @Test
     void testConcreteContainerTargetsSharedIo() {
-        useJackson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
 
-        useGson(StreamingFacade.StreamingMode.SHARED_IO);
+        useGson(StreamingContext.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
 
-        useFastjson2(StreamingFacade.StreamingMode.SHARED_IO);
+        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         assertConcreteContainerTargets();
     }
 
     @Test
     void testGenericJojoBindingPluginModuleJackson2() {
-        useJackson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }
 
     @Test
     void testGenericJojoBindingPluginModuleGson() {
-        useGson(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }
 
     @Test
     void testGenericJojoBindingPluginModuleFastjson2() {
-        useFastjson2(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
         assertGenericPatchResponse();
         assertGenericPatchResponseWithCreator();
     }

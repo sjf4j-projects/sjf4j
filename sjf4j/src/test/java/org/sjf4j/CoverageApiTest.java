@@ -66,7 +66,7 @@ class CoverageApiTest {
 
     @BeforeEach
     void setUp() {
-        sjf4j = Sjf4j.builder().jsonFacade(new SimpleJsonFacade()).build();
+        sjf4j = Sjf4j.builder().jsonFacadeProvider(SimpleJsonFacade.provider()).build();
     }
 
     @Test

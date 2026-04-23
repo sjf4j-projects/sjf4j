@@ -14,7 +14,7 @@ import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeRegistry;
@@ -23,10 +23,13 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
+import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -40,16 +43,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class Fastjson2FacadeTest {
 
-    private static Stream<StreamingFacade.StreamingMode> allModes() {
+    private static StreamingContext ctx(StreamingContext.StreamingMode mode) {
+        return new StreamingContext(mode);
+    }
+
+    private static Stream<StreamingContext.StreamingMode> allModes() {
         return Stream.of(
-                StreamingFacade.StreamingMode.SHARED_IO,
-                StreamingFacade.StreamingMode.EXCLUSIVE_IO,
-                StreamingFacade.StreamingMode.PLUGIN_MODULE
+                StreamingContext.StreamingMode.SHARED_IO,
+                StreamingContext.StreamingMode.EXCLUSIVE_IO,
+                StreamingContext.StreamingMode.PLUGIN_MODULE
         );
     }
 
-    private static Fastjson2JsonFacade newFacade(StreamingFacade.StreamingMode mode) {
-        return new Fastjson2JsonFacade(mode);
+    private static Fastjson2JsonFacade newFacade(StreamingContext.StreamingMode mode) {
+        return new Fastjson2JsonFacade(new com.alibaba.fastjson2.JSONReader.Feature[0],
+                new com.alibaba.fastjson2.JSONWriter.Feature[0], ctx(mode));
     }
 
     @FunctionalInterface
@@ -74,6 +82,7 @@ public class Fastjson2FacadeTest {
                 modeTests("write-only-hidden", Fastjson2FacadeTest::assertWriteOnlyMembersAreNotSerialized),
                 modeTests("node-value", Fastjson2FacadeTest::assertNodeValue),
                 modeTests("node-field", Fastjson2FacadeTest::assertNodeField),
+                modeTests("value-format", Fastjson2FacadeTest::assertValueFormat),
                 modeTests("node-naming", Fastjson2FacadeTest::assertNodeNaming),
                 modeTests("creator-extra-field", Fastjson2FacadeTest::assertCreatorExtraField),
                 modeTests("creator-alias", Fastjson2FacadeTest::assertCreatorAlias),
@@ -242,6 +251,24 @@ public class Fastjson2FacadeTest {
         private transient int transientHeight;
     }
 
+    public static class InstantFieldBook {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant createdAt;
+        public Instant updatedAt;
+    }
+
+    public static class InstantCreatorBook {
+        public final Instant createdAt;
+        public final Instant updatedAt;
+
+        @NodeCreator
+        public InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
+                                  @NodeProperty("updatedAt") Instant updatedAt) {
+            this.createdAt = createdAt;
+            this.updatedAt = updatedAt;
+        }
+    }
+
     private static void assertNodeField(Fastjson2JsonFacade facade) {
         String json1 = "{\"id\":123,\"name\":null,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
         String json2 = "{\"user_name\":\"han\",\"id\":123,\"name\":null,\"height\":175.5,\"transientHeight\":189.9}";
@@ -256,6 +283,28 @@ public class Fastjson2FacadeTest {
         StringWriter sw = new StringWriter();
         facade.writeNode(sw, jo1);
         assertEquals(json2, sw.toString());
+    }
+
+    private static void assertValueFormat(Fastjson2JsonFacade facade) {
+        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
+        long epochMillis = instant.toEpochMilli();
+        String json = "{\"createdAt\":" + epochMillis + ",\"updatedAt\":\"" + instant + "\"}";
+
+        InstantFieldBook book = (InstantFieldBook) facade.readNode(new StringReader(json), InstantFieldBook.class);
+        assertEquals(instant, book.createdAt);
+        assertEquals(instant, book.updatedAt);
+        assertEquals(json, facade.writeNodeAsString(book));
+
+        InstantCreatorBook creatorBook = (InstantCreatorBook) facade.readNode(new StringReader(json), InstantCreatorBook.class);
+        assertEquals(instant, creatorBook.createdAt);
+        assertEquals(instant, creatorBook.updatedAt);
+
+        Fastjson2JsonFacade configured = new Fastjson2JsonFacade(new com.alibaba.fastjson2.JSONReader.Feature[0],
+                new com.alibaba.fastjson2.JSONWriter.Feature[0],
+                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                        facade.realStreamingMode()));
+        assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
+        assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
     }
 
     @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
@@ -411,12 +460,13 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testSkipNode1() {
-        assertSkipNode(new Fastjson2JsonFacade(StreamingFacade.StreamingMode.SHARED_IO));
+        assertSkipNode(new Fastjson2JsonFacade(new com.alibaba.fastjson2.JSONReader.Feature[0],
+                new com.alibaba.fastjson2.JSONWriter.Feature[0], ctx(StreamingContext.StreamingMode.SHARED_IO)));
     }
 
     @Test
     void testPluginModuleAllowsNativeEquivalentPublicPojo() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
         PublicPlainBook book = (PublicPlainBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PublicPlainBook.class);
         assertEquals("han", book.userName);
@@ -426,7 +476,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testPluginModuleAllowsBeanAccessorPojo() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
         AccessorBook book = (AccessorBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 AccessorBook.class);
         assertEquals("han", book.getUserName());
@@ -436,7 +486,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testPluginModuleBeanOnlySkipsNonPublicPlainPojo() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
         PlainPrivateBook book = (PlainPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 PlainPrivateBook.class);
         assertNull(book.userName);
@@ -456,7 +506,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testPluginModuleFieldBasedAnnotatedAllowsNonPublicPlainPojo() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
         FieldBasedPrivateBook book = (FieldBasedPrivateBook) facade.readNode("{\"userName\":\"han\",\"loginCount\":2}",
                 FieldBasedPrivateBook.class);
         assertEquals("han", book.userName);
@@ -466,7 +516,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testPluginModuleDoesNotPolluteGlobalFastjson2Providers() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
 
         IsolatedFieldBasedPrivateBook local = (IsolatedFieldBasedPrivateBook) facade.readNode(
                 "{\"userName\":\"han\",\"loginCount\":2}", IsolatedFieldBasedPrivateBook.class);
@@ -492,7 +542,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testPluginModuleAnyOfFailureMessage() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
         String json = "{\"kind\":\"cat\",\"pet\":{\"meow\":\"m\"}}";
 
         ParentPetHolder holder = (ParentPetHolder) facade.readNode(json, ParentPetHolder.class);
@@ -503,7 +553,7 @@ public class Fastjson2FacadeTest {
 
     @Test
     void testPluginModuleNormalFailureMessageWithoutAnyOfHint() {
-        Fastjson2JsonFacade facade = new Fastjson2JsonFacade(StreamingFacade.StreamingMode.PLUGIN_MODULE);
+        Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
 
         JsonException ex = assertThrows(JsonException.class, () -> facade.readNode("{", Book.class));
         assertTrue(ex.getMessage().contains("Failed to read JSON"));
