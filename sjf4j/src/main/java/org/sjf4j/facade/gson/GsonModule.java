@@ -53,10 +53,12 @@ public interface GsonModule {
                 return new AnyOfAdapter<>(ti.anyOfInfo, streamingContext);
             }
 
-            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(rawClazz);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-            if (vci != null) {
-                return new NodeValueAdapter<>(gson, vci);
+            if (ti.hasValueCodecs()) {
+                String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(rawClazz);
+                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return new NodeValueAdapter<>(gson, vci);
+                }
             }
 
             if (ti.requiresPojoReader()) {

@@ -120,10 +120,12 @@ public class SimpleNodeFacade implements NodeFacade {
             if (anyOfInfo != null) {
                 return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
-            String valueFormat = valueFormatMapping.defaultValueFormat(rawClazz);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-            if (vci != null) {
-                return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
+            if (ti.hasValueCodecs()) {
+                String valueFormat = valueFormatMapping.defaultValueFormat(rawClazz);
+                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
+                }
             }
 
             if (node instanceof String || node instanceof Character) {
@@ -518,7 +520,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
                 NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
                 NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null) {
+                if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = valueFormatMapping.defaultValueFormat(argRaw);
                     argVci = ti.getFormattedValueCodecInfo(valueFormat);
                 }
@@ -872,10 +874,12 @@ public class SimpleNodeFacade implements NodeFacade {
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-            String valueFormat = valueFormatMapping.defaultValueFormat(rawClazz);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-            if (vci != null) {
-                return vci.valueToRaw(node);
+            if (ti.hasValueCodecs()) {
+                String valueFormat = valueFormatMapping.defaultValueFormat(rawClazz);
+                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return vci.valueToRaw(node);
+                }
             }
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;

@@ -17,6 +17,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
@@ -92,7 +93,7 @@ public class StreamingPathSegmentOverheadBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            StreamingFacade.StreamingMode shared = StreamingFacade.StreamingMode.SHARED_IO;
+            StreamingContext shared = new StreamingContext(StreamingContext.StreamingMode.SHARED_IO);
             simpleFacade = new SimpleJsonFacade();
             jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), shared);
 
@@ -105,7 +106,7 @@ public class StreamingPathSegmentOverheadBenchmark {
             });
             gsonFacade = new GsonJsonFacade(gsonBuilder, shared);
 
-            fastjson2Facade = new Fastjson2JsonFacade(shared);
+            fastjson2Facade = new Fastjson2JsonFacade(null, null, shared);
 
             json = "flat".equals(shape) ? FLAT_JSON : NESTED_JSON;
         }
@@ -224,7 +225,7 @@ public class StreamingPathSegmentOverheadBenchmark {
         reader.startObject();
         while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
             String key = reader.nextName();
-            PathSegment cps = new PathSegment.Name(ps, Map.class, key);
+            PathSegment cps = new PathSegment.Name(ps, key);
             map.put(key, readRawTracked(reader, cps));
         }
         reader.endObject();
@@ -235,7 +236,7 @@ public class StreamingPathSegmentOverheadBenchmark {
         List<Object> list = new ArrayList<>();
         reader.startArray();
         for (int i = 0; reader.peekToken() != StreamingReader.Token.END_ARRAY; i++) {
-            PathSegment cps = new PathSegment.Index(ps, List.class, i);
+            PathSegment cps = new PathSegment.Index(ps, i);
             list.add(readRawTracked(reader, cps));
         }
         reader.endArray();

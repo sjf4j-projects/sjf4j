@@ -334,6 +334,10 @@ public final class NodeRegistry {
             return pojoInfo != null && pojoInfo.requiresPojoWriter;
         }
 
+        public boolean hasValueCodecs() {
+            return valueCodecInfo != null || formattedValueCodecs.length > 0;
+        }
+
         public ValueCodecInfo getFormattedValueCodecInfo(String valueFormat) {
             if (valueFormat == null || valueFormat.isEmpty()) return valueCodecInfo;
             for (ValueCodecInfo vci : formattedValueCodecs) {

@@ -53,6 +53,11 @@ public class JsonObject extends JsonContainer {
             ? null
             : NodeRegistry.registerPojoOrElseThrow(this.getClass());
 
+    protected final transient Map<String, NodeRegistry.FieldInfo> fieldMap =
+            pi == null ? null : pi.readableFields;
+
+    protected final transient boolean writeDynamic = pi == null || pi.writeDynamic;
+
     /**
      * Creates an empty JsonObject instance.
      */
@@ -256,13 +261,30 @@ public class JsonObject extends JsonContainer {
      */
     public void forEach(BiConsumer<String, Object> visitor) {
         Objects.requireNonNull(visitor, "visitor");
-        if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()){
+        if (fieldMap != null) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()){
                 visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
         if (dynamicMap != null) {
             for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
+                visitor.accept(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /**
+     * Performs the given visitor for each writable entry.
+     */
+    public void forEachWritable(BiConsumer<String, Object> visitor) {
+        Objects.requireNonNull(visitor, "visitor");
+        if (fieldMap != null) {
+            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : fieldMap.entrySet()) {
+                visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
+            }
+        }
+        if (writeDynamic && dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
                 visitor.accept(entry.getKey(), entry.getValue());
             }
         }

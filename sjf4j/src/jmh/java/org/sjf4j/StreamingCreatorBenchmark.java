@@ -23,6 +23,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -60,10 +61,11 @@ public class StreamingCreatorBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
-            jackson2 = new Jackson2JsonFacade(new ObjectMapper(), mode);
-            gson = new GsonJsonFacade(new GsonBuilder(), mode);
-            fastjson2 = new Fastjson2JsonFacade(mode);
+            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
+            StreamingContext context = new StreamingContext(mode);
+            jackson2 = new Jackson2JsonFacade(new ObjectMapper(), context);
+            gson = new GsonJsonFacade(new GsonBuilder(), context);
+            fastjson2 = new Fastjson2JsonFacade(null, null, context);
         }
     }
 

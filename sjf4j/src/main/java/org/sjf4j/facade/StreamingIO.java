@@ -79,43 +79,6 @@ public final class StreamingIO {
         }
     }
 
-//    private static NodeRegistry.ValueCodecInfo _resolveValueCodecInfo(Class<?> rawClazz,
-//                                                                      String explicitValueFormat,
-//                                                                      StreamingContext context) {
-//        if (explicitValueFormat != null) {
-//            return NodeRegistry.resolveValueCodecInfoOrElseThrow(rawClazz, explicitValueFormat);
-//        }
-//        String configuredValueFormat = context.valueFormatMapping().defaultValueFormat(rawClazz);
-//        if (configuredValueFormat != null) {
-//            return NodeRegistry.resolveValueCodecInfoOrElseThrow(rawClazz, configuredValueFormat);
-//        }
-//        return NodeRegistry.registerValueCodecInfo(rawClazz);
-//    }
-//
-//    private static NodeRegistry.ValueCodecInfo _resolveFieldValueCodecInfo(NodeRegistry.FieldInfo fi,
-//                                                                            Class<?> fieldRaw,
-//                                                                            StreamingContext context) {
-//        if (fi.valueFormat == null) {
-//            return _resolveValueCodecInfo(fieldRaw, null, context);
-//        }
-//        if (fi.resolvedValueCodec != null && fieldRaw == fi.rawClazz) {
-//            return fi.resolvedValueCodec;
-//        }
-//        return NodeRegistry.resolveValueCodecInfoOrElseThrow(fieldRaw, fi.valueFormat);
-//    }
-//
-//    private static NodeRegistry.ValueCodecInfo _resolveArgValueCodecInfo(NodeRegistry.CreatorInfo ci,
-//                                                                         int argIdx,
-//                                                                         Class<?> argRaw,
-//                                                                         StreamingContext context) {
-//        if (ci.argValueFormats == null || ci.argValueFormats[argIdx] == null) {
-//            return _resolveValueCodecInfo(argRaw, null, context);
-//        }
-//        if (ci.argValueCodecs != null && ci.argValueCodecs[argIdx] != null && argRaw == Types.rawBox(ci.argTypes[argIdx])) {
-//            return ci.argValueCodecs[argIdx];
-//        }
-//        return NodeRegistry.resolveValueCodecInfoOrElseThrow(argRaw, ci.argValueFormats[argIdx]);
-//    }
 
     private static Object _readRawNode(StreamingReader reader) throws IOException {
         switch (reader.peekToken()) {
@@ -257,13 +220,15 @@ public final class StreamingIO {
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        String valueFormat = context.valueFormatMapping.defaultValueFormat(rawClazz);
-        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-        if (vci != null) {
-            Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
-            Class<?> valueClazz = Types.rawBox(valueType);
-            Map<String, Object> map = _readMap(reader, vci.rawClazz, valueType, valueClazz, ti.anyOfInfo, context);
-            return vci.rawToValue(map);
+        if (ti.hasValueCodecs()) {
+            String valueFormat = context.valueFormatMapping.defaultValueFormat(rawClazz);
+            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+            if (vci != null) {
+                Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
+                Class<?> valueClazz = Types.rawBox(valueType);
+                Map<String, Object> map = _readMap(reader, vci.rawClazz, valueType, valueClazz, ti.anyOfInfo, context);
+                return vci.rawToValue(map);
+            }
         }
 
         NodeRegistry.PojoInfo pi = ti.pojoInfo;
@@ -322,7 +287,7 @@ public final class StreamingIO {
                 Class<?> argRaw = Types.rawBox(argType);
                 NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
                 NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
-                if (argVci == null) {
+                if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.valueFormatMapping.defaultValueFormat(argRaw);
                     argVci = ti.getFormattedValueCodecInfo(valueFormat);
                 }
@@ -778,12 +743,14 @@ public final class StreamingIO {
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-            String valueFormat = context.valueFormatMapping.defaultValueFormat(rawClazz);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-            if (vci != null) {
-                Object raw = vci.valueToRaw(node);
-                _writeNode(writer, raw, context);
-                return;
+            if (ti.hasValueCodecs()) {
+                String valueFormat = context.valueFormatMapping.defaultValueFormat(rawClazz);
+                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    Object raw = vci.valueToRaw(node);
+                    _writeNode(writer, raw, context);
+                    return;
+                }
             }
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
@@ -831,8 +798,11 @@ public final class StreamingIO {
 
     public static NodeRegistry.ValueCodecInfo resolveValueCodecInfo(Class<?> clazz, StreamingContext context) {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        String valueFormat = context.valueFormatMapping.defaultValueFormat(clazz);
-        return ti.getFormattedValueCodecInfo(valueFormat);
+        if (ti.hasValueCodecs()) {
+            String valueFormat = context.valueFormatMapping.defaultValueFormat(clazz);
+            return ti.getFormattedValueCodecInfo(valueFormat);
+        }
+        return null;
     }
 
     public static Class<?> resolveAnyOfJsonTypeTarget(JsonType jsonType, NodeRegistry.AnyOfInfo anyOfInfo) {

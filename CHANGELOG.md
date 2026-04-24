@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
 
 ### Changed
+- Changed Jackson 2 and Fastjson2 exclusive streaming IO paths to use backend-native typed read/write implementations for POJOs, containers, `AnyOf`, and value-codec flows while keeping shared `StreamingIO` semantics.
 - Changed snake-case conversion to live in `Strings.toSnakeCase(...)`, with `NamingStrategy.SNAKE_CASE` delegating to the shared helper.
 - Changed `SchemaValidator` convention lookup to try `<simple-name>.json` first and then `<snake-name>.json`, instead of probing `<full-class-name>.json`.
 - Changed `SchemaStore` local schema loaders to return `null` for missing files/resources so missing-schema decisions stay in higher-level callers.
@@ -26,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed path/schema traversal internals to use lighter `PathSegment` and `InstancedNode` metadata while standardizing rooted error-path reporting on JSONPath and JSON Pointer expressions.
 
 ### Fixed
+- Fixed backend-native Jackson/Fastjson2 streaming and module paths to skip formatted value-codec resolution when a type has no registered codecs, reducing unnecessary metadata work and avoiding null-driven fallback drift.
+- Fixed `JsonObject` writable traversal so dynamic entries honor `writeDynamic` during backend-native object serialization.
 - Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
 - Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.

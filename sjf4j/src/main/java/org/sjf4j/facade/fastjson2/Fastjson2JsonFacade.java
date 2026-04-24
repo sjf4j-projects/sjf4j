@@ -29,7 +29,7 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
      * Creates facade with default reader/writer features.
      */
     public Fastjson2JsonFacade() {
-        this(new JSONReader.Feature[0], new JSONWriter.Feature[0], StreamingContext.EMPTY);
+        this(null, null, StreamingContext.EMPTY);
     }
 
     /**
@@ -41,9 +41,9 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
 
     public Fastjson2JsonFacade(JSONReader.Feature[] readerFeatures, JSONWriter.Feature[] writerFeatures,
                                StreamingContext context) {
-        Objects.requireNonNull(readerFeatures, "readerFeatures");
-        Objects.requireNonNull(writerFeatures, "writerFeatures");
         Objects.requireNonNull(context, "context");
+        readerFeatures = readerFeatures == null ? new JSONReader.Feature[0] : readerFeatures;
+        writerFeatures = writerFeatures == null ? new JSONWriter.Feature[0] : writerFeatures;
 
         Fastjson2Module.SimpleReaderModule readerModule = new Fastjson2Module.SimpleReaderModule(context);
         Fastjson2Module.SimpleWriterModule writerModule = new Fastjson2Module.SimpleWriterModule(context);
@@ -310,6 +310,5 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
             throw failedToWrite(node, e);
         }
     }
-
 
 }

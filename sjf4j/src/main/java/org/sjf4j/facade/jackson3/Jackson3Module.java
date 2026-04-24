@@ -80,10 +80,12 @@ public interface Jackson3Module {
                     if (ti.anyOfInfo != null) {
                         return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
                     }
-                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
-                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-                    if (vci != null) {
-                        return new NodeValueDeserializer<>(vci);
+                    if (ti.hasValueCodecs()) {
+                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                        if (vci != null) {
+                            return new NodeValueDeserializer<>(vci);
+                        }
                     }
                     if (ti.requiresPojoReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo, streamingContext);
@@ -105,10 +107,12 @@ public interface Jackson3Module {
                         return new JsonArraySerializer();
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
-                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-                    if (vci != null) {
-                        return new NodeValueSerializer<>(vci);
+                    if (ti.hasValueCodecs()) {
+                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                        if (vci != null) {
+                            return new NodeValueSerializer<>(vci);
+                        }
                     }
                     if (ti.requiresPojoWriter()) {
                         return new StreamingSerializer(streamingContext);

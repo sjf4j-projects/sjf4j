@@ -2,6 +2,8 @@ package org.sjf4j;
 
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +25,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
@@ -126,9 +129,10 @@ public class WriteBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
-            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), mode);
-            fastjson2Facade = new Fastjson2JsonFacade(mode);
+            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
+            StreamingContext context = new StreamingContext(mode);
+            jackson2Facade = new Jackson2JsonFacade(new ObjectMapper(), context);
+            fastjson2Facade = new Fastjson2JsonFacade(new JSONReader.Feature[0], new JSONWriter.Feature[0], context);
         }
     }
 
@@ -141,8 +145,9 @@ public class WriteBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            StreamingFacade.StreamingMode mode = StreamingFacade.StreamingMode.valueOf(streamingMode);
-            gsonFacade = new GsonJsonFacade(new GsonBuilder(), mode);
+            StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
+            StreamingContext context = new StreamingContext(mode);
+            gsonFacade = new GsonJsonFacade(new GsonBuilder(), context);
         }
     }
 

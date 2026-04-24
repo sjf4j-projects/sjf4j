@@ -50,20 +50,22 @@ public interface Fastjson2Module {
         @Override
         public ObjectReader<?> getObjectReader(Type type) {
             Class<?> rawClazz = Types.rawClazz(type);
-            if (JsonArray.class.isAssignableFrom(rawClazz)) {
-                return new JsonArrayReader<>(rawClazz);
-            }
             if (JsonObject.class.isAssignableFrom(rawClazz)) {
                 return new JsonObjectReader<>(type, rawClazz, streamingContext);
+            }
+            if (JsonArray.class.isAssignableFrom(rawClazz)) {
+                return new JsonArrayReader<>(rawClazz);
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.anyOfInfo != null) {
                 return new AnyOfReader<>(ti.anyOfInfo, streamingContext);
             }
-            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(rawClazz);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-            if (vci != null) {
-                return new NodeValueReader<>(vci);
+            if (ti.hasValueCodecs()) {
+                String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(rawClazz);
+                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return new NodeValueReader<>(vci);
+                }
             }
             if (ti.requiresPojoReader()) {
                 return new PojoReader<>(ti.pojoInfo, streamingContext);
@@ -307,10 +309,12 @@ public interface Fastjson2Module {
                 return new JsonArrayWriter();
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
-            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(objectClass);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-            if (vci != null) {
-                return new NodeValueWriter<>(vci);
+            if (ti.hasValueCodecs()) {
+                String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(objectClass);
+                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                if (vci != null) {
+                    return new NodeValueWriter<>(vci);
+                }
             }
             if (ti.requiresPojoWriter()) {
                 return new JsonObjectWriter(streamingContext);

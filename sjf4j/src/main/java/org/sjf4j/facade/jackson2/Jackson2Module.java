@@ -4,13 +4,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.SerializationConfig;
@@ -18,11 +16,9 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
-import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.deser.SettableAnyProperty;
 import com.fasterxml.jackson.databind.introspect.Annotated;
 import com.fasterxml.jackson.databind.introspect.AnnotatedField;
-import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.AnnotatedParameter;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -30,7 +26,6 @@ import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
@@ -62,8 +57,9 @@ public interface Jackson2Module {
         public TwoSimpleModule(StreamingContext streamingContext) {
             this.streamingContext = streamingContext;
 
+            NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(Instant.class);
             String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(Instant.class);
-            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(Instant.class).getFormattedValueCodecInfo(valueFormat);
+            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
             addDeserializer(Instant.class, new NodeValueDeserializer<>(vci));
 
             setDeserializerModifier(new BeanDeserializerModifier() {
@@ -95,10 +91,12 @@ public interface Jackson2Module {
                     if (ti.anyOfInfo != null) {
                         return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
                     }
-                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
-                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-                    if (vci != null) {
-                        return new NodeValueDeserializer<>(vci);
+                    if (ti.hasValueCodecs()) {
+                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                        if (vci != null) {
+                            return new NodeValueDeserializer<>(vci);
+                        }
                     }
                     if (ti.requiresPojoReader()) {
                         return new PojoDeserializer<>(ti.pojoInfo, streamingContext);
@@ -120,10 +118,12 @@ public interface Jackson2Module {
                         return new JsonArraySerializer();
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
-                    NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-                    if (vci != null) {
-                        return new NodeValueSerializer<>(vci);
+                    if (ti.hasValueCodecs()) {
+                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                        if (vci != null) {
+                            return new NodeValueSerializer<>(vci);
+                        }
                     }
                     if (ti.requiresPojoWriter()) {
                         return new StreamingSerializer(streamingContext);
