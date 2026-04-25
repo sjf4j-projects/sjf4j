@@ -29,6 +29,10 @@ import java.util.Properties;
  * Typical object targets are regular POJOs, {@link JsonObject}/{@link JsonArray},
  * and their structured subtypes such as JOJO and JAJO models.
  * <p>
+ * Regardless of the underlying backend implementation, SJF4J is responsible for
+ * keeping JSON binding and structural-processing semantics as consistent as possible
+ * across runtimes.
+ * <p>
  * Use {@link #global()} for the shared process-wide default instance, or {@link #builder()}
  * to create an isolated instance with custom facades and formatting behavior.
  */
@@ -291,8 +295,17 @@ public final class Sjf4j {
         private final Map<Class<?>, String> defaultValueFormats = new LinkedHashMap<>();
         private boolean includeNulls = true;
 
+        /**
+         * Creates a builder with framework-default facade providers and serialization behavior.
+         */
         public Builder() {}
 
+        /**
+         * Creates a builder initialized from an existing runtime instance.
+         * <p>
+         * This copies facade providers, streaming mode, default value-format mappings,
+         * and null-serialization behavior so callers can derive a slightly adjusted runtime.
+         */
         public Builder(Sjf4j sjf4j) {
             Objects.requireNonNull(sjf4j, "sjf4j");
             this.nodeFacadeProvider = sjf4j.nodeFacadeProvider;
@@ -304,32 +317,62 @@ public final class Sjf4j {
             this.includeNulls = sjf4j.streamingContext.includeNulls;
         }
 
+        /**
+         * Overrides the provider used to create the runtime {@link NodeFacade}.
+         * <p>
+         * Use this when you want a custom node-conversion implementation for this
+         * {@link Sjf4j} instance instead of the auto-detected framework default.
+         */
         public Builder nodeFacadeProvider(FacadeProvider<? extends NodeFacade> nodeFacadeProvider) {
             this.nodeFacadeProvider = Objects.requireNonNull(nodeFacadeProvider, "nodeFacadeProvider");
             return this;
         }
 
+        /**
+         * Overrides the provider used to create the runtime JSON facade.
+         * <p>
+         * This controls which JSON backend implementation the instance uses, such as
+         * Jackson, Gson, Fastjson2, or a custom facade.
+         */
         public Builder jsonFacadeProvider(FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider) {
             this.jsonFacadeProvider = Objects.requireNonNull(jsonFacadeProvider, "jsonFacadeProvider");
             return this;
         }
 
+        /**
+         * Overrides the provider used to create the runtime YAML facade.
+         */
         public Builder yamlFacadeProvider(FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider) {
             this.yamlFacadeProvider = Objects.requireNonNull(yamlFacadeProvider, "yamlFacadeProvider");
             return this;
         }
 
+        /**
+         * Overrides the provider used to create the runtime properties facade.
+         */
         public Builder propertiesFacadeProvider(FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider) {
             this.propertiesFacadeProvider = Objects.requireNonNull(propertiesFacadeProvider,
                     "propertiesFacadeProvider");
             return this;
         }
 
+        /**
+         * Sets the streaming mode for this runtime.
+         * <p>
+         * {@link StreamingContext.StreamingMode#AUTO} lets the facade choose the preferred
+         * strategy, while other modes can force shared or backend-native streaming paths.
+         */
         public Builder streamingMode(StreamingContext.StreamingMode streamingMode) {
             this.streamingMode = Objects.requireNonNull(streamingMode, "streamingMode");
             return this;
         }
 
+        /**
+         * Registers the default named {@code ValueCodec} format for a value type.
+         * <p>
+         * This runtime-level default is used when a field or creator parameter does not
+         * explicitly declare its own {@code valueFormat}.
+         */
         public Builder defaultValueFormat(Class<?> valueType, String valueFormat) {
             Class<?> checkedValueType = Objects.requireNonNull(valueType, "valueType");
             if (checkedValueType.isPrimitive()) {
@@ -341,11 +384,22 @@ public final class Sjf4j {
             return this;
         }
 
+        /**
+         * Controls whether JSON object serialization emits properties whose value is {@code null}.
+         * <p>
+         * The default is {@code true}.
+         * <p>
+         * This setting is propagated to backend facades that support null filtering so the
+         * behavior stays consistent within the constructed runtime instance.
+         */
         public Builder includeNulls(boolean includeNulls) {
             this.includeNulls = includeNulls;
             return this;
         }
 
+        /**
+         * Builds a new isolated {@link Sjf4j} runtime from the current builder state.
+         */
         public Sjf4j build() {
             return new Sjf4j(this);
         }
