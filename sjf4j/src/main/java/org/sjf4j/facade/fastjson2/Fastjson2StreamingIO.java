@@ -640,13 +640,13 @@ public class Fastjson2StreamingIO {
                 return;
             }
 
-            if (node instanceof JsonObject) {
+            if (rawClazz == JsonObject.class) {
                 writer.startObject();
-                ((JsonObject) node).forEachWritable((key, value) -> {
+                ((JsonObject) node).forEach((k, v) -> {
                     try {
-                        writer.writeName(key);
+                        writer.writeName(k);
                         writer.writeColon();
-                        _writeNode(writer, value, context);
+                        _writeNode(writer, v, context);
                     } catch (IOException e) {
                         throw new BindingException(e);
                     }
@@ -709,15 +709,7 @@ public class Fastjson2StreamingIO {
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                writer.startObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                    String key = entry.getKey();
-                    writer.writeName(key);
-                    writer.writeColon();
-                    Object vv = entry.getValue().invokeGetter(node);
-                    _writeFieldValue(writer, vv, entry.getValue(), context);
-                }
-                writer.endObject();
+                writePojo(writer, node, pi, context);
                 return;
             }
 
@@ -729,19 +721,35 @@ public class Fastjson2StreamingIO {
         }
     }
 
-    private static void _writeFieldValue(JSONWriter writer,
-                                         Object value,
-                                         NodeRegistry.FieldInfo fi,
-                                         StreamingContext context) throws IOException {
-        if (value == null) {
-            writer.writeNull();
-            return;
+    public static void writePojo(JSONWriter writer, Object node, NodeRegistry.PojoInfo pi,
+                                 StreamingContext context) throws IOException {
+        writer.startObject();
+        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            String key = entry.getKey();
+            writer.writeName(key);
+            writer.writeColon();
+            Object vv = entry.getValue().invokeGetter(node);
+            if (vv == null) {
+                writer.writeNull();
+            } else {
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                if (fi.resolvedValueCodec != null) {
+                    vv = fi.resolvedValueCodec.valueToRaw(vv);
+                }
+                _writeNode(writer, vv, context);
+            }
         }
-        if (fi.resolvedValueCodec != null) {
-            _writeNode(writer, fi.resolvedValueCodec.valueToRaw(value), context);
-            return;
+        if (pi.isJojo && pi.writeDynamic) {
+            Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
+            if (dynamicMap != null) {
+                for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+                    writer.writeName(entry.getKey());
+                    writer.writeColon();
+                    _writeNode(writer, entry.getValue(), context);
+                }
+            }
         }
-        _writeNode(writer, value, context);
+        writer.endObject();
     }
 
     /// Support

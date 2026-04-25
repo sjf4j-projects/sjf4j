@@ -1,5 +1,6 @@
 package org.sjf4j.facade.jackson3;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
@@ -8,7 +9,6 @@ import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
 import tools.jackson.databind.AnnotationIntrospector;
 import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.cfg.MapperBuilder;
 import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -42,13 +42,18 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
         Objects.requireNonNull(jsonMapper, "jsonMapper");
         Objects.requireNonNull(context, "context");
 
-        MapperBuilder<?, ?> builder = jsonMapper.rebuild();
+        JsonMapper.Builder builder = jsonMapper.rebuild();
         builder.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         builder.addModule(new Jackson3Module.TwoSimpleModule(context));
         AnnotationIntrospector existing = builder.annotationIntrospector();
         builder.annotationIntrospector(AnnotationIntrospectorPair.create(
                 new Jackson3Module.NodePropertyAnnotationIntrospector(), existing));
-        this.jsonMapper = (JsonMapper) builder.build();
+        if (!context.includeNulls) {
+            builder.changeDefaultPropertyInclusion(inclusion ->
+                    JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, inclusion.getContentInclusion())
+            );
+        }
+        this.jsonMapper = builder.build();
         this.streamingContext = context;
     }
 

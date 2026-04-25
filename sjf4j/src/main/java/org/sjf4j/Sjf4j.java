@@ -52,7 +52,9 @@ public final class Sjf4j {
 
     private Sjf4j(Builder builder) {
         ValueFormatMapping valueFormatMapping = ValueFormatMapping.of(builder.defaultValueFormats);
-        this.streamingContext = new StreamingContext(valueFormatMapping, builder.streamingMode);
+        StreamingContext.StreamingMode streamingMode = builder.streamingMode == null ?
+                StreamingContext.StreamingMode.AUTO : builder.streamingMode;
+        this.streamingContext = new StreamingContext(valueFormatMapping, streamingMode, builder.includeNulls);
 
         this.nodeFacadeProvider = builder.nodeFacadeProvider == null
                 ? FacadeFactory.nodeFacadeProvider() : builder.nodeFacadeProvider;
@@ -91,6 +93,10 @@ public final class Sjf4j {
     }
 
     /// Getter
+
+    public StreamingContext streamingContext() {
+        return streamingContext;
+    }
 
     public NodeFacade nodeFacade() {
         return nodeFacade;
@@ -281,8 +287,9 @@ public final class Sjf4j {
         private FacadeProvider<? extends JsonFacade<?, ?>> jsonFacadeProvider;
         private FacadeProvider<? extends YamlFacade<?, ?>> yamlFacadeProvider;
         private FacadeProvider<? extends PropertiesFacade> propertiesFacadeProvider;
-        private StreamingContext.StreamingMode streamingMode = StreamingContext.StreamingMode.AUTO;
+        private StreamingContext.StreamingMode streamingMode;
         private final Map<Class<?>, String> defaultValueFormats = new LinkedHashMap<>();
+        private boolean includeNulls = true;
 
         public Builder() {}
 
@@ -294,6 +301,7 @@ public final class Sjf4j {
             this.propertiesFacadeProvider = sjf4j.propertiesFacadeProvider;
             this.streamingMode = sjf4j.streamingContext.streamingMode;
             this.defaultValueFormats.putAll(sjf4j.streamingContext.valueFormatMapping.asMap());
+            this.includeNulls = sjf4j.streamingContext.includeNulls;
         }
 
         public Builder nodeFacadeProvider(FacadeProvider<? extends NodeFacade> nodeFacadeProvider) {
@@ -330,6 +338,11 @@ public final class Sjf4j {
                         + Types.box(checkedValueType).getName() + "'");
             }
             defaultValueFormats.put(checkedValueType, Objects.requireNonNull(valueFormat, "valueFormat"));
+            return this;
+        }
+
+        public Builder includeNulls(boolean includeNulls) {
+            this.includeNulls = includeNulls;
             return this;
         }
 

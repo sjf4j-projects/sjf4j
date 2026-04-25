@@ -1,6 +1,7 @@
 package org.sjf4j.facade.jackson2;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -53,6 +54,9 @@ public class Jackson2JsonFacade implements JsonFacade<Jackson2Reader, Jackson2Wr
                 AnnotationIntrospectorPair.create(new Jackson2Module.NodePropertyAnnotationIntrospector(), deserializationAi)
         );
         objectMapper.registerModule(new Jackson2Module.TwoSimpleModule(context));
+        if (!context.includeNulls) {
+            objectMapper.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
+        }
         this.objectMapper = objectMapper;
         this.streamingContext = context;
     }

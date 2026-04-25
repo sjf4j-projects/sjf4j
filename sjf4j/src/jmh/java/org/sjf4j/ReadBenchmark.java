@@ -74,6 +74,7 @@ public class ReadBenchmark {
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{ReadBenchmark.class.getName()});
+//        Main.main(new String[]{"ReadBenchmark.json_fastjson2"});
     }
 
 //    private static final String JSON_DATA = "{\"name\":\"Alice\"}";
@@ -167,19 +168,6 @@ public class ReadBenchmark {
     }
 
     @State(Scope.Thread)
-    public static class Jackson2PluginState {
-        public ObjectMapper specializedMapper;
-        public ObjectMapper sharedMapper;
-
-        @Setup(Level.Trial)
-        public void setup() {
-            StreamingContext context = new StreamingContext(StreamingContext.StreamingMode.PLUGIN_MODULE);
-            specializedMapper = createJackson2PluginMapper(new Jackson2Module.TwoSimpleModule(context));
-            sharedMapper = createJackson2PluginMapper(new SharedStreamingJackson2ReadModule(context));
-        }
-    }
-
-    @State(Scope.Thread)
     public static class FacadeState {
         @Param({"SHARED_IO", "EXCLUSIVE_IO", "PLUGIN_MODULE"})
         public String streamingMode;
@@ -226,36 +214,6 @@ public class ReadBenchmark {
     @Benchmark
     public Object json_jackson2_map_native() throws IOException {
         return JACKSON2.readValue(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_pojo_plugin_specialized(Jackson2PluginState state) throws IOException {
-        return state.specializedMapper.readValue(JSON_DATA2, UserPojo.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_pojo_plugin_shared(Jackson2PluginState state) throws IOException {
-        return state.sharedMapper.readValue(JSON_DATA2, UserPojo.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_jojo_plugin_specialized(Jackson2PluginState state) throws IOException {
-        return state.specializedMapper.readValue(JSON_DATA2, UserJojo.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_jojo_plugin_shared(Jackson2PluginState state) throws IOException {
-        return state.sharedMapper.readValue(JSON_DATA2, UserJojo.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_map_plugin_specialized(Jackson2PluginState state) throws IOException {
-        return state.specializedMapper.readValue(JSON_DATA2, Map.class);
-    }
-
-    @Benchmark
-    public Object json_jackson2_map_plugin_shared(Jackson2PluginState state) throws IOException {
-        return state.sharedMapper.readValue(JSON_DATA2, Map.class);
     }
 
     @Benchmark
@@ -390,129 +348,6 @@ public class ReadBenchmark {
         public List<UserHasAny> friends;
         @JsonAnySetter @JsonAnyGetter
         public Map<String, Object> ext = new LinkedHashMap<>();
-    }
-
-    static final class SharedStreamingJackson2ReadModule extends SimpleModule {
-        SharedStreamingJackson2ReadModule(StreamingContext streamingContext) {
-            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(Instant.class);
-            NodeRegistry.ValueCodecInfo vci = NodeRegistry.registerTypeInfo(Instant.class).getFormattedValueCodecInfo(valueFormat);
-            addDeserializer(Instant.class, new Jackson2Module.NodeValueDeserializer<>(vci));
-
-            setDeserializerModifier(new BeanDeserializerModifier() {
-                @Override
-                public BeanDeserializerBuilder updateBuilder(DeserializationConfig config,
-                                                             BeanDescription beanDesc,
-                                                             BeanDeserializerBuilder builder) {
-                    if (JsonObject.class.isAssignableFrom(beanDesc.getBeanClass())) {
-                        JavaType objType = config.constructType(Object.class);
-                        if (builder.getAnySetter() == null) {
-                            builder.setAnySetter(new Jackson2Module.JsonObjectAnySetter(objType));
-                        }
-                    }
-                    return builder;
-                }
-
-                @Override
-                public JsonDeserializer<?> modifyDeserializer(DeserializationConfig config,
-                                                              BeanDescription beanDesc,
-                                                              JsonDeserializer<?> deserializer) {
-                    Class<?> clazz = beanDesc.getBeanClass();
-                    if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new SharedJsonObjectDeserializer<>(beanDesc.getType(), streamingContext);
-                    }
-                    if (org.sjf4j.JsonArray.class.isAssignableFrom(clazz)) {
-                        return new Jackson2Module.JsonArrayDeserializer<>(clazz);
-                    }
-                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    if (ti.anyOfInfo != null) {
-                        return new SharedAnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
-                    }
-                    if (ti.hasValueCodecs()) {
-                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
-                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
-                        if (vci != null) {
-                            return new Jackson2Module.NodeValueDeserializer<>(vci);
-                        }
-                    }
-                    if (ti.requiresPojoReader()) {
-                        return new SharedPojoDeserializer<>(ti.pojoInfo, streamingContext);
-                    }
-                    return deserializer;
-                }
-            });
-        }
-    }
-
-    static final class SharedJsonObjectDeserializer<T extends JsonObject> extends JsonDeserializer<T> {
-        private final Type ownerType;
-        private final Class<?> ownerRawClazz;
-        private final NodeRegistry.PojoInfo pi;
-        private final StreamingContext streamingContext;
-
-        SharedJsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
-            this.ownerType = toType(javaType);
-            this.ownerRawClazz = Types.rawBox(ownerType);
-            this.pi = ownerRawClazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(ownerRawClazz);
-            this.streamingContext = streamingContext;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public T deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException {
-            if (pi == null) {
-                Object value = ctxt.readValue(p, Object.class);
-                if (value == null) return null;
-                if (value instanceof JsonObject) return (T) value;
-                if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
-                throw new IOException("Expected object value for JsonObject, but got " + value.getClass().getName());
-            }
-            return (T) StreamingIO.readPojo(new Jackson2Reader(p), ownerType, ownerRawClazz, pi, streamingContext);
-        }
-    }
-
-    static final class SharedAnyOfDeserializer<T> extends JsonDeserializer<T> {
-        private final NodeRegistry.AnyOfInfo anyOfInfo;
-        private final StreamingContext streamingContext;
-
-        SharedAnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
-            this.anyOfInfo = anyOfInfo;
-            this.streamingContext = streamingContext;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public T deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) StreamingIO.readAnyOf(new Jackson2Reader(p), anyOfInfo, streamingContext);
-        }
-    }
-
-    static final class SharedPojoDeserializer<T> extends JsonDeserializer<T> {
-        private final NodeRegistry.PojoInfo pi;
-        private final StreamingContext streamingContext;
-
-        SharedPojoDeserializer(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
-            this.pi = pi;
-            this.streamingContext = streamingContext;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public T deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) StreamingIO.readPojo(new Jackson2Reader(p), pi.clazz, pi.clazz, pi, streamingContext);
-        }
-    }
-
-    private static Type toType(JavaType javaType) {
-        if (javaType == null) return Object.class;
-        Class<?> raw = javaType.getRawClass();
-        if (raw == null) return Object.class;
-        int n = javaType.containedTypeCount();
-        if (n <= 0) return raw;
-        Type[] args = new Type[n];
-        for (int i = 0; i < n; i++) {
-            args[i] = toType(javaType.containedType(i));
-        }
-        return new Types.ParameterizedTypeImpl(raw, args, raw.getDeclaringClass());
     }
 
 

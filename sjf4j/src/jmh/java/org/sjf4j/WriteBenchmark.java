@@ -2,8 +2,10 @@ package org.sjf4j;
 
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
+import com.alibaba.fastjson2.writer.ObjectWriterProvider;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +13,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import org.junit.jupiter.api.Test;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -55,6 +58,7 @@ public class WriteBenchmark {
 
     public static void main(String[] args) throws Exception {
         Main.main(new String[]{WriteBenchmark.class.getName()});
+//        Main.main(new String[]{"WriteBenchmark.json_fastjson2"});
     }
 
     // Mixed structure JSON keeps nested objects/arrays so each framework covers the same workload.
@@ -87,6 +91,8 @@ public class WriteBenchmark {
 
     private static final ObjectMapper JACKSON2 = new ObjectMapper();
     private static final Gson GSON = createNativeGson();
+    private static final JSONWriter.Context FASTJSON2_WRITER_CONTEXT =
+            JSONFactory.createWriteContext(JSONWriter.Feature.WriteNulls);
     private static final SimpleJsonFacade SIMPLE_JSON_FACADE = new SimpleJsonFacade();
     private static final JsonpJsonFacade JSONP_JSON_FACADE = new JsonpJsonFacade();
 
@@ -229,17 +235,17 @@ public class WriteBenchmark {
     // ----- Fastjson2 baselines -----
     @Benchmark
     public Object json_fastjson2_pojo_native() {
-        return JSON.toJSONString(USER_POJO);
+        return JSON.toJSONString(USER_POJO, FASTJSON2_WRITER_CONTEXT);
     }
 
     @Benchmark
     public Object json_fastjson2_hasAny_native() {
-        return JSON.toJSONString(USER_HAS_ANY);
+        return JSON.toJSONString(USER_HAS_ANY, FASTJSON2_WRITER_CONTEXT);
     }
 
     @Benchmark
     public Object json_fastjson2_map_native() {
-        return JSON.toJSONString(MAP_NODE);
+        return JSON.toJSONString(MAP_NODE, FASTJSON2_WRITER_CONTEXT);
     }
 
     @Benchmark

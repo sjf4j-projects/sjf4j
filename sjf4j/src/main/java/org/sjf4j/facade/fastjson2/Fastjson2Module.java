@@ -15,11 +15,9 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -50,13 +48,19 @@ public interface Fastjson2Module {
         @Override
         public ObjectReader<?> getObjectReader(Type type) {
             Class<?> rawClazz = Types.rawClazz(type);
-            if (JsonObject.class.isAssignableFrom(rawClazz)) {
-                return new JsonObjectReader<>(type, rawClazz, streamingContext);
+            if (rawClazz == JsonObject.class) {
+                return new JsonObjectReader<>(type,null, streamingContext);
             }
-            if (JsonArray.class.isAssignableFrom(rawClazz)) {
-                return new JsonArrayReader<>(rawClazz);
+            if (rawClazz == JsonArray.class) {
+                return new JsonArrayReader<>(null);
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+            if (JsonObject.class.isAssignableFrom(rawClazz)) {
+                return new JsonObjectReader<>(type, ti.pojoInfo, streamingContext);
+            }
+            if (JsonArray.class.isAssignableFrom(rawClazz)) {
+                return new JsonArrayReader<>(ti.pojoInfo);
+            }
             if (ti.anyOfInfo != null) {
                 return new AnyOfReader<>(ti.anyOfInfo, streamingContext);
             }
@@ -68,7 +72,7 @@ public interface Fastjson2Module {
                 }
             }
             if (ti.requiresPojoReader()) {
-                return new PojoReader<>(ti.pojoInfo, streamingContext);
+                return new PojoReader<>(type, ti.pojoInfo, streamingContext);
             }
 
             return null;
@@ -143,15 +147,15 @@ public interface Fastjson2Module {
     }
 
     class JsonObjectReader<T extends JsonObject> implements ObjectReader<T> {
-        private final Type ownerType;
+        private final Type type;
         private final NodeRegistry.PojoInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonObjectReader(Type ownerType, Class<?> clazz, StreamingContext streamingContext) {
-            this.ownerType = ownerType;
-            this.pi = clazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+        public JsonObjectReader(Type type, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+            this.type = type;
+            this.pi = pi;
             this.streamingContext = streamingContext;
         }
 
@@ -163,9 +167,8 @@ public interface Fastjson2Module {
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (reader.nextIfNull()) return null;
             if (pi != null) {
-                if (!reader.isObject()) throw new JSONException(reader.info("expect '{'"));
                 try {
-                    Type resolvedOwnerType = fieldType != null ? fieldType : (ownerType != null ? ownerType : pi.clazz);
+                    Type resolvedOwnerType = fieldType != null ? fieldType : type;
                     return (T) Fastjson2StreamingIO.readPojo(reader, resolvedOwnerType,
                             Types.rawBox(resolvedOwnerType), pi, streamingContext);
                 } catch (Exception e) {
@@ -189,8 +192,8 @@ public interface Fastjson2Module {
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public JsonArrayReader(Class<?> clazz) {
-            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+        public JsonArrayReader(NodeRegistry.PojoInfo pi) {
+            this.pi = pi;
         }
 
         /**
@@ -257,12 +260,14 @@ public interface Fastjson2Module {
     }
 
     class PojoReader<T> implements ObjectReader<T> {
+        private final Type type;
         private final NodeRegistry.PojoInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public PojoReader(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public PojoReader(Type type, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+            this.type = type;
             this.pi = pi;
             this.streamingContext = streamingContext;
         }
@@ -275,7 +280,7 @@ public interface Fastjson2Module {
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (reader.nextIfNull()) return null;
             try {
-                Type ownerType = fieldType != null ? fieldType : pi.clazz;
+                Type ownerType = fieldType != null ? fieldType : type;
                 return (T) Fastjson2StreamingIO.readPojo(reader, ownerType,
                         Types.rawBox(ownerType), pi, streamingContext);
             } catch (Exception e) {
@@ -302,13 +307,16 @@ public interface Fastjson2Module {
          */
         @Override
         public ObjectWriter<?> getObjectWriter(Type objectType, Class objectClass) {
-            if (JsonObject.class.isAssignableFrom(objectClass)) {
-                return new JsonObjectWriter(streamingContext);
+            if (objectClass == JsonObject.class) {
+                return new JsonObjectWriter(null, streamingContext);
             }
             if (JsonArray.class.isAssignableFrom(objectClass)) {
                 return new JsonArrayWriter();
             }
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(objectClass);
+            if (JsonObject.class.isAssignableFrom(objectClass)) {
+                return new JsonObjectWriter(ti.pojoInfo, streamingContext);
+            }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(objectClass);
                 NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
@@ -317,7 +325,7 @@ public interface Fastjson2Module {
                 }
             }
             if (ti.requiresPojoWriter()) {
-                return new JsonObjectWriter(streamingContext);
+                return new PojoWriter(ti.pojoInfo, streamingContext);
             }
             return null;
         }
@@ -338,20 +346,33 @@ public interface Fastjson2Module {
 
     }
 
-    class JsonObjectWriter implements ObjectWriter<Object> {
+    class JsonObjectWriter implements ObjectWriter<JsonObject> {
+        private final NodeRegistry.PojoInfo pi;
         private final StreamingContext streamingContext;
 
-        public JsonObjectWriter(StreamingContext streamingContext) {
+        public JsonObjectWriter(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+            this.pi = pi;
             this.streamingContext = streamingContext;
         }
 
         @Override
         public void write(JSONWriter writer, Object object, Object fieldName,
                           Type fieldType, long features) {
-            try {
-                Fastjson2StreamingIO.writeNode(writer, object, streamingContext);
-            } catch (IOException e) {
-                throw new JSONException(writer.toString(), e);
+            if (pi != null) {
+                try {
+                    Fastjson2StreamingIO.writePojo(writer, object, pi, streamingContext);
+                } catch (IOException e) {
+                    throw new JSONException("JsonObjectWriter.write() failed", e);
+                }
+            } else {
+                JsonObject jo = (JsonObject) object;
+                writer.startObject();
+                jo.forEach((k, v) -> {
+                    writer.writeName(k);
+                    writer.writeColon();
+                    writer.writeAny(v);
+                });
+                writer.endObject();
             }
         }
     }
@@ -389,6 +410,26 @@ public interface Fastjson2Module {
         public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
             Object raw = valueCodecInfo.valueToRaw(object);
             writer.writeAny(raw);
+        }
+    }
+
+    class PojoWriter implements ObjectWriter<Object> {
+        private final NodeRegistry.PojoInfo pi;
+        private final StreamingContext streamingContext;
+
+        public PojoWriter(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+            this.pi = pi;
+            this.streamingContext = streamingContext;
+        }
+
+        @Override
+        public void write(JSONWriter writer, Object object, Object fieldName,
+                          Type fieldType, long features) {
+            try {
+                Fastjson2StreamingIO.writePojo(writer, object, pi, streamingContext);
+            } catch (IOException e) {
+                throw new JSONException(writer.toString(), e);
+            }
         }
     }
 

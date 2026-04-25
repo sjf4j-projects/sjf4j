@@ -681,27 +681,11 @@ public final class StreamingIO {
                 return;
             }
 
-            if (node instanceof JsonObject) {
-                if (rawClazz != JsonObject.class) {
-                    NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(rawClazz);
-                    if (!pi.writeDynamic) {
-                        writer.startObject();
-                        boolean veryStart = true;
-                        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                            if (veryStart) veryStart = false;
-                            else writer.writeObjectComma();
-                            writer.writeName(entry.getKey());
-                            _writeFieldValue(writer, entry.getValue().invokeGetter(node), entry.getValue(), context);
-                        }
-                        writer.endObject();
-                        return;
-                    }
-                }
+            if (rawClazz == JsonObject.class) {
                 writer.startObject();
-                boolean veryStart = true;
+                int cnt = 0;
                 for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
-                    if (veryStart) veryStart = false;
-                    else writer.writeObjectComma();
+                    if (cnt++ > 0) writer.writeObjectComma();
                     writer.writeName(entry.getKey());
                     _writeNode(writer, entry.getValue(), context);
                 }
@@ -755,17 +739,7 @@ public final class StreamingIO {
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                writer.startObject();
-                boolean veryStart = true;
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                    if (veryStart) veryStart = false;
-                    else writer.writeObjectComma();
-                    String key = entry.getKey();
-                    writer.writeName(key);
-                    Object vv = entry.getValue().invokeGetter(node);
-                    _writeFieldValue(writer, vv, entry.getValue(), context);
-                }
-                writer.endObject();
+                writePojo(writer, node, pi, context);
                 return;
             }
 
@@ -778,21 +752,37 @@ public final class StreamingIO {
         }
     }
 
-    private static void _writeFieldValue(StreamingWriter writer,
-                                         Object value,
-                                         NodeRegistry.FieldInfo fi,
-                                         StreamingContext context) throws IOException {
-        if (value == null) {
-            writer.writeNull();
-            return;
+    public static void writePojo(StreamingWriter writer, Object node, NodeRegistry.PojoInfo pi,
+                                 StreamingContext context) throws IOException {
+        writer.startObject();
+        int cnt = 0;
+        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            if (cnt++ > 0) writer.writeObjectComma();
+            String key = entry.getKey();
+            writer.writeName(key);
+            Object vv = entry.getValue().invokeGetter(node);
+            if (vv == null) {
+                writer.writeNull();
+            } else {
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                if (fi.resolvedValueCodec != null) {
+                    vv = fi.resolvedValueCodec.valueToRaw(vv);
+                }
+                _writeNode(writer, vv, context);
+            }
         }
-        if (fi.resolvedValueCodec != null) {
-            _writeNode(writer, fi.resolvedValueCodec.valueToRaw(value), context);
-            return;
+        if (pi.isJojo && pi.writeDynamic) {
+            Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
+            if (dynamicMap != null) {
+                for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+                    if (cnt++ > 0) writer.writeObjectComma();
+                    writer.writeName(entry.getKey());
+                    _writeNode(writer, entry.getValue(), context);
+                }
+            }
         }
-        _writeNode(writer, value, context);
+        writer.endObject();
     }
-
 
     /// Support
 

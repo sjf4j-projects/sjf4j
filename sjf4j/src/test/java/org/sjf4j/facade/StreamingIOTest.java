@@ -298,11 +298,14 @@ public class StreamingIOTest {
         UserJojo user1 = new UserJojo();
         user1.name = "Alice";
         user1.put("throws_key", new Object());
+
         UserJojo user2 = new UserJojo();
         user2.name = "Bill";
         user2.friends = new ArrayList<>();
         user2.friends.add(user1);
 
+//        System.out.println(user1.inspect());
+//        System.out.println(facade.writeNodeAsString(user1));
         Throwable cause = assertThrows(JsonException.class, () -> facade.writeNodeAsString(user1));
         BindingException inner = null;
         while (cause != null) {

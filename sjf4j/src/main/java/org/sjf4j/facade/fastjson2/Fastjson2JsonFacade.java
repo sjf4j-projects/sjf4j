@@ -54,7 +54,10 @@ public class Fastjson2JsonFacade implements JsonFacade<Fastjson2Reader, Fastjson
         this.readerContext = JSONFactory.createReadContext(readerProvider, readerFeatures);
         this.writerContext = JSONFactory.createWriteContext(writerProvider, writerFeatures);
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
-        this.writerContext.config(JSONWriter.Feature.WriteNulls);
+        if (context.includeNulls) {
+            this.writerContext.config(JSONWriter.Feature.WriteNulls);
+        }
+
         this.streamingContext = context;
     }
 

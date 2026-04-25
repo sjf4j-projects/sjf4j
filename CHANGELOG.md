@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
 - Added instance-scoped `StreamingContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
 - Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
+- Added `Sjf4j.Builder.includeNulls(...)` so each runtime can choose whether JSON serialization keeps or omits `null` properties across Gson, Jackson 2, Jackson 3, and Fastjson2 facades.
 
 ### Changed
 - Changed Jackson 2 and Fastjson2 exclusive streaming IO paths to use backend-native typed read/write implementations for POJOs, containers, `AnyOf`, and value-codec flows while keeping shared `StreamingIO` semantics.
+- Changed shared and backend-native POJO object writing paths to use dedicated `writePojo(...)` flows, keeping JOJO dynamic fields aligned across shared, Jackson 2, and Fastjson2 serializers.
 - Changed snake-case conversion to live in `Strings.toSnakeCase(...)`, with `NamingStrategy.SNAKE_CASE` delegating to the shared helper.
 - Changed `SchemaValidator` convention lookup to try `<simple-name>.json` first and then `<snake-name>.json`, instead of probing `<full-class-name>.json`.
 - Changed `SchemaStore` local schema loaders to return `null` for missing files/resources so missing-schema decisions stay in higher-level callers.
@@ -24,17 +26,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed JSONPath missing-container creation to recognize Jackson 3 native object/array node types.
 - Changed `Nodes` and `JsonObject` object views to expose readable members only, while keeping direct write paths available for writable-only bindings.
 - Changed shared and backend-native facade integrations to route through context-aware `StreamingIO`, with plugin-module fallbacks for SJF4J-managed value-codec and `AnyOf` cases.
+- Changed Jackson 2 and Fastjson2 module reader/writer selection to resolve plain `JsonObject`/`JsonArray` separately from JOJO/POJO metadata-backed types, preserving owner type information for generic bindings.
 - Changed path/schema traversal internals to use lighter `PathSegment` and `InstancedNode` metadata while standardizing rooted error-path reporting on JSONPath and JSON Pointer expressions.
 
 ### Fixed
 - Fixed backend-native Jackson/Fastjson2 streaming and module paths to skip formatted value-codec resolution when a type has no registered codecs, reducing unnecessary metadata work and avoiding null-driven fallback drift.
 - Fixed `JsonObject` writable traversal so dynamic entries honor `writeDynamic` during backend-native object serialization.
+- Fixed `Types` generic substitution and resolution for parameterized types so raw-type preservation no longer depends on unsafe `Class` casts.
 - Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
 - Fixed `JsonPath.ensurePut(...)` so single paths containing append segments (`/-` or `[+]`) can auto-create nested containers while appending new array elements.
 - Fixed shared/simple/Jackson/Fastjson2 readable-member serialization and POJO projection paths so write-only bindings no longer leak into object traversal or output.
 - Fixed field- and creator-bound non-default value formats so shared IO, exclusive IO, plugin-module reads/writes, node conversion, and `Sjf4j` runtime APIs all honor the same codec selection.
 - Fixed deferred parent-scope `AnyOf` binding and runtime node conversion paths to use the owning `Sjf4j` instance instead of process-global facade defaults.
+- Fixed Jackson 2 and Fastjson2 native module binding for JOJO/POJO cases so generic owner types and dynamic fields round-trip more consistently with shared streaming semantics.
 
 
 ## [1.2.0] - 2026.04.12

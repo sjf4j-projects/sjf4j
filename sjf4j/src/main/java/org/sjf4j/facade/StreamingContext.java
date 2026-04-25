@@ -9,24 +9,28 @@ import java.util.Objects;
  * Shared runtime streaming context assembled by {@code Sjf4j.Builder}.
  */
 public final class StreamingContext {
-    public static final StreamingContext EMPTY = new StreamingContext(ValueFormatMapping.EMPTY, StreamingMode.AUTO);
+    public static final StreamingContext EMPTY = new StreamingContext(ValueFormatMapping.EMPTY, StreamingMode.AUTO, true);
 
     public final ValueFormatMapping valueFormatMapping;
     public final StreamingMode streamingMode;
     public final NodeFacade nodeFacade;
+    public final boolean includeNulls;
 
     public StreamingContext(ValueFormatMapping valueFormatMapping) {
-        this(valueFormatMapping, StreamingMode.AUTO);
+        this(valueFormatMapping, StreamingMode.AUTO, true);
     }
 
     public StreamingContext(StreamingMode streamingMode) {
-        this(ValueFormatMapping.EMPTY, streamingMode);
+        this(ValueFormatMapping.EMPTY, streamingMode, true);
     }
 
-    public StreamingContext(ValueFormatMapping valueFormatMapping, StreamingMode streamingMode) {
+    public StreamingContext(ValueFormatMapping valueFormatMapping,
+                            StreamingMode streamingMode,
+                            boolean includeNulls) {
         this.valueFormatMapping = Objects.requireNonNull(valueFormatMapping, "valueFormatMapping");
         this.streamingMode = Objects.requireNonNull(streamingMode, "streamingMode");
         this.nodeFacade = new SimpleNodeFacade(this.valueFormatMapping);
+        this.includeNulls = includeNulls;
     }
 
 

@@ -292,7 +292,6 @@ public class Jackson2StreamingIO {
 
     public static Object readPojo(JsonParser parser, Type ownerType, Class<?> ownerRawClazz,
                                   NodeRegistry.PojoInfo pi, StreamingContext context) throws IOException {
-        Objects.requireNonNull(context, "context");
         NodeRegistry.CreatorInfo ci = pi.creatorInfo;
         boolean hasParentAnyOf = pi.hasParentScopeAnyOf;
 
@@ -793,16 +792,12 @@ public class Jackson2StreamingIO {
                 return;
             }
 
-            if (node instanceof JsonObject) {
+            if (rawClazz == JsonObject.class) {
                 gen.writeStartObject();
-                ((JsonObject) node).forEachWritable((key, value) -> {
-                    try {
-                        gen.writeFieldName(key);
-                        _writeNode(gen, value, context);
-                    } catch (IOException e) {
-                        throw new BindingException(e);
-                    }
-                });
+                for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
+                    gen.writeFieldName(entry.getKey());
+                    _writeNode(gen, entry.getValue(), context);
+                }
                 gen.writeEndObject();
                 return;
             }
@@ -849,14 +844,7 @@ public class Jackson2StreamingIO {
 
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
-                gen.writeStartObject();
-                for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                    String key = entry.getKey();
-                    gen.writeFieldName(key);
-                    Object vv = entry.getValue().invokeGetter(node);
-                    _writeFieldValue(gen, vv, entry.getValue(), context);
-                }
-                gen.writeEndObject();
+                writePojo(gen, node, pi, context);
                 return;
             }
 
@@ -868,19 +856,33 @@ public class Jackson2StreamingIO {
         }
     }
 
-    private static void _writeFieldValue(JsonGenerator gen,
-                                         Object value,
-                                         NodeRegistry.FieldInfo fi,
-                                         StreamingContext context) throws IOException {
-        if (value == null) {
-            gen.writeNull();
-            return;
+    public static void writePojo(JsonGenerator gen, Object node, NodeRegistry.PojoInfo pi,
+                                 StreamingContext context) throws IOException {
+        gen.writeStartObject();
+        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            String key = entry.getKey();
+            gen.writeFieldName(key);
+            Object vv = entry.getValue().invokeGetter(node);
+            if (vv == null) {
+                gen.writeNull();
+            } else {
+                NodeRegistry.FieldInfo fi = entry.getValue();
+                if (fi.resolvedValueCodec != null) {
+                    vv = fi.resolvedValueCodec.valueToRaw(vv);
+                }
+                _writeNode(gen, vv, context);
+            }
         }
-        if (fi.resolvedValueCodec != null) {
-            _writeNode(gen, fi.resolvedValueCodec.valueToRaw(value), context);
-            return;
+        if (pi.isJojo && pi.writeDynamic) {
+            Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
+            if (dynamicMap != null) {
+                for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+                    gen.writeFieldName(entry.getKey());
+                    _writeNode(gen, entry.getValue(), context);
+                }
+            }
         }
-        _writeNode(gen, value, context);
+        gen.writeEndObject();
     }
 
     /// Support

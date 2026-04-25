@@ -1,5 +1,6 @@
 package org.sjf4j.facade.jackson2;
 
+import com.alibaba.fastjson2.JSONException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -27,6 +28,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.fastjson2.Fastjson2Module;
+import org.sjf4j.facade.fastjson2.Fastjson2StreamingIO;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.Types;
@@ -48,7 +51,7 @@ public interface Jackson2Module {
     /**
      * SimpleModule that wires framework serializers/deserializers.
      */
-    class TwoSimpleModule extends SimpleModule {
+    final class TwoSimpleModule extends SimpleModule {
         private final StreamingContext streamingContext;
 
         /**
@@ -63,31 +66,27 @@ public interface Jackson2Module {
             addDeserializer(Instant.class, new NodeValueDeserializer<>(vci));
 
             setDeserializerModifier(new BeanDeserializerModifier() {
-                @Override
-                public BeanDeserializerBuilder updateBuilder(DeserializationConfig config,
-                                                             BeanDescription beanDesc,
-                                                             BeanDeserializerBuilder builder) {
-                    if (JsonObject.class.isAssignableFrom(beanDesc.getBeanClass())) {
-                        JavaType objType = config.constructType(Object.class);
-                        if (builder.getAnySetter() == null) {
-                            builder.setAnySetter(new JsonObjectAnySetter(objType));
-                        }
-                    }
-                    return builder;
-                }
 
                 @Override
                 public JsonDeserializer<?> modifyDeserializer(DeserializationConfig config,
                                                               BeanDescription beanDesc,
                                                               JsonDeserializer<?> deserializer) {
                     Class<?> clazz = beanDesc.getBeanClass();
+                    JavaType type = beanDesc.getType();
+                    if (clazz == JsonObject.class) {
+                        return new JsonObjectDeserializer<>(type,null, streamingContext);
+                    }
+                    if (clazz == JsonArray.class) {
+                        return new JsonArrayDeserializer<>(null);
+                    }
+
+                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (JsonObject.class.isAssignableFrom(clazz)) {
-                        return new JsonObjectDeserializer<>(beanDesc.getType(), streamingContext);
+                        return new JsonObjectDeserializer<>(type, ti.pojoInfo, streamingContext);
                     }
                     if (JsonArray.class.isAssignableFrom(clazz)) {
-                        return new JsonArrayDeserializer<>(clazz);
+                        return new JsonArrayDeserializer<>(ti.pojoInfo);
                     }
-                    NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (ti.anyOfInfo != null) {
                         return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
                     }
@@ -99,7 +98,7 @@ public interface Jackson2Module {
                         }
                     }
                     if (ti.requiresPojoReader()) {
-                        return new PojoDeserializer<>(ti.pojoInfo, streamingContext);
+                        return new PojoDeserializer<>(type, ti.pojoInfo, streamingContext);
                     }
                     return deserializer;
                 }
@@ -134,93 +133,62 @@ public interface Jackson2Module {
             });
         }
 
-    }
-
-
-    class JsonObjectDeserializer<T extends JsonObject> extends JsonDeserializer<T> {
-        private final Type ownerType;
-        private final Class<?> ownerRawClazz;
-        private final NodeRegistry.PojoInfo pi;
-        private final StreamingContext streamingContext;
-
-        public JsonObjectDeserializer(JavaType javaType, StreamingContext streamingContext) {
-            this.ownerType = _toType(javaType);
-            this.ownerRawClazz = Types.rawBox(ownerType);
-            this.pi = ownerRawClazz == JsonObject.class ? null : NodeRegistry.registerPojoOrElseThrow(ownerRawClazz);
-            this.streamingContext = streamingContext;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            if (pi == null) {
-                Object value = ctxt.readValue(p, Object.class);
-                if (value == null) return null;
-                if (value instanceof JsonObject) return (T) value;
-                if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
-                throw new IOException("Expected object value for JsonObject, but got " + value.getClass().getName());
-            }
-            return (T) Jackson2StreamingIO.readPojo(p, ownerType, ownerRawClazz, pi, streamingContext);
-        }
-
-        private static Type _toType(JavaType javaType) {
+        public static Type toType(JavaType javaType) {
             if (javaType == null) return Object.class;
+
             Class<?> raw = javaType.getRawClass();
             if (raw == null) return Object.class;
+
             int n = javaType.containedTypeCount();
             if (n <= 0) return raw;
+
             Type[] args = new Type[n];
             for (int i = 0; i < n; i++) {
-                args[i] = _toType(javaType.containedType(i));
+                args[i] = toType(javaType.containedType(i));
             }
             return new Types.ParameterizedTypeImpl(raw, args, raw.getDeclaringClass());
         }
     }
 
+    class JsonObjectDeserializer<T extends JsonObject> extends JsonDeserializer<T> {
+        private final Type type;
+        private final NodeRegistry.PojoInfo pi;
+        private final StreamingContext streamingContext;
 
-    /// Extra
-    /**
-     * Any-setter bridge for dynamic fields in JsonObject.
-     */
-    class JsonObjectAnySetter extends SettableAnyProperty {
-
-        /**
-         * Creates setter with target value type.
-         */
-        public JsonObjectAnySetter(JavaType type) {
-            super(null, null, type, null, null, null);
+        public JsonObjectDeserializer(JavaType type, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+            this.type = TwoSimpleModule.toType(type);
+            this.pi = pi;
+            this.streamingContext = streamingContext;
         }
 
-        /**
-         * Creates setter with explicit value deserializer.
-         */
-        public JsonObjectAnySetter(JavaType type, JsonDeserializer<Object> deser) {
-            super(null, null, type, null, deser, null);
-        }
-
-        /**
-         * Returns a copy bound to resolved value deserializer.
-         */
+        @SuppressWarnings("unchecked")
         @Override
-        public SettableAnyProperty withValueDeserializer(JsonDeserializer<Object> deser) {
-            // A JsonDeserializer cannot be resolved during the initialization phase of JsonObjectModule
-            return new JsonObjectAnySetter(this.getType(), deser);
-        }
+        public T deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
+            JsonToken token = p.currentToken();
+            if (token == JsonToken.VALUE_NULL) return null;
+            if (p.currentToken() != JsonToken.START_OBJECT) {
+                ctx.reportInputMismatch(JsonObject.class, "JsonObject must start with [");
+                // Throw
+            }
+            if (pi != null) {
+//                JavaType ownerType = ctx.getContextualType();
+//                if (ownerType == null) ownerType = type;
+                try {
+                    return (T) Jackson2StreamingIO.readPojo(p, type,
+                            pi.clazz, pi, streamingContext);
+                } catch (Exception e) {
+                    ctx.reportBadDefinition(ctx.constructType(type), "Jackson2StreamingIO.readPojo() failed");
+                }
+            }
 
-        /**
-         * Writes unknown property into JsonObject dynamic map.
-         */
-        @Override
-        protected void _set(Object instance, Object propName, Object value) throws Exception {
-            ((JsonObject) instance).put((String) propName, value);
-        }
-
-        /**
-         * No access fix is needed for JsonObject any-setter.
-         */
-        @Override
-        public void fixAccess(DeserializationConfig config) {
-            // Do nothing
+            JsonObject jo = new JsonObject();
+            while (p.nextToken() != JsonToken.END_OBJECT) {
+                String k = p.currentName();
+                p.nextToken();
+                Object v = ctx.readValue(p, Object.class);
+                jo.put(k, v);
+            }
+            return (T) jo;
         }
 
     }
@@ -230,9 +198,8 @@ public interface Jackson2Module {
         /**
          * Creates deserializer for JsonArray or subclass.
          */
-        public JsonArrayDeserializer(Class<?> clazz) {
-            super();
-            this.pi = clazz == JsonArray.class ? null : NodeRegistry.registerPojoOrElseThrow(clazz);
+        public JsonArrayDeserializer(NodeRegistry.PojoInfo pi) {
+            this.pi = pi;
         }
 
         /**
@@ -241,16 +208,16 @@ public interface Jackson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
-            if (p.currentToken() == null) {
-                p.nextToken();
-            }
+            JsonToken token = p.currentToken();
+            if (token == JsonToken.VALUE_NULL) return null;
             if (p.currentToken() != JsonToken.START_ARRAY) {
                 ctx.reportInputMismatch(JsonArray.class, "JsonArray must start with [");
+                // Throw
             }
 
             T ja = pi == null ? (T) new JsonArray() : (T) pi.creatorInfo.forceNewPojo();
             JsonDeserializer<Object> deserializer =
-                    ctx.findRootValueDeserializer(ctx.constructType(ja.elementType()));
+                    ctx.findContextualValueDeserializer(ctx.constructType(ja.elementType()), null);
             while (p.nextToken() != JsonToken.END_ARRAY) {
                 Object v = deserializer.deserialize(p, ctx);
                 ja.add(v);
@@ -301,12 +268,14 @@ public interface Jackson2Module {
     }
 
     class PojoDeserializer<T> extends JsonDeserializer<T> {
+        private final Type type;
         private final NodeRegistry.PojoInfo pi;
         private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public PojoDeserializer(NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+        public PojoDeserializer(JavaType javaType, NodeRegistry.PojoInfo pi, StreamingContext streamingContext) {
+            this.type = TwoSimpleModule.toType(javaType);
             this.pi = pi;
             this.streamingContext = streamingContext;
         }
@@ -317,7 +286,9 @@ public interface Jackson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) Jackson2StreamingIO.readPojo(p, pi.clazz, pi.clazz, pi, streamingContext);
+//            JavaType ownerType = ctxt.getContextualType();
+//            if (ownerType == null) ownerType = type;
+            return (T) Jackson2StreamingIO.readPojo(p, type, pi.clazz, pi, streamingContext);
         }
     }
 
@@ -458,5 +429,6 @@ public interface Jackson2Module {
         }
 
     }
+
 
 }

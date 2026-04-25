@@ -185,7 +185,7 @@ public final class Types {
                 replaced[i] = substitute(args[i], map);
             }
 
-            return new ParameterizedTypeImpl((Class<?>) pt.getRawType(), replaced, pt.getOwnerType());
+            return new ParameterizedTypeImpl(pt.getRawType(), replaced, pt.getOwnerType());
         }
         if (type instanceof GenericArrayType) {
             GenericArrayType gat = (GenericArrayType) type;
@@ -250,7 +250,7 @@ public final class Types {
             for (int i = 0; i < args.length; i++) {
                 resolvedArgs[i] = resolveType(args[i], typeMap);
             }
-            return new ParameterizedTypeImpl((Class<?>) raw, resolvedArgs, pt.getOwnerType());
+            return new ParameterizedTypeImpl(raw, resolvedArgs, pt.getOwnerType());
         } else if (type instanceof GenericArrayType) {
             GenericArrayType gat = (GenericArrayType) type;
             Type component = resolveType(gat.getGenericComponentType(), typeMap);

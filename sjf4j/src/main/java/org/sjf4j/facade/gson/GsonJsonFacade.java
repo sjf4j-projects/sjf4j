@@ -42,6 +42,9 @@ public class GsonJsonFacade implements JsonFacade<GsonReader, GsonWriter> {
                 context.streamingMode == StreamingContext.StreamingMode.AUTO) {
             gsonBuilder.registerTypeAdapterFactory(new GsonModule.MyTypeAdapterFactory(context));
         }
+        if (context.includeNulls) {
+            gsonBuilder.serializeNulls();
+        }
         this.gson = gsonBuilder.create();
         this.streamingContext = context;
     }

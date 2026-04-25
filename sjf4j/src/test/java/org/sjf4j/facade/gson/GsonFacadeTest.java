@@ -283,7 +283,7 @@ public class GsonFacadeTest {
 
         GsonJsonFacade configured = new GsonJsonFacade(new GsonBuilder(),
                 new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
-                        facade.realStreamingMode()));
+                        facade.realStreamingMode(), true));
         assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
         assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
     }
