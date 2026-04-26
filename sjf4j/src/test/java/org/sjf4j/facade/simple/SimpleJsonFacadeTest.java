@@ -17,7 +17,6 @@ import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -358,7 +357,7 @@ public class SimpleJsonFacadeTest {
         SimpleJsonFacade facade = new SimpleJsonFacade();
         CodecFacadeAssertions.assertValueFormat(facade);
 
-        StreamingContext context = new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")));
+        StreamingContext context = new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis"));
         SimpleJsonFacade configured = new SimpleJsonFacade(context);
         CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }

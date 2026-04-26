@@ -168,7 +168,7 @@ public final class NodeMapperBuilder<S, T> {
             }
             converters[i] = _toConverter(nestedMapper);
         }
-        return new SimpleNodeFacade(streamingContext.valueFormatMapping, converters);
+        return new SimpleNodeFacade(streamingContext, converters);
     }
 
     @SuppressWarnings("unchecked")

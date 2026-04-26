@@ -26,7 +26,6 @@ import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -358,7 +357,7 @@ public class Jackson2FacadeTest {
         CodecFacadeAssertions.assertValueFormat(facade);
 
         Jackson2JsonFacade configured = new Jackson2JsonFacade(new ObjectMapper(),
-                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis"))));
+                new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis")));
         CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }
 
@@ -367,7 +366,7 @@ public class Jackson2FacadeTest {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         long epochMillis = instant.toEpochMilli();
         Jackson2JsonFacade configured = new Jackson2JsonFacade(new ObjectMapper(),
-                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis"))));
+                new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis")));
         assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
 
         assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
@@ -378,7 +377,7 @@ public class Jackson2FacadeTest {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
         long epochMillis = instant.toEpochMilli();
         Jackson2JsonFacade configured = new Jackson2JsonFacade(new ObjectMapper(),
-                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis"),
                         StreamingContext.StreamingMode.SHARED_IO, true));
         assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
         assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));

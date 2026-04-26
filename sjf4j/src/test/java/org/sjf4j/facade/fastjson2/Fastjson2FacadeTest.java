@@ -20,7 +20,6 @@ import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -218,7 +217,7 @@ public class Fastjson2FacadeTest {
 
         Fastjson2JsonFacade configured = new Fastjson2JsonFacade(new com.alibaba.fastjson2.JSONReader.Feature[0],
                 new com.alibaba.fastjson2.JSONWriter.Feature[0],
-                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis"),
                         facade.realStreamingMode(), true));
         CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }

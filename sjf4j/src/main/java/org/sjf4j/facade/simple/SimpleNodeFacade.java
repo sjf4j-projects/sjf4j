@@ -7,12 +7,12 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
-import org.sjf4j.node.ValueFormatMapping;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Strings;
 
@@ -34,7 +34,7 @@ import java.util.Set;
  */
 public class SimpleNodeFacade implements NodeFacade {
     private final NodeConverterSlot[] converters;
-    private final ValueFormatMapping valueFormatMapping;
+    private final StreamingContext streamingContext;
 
     private static final NodeConverterSlot[] EMPTY_CONVERTERS = new NodeConverterSlot[0];
 
@@ -42,7 +42,7 @@ public class SimpleNodeFacade implements NodeFacade {
      * Creates a facade with only the default conversion pipeline.
      */
     public SimpleNodeFacade() {
-        this(ValueFormatMapping.EMPTY);
+        this(StreamingContext.EMPTY);
     }
 
     /**
@@ -50,9 +50,8 @@ public class SimpleNodeFacade implements NodeFacade {
      *
      * <p>These converters are checked before the default binding logic.
      */
-    public SimpleNodeFacade(ValueFormatMapping valueFormatMapping, NodeConverter<?, ?>... converters) {
-        Objects.requireNonNull(valueFormatMapping, "valueFormatMapping");
-        this.valueFormatMapping = valueFormatMapping;
+    public SimpleNodeFacade(StreamingContext streamingContext, NodeConverter<?, ?>... converters) {
+        this.streamingContext = Objects.requireNonNull(streamingContext, "streamingContext");
         if (converters == null || converters.length == 0) {
             this.converters = EMPTY_CONVERTERS;
         } else {
@@ -69,7 +68,7 @@ public class SimpleNodeFacade implements NodeFacade {
     }
 
     public static FacadeProvider<NodeFacade> provider() {
-        return context -> new SimpleNodeFacade(context.valueFormatMapping);
+        return SimpleNodeFacade::new;
     }
 
 
@@ -121,7 +120,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
             if (ti.hasValueCodecs()) {
-                String valueFormat = valueFormatMapping.defaultValueFormat(rawClazz);
+                String valueFormat = streamingContext.defaultValueFormat(rawClazz);
                 NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
@@ -521,7 +520,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
                 NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
-                    String valueFormat = valueFormatMapping.defaultValueFormat(argRaw);
+                    String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getFormattedValueCodecInfo(valueFormat);
                 }
                 if (ti.anyOfInfo == null && argVci != null) {
@@ -875,7 +874,7 @@ public class SimpleNodeFacade implements NodeFacade {
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
-                String valueFormat = valueFormatMapping.defaultValueFormat(rawClazz);
+                String valueFormat = streamingContext.defaultValueFormat(rawClazz);
                 NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);

@@ -11,7 +11,6 @@ import org.sjf4j.facade.YamlFacade;
 import org.sjf4j.mapper.NodeMapperBuilder;
 import org.sjf4j.node.Types;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -55,10 +54,9 @@ public final class Sjf4j {
     }
 
     private Sjf4j(Builder builder) {
-        ValueFormatMapping valueFormatMapping = ValueFormatMapping.of(builder.defaultValueFormats);
         StreamingContext.StreamingMode streamingMode = builder.streamingMode == null ?
                 StreamingContext.StreamingMode.AUTO : builder.streamingMode;
-        this.streamingContext = new StreamingContext(valueFormatMapping, streamingMode, builder.includeNulls);
+        this.streamingContext = new StreamingContext(builder.defaultValueFormats, streamingMode, builder.includeNulls);
 
         this.nodeFacadeProvider = builder.nodeFacadeProvider == null
                 ? FacadeFactory.nodeFacadeProvider() : builder.nodeFacadeProvider;
@@ -313,7 +311,7 @@ public final class Sjf4j {
             this.yamlFacadeProvider = sjf4j.yamlFacadeProvider;
             this.propertiesFacadeProvider = sjf4j.propertiesFacadeProvider;
             this.streamingMode = sjf4j.streamingContext.streamingMode;
-            this.defaultValueFormats.putAll(sjf4j.streamingContext.valueFormatMapping.asMap());
+            sjf4j.streamingContext.copyDefaultValueFormatsTo(this.defaultValueFormats);
             this.includeNulls = sjf4j.streamingContext.includeNulls;
         }
 

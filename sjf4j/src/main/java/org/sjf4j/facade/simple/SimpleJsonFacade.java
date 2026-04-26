@@ -3,7 +3,6 @@ package org.sjf4j.facade.simple;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.JsonFacade;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.IOException;
 import java.io.Reader;

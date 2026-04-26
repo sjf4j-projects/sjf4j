@@ -16,7 +16,6 @@ import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueFormatMapping;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -200,7 +199,7 @@ public class GsonFacadeTest {
         CodecFacadeAssertions.assertValueFormat(facade);
 
         GsonJsonFacade configured = new GsonJsonFacade(new GsonBuilder(),
-                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis"),
                         facade.realStreamingMode(), true));
         CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }

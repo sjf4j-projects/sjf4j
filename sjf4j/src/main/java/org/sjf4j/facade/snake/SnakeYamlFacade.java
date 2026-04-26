@@ -3,7 +3,6 @@ package org.sjf4j.facade.snake;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.YamlFacade;
-import org.sjf4j.node.ValueFormatMapping;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.emitter.Emitter;

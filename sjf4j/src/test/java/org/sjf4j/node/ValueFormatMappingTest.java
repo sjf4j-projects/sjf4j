@@ -1,6 +1,7 @@
 package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.facade.StreamingContext;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -11,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ValueFormatMappingTest {
+class StreamingContextValueFormatTest {
 
     @Test
     void testOfRejectsPrimitiveValueType() {
@@ -19,7 +20,7 @@ class ValueFormatMappingTest {
         formats.put(int.class, "any");
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> ValueFormatMapping.of(formats));
+                () -> new StreamingContext(formats));
 
         assertTrue(ex.getMessage().contains("primitive type 'int'"));
         assertTrue(ex.getMessage().contains("boxed type 'java.lang.Integer'"));
@@ -27,10 +28,10 @@ class ValueFormatMappingTest {
 
     @Test
     void testDefaultValueFormatDoesNotBoxLookupType() {
-        ValueFormatMapping mapping = ValueFormatMapping.of(Map.of(Integer.class, "number"));
+        StreamingContext context = new StreamingContext(Map.of(Integer.class, "number"));
 
-        assertEquals("number", mapping.defaultValueFormat(Integer.class));
-        assertNull(mapping.defaultValueFormat(int.class));
-        assertNull(mapping.defaultValueFormat(Instant.class));
+        assertEquals("number", context.defaultValueFormat(Integer.class));
+        assertNull(context.defaultValueFormat(int.class));
+        assertNull(context.defaultValueFormat(Instant.class));
     }
 }

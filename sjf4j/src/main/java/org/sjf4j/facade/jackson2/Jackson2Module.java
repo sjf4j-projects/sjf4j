@@ -55,7 +55,7 @@ public interface Jackson2Module {
             this.streamingContext = streamingContext;
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(Instant.class);
-            String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(Instant.class);
+            String valueFormat = streamingContext.defaultValueFormat(Instant.class);
             NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
             addDeserializer(Instant.class, new NodeValueDeserializer<>(vci));
 
@@ -85,7 +85,7 @@ public interface Jackson2Module {
                         return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
                     }
                     if (ti.hasValueCodecs()) {
-                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                        String valueFormat = streamingContext.defaultValueFormat(clazz);
                         NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueDeserializer<>(vci);
@@ -112,7 +112,7 @@ public interface Jackson2Module {
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (ti.hasValueCodecs()) {
-                        String valueFormat = streamingContext.valueFormatMapping.defaultValueFormat(clazz);
+                        String valueFormat = streamingContext.defaultValueFormat(clazz);
                         NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueSerializer<>(vci);

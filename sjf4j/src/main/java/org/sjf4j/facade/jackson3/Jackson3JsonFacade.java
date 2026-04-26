@@ -109,9 +109,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNodePlugin(Reader input, Type type) {
         try {
-            if (_useFrameworkPluginRead(type)) {
-                return _readFramework(input, type);
-            }
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -121,9 +118,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNodePlugin(InputStream input, Type type) {
         try {
-            if (_useFrameworkPluginRead(type)) {
-                return _readFramework(input, type);
-            }
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -133,9 +127,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNodePlugin(String input, Type type) {
         try {
-            if (_useFrameworkPluginRead(type)) {
-                return _readFramework(input, type);
-            }
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -145,9 +136,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public Object readNodePlugin(byte[] input, Type type) {
         try {
-            if (_useFrameworkPluginRead(type)) {
-                return _readFramework(input, type);
-            }
             return jsonMapper.readValue(input, jsonMapper.constructType(type));
         } catch (Exception e) {
             throw failedToRead(type, e);
@@ -172,10 +160,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public void writeNodePlugin(Writer output, Object node) {
         try {
-            if (_useFrameworkPluginWrite(node)) {
-                _writeFramework(output, node);
-                return;
-            }
             jsonMapper.writeValue(output, node);
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -185,10 +169,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public void writeNodePlugin(OutputStream output, Object node) {
         try {
-            if (_useFrameworkPluginWrite(node)) {
-                _writeFramework(output, node);
-                return;
-            }
             jsonMapper.writeValue(output, node);
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -198,9 +178,6 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public String writeNodeAsStringPlugin(Object node) {
         try {
-            if (_useFrameworkPluginWrite(node)) {
-                return _writeFrameworkAsString(node);
-            }
             return jsonMapper.writeValueAsString(node);
         } catch (Exception e) {
             throw failedToWrite(node, e);
@@ -210,91 +187,10 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
     @Override
     public byte[] writeNodeAsBytesPlugin(Object node) {
         try {
-            if (_useFrameworkPluginWrite(node)) {
-                return _writeFrameworkAsBytes(node);
-            }
             return jsonMapper.writeValueAsBytes(node);
         } catch (Exception e) {
             throw failedToWrite(node, e);
         }
-    }
-
-    private boolean _useFrameworkPluginRead(Type type) {
-        Class<?> rawClazz = Types.rawBox(type);
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        return ti.valueCodecInfo != null || ti.formattedValueCodecs.length > 0;
-    }
-
-    private boolean _useFrameworkPluginWrite(Object node) {
-        if (node == null) return false;
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(node.getClass());
-        return ti.valueCodecInfo != null || ti.formattedValueCodecs.length > 0;
-    }
-
-    private Object _readFramework(Reader input, Type type) throws IOException {
-        try (Jackson3Reader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext);
-            reader.endDocument();
-            return node;
-        }
-    }
-
-    private Object _readFramework(InputStream input, Type type) throws IOException {
-        try (Jackson3Reader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext);
-            reader.endDocument();
-            return node;
-        }
-    }
-
-    private Object _readFramework(String input, Type type) throws IOException {
-        try (Jackson3Reader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext);
-            reader.endDocument();
-            return node;
-        }
-    }
-
-    private Object _readFramework(byte[] input, Type type) throws IOException {
-        try (Jackson3Reader reader = createReader(input)) {
-            reader.startDocument();
-            Object node = StreamingIO.readNode(reader, type, streamingContext);
-            reader.endDocument();
-            return node;
-        }
-    }
-
-    private void _writeFramework(Writer output, Object node) throws IOException {
-        Jackson3Writer writer = createWriter(output);
-        writer.startDocument();
-        StreamingIO.writeNode(writer, node, streamingContext);
-        writer.endDocument();
-        writer.flush();
-        writer.flushTo(output);
-    }
-
-    private void _writeFramework(OutputStream output, Object node) throws IOException {
-        Jackson3Writer writer = createWriter(output);
-        writer.startDocument();
-        StreamingIO.writeNode(writer, node, streamingContext);
-        writer.endDocument();
-        writer.flush();
-        writer.flushTo(output);
-    }
-
-    private String _writeFrameworkAsString(Object node) throws IOException {
-        java.io.StringWriter output = new java.io.StringWriter();
-        _writeFramework(output, node);
-        return output.toString();
-    }
-
-    private byte[] _writeFrameworkAsBytes(Object node) throws IOException {
-        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
-        _writeFramework(output, node);
-        return output.toByteArray();
     }
 
 }

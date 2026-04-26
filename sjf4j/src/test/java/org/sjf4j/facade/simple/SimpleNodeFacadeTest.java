@@ -13,8 +13,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
+import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.node.ValueFormatMapping;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.PatchOperation;
 import org.sjf4j.path.JsonPointer;
@@ -602,7 +602,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     public void testReadMapperOverridesTopLevelPojoBinding() {
-        SimpleNodeFacade facade = new SimpleNodeFacade(ValueFormatMapping.EMPTY, new NodeConverter<MapperNameSource, MapperNameTarget>() {
+        SimpleNodeFacade facade = new SimpleNodeFacade(StreamingContext.EMPTY, new NodeConverter<MapperNameSource, MapperNameTarget>() {
             @Override
             public Class<MapperNameSource> sourceType() {
                 return MapperNameSource.class;
@@ -632,7 +632,7 @@ public class SimpleNodeFacadeTest {
 
     @Test
     public void testReadMapperAppliesToNestedPojoAndListElements() {
-        SimpleNodeFacade facade = new SimpleNodeFacade(ValueFormatMapping.EMPTY, new NodeConverter<MapperNameSource, MapperNameTarget>() {
+        SimpleNodeFacade facade = new SimpleNodeFacade(StreamingContext.EMPTY, new NodeConverter<MapperNameSource, MapperNameTarget>() {
             @Override
             public Class<MapperNameSource> sourceType() {
                 return MapperNameSource.class;

@@ -24,7 +24,6 @@ import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.TypeReference;
-import org.sjf4j.node.ValueFormatMapping;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.exception.JsonException;
 import tools.jackson.databind.PropertyName;
@@ -313,7 +312,7 @@ class Jackson3FacadeTest {
 
     private static Jackson3JsonFacade newFacade(StreamingContext.StreamingMode mode, boolean includeNulls) {
         return new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                new StreamingContext(ValueFormatMapping.EMPTY, mode, includeNulls));
+                new StreamingContext(mode, includeNulls));
     }
 
     private static LinkedHashMap<String, Object> linkedMapOf(Object... keyValues) {
@@ -535,7 +534,7 @@ class Jackson3FacadeTest {
         assertEquals(instant, creatorBook.updatedAt);
 
         Jackson3JsonFacade configured = new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
-                new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
+                new StreamingContext(Collections.singletonMap(Instant.class, "epochMillis"),
                         facade.realStreamingMode(), true));
         assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
         assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));

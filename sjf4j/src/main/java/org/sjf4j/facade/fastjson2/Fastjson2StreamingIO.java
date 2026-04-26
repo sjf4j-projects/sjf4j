@@ -207,7 +207,7 @@ public class Fastjson2StreamingIO {
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
         if (ti.hasValueCodecs()) {
-            String valueFormat = context.valueFormatMapping.defaultValueFormat(rawClazz);
+            String valueFormat = context.defaultValueFormat(rawClazz);
             NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
@@ -277,7 +277,7 @@ public class Fastjson2StreamingIO {
                 NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(argRaw);
                 NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
-                    String valueFormat = context.valueFormatMapping.defaultValueFormat(argRaw);
+                    String valueFormat = context.defaultValueFormat(argRaw);
                     argVci = ti.getFormattedValueCodecInfo(valueFormat);
                 }
                 Object argValue;
@@ -694,7 +694,7 @@ public class Fastjson2StreamingIO {
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
-                String valueFormat = context.valueFormatMapping.defaultValueFormat(rawClazz);
+                String valueFormat = context.defaultValueFormat(rawClazz);
                 NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
@@ -756,7 +756,7 @@ public class Fastjson2StreamingIO {
     private static NodeRegistry.ValueCodecInfo resolveValueCodecInfo(Class<?> clazz, StreamingContext context) {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (ti.hasValueCodecs()) {
-            String valueFormat = context.valueFormatMapping.defaultValueFormat(clazz);
+            String valueFormat = context.defaultValueFormat(clazz);
             return ti.getFormattedValueCodecInfo(valueFormat);
         }
         return null;
