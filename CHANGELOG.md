@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [1.2.1] - 2026.04.27
 ### Added
 - Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact JSON-semantic structural summaries for objects, arrays, facade nodes, POJOs, and value-codec types.
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
@@ -20,9 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed shared and backend-native POJO object writing paths to use dedicated `writePojo(...)` flows, keeping JOJO dynamic fields aligned across shared, Jackson 2, and Fastjson2 serializers.
 - Changed snake-case conversion to live in `Strings.toSnakeCase(...)`, with `NamingStrategy.SNAKE_CASE` delegating to the shared helper.
 - Changed `SchemaValidator` convention lookup to try `<simple-name>.json` first and then `<snake-name>.json`, instead of probing `<full-class-name>.json`.
-- Changed `SchemaStore` local schema loaders to return `null` for missing files/resources so missing-schema decisions stay in higher-level callers.
 - Changed node traversal helper naming from `visit*`/`anyMatchIn*` to `forEach*`/`anyMatch*` across shared node utilities and facade adapters.
-- Changed facade-node write operations for Jackson 2 and Jackson 3 to require backend-native `JsonNode` values instead of auto-converting arbitrary OBNT values.
 - Changed JSONPath missing-container creation to recognize Jackson 3 native object/array node types.
 - Changed `Nodes` and `JsonObject` object views to expose readable members only, while keeping direct write paths available for writable-only bindings.
 - Changed shared and backend-native facade integrations to route through context-aware `StreamingIO`, with plugin-module fallbacks for SJF4J-managed value-codec and `AnyOf` cases.
@@ -32,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed backend-native Jackson/Fastjson2 streaming and module paths to skip formatted value-codec resolution when a type has no registered codecs, reducing unnecessary metadata work and avoiding null-driven fallback drift.
 - Fixed `JsonObject` writable traversal so dynamic entries honor `writeDynamic` during backend-native object serialization.
-- Fixed `includeNulls(false)` propagation across shared, Jackson 2, Jackson 3, and Fastjson2 object writers so `Map`, `JsonObject`, POJO, and JOJO object properties omit `null` values consistently while array elements still preserve explicit `null` slots.
 - Fixed `Types` generic substitution and resolution for parameterized types so raw-type preservation no longer depends on unsafe `Class` casts.
 - Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.
@@ -40,7 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed shared/simple/Jackson/Fastjson2 readable-member serialization and POJO projection paths so write-only bindings no longer leak into object traversal or output.
 - Fixed field- and creator-bound non-default value formats so shared IO, exclusive IO, plugin-module reads/writes, node conversion, and `Sjf4j` runtime APIs all honor the same codec selection.
 - Fixed deferred parent-scope `AnyOf` binding and runtime node conversion paths to use the owning `Sjf4j` instance instead of process-global facade defaults.
-- Fixed Jackson 2 and Fastjson2 native module binding for JOJO/POJO cases so generic owner types and dynamic fields round-trip more consistently with shared streaming semantics.
 
 
 ## [1.2.0] - 2026.04.12

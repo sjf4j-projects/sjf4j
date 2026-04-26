@@ -18,7 +18,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.facade.StreamingFacade;
 import org.sjf4j.path.JsonPath;
 
 import java.io.IOException;
@@ -36,10 +35,10 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 2)
 @Threads(1)
 @State(Scope.Thread)
-public class JsonPathCompareBenchmark {
+public class JsonPathBenchmark {
 
     public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.Main.main(new String[]{JsonPathCompareBenchmark.class.getName()});
+        org.openjdk.jmh.Main.main(new String[]{JsonPathBenchmark.class.getName()});
 //        org.openjdk.jmh.Main.main(new String[]{"JsonPathCompareBenchmark.compile_"});
     }
 
