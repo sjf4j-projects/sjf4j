@@ -19,6 +19,7 @@ import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
@@ -46,7 +47,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -58,6 +61,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Jackson3FacadeTest {
+
+    private static final Sjf4j ASSERT_SJF4J = Sjf4j.builder()
+            .jsonFacadeProvider(SimpleJsonFacade.provider())
+            .build();
 
     private final Sjf4j sjf4j = Sjf4j.builder()
             .jsonFacadeProvider(Jackson3JsonFacade.provider())
@@ -270,6 +277,20 @@ class Jackson3FacadeTest {
         public Map<String, Object> ext;
     }
 
+    static class NullablePojo {
+        public String name;
+        public String alias;
+        public NullablePojo child;
+        public Map<String, Object> ext;
+        public List<Object> items;
+    }
+
+    static class NullableJojo extends JsonObject {
+        public String name;
+        public String alias;
+        public NullableJojo child;
+    }
+
     private static StreamingContext ctx(StreamingContext.StreamingMode mode) {
         return new StreamingContext(mode);
     }
@@ -290,6 +311,57 @@ class Jackson3FacadeTest {
         return new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(), ctx(mode));
     }
 
+    private static Jackson3JsonFacade newFacade(StreamingContext.StreamingMode mode, boolean includeNulls) {
+        return new Jackson3JsonFacade(JsonMapper.builderWithJackson2Defaults().build(),
+                new StreamingContext(ValueFormatMapping.EMPTY, mode, includeNulls));
+    }
+
+    private static LinkedHashMap<String, Object> linkedMapOf(Object... keyValues) {
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            map.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return map;
+    }
+
+    private static JsonObject jsonObjectOf(Object... keyValues) {
+        JsonObject jo = new JsonObject();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            jo.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return jo;
+    }
+
+    private static NullablePojo nullablePojo() {
+        NullablePojo child = new NullablePojo();
+        child.name = "kid";
+
+        NullablePojo pojo = new NullablePojo();
+        pojo.name = "han";
+        pojo.child = child;
+        pojo.ext = linkedMapOf(
+                "dynamicNull", null,
+                "nested", jsonObjectOf("keep", 1, "drop", null),
+                "nestedMap", linkedMapOf("keep", 2, "drop", null)
+        );
+        pojo.items = Arrays.asList(null, jsonObjectOf("keep", 3, "drop", null), linkedMapOf("keep", 4, "drop", null));
+        return pojo;
+    }
+
+    private static NullableJojo nullableJojo() {
+        NullableJojo child = new NullableJojo();
+        child.name = "kid";
+
+        NullableJojo jojo = new NullableJojo();
+        jojo.name = "han";
+        jojo.child = child;
+        jojo.put("dynamicNull", null);
+        jojo.put("nested", jsonObjectOf("keep", 5, "drop", null));
+        jojo.put("nestedMap", linkedMapOf("keep", 6, "drop", null));
+        jojo.put("items", Arrays.asList(null, jsonObjectOf("keep", 7, "drop", null), linkedMapOf("keep", 8, "drop", null)));
+        return jojo;
+    }
+
     private static Stream<DynamicTest> modeTests(String caseName, ModeCase caze) {
         return modeTests(caseName, allModes(), caze);
     }
@@ -301,6 +373,122 @@ class Jackson3FacadeTest {
             Jackson3JsonFacade facade = newFacade(mode);
             caze.run(facade);
         }));
+    }
+
+    private static void assertNullsIncluded(JsonObject root) {
+        assertTrue(root.containsKey("alias"));
+        assertNull(root.getNode("alias"));
+        assertTrue(root.getJsonObject("nested").containsKey("drop"));
+        assertTrue(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        org.sjf4j.JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertTrue(items.getJsonObject(1).containsKey("drop"));
+        assertTrue(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private static void assertNullsExcluded(JsonObject root) {
+        assertFalse(root.containsKey("alias"));
+        assertFalse(root.getJsonObject("nested").containsKey("drop"));
+        assertFalse(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        org.sjf4j.JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertFalse(items.getJsonObject(1).containsKey("drop"));
+        assertFalse(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private static void assertPojoNullsIncluded(JsonObject root) {
+        assertTrue(root.containsKey("alias"));
+        assertNull(root.getNode("alias"));
+        assertTrue(root.getJsonObject("child").containsKey("alias"));
+        assertNull(root.getJsonObject("child").getNode("alias"));
+        assertTrue(root.getJsonObject("child").containsKey("ext"));
+        assertTrue(root.getJsonObject("child").containsKey("items"));
+        assertNull(root.getJsonObject("child").getNode("ext"));
+        assertNull(root.getJsonObject("child").getNode("items"));
+        org.sjf4j.JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertTrue(items.getJsonObject(1).containsKey("drop"));
+        assertTrue(items.getJsonObject(2).containsKey("drop"));
+        assertTrue(root.getJsonObject("ext").containsKey("dynamicNull"));
+    }
+
+    private static void assertPojoNullsExcluded(JsonObject root) {
+        assertFalse(root.containsKey("alias"));
+        assertFalse(root.getJsonObject("child").containsKey("alias"));
+        assertFalse(root.getJsonObject("child").containsKey("ext"));
+        assertFalse(root.getJsonObject("child").containsKey("items"));
+        org.sjf4j.JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertFalse(items.getJsonObject(1).containsKey("drop"));
+        assertFalse(items.getJsonObject(2).containsKey("drop"));
+        assertFalse(root.getJsonObject("ext").containsKey("dynamicNull"));
+    }
+
+    private static void assertJojoNullsIncluded(JsonObject root) {
+        assertTrue(root.containsKey("alias"));
+        assertNull(root.getNode("alias"));
+        assertTrue(root.getJsonObject("child").containsKey("alias"));
+        assertTrue(root.containsKey("dynamicNull"));
+        assertTrue(root.getJsonObject("nested").containsKey("drop"));
+        assertTrue(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        org.sjf4j.JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertTrue(items.getJsonObject(1).containsKey("drop"));
+        assertTrue(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private static void assertJojoNullsExcluded(JsonObject root) {
+        assertFalse(root.containsKey("alias"));
+        assertFalse(root.getJsonObject("child").containsKey("alias"));
+        assertFalse(root.containsKey("dynamicNull"));
+        assertFalse(root.getJsonObject("nested").containsKey("drop"));
+        assertFalse(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        org.sjf4j.JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertFalse(items.getJsonObject(1).containsKey("drop"));
+        assertFalse(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private static void assertIncludeNullsBehavior(Jackson3JsonFacade facade, boolean includeNulls) {
+        JsonObject topLevelObject = ASSERT_SJF4J.fromJson(facade.writeNodeAsString(jsonObjectOf(
+                "name", "han",
+                "alias", null,
+                "nested", jsonObjectOf("keep", 1, "drop", null),
+                "nestedMap", linkedMapOf("keep", 2, "drop", null),
+                "items", Arrays.asList(null, jsonObjectOf("keep", 3, "drop", null), linkedMapOf("keep", 4, "drop", null))
+        )), JsonObject.class);
+        JsonObject topLevelMap = ASSERT_SJF4J.fromJson(facade.writeNodeAsString(linkedMapOf(
+                "name", "han",
+                "alias", null,
+                "nested", jsonObjectOf("keep", 1, "drop", null),
+                "nestedMap", linkedMapOf("keep", 2, "drop", null),
+                "items", Arrays.asList(null, jsonObjectOf("keep", 3, "drop", null), linkedMapOf("keep", 4, "drop", null))
+        )), JsonObject.class);
+        JsonObject pojo = ASSERT_SJF4J.fromJson(facade.writeNodeAsString(nullablePojo()), JsonObject.class);
+        JsonObject jojo = ASSERT_SJF4J.fromJson(facade.writeNodeAsString(nullableJojo()), JsonObject.class);
+
+        if (includeNulls) {
+            assertNullsIncluded(topLevelObject);
+            assertNullsIncluded(topLevelMap);
+            assertPojoNullsIncluded(pojo);
+            assertJojoNullsIncluded(jojo);
+            return;
+        }
+
+        assertNullsExcluded(topLevelObject);
+        assertNullsExcluded(topLevelMap);
+        assertPojoNullsExcluded(pojo);
+        assertJojoNullsExcluded(jojo);
     }
 
     private static void assertNodeValue(Jackson3JsonFacade facade) {
@@ -456,6 +644,13 @@ class Jackson3FacadeTest {
                 modeTests("anyof", Jackson3FacadeTest::assertAnyOf),
                 modeTests("skip-nested-node", Jackson3FacadeTest::assertSkipNestedNode)
         ).flatMap(s -> s);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> testIncludeNullsAcrossModes() {
+        return Stream.of(true, false).flatMap(includeNulls -> allModes().map(mode ->
+                DynamicTest.dynamicTest("includeNulls=" + includeNulls + " mode=" + mode,
+                        () -> assertIncludeNullsBehavior(newFacade(mode, includeNulls), includeNulls))));
     }
 
     @Test

@@ -50,7 +50,7 @@ public class Jackson3JsonFacade implements JsonFacade<Jackson3Reader, Jackson3Wr
                 new Jackson3Module.NodePropertyAnnotationIntrospector(), existing));
         if (!context.includeNulls) {
             builder.changeDefaultPropertyInclusion(inclusion ->
-                    JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, inclusion.getContentInclusion())
+                    JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL)
             );
         }
         this.jsonMapper = builder.build();

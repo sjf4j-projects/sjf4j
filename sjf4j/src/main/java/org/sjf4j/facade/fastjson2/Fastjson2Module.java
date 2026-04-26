@@ -25,6 +25,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
+import java.util.Map;
 
 
 /**
@@ -367,11 +368,13 @@ public interface Fastjson2Module {
             } else {
                 JsonObject jo = (JsonObject) object;
                 writer.startObject();
-                jo.forEach((k, v) -> {
-                    writer.writeName(k);
+                for (Map.Entry<String, Object> entry : jo.entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !streamingContext.includeNulls) continue;
+                    writer.writeName(entry.getKey());
                     writer.writeColon();
-                    writer.writeAny(v);
-                });
+                    writer.writeAny(value);
+                }
                 writer.endObject();
             }
         }

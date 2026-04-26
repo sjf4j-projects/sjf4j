@@ -13,11 +13,8 @@ import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 import org.sjf4j.node.ValueFormatMapping;
@@ -25,7 +22,6 @@ import org.sjf4j.node.ValueFormatMapping;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -88,39 +84,9 @@ public class SimpleJsonFacadeTest {
 
     }
 
-    @NodeValue
-    public static class Ops {
-        private final LocalDate localDate;
-
-        public Ops(LocalDate localDate) {
-            this.localDate = localDate;
-        }
-        @ValueToRaw
-        public String encode() {
-            return localDate.toString();
-        }
-
-        @RawToValue
-        public static Ops decode(String raw) {
-            return new Ops(LocalDate.parse(raw));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
     @Test
     public void testNodeValue1() {
-        SimpleJsonFacade facade = new SimpleJsonFacade();
-        NodeRegistry.registerTypeInfo(Ops.class);
-
-        String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
-        List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());
-        log.info("list={}", list);
-
-        StringWriter sw = new StringWriter();
-        facade.writeNode(sw, list);
-        String json2 = sw.toString();
-        log.info("json2={}", json2);
-        assertEquals(json1, json2);
+        CodecFacadeAssertions.assertNodeValue(new SimpleJsonFacade());
     }
 
 
@@ -128,24 +94,6 @@ public class SimpleJsonFacadeTest {
         public String name;
         public List<User> friends;
         public Map<String, Object> ext;
-    }
-
-    static class InstantFieldBook {
-        @NodeProperty(valueFormat = "epochMillis")
-        public Instant createdAt;
-        public Instant updatedAt;
-    }
-
-    static class InstantCreatorBook {
-        public final Instant createdAt;
-        public final Instant updatedAt;
-
-        @NodeCreator
-        InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
-                           @NodeProperty("updatedAt") Instant updatedAt) {
-            this.createdAt = createdAt;
-            this.updatedAt = updatedAt;
-        }
     }
 
     @NodeBinding(readDynamic = false)
@@ -408,23 +356,11 @@ public class SimpleJsonFacadeTest {
     @Test
     public void testValueFormat() {
         SimpleJsonFacade facade = new SimpleJsonFacade();
-        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        long epochMillis = instant.toEpochMilli();
-        String json = "{\"createdAt\":" + epochMillis + ",\"updatedAt\":\"" + instant + "\"}";
-
-        InstantFieldBook book = (InstantFieldBook) facade.readNode(new StringReader(json), InstantFieldBook.class);
-        assertEquals(instant, book.createdAt);
-        assertEquals(instant, book.updatedAt);
-        assertEquals(json, facade.writeNodeAsString(book));
-
-        InstantCreatorBook creatorBook = (InstantCreatorBook) facade.readNode(new StringReader(json), InstantCreatorBook.class);
-        assertEquals(instant, creatorBook.createdAt);
-        assertEquals(instant, creatorBook.updatedAt);
+        CodecFacadeAssertions.assertValueFormat(facade);
 
         StreamingContext context = new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")));
         SimpleJsonFacade configured = new SimpleJsonFacade(context);
-        assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
-        assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
+        CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }
 
 

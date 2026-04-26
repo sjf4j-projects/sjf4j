@@ -25,6 +25,7 @@ import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -143,6 +144,11 @@ public class Sjf4jTest {
 
     static class RuntimeMapperTarget {
         public String name;
+    }
+
+    static class RuntimeNullableHolder {
+        public String name;
+        public String alias;
     }
 
     @Test
@@ -315,6 +321,37 @@ public class Sjf4jTest {
                 .build();
 
         assertEquals(StreamingContext.StreamingMode.PLUGIN_MODULE, runtime.jsonFacade().realStreamingMode());
+    }
+
+    @Test
+    void testJsonFacadeProviderReceivesBuilderIncludeNulls() {
+        RuntimeNullableHolder holder = new RuntimeNullableHolder();
+        holder.name = "han";
+
+        Sjf4j runtime = Sjf4j.builder()
+                .includeNulls(false)
+                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+                .build();
+
+        JsonObject json = runtime.fromJson(runtime.toJsonString(holder), JsonObject.class);
+        assertEquals("han", json.getString("name"));
+        assertFalse(json.containsKey("alias"));
+    }
+
+    @Test
+    void testBuilderCopiesIncludeNullsSetting() {
+        RuntimeNullableHolder holder = new RuntimeNullableHolder();
+        holder.name = "han";
+
+        Sjf4j base = Sjf4j.builder()
+                .includeNulls(false)
+                .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+                .build();
+        Sjf4j derived = Sjf4j.builder(base).build();
+
+        JsonObject json = derived.fromJson(derived.toJsonString(holder), JsonObject.class);
+        assertEquals("han", json.getString("name"));
+        assertFalse(json.containsKey("alias"));
     }
 
     @Test

@@ -618,10 +618,12 @@ public class Fastjson2StreamingIO {
             if (node instanceof Map) {
                 writer.startObject();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     String key = entry.getKey().toString();
                     writer.writeName(key);
                     writer.writeColon();
-                    _writeNode(writer, entry.getValue(), context);
+                    _writeNode(writer, value, context);
                 }
                 writer.endObject();
                 return;
@@ -642,15 +644,13 @@ public class Fastjson2StreamingIO {
 
             if (rawClazz == JsonObject.class) {
                 writer.startObject();
-                ((JsonObject) node).forEach((k, v) -> {
-                    try {
-                        writer.writeName(k);
-                        writer.writeColon();
-                        _writeNode(writer, v, context);
-                    } catch (IOException e) {
-                        throw new BindingException(e);
-                    }
-                });
+                for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
+                    writer.writeName(entry.getKey());
+                    writer.writeColon();
+                    _writeNode(writer, value, context);
+                }
                 writer.endObject();
                 return;
             }
@@ -659,9 +659,7 @@ public class Fastjson2StreamingIO {
                 writer.startArray();
                 JsonArray ja = (JsonArray) node;
                 for (int i = 0, len = ja.size(); i < len; i++) {
-                    if (i > 0) {
-                        writer.writeComma();
-                    }
+                    if (i > 0) writer.writeComma();
                     _writeNode(writer, ja.getNode(i), context);
                 }
                 writer.endArray();
@@ -672,9 +670,7 @@ public class Fastjson2StreamingIO {
                 writer.startArray();
                 int len = Array.getLength(node);
                 for (int i = 0; i < len; i++) {
-                    if (i > 0) {
-                        writer.writeComma();
-                    }
+                    if (i > 0) writer.writeComma();
                     _writeNode(writer, Array.get(node, i), context);
                 }
                 writer.endArray();
@@ -725,10 +721,11 @@ public class Fastjson2StreamingIO {
                                  StreamingContext context) throws IOException {
         writer.startObject();
         for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            Object vv = entry.getValue().invokeGetter(node);
+            if (vv == null && !context.includeNulls) continue;
             String key = entry.getKey();
             writer.writeName(key);
             writer.writeColon();
-            Object vv = entry.getValue().invokeGetter(node);
             if (vv == null) {
                 writer.writeNull();
             } else {
@@ -743,9 +740,11 @@ public class Fastjson2StreamingIO {
             Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
             if (dynamicMap != null) {
                 for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     writer.writeName(entry.getKey());
                     writer.writeColon();
-                    _writeNode(writer, entry.getValue(), context);
+                    _writeNode(writer, value, context);
                 }
             }
         }

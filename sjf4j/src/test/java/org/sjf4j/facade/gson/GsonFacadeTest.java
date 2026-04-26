@@ -7,16 +7,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
-import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 import org.sjf4j.node.ValueFormatMapping;
@@ -24,7 +21,6 @@ import org.sjf4j.node.ValueFormatMapping;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
@@ -190,102 +186,23 @@ public class GsonFacadeTest {
                 () -> facade.readNode("{}", Object.class));
         assertTrue(ex.getMessage().contains("EXCLUSIVE_IO"));
     }
-
-
-    @NodeValue
-    public static class Ops {
-        private final LocalDate localDate;
-
-        public Ops(LocalDate localDate) {
-            this.localDate = localDate;
-        }
-        @ValueToRaw
-        public String encode() {
-            return localDate.toString();
-        }
-
-        @RawToValue
-        public static Ops decode(String raw) {
-            return new Ops(LocalDate.parse(raw));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
     private static void assertNodeValue(GsonJsonFacade facade) {
-        NodeRegistry.registerTypeInfo(Ops.class);
-
-        String json1 = "[\"2024-10-01\",\"2025-12-18\"]";
-        List<Ops> list = (List<Ops>) facade.readNode(json1, new TypeReference<List<Ops>>() {}.getType());
-        StringWriter sw = new StringWriter();
-        facade.writeNode(sw, list);
-        String json2 = sw.toString();
-        List<Ops> list2 = (List<Ops>) facade.readNode(json2, new TypeReference<List<Ops>>() {}.getType());
-        assertEquals(2, list2.size());
-    }
-
-    public static class BookField extends JsonObject {
-        private int id;
-        private String name;
-
-        @NodeProperty("user_name")
-        private String userName;
-        private double height;
-        private transient int transientHeight;
-    }
-
-    public static class InstantFieldBook {
-        @NodeProperty(valueFormat = "epochMillis")
-        public Instant createdAt;
-        public Instant updatedAt;
-    }
-
-    public static class InstantCreatorBook {
-        public final Instant createdAt;
-        public final Instant updatedAt;
-
-        @org.sjf4j.annotation.node.NodeCreator
-        public InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
-                                  @NodeProperty("updatedAt") Instant updatedAt) {
-            this.createdAt = createdAt;
-            this.updatedAt = updatedAt;
-        }
+        CodecFacadeAssertions.assertNodeValue(facade);
     }
 
     private static void assertNodeField(GsonJsonFacade facade) {
-        String json1 = "{\"id\":123,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}";
-        String json2 = "{\"user_name\":\"han\",\"id\":123,\"height\":175.5,\"transientHeight\":189.9}";
-        BookField jo1 = (BookField) facade.readNode(new StringReader(json1), BookField.class);
-        assertEquals("han", jo1.userName);
-        assertEquals("han", jo1.getString("user_name"));
-        assertNull(jo1.getString("userName"));
-
-        assertEquals(0.0, jo1.height);
-        assertEquals(0, jo1.transientHeight);
-
-        StringWriter sw = new StringWriter();
-        facade.writeNode(sw, jo1);
-        assertEquals(json2, sw.toString());
+        CodecFacadeAssertions.assertNodeField(facade,
+                "{\"id\":123,\"user_name\":\"han\",\"height\":175.5,\"transientHeight\":189.9}",
+                "{\"user_name\":\"han\",\"id\":123,\"height\":175.5,\"transientHeight\":189.9}");
     }
 
     private static void assertValueFormat(GsonJsonFacade facade) {
-        Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        long epochMillis = instant.toEpochMilli();
-        String json = "{\"createdAt\":" + epochMillis + ",\"updatedAt\":\"" + instant + "\"}";
-
-        InstantFieldBook book = (InstantFieldBook) facade.readNode(new StringReader(json), InstantFieldBook.class);
-        assertEquals(instant, book.createdAt);
-        assertEquals(instant, book.updatedAt);
-        assertEquals(json, facade.writeNodeAsString(book));
-
-        InstantCreatorBook creatorBook = (InstantCreatorBook) facade.readNode(new StringReader(json), InstantCreatorBook.class);
-        assertEquals(instant, creatorBook.createdAt);
-        assertEquals(instant, creatorBook.updatedAt);
+        CodecFacadeAssertions.assertValueFormat(facade);
 
         GsonJsonFacade configured = new GsonJsonFacade(new GsonBuilder(),
                 new StreamingContext(ValueFormatMapping.of(Collections.singletonMap(Instant.class, "epochMillis")),
                         facade.realStreamingMode(), true));
-        assertEquals(String.valueOf(epochMillis), configured.writeNodeAsString(instant));
-        assertEquals(instant, configured.readNode(String.valueOf(epochMillis), Instant.class));
+        CodecFacadeAssertions.assertConfiguredInstantValueFormat(configured);
     }
 
     @NodeBinding(naming = NamingStrategy.SNAKE_CASE)

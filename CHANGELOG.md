@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed backend-native Jackson/Fastjson2 streaming and module paths to skip formatted value-codec resolution when a type has no registered codecs, reducing unnecessary metadata work and avoiding null-driven fallback drift.
 - Fixed `JsonObject` writable traversal so dynamic entries honor `writeDynamic` during backend-native object serialization.
+- Fixed `includeNulls(false)` propagation across shared, Jackson 2, Jackson 3, and Fastjson2 object writers so `Map`, `JsonObject`, POJO, and JOJO object properties omit `null` values consistently while array elements still preserve explicit `null` slots.
 - Fixed `Types` generic substitution and resolution for parameterized types so raw-type preservation no longer depends on unsafe `Class` casts.
 - Fixed `Nodes.to(...)` so `@NodeValue` and registered `ValueCodec` target types are converted through the shared node-facade binding path instead of failing as unsupported types.
 - Fixed facade-node access metadata so Jackson 2, Jackson 3, and Gson object members report insertable child slots consistently, and array access reports appendable tail positions without forcing out-of-range reads.

@@ -19,6 +19,7 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.jackson2.Jackson2JsonFacade;
+import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 
@@ -35,6 +36,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -45,27 +47,317 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Execution(ExecutionMode.SAME_THREAD)
 public class StreamingIOTest {
 
+    private static final Sjf4j ASSERT_SJF4J = Sjf4j.builder()
+            .jsonFacadeProvider(SimpleJsonFacade.provider())
+            .build();
+
     private Sjf4j sjf4j = Sjf4j.global();
 
+    @FunctionalInterface
+    private interface BackendCase {
+        void run() throws Exception;
+    }
+
+    private enum Backend {
+        JACKSON2,
+        GSON,
+        FASTJSON2
+    }
+
     private void useJackson2(StreamingContext.StreamingMode mode) {
+        useJackson2(mode, true);
+    }
+
+    private void useJackson2(StreamingContext.StreamingMode mode, boolean includeNulls) {
         sjf4j = Sjf4j.builder(Sjf4j.global())
                 .streamingMode(mode)
+                .includeNulls(includeNulls)
                 .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
                 .build();
     }
 
     private void useGson(StreamingContext.StreamingMode mode) {
+        useGson(mode, true);
+    }
+
+    private void useGson(StreamingContext.StreamingMode mode, boolean includeNulls) {
         sjf4j = Sjf4j.builder(Sjf4j.global())
                 .streamingMode(mode)
+                .includeNulls(includeNulls)
                 .jsonFacadeProvider(GsonJsonFacade.provider(new GsonBuilder()))
                 .build();
     }
 
     private void useFastjson2(StreamingContext.StreamingMode mode) {
+        useFastjson2(mode, true);
+    }
+
+    private void useFastjson2(StreamingContext.StreamingMode mode, boolean includeNulls) {
         sjf4j = Sjf4j.builder(Sjf4j.global())
                 .streamingMode(mode)
+                .includeNulls(includeNulls)
                 .jsonFacadeProvider(Fastjson2JsonFacade.provider())
                 .build();
+    }
+
+    private void use(Backend backend, StreamingContext.StreamingMode mode) {
+        use(backend, mode, true);
+    }
+
+    private void use(Backend backend, StreamingContext.StreamingMode mode, boolean includeNulls) {
+        switch (backend) {
+            case JACKSON2:
+                useJackson2(mode, includeNulls);
+                return;
+            case GSON:
+                useGson(mode, includeNulls);
+                return;
+            case FASTJSON2:
+                useFastjson2(mode, includeNulls);
+                return;
+            default:
+                throw new IllegalArgumentException("Unsupported backend: " + backend);
+        }
+    }
+
+    private void runOnBackends(StreamingContext.StreamingMode mode, BackendCase caze, Backend... backends) {
+        runOnBackends(mode, true, caze, backends);
+    }
+
+    private void runOnBackends(StreamingContext.StreamingMode mode,
+                               boolean includeNulls,
+                               BackendCase caze,
+                               Backend... backends) {
+        for (Backend backend : backends) {
+            use(backend, mode, includeNulls);
+            try {
+                caze.run();
+            } catch (AssertionError e) {
+                throw new AssertionError("backend=" + backend + ", mode=" + mode + ", includeNulls=" + includeNulls, e);
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException("backend=" + backend + ", mode=" + mode, e);
+            }
+        }
+    }
+
+    private void runOnAllBackends(StreamingContext.StreamingMode mode, BackendCase caze) {
+        runOnAllBackends(mode, true, caze);
+    }
+
+    private void runOnAllBackends(StreamingContext.StreamingMode mode, boolean includeNulls, BackendCase caze) {
+        runOnBackends(mode, includeNulls, caze, Backend.JACKSON2, Backend.GSON, Backend.FASTJSON2);
+    }
+
+    private static BindingException findBindingException(Throwable throwable) {
+        while (throwable != null) {
+            if (throwable instanceof BindingException) {
+                return (BindingException) throwable;
+            }
+            throwable = throwable.getCause();
+        }
+        return null;
+    }
+
+    private static LinkedHashMap<String, Object> linkedMapOf(Object... keyValues) {
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            map.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return map;
+    }
+
+    private static JsonObject jsonObjectOf(Object... keyValues) {
+        JsonObject jo = new JsonObject();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            jo.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return jo;
+    }
+
+    private static JsonObject nullableTopLevelObject() {
+        return jsonObjectOf(
+                "name", "han",
+                "alias", null,
+                "nested", jsonObjectOf("keep", 1, "drop", null),
+                "nestedMap", linkedMapOf("keep", 2, "drop", null),
+                "items", Arrays.asList(null, jsonObjectOf("keep", 3, "drop", null), linkedMapOf("keep", 4, "drop", null))
+        );
+    }
+
+    private static LinkedHashMap<String, Object> nullableTopLevelMap() {
+        return linkedMapOf(
+                "name", "han",
+                "alias", null,
+                "nested", jsonObjectOf("keep", 1, "drop", null),
+                "nestedMap", linkedMapOf("keep", 2, "drop", null),
+                "items", Arrays.asList(null, jsonObjectOf("keep", 3, "drop", null), linkedMapOf("keep", 4, "drop", null))
+        );
+    }
+
+    private static NullablePojo nullablePojo() {
+        NullablePojo child = new NullablePojo();
+        child.name = "kid";
+        child.alias = null;
+
+        NullablePojo pojo = new NullablePojo();
+        pojo.name = "han";
+        pojo.alias = null;
+        pojo.child = child;
+        pojo.ext = linkedMapOf(
+                "dynamicNull", null,
+                "nested", jsonObjectOf("keep", 5, "drop", null),
+                "nestedMap", linkedMapOf("keep", 6, "drop", null)
+        );
+        pojo.items = Arrays.asList(null, jsonObjectOf("keep", 7, "drop", null), linkedMapOf("keep", 8, "drop", null));
+        return pojo;
+    }
+
+    private static NullableJojo nullableJojo() {
+        NullableJojo child = new NullableJojo();
+        child.name = "kid";
+        child.alias = null;
+
+        NullableJojo jojo = new NullableJojo();
+        jojo.name = "han";
+        jojo.alias = null;
+        jojo.child = child;
+        jojo.put("dynamicNull", null);
+        jojo.put("nested", jsonObjectOf("keep", 9, "drop", null));
+        jojo.put("nestedMap", linkedMapOf("keep", 10, "drop", null));
+        jojo.put("items", Arrays.asList(null, jsonObjectOf("keep", 11, "drop", null), linkedMapOf("keep", 12, "drop", null)));
+        return jojo;
+    }
+
+    private void assertNullsIncluded(JsonObject root) {
+        assertTrue(root.containsKey("alias"));
+        assertNull(root.getNode("alias"));
+        assertTrue(root.getJsonObject("nested").containsKey("drop"));
+        assertNull(root.getJsonObject("nested").getNode("drop"));
+        assertTrue(root.getJsonObject("nestedMap").containsKey("drop"));
+        assertNull(root.getJsonObject("nestedMap").getNode("drop"));
+
+        JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertTrue(items.getJsonObject(1).containsKey("drop"));
+        assertNull(items.getJsonObject(1).getNode("drop"));
+        assertTrue(items.getJsonObject(2).containsKey("drop"));
+        assertNull(items.getJsonObject(2).getNode("drop"));
+    }
+
+    private void assertNullsExcluded(JsonObject root) {
+        assertFalse(root.containsKey("alias"));
+        assertFalse(root.getJsonObject("nested").containsKey("drop"));
+        assertFalse(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertFalse(items.getJsonObject(1).containsKey("drop"));
+        assertFalse(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private void assertPojoNullsIncluded(JsonObject root) {
+        assertTrue(root.containsKey("alias"));
+        assertNull(root.getNode("alias"));
+        assertTrue(root.getJsonObject("child").containsKey("alias"));
+        assertNull(root.getJsonObject("child").getNode("alias"));
+        assertTrue(root.getJsonObject("child").containsKey("ext"));
+        assertNull(root.getJsonObject("child").getNode("ext"));
+        assertTrue(root.getJsonObject("child").containsKey("items"));
+        assertNull(root.getJsonObject("child").getNode("items"));
+
+        JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertTrue(items.getJsonObject(1).containsKey("drop"));
+        assertTrue(items.getJsonObject(2).containsKey("drop"));
+
+        JsonObject ext = root.getJsonObject("ext");
+        assertTrue(ext.containsKey("dynamicNull"));
+        assertNull(ext.getNode("dynamicNull"));
+        assertTrue(ext.getJsonObject("nested").containsKey("drop"));
+        assertTrue(ext.getJsonObject("nestedMap").containsKey("drop"));
+    }
+
+    private void assertPojoNullsExcluded(JsonObject root) {
+        assertFalse(root.containsKey("alias"));
+        assertFalse(root.getJsonObject("child").containsKey("alias"));
+        assertFalse(root.getJsonObject("child").containsKey("ext"));
+        assertFalse(root.getJsonObject("child").containsKey("items"));
+
+        JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertFalse(items.getJsonObject(1).containsKey("drop"));
+        assertFalse(items.getJsonObject(2).containsKey("drop"));
+
+        JsonObject ext = root.getJsonObject("ext");
+        assertFalse(ext.containsKey("dynamicNull"));
+        assertFalse(ext.getJsonObject("nested").containsKey("drop"));
+        assertFalse(ext.getJsonObject("nestedMap").containsKey("drop"));
+    }
+
+    private void assertJojoNullsIncluded(JsonObject root) {
+        assertTrue(root.containsKey("alias"));
+        assertNull(root.getNode("alias"));
+        assertTrue(root.getJsonObject("child").containsKey("alias"));
+        assertNull(root.getJsonObject("child").getNode("alias"));
+        assertTrue(root.containsKey("dynamicNull"));
+        assertNull(root.getNode("dynamicNull"));
+        assertTrue(root.getJsonObject("nested").containsKey("drop"));
+        assertTrue(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertTrue(items.getJsonObject(1).containsKey("drop"));
+        assertTrue(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private void assertJojoNullsExcluded(JsonObject root) {
+        assertFalse(root.containsKey("alias"));
+        assertFalse(root.getJsonObject("child").containsKey("alias"));
+        assertFalse(root.containsKey("dynamicNull"));
+        assertFalse(root.getJsonObject("nested").containsKey("drop"));
+        assertFalse(root.getJsonObject("nestedMap").containsKey("drop"));
+
+        JsonArray items = root.getJsonArray("items");
+        assertEquals(3, items.size());
+        assertNull(items.getNode(0));
+        assertFalse(items.getJsonObject(1).containsKey("drop"));
+        assertFalse(items.getJsonObject(2).containsKey("drop"));
+    }
+
+    private void assertIncludeNullsBehavior(boolean includeNulls) {
+        if (includeNulls) {
+            assertNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelObject()), JsonObject.class));
+            assertNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelMap()), JsonObject.class));
+            assertPojoNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullablePojo()), JsonObject.class));
+            assertJojoNullsIncluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableJojo()), JsonObject.class));
+            return;
+        }
+
+        assertNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelObject()), JsonObject.class));
+        assertNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableTopLevelMap()), JsonObject.class));
+        assertPojoNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullablePojo()), JsonObject.class));
+        assertJojoNullsExcluded(ASSERT_SJF4J.fromJson(sjf4j.toJsonString(nullableJojo()), JsonObject.class));
+    }
+
+    static class NullablePojo {
+        public String name;
+        public String alias;
+        public NullablePojo child;
+        public Map<String, Object> ext;
+        public List<Object> items;
+    }
+
+    static class NullableJojo extends JsonObject {
+        public String name;
+        public String alias;
+        public NullableJojo child;
     }
 
     @Getter
@@ -232,6 +524,22 @@ public class StreamingIOTest {
     static class PolyObj extends JsonObject implements Poly {}
     static class PolyArr extends JsonArray implements Poly {}
 
+    @Test
+    void testIncludeNullsEnabledAcrossBackendsAndModes() {
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, true, () -> assertIncludeNullsBehavior(true));
+        runOnBackends(StreamingContext.StreamingMode.EXCLUSIVE_IO, true, () -> assertIncludeNullsBehavior(true),
+                Backend.JACKSON2, Backend.FASTJSON2);
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, true, () -> assertIncludeNullsBehavior(true));
+    }
+
+    @Test
+    void testIncludeNullsDisabledAcrossBackendsAndModes() {
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, false, () -> assertIncludeNullsBehavior(false));
+        runOnBackends(StreamingContext.StreamingMode.EXCLUSIVE_IO, false, () -> assertIncludeNullsBehavior(false),
+                Backend.JACKSON2, Backend.FASTJSON2);
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, false, () -> assertIncludeNullsBehavior(false));
+    }
+
 
     @Test
     void testSkipNode1() {
@@ -278,14 +586,7 @@ public class StreamingIOTest {
             Object node = facade.readNode(json, UserJojo.class);
             log.info("node={}", node);
         });
-        BindingException inner = null;
-        while (cause != null) {
-            if (cause instanceof BindingException) {
-                inner = (BindingException) cause;
-                break;
-            }
-            cause = cause.getCause();
-        }
+        BindingException inner = findBindingException(cause);
         assertNotNull(inner, "JsonBindingException not found in cause chain");
         log.info("inner:", inner);
     }
@@ -307,14 +608,7 @@ public class StreamingIOTest {
 //        System.out.println(user1.inspect());
 //        System.out.println(facade.writeNodeAsString(user1));
         Throwable cause = assertThrows(JsonException.class, () -> facade.writeNodeAsString(user1));
-        BindingException inner = null;
-        while (cause != null) {
-            if (cause instanceof BindingException) {
-                inner = (BindingException) cause;
-                break;
-            }
-            cause = cause.getCause();
-        }
+        BindingException inner = findBindingException(cause);
         assertNotNull(inner, "JsonBindingException not found in cause chain");
 //        assertTrue(inner.getMessage().contains("/@UserJojo{throws_key"));
     }
@@ -414,7 +708,8 @@ public class StreamingIOTest {
         assertInstanceOf(PolyArr.class, p2);
     }
 
-    private void assertAnyOfByCurrentPath() {
+    @Test
+    public void assertAnyOfByCurrentPath() {
         String json = "{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mimi\",\"lives\":9}";
         PathAnimal animal = sjf4j.fromJson(json, PathAnimal.class);
         assertNotNull(animal);
@@ -439,98 +734,42 @@ public class StreamingIOTest {
 
     @Test
     void testAnyOfPluginModuleByDiscriminatorOnFieldAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByDiscriminatorOnField();
-
-        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByDiscriminatorOnField();
-
-        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByDiscriminatorOnField();
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfByDiscriminatorOnField);
     }
 
     @Test
     void testAnyOfPluginModuleByJsonTypeOnRootAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByJsonTypeOnRoot();
-
-        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByJsonTypeOnRoot();
-
-        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByJsonTypeOnRoot();
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfByJsonTypeOnRoot);
     }
 
     @Test
     void testAnyOfCurrentPathSharedIoAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfByCurrentPath();
-
-        useGson(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfByCurrentPath();
-
-        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfByCurrentPath();
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertAnyOfByCurrentPath);
     }
 
     @Test
     void testAnyOfCurrentPathPluginModuleAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByCurrentPath();
-
-        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByCurrentPath();
-
-        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfByCurrentPath();
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfByCurrentPath);
     }
 
     @Test
     void testAnyOfFailbackNullSharedIoAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfFailbackNull();
-
-        useGson(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfFailbackNull();
-
-        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfFailbackNull();
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertAnyOfFailbackNull);
     }
 
     @Test
     void testAnyOfFailbackNullPluginModuleAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfFailbackNull();
-
-        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfFailbackNull();
-
-        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfFailbackNull();
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfFailbackNull);
     }
 
     @Test
     void testAnyOfPluginModuleParentDiscriminatorLateAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfParentDiscriminatorLateCase();
-
-        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfParentDiscriminatorLateCase();
-
-        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertAnyOfParentDiscriminatorLateCase();
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfParentDiscriminatorLateCase);
     }
 
     @Test
     void testAnyOfInContainersSharedIoAllBackends() {
-        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfInContainers();
-
-        useGson(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfInContainers();
-
-        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertAnyOfInContainers();
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertAnyOfInContainers);
     }
 
     private void assertGenericPatchResponse() {
@@ -582,50 +821,23 @@ public class StreamingIOTest {
 
     @Test
     void testGenericJojoBindingSharedIo() {
-        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
-
-        useGson(StreamingContext.StreamingMode.SHARED_IO);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
-
-        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, () -> {
+            assertGenericPatchResponse();
+            assertGenericPatchResponseWithCreator();
+        });
     }
 
     @Test
     void testConcreteContainerTargetsSharedIo() {
-        useJackson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertConcreteContainerTargets();
-
-        useGson(StreamingContext.StreamingMode.SHARED_IO);
-        assertConcreteContainerTargets();
-
-        useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
-        assertConcreteContainerTargets();
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertConcreteContainerTargets);
     }
 
     @Test
-    void testGenericJojoBindingPluginModuleJackson2() {
-        useJackson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
-    }
-
-    @Test
-    void testGenericJojoBindingPluginModuleGson() {
-        useGson(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
-    }
-
-    @Test
-    void testGenericJojoBindingPluginModuleFastjson2() {
-        useFastjson2(StreamingContext.StreamingMode.PLUGIN_MODULE);
-        assertGenericPatchResponse();
-        assertGenericPatchResponseWithCreator();
+    void testGenericJojoBindingPluginModuleAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, () -> {
+            assertGenericPatchResponse();
+            assertGenericPatchResponseWithCreator();
+        });
     }
 
 

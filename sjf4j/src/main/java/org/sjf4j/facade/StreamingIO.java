@@ -658,13 +658,14 @@ public final class StreamingIO {
 
             if (node instanceof Map) {
                 writer.startObject();
-                boolean veryStart = true;
+                int cnt = 0;
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
-                    if (veryStart) veryStart = false;
-                    else writer.writeObjectComma();
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
+                    if (cnt++ > 0) writer.writeObjectComma();
                     String key = entry.getKey().toString();
                     writer.writeName(key);
-                    _writeNode(writer, entry.getValue(), context);
+                    _writeNode(writer, value, context);
                 }
                 writer.endObject();
                 return;
@@ -685,9 +686,11 @@ public final class StreamingIO {
                 writer.startObject();
                 int cnt = 0;
                 for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     if (cnt++ > 0) writer.writeObjectComma();
                     writer.writeName(entry.getKey());
-                    _writeNode(writer, entry.getValue(), context);
+                    _writeNode(writer, value, context);
                 }
                 writer.endObject();
                 return;
@@ -757,10 +760,11 @@ public final class StreamingIO {
         writer.startObject();
         int cnt = 0;
         for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            Object vv = entry.getValue().invokeGetter(node);
+            if (vv == null && !context.includeNulls) continue;
             if (cnt++ > 0) writer.writeObjectComma();
             String key = entry.getKey();
             writer.writeName(key);
-            Object vv = entry.getValue().invokeGetter(node);
             if (vv == null) {
                 writer.writeNull();
             } else {
@@ -775,9 +779,11 @@ public final class StreamingIO {
             Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
             if (dynamicMap != null) {
                 for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     if (cnt++ > 0) writer.writeObjectComma();
                     writer.writeName(entry.getKey());
-                    _writeNode(writer, entry.getValue(), context);
+                    _writeNode(writer, value, context);
                 }
             }
         }

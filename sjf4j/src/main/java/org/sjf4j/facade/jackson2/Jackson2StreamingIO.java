@@ -774,9 +774,11 @@ public class Jackson2StreamingIO {
             if (node instanceof Map) {
                 gen.writeStartObject();
                 for (Map.Entry<?, ?> entry : ((Map<?, ?>) node).entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     String key = entry.getKey().toString();
                     gen.writeFieldName(key);
-                    _writeNode(gen, entry.getValue(), context);
+                    _writeNode(gen, value, context);
                 }
                 gen.writeEndObject();
                 return;
@@ -795,8 +797,10 @@ public class Jackson2StreamingIO {
             if (rawClazz == JsonObject.class) {
                 gen.writeStartObject();
                 for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     gen.writeFieldName(entry.getKey());
-                    _writeNode(gen, entry.getValue(), context);
+                    _writeNode(gen, value, context);
                 }
                 gen.writeEndObject();
                 return;
@@ -860,9 +864,10 @@ public class Jackson2StreamingIO {
                                  StreamingContext context) throws IOException {
         gen.writeStartObject();
         for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            Object vv = entry.getValue().invokeGetter(node);
+            if (vv == null && !context.includeNulls) continue;
             String key = entry.getKey();
             gen.writeFieldName(key);
-            Object vv = entry.getValue().invokeGetter(node);
             if (vv == null) {
                 gen.writeNull();
             } else {
@@ -877,8 +882,10 @@ public class Jackson2StreamingIO {
             Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
             if (dynamicMap != null) {
                 for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
+                    Object value = entry.getValue();
+                    if (value == null && !context.includeNulls) continue;
                     gen.writeFieldName(entry.getKey());
-                    _writeNode(gen, entry.getValue(), context);
+                    _writeNode(gen, value, context);
                 }
             }
         }
