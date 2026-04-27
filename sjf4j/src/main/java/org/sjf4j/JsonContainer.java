@@ -45,11 +45,11 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Returns a structural shape string using node shape output.
+     * Returns a structural shape string similar to {@link #inspect()}, but
+     * without printing the actual value content.
      * <p>
      * Example: {@code JsonObject.of("name", "han", "age", 18).shape()} returns
-     * {@code J{name=string, age=number}}, while
-     * {@code JsonArray.of("a", "b").shape()} returns {@code J[string, ...](2)}.
+     * {@code J{name=String, age=Integer}}.
      */
     public String shape() {
         return Nodes.shape(this);

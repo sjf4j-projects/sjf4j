@@ -830,209 +830,6 @@ public final class Nodes {
     }
 
     /**
-     * Returns a compact JSON-shape summary of the given object.
-     * <p>
-     * The output follows the same structural notation as {@link #inspect(Object)},
-     * but leaf values are replaced with JSON-semantic type names such as
-     * {@code string}, {@code number}, {@code boolean}, and {@code null}.
-     *
-     * <p>Array-like nodes are summarized using the first non-null element shape.
-     * When an array contains elements, its size is appended after the closing
-     * bracket (for example {@code J[string, ...](3)}). The inner {@code ...}
-     * indicates that remaining elements are not expanded.
-     *
-     * <h3>Examples</h3>
-     * <pre>{@code
-     * Nodes.shape(JsonObject.of("name", "han", "age", 18))
-     * // => J{name=string, age=number}
-     *
-     * Nodes.shape(JsonArray.of("a", "b"))
-     * // => J[string, ...](2)
-     *
-     * Nodes.shape(Arrays.asList(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")))
-     * // => [J{id=number}, ...](3)
-     * }</pre>
-     *
-     * @param node the object to inspect structurally
-     * @return a compact structural shape string
-     */
-    public static String shape(Object node) {
-        StringBuilder sb = new StringBuilder();
-        _shape(node, sb);
-        return sb.toString();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void _shape(Object node, StringBuilder sb) {
-        if (node == null) {
-            sb.append("null");
-            return;
-        }
-        Class<?> rawClazz = node.getClass();
-        if (node instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) node;
-            sb.append("{");
-            int idx = 0;
-            for (Map.Entry<String, Object> entry : map.entrySet()) {
-                if (idx++ > 0) sb.append(", ");
-                sb.append(entry.getKey()).append("=");
-                _shape(entry.getValue(), sb);
-            }
-            sb.append("}");
-            return;
-        }
-        if (rawClazz == JsonObject.class) {
-            JsonObject jo = (JsonObject) node;
-            sb.append("J{");
-            int idx = 0;
-            for (Map.Entry<String, Object> entry : jo.entrySet()) {
-                if (idx++ > 0) sb.append(", ");
-                sb.append(entry.getKey()).append("=");
-                _shape(entry.getValue(), sb);
-            }
-            sb.append("}");
-            return;
-        }
-        if (node instanceof JsonObject) {
-            JsonObject jo = (JsonObject) node;
-            sb.append("@").append(rawClazz.getSimpleName()).append("{");
-            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-            int[] idx = new int[1];
-            jo.forEach((k, v) -> {
-                if (idx[0]++ > 0) sb.append(", ");
-                if (pi != null && pi.fields.containsKey(k)) {
-                    sb.append("*");
-                }
-                sb.append(k).append("=");
-                _shape(v, sb);
-            });
-            sb.append("}");
-            return;
-        }
-        if (node instanceof List) {
-            sb.append("[");
-            int size = _shapeRepresentativeArray(node, sb);
-            sb.append("]");
-            sb.append("(").append(size).append(")");
-            return;
-        }
-        if (rawClazz == JsonArray.class) {
-            sb.append("J[");
-            int size = _shapeRepresentativeArray(node, sb);
-            sb.append("]");
-            sb.append("(").append(size).append(")");
-            return;
-        }
-        if (node instanceof JsonArray) {
-            sb.append("@").append(rawClazz.getSimpleName()).append("[");
-            int size = _shapeRepresentativeArray(node, sb);
-            sb.append("]");
-            sb.append("(").append(size).append(")");
-            return;
-        }
-        if (rawClazz.isArray()) {
-            sb.append("A[");
-            int size = _shapeRepresentativeArray(node, sb);
-            sb.append("]");
-            sb.append("(").append(size).append(")");
-            return;
-        }
-        if (node instanceof Set) {
-            sb.append("S[");
-            int size = _shapeRepresentativeArray(node, sb);
-            sb.append("]");
-            sb.append("(").append(size).append(")");
-            return;
-        }
-
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-        if (ti.valueCodecInfo != null) {
-            Object raw = ti.valueCodecInfo.valueToRaw(node);
-            sb.append("@").append(rawClazz.getSimpleName()).append("#");
-            _shape(raw, sb);
-            return;
-        }
-        if (ti.pojoInfo != null) {
-            NodeRegistry.PojoInfo pi = ti.pojoInfo;
-            sb.append("@").append(rawClazz.getSimpleName()).append("{");
-            int idx = 0;
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                if (idx++ > 0) sb.append(", ");
-                sb.append("*").append(entry.getKey()).append("=");
-                Object v = entry.getValue().invokeGetter(node);
-                _shape(v, sb);
-            }
-            sb.append("}");
-            return;
-        }
-
-        JsonType jt = JsonType.of(node);
-        if (jt.isObject()) {
-            sb.append("{");
-            int[] idx = new int[1];
-            forEachObject(node, (k, v) -> {
-                if (idx[0]++ > 0) sb.append(", ");
-                sb.append(k).append("=");
-                _shape(v, sb);
-            });
-            sb.append("}");
-            return;
-        }
-        if (jt.isArray()) {
-            sb.append("[");
-            int size = _shapeRepresentativeArray(node, sb);
-            sb.append("]");
-            sb.append("(").append(size).append(")");
-            return;
-        }
-        if (jt.isString()) {
-            sb.append("string");
-            return;
-        }
-        if (jt.isNumber()) {
-            sb.append("number");
-            return;
-        }
-        if (jt.isBoolean()) {
-            sb.append("boolean");
-            return;
-        }
-        if (jt.isNull()) {
-            sb.append("null");
-            return;
-        }
-
-        sb.append("!").append(rawClazz.getSimpleName());
-    }
-
-    private static int _shapeRepresentativeArray(Object node, StringBuilder sb) {
-        int size = sizeInArray(node);
-        if (size <= 0) {
-            return 0;
-        }
-        Iterator<Object> it = iteratorInArray(node);
-        Object first = null;
-        Object sample = null;
-        boolean hasFirst = false;
-        while (it.hasNext()) {
-            Object value = it.next();
-            if (!hasFirst) {
-                first = value;
-                hasFirst = true;
-            }
-            if (value != null) {
-                sample = value;
-                break;
-            }
-        }
-        _shape(sample != null ? sample : first, sb);
-        if (size > 1) {
-            sb.append(", ...");
-        }
-        return size;
-    }
-
-    /**
      * Returns a compact, human-readable representation of the given object.
      * <p>
      * This method is mainly used for debugging and logging. It prints objects
@@ -1063,12 +860,12 @@ public final class Nodes {
      */
     public static String inspect(Object node) {
         StringBuilder sb = new StringBuilder();
-        _inspect(node, sb);
+        _inspect(node, sb, false);
         return sb.toString();
     }
 
     @SuppressWarnings("unchecked")
-    private static void _inspect(Object node, StringBuilder sb) {
+    private static void _inspect(Object node, StringBuilder sb, boolean shapeOnly) {
         if (node == null) {
             sb.append((Object) null);
             return;
@@ -1081,7 +878,7 @@ public final class Nodes {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 if (idx++ > 0) sb.append(", ");
                 sb.append(entry.getKey()).append("=");
-                _inspect(entry.getValue(), sb);
+                _inspect(entry.getValue(), sb, shapeOnly);
             }
             sb.append("}");
             return;
@@ -1093,7 +890,7 @@ public final class Nodes {
             for (Map.Entry<String, Object> entry : jo.entrySet()) {
                 if (idx++ > 0) sb.append(", ");
                 sb.append(entry.getKey()).append("=");
-                _inspect(entry.getValue(), sb);
+                _inspect(entry.getValue(), sb, shapeOnly);
             }
             sb.append("}");
             return;
@@ -1109,7 +906,7 @@ public final class Nodes {
                     sb.append("*");
                 }
                 sb.append(k).append("=");
-                _inspect(v, sb);
+                _inspect(v, sb, shapeOnly);
             });
             sb.append("}");
             return;
@@ -1120,7 +917,7 @@ public final class Nodes {
             for (int i = 0; i < list.size(); i++) {
                 Object v = list.get(i);
                 if (i > 0) sb.append(", ");
-                _inspect(v, sb);
+                _inspect(v, sb, shapeOnly);
             }
             sb.append("]");
             return;
@@ -1131,7 +928,7 @@ public final class Nodes {
             for (int i = 0; i < ja.size(); i++) {
                 Object v = ja.getNode(i);
                 if (i > 0) sb.append(", ");
-                _inspect(v, sb);
+                _inspect(v, sb, shapeOnly);
             }
             sb.append("]");
             return;
@@ -1142,7 +939,7 @@ public final class Nodes {
             for (int i = 0; i < ja.size(); i++) {
                 Object v = ja.getNode(i);
                 if (i > 0) sb.append(", ");
-                _inspect(v, sb);
+                _inspect(v, sb, shapeOnly);
             }
             sb.append("]");
             return;
@@ -1152,7 +949,7 @@ public final class Nodes {
             sb.append("A[");
             for (int i = 0; i < len; i++) {
                 if (i > 0) sb.append(", ");
-                _inspect(Array.get(node, i), sb);
+                _inspect(Array.get(node, i), sb, shapeOnly);
             }
             sb.append("]");
             return;
@@ -1163,7 +960,7 @@ public final class Nodes {
             int i = 0;
             for (Object v : set) {
                 if (i++ > 0) sb.append(", ");
-                _inspect(v, sb);
+                _inspect(v, sb, shapeOnly);
             }
             sb.append("]");
             return;
@@ -1173,7 +970,7 @@ public final class Nodes {
         if (ti.valueCodecInfo != null) {
             Object raw = ti.valueCodecInfo.valueToRaw(node);
             sb.append("@").append(rawClazz.getSimpleName()).append("#");
-            _inspect(raw, sb);
+            _inspect(raw, sb, shapeOnly);
             return;
         }
         if (ti.pojoInfo != null) {
@@ -1184,18 +981,45 @@ public final class Nodes {
                 if (idx++ > 0) sb.append(", ");
                 sb.append("*").append(entry.getKey()).append("=");
                 Object v = entry.getValue().invokeGetter(node);
-                _inspect(v, sb);
+                _inspect(v, sb, shapeOnly);
             }
             sb.append("}");
             return;
         }
 
         if (NodeKind.of(node).isUnknown()) {
-            sb.append("!").append(node);
-            return;
+            sb.append("!");
         }
 
-        sb.append(node);
+        if (shapeOnly) {
+            sb.append(rawClazz.getSimpleName());
+        } else {
+            sb.append(node);
+        }
+    }
+
+    /**
+     * Returns a compact structural shape string of the given object.
+     * <p>
+     * The output is similar to {@link #inspect(Object)}, but does not print the
+     * actual value content.
+     *
+     * <h3>Examples</h3>
+     * <pre>{@code
+     * Nodes.shape(JsonObject.of("name", "han", "age", 18))
+     * // => J{name=String, age=Integer}
+     *
+     * Nodes.shape(JsonArray.of("a", "b"))
+     * // => J[String, String]
+     * }</pre>
+     *
+     * @param node the object to inspect structurally
+     * @return a compact structural shape string
+     */
+    public static String shape(Object node) {
+        StringBuilder sb = new StringBuilder();
+        _inspect(node, sb, true);
+        return sb.toString();
     }
 
 

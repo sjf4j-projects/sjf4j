@@ -684,7 +684,7 @@ public class NodesTest {
                 "items", Arrays.asList(null, JsonObject.of("score", 9), JsonObject.of("score", 10, "extra", "x")),
                 "empty", JsonArray.of());
 
-        String expected = "J{name=string, age=number, active=boolean, child=J{id=number}, tags=J[string, ...](2), items=[J{score=number}, ...](3), empty=J[](0)}";
+        String expected = "J{name=String, age=Integer, active=Boolean, child=J{id=Integer}, tags=J[String, String], items=[null, J{score=Integer}, J{score=Integer, extra=String}], empty=J[]}";
         assertEquals(expected, Nodes.shape(jo));
         assertEquals(expected, jo.shape());
     }
@@ -692,8 +692,8 @@ public class NodesTest {
     @Test
     public void testShape2() {
         LocalDate date = LocalDate.now();
-        assertEquals("@LocalDate#string", Nodes.shape(date));
-        assertEquals("J[J{id=number}, ...](3)", JsonArray.of(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")).shape());
+        assertEquals("@LocalDate#String", Nodes.shape(date));
+        assertEquals("J[null, J{id=Integer}, J{id=Integer, name=String}]", JsonArray.of(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")).shape());
     }
 
 }

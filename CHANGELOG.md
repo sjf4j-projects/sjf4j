@@ -6,11 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+### Added
 
 ## [1.2.1] - 2026.04.27
 ### Added
-- Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact JSON-semantic structural summaries for objects, arrays, facade nodes, POJOs, and value-codec types.
+- Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact inspect-style structural summaries that keep supported container structure while rendering terminal values by simple runtime type name.
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
 - Added instance-scoped `StreamingContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.

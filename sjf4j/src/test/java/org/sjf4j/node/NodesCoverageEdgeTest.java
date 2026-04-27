@@ -429,8 +429,8 @@ class NodesCoverageEdgeTest {
         arrayNode.add(2);
         objectNode.set("scores", arrayNode);
 
-        assertEquals("{name=string, scores=[number, ...](2)}", Nodes.shape(objectNode));
-        assertEquals("string", Nodes.shape(TextNode.valueOf("x")));
+        assertEquals("ObjectNode", Nodes.shape(objectNode));
+        assertEquals("TextNode", Nodes.shape(TextNode.valueOf("x")));
         assertEquals("!UnknownValue", Nodes.shape(new UnknownValue("v")));
     }
 
