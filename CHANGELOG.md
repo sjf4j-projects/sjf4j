@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `Nodes.removeIfInObject(...)` for safe in-place object-member removal during traversal against live object-key views.
+
+### Fixed
+- Fixed `Nodes.removeInObject(...)` to reject POJO structural field removal with the intended POJO-specific error path.
 
 ## [1.2.1] - 2026.04.27
 ### Added

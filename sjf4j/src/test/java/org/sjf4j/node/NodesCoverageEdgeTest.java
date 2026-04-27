@@ -334,6 +334,8 @@ class NodesCoverageEdgeTest {
         Map<String, Object> removableMap = new LinkedHashMap<>(map);
         assertEquals(2, Nodes.removeInObject(removableMap, "count"));
         assertEquals(2, Nodes.removeInObject(jsonObject, "count"));
+        JsonException beanRemove = assertThrows(JsonException.class, () -> Nodes.removeInObject(bean, "name"));
+        assertTrue(beanRemove.getMessage().contains("Cannot remove field 'name'"));
         assertEquals("b", Nodes.removeInArray(new ArrayList<>(Arrays.asList("a", "b")), -1));
         assertThrows(JsonException.class, () -> Nodes.removeInArray(numbers, 0));
         assertThrows(JsonException.class, () -> Nodes.removeInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));
@@ -478,5 +480,24 @@ class NodesCoverageEdgeTest {
         sameReadable.setWriteOnly("different-secret");
         assertTrue(Nodes.equals(bean, sameReadable));
         assertEquals(Nodes.hash(bean), Nodes.hash(sameReadable));
+    }
+
+    @Test
+    void testRemoveIfInObjectSupportsSafeRemovalDuringWalk() {
+        JsonObject root = JsonObject.of(
+                "$root", 1,
+                "child", JsonObject.of("$child", 2, "keep", 3),
+                "keep", 4
+        );
+
+        root.walk(Nodes.WalkTarget.CONTAINER, Nodes.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
+            Nodes.removeIfInObject(node, (key, value) -> key.startsWith("$"));
+            return true;
+        });
+
+        assertFalse(root.containsKey("$root"));
+        assertTrue(root.containsKey("keep"));
+        assertFalse(((JsonObject) root.getNode("child")).containsKey("$child"));
+        assertTrue(((JsonObject) root.getNode("child")).containsKey("keep"));
     }
 }

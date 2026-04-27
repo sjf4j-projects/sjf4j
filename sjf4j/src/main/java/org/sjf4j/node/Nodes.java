@@ -1141,6 +1141,28 @@ public final class Nodes {
         throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
+    /**
+     * Removes object entries that match the predicate.
+     * <p>
+     * The predicate is evaluated against a snapshot of the current readable key
+     * set so callers can safely remove while iterating object-like containers
+     * whose key views are live. Matching structural POJO/JOJO fields remain
+     * non-removable and therefore fail through {@link #removeInObject(Object, String)}.
+     */
+    public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(predicate, "predicate");
+        boolean changed = false;
+        for (String key : new ArrayList<>(Nodes.keySetInObject(node))) {
+            Object value = Nodes.getInObject(node, key);
+            if (predicate.test(key, value)) {
+                Nodes.removeInObject(node, key);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
 
     /**
      * Visits each element in an array-like node.
@@ -1787,7 +1809,7 @@ public final class Nodes {
         if (node instanceof Map) {
             return ((Map<String, Object>) node).remove(key);
         }
-        if (NodeRegistry.registerTypeInfo(node.getClass()).anyOfInfo != null) {
+        if (NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
             throw new JsonException("Cannot remove field '" + key + "' in POJO node '" +
                     node.getClass().getName() + "'");
         }
