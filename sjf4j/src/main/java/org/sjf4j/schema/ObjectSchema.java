@@ -5,7 +5,6 @@ import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.path.Paths;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -36,12 +35,12 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     private transient URI canonicalUri;
     private transient ObjectSchema idSchema;
     private transient Evaluator[] evaluators;
-    private transient Map<URI, ObjectSchema> innerStore;
+    private transient Map<URI, ObjectSchema> innerRegistry;
     private transient Map<String, ObjectSchema> anchors;
     private transient Map<String, ObjectSchema> dynamicAnchors;
     private transient Map<String, Boolean> allowedVocabulary;
 
-    private transient SchemaStore outerStore;
+    private transient SchemaRegistry outerRegistry;
 
     /**
      * Creates an empty ObjectSchema.
@@ -101,14 +100,14 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     Map<String, Boolean> getVocabulary() {return getMap("$vocabulary", Boolean.class);}
 
-    // schemaStore
+    // schemaRegistry
     /**
-     * Exports compiled absolute resources to a new SchemaStore.
+     * Exports compiled absolute resources to a new SchemaRegistry.
      */
-    public SchemaStore toStore() {
-        if (innerStore == null) throw new SchemaException("Schema has not been compiled yet");
-        SchemaStore store = new SchemaStore();
-        for (Map.Entry<URI, ObjectSchema> entry : innerStore.entrySet()) {
+    public SchemaRegistry toRegistry() {
+        if (innerRegistry == null) throw new SchemaException("Schema has not been compiled yet");
+        SchemaRegistry store = new SchemaRegistry();
+        for (Map.Entry<URI, ObjectSchema> entry : innerRegistry.entrySet()) {
             if (entry.getKey().isAbsolute()) store.register(entry.getKey(), entry.getValue());
         }
         return store;
@@ -147,8 +146,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             if (uri == null || uri.toString().isEmpty() || Objects.equals(uri, canonicalUri)) {
                 return getSchemaByAnchor(anchor);
             }
-            if (innerStore != null) {
-                ObjectSchema schema = innerStore.get(uri);
+            if (innerRegistry != null) {
+                ObjectSchema schema = innerRegistry.get(uri);
                 if (schema != null) {
                     return schema.getSchemaByAnchor(anchor);
                 }
@@ -185,8 +184,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             if (uri == null || uri.toString().isEmpty() || Objects.equals(uri, canonicalUri)) {
                 return getSchemaByPath(path);
             }
-            if (innerStore != null) {
-                ObjectSchema schema = innerStore.get(uri);
+            if (innerRegistry != null) {
+                ObjectSchema schema = innerRegistry.get(uri);
                 if (schema != null) {
                     return schema.getSchemaByPath(path);
                 }
@@ -228,8 +227,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             if (uri == null || uri.toString().isEmpty() || Objects.equals(uri, canonicalUri)) {
                 return getSchemaByDynamicAnchor(dynamicAnchor);
             }
-            if (innerStore != null) {
-                ObjectSchema schema = innerStore.get(uri);
+            if (innerRegistry != null) {
+                ObjectSchema schema = innerRegistry.get(uri);
                 if (schema != null) {
                     return schema.getSchemaByDynamicAnchor(dynamicAnchor);
                 }
@@ -273,14 +272,14 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     }
 
     /**
-     * Compiles this schema with optional outer store for reference resolution.
+     * Compiles this schema with optional outer registry for reference resolution.
      * <p>
      * Compilation initializes inner resource store, applies meta-schema
      * vocabulary constraints, and compiles this schema as root resource.
      */
-    public void compile(SchemaStore outer) {
-        outerStore = outer;
-        innerStore = new HashMap<>();
+    public void compile(SchemaRegistry outer) {
+        outerRegistry = outer;
+        innerRegistry = new HashMap<>();
         compileMeta();
         compile(PathSegment.Root.INSTANCE, this, this);
     }
@@ -305,7 +304,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
             }
             if (canonicalUri != null) {
                 idSchema = this;
-                rootSchema.innerStore.put(canonicalUri, this);
+                rootSchema.innerRegistry.put(canonicalUri, this);
             }
             this.idSchema = idSchema;
             evaluators = CompileUtil.compile(ps, this, idSchema, rootSchema);
@@ -332,17 +331,17 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     ObjectSchema importAndCompile(URI uri) {
         if (uri == null || Objects.equals(uri, canonicalUri)) return this;
-        ObjectSchema schema = innerStore.get(uri);
+        ObjectSchema schema = innerRegistry.get(uri);
         if (schema != null) return schema;
-        if (outerStore != null) schema = outerStore.resolve(uri);
-        if (schema == null) schema = SchemaStore.globalResolve(uri);
+        if (outerRegistry != null) schema = outerRegistry.resolve(uri);
+        if (schema == null) schema = SchemaRegistry.globalResolve(uri);
         if (schema == null) return null;
 
         if (schema.evaluators != null) {
-            if (schema.innerStore != null) {
-                innerStore.putAll(schema.innerStore);
+            if (schema.innerRegistry != null) {
+                innerRegistry.putAll(schema.innerRegistry);
             } else {
-                innerStore.put(uri, schema);
+                innerRegistry.put(uri, schema);
             }
         } else {
             if (schema.getRetrievalUri() == null && schema.getCanonicalUri() == null) {
@@ -357,8 +356,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * Adds an already compiled referenced schema to inner store.
      */
     void importSchema(URI ref, ObjectSchema compiledSchema) {
-        if (innerStore == null) innerStore = new HashMap<>();
-        if (compiledSchema != this) innerStore.put(ref, compiledSchema);
+        if (innerRegistry == null) innerRegistry = new HashMap<>();
+        if (compiledSchema != this) innerRegistry.put(ref, compiledSchema);
     }
 
 

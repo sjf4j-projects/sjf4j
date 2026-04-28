@@ -26,7 +26,7 @@ public final class BooleanSchema implements JsonSchema {
 
     /** Boolean schema has no compile step. */
     @Override
-    public void compile(SchemaStore outer) {}
+    public void compile(SchemaRegistry outer) {}
 
     /**
      * Encodes BooleanSchema to raw boolean.

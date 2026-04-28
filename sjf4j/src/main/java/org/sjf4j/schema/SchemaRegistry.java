@@ -5,38 +5,39 @@ import org.sjf4j.exception.SchemaException;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-
 /**
  * Registry for compiled schema resources indexed by absolute URI.
  * <p>
  * Supports canonical URI and alias mappings pointing to the same ObjectSchema.
  */
-public class SchemaStore {
+public class SchemaRegistry {
+
     private final Map<URI, ObjectSchema> mixedUriSchemas = new ConcurrentHashMap<>();
 
+    /**
+     * Creates an empty schema registry.
+     */
+    public SchemaRegistry() {}
 
     /**
-     * Creates an empty schema store.
+     * Creates a registry by importing another registry.
      */
-    public SchemaStore() {}
-    /**
-     * Creates a store by importing another store.
-     */
-    public SchemaStore(SchemaStore other) {
+    public SchemaRegistry(SchemaRegistry other) {
         importFrom(other);
     }
+
     /**
-     * Creates a store and registers initial schemas.
+     * Creates a registry and registers initial schemas.
      */
-    public SchemaStore(JsonSchema... initialSchemas) {
+    public SchemaRegistry(JsonSchema... initialSchemas) {
         for (JsonSchema schema : initialSchemas) {
             register(schema);
         }
@@ -56,8 +57,6 @@ public class SchemaStore {
             return true;
         }
         return false;
-        // Nothing to register
-//        throw new SchemaException("Cannot register schema: no available uri");
     }
 
     /**
@@ -82,7 +81,6 @@ public class SchemaStore {
             _register(canonicalUri, os);
             return true;
         }
-        // Nothing to register
         return false;
     }
 
@@ -115,11 +113,11 @@ public class SchemaStore {
     }
 
     /**
-     * Imports all schema mappings from another store.
+     * Imports all schema mappings from another registry.
      * <p>
      * Existing mappings must resolve to the same canonical schema resource.
      */
-    public void importFrom(SchemaStore other) {
+    public void importFrom(SchemaRegistry other) {
         if (other != null) {
             for (Map.Entry<URI, ObjectSchema> entry : other.mixedUriSchemas.entrySet()) {
                 ObjectSchema os = entry.getValue();
@@ -139,7 +137,7 @@ public class SchemaStore {
     }
 
     /**
-     * Returns true if the URI exists in this store.
+     * Returns true if the URI exists in this registry.
      */
     public boolean contains(URI uri) {
         return mixedUriSchemas.containsKey(uri);
@@ -152,14 +150,13 @@ public class SchemaStore {
         return mixedUriSchemas.keySet();
     }
 
+    private static final SchemaRegistry GLOBAL_REGISTRY = new SchemaRegistry();
 
-    /// Global Schemas
-    private static final SchemaStore GLOBAL_STORE = new SchemaStore();
     /**
-     * Resolves a schema from the global built-in store.
+     * Resolves a schema from the global built-in registry.
      */
     public static ObjectSchema globalResolve(URI uri) {
-        return GLOBAL_STORE.resolve(uri);
+        return GLOBAL_REGISTRY.resolve(uri);
     }
 
     private static final String JSON_SCHEMAS_DIR = "json-schemas/";
@@ -180,11 +177,10 @@ public class SchemaStore {
     private static void registerGlobalSchema(String resourcePath) {
         ObjectSchema schema = loadSchemaFromResource(resourcePath);
         if (schema == null) throw new SchemaException("Not found global schema: " + resourcePath);
-        if (!GLOBAL_STORE.register(schema)) {
+        if (!GLOBAL_REGISTRY.register(schema)) {
             throw new SchemaException("Failed to register global schema: " + resourcePath);
         }
     }
-
 
     /**
      * Loads a schema from local URI.
@@ -207,8 +203,6 @@ public class SchemaStore {
             throw new SchemaException("Unsupported local schema uri: " + uri);
         }
         if (schema == null) return null;
-        // Preserve the retrieval URI. During compile, a root `$id` may resolve
-        // against this retrieval URI and produce a distinct canonical URI.
         schema.setRetrievalUri(CompileUtil.withoutFragment(uri));
         return schema;
     }
@@ -233,15 +227,11 @@ public class SchemaStore {
      */
     public static ObjectSchema loadSchemaFromResource(String resourcePath) {
         if (resourcePath.startsWith("/")) resourcePath = resourcePath.substring(1);
-        try (InputStream in = SchemaStore.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        try (InputStream in = SchemaRegistry.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (in == null) return null;
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
             throw new SchemaException("Failed to load schema resource: " + resourcePath, e);
         }
     }
-
-
-
-
 }

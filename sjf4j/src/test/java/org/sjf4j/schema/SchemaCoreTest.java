@@ -230,7 +230,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema3 = JsonSchema.fromJson(json3);
 
-        SchemaStore store = new SchemaStore(schema1, schema2);
+        SchemaRegistry store = new SchemaRegistry(schema1, schema2);
         schema3.compile(store);
         log.info("schema3={}", schema3);
 

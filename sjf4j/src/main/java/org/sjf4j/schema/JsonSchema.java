@@ -12,7 +12,7 @@ import org.sjf4j.path.PathSegment;
 /**
  * Base interface for JSON Schema implementations.
  *
- * <p>Schema instances are compiled against a {@link SchemaStore} and then
+ * <p>Schema instances are compiled against a {@link SchemaRegistry} and then
  * evaluated against JSON nodes via {@link #validate} or {@link #evaluate}.
  */
 @AnyOf({
@@ -25,9 +25,9 @@ public interface JsonSchema {
      * Compiles this schema into runtime evaluators.
      * <p>
      * Compilation resolves references, anchors, and keyword evaluators against
-     * the provided store context.
+     * the provided registry context.
      */
-    void compile(SchemaStore outer);
+    void compile(SchemaRegistry outer);
     /**
      * Validates a node with the given options and returns structured result.
      */

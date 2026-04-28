@@ -13,7 +13,7 @@ import java.util.*;
 
 public final class OfficialTest {
 
-    private static SchemaStore _store;
+    private static SchemaRegistry _store;
 
     public static void main(String[] args) throws Exception {
         _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
@@ -154,8 +154,8 @@ public final class OfficialTest {
 
     private static final URI TEST_BASE_URI = URI.create("http://localhost:1234/");
 
-    private static SchemaStore loadRemotesToStore(Path remotesDir) throws Exception {
-        SchemaStore store = new SchemaStore();
+    private static SchemaRegistry loadRemotesToStore(Path remotesDir) throws Exception {
+        SchemaRegistry store = new SchemaRegistry();
         Files.walk(remotesDir)
                 .filter(p -> p.toString().endsWith(".json"))
                 .forEach(p -> {

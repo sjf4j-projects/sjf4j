@@ -8,20 +8,21 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-class SchemaStoreTest {
+class SchemaRegistryTest {
 
     @Test
     void loadSchemaFromMissingResource_returnsNull() {
-        assertNull(SchemaStore.loadSchemaFromResource("json-schemas/missing-schema.json"));
+        assertNull(SchemaRegistry.loadSchemaFromResource("json-schemas/missing-schema.json"));
     }
 
     @Test
     void loadSchemaFromMissingFile_returnsNull(@TempDir Path tempDir) {
-        assertNull(SchemaStore.loadSchemaFromFile(tempDir.resolve("missing.json").toString()));
+        assertNull(SchemaRegistry.loadSchemaFromFile(tempDir.resolve("missing.json").toString()));
     }
 
     @Test
     void loadSchemaFromMissingLocalUri_returnsNull() {
-        assertNull(SchemaStore.loadSchemaFromLocalUri(URI.create("classpath:/json-schemas/missing-schema.json")));
+        assertNull(SchemaRegistry.loadSchemaFromLocalUri(URI.create("classpath:/json-schemas/missing-schema.json")));
     }
+
 }

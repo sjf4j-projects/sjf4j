@@ -26,7 +26,7 @@ public final class SchemaValidator {
 
 //    private final String baseDir;
     private final URI baseUri;
-    private final SchemaStore schemaStore;
+    private final SchemaRegistry schemaRegistry;
     private final ValidationOptions options;
     private final Map<Class<?>, List<JsonSchema>> pojoSchemaChainMapping = new ConcurrentHashMap<>();
 
@@ -42,12 +42,12 @@ public final class SchemaValidator {
     }
 
     /**
-     * Creates a validator with base directory, options, and store.
+     * Creates a validator with base directory, options, and registry.
      */
-    public SchemaValidator(String baseDir, ValidationOptions options, SchemaStore store) {
+    public SchemaValidator(String baseDir, ValidationOptions options, SchemaRegistry registry) {
         this.baseUri = _resolveBaseUri(baseDir);
         this.options = options == null ? ValidationOptions.FAILFAST_STRICT : options;
-        this.schemaStore = store == null ? new SchemaStore() : store;
+        this.schemaRegistry = registry == null ? new SchemaRegistry() : registry;
     }
 
     /**
@@ -87,7 +87,7 @@ public final class SchemaValidator {
         for (String ref : refs) {
             if (ref == null || ref.trim().isEmpty()) continue;
             URI uri = baseUri.resolve(ref);
-            JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
+            JsonSchema schema = SchemaRegistry.loadSchemaFromLocalUri(uri);
             if (schema == null) {
                 throw new SchemaException("Schema preload target not found: " + uri);
             }
@@ -158,7 +158,7 @@ public final class SchemaValidator {
         String ref = anno.ref().trim();
         if (!ref.isEmpty()) {
             URI uri = baseUri.resolve(ref);
-            JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(uri);
+            JsonSchema schema = SchemaRegistry.loadSchemaFromLocalUri(uri);
             if (schema == null) {
                 throw new SchemaException("Schema ref not found: " + uri);
             }
@@ -176,7 +176,7 @@ public final class SchemaValidator {
         URI simpleNameUri = baseUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX);
         String snakeName = Strings.toSnakeCase(clazz.getSimpleName());
         URI snakeNameUri = baseUri.resolve(snakeName + SCHEMA_FILE_SUFFIX);
-        ObjectSchema schema = SchemaStore.loadSchemaFromLocalUri(simpleNameUri);
+        ObjectSchema schema = SchemaRegistry.loadSchemaFromLocalUri(simpleNameUri);
         if (schema != null) {
             return _compileAndRegister(schema);
         }
@@ -187,7 +187,7 @@ public final class SchemaValidator {
                     simpleNameUri + "'.");
         }
 
-        schema = SchemaStore.loadSchemaFromLocalUri(snakeNameUri);
+        schema = SchemaRegistry.loadSchemaFromLocalUri(snakeNameUri);
         if (schema != null) {
             return _compileAndRegister(schema);
         }
@@ -200,15 +200,15 @@ public final class SchemaValidator {
      * Compiles a schema and registers it in the store.
      */
     private JsonSchema _compileAndRegister(JsonSchema schema) {
-        schema.compile(schemaStore);
+        schema.compile(schemaRegistry);
         if (schema instanceof ObjectSchema) {
             ObjectSchema objectSchema = (ObjectSchema) schema;
             URI resolvedUri = objectSchema.getCanonicalUri();
-            if (resolvedUri != null && !resolvedUri.toString().isEmpty() && schemaStore.contains(resolvedUri)) {
-                return schemaStore.resolve(resolvedUri);
+            if (resolvedUri != null && !resolvedUri.toString().isEmpty() && schemaRegistry.contains(resolvedUri)) {
+                return schemaRegistry.resolve(resolvedUri);
             }
         }
-        schemaStore.register(schema);
+        schemaRegistry.register(schema);
         return schema;
     }
 
@@ -247,7 +247,7 @@ public final class SchemaValidator {
             paths.filter(Files::isRegularFile)
                 .filter(p -> p.toString().endsWith(SCHEMA_FILE_SUFFIX))
                 .forEach(p -> {
-                    JsonSchema schema = SchemaStore.loadSchemaFromLocalUri(p.toUri());
+                    JsonSchema schema = SchemaRegistry.loadSchemaFromLocalUri(p.toUri());
                     _compileAndRegister(schema);
                 });
         } catch (IOException e) {
