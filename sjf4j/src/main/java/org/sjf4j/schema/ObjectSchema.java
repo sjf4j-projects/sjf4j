@@ -7,6 +7,7 @@ import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +15,11 @@ import java.util.Objects;
 
 /**
  * JSON Schema object representation with compiled evaluators and resolution state.
+ * <p>
+ * Before compilation this object behaves as a mutable schema document model.
+ * After {@link #compile(SchemaRegistry)} completes, its content is treated as
+ * read-only so compiled evaluator state cannot diverge from the underlying
+ * schema tree.
  */
 public final class ObjectSchema extends JsonObject implements JsonSchema {
 
@@ -34,7 +40,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     private transient URI canonicalUri;
     private transient ObjectSchema idSchema;
-    private transient Evaluator[] evaluators;
+    private transient volatile Evaluator[] evaluators;
     private transient Map<URI, ObjectSchema> innerRegistry;
     private transient Map<String, ObjectSchema> anchors;
     private transient Map<String, ObjectSchema> dynamicAnchors;
@@ -53,6 +59,79 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     public ObjectSchema(Object node) {
         super(node);
+    }
+
+    /**
+     * Rejects schema mutations after compilation.
+     * <p>
+     * Compilation derives evaluator and reference-resolution state from the
+     * current schema tree. Allowing later mutation would leave those compiled
+     * structures stale and inconsistent.
+     */
+    private void _assertMutable() {
+        if (evaluators != null) {
+            throw new SchemaException("Schema has already been compiled and is read-only");
+        }
+    }
+
+    /**
+     * Returns the dynamic map backing this schema.
+     * <p>
+     * After compilation, a read-only view is returned to prevent mutation
+     * through the exposed map reference.
+     */
+    @Override
+    public Map<String, Object> getDynamicMap() {
+        Map<String, Object> map = super.getDynamicMap();
+        if (evaluators != null && map != null) {
+            return Collections.unmodifiableMap(map);
+        }
+        return map;
+    }
+
+    /**
+     * Replaces the dynamic map before compilation only.
+     */
+    @Override
+    public void setDynamicMap(Map<String, Object> map) {
+        _assertMutable();
+        super.setDynamicMap(map);
+    }
+
+    /**
+     * Mutates schema content before compilation only.
+     */
+    @Override
+    public Object put(String key, Object object) {
+        _assertMutable();
+        return super.put(key, object);
+    }
+
+    /**
+     * Mutates schema content before compilation only.
+     */
+    @Override
+    public Object remove(String key) {
+        _assertMutable();
+        return super.remove(key);
+    }
+
+    /**
+     * Mutates schema content before compilation only.
+     */
+    @Override
+    public void clear() {
+        _assertMutable();
+        super.clear();
+    }
+
+    /**
+     * Mutates schema content before compilation only.
+     */
+    @Override
+    public void prune() {
+        _assertMutable();
+        super.prune();
     }
 
     /**
@@ -276,6 +355,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * <p>
      * Compilation initializes inner resource store, applies meta-schema
      * vocabulary constraints, and compiles this schema as root resource.
+     * After compilation, schema content is treated as read-only.
      */
     public void compile(SchemaRegistry outer) {
         outerRegistry = outer;

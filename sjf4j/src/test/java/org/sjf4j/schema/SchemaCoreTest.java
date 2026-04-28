@@ -72,6 +72,19 @@ public class SchemaCoreTest {
     }
 
     @Test
+    public void testCompiledSchemaBecomesReadOnly() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"type\":\"string\"}");
+        schema.compile();
+
+        assertThrows(SchemaException.class, () -> schema.put("title", "name"));
+        assertThrows(SchemaException.class, () -> schema.remove("type"));
+        assertThrows(SchemaException.class, schema::clear);
+        assertThrows(SchemaException.class, schema::prune);
+        assertThrows(SchemaException.class, () -> schema.setDynamicMap(new java.util.LinkedHashMap<>()));
+        assertThrows(UnsupportedOperationException.class, () -> schema.getDynamicMap().put("x", 1));
+    }
+
+    @Test
     public void testId2() {
         String json =
                 "{\n" +

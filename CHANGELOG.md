@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the old `SchemaStore` type and its legacy `toStore()` / `compile(SchemaStore)` naming in favor of `SchemaRegistry` and `toRegistry()`.
 
 ### Fixed
+- Fixed `ObjectSchema` post-compile mutation paths to become read-only, preventing schema tree edits from drifting away from compiled evaluator and reference-resolution state.
 - Fixed `Nodes.removeInObject(...)` to reject POJO structural field removal with the intended POJO-specific error path.
 
 ## [1.2.1] - 2026.04.27
