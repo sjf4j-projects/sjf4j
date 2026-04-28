@@ -294,13 +294,6 @@ public class JsonArray extends JsonContainer {
         return Sjf4j.global().fromJson(input, JsonArray.class);
     }
 
-    /**
-     * Serializes this JsonArray to JSON.
-     */
-    public String toJson() {
-        return Sjf4j.global().toJsonString(this);
-    }
-
     /// YAML Facade
 
     /**
@@ -308,13 +301,6 @@ public class JsonArray extends JsonContainer {
      */
     public static JsonArray fromYaml(String input) {
         return Sjf4j.global().fromYaml(input, JsonArray.class);
-    }
-
-    /**
-     * Serializes this JsonArray to YAML.
-     */
-    public String toYaml() {
-        return Sjf4j.global().toYamlString(this);
     }
 
     /// Node Facade
@@ -326,12 +312,6 @@ public class JsonArray extends JsonContainer {
         return Sjf4j.global().fromNode(node, JsonArray.class);
     }
 
-    /**
-     * Converts this JsonArray into the target node type.
-     */
-    public <T> T toNode(Class<T> clazz) {
-        return Sjf4j.global().fromNode(this, clazz);
-    }
 
     /// Getter
 

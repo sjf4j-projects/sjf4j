@@ -353,11 +353,18 @@ public final class Nodes {
      * Converts a node to typed Map.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
-        return toMap(node, Map.class, valueClazz);
+        return _toMap(node, Map.class, valueClazz);
+    }
+
+    /**
+     * Converts a node to typed Map using the requested container type.
+     */
+    public static <T> Map<String, T> toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
+        return _toMap(node, mapType, valueClazz);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
+    private static <T> Map<String, T> _toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
         if (node == null) return null;
         if ((mapType == null || mapType == Map.class) && node instanceof Map
                 && (valueClazz == null || valueClazz == Object.class)) {
@@ -405,11 +412,18 @@ public final class Nodes {
      * Converts a node to typed List.
      */
     public static <T> List<T> toList(Object node, Class<T> valueClazz) {
-        return toList(node, List.class, valueClazz);
+        return _toList(node, List.class, valueClazz);
+    }
+
+    /**
+     * Converts a node to typed List using the requested container type.
+     */
+    public static <T> List<T> toList(Object node, Class<?> listType, Class<T> valueClazz) {
+        return _toList(node, listType, valueClazz);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> List<T> toList(Object node, Class<?> listType, Class<T> valueClazz) {
+    private static <T> List<T> _toList(Object node, Class<?> listType, Class<T> valueClazz) {
         if (node == null) return null;
         if ((listType == null || listType == List.class) && node instanceof List
                 && (valueClazz == null || valueClazz == Object.class)) return (List<T>) node;
@@ -501,11 +515,18 @@ public final class Nodes {
      * Converts a node to typed Set.
      */
     public static <T> Set<T> toSet(Object node, Class<T> valueClazz) {
-        return toSet(node, Set.class, valueClazz);
+        return _toSet(node, Set.class, valueClazz);
+    }
+
+    /**
+     * Converts a node to typed Set using the requested container type.
+     */
+    public static <T> Set<T> toSet(Object node, Class<?> setType, Class<T> valueClazz) {
+        return _toSet(node, setType, valueClazz);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> Set<T> toSet(Object node, Class<?> setType, Class<T> valueClazz) {
+    private static <T> Set<T> _toSet(Object node, Class<?> setType, Class<T> valueClazz) {
         if (node == null) return null;
         if ((setType == null || setType == Set.class) && node instanceof Set
                 && (valueClazz == null || valueClazz == Object.class)) return (Set<T>) node;
@@ -522,6 +543,9 @@ public final class Nodes {
      * normal POJO rules. Unknown object members are retained as dynamic
      * properties unless {@link org.sjf4j.annotation.node.NodeBinding#readDynamic()}
      * disables that behavior.
+     * <p>
+     * This is a binding conversion, not a forced deep copy. Nested containers may
+     * still alias source values when the target binding allows reuse.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toJojo(Object node, Class<T> clazz) {
@@ -537,6 +561,9 @@ public final class Nodes {
      * A JAJO is any concrete {@link JsonArray} subclass other than
      * {@link JsonArray} itself. The target instance is created first and then
      * populated with converted array elements in order.
+     * <p>
+     * This is a binding conversion, not a forced deep copy. Nested containers may
+     * still alias source values when the target binding allows reuse.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toJajo(Object node, Class<T> clazz) {
@@ -568,6 +595,9 @@ public final class Nodes {
      * <p>For JOJO targets, object members that are not declared fields are
      * preserved in the dynamic map unless type binding disables dynamic reads.
      * For JAJO targets, array items are appended to the target subtype in order.
+     * <p>
+     * This is a binding conversion, not a forced deep copy. Nested containers may
+     * still alias source values when the target binding allows reuse.
      */
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
@@ -613,7 +643,7 @@ public final class Nodes {
         if (Map.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
-            return toMap(node, clazz, vc);
+            return _toMap(node, clazz, vc);
         }
         if (clazz == JsonObject.class) return toJsonObject(node);
         if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
@@ -621,7 +651,7 @@ public final class Nodes {
         if (List.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
-            return toList(node, clazz, vc);
+            return _toList(node, clazz, vc);
         }
         if (clazz == JsonArray.class) return toJsonArray(node);
         if (JsonArray.class.isAssignableFrom(clazz)) return toJajo(node, clazz);
@@ -629,7 +659,7 @@ public final class Nodes {
         if (Set.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
-            return toSet(node, clazz, vc);
+            return _toSet(node, clazz, vc);
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
@@ -650,6 +680,11 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, Class<T> clazz) {
         return (T) _to(node, clazz, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T to(Object node, TypeReference<T> type) {
+        return (T) _to(node, type.getType(), false);
     }
 
     /**

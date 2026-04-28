@@ -49,6 +49,9 @@ public final class Sjf4j {
     private final YamlFacade<?, ?> yamlFacade;
     private final PropertiesFacade propertiesFacade;
 
+    /**
+     * Creates a runtime instance with the framework-default configuration.
+     */
     public Sjf4j() {
         this(new Builder());
     }
@@ -96,159 +99,291 @@ public final class Sjf4j {
 
     /// Getter
 
+    /**
+     * Returns the immutable streaming configuration used by this runtime.
+     */
     public StreamingContext streamingContext() {
         return streamingContext;
     }
 
+    /**
+     * Returns the node-conversion facade used by this runtime.
+     */
     public NodeFacade nodeFacade() {
         return nodeFacade;
     }
 
+    /**
+     * Returns the JSON facade used by this runtime.
+     */
     public JsonFacade<?, ?> jsonFacade() {
         return jsonFacade;
     }
 
+    /**
+     * Returns the YAML facade used by this runtime.
+     */
     public YamlFacade<?, ?> yamlFacade() {
         return yamlFacade;
     }
 
+    /**
+     * Returns the properties facade used by this runtime.
+     */
     public PropertiesFacade propertiesFacade() {
         return propertiesFacade;
     }
 
     /// JSON
 
+    /**
+     * Reads JSON from a character stream into the requested target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, Class<T> clazz) {
         return (T) jsonFacade.readNode(input, clazz);
     }
 
+    /**
+     * Reads JSON from a character stream into the requested generic target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(Reader input, TypeReference<T> type) {
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
+    /**
+     * Reads JSON from a character stream into the default structural object model.
+     */
     public Object fromJson(Reader input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Reads JSON text into the requested target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, Class<T> clazz) {
         return (T) jsonFacade.readNode(input, clazz);
     }
 
+    /**
+     * Reads JSON text into the requested generic target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String input, TypeReference<T> type) {
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
+    /**
+     * Reads JSON text into the default structural object model.
+     */
     public Object fromJson(String input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Reads JSON from a byte stream into the requested target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, Class<T> clazz) {
         return (T) jsonFacade.readNode(input, clazz);
     }
 
+    /**
+     * Reads JSON from a byte stream into the requested generic target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(InputStream input, TypeReference<T> type) {
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
+    /**
+     * Reads JSON from a byte stream into the default structural object model.
+     */
     public Object fromJson(InputStream input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Reads JSON bytes into the requested target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, Class<T> clazz) {
         return (T) jsonFacade.readNode(input, clazz);
     }
 
+    /**
+     * Reads JSON bytes into the requested generic target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromJson(byte[] input, TypeReference<T> type) {
         return (T) jsonFacade.readNode(input, type.getType());
     }
 
+    /**
+     * Reads JSON bytes into the default structural object model.
+     */
     public Object fromJson(byte[] input) {
         return fromJson(input, Object.class);
     }
 
+    /**
+     * Writes a value as JSON to a character stream.
+     */
     public void toJson(Writer output, Object node) {
         jsonFacade.writeNode(output, node);
     }
 
+    /**
+     * Writes a value as JSON to a byte stream.
+     */
     public void toJson(OutputStream output, Object node) {
         jsonFacade.writeNode(output, node);
     }
 
+    /**
+     * Serializes a value to a JSON string.
+     */
     public String toJsonString(Object node) {
         return jsonFacade.writeNodeAsString(node);
     }
 
+    /**
+     * Serializes a value to JSON bytes.
+     */
     public byte[] toJsonBytes(Object node) {
         return jsonFacade.writeNodeAsBytes(node);
     }
 
     /// YAML
 
+    /**
+     * Reads YAML from a character stream into the requested target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, Class<T> clazz) {
         return (T) yamlFacade.readNode(input, clazz);
     }
 
+    /**
+     * Reads YAML from a character stream into the requested generic target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(Reader input, TypeReference<T> type) {
         return (T) yamlFacade.readNode(input, type.getType());
     }
 
+    /**
+     * Reads YAML from a character stream into the default structural object model.
+     */
     public Object fromYaml(Reader input) {
         return fromYaml(input, Object.class);
     }
 
+    /**
+     * Reads YAML text into the requested target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, Class<T> clazz) {
         return (T) yamlFacade.readNode(input, clazz);
     }
 
+    /**
+     * Reads YAML text into the requested generic target type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromYaml(String input, TypeReference<T> type) {
         return (T) yamlFacade.readNode(input, type.getType());
     }
 
+    /**
+     * Reads YAML text into the default structural object model.
+     */
     public Object fromYaml(String input) {
         return fromYaml(input, Object.class);
     }
 
+    /**
+     * Writes a value as YAML to a character stream.
+     */
     public void toYaml(Writer output, Object node) {
         yamlFacade.writeNode(output, node);
     }
 
+    /**
+     * Serializes a value to a YAML string.
+     */
     public String toYamlString(Object node) {
         return yamlFacade.writeNodeAsString(node);
     }
 
+    /**
+     * Serializes a value to YAML bytes.
+     */
     public byte[] toYamlBytes(Object node) {
         return yamlFacade.writeNodeAsBytes(node);
     }
 
     /// Node
 
+    /**
+     * Converts an existing structural node into the requested target type.
+     * <p>
+     * This path performs an isolated conversion and deep-copies nested node values
+     * as needed so the result does not retain source-container aliases.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, Class<T> clazz) {
         return (T) nodeFacade.readNode(node, clazz, true);
     }
 
+    /**
+     * Converts an existing structural node into the requested generic target type.
+     * <p>
+     * This path performs an isolated conversion and deep-copies nested node values
+     * as needed so the result does not retain source-container aliases.
+     */
     @SuppressWarnings("unchecked")
     public <T> T fromNode(Object node, TypeReference<T> type) {
         return (T) nodeFacade.readNode(node, type.getType(), true);
     }
 
+    /**
+     * Binds an existing structural node into the requested target type without forcing a deep copy.
+     * <p>
+     * Nested objects, arrays, maps, or lists may be shared with the source graph when
+     * the target binding allows it. Use {@link #fromNode(Object, Class)} when you need
+     * an isolated converted result instead.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T bindNode(Object node, Class<T> clazz) {
+        return (T) nodeFacade.readNode(node, clazz, false);
+    }
+
+    /**
+     * Binds an existing structural node into the requested generic target type without forcing a deep copy.
+     * <p>
+     * Nested objects, arrays, maps, or lists may be shared with the source graph when
+     * the target binding allows it. Use {@link #fromNode(Object, TypeReference)} when you need
+     * an isolated converted result instead.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T bindNode(Object node, TypeReference<T> type) {
+        return (T) nodeFacade.readNode(node, type.getType(), false);
+    }
+
+    /**
+     * Creates a detached deep structural copy of the supplied node or value.
+     */
     @SuppressWarnings("unchecked")
     public <T> T deepNode(T node) {
         return (T) nodeFacade.deepNode(node);
     }
 
+    /**
+     * Converts a value into the backend-neutral raw structural node form.
+     */
     public Object toRaw(Object node) {
         return nodeFacade.writeNode(node);
     }
@@ -256,20 +391,32 @@ public final class Sjf4j {
 
     /// Properties
 
+    /**
+     * Reads flat {@link Properties} data into the default structural object model.
+     */
     public Object fromProperties(Properties props) {
         return propertiesFacade.readNode(props);
     }
 
+    /**
+     * Reads flat {@link Properties} data into the requested target type.
+     */
     public <T> T fromProperties(Properties props, Class<T> clazz) {
         JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, clazz);
     }
 
+    /**
+     * Reads flat {@link Properties} data into the requested generic target type.
+     */
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
         JsonObject jo = propertiesFacade.readNode(props);
         return fromNode(jo, type);
     }
 
+    /**
+     * Flattens a value into standard Java {@link Properties}.
+     */
     public Properties toProperties(Object node) {
         Properties props = new Properties();
         propertiesFacade.writeNode(props, node);
@@ -278,6 +425,9 @@ public final class Sjf4j {
 
     /// NodeMapper
 
+    /**
+     * Creates a node-mapper builder for structural mapping between two declared types.
+     */
     public <S, T> NodeMapperBuilder<S, T> nodeMapperBuilder(Class<S> sourceClass, Class<T> targetClass) {
         return new NodeMapperBuilder<>(sourceClass, targetClass, streamingContext);
     }

@@ -355,7 +355,10 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Converts this object to a POJO type.
+     * Binds this object into the requested POJO, JOJO, or JAJO target type.
+     * <p>
+     * This follows {@link Nodes#toPojo(Object, Class)} semantics and does not
+     * force a deep copy of nested containers.
      */
     public <T> T toPojo(Class<T> clazz) {
         return Nodes.toPojo(this, clazz);
@@ -451,12 +454,6 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.global().fromJson(input, JsonObject.class);
     }
 
-    /**
-     * Serializes this JsonObject to JSON.
-     */
-    public String toJson() {
-        return Sjf4j.global().toJsonString(this);
-    }
 
     ///  YAML Facade
 
@@ -466,37 +463,6 @@ public class JsonObject extends JsonContainer {
     public static JsonObject fromYaml(String input) {
         return Sjf4j.global().fromYaml(input, JsonObject.class);
     }
-
-    /**
-     * Serializes this JsonObject to YAML.
-     */
-    public String toYaml() {
-        return Sjf4j.global().toYamlString(this);
-    }
-
-    /// Node Facade
-
-    /**
-     * Converts a node into a JsonObject.
-     */
-    public static JsonObject fromNode(Object node) {
-        return Sjf4j.global().fromNode(node, JsonObject.class);
-    }
-
-    /**
-     * Converts this JsonObject into the target node type.
-     */
-    public <T> T toNode(Class<T> clazz) {
-        return Sjf4j.global().fromNode(this, clazz);
-    }
-
-    /**
-     * Converts this JsonObject into a raw Java representation.
-     */
-    public Object toRaw() {
-        return Sjf4j.global().toRaw(this);
-    }
-
 
 
     /// Properties Facade
@@ -508,11 +474,13 @@ public class JsonObject extends JsonContainer {
         return Sjf4j.global().fromProperties(props, JsonObject.class);
     }
 
+    /// Node Facade
+
     /**
-     * Converts this JsonObject into Java Properties.
+     * Converts a node into a JsonObject.
      */
-    public Properties toProperties() {
-        return Sjf4j.global().toProperties(this);
+    public static JsonObject fromNode(Object node) {
+        return Sjf4j.global().fromNode(node, JsonObject.class);
     }
 
 

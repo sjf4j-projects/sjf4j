@@ -61,7 +61,7 @@ public class JojoTest {
         String json1 = p1.toJson();
         log.info("json1={}", json1);
 
-        Person p2 = JsonObject.fromJson(json1).toPojo(Person.class);
+        Person p2 = JsonObject.fromJson(json1).bindNode(Person.class);
         log.info("p1={}", p1.inspect());
         log.info("p2={}", p2.inspect());
         assertNotEquals(p1, p2);

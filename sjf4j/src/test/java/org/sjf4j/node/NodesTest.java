@@ -448,7 +448,7 @@ public class NodesTest {
                 "address", JsonObject.of(
                         "city", "New York",
                         "street", "5th Ave"));
-        Person p1 = jo.toPojo(Person.class);
+        Person p1 = jo.bindNode(Person.class);
         JsonObject jo1 = new JsonObject(p1);
         assertTrue(Nodes.equals(p1,jo1));
         assertTrue(Nodes.equals(jo1, p1));
@@ -505,7 +505,7 @@ public class NodesTest {
                 "address", JsonObject.of(
                 "city", "New York",
                 "street", "5th Ave"));
-        Person p1 = jo.toPojo(Person.class);
+        Person p1 = jo.bindNode(Person.class);
         Person p2 = Nodes.copy(p1);
         Person p3 = Sjf4j.global().deepNode(p1);
         assertEquals(p1, p2);
@@ -524,7 +524,7 @@ public class NodesTest {
         JsonObject jo = JsonObject.of(
                 "name", "Bob",
                 "friends", new String[]{"Tom", "Jay"});
-        Baby b1 = jo.toPojo(Baby.class);
+        Baby b1 = jo.bindNode(Baby.class);
         Baby b2 = Nodes.copy(b1);
         Baby b3 = Sjf4j.global().deepNode(b1);
         log.info("b1={}, b3={}", b1, b3);

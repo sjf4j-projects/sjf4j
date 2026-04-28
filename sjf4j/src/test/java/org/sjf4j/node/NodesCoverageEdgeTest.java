@@ -189,11 +189,11 @@ class NodesCoverageEdgeTest {
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("name", "han");
-        assertSame(map, Nodes.toMap(map, Map.class, Object.class));
+        assertSame(map, Nodes.toMap(map));
 
         List<Object> list = new ArrayList<>();
         list.add("a");
-        assertSame(list, Nodes.toList(list, List.class, Object.class));
+        assertSame(list, Nodes.toList(list));
         assertEquals(Arrays.asList(1, 2), Nodes.toList(new int[]{1, 2}));
         assertEquals(Arrays.asList("a", "b"), Nodes.toList(new LinkedHashSet<>(Arrays.asList("a", "b"))));
         List<Object> facadeList = Nodes.toList(arrayNode);
@@ -217,7 +217,7 @@ class NodesCoverageEdgeTest {
 
         Set<Object> set = new LinkedHashSet<>();
         set.add("x");
-        assertSame(set, Nodes.toSet(set, Set.class, Object.class));
+        assertSame(set, Nodes.toSet(set));
     }
 
     @Test

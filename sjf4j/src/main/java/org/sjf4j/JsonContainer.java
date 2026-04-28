@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -20,6 +21,56 @@ import java.util.function.BiFunction;
  * patch/merge utilities via {@link JsonPath}, {@link Nodes}, and {@link Patches}.
  */
 public abstract class JsonContainer {
+
+    /// Facade helpers
+
+    /**
+     * Serializes this container to JSON.
+     */
+    public String toJson() {
+        return Sjf4j.global().toJsonString(this);
+    }
+
+    /**
+     * Serializes this container to YAML.
+     */
+    public String toYaml() {
+        return Sjf4j.global().toYamlString(this);
+    }
+
+    /**
+     * Converts this container into Java Properties.
+     */
+    public Properties toProperties() {
+        return Sjf4j.global().toProperties(this);
+    }
+
+    /**
+     * Converts this container into the target node type with deep-copy isolation.
+     */
+    public <T> T toNode(Class<T> clazz) {
+        return Sjf4j.global().fromNode(this, clazz);
+    }
+
+    /**
+     * Binds this container into the target node type without forcing a deep copy.
+     * <p>
+     * Nested objects, arrays, maps, or lists may be shared with this container when
+     * the target binding allows it. Use {@link #toNode(Class)} when you need an
+     * isolated converted result.
+     */
+    public <T> T bindNode(Class<T> clazz) {
+        return Sjf4j.global().bindNode(this, clazz);
+    }
+
+    /**
+     * Converts this container into a raw Java representation.
+     */
+    public Object toRaw() {
+        return Sjf4j.global().toRaw(this);
+    }
+
+
 
     /// Base
 

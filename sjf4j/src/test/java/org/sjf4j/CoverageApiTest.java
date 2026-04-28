@@ -27,7 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -175,6 +177,11 @@ class CoverageApiTest {
         assertEquals(Arrays.asList("a", "b"), JsonArray.of("a", "b").toList(String.class));
         assertArrayEquals(new String[]{"a", "b"}, JsonArray.of("a", "b").toArray(String.class));
         assertEquals(Arrays.asList("x", "y"), JsonArray.fromNode(Arrays.asList("x", "y")).toNode(List.class));
+        JsonObject arrayNested = JsonObject.of("k", "v");
+        List<?> boundList = JsonArray.of(arrayNested).bindNode(List.class);
+        assertSame(arrayNested, boundList.get(0));
+        List<?> copiedList = JsonArray.of(arrayNested).toNode(List.class);
+        assertNotSame(arrayNested, copiedList.get(0));
         assertEquals(1, array.stream().count());
 
         JsonArray deepCopy = JsonArray.of(JsonObject.of("k", "v")).deepCopy();
@@ -257,6 +264,11 @@ class CoverageApiTest {
         assertThrows(JsonException.class, () -> object.get("number", 1));
         assertThrows(JsonException.class, () -> object.getAs("string", 1));
         assertEquals(object.toMap(), object.toNode(Map.class));
+        JsonObject nested = JsonObject.of("k", "v");
+        Map<?, ?> boundMap = JsonObject.of("nested", nested).bindNode(Map.class);
+        assertSame(nested, boundMap.get("nested"));
+        Map<?, ?> copiedMap = JsonObject.of("nested", nested).toNode(Map.class);
+        assertNotSame(nested, copiedMap.get("nested"));
         assertInstanceOf(Map.class, object.toRaw());
 
         JsonObject dynamic = new JsonObject();
@@ -322,7 +334,7 @@ class CoverageApiTest {
         assertEquals(5, built.getIntByPath("$.nested.other"));
         assertEquals(1, built.stream().count());
 
-        Person pojo = JsonObject.of("name", "Alice", "age", 30).toPojo(Person.class);
+        Person pojo = JsonObject.of("name", "Alice", "age", 30).bindNode(Person.class);
         assertEquals("Alice", pojo.name);
         JsonObject pojoNode = JsonObject.fromNode(new ExtraPojo());
         assertEquals("ok", pojoNode.getString("code"));
@@ -497,6 +509,11 @@ class CoverageApiTest {
         Person person = sjf4j.fromNode(JsonObject.of("name", "Alice", "age", 30), Person.class);
         assertEquals("Alice", person.name);
         assertEquals(30, person.age);
+        JsonObject bindSource = JsonObject.of("nested", JsonObject.of("value", 1));
+        Map<String, Object> runtimeBound = sjf4j.bindNode(bindSource, new TypeReference<Map<String, Object>>() {});
+        assertSame(bindSource.getNode("nested"), runtimeBound.get("nested"));
+        Map<String, Object> runtimeCopied = sjf4j.fromNode(bindSource, new TypeReference<Map<String, Object>>() {});
+        assertNotSame(bindSource.getNode("nested"), runtimeCopied.get("nested"));
         JsonObject deepSource = JsonObject.of("nested", JsonObject.of("value", 1));
         JsonObject deepCopy = sjf4j.deepNode(deepSource);
         deepSource.getJsonObject("nested").put("value", 2);
