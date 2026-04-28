@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 
 
 /**
@@ -356,13 +355,6 @@ public final class Nodes {
         return _toMap(node, Map.class, valueClazz);
     }
 
-    /**
-     * Converts a node to typed Map using the requested container type.
-     */
-    public static <T> Map<String, T> toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
-        return _toMap(node, mapType, valueClazz);
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> Map<String, T> _toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
         if (node == null) return null;
@@ -415,13 +407,6 @@ public final class Nodes {
         return _toList(node, List.class, valueClazz);
     }
 
-    /**
-     * Converts a node to typed List using the requested container type.
-     */
-    public static <T> List<T> toList(Object node, Class<?> listType, Class<T> valueClazz) {
-        return _toList(node, listType, valueClazz);
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> List<T> _toList(Object node, Class<?> listType, Class<T> valueClazz) {
         if (node == null) return null;
@@ -429,17 +414,6 @@ public final class Nodes {
                 && (valueClazz == null || valueClazz == Object.class)) return (List<T>) node;
         List<T> list = NodeRegistry.newListContainer(listType, false);
         forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
-        return list;
-    }
-
-    /**
-     * Converts an array-like node to a List using the given mapper.
-     */
-    public static <T> List<T> toList(Object node, Function<Object, T> mapper) {
-        if (node == null) return null;
-        Objects.requireNonNull(mapper, "mapper");
-        List<T> list = new ArrayList<>();
-        forEachArray(node, (i, v) -> list.add(mapper.apply(v)));
         return list;
     }
 
@@ -516,13 +490,6 @@ public final class Nodes {
      */
     public static <T> Set<T> toSet(Object node, Class<T> valueClazz) {
         return _toSet(node, Set.class, valueClazz);
-    }
-
-    /**
-     * Converts a node to typed Set using the requested container type.
-     */
-    public static <T> Set<T> toSet(Object node, Class<?> setType, Class<T> valueClazz) {
-        return _toSet(node, setType, valueClazz);
     }
 
     @SuppressWarnings("unchecked")

@@ -355,16 +355,6 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Binds this object into the requested POJO, JOJO, or JAJO target type.
-     * <p>
-     * This follows {@link Nodes#toPojo(Object, Class)} semantics and does not
-     * force a deep copy of nested containers.
-     */
-    public <T> T toPojo(Class<T> clazz) {
-        return Nodes.toPojo(this, clazz);
-    }
-
-    /**
      * Returns a merged entry set of readable declared fields and dynamic entries.
      */
     public Set<Map.Entry<String, Object>> entrySet() {

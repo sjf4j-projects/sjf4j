@@ -40,7 +40,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -216,20 +215,6 @@ public class NodesTest {
         log.info("person={}", person);
         Baby[] babies = person.getArray("babies", Baby.class);
         log.info("babies={}", Nodes.inspect(babies));
-    }
-
-    @Test
-    public void testToListWithMapper() {
-        JsonArray hits = JsonArray.of(
-                JsonObject.of("_id", "a"),
-                JsonObject.of("_id", "b"));
-
-        List<String> ids = Nodes.toList(hits, node -> Nodes.toJsonObject(node).getString("_id"));
-
-        assertEquals(Arrays.asList("a", "b"), ids);
-        assertNull(Nodes.toList(null, node -> node));
-        assertThrows(NullPointerException.class, () -> Nodes.toList(hits, (Function<Object, Object>) null));
-        assertThrows(JsonException.class, () -> Nodes.toList("x", node -> node));
     }
 
     enum TestEnum { A, B }

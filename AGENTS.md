@@ -20,6 +20,10 @@ The goal is consistent JSON semantics across backends, formats, paths, patches, 
 - Be careful with code size and jar size. Avoid new helper layers or classes unless they clearly pay for themselves.
 - Reuse existing serializers/readers/writers when possible instead of adding near-duplicate wrappers.
 - Small, direct changes are preferred over large refactors.
+- Default to treating user-deleted APIs as intentional.
+- If deletions may cause compatibility risk, call that out clearly in review.
+- Do not proactively restore removed methods, overloads, or compatibility shims unless the user explicitly asks for that direction.
+- For review / changelog / commit requests, prefer reporting compatibility impact over changing code to preserve compatibility.
 
 ## Before Commit
 
