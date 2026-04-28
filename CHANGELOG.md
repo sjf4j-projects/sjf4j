@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added `Nodes.removeIfInObject(...)` for safe in-place object-member removal during traversal against live object-key views.
+- Added `Sjf4j.bindNode(...)` plus `JsonContainer.bindNode(...)` so callers can opt into alias-preserving node binding without the deep-copy isolation of `fromNode(...)` / `toNode(...)`.
+
+### Changed
+- Changed schema registry naming to use `SchemaRegistry` consistently across schema compilation, export, loading, and validator APIs.
+
+### Removed
+- Removed the old `SchemaStore` type and its legacy `toStore()` / `compile(SchemaStore)` naming in favor of `SchemaRegistry` and `toRegistry()`.
 
 ### Fixed
 - Fixed `Nodes.removeInObject(...)` to reject POJO structural field removal with the intended POJO-specific error path.
