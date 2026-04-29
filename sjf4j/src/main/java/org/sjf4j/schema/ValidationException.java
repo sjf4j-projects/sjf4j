@@ -7,6 +7,8 @@ import org.sjf4j.exception.SchemaException;
  * Exception wrapper carrying a {@link ValidationResult}.
  * <p>
  * Thrown by convenience APIs such as {@code validateOrThrow()}.
+ * The exception message is a compact summary of the last validation message,
+ * which now includes both instance and keyword JSON Pointer paths when present.
  */
 public class ValidationException extends SchemaException {
     private final ValidationResult result;

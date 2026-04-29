@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -167,6 +168,75 @@ public class SchemaValidationTest {
 
         assertTrue(schema.isValid(ok));
         assertFalse(schema.isValid(bad));
+    }
+
+    @Test
+    public void testAdditionalPropertiesFalseErrorMessage() {
+        String json =
+                "{\n" +
+                "  \"type\": \"object\",\n" +
+                "  \"additionalProperties\": false\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+        schema.compile();
+
+        Map<String, Object> bad = new HashMap<String, Object>();
+        bad.put("y", 1);
+
+        ValidationResult result = schema.validateFailFast(bad);
+        assertFalse(result.isValid());
+        assertEquals("false", result.getLastMessage().getKeyword());
+        assertEquals("/y", result.getLastMessage().getInstancePath());
+        assertEquals("/additionalProperties", result.getLastMessage().getKeywordPath());
+        assertEquals("Schema 'false' always fails",
+                result.getLastMessage().getMessage());
+
+        ValidationException ex = assertThrows(ValidationException.class, () -> schema.requireValid(bad));
+        assertTrue(ex.getMessage().contains("instance path '/y'"));
+        assertTrue(ex.getMessage().contains("keyword path '/additionalProperties'"));
+        assertTrue(ex.getMessage().contains("Schema 'false' always fails"));
+    }
+
+    @Test
+    public void testNestedKeywordPathForTypeError() {
+        String json =
+                "{\n" +
+                "  \"type\": \"object\",\n" +
+                "  \"properties\": {\n" +
+                "    \"name\": { \"type\": \"string\" }\n" +
+                "  }\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+        schema.compile();
+
+        Map<String, Object> bad = new HashMap<String, Object>();
+        bad.put("name", 1);
+
+        ValidationResult result = schema.validateFailFast(bad);
+        assertFalse(result.isValid());
+        assertEquals("type", result.getLastMessage().getKeyword());
+        assertEquals("/name", result.getLastMessage().getInstancePath());
+        assertEquals("/properties/name/type", result.getLastMessage().getKeywordPath());
+    }
+
+    @Test
+    public void testPropertyNamesErrorUsesMemberInstancePath() {
+        String json =
+                "{\n" +
+                "  \"type\": \"object\",\n" +
+                "  \"propertyNames\": { \"pattern\": \"^[a-z]+$\" }\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+        schema.compile();
+
+        Map<String, Object> bad = new HashMap<String, Object>();
+        bad.put("Bad-Name", 1);
+
+        ValidationResult result = schema.validateFailFast(bad);
+        assertFalse(result.isValid());
+        assertEquals("propertyNames", result.getLastMessage().getKeyword());
+        assertEquals("/Bad-Name", result.getLastMessage().getInstancePath());
+        assertEquals("/propertyNames", result.getLastMessage().getKeywordPath());
     }
 
     @Test

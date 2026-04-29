@@ -132,9 +132,14 @@ public class ValidationContext {
      * <p>
      * In fail-fast mode only the last error is retained.
      */
-    void addError(PathSegment ps, String keyword, String message) {
+    void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs,
+                  String keyword, String message) {
         if (ignoreErrorAdding < 1) {
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR, ps, keyword, message);
+            if (instancePs == null && instance != null) {
+                instancePs = instance.materializePath();
+            }
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                    instancePs, keywordPs, keyword, message);
             if (messages != null) {
                 messages.add(msg);
             } else {
@@ -143,14 +148,16 @@ public class ValidationContext {
             valid = false;
         }
     }
+
     /**
      * Adds a validation warning message.
      * <p>
      * Warnings are collected only when message list is enabled (non fail-fast).
      */
-    void addWarn(PathSegment ps, String keyword, String message) {
+    void addWarn(PathSegment instancePs, PathSegment keywordPs, String keyword, String message) {
         if (messages != null) {
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN, ps, keyword, message);
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN,
+                    instancePs, keywordPs, keyword, message);
             messages.add(msg);
         }
     }

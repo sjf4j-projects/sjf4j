@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeKind;
+import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
@@ -25,6 +26,10 @@ public final class InstancedNode {
     final boolean converted;
 
     private Map<Object, InstancedNode> subInstanceCache;
+    private InstancedNode pathParent;
+    private String pathKey;
+    private int pathIndex;
+    private boolean pathByIndex;
 
     // runtime state
     private Deque<BitSet> evaluatedStack;
@@ -52,6 +57,34 @@ public final class InstancedNode {
         return this;
     }
 
+    private InstancedNode clearPath() {
+        this.pathParent = null;
+        this.pathKey = null;
+        this.pathIndex = 0;
+        this.pathByIndex = false;
+        return this;
+    }
+
+    private InstancedNode bindPathKey(InstancedNode pathParent, String pathKey) {
+        this.pathParent = pathParent;
+        this.pathKey = pathKey;
+        this.pathByIndex = false;
+        return this;
+    }
+
+    private InstancedNode bindPathIndex(InstancedNode pathParent, int pathIndex) {
+        this.pathParent = pathParent;
+        this.pathIndex = pathIndex;
+        this.pathByIndex = true;
+        return this;
+    }
+
+    PathSegment materializePath() {
+        if (pathParent == null) return PathSegment.Root.INSTANCE;
+        PathSegment parentPs = pathParent.materializePath();
+        return pathByIndex ? new PathSegment.Index(parentPs, pathIndex) : new PathSegment.Name(parentPs, pathKey);
+    }
+
     // NULL
     static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, null, false);
 
@@ -62,7 +95,7 @@ public final class InstancedNode {
      * validation against JSON-compatible representation.
      */
     static InstancedNode infer(Object node) {
-        if (node == null) return NULL.reset();
+        if (node == null) return NULL.reset().clearPath();
         boolean encoded = false;
         NodeKind nodeKind = NodeKind.of(node);
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
@@ -178,18 +211,18 @@ public final class InstancedNode {
     InstancedNode inferSubByKey(String key, Object subNode) {
         if (jsonType != JsonType.OBJECT)
             throw new JsonException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
-        InstancedNode subInstance = null;
-        if (subInstanceCache != null) subInstance = subInstanceCache.get(key);
-        if (subInstance == null) {
-            if (subNode != null) {
-                subInstance = InstancedNode.infer(subNode);
-                if (subInstance.converted) {
-                    if (subInstanceCache == null) subInstanceCache = new HashMap<>();
-                    subInstanceCache.put(key, subInstance);
-                }
-            }
+        if (subInstanceCache != null) {
+            InstancedNode subInstance = subInstanceCache.get(key);
+            if (subInstance != null) return subInstance.reset();
         }
-        return subInstance == null ? NULL.reset() : subInstance.reset();
+        if (subNode == null) return NULL.reset().bindPathKey(this, key);
+
+        InstancedNode subInstance = InstancedNode.infer(subNode).bindPathKey(this, key);
+        if (subInstance.converted) {
+            if (subInstanceCache == null) subInstanceCache = new HashMap<>();
+            subInstanceCache.put(key, subInstance);
+        }
+        return subInstance;
     }
 
     /**
@@ -200,18 +233,18 @@ public final class InstancedNode {
     InstancedNode inferSubByIndex(int idx, Object subNode) {
         if (jsonType != JsonType.ARRAY)
             throw new JsonException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
-        InstancedNode subInstance = null;
-        if (subInstanceCache != null) subInstance = subInstanceCache.get(idx);
-        if (subInstance == null) {
-            if (subNode != null) {
-                subInstance = InstancedNode.infer(subNode);
-                if (subInstance.converted) {
-                    if (subInstanceCache == null) subInstanceCache = new HashMap<>();
-                    subInstanceCache.put(idx, subInstance);
-                }
-            }
+        if (subInstanceCache != null) {
+            InstancedNode subInstance = subInstanceCache.get(idx);
+            if (subInstance != null) return subInstance.reset();
         }
-        return subInstance  == null ? NULL.reset() : subInstance.reset();
+        if (subNode == null) return NULL.reset().bindPathIndex(this, idx);
+
+        InstancedNode subInstance = InstancedNode.infer(subNode).bindPathIndex(this, idx);
+        if (subInstance.converted) {
+            if (subInstanceCache == null) subInstanceCache = new HashMap<>();
+            subInstanceCache.put(idx, subInstance);
+        }
+        return subInstance;
     }
 
     // refSchema

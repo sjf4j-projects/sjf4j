@@ -39,13 +39,15 @@ public interface Evaluator {
 
     // $ref
     final class RefEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final URI uri;
         private final JsonPointer refPath;
         private final String anchor;
         /**
          * Creates evaluator for $ref target.
          */
-        public RefEvaluator(URI uri, JsonPointer refPath, String anchor) {
+        public RefEvaluator(PathSegment keywordPs, URI uri, JsonPointer refPath, String anchor) {
+            this.keywordPs = keywordPs;
             this.uri = uri;
             this.refPath = refPath;
             this.anchor = anchor;
@@ -60,15 +62,15 @@ public interface Evaluator {
                 if (schema != null) {
                     return schema.evaluate(instance, ps, ctx);
                 }
-                ctx.addWarn(ps, "$ref", "Not found schema by path '" + refPath + "' in URI " + uri);
+                ctx.addWarn(ps, keywordPs, "$ref", "Not found schema by path '" + refPath + "' in URI " + uri);
             }
             if (anchor != null) { // Always true
                 ObjectSchema schema = ctx.getSchemaByAnchor(uri, anchor);
                 if (schema == null) {
                     if (anchor.isEmpty()) {
-                        ctx.addError(ps, "$ref", "Not found schema at URI " + uri);
+                        ctx.addError(instance, ps, keywordPs, "$ref", "Not found schema at URI " + uri);
                     } else {
-                        ctx.addError(ps, "$ref", "Not found anchor '" + anchor + "' in URI " + uri);
+                        ctx.addError(instance, ps, keywordPs, "$ref", "Not found anchor '" + anchor + "' in URI " + uri);
                     }
                     return false;
                 }
@@ -81,13 +83,15 @@ public interface Evaluator {
 
     // $dynamicRef
     final class DynamicRefEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final URI uri;
         private final JsonPointer refPath;
         private final String dynamicAnchor;
         /**
          * Creates evaluator for $dynamicRef target.
          */
-        public DynamicRefEvaluator(URI uri, JsonPointer refPath, String dynamicAnchor) {
+        public DynamicRefEvaluator(PathSegment keywordPs, URI uri, JsonPointer refPath, String dynamicAnchor) {
+            this.keywordPs = keywordPs;
             this.uri = uri;
             this.refPath = refPath;
             this.dynamicAnchor = dynamicAnchor;
@@ -105,16 +109,16 @@ public interface Evaluator {
                     if (schema != null) {
                         return schema.evaluate(instance, ps, ctx);
                     }
-                    ctx.addWarn(ps, "$dynamicRef",
+                    ctx.addWarn(ps, keywordPs, "$dynamicRef",
                             "Not found schema by path '" + refPath + "' in URI " + uri);
                 }
                 schema = ctx.getSchemaByAnchor(uri, dynamicAnchor);
                 if (schema == null) {
                     if (dynamicAnchor.isEmpty()) {
-                        ctx.addError(ps, "$dynamicRef", "Not found schema at URI " + uri);
+                        ctx.addError(instance, ps, keywordPs, "$dynamicRef", "Not found schema at URI " + uri);
                         return false;
                     } else {
-                        ctx.addError(ps, "$dynamicRef",
+                        ctx.addError(instance, ps, keywordPs, "$dynamicRef",
                                 "Not found anchor '" + dynamicAnchor + "' in URI " + uri);
                         return false;
                     }
@@ -127,6 +131,7 @@ public interface Evaluator {
 
     // type
     final class TypeEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final String type;
         private final JsonType jsonType;
         private final String[] types;
@@ -135,7 +140,8 @@ public interface Evaluator {
         /**
          * Creates evaluator for type keyword value.
          */
-        public TypeEvaluator(Object type) {
+        public TypeEvaluator(PathSegment keywordPs, Object type) {
+            this.keywordPs = keywordPs;
             Objects.requireNonNull(type, "type");
             JsonType jt = JsonType.of(type);
             if (jt.isString()) {
@@ -161,7 +167,7 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (jsonType != null) {
                 if (!matches(jsonType, instance)) {
-                    ctx.addError(ps, "type", "Expected type " + type +
+                    ctx.addError(instance, ps, keywordPs, "type", "Expected type " + type +
                             ", but was " + instance.jsonType);
                     return false;
                 }
@@ -173,7 +179,7 @@ public interface Evaluator {
                         return true;
                     }
                 }
-                ctx.addError(ps, "type", "Expected one of " + Arrays.toString(types) +
+                ctx.addError(instance, ps, keywordPs, "type", "Expected one of " + Arrays.toString(types) +
                         ", but found " + instance.jsonType);
                 return false;
             }
@@ -197,11 +203,13 @@ public interface Evaluator {
 
     // const
     final class ConstEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final Object constValue;
         /**
          * Creates evaluator for const keyword.
          */
-        public ConstEvaluator(Object constValue) {
+        public ConstEvaluator(PathSegment keywordPs, Object constValue) {
+            this.keywordPs = keywordPs;
             this.constValue = constValue;
         }
         /**
@@ -211,7 +219,7 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             Object actual = instance.node;
             if (!Nodes.equals(constValue, actual)) {
-                ctx.addError(ps, "const", "Value does not match constant. Expected: " +
+                ctx.addError(instance, ps, keywordPs, "const", "Value does not match constant. Expected: " +
                         Nodes.inspect(constValue) + ", actual: " + Nodes.inspect(actual));
                 return false;
             }
@@ -221,11 +229,13 @@ public interface Evaluator {
 
     // enum
     final class EnumEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final Object[] enumValues;
         /**
          * Creates evaluator for enum keyword values.
          */
-        public EnumEvaluator(Object[] enumValues) {
+        public EnumEvaluator(PathSegment keywordPs, Object[] enumValues) {
+            this.keywordPs = keywordPs;
             this.enumValues = Objects.requireNonNull(enumValues);
         }
         /**
@@ -237,7 +247,7 @@ public interface Evaluator {
             for (Object allowed : enumValues) {
                 if (Nodes.equals(allowed, actual)) return true;
             }
-            ctx.addError(ps, "enum", "Value not in enum: " + Nodes.inspect(enumValues));
+            ctx.addError(instance, ps, keywordPs, "enum", "Value not in enum: " + Nodes.inspect(enumValues));
             return false;
         }
     }
@@ -245,6 +255,10 @@ public interface Evaluator {
 
     // minimum / maximum / exclusiveMinimum / exclusiveMaximum
     final class NumberEvaluator implements Evaluator {
+        private final PathSegment minimumKeywordPs;
+        private final PathSegment maximumKeywordPs;
+        private final PathSegment exclusiveMinimumKeywordPs;
+        private final PathSegment exclusiveMaximumKeywordPs;
         private final boolean hasMinimum;
         private final double minimum;
         private final boolean hasMaximum;
@@ -253,8 +267,14 @@ public interface Evaluator {
         private final double exclusiveMinimum;
         private final boolean hasExclusiveMaximum;
         private final double exclusiveMaximum;
-        public NumberEvaluator(Number minimum, Number maximum,
+        public NumberEvaluator(PathSegment minimumKeywordPs, PathSegment maximumKeywordPs,
+                               PathSegment exclusiveMinimumKeywordPs, PathSegment exclusiveMaximumKeywordPs,
+                               Number minimum, Number maximum,
                                Number exclusiveMinimum, Number exclusiveMaximum) {
+            this.minimumKeywordPs = minimumKeywordPs;
+            this.maximumKeywordPs = maximumKeywordPs;
+            this.exclusiveMinimumKeywordPs = exclusiveMinimumKeywordPs;
+            this.exclusiveMaximumKeywordPs = exclusiveMaximumKeywordPs;
             this.hasMinimum = minimum != null;
             this.minimum = minimum != null ? minimum.doubleValue() : 0;
             this.hasMaximum = maximum != null;
@@ -276,16 +296,18 @@ public interface Evaluator {
             Number actual = Nodes.toNumber(instance.node);
             double actualDouble = actual.doubleValue();
             if (hasMinimum && actualDouble < minimum) {
-                ctx.addError(ps, "minimum", "Number '" + actual + "' must >= " + minimum);
+                ctx.addError(instance, ps, minimumKeywordPs, "minimum", "Number '" + actual + "' must >= " + minimum);
                 return false;
             } else if (hasMaximum && actualDouble > maximum) {
-                ctx.addError(ps, "maximum", "Number '" + actual + "' must <= " + maximum);
+                ctx.addError(instance, ps, maximumKeywordPs, "maximum", "Number '" + actual + "' must <= " + maximum);
                 return false;
             } else if (hasExclusiveMinimum && actualDouble <= exclusiveMinimum) {
-                ctx.addError(ps, "exclusiveMinimum", "Number '" + actual + "' must > " + exclusiveMinimum);
+                ctx.addError(instance, ps, exclusiveMinimumKeywordPs, "exclusiveMinimum",
+                        "Number '" + actual + "' must > " + exclusiveMinimum);
                 return false;
             } else if (hasExclusiveMaximum && actualDouble >= exclusiveMaximum) {
-                ctx.addError(ps, "exclusiveMaximum", "Number '" + actual + "' must < " + exclusiveMaximum);
+                ctx.addError(instance, ps, exclusiveMaximumKeywordPs, "exclusiveMaximum",
+                        "Number '" + actual + "' must < " + exclusiveMaximum);
                 return false;
             }
             return true;
@@ -294,6 +316,7 @@ public interface Evaluator {
 
     // multipleOf
     final class MultipleOfEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final Number multipleOf;
         private final BigDecimal divisor;
         private final boolean isIntegerDivisor;
@@ -302,7 +325,8 @@ public interface Evaluator {
         /**
          * Creates evaluator for multipleOf divisor.
          */
-        public MultipleOfEvaluator(Number multipleOf) {
+        public MultipleOfEvaluator(PathSegment keywordPs, Number multipleOf) {
+            this.keywordPs = keywordPs;
             this.multipleOf = multipleOf;
             this.divisor = Numbers.normalizeDecimal(multipleOf);
             if (divisor.signum() <= 0)
@@ -324,21 +348,21 @@ public interface Evaluator {
             if (isIntegerDivisor && Numbers.isSemanticInteger(actual)) {
                 long v = actual.longValue();
                 if (v % divisorLong != 0) {
-                    ctx.addError(ps,"multipleOf", "Number not a multiple of " + multipleOf);
+                    ctx.addError(instance, ps, keywordPs, "multipleOf", "Number not a multiple of " + multipleOf);
                     return false;
                 }
             } else if (isIntegerDivisor && (actual instanceof Double || actual instanceof Float)) {
                 double dv = actual.doubleValue();
                 double q = dv / divisorDouble;
                 if (q != Math.rint(q)) {
-                    ctx.addError(ps,"multipleOf", "Number not a multiple of " + multipleOf);
+                    ctx.addError(instance, ps, keywordPs, "multipleOf", "Number not a multiple of " + multipleOf);
                     return false;
                 }
             } else {
                 BigDecimal v = Numbers.normalizeDecimal(actual);
                 BigDecimal[] dr = v.divideAndRemainder(divisor);
                 if (dr[1].signum() != 0) {
-                    ctx.addError(ps, "multipleOf", "Number not a multiple of " + multipleOf);
+                    ctx.addError(instance, ps, keywordPs, "multipleOf", "Number not a multiple of " + multipleOf);
                     return false;
                 }
             }
@@ -348,12 +372,17 @@ public interface Evaluator {
 
     // minLength / maxLength
     final class StringEvaluator implements Evaluator {
+        private final PathSegment minLengthKeywordPs;
+        private final PathSegment maxLengthKeywordPs;
         private final Integer minLength;
         private final Integer maxLength;
         /**
          * Creates evaluator for string length constraints.
          */
-        public StringEvaluator(Integer minLength, Integer maxLength) {
+        public StringEvaluator(PathSegment minLengthKeywordPs, PathSegment maxLengthKeywordPs,
+                               Integer minLength, Integer maxLength) {
+            this.minLengthKeywordPs = minLengthKeywordPs;
+            this.maxLengthKeywordPs = maxLengthKeywordPs;
             this.minLength = minLength;
             this.maxLength = maxLength;
         }
@@ -367,11 +396,11 @@ public interface Evaluator {
             String actual = Nodes.toString(instance.node);
             int length = EvaluateUtil.stringIcuLength(actual);
             if (minLength != null && length < minLength) {
-                ctx.addError(ps, "minLength", "String length must >= " + minLength);
+                ctx.addError(instance, ps, minLengthKeywordPs, "minLength", "String length must >= " + minLength);
                 return false;
             }
             if (maxLength != null && length > maxLength) {
-                ctx.addError(ps, "maxLength", "String length must <= " + maxLength);
+                ctx.addError(instance, ps, maxLengthKeywordPs, "maxLength", "String length must <= " + maxLength);
                 return false;
             }
             return true;
@@ -380,12 +409,14 @@ public interface Evaluator {
 
     // pattern
     final class PatternEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final String pattern;
         private final Pattern pn;
         /**
          * Creates evaluator for pattern keyword.
          */
-        public PatternEvaluator(String pattern) {
+        public PatternEvaluator(PathSegment keywordPs, String pattern) {
+            this.keywordPs = keywordPs;
             this.pattern = Objects.requireNonNull(pattern);
             this.pn = EvaluateUtil.compileRegexPattern(pattern, "pattern");
         }
@@ -399,7 +430,7 @@ public interface Evaluator {
 
             String actual = Nodes.toString(instance.node);
             if (!pn.matcher(actual).find()) {
-                ctx.addError(ps, "pattern", "String must match pattern: " + pattern);
+                ctx.addError(instance, ps, keywordPs, "pattern", "String must match pattern: " + pattern);
                 return false;
             }
             return true;
@@ -408,12 +439,14 @@ public interface Evaluator {
 
     // format
     final class FormatEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final String format;
         private final FormatValidator formatValidator;
         /**
          * Creates evaluator for format keyword.
          */
-        public FormatEvaluator(String format) {
+        public FormatEvaluator(PathSegment keywordPs, String format) {
+            this.keywordPs = keywordPs;
             this.format = Objects.requireNonNull(format, "format");
             this.formatValidator = FormatValidator.of(format);
         }
@@ -426,7 +459,7 @@ public interface Evaluator {
             String actual = Nodes.toString(instance.node);
             if (ctx.getOptions().isStrictFormat()) {
                 if (!formatValidator.validate(actual)) {
-                    ctx.addError(ps, "format",
+                    ctx.addError(instance, ps, keywordPs, "format",
                             "Value '" + actual + "' does not match format " + format);
                     return false;
                 }
@@ -437,12 +470,17 @@ public interface Evaluator {
 
     // minProperties / maxProperties
     final class ObjectEvaluator implements Evaluator {
+        private final PathSegment minPropertiesKeywordPs;
+        private final PathSegment maxPropertiesKeywordPs;
         private final Integer minProperties;
         private final Integer maxProperties;
         /**
          * Creates evaluator for object size constraints.
          */
-        public ObjectEvaluator(Integer minProperties, Integer maxProperties) {
+        public ObjectEvaluator(PathSegment minPropertiesKeywordPs, PathSegment maxPropertiesKeywordPs,
+                               Integer minProperties, Integer maxProperties) {
+            this.minPropertiesKeywordPs = minPropertiesKeywordPs;
+            this.maxPropertiesKeywordPs = maxPropertiesKeywordPs;
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
         }
@@ -457,12 +495,12 @@ public interface Evaluator {
             Object actual = instance.node;
             int size = Nodes.sizeInObject(actual);
             if (minProperties != null && size < minProperties) {
-                ctx.addError(ps, "minProperties",
+                ctx.addError(instance, ps, minPropertiesKeywordPs, "minProperties",
                         "Object must have >= " + minProperties + " properties");
                 return false;
             }
             if (maxProperties != null && size > maxProperties) {
-                ctx.addError(ps, "maxProperties",
+                ctx.addError(instance, ps, maxPropertiesKeywordPs, "maxProperties",
                         "Object must have <= " + maxProperties + " properties");
                 return false;
             }
@@ -559,12 +597,17 @@ public interface Evaluator {
 
     // required / dependentRequired
     final class RequiredEvaluator implements Evaluator {
+        private final PathSegment requiredKeywordPs;
+        private final PathSegment dependentRequiredKeywordPs;
         private final String[] required;
         private final Map<String, String[]> dependentRequired;
         /**
          * Creates evaluator for required/dependentRequired.
          */
-        public RequiredEvaluator(String[] required, Map<String, String[]> dependentRequired) {
+        public RequiredEvaluator(PathSegment requiredKeywordPs, PathSegment dependentRequiredKeywordPs,
+                                 String[] required, Map<String, String[]> dependentRequired) {
+            this.requiredKeywordPs = requiredKeywordPs;
+            this.dependentRequiredKeywordPs = dependentRequiredKeywordPs;
             this.required = required;
             this.dependentRequired = dependentRequired;
         }
@@ -580,7 +623,8 @@ public interface Evaluator {
             if (required != null) {
                 for (String key : required) {
                     if (!Nodes.containsInObject(actual, key)) {
-                        ctx.addError(ps, "required", "Missing required property '" + key + "'");
+                        ctx.addError(instance, ps, requiredKeywordPs, "required",
+                                "Missing required property '" + key + "'");
                         result = false;
                     }
                 }
@@ -594,8 +638,9 @@ public interface Evaluator {
                         String[] required = entry.getValue();
                         for (String property : required) {
                             if (!Nodes.containsInObject(actual, property)) {
-                                ctx.addError(ps, "dependentRequired", "Property '" + property +
-                                        "' is required when property '" + key + "' is present");
+                                ctx.addError(instance, ps, dependentRequiredKeywordPs, "dependentRequired",
+                                        "Property '" + property + "' is required when property '" + key +
+                                                "' is present");
                                 result = false;
                             }
                         }
@@ -640,11 +685,13 @@ public interface Evaluator {
 
     // propertyNames
     final class PropertyNamesEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final JsonSchema propertyNamesSchema;
         /**
          * Creates evaluator for propertyNames schema.
          */
-        public PropertyNamesEvaluator(JsonSchema propertyNamesSchema) {
+        public PropertyNamesEvaluator(PathSegment keywordPs, JsonSchema propertyNamesSchema) {
+            this.keywordPs = keywordPs;
             this.propertyNamesSchema = propertyNamesSchema;
         }
         /**
@@ -661,7 +708,11 @@ public interface Evaluator {
                 boolean probed = propertyNamesSchema.evaluate(InstancedNode.infer(key), ps, ctx);
                 ctx.popIgnoreError();
                 if (!probed) {
-                    ctx.addError(ps, "propertyNames", "Property name '" + key + "' is invalid");
+                    PathSegment instanceKeywordPs = ps == null
+                            ? new PathSegment.Name(instance.materializePath(), key)
+                            : new PathSegment.Name(ps, key);
+                    ctx.addError(instance, instanceKeywordPs, keywordPs,
+                            "propertyNames", "Property name '" + key + "' is invalid");
                     result = false;
                     if (ctx.shouldAbort()) return result;
                 }
@@ -672,13 +723,21 @@ public interface Evaluator {
 
     // minItems / maxItems / uniqueItems
     final class ArrayEvaluator implements Evaluator {
+        private final PathSegment minItemsKeywordPs;
+        private final PathSegment maxItemsKeywordPs;
+        private final PathSegment uniqueItemsKeywordPs;
         private final Integer minItems;
         private final Integer maxItems;
         private final Boolean uniqueItems;
         /**
          * Creates evaluator for array size/uniqueness constraints.
          */
-        public ArrayEvaluator(Integer minItems, Integer maxItems, Boolean uniqueItems) {
+        public ArrayEvaluator(PathSegment minItemsKeywordPs, PathSegment maxItemsKeywordPs,
+                              PathSegment uniqueItemsKeywordPs,
+                              Integer minItems, Integer maxItems, Boolean uniqueItems) {
+            this.minItemsKeywordPs = minItemsKeywordPs;
+            this.maxItemsKeywordPs = maxItemsKeywordPs;
+            this.uniqueItemsKeywordPs = uniqueItemsKeywordPs;
             this.minItems = minItems;
             this.maxItems = maxItems;
             this.uniqueItems = uniqueItems;
@@ -694,11 +753,11 @@ public interface Evaluator {
             boolean result = true;
             int size = Nodes.sizeInArray(actual);
             if (minItems != null && size < minItems) {
-                ctx.addError(ps, "minItems", "Array size must >= " + minItems);
+                ctx.addError(instance, ps, minItemsKeywordPs, "minItems", "Array size must >= " + minItems);
                 result = false;
             }
             if (maxItems != null && size > maxItems) {
-                ctx.addError(ps, "maxItems", "Array size must <= " + maxItems);
+                ctx.addError(instance, ps, maxItemsKeywordPs, "maxItems", "Array size must <= " + maxItems);
                 result = false;
             }
             if (ctx.shouldAbort()) return result;
@@ -707,7 +766,7 @@ public interface Evaluator {
                 for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
                     Object v = it.next();
                     if (!set.add(v)) {
-                        ctx.addError(ps, "uniqueItems", "Array items must be unique");
+                        ctx.addError(instance, ps, uniqueItemsKeywordPs, "uniqueItems", "Array items must be unique");
                         result = false;
                         break;
                     }
@@ -767,13 +826,18 @@ public interface Evaluator {
 
     // contains / minContains / maxContains
     final class ContainsEvaluator implements Evaluator {
+        private final PathSegment minContainsKeywordPs;
+        private final PathSegment maxContainsKeywordPs;
         private final JsonSchema containsSchema;
         private final Integer minContains;
         private final Integer maxContains;
         /**
          * Creates evaluator for contains/minContains/maxContains.
          */
-        public ContainsEvaluator(JsonSchema containsSchema, Integer minContains, Integer maxContains) {
+        public ContainsEvaluator(PathSegment minContainsKeywordPs, PathSegment maxContainsKeywordPs,
+                                 JsonSchema containsSchema, Integer minContains, Integer maxContains) {
+            this.minContainsKeywordPs = minContainsKeywordPs;
+            this.maxContainsKeywordPs = maxContainsKeywordPs;
             this.containsSchema = containsSchema;
             this.minContains = minContains == null ? 1 : minContains;
             this.maxContains = maxContains;
@@ -805,12 +869,12 @@ public interface Evaluator {
                 }
             }
             if (matches < minContains) {
-                ctx.addError(ps, "minContains", "Array must contain at least " +
+                ctx.addError(instance, ps, minContainsKeywordPs, "minContains", "Array must contain at least " +
                         minContains + " matching items, but found " + matches);
                 return false;
             }
             if (maxContains != null && matches > maxContains) {
-                ctx.addError(ps, "maxContains", "Array must contains at most " +
+                ctx.addError(instance, ps, maxContainsKeywordPs, "maxContains", "Array must contains at most " +
                         maxContains + " matching items, but found " + matches);
                 return false;
             }
@@ -911,11 +975,13 @@ public interface Evaluator {
 
     // anyOf
     final class AnyOfEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final JsonSchema[] anyOfSchemas;
         /**
          * Creates evaluator for anyOf keyword.
          */
-        public AnyOfEvaluator(JsonSchema[] anyOfSchemas) {
+        public AnyOfEvaluator(PathSegment keywordPs, JsonSchema[] anyOfSchemas) {
+            this.keywordPs = keywordPs;
             this.anyOfSchemas = anyOfSchemas;
         }
         /**
@@ -952,7 +1018,7 @@ public interface Evaluator {
                 }
             }
             if (!result) {
-                ctx.addError(ps, "anyOf", "No schemas matched");
+                ctx.addError(instance, ps, keywordPs, "anyOf", "No schemas matched");
             }
             return result;
         }
@@ -960,11 +1026,13 @@ public interface Evaluator {
 
     // oneOf
     final class OneOfEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final JsonSchema[] oneOfSchemas;
         /**
          * Creates evaluator for oneOf keyword.
          */
-        public OneOfEvaluator(JsonSchema[] oneOfSchemas) {
+        public OneOfEvaluator(PathSegment keywordPs, JsonSchema[] oneOfSchemas) {
+            this.keywordPs = keywordPs;
             this.oneOfSchemas = oneOfSchemas;
         }
         /**
@@ -999,7 +1067,7 @@ public interface Evaluator {
                 }
             }
             if (matches != 1) {
-                ctx.addError(ps, "oneOf", "Must match exactly 1 schema, but found " + matches);
+                ctx.addError(instance, ps, keywordPs, "oneOf", "Must match exactly 1 schema, but found " + matches);
                 return false;
             }
             return true;
@@ -1008,11 +1076,13 @@ public interface Evaluator {
 
     // not
     final class NotEvaluator implements Evaluator {
+        private final PathSegment keywordPs;
         private final JsonSchema notSchema;
         /**
          * Creates evaluator for not keyword.
          */
-        public NotEvaluator(JsonSchema notSchema) {
+        public NotEvaluator(PathSegment keywordPs, JsonSchema notSchema) {
+            this.keywordPs = keywordPs;
             this.notSchema = notSchema;
         }
         /**
@@ -1027,7 +1097,7 @@ public interface Evaluator {
             instance.popEvaluated();
 
             if (result) {
-                ctx.addError(ps, "not", "Must not match schema in not");
+                ctx.addError(instance, ps, keywordPs, "not", "Must not match schema in not");
                 return false;
             }
             return true;

@@ -10,7 +10,8 @@ import java.util.stream.Collectors;
  * Result of schema validation.
  * <p>
  * Supports both aggregated-message mode and fail-fast mode where only the last
- * message may be retained.
+ * message may be retained. Each message may expose both instance and keyword
+ * JSON Pointer paths for diagnostics.
  */
 public class ValidationResult {
     private final boolean valid;
@@ -45,7 +46,9 @@ public class ValidationResult {
     /**
      * Returns all validation messages.
      * <p>
-     * Returned list can be synthesized from fail-fast last message.
+     * Returned list can be synthesized from fail-fast last message. Consumers
+     * should prefer message-level instance/keyword path accessors over parsing
+     * the exception text.
      */
     public List<ValidationMessage> getMessages() {
         if (messages == null) {

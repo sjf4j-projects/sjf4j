@@ -6,8 +6,6 @@ import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.path.PathSegment;
 
-import java.util.Collections;
-
 /**
  * Boolean schema representation ({@code true}/{@code false}).
  * <p>
@@ -20,8 +18,13 @@ public final class BooleanSchema implements JsonSchema {
     public static final BooleanSchema FALSE = new BooleanSchema(false);
 
     private final boolean booleanValue;
+    private final PathSegment keywordPs;
     private BooleanSchema(boolean booleanValue) {
+        this(booleanValue, null);
+    }
+    private BooleanSchema(boolean booleanValue, PathSegment keywordPs) {
         this.booleanValue = booleanValue;
+        this.keywordPs = keywordPs;
     }
 
     /** Boolean schema has no compile step. */
@@ -44,6 +47,11 @@ public final class BooleanSchema implements JsonSchema {
         return booleanValue ? TRUE : FALSE;
     }
 
+    static BooleanSchema of(boolean booleanValue, PathSegment keywordPs) {
+        if (booleanValue || keywordPs == null || keywordPs == PathSegment.Root.INSTANCE) return raw2Value(booleanValue);
+        return new BooleanSchema(false, keywordPs);
+    }
+
 
     // validate
     /**
@@ -57,7 +65,7 @@ public final class BooleanSchema implements JsonSchema {
             return ValidationResult.VALID;
         } else {
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                    PathSegment.Root.INSTANCE, null, "Schema 'false' always fails");
+                    PathSegment.Root.INSTANCE, keywordPs, "false", "Schema 'false' always fails");
             return new ValidationResult(false, null, msg);
         }
     }
@@ -71,7 +79,7 @@ public final class BooleanSchema implements JsonSchema {
         if (booleanValue) {
             return true;
         } else {
-            ctx.addError(ps, "false", "Schema 'false' always fails");
+            ctx.addError(instance, ps, keywordPs, "false", "Schema 'false' always fails");
             return false;
         }
     }

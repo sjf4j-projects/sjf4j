@@ -95,7 +95,8 @@ public final class CompileUtil {
             if (fragment == null) refAnchor = "";
             else if (fragment.startsWith("/")) refPath = JsonPointer.compile(fragment);
 
-            evaluators.add(new Evaluator.RefEvaluator(resourceUri, refPath, refAnchor));
+            evaluators.add(new Evaluator.RefEvaluator(new PathSegment.Name(ps, "$ref"),
+                    resourceUri, refPath, refAnchor));
         }
 
         // $dynamicRef
@@ -113,30 +114,32 @@ public final class CompileUtil {
             JsonPointer refPath = null;
             if (fragment == null) refDynamicAnchor = "";
             else if (fragment.startsWith("/")) refPath = JsonPointer.compile(fragment);
-            evaluators.add(new Evaluator.DynamicRefEvaluator(resourceUri, refPath, refDynamicAnchor));
+            evaluators.add(new Evaluator.DynamicRefEvaluator(new PathSegment.Name(ps, "$dynamicRef"),
+                    resourceUri, refPath, refDynamicAnchor));
         }
 
         // format
         String format = schema.getString("format");
         if (format != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT)) {
-            evaluators.add(new Evaluator.FormatEvaluator(format));
+            evaluators.add(new Evaluator.FormatEvaluator(new PathSegment.Name(ps, "format"), format));
         }
 
         // type
         Object type = schema.getNode("type");
         if (type != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.TypeEvaluator(type));
+            evaluators.add(new Evaluator.TypeEvaluator(new PathSegment.Name(ps, "type"), type));
         }
 
         // const
         if (schema.containsKey("const") && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.ConstEvaluator(schema.getNode("const")));
+            evaluators.add(new Evaluator.ConstEvaluator(new PathSegment.Name(ps, "const"),
+                    schema.getNode("const")));
         }
 
         // enum
         Object[] enumValues = schema.getArray("enum");
         if (enumValues != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.EnumEvaluator(enumValues));
+            evaluators.add(new Evaluator.EnumEvaluator(new PathSegment.Name(ps, "enum"), enumValues));
         }
 
         // minimum maximum exclusiveMinimum exclusiveMaximum
@@ -146,13 +149,18 @@ public final class CompileUtil {
         Number exclusiveMaximum = schema.getNumber("exclusiveMaximum");
         if ((minimum != null || maximum != null || exclusiveMinimum != null || exclusiveMaximum != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.NumberEvaluator(minimum, maximum, exclusiveMinimum, exclusiveMaximum));
+            evaluators.add(new Evaluator.NumberEvaluator(
+                    new PathSegment.Name(ps, "minimum"),
+                    new PathSegment.Name(ps, "maximum"),
+                    new PathSegment.Name(ps, "exclusiveMinimum"),
+                    new PathSegment.Name(ps, "exclusiveMaximum"),
+                    minimum, maximum, exclusiveMinimum, exclusiveMaximum));
         }
 
         // multipleOf
         Number multipleOf = schema.getNumber("multipleOf");
         if (multipleOf != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.MultipleOfEvaluator(multipleOf));
+            evaluators.add(new Evaluator.MultipleOfEvaluator(new PathSegment.Name(ps, "multipleOf"), multipleOf));
         }
 
         // minLength maxLength
@@ -160,13 +168,14 @@ public final class CompileUtil {
         Integer maxLength = schema.getInt("maxLength");
         if ((minLength != null || maxLength != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.StringEvaluator(minLength, maxLength));
+            evaluators.add(new Evaluator.StringEvaluator(new PathSegment.Name(ps, "minLength"),
+                    new PathSegment.Name(ps, "maxLength"), minLength, maxLength));
         }
 
         // pattern
         String pattern = schema.getString("pattern");
         if (pattern != null && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.PatternEvaluator(pattern));
+            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), pattern));
         }
 
         // minProperties / maxProperties
@@ -174,7 +183,8 @@ public final class CompileUtil {
         Integer maxProperties = schema.getInt("maxProperties");
         if ((minProperties != null || maxProperties != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.ObjectEvaluator(minProperties, maxProperties));
+            evaluators.add(new Evaluator.ObjectEvaluator(new PathSegment.Name(ps, "minProperties"),
+                    new PathSegment.Name(ps, "maxProperties"), minProperties, maxProperties));
         }
 
         // required / dependentRequired
@@ -182,7 +192,8 @@ public final class CompileUtil {
         Map<String, String[]> dependentRequired = schema.getMap("dependentRequired", String[].class);
         if ((required != null || dependentRequired != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.RequiredEvaluator(required, dependentRequired));
+            evaluators.add(new Evaluator.RequiredEvaluator(new PathSegment.Name(ps, "required"),
+                    new PathSegment.Name(ps, "dependentRequired"), required, dependentRequired));
         }
 
         // properties / patternProperties / additionalProperties
@@ -210,7 +221,8 @@ public final class CompileUtil {
         JsonSchema propertyNames = compileSchemaByKey("propertyNames", ps, schema, idSchema, rootSchema);
         if (propertyNames != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
-            evaluators.add(new Evaluator.PropertyNamesEvaluator(propertyNames));
+            evaluators.add(new Evaluator.PropertyNamesEvaluator(new PathSegment.Name(ps, "propertyNames"),
+                    propertyNames));
         }
 
         // minItems / maxItems / uniqueItems
@@ -219,7 +231,9 @@ public final class CompileUtil {
         Boolean uniqueItems = schema.getBoolean("uniqueItems");
         if ((minItems != null || maxItems != null || uniqueItems != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_VALIDATION)) {
-            evaluators.add(new Evaluator.ArrayEvaluator(minItems, maxItems, uniqueItems));
+            evaluators.add(new Evaluator.ArrayEvaluator(new PathSegment.Name(ps, "minItems"),
+                    new PathSegment.Name(ps, "maxItems"), new PathSegment.Name(ps, "uniqueItems"),
+                    minItems, maxItems, uniqueItems));
         }
 
         // items / prefixItems
@@ -236,7 +250,8 @@ public final class CompileUtil {
         Integer maxContains = schema.getInt("maxContains");
         if ((contains != null || minContains != null || maxContains != null)
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
-            evaluators.add(new Evaluator.ContainsEvaluator(contains, minContains, maxContains));
+            evaluators.add(new Evaluator.ContainsEvaluator(new PathSegment.Name(ps, "minContains"),
+                    new PathSegment.Name(ps, "maxContains"), contains, minContains, maxContains));
         }
 
         // if / then / else
@@ -259,21 +274,21 @@ public final class CompileUtil {
         JsonSchema[] anyOfSchemas = compileSchemaArrayByKey("anyOf", ps, schema, idSchema, rootSchema);
         if (anyOfSchemas != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
-            evaluators.add(new Evaluator.AnyOfEvaluator(anyOfSchemas));
+            evaluators.add(new Evaluator.AnyOfEvaluator(new PathSegment.Name(ps, "anyOf"), anyOfSchemas));
         }
 
         // oneOf
         JsonSchema[] oneOfSchemas = compileSchemaArrayByKey("oneOf", ps, schema, idSchema, rootSchema);
         if (oneOfSchemas != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
-            evaluators.add(new Evaluator.OneOfEvaluator(oneOfSchemas));
+            evaluators.add(new Evaluator.OneOfEvaluator(new PathSegment.Name(ps, "oneOf"), oneOfSchemas));
         }
 
         // not
         JsonSchema notSchema = compileSchemaByKey("not", ps, schema, idSchema, rootSchema);
         if (notSchema != null
                 && rootSchema.vocabAllowed(VocabularyRegistry.DRAFT_2020_12_VOCAB_APPLICATOR)) {
-            evaluators.add(new Evaluator.NotEvaluator(notSchema));
+            evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), notSchema));
         }
 
         // unevaluatedProperties / unevaluatedItems
@@ -377,7 +392,7 @@ public final class CompileUtil {
             case NULL:
                 throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ps) +
                         "': null is not allowed");
-            case BOOLEAN: return BooleanSchema.raw2Value(Nodes.toBoolean(node));
+            case BOOLEAN: return BooleanSchema.of(Nodes.toBoolean(node), ps);
             case OBJECT: {
                 ObjectSchema schema = new ObjectSchema(node);
                 schema.compile(ps, idSchema, rootSchema);

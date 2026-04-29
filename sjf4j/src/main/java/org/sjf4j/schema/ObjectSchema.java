@@ -445,7 +445,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     /**
      * Validates node and returns validation result under given options.
      * <p>
-     * Root path is omitted in fail-fast mode to reduce allocation.
+     * Root path is omitted in fail-fast mode to reduce allocation and is
+     * materialized lazily only when an error is emitted.
      */
     @Override
     public ValidationResult validate(Object node, ValidationOptions options) {

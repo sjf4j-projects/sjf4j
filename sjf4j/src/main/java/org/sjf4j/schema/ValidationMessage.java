@@ -1,6 +1,5 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.Paths;
 
@@ -9,7 +8,8 @@ import java.util.Objects;
 /**
  * Single validation message produced during schema evaluation.
  * <p>
- * Captures severity, instance path, source keyword, and human-readable detail.
+ * Captures severity, instance path, keyword path, source keyword, and detail.
+ * Public path accessors expose JSON Pointer strings by default.
  */
 public class ValidationMessage {
 
@@ -21,17 +21,27 @@ public class ValidationMessage {
     public enum Severity { ERROR, WARN, INFO, DEBUG }
 
     private final Severity severity;
-    private final PathSegment ps;
+    private final PathSegment instancePs;
+    private final PathSegment keywordPs;
     private final String keyword;
     private final String message;
 
     /**
      * Creates a validation message entry.
      */
-    public ValidationMessage(Severity severity, PathSegment ps, String keyword, String message) {
+    public ValidationMessage(Severity severity, PathSegment instancePs, String keyword, String message) {
+        this(severity, instancePs, null, keyword, message);
+    }
+
+    /**
+     * Creates a validation message entry with instance and keyword paths.
+     */
+    public ValidationMessage(Severity severity, PathSegment instancePs, PathSegment keywordPs,
+                             String keyword, String message) {
         Objects.requireNonNull(severity, "severity");
         this.severity = severity;
-        this.ps = ps;
+        this.instancePs = instancePs;
+        this.keywordPs = keywordPs;
         this.keyword = keyword;
         this.message = message;
     }
@@ -43,16 +53,33 @@ public class ValidationMessage {
         return severity;
     }
     /**
-     * Returns path segment where the message was emitted.
-     * <p>
-     * Can be {@code null} in fail-fast mode when root path tracking is skipped.
+     * Returns the instance path segment chain.
      */
-    public PathSegment getPs() { return ps; }
-//    public JsonPointer getPath() {
-//        return JsonPointer.fromLast(ps);
-//    }
+    public PathSegment getInstancePs() { return instancePs; }
+
+    /**
+     * Returns the keyword path segment chain.
+     */
+    public PathSegment getKeywordPs() { return keywordPs; }
+
+    /**
+     * Returns the instance path as a JSON Pointer string.
+     */
+    public String getInstancePath() { return Paths.rootedPointerExpr(instancePs); }
+
+    /**
+     * Returns the keyword path as a JSON Pointer string.
+     */
+    public String getKeywordPath() { return Paths.rootedPointerExpr(keywordPs); }
+
+    /**
+     * @deprecated Use {@link #getInstancePs()} or {@link #getInstancePath()}.
+     */
+    @Deprecated
+    public PathSegment getPs() { return instancePs; }
     /**
      * Returns the schema keyword that produced this message.
+     * Keyword path pinpoints where this keyword lives in the schema.
      */
     public String getKeyword() {
         return keyword;
@@ -66,11 +93,13 @@ public class ValidationMessage {
 
     /**
      * Formats message for logs and diagnostics.
+     * The default external form uses JSON Pointer strings for both instance and
+     * keyword locations.
      */
     @Override
     public String toString() {
-        return "[" + severity + "] Keyword '" + keyword + "' failed at path '" + Paths.rootedPointerExpr(ps) +
-                "': " + message;
+        return "[" + severity + "] Keyword '" + keyword + "' failed at instance path '" + getInstancePath() +
+                "', keyword path '" + getKeywordPath() + "': " + message;
     }
 
 }
