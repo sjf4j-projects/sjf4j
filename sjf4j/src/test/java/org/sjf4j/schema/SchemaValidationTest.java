@@ -192,8 +192,8 @@ public class SchemaValidationTest {
                 result.getLastMessage().getMessage());
 
         ValidationException ex = assertThrows(ValidationException.class, () -> schema.requireValid(bad));
-        assertTrue(ex.getMessage().contains("instance path '/y'"));
-        assertTrue(ex.getMessage().contains("keyword path '/additionalProperties'"));
+        assertTrue(ex.getMessage().contains("/additionalProperties"));
+        assertTrue(ex.getMessage().contains("instance '/y'"));
         assertTrue(ex.getMessage().contains("Schema 'false' always fails"));
     }
 

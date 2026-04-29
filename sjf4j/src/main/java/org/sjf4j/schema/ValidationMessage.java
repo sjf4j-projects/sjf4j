@@ -93,13 +93,15 @@ public class ValidationMessage {
 
     /**
      * Formats message for logs and diagnostics.
-     * The default external form uses JSON Pointer strings for both instance and
-     * keyword locations.
+     * The default external form uses JSON Pointer strings and renders keyword
+     * location inline before the failing instance location.
      */
     @Override
     public String toString() {
-        return "[" + severity + "] Keyword '" + keyword + "' failed at instance path '" + getInstancePath() +
-                "', keyword path '" + getKeywordPath() + "': " + message;
+        String keywordPath = getKeywordPath();
+        return "[" + severity + "] Keyword '" + keyword + "'" +
+                (keywordPs == null ? "" : " (" + keywordPath + ")") +
+                " failed at instance '" + getInstancePath() + "': " + message;
     }
 
 }
