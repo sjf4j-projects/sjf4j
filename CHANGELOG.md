@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+
+
+## [1.2.2] - 2026.04.30
+### Added
 - Added `Nodes.removeIfInObject(...)` for safe in-place object-member removal during traversal against live object-key views.
 - Added `Sjf4j.bindNode(...)` plus `JsonContainer.bindNode(...)` so callers can opt into alias-preserving node binding without the deep-copy isolation of `fromNode(...)` / `toNode(...)`.
 
