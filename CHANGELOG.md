@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added `FacadeNodes.removeIfInObject(...)` with Jackson 2, Jackson 3, and Gson backend support so native facade object nodes can remove matching properties in place.
+
+### Fixed
+- Fixed `Nodes.removeIfInObject(...)` to stay property-only: structural POJO fields are preserved, while removable JOJO dynamic entries and facade-backed object properties can still be deleted safely.
 
 
 ## [1.2.2] - 2026.04.30
