@@ -424,17 +424,6 @@ public class JsonObject extends JsonContainer {
         }
     }
 
-    /**
-     * Removes dynamic entries that match the predicate.
-     */
-    public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
-        if (dynamicMap != null) {
-            return dynamicMap.entrySet().removeIf(filter);
-        }
-        return false;
-    }
-
-
     /// JSON Facade
 
     /**
@@ -1100,6 +1089,16 @@ public class JsonObject extends JsonContainer {
             return dynamicMap.remove(key);
         }
         return null;
+    }
+
+    /**
+     * Removes dynamic entries that match the predicate.
+     */
+    public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
+        if (dynamicMap != null) {
+            return dynamicMap.entrySet().removeIf(filter);
+        }
+        return false;
     }
 
     /**

@@ -406,6 +406,16 @@ public final class Jackson2Nodes {
         throw _expected("ObjectNode", node);
     }
 
+    /**
+     * Removes object properties that match predicate.
+     */
+    public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (node instanceof ObjectNode) {
+            return ((ObjectNode) node).properties().removeIf(entry -> predicate.test(entry.getKey(), entry.getValue()));
+        }
+        throw _expected("ObjectNode", node);
+    }
+
 
     /**
      * Visits items of Jackson array node.

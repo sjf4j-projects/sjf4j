@@ -114,6 +114,9 @@ class GsonNodesTest {
         assertFalse(GsonNodes.anyMatchObject(objectNode, (key, value) -> false));
         assertTrue(GsonNodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? new JsonPrimitive("jack") : value));
         assertFalse(GsonNodes.replaceInObject(objectNode, (key, value) -> value));
+        assertTrue(GsonNodes.removeIfInObject(objectNode, (key, value) -> key.equals("age") || key.equals("missing")));
+        assertFalse(objectNode.has("age"));
+        assertFalse(GsonNodes.removeIfInObject(objectNode, (key, value) -> false));
 
         List<Integer> indexes = new ArrayList<>();
         GsonNodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
@@ -140,6 +143,7 @@ class GsonNodesTest {
         assertThrows(JsonException.class, () -> GsonNodes.forEachObject(arrayNode, (k, v) -> {}));
         assertThrows(JsonException.class, () -> GsonNodes.anyMatchObject(arrayNode, (k, v) -> true));
         assertThrows(JsonException.class, () -> GsonNodes.replaceInObject(arrayNode, (k, v) -> v));
+        assertThrows(JsonException.class, () -> GsonNodes.removeIfInObject(arrayNode, (k, v) -> true));
         assertThrows(JsonException.class, () -> GsonNodes.forEachArray(objectNode, (i, v) -> {}));
         assertThrows(JsonException.class, () -> GsonNodes.anyMatchArray(objectNode, (i, v) -> true));
         assertThrows(JsonException.class, () -> GsonNodes.putInObject(objectNode, "x", new JsonPrimitive("y")));

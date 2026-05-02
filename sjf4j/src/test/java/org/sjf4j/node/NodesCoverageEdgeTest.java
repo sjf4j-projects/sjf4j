@@ -500,4 +500,23 @@ class NodesCoverageEdgeTest {
         assertFalse(((JsonObject) root.getNode("child")).containsKey("$child"));
         assertTrue(((JsonObject) root.getNode("child")).containsKey("keep"));
     }
+
+    @Test
+    void testRemoveIfInObjectOnlyAffectsProperties() {
+        Bean bean = new Bean();
+        bean.setName("han");
+        bean.setCount(2);
+        assertFalse(Nodes.removeIfInObject(bean, (key, value) -> key.equals("name") || key.equals("count")));
+        assertEquals("han", bean.getName());
+        assertEquals(2, bean.getCount());
+
+        DynamicBean jojo = new DynamicBean();
+        jojo.setName("han");
+        jojo.put("drop", 1);
+        jojo.put("keep", 2);
+        assertTrue(Nodes.removeIfInObject(jojo, (key, value) -> key.equals("name") || key.equals("drop")));
+        assertEquals("han", jojo.getName());
+        assertFalse(jojo.containsKey("drop"));
+        assertTrue(jojo.containsKey("keep"));
+    }
 }

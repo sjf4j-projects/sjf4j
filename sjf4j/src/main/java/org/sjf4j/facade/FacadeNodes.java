@@ -284,6 +284,22 @@ public class FacadeNodes {
     }
 
     /**
+     * Removes object properties that match predicate.
+     */
+    public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            return Jackson3Nodes.removeIfInObject(node, predicate);
+        }
+        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
+            return Jackson2Nodes.removeIfInObject(node, predicate);
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            return GsonNodes.removeIfInObject(node, predicate);
+        }
+        throw _unknownNode(node);
+    }
+
+    /**
      * Visits array elements of an external node.
      */
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {

@@ -399,6 +399,16 @@ public final class GsonNodes {
     }
 
     /**
+     * Removes object properties that match predicate.
+     */
+    public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).entrySet().removeIf(entry -> predicate.test(entry.getKey(), entry.getValue()));
+        }
+        throw expected("JsonObject", node);
+    }
+
+    /**
      * Visits items of Gson array node.
      */
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {

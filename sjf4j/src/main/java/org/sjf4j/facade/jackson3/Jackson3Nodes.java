@@ -316,6 +316,13 @@ public final class Jackson3Nodes {
         throw _expected("ObjectNode", node);
     }
 
+    public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
+        if (node instanceof ObjectNode) {
+            return ((ObjectNode) node).properties().removeIf(entry -> predicate.test(entry.getKey(), entry.getValue()));
+        }
+        throw _expected("ObjectNode", node);
+    }
+
     public static void forEachArray(Object node, BiConsumer<Integer, Object> consumer) {
         if (node instanceof ArrayNode) {
             ArrayNode an = (ArrayNode) node;

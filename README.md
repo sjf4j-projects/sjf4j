@@ -248,12 +248,12 @@ among the top-performing Java implementations in
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
-As JSON has become a well-defined and widely adopted specification,  
-Java still lacks a smooth experience when working with JSON.
-
-So, *what might JSON-oriented development look like in Java?*  
-SJF4J is an attempt to answer that question.
+JSON is not only well-defined and widely adopted, but also backed by a comprehensive set of RFCs and related standards.  
+Perhaps it’s time for Java to start treating JSON as a first-class data model.
 
 Contributions are welcome in many forms, including code, documentation, bug reports, examples, benchmarks, 
 and thoughtful feedback.  
 A good place to start is by [opening an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
+
+
+> *So, what might JSON-oriented development look like in Java?*

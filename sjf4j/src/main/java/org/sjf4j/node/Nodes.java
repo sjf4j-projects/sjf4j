@@ -1144,25 +1144,32 @@ public final class Nodes {
     }
 
     /**
-     * Removes object entries that match the predicate.
+     * Removes object properties that match the predicate.
      * <p>
-     * The predicate is evaluated against a snapshot of the current readable key
-     * set so callers can safely remove while iterating object-like containers
-     * whose key views are live. Matching structural POJO/JOJO fields remain
-     * non-removable and therefore fail through {@link #removeInObject(Object, String)}.
+     * This operation applies to removable object properties only. Structural
+     * POJO fields are not considered removable properties and therefore are left
+     * unchanged. For facade object nodes, matching keys are collected first and
+     * removed afterward so live key views remain safe to traverse.
      */
+    @SuppressWarnings("unchecked")
     public static boolean removeIfInObject(Object node, BiPredicate<String, Object> predicate) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(predicate, "predicate");
-        boolean changed = false;
-        for (String key : new ArrayList<>(Nodes.keySetInObject(node))) {
-            Object value = Nodes.getInObject(node, key);
-            if (predicate.test(key, value)) {
-                Nodes.removeInObject(node, key);
-                changed = true;
-            }
+
+        if (node instanceof Map) {
+            return ((Map<String, Object>) node).entrySet().removeIf(entry ->
+                    predicate.test(entry.getKey(), entry.getValue()));
         }
-        return changed;
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).removeIf(entry -> predicate.test(entry.getKey(), entry.getValue()));
+        }
+        if (NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
+            return false;
+        }
+        if (FacadeNodes.isNode(node)) {
+            return FacadeNodes.removeIfInObject(node, predicate);
+        }
+        throw new JsonException("Type mismatch: " + Types.name(node) + " is not an object node");
     }
 
 
