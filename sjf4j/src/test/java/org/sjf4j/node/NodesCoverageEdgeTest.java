@@ -519,4 +519,29 @@ class NodesCoverageEdgeTest {
         assertFalse(jojo.containsKey("drop"));
         assertTrue(jojo.containsKey("keep"));
     }
+
+    @Test
+    void testRemoveIfInObjectAlsoCoversMapFacadeAndEmptyDynamicObject() {
+        JsonObject empty = new JsonObject();
+        assertFalse(empty.removeIf(entry -> true));
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("drop", 1);
+        map.put("keep", 2);
+        assertTrue(Nodes.removeIfInObject(map, (key, value) -> key.equals("drop")));
+        assertFalse(map.containsKey("drop"));
+        assertEquals(2, map.get("keep"));
+        assertFalse(Nodes.removeIfInObject(map, (key, value) -> false));
+
+        ObjectNode objectNode = MAPPER.createObjectNode();
+        objectNode.put("drop", 1);
+        objectNode.put("keep", 2);
+        assertTrue(Nodes.removeIfInObject(objectNode, (key, value) -> key.equals("drop")));
+        assertFalse(objectNode.has("drop"));
+        assertTrue(objectNode.has("keep"));
+        assertFalse(Nodes.removeIfInObject(objectNode, (key, value) -> false));
+
+        assertThrows(JsonException.class, () -> Nodes.removeIfInObject("x", (key, value) -> true));
+        assertThrows(NullPointerException.class, () -> Nodes.removeIfInObject(map, null));
+    }
 }
