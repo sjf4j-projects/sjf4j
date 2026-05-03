@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed patch merge naming and semantics to distinguish RFC 7386 `mergePatch(...)` from SJF4J `indexedMerge(...)`; indexed array merge now supports sparse index updates with skip-on-null entries and trailing-null tail truncation such as `[null] -> []` and `[1, 2, null] -> [1, 2]`.
 
 ### Removed
-- Removed `JsonContainer` convenience overloads for the old merge naming, including `merge(...)`, `mergeWithCopy(...)`, and the single-argument `indexedMerge(...)` / `indexedMergeWithCopy(...)` variants, in favor of explicit `indexedMerge(patch, overwrite, deepCopy)` and `mergePatch(...)` entry points.
+- Removed `JsonContainer` convenience overloads for the old merge naming, including `merge(...)`, `mergeWithCopy(...)`, and the single-argument `indexedMerge(...)` / `indexedMergeWithCopy(...)` variants, and removed the instance `JsonContainer.mergePatch(...)` wrapper in favor of explicit `indexedMerge(patch, overwrite, deepCopy)` and static `Patches.mergePatch(target, patch)` entry points.
 
 ### Fixed
 - Fixed `Nodes.removeIfInObject(...)` to stay property-only: structural POJO fields are preserved, while removable JOJO dynamic entries and facade-backed object properties can still be deleted safely.

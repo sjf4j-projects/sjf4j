@@ -800,17 +800,4 @@ public abstract class JsonContainer {
         Patches.indexedMerge(this, mergePatch, overwrite, deepCopy);
     }
 
-    /**
-     * Applies RFC 7386 JSON Merge Patch semantics and returns the possibly replaced root.
-     * A non-object patch replaces the entire root. Within object patches, {@code null} means
-     * remove that member and arrays replace whole values rather than merging by index.
-     * POJO fields are structural and cannot be removed, so an explicit {@code null} patch member
-     * for an existing POJO property fails with {@code JsonException}.
-     */
-    public Object mergePatch(Object mergePatch) {
-        return Patches.mergePatch(this, mergePatch);
-    }
-
-
-
 }

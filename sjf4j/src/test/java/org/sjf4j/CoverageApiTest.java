@@ -7,6 +7,7 @@ import org.sjf4j.facade.simple.SimpleJsonFacade;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 import org.sjf4j.patch.JsonPatch;
+import org.sjf4j.patch.Patches;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -452,7 +453,7 @@ class CoverageApiTest {
         root.indexedMerge(JsonObject.of("merged", JsonObject.of("value", 1)), true, false);
         root.indexedMerge(JsonObject.of("merged2", 2), true, false);
         root.indexedMerge(JsonObject.of("copied", JsonObject.of("x", 1)), true, true);
-        root.mergePatch(JsonObject.of("nullable", "set"));
+        Patches.mergePatch(root, JsonObject.of("nullable", "set"));
         assertEquals(1, root.getIntByPath("$.merged.value"));
         assertEquals(2, root.getInt("merged2"));
         assertEquals("set", root.getString("nullable"));

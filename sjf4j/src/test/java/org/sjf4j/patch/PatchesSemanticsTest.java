@@ -89,10 +89,10 @@ class PatchesSemanticsTest {
     }
 
     @Test
-    void testJsonContainerMergePatchReturnsReplacedRoot() {
+    void testStaticMergePatchReturnsReplacedRoot() {
         JsonObject target = JsonObject.of("a", 1);
 
-        Object result = target.mergePatch(JsonArray.of(1, 2, 3));
+        Object result = Patches.mergePatch(target, JsonArray.of(1, 2, 3));
     
         assertTrue(result instanceof JsonArray);
         assertEquals(3, ((JsonArray) result).size());
