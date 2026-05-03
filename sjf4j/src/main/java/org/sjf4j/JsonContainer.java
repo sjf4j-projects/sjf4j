@@ -787,35 +787,28 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Merges patch into this container using custom deep-merge semantics (not RFC 7386).
-     * overwrite controls replacement of existing non-null values; deepCopy controls copying of
-     * composite values taken from patch.
+     * Applies indexed deep merge to this container in place.
+     * Object {@code null} is a normal assigned value. In array-to-array merge, non-final
+     * {@code null} means skip that index and a final {@code null} means truncate the
+     * target array to the preceding length, so {@code [null]} clears the array. When a
+     * trailing-{@code null} array patch is assigned into a non-array slot, the stored value
+     * is the same array without that sentinel.
+     * {@code overwrite} controls replacement of existing non-null values; {@code deepCopy}
+     * controls whether composite patch values are copied before assignment.
      */
-    public void merge(Object mergePatch, boolean overwrite, boolean deepCopy) {
-        Patches.merge(this, mergePatch, overwrite, deepCopy);
+    public void indexedMerge(Object mergePatch, boolean overwrite, boolean deepCopy) {
+        Patches.indexedMerge(this, mergePatch, overwrite, deepCopy);
     }
 
     /**
-     * Merges patch with overwrite=true and deepCopy=false.
+     * Applies RFC 7386 JSON Merge Patch semantics and returns the possibly replaced root.
+     * A non-object patch replaces the entire root. Within object patches, {@code null} means
+     * remove that member and arrays replace whole values rather than merging by index.
+     * POJO fields are structural and cannot be removed, so an explicit {@code null} patch member
+     * for an existing POJO property fails with {@code JsonException}.
      */
-    public void merge(Object mergePatch) {
-        merge(mergePatch, true, false);
-    }
-
-    /**
-     * Merges patch with overwrite=true and deepCopy=true.
-     */
-    public void mergeWithCopy(Object mergePatch) {
-        merge(mergePatch, true, true);
-    }
-
-    /**
-     * Applies RFC 7386 JSON Merge Patch semantics.
-     * Use this when null means delete and arrays should be replaced as a whole.
-     * Capture the return value when the merge patch may replace the root document.
-     */
-    public Object mergeRfc7386(Object mergePatch) {
-        return Patches.mergeRfc7386(this, mergePatch);
+    public Object mergePatch(Object mergePatch) {
+        return Patches.mergePatch(this, mergePatch);
     }
 
 

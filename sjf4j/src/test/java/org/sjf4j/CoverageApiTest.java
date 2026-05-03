@@ -449,10 +449,10 @@ class CoverageApiTest {
 
         root.apply(sjf4j.fromJson("[{\"op\":\"add\",\"path\":\"/patched\",\"value\":1}]", JsonPatch.class));
         assertEquals(1, root.getInt("patched"));
-        root.merge(JsonObject.of("merged", JsonObject.of("value", 1)), true, false);
-        root.merge(JsonObject.of("merged2", 2));
-        root.mergeWithCopy(JsonObject.of("copied", JsonObject.of("x", 1)));
-        root.mergeRfc7386(JsonObject.of("nullable", "set"));
+        root.indexedMerge(JsonObject.of("merged", JsonObject.of("value", 1)), true, false);
+        root.indexedMerge(JsonObject.of("merged2", 2), true, false);
+        root.indexedMerge(JsonObject.of("copied", JsonObject.of("x", 1)), true, true);
+        root.mergePatch(JsonObject.of("nullable", "set"));
         assertEquals(1, root.getIntByPath("$.merged.value"));
         assertEquals(2, root.getInt("merged2"));
         assertEquals("set", root.getString("nullable"));

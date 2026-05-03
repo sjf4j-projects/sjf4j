@@ -296,7 +296,7 @@ class JsonObjectTest {
     public void testMerge1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\",\"ee\":{\"ff\":\"gg\"}}}");
         JsonObject jo2 = JsonObject.fromJson("{\"num\":\"6\",\"yo\":77,\"duck\":[\"haha\"],\"attr\":{\"aa\":88,\"kk\":[1,2],\"ee\":{\"ff\":\"uu\"}}}");
-        jo1.mergeWithCopy(jo2);
+        jo1.indexedMerge(jo2, true, true);
         assertEquals("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}", jo1.toJson());
 //        System.out.println(jo1);
 
@@ -315,7 +315,7 @@ class JsonObjectTest {
 
         JsonObject jo6 = JsonObject.fromJson("{\"num\":5,\"duck\":[{\"j\":\"gaga\"}],\"x\":{\"y\":{\"z\":9}}}");
         JsonObject jo7 = JsonObject.fromJson("{\"duck\":[2,3],\"x\":{\"y\":{\"h\":10}}}");
-        jo6.mergeWithCopy(jo7);
+        jo6.indexedMerge(jo7, true, true);
 //        jo6.putByPath("$.x.y.h", 11);
 //        assertEquals("{\"num\":5,\"duck\":[2,3],\"x\":{\"y\":{\"z\":9,\"h\":11}}}", jo6.toJson());
 //        assertEquals(10, (Integer) jo7.getByPath("$.x.y.h"));

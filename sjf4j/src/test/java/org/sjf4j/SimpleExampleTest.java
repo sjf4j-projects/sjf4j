@@ -103,7 +103,7 @@ public class SimpleExampleTest {
         // Supports Builder-style chained operations
 
         jo.remove("extra");
-        // See also: `removeIf()`, `forEach()`, `merge()` etc.
+        // See also: `removeIf()`, `forEach()`, `indexedMerge()` etc.
 
         String role2 = jo.getStringByPath("$.user.role");
         // `getXxByPath()` supports JSON Path expressions

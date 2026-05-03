@@ -361,7 +361,7 @@ class JsonArrayTest {
         JsonArray ja1 = JsonArray.fromJson("[1,2,{\"a\":\"b\"}]");
         JsonArray ja2 = JsonArray.fromJson("[3,4,{\"a\":\"c\",\"d\":\"e\"}]");
         
-        ja1.merge(ja2);
+        ja1.indexedMerge(ja2, true, false);
         assertEquals(3, ja1.size());
         assertEquals(3, ja1.getInt(0));
         assertEquals(4, ja1.getInt(1));
@@ -371,7 +371,7 @@ class JsonArrayTest {
         // test merge with copy
         JsonArray ja3 = JsonArray.fromJson("[{\"x\":1}]");
         JsonArray ja4 = JsonArray.fromJson("[{\"y\":2}]");
-        ja3.mergeWithCopy(ja4);
+        ja3.indexedMerge(ja4, true, true);
         assertEquals(1, ja3.size());
         log.info("ja3={}", ja3.inspect());
         assertEquals(1, ja3.getJsonObject(0).getInt("x"));
