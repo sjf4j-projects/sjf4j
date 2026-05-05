@@ -16,7 +16,7 @@ and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting Y
 
 Its goal is **consistent JSON semantics across backends, formats, and native Java object graphs**.
 SJF4J provides one unified structural model and one family of APIs for [modeling](https://sjf4j.org/docs/modeling) (OBNT),
-[parsing](https://sjf4j.org/docs/parsing) (JSON/YAML/...), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
+[parsing](https://sjf4j.org/docs/parsing) (Codec), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
 [patching](https://sjf4j.org/docs/patching) (JSON Patch), [validating](https://sjf4j.org/docs/validating) (JSON Schema), 
 and [mapping](https://sjf4j.org/docs/mapping) (Transformation).
 
@@ -173,7 +173,7 @@ student.getName();                  // Alice
 student.getInt("age");              // 18
 ```
 
-Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
+Learn more → [Parsing (Codec)](https://sjf4j.org/docs/parsing)
 
 #### Navigating
 
@@ -194,7 +194,8 @@ Learn more → [Navigating (JSON Path)](https://sjf4j.org/docs/navigating)
 
 #### Patching
 
-Every OBNT node supports standard-compliant structural updates via `JSON Patch` (RFC 6902).
+Every OBNT node supports standard-compliant structural updates 
+via `JSON Patch` (RFC 6902) or `JSON Merge Patch` (RFC 7386).
 ```java
 JsonPatch patch = JsonPatch.fromJson("""
 [
@@ -305,9 +306,8 @@ Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 JSON is not only well-defined and widely adopted, but also backed by a comprehensive set of RFCs and related standards.  
 Perhaps it’s time for Java to start treating JSON as a first-class data model.
 
-Contributions are welcome in many forms, including code, documentation, bug reports, examples, benchmarks, 
+Contributions are welcome in all forms, including code, documentation, bug reports, examples, benchmarks, 
 and thoughtful feedback. 
 A good place to start is by [opening an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
 
----
 > *So, what might JSON-oriented development look like in Java?*
