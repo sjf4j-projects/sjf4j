@@ -87,9 +87,9 @@ public class JsonPath {
         if (expr.isEmpty()) {
             segments = new PathSegment[]{PathSegment.Root.INSTANCE};
         } else if (expr.startsWith("/")) {
-            segments = Paths.parsePointer(expr);
+            segments = PathSyntax.parsePointer(expr);
         } else {
-            segments = Paths.parsePath(expr);
+            segments = PathSyntax.parsePath(expr);
         }
         return new JsonPath(expr, segments);
     }
@@ -100,7 +100,7 @@ public class JsonPath {
      * @return the JSON Path expression string
      */
     public String toExpr() {
-        return Paths.toPathExpr(segments);
+        return PathSyntax.toPathExpr(segments);
     }
 
     /**
@@ -109,7 +109,7 @@ public class JsonPath {
      * @return the JSON Pointer expression string
      */
     public String toPointerExpr() {
-        return Paths.toPointerExpr(segments);
+        return PathSyntax.toPointerExpr(segments);
     }
 
     /**
@@ -613,7 +613,7 @@ public class JsonPath {
             for (int i = 0; i < func.args.size(); i++) {
                 args[1 + i] = _resolveFunctionArg(func.args.get(i));
             }
-            return PathFunctionRegistry.invoke(func.name, args);
+            return FunctionRegistry.invoke(func.name, args);
         } else {
             if (result.size() == 1) return result.get(0);
             else return result;

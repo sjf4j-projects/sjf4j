@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.path.Paths;
+import org.sjf4j.path.PathSyntax;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,7 +27,7 @@ public class NodeWalkerTest {
         List<Object> values = new ArrayList<>();
         
         Nodes.walk(jo, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
-            paths.add(Paths.rootedPathExpr(ps));
+            paths.add(PathSyntax.rootedPathExpr(ps));
             values.add(value);
             return true;
         });
@@ -76,7 +76,7 @@ public class NodeWalkerTest {
         
         Nodes.walk(ja, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1,
                 (ps, value) -> {
-            paths.add(Paths.rootedPathExpr(ps));
+            paths.add(PathSyntax.rootedPathExpr(ps));
             count.incrementAndGet();
             return true;
         });
@@ -102,7 +102,7 @@ public class NodeWalkerTest {
         
         List<String> paths = new ArrayList<>();
         Nodes.walk(map, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
-            paths.add(Paths.rootedPathExpr(ps));
+            paths.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
         
@@ -122,7 +122,7 @@ public class NodeWalkerTest {
         
         List<String> paths = new ArrayList<>();
         Nodes.walk(list, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1, (ps, value) -> {
-            paths.add(Paths.rootedPathExpr(ps));
+            paths.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
         
@@ -138,7 +138,7 @@ public class NodeWalkerTest {
         
         List<String> paths = new ArrayList<>();
         Nodes.walk(array, (ps, value) -> {
-            paths.add(Paths.rootedPathExpr(ps));
+            paths.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
         
@@ -225,7 +225,7 @@ public class NodeWalkerTest {
         List<String> values2 = new ArrayList<>();
         Nodes.walk(person, Nodes.WalkTarget.ANY, Nodes.WalkOrder.BOTTOM_UP, -1, (ps, node) -> {
             log.info("walk2 ps={}, node={}", ps, node);
-            values2.add(Paths.rootedPathExpr(ps));
+            values2.add(PathSyntax.rootedPathExpr(ps));
             return true;
         });
         assertEquals(16, values2.size());

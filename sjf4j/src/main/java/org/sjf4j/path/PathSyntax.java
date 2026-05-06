@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * <p>This class centralizes all string parsing and formatting logic so
  * {@link JsonPath} can focus on execution semantics.
  */
-public final class Paths {
+public final class PathSyntax {
 
     /**
      * Converts a segment chain to a rooted JSONPath expression.

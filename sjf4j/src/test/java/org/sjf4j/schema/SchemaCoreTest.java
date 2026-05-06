@@ -97,11 +97,11 @@ public class SchemaCoreTest {
     @Test
     public void testWithoutFragment() {
         assertEquals("https://example.com/a/b?x=1",
-                SchemaCompilers.withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
+                SchemaPlanner.withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
         assertEquals("classpath:/schemas/user.json",
-                SchemaCompilers.withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
+                SchemaPlanner.withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
         assertEquals("urn:uuid:deadbeef",
-                SchemaCompilers.withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
+                SchemaPlanner.withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
     }
 
     @Test

@@ -4,7 +4,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.PropertiesFacade;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.path.Paths;
+import org.sjf4j.path.PathSyntax;
 
 import java.util.Objects;
 import java.util.Properties;
@@ -44,7 +44,7 @@ public class SimplePropertiesFacade implements PropertiesFacade {
         Nodes.walk(node, Nodes.WalkTarget.VALUE, Nodes.WalkOrder.TOP_DOWN, -1,
                 (ps, value) -> {
             if (value != null) {
-                properties.setProperty(jsonPath2PropKey(Paths.rootedPathExpr(ps)), value.toString());
+                properties.setProperty(jsonPath2PropKey(PathSyntax.rootedPathExpr(ps)), value.toString());
             }
             return true;
         });

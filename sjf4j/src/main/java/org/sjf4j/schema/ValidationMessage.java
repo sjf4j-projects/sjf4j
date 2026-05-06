@@ -1,7 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.path.Paths;
+import org.sjf4j.path.PathSyntax;
 
 import java.util.Objects;
 
@@ -65,12 +65,12 @@ public class ValidationMessage {
     /**
      * Returns the instance path as a JSON Pointer string.
      */
-    public String getInstancePath() { return Paths.rootedPointerExpr(instancePs); }
+    public String getInstancePath() { return PathSyntax.rootedPointerExpr(instancePs); }
 
     /**
      * Returns the keyword path as a JSON Pointer string.
      */
-    public String getKeywordPath() { return Paths.rootedPointerExpr(keywordPs); }
+    public String getKeywordPath() { return PathSyntax.rootedPointerExpr(keywordPs); }
 
     /**
      * @deprecated Use {@link #getInstancePs()} or {@link #getInstancePath()}.

@@ -39,14 +39,14 @@ public abstract class PathSegment {
      * Returns a JSON Pointer expression rooted at this segment.
      */
     public String rootedPointerExpr() {
-        return Paths.rootedPointerExpr(this);
+        return PathSyntax.rootedPointerExpr(this);
     }
 
     /**
      * Returns a JSONPath expression rooted at this segment.
      */
     public String rootedPathExpr() {
-        return Paths.rootedPathExpr(this);
+        return PathSyntax.rootedPathExpr(this);
     }
 
     /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function, Filter, Append

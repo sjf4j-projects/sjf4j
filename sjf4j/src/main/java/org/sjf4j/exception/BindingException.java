@@ -1,7 +1,7 @@
 package org.sjf4j.exception;
 
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.path.Paths;
+import org.sjf4j.path.PathSyntax;
 
 /**
  * Exception for binding/streaming errors with optional path context.
@@ -64,7 +64,7 @@ public class BindingException extends JsonException {
     @Override
     public String getMessage() {
         if (ps == null) return super.getMessage();
-        return super.getMessage() + ", at path '" + Paths.rootedPathExpr(ps) + "'";
+        return super.getMessage() + ", at path '" + PathSyntax.rootedPathExpr(ps) + "'";
     }
 
     /**

@@ -13,17 +13,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class PathsTest {
+public class PathSyntaxTest {
 
     /// Pointer
 
     @Test
     void testRootOnly() {
-        PathSegment[] segments = Paths.parsePointer("");
+        PathSegment[] segments = PathSyntax.parsePointer("");
         assertEquals(1, segments.length);
         assertInstanceOf(PathSegment.Root.class, segments[0]);
 
-        segments = Paths.parsePointer("/");
+        segments = PathSyntax.parsePointer("/");
         assertEquals(2, segments.length);
         assertInstanceOf(PathSegment.Root.class, segments[0]);
         assertInstanceOf(PathSegment.Name.class, segments[1]);
@@ -32,7 +32,7 @@ public class PathsTest {
 
     @Test
     void testSimplePath() {
-        PathSegment[] segments = Paths.parsePointer("/users/name");
+        PathSegment[] segments = PathSyntax.parsePointer("/users/name");
         assertEquals(3, segments.length);
         assertInstanceOf(PathSegment.Root.class, segments[0]);
         assertInstanceOf(PathSegment.Name.class, segments[1]);
@@ -43,7 +43,7 @@ public class PathsTest {
 
     @Test
     void testNumericIndex() {
-        PathSegment[] segments = Paths.parsePointer("/users/0/posts/12");
+        PathSegment[] segments = PathSyntax.parsePointer("/users/0/posts/12");
         assertEquals(5, segments.length);
         assertInstanceOf(PathSegment.Index.class, segments[2]);
         assertEquals(0, ((PathSegment.Index) segments[2]).index);
@@ -53,7 +53,7 @@ public class PathsTest {
 
     @Test
     void testAppendToken() {
-        PathSegment[] segments = Paths.parsePointer("/users/-/name");
+        PathSegment[] segments = PathSyntax.parsePointer("/users/-/name");
         assertEquals(4, segments.length);
         assertInstanceOf(PathSegment.Append.class, segments[2]);
     }
@@ -61,7 +61,7 @@ public class PathsTest {
     @Test
     void testEscapeSequences() {
         // "~0" -> "~", "~1" -> "/"
-        PathSegment[] segments = Paths.parsePointer("/a~1b/c~0d/~1~0");
+        PathSegment[] segments = PathSyntax.parsePointer("/a~1b/c~0d/~1~0");
         assertEquals(4, segments.length);
         assertEquals("a/b", ((PathSegment.Name) segments[1]).name);
         assertEquals("c~d", ((PathSegment.Name) segments[2]).name);
@@ -70,7 +70,7 @@ public class PathsTest {
 
     @Test
     void testConsecutiveSlashes() {
-        PathSegment[] segments = Paths.parsePointer("/a//b///c");
+        PathSegment[] segments = PathSyntax.parsePointer("/a//b///c");
         assertEquals(7, segments.length);
         assertEquals("a", ((PathSegment.Name) segments[1]).name);
         assertEquals("b", ((PathSegment.Name) segments[3]).name);
@@ -80,29 +80,29 @@ public class PathsTest {
     @Test
     void testNumericEdgeCases() {
         // leading zeros
-        PathSegment[] segments = Paths.parsePointer("/01/002");
+        PathSegment[] segments = PathSyntax.parsePointer("/01/002");
         assertEquals(3, segments.length);
         assertEquals(1, ((PathSegment.Index) segments[1]).index);
         assertEquals(2, ((PathSegment.Index) segments[2]).index);
-        assertEquals("/01/002", Paths.toPointerExpr(segments));
+        assertEquals("/01/002", PathSyntax.toPointerExpr(segments));
 
         // large number
-        segments = Paths.parsePointer("/1234567890");
+        segments = PathSyntax.parsePointer("/1234567890");
         assertEquals(2, segments.length);
         assertEquals(1234567890, ((PathSegment.Index) segments[1]).index);
     }
 
     @Test
     void testInvalidInputs() {
-        assertThrows(JsonException.class, () -> Paths.parsePointer("users")); // missing '/'
-        assertThrows(JsonException.class, () -> Paths.parsePointer("/a~2b"));
-        assertThrows(JsonException.class, () -> Paths.parsePointer("/~"));
-        assertThrows(JsonException.class, () -> Paths.parsePointer("/a~xb"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("users")); // missing '/'
+        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("/a~2b"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("/~"));
+        assertThrows(JsonException.class, () -> PathSyntax.parsePointer("/a~xb"));
     }
 
     @Test
     void testEmptySegments() {
-        PathSegment[] segments = Paths.parsePointer("/a//b");
+        PathSegment[] segments = PathSyntax.parsePointer("/a//b");
         assertEquals(4, segments.length);
         assertEquals("a", ((PathSegment.Name) segments[1]).name);
         assertEquals("", ((PathSegment.Name) segments[2]).name);
@@ -111,7 +111,7 @@ public class PathsTest {
 
     @Test
     void testEmptyEnds() {
-        PathSegment[] segments = Paths.parsePointer("/a/b/");
+        PathSegment[] segments = PathSyntax.parsePointer("/a/b/");
         assertEquals(4, segments.length);
         assertEquals("a", ((PathSegment.Name) segments[1]).name);
         assertEquals("b", ((PathSegment.Name) segments[2]).name);
@@ -120,7 +120,7 @@ public class PathsTest {
 
     @Test
     void testOnlyAppend() {
-        PathSegment[] segments = Paths.parsePointer("/-");
+        PathSegment[] segments = PathSyntax.parsePointer("/-");
         assertEquals(2, segments.length);
         assertInstanceOf(PathSegment.Append.class, segments[1]);
     }
@@ -208,7 +208,7 @@ public class PathsTest {
         // Multiple names
         testParsePath("$['name', 'age']", 2, PathSegment.Root.class, PathSegment.Union.class);
         testParsePath("$[\"first name\",\"last name\"]", 2, PathSegment.Root.class, PathSegment.Union.class);
-        PathSegment pt = Paths.parsePath("$[\"first name\",\"last name\"]")[1];
+        PathSegment pt = PathSyntax.parsePath("$[\"first name\",\"last name\"]")[1];
         pt = ((PathSegment.Union) pt).union[1];
         assertEquals("last name", ((PathSegment.Name) pt).name);
         testParsePathFailure("$[name,age]", "name");
@@ -239,7 +239,7 @@ public class PathsTest {
 
         // Union with special characters
         testParsePath("$['a,b','c:d','e[f]g']", 2, PathSegment.Root.class, PathSegment.Union.class);
-        PathSegment pt = Paths.parsePath("$['a,b','c:d','e[f]g']")[1];
+        PathSegment pt = PathSyntax.parsePath("$['a,b','c:d','e[f]g']")[1];
         pt = ((PathSegment.Union) pt).union[2];
         assertEquals("['e[f]g']", pt.toString());
     }
@@ -301,17 +301,17 @@ public class PathsTest {
     @Test
     public void testFindMatchingParen() {
         int end;
-        end = Paths._findMatchingParen("?(@.name == \"foo(bar)\")", 1);
+        end = PathSyntax._findMatchingParen("?(@.name == \"foo(bar)\")", 1);
         assertEquals(22, end);
-        end = Paths._findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
+        end = PathSyntax._findMatchingParen("(?(@.a > 1 && @.b < 2))", 0);
         assertEquals(22, end);
-        end = Paths._findMatchingParen("(\"(abc)\")", 0);
+        end = PathSyntax._findMatchingParen("(\"(abc)\")", 0);
         assertEquals(8, end);
     }
 
     @Test
     public void testParseFunctionArgs() {
-        List<String> args = Paths._parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
+        List<String> args = PathSyntax._parseFunctionArgs("10, 'abc', func2(1,2), \"hello(world)\"");
         System.out.println(new JsonArray(args));
         System.out.println(args.get(0));
         System.out.println(args.get(1));
@@ -321,15 +321,15 @@ public class PathsTest {
 
     @Test
     public void testFilter1() {
-        FilterExpr fe = Paths.parseFilter("@.age > 30");
+        FilterExpr fe = PathSyntax.parseFilter("@.age > 30");
         System.out.println("fe=" + fe);
         assertEquals("(@.age > 30.0)", fe.toString());
 
-        fe = Paths.parseFilter("(@.age > 30 || @..['bb'].count() < 2)");
+        fe = PathSyntax.parseFilter("(@.age > 30 || @..['bb'].count() < 2)");
         System.out.println("fe=" + fe);
         assertEquals("((@.age > 30.0) || (@..['bb'].count() < 2.0))", fe.toString());
 
-        fe = Paths.parseFilter("@.tags && @.tags.contains('urgent')");
+        fe = PathSyntax.parseFilter("@.tags && @.tags.contains('urgent')");
         System.out.println("fe=" + fe);
         assertEquals("(@.tags && @.tags.contains('urgent'))", fe.toString());
 
@@ -339,19 +339,19 @@ public class PathsTest {
 
     @Test
     public void testFilter2() {
-        FilterExpr fe = Paths.parseFilter("@.name == 'Bob'");
+        FilterExpr fe = PathSyntax.parseFilter("@.name == 'Bob'");
         System.out.println("fe=" + fe);
         assertEquals("(@.name == \"Bob\")", fe.toString());
 
-        fe = Paths.parseFilter("@.active");
+        fe = PathSyntax.parseFilter("@.active");
         System.out.println("fe=" + fe);
         assertEquals("@.active", fe.toString());
 
-        fe = Paths.parseFilter("@.age >= 30 && !@.active");
+        fe = PathSyntax.parseFilter("@.age >= 30 && !@.active");
         System.out.println("fe=" + fe);
         assertEquals("((@.age >= 30.0) && !@.active)", fe.toString());
 
-        fe = Paths.parseFilter("@.members[?@.age > 30]");
+        fe = PathSyntax.parseFilter("@.members[?@.age > 30]");
         System.out.println("fe=" + fe);
         assertEquals("@.members[?@.age > 30]", fe.toString());
     }
@@ -362,7 +362,7 @@ public class PathsTest {
 
     // Helper methods
     private void testParsePath(String path, int expectedTokenCount, Class<?>... expectedTokenTypes) {
-        PathSegment[] segments = Paths.parsePath(path);
+        PathSegment[] segments = PathSyntax.parsePath(path);
         assertNotNull(segments, "Tokens should not be null for path: " + path);
         assertEquals(expectedTokenCount, segments.length, "Token count mismatch for path: " + path);
 
@@ -374,7 +374,7 @@ public class PathsTest {
 
     private void testParsePathFailure(String path, String expectedError) {
         try {
-            Paths.parsePath(path);
+            PathSyntax.parsePath(path);
             fail("Expected JsonException for path: " + path);
         } catch (JsonException e) {
             assertTrue(e.getMessage().toLowerCase().contains(expectedError.toLowerCase()),
@@ -383,7 +383,7 @@ public class PathsTest {
     }
 
     private void testExpr(String path, int tokenIndex, String expectedExpr) {
-        PathSegment[] segments = Paths.parsePath(path);
+        PathSegment[] segments = PathSyntax.parsePath(path);
         if (tokenIndex >= segments.length) {
             fail("tokenIndex '" + tokenIndex + "' >= segments.size '" + segments.length + "'");
         }
@@ -393,11 +393,11 @@ public class PathsTest {
     }
 
     private void testRoundTrip(String originalPath) {
-        PathSegment[] segments = Paths.parsePath(originalPath);
-        String rebuilt = Paths.toPathExpr(segments);
+        PathSegment[] segments = PathSyntax.parsePath(originalPath);
+        String rebuilt = PathSyntax.toPathExpr(segments);
 
         // Recompile the rebuilt path to ensure it's valid
-        PathSegment[] roundTripTokens = Paths.parsePath(rebuilt);
+        PathSegment[] roundTripTokens = PathSyntax.parsePath(rebuilt);
         assertEquals(segments.length, roundTripTokens.length,
                 "Round-trip token count mismatch for: " + originalPath);
 

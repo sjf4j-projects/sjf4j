@@ -45,7 +45,7 @@ public class JsonPointer extends JsonPath {
         if (expr.isEmpty()) {
             segments = new PathSegment[]{PathSegment.Root.INSTANCE};
         } else if (expr.startsWith("/")) {
-            segments = Paths.parsePointer(expr);
+            segments = PathSyntax.parsePointer(expr);
         } else {
             throw new JsonException("Invalid JSON Pointer expression '" + expr + "': must start with '/'");
         }
@@ -57,7 +57,7 @@ public class JsonPointer extends JsonPath {
      */
     public static JsonPointer fromLast(PathSegment lastSegment) {
         Objects.requireNonNull(lastSegment, "lastSegment");
-        PathSegment[] segments = Paths.linearize(lastSegment);
+        PathSegment[] segments = PathSyntax.linearize(lastSegment);
         return new JsonPointer(null, segments);
     }
 

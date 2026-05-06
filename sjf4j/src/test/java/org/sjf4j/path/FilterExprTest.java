@@ -94,7 +94,7 @@ class FilterExprTest {
         assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.LiteralExpr("ha"), FilterExpr.Op.MATCH).eval(root, root));
         assertEquals("(2 > 1)", new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).toString());
 
-        PathFunctionRegistry.register(new PathFunctionRegistry.FunctionDescriptor("joinCount", args -> ((List<?>) args[0]).size()));
+        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("joinCount", args -> ((List<?>) args[0]).size()));
         FilterExpr.FunctionExpr functionExpr = new FilterExpr.FunctionExpr("joinCount", Arrays.asList(new FilterExpr.LiteralExpr(Arrays.asList(1, 2, 3))));
         assertEquals(3, functionExpr.eval(root, root));
 
@@ -105,19 +105,19 @@ class FilterExprTest {
 
     @Test
     void testEscapedStringParsingAndShortCircuit() {
-        assertEquals("a'b", Paths.parseFilter("'a\\'b'").eval(null, null));
-        assertEquals("a\"b\n", Paths.parseFilter("\"a\\\"b\\n\"").eval(null, null));
-        assertEquals("\\'\"\b\f\n\r\tA", Paths.parseFilter("'\\\\\\'\\\"\\b\\f\\n\\r\\t\\u0041'").eval(null, null));
-        assertThrows(JsonException.class, () -> Paths.parseFilter("'\\x'"));
-        assertThrows(JsonException.class, () -> Paths.parseFilter("'\\u12'"));
-        assertThrows(JsonException.class, () -> Paths.parseFilter("'\\uZZZZ'"));
-        assertTrue(Paths.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null));
+        assertEquals("a'b", PathSyntax.parseFilter("'a\\'b'").eval(null, null));
+        assertEquals("a\"b\n", PathSyntax.parseFilter("\"a\\\"b\\n\"").eval(null, null));
+        assertEquals("\\'\"\b\f\n\r\tA", PathSyntax.parseFilter("'\\\\\\'\\\"\\b\\f\\n\\r\\t\\u0041'").eval(null, null));
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\x'"));
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\u12'"));
+        assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\uZZZZ'"));
+        assertTrue(PathSyntax.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null));
 
-        PathFunctionRegistry.register(new PathFunctionRegistry.FunctionDescriptor("explodeFilterExpr", args -> {
+        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("explodeFilterExpr", args -> {
             throw new IllegalStateException("boom");
         }));
 
-        assertFalse(Paths.parseFilter("false && explodeFilterExpr()").evalTruth(null, null));
-        assertTrue(Paths.parseFilter("true || explodeFilterExpr()").evalTruth(null, null));
+        assertFalse(PathSyntax.parseFilter("false && explodeFilterExpr()").evalTruth(null, null));
+        assertTrue(PathSyntax.parseFilter("true || explodeFilterExpr()").evalTruth(null, null));
     }
 }

@@ -1,6 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.Paths;
+import org.sjf4j.path.PathSyntax;
 
 import java.net.IDN;
 import java.net.InetAddress;
@@ -413,7 +413,7 @@ public interface FormatValidator {
         public boolean validate(String value) {
             try {
                 if (value == null) return false;
-                Paths.parsePointer(value);
+                PathSyntax.parsePointer(value);
                 return true;
             } catch (Exception e) {
                 return false;
@@ -440,7 +440,7 @@ public interface FormatValidator {
                 if (Integer.parseInt(prefix) < 0) return false;
                 if (idx == value.length()) return true;
                 if (value.charAt(idx) == '#') return idx == value.length() - 1;
-                Paths.parsePointer(value.substring(idx));
+                PathSyntax.parsePointer(value.substring(idx));
                 return true;
             } catch (Exception e) {
                 return false;

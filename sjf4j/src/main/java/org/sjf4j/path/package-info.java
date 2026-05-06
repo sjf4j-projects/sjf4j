@@ -1,4 +1,4 @@
 /**
- * JSONPath and JSON Pointer parsing, compilation, and execution support.
+ * JSONPath, JSON Pointer, and typed compiled-path parsing/execution support.
  */
 package org.sjf4j.path;
