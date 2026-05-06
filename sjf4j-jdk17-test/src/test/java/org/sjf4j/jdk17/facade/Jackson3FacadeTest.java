@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -252,9 +252,9 @@ class Jackson3FacadeTest {
 
     interface Pet {}
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = Cat.class, when = "cat"),
-            @AnyOf.Mapping(value = Dog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = Cat.class, when = "cat"),
+            @OneOf.Mapping(value = Dog.class, when = "dog")
     }, key = "kind")
     interface TypedPet extends Pet {}
 
@@ -588,7 +588,7 @@ class Jackson3FacadeTest {
         assertEquals(2, pojo.age);
     }
 
-    private static void assertAnyOf(Jackson3JsonFacade facade) {
+    private static void assertOneOf(Jackson3JsonFacade facade) {
         PetHolder holder = (PetHolder) facade.readNode("{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}",
                 PetHolder.class);
         assertEquals(Cat.class, holder.pet.getClass());
@@ -640,7 +640,7 @@ class Jackson3FacadeTest {
                 modeTests("dynamic-binding", Jackson3FacadeTest::assertDynamicBinding),
                 modeTests("creator-extra-field", Jackson3FacadeTest::assertCreatorExtraField),
                 modeTests("creator-alias", Jackson3FacadeTest::assertCreatorAlias),
-                modeTests("anyof", Jackson3FacadeTest::assertAnyOf),
+                modeTests("oneof", Jackson3FacadeTest::assertOneOf),
                 modeTests("skip-nested-node", Jackson3FacadeTest::assertSkipNestedNode)
         ).flatMap(s -> s);
     }

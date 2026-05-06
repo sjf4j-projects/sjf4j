@@ -3,7 +3,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.PathSegment;
@@ -15,9 +15,9 @@ import org.sjf4j.path.PathSegment;
  * <p>Schema instances are compiled against a {@link SchemaRegistry} and then
  * evaluated against JSON nodes via {@link #validate} or {@link #evaluate}.
  */
-@AnyOf({
-        @AnyOf.Mapping(BooleanSchema.class),
-        @AnyOf.Mapping(ObjectSchema.class),
+@OneOf({
+        @OneOf.Mapping(BooleanSchema.class),
+        @OneOf.Mapping(ObjectSchema.class),
 })
 public interface JsonSchema {
 

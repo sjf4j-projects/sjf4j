@@ -23,14 +23,14 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface AnyOf {
+public @interface OneOf {
     /**
      * Candidate subtype mappings.
      */
     Mapping[] value();
 
     /**
-     * Single subtype mapping inside {@link AnyOf}.
+     * Single subtype mapping inside {@link OneOf}.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @interface Mapping {

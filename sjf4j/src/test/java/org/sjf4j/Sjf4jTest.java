@@ -5,7 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.NodeFacade;
@@ -112,9 +112,9 @@ public class Sjf4jTest {
     }
 
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = RuntimeCat.class, when = "cat"),
-            @AnyOf.Mapping(value = RuntimeDog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = RuntimeCat.class, when = "cat"),
+            @OneOf.Mapping(value = RuntimeDog.class, when = "dog")
     }, key = "kind")
     interface RuntimePet {}
 

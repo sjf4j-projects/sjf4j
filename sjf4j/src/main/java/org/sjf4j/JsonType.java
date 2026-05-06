@@ -80,7 +80,7 @@ public enum JsonType {
      * Resolves the JSON-semantic type implied by a Java class.
      * <p>
      * This method checks plain container/value classes first, then SJF4J-managed
-     * types such as {@code @NodeValue}, {@code @AnyOf}, POJO, JOJO, and facade
+     * types such as {@code @NodeValue}, {@code @OneOf}, POJO, JOJO, and facade
      * node classes.
      */
     public static JsonType rawOf(Class<?> clazz) {
@@ -90,7 +90,7 @@ public enum JsonType {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (ti.valueCodecInfo != null) {
             return of(NodeKind.plainOf(ti.valueCodecInfo.rawClazz));
-        } else if (ti.anyOfInfo != null) {
+        } else if (ti.oneOfInfo != null) {
             return JsonType.UNKNOWN;
         } else if (ti.pojoInfo != null) {
             return OBJECT;

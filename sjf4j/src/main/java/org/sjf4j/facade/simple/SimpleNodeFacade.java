@@ -2,7 +2,7 @@ package org.sjf4j.facade.simple;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.facade.FacadeProvider;
@@ -92,7 +92,7 @@ public class SimpleNodeFacade implements NodeFacade {
      */
     @SuppressWarnings("unchecked")
     private Object _readNode(Object node, Type type, Class<?> rawClazz,
-                             NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
+                             NodeRegistry.OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
             if (node == null) return null;
 
@@ -107,7 +107,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
 
             if (anyOfInfo != null) {
-                return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
+                return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
 
             if (rawClazz == Object.class || rawClazz.isInstance(node)) {
@@ -115,9 +115,9 @@ public class SimpleNodeFacade implements NodeFacade {
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-            anyOfInfo = ti.anyOfInfo;
+            anyOfInfo = ti.oneOfInfo;
             if (anyOfInfo != null) {
-                return _readAnyOf(node, rawClazz, anyOfInfo, deepCopy, ps);
+                return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
@@ -207,18 +207,18 @@ public class SimpleNodeFacade implements NodeFacade {
         }
     }
 
-    private Object _readAnyOf(Object node, Class<?> rawClazz,
-                              NodeRegistry.AnyOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
+    private Object _readOneOf(Object node, Class<?> rawClazz,
+                              NodeRegistry.OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         Class<?> targetClazz;
 
         if (anyOfInfo.hasDiscriminator) {
-            if (anyOfInfo.scope != AnyOf.Scope.CURRENT) {
-                throw new BindingException("AnyOf scope '" + anyOfInfo.scope + "' is not supported", ps);
+            if (anyOfInfo.scope != OneOf.Scope.CURRENT) {
+                throw new BindingException("OneOf scope '" + anyOfInfo.scope + "' is not supported", ps);
             }
 
             if (!(node instanceof Map) && !(node instanceof JsonObject)) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Node must be a JSON object, when AnyOf has a SELF discriminator", ps);
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("Node must be a JSON object, when OneOf has a CURRENT discriminator", ps);
             }
 
             Object discriminatorValue;
@@ -231,21 +231,21 @@ public class SimpleNodeFacade implements NodeFacade {
             }
 
             if (discriminatorValue == null) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
                 throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'", ps);
             }
 
             targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("OneOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
             }
         } else {
             JsonType jsonType = JsonType.of(node);
             targetClazz = anyOfInfo.resolveByJsonType(jsonType);
             if (targetClazz == null) {
-                if (anyOfInfo.onNoMatch == AnyOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("AnyOf mapping does not support jsonType=" + jsonType +
+                if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+                throw new BindingException("OneOf mapping does not support jsonType=" + jsonType +
                         " for type '" + rawClazz.getName() + "'", ps);
             }
         }
@@ -456,7 +456,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
+            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             for (Map.Entry<String, Object> entry : source.entries()) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object vv = _readNode(entry.getValue(), vt, vc, va, deepCopy, cps);
@@ -523,10 +523,10 @@ public class SimpleNodeFacade implements NodeFacade {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
                     argVci = ti.getFormattedValueCodecInfo(valueFormat);
                 }
-                if (ti.anyOfInfo == null && argVci != null) {
+                if (ti.oneOfInfo == null && argVci != null) {
                     args[argIdx] = argRaw.isInstance(rawValue) ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue);
                 } else {
-                    args[argIdx] = _readNode(rawValue, argType, argRaw, ti.anyOfInfo, deepCopy, cps);
+                    args[argIdx] = _readNode(rawValue, argType, argRaw, ti.oneOfInfo, deepCopy, cps);
                 }
                 remainingArgs--;
                 if (remainingArgs == 0) {
@@ -545,11 +545,11 @@ public class SimpleNodeFacade implements NodeFacade {
                 Type fieldType = Types.resolveMemberType(type, rawClazz, fi.type);
                 Class<?> fieldRaw = Types.rawBox(fieldType);
                 Object vv;
-                if (fi.anyOfInfo == null && fi.resolvedValueCodec != null) {
+                if (fi.oneOfInfo == null && fi.resolvedValueCodec != null) {
                     vv = fieldRaw.isInstance(rawValue) ? fi.resolvedValueCodec.valueCopy(rawValue) :
                             fi.resolvedValueCodec.rawToValue(rawValue);
                 } else {
-                    vv = _readNode(rawValue, fieldType, fieldRaw, fi.anyOfInfo, deepCopy, cps);
+                    vv = _readNode(rawValue, fieldType, fieldRaw, fi.oneOfInfo, deepCopy, cps);
                 }
 
                 if (pojo != null) {
@@ -656,7 +656,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (List.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
+            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             List<Object> list = NodeRegistry.newListContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -690,7 +690,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz.isArray()) {
             Class<?> vt = rawClazz.getComponentType();
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
+            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             Object array = Array.newInstance(vt, source.size());
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -703,7 +703,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (Set.class.isAssignableFrom(rawClazz)) {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
+            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             Set<Object> set = NodeRegistry.newSetContainer(rawClazz, false);
             for (int i = 0; i < source.size(); i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
@@ -723,7 +723,7 @@ public class SimpleNodeFacade implements NodeFacade {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, false);
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
-            NodeRegistry.AnyOfInfo va = NodeRegistry.registerTypeInfo(vc).anyOfInfo;
+            NodeRegistry.OneOfInfo va = NodeRegistry.registerTypeInfo(vc).oneOfInfo;
             for (Map.Entry<String, NodeRegistry.FieldInfo> entry : oldPi.readableFields.entrySet()) {
                 String key = entry.getKey();
                 Object v = entry.getValue().invokeGetter(node);

@@ -569,7 +569,7 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     public static <T> T toPojo(Object node, Class<T> clazz) {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        if (ti.pojoInfo == null && ti.anyOfInfo == null) {
+        if (ti.pojoInfo == null && ti.oneOfInfo == null) {
             throw new JsonException("Class '" + clazz.getName() + "' is not a POJO");
         }
         return (T) Sjf4j.global().nodeFacade().readNode(node, clazz, false);

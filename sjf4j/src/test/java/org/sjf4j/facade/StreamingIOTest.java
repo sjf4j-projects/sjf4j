@@ -11,7 +11,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.BindingException;
@@ -413,9 +413,9 @@ public class StreamingIOTest {
 
     @Getter
     @Setter
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = Cat.class, when = "cat"),
-            @AnyOf.Mapping(value = Dog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = Cat.class, when = "cat"),
+            @OneOf.Mapping(value = Dog.class, when = "dog")
     }, key = "kind")
     static class Animal {
         String kind;
@@ -451,10 +451,10 @@ public class StreamingIOTest {
     @Setter
     static class ParentZoo {
         String kind;
-        @AnyOf(value = {
-                @AnyOf.Mapping(value = Cat.class, when = "cat"),
-                @AnyOf.Mapping(value = Dog.class, when = "dog")
-        }, key = "kind", scope = AnyOf.Scope.PARENT)
+        @OneOf(value = {
+                @OneOf.Mapping(value = Cat.class, when = "cat"),
+                @OneOf.Mapping(value = Dog.class, when = "dog")
+        }, key = "kind", scope = OneOf.Scope.PARENT)
         Animal pet;
     }
 
@@ -462,18 +462,18 @@ public class StreamingIOTest {
     @Setter
     static class ParentZooPath {
         String kind;
-        @AnyOf(value = {
-                @AnyOf.Mapping(value = Cat.class, when = "cat"),
-                @AnyOf.Mapping(value = Dog.class, when = "dog")
-        }, path = "$.kind", scope = AnyOf.Scope.PARENT)
+        @OneOf(value = {
+                @OneOf.Mapping(value = Cat.class, when = "cat"),
+                @OneOf.Mapping(value = Dog.class, when = "dog")
+        }, path = "$.kind", scope = OneOf.Scope.PARENT)
         Animal pet;
     }
 
     @Getter
     @Setter
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = PathCat.class, when = "cat"),
-            @AnyOf.Mapping(value = PathDog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = PathCat.class, when = "cat"),
+            @OneOf.Mapping(value = PathDog.class, when = "dog")
     }, path = "$.meta.kind")
     static class PathAnimal {
         JsonObject meta;
@@ -494,10 +494,10 @@ public class StreamingIOTest {
 
     @Getter
     @Setter
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = NullableCat.class, when = "cat"),
-            @AnyOf.Mapping(value = NullableDog.class, when = "dog")
-    }, key = "kind", onNoMatch = AnyOf.OnNoMatch.FAILBACK_NULL)
+    @OneOf(value = {
+            @OneOf.Mapping(value = NullableCat.class, when = "cat"),
+            @OneOf.Mapping(value = NullableDog.class, when = "dog")
+    }, key = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
     static class NullableAnimal {
         String kind;
         String name;
@@ -515,9 +515,9 @@ public class StreamingIOTest {
         int bark;
     }
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(PolyObj.class),
-            @AnyOf.Mapping(PolyArr.class)
+    @OneOf(value = {
+            @OneOf.Mapping(PolyObj.class),
+            @OneOf.Mapping(PolyArr.class)
     })
     interface Poly {}
 
@@ -614,7 +614,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfByDiscriminatorOnField() {
+    void testOneOfByDiscriminatorOnField() {
         useGson(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}";
 
@@ -626,7 +626,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfByDiscriminatorOnRootType() {
+    void testOneOfByDiscriminatorOnRootType() {
         useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"kind\":\"dog\",\"name\":\"Lucky\",\"bark\":3}";
 
@@ -638,7 +638,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfByJsonTypeWithoutDiscriminator() {
+    void testOneOfByJsonTypeWithoutDiscriminator() {
         useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
 
         Poly p1 = sjf4j.fromJson("{\"a\":1}", Poly.class);
@@ -649,7 +649,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfParentDiscriminatorEarly() {
+    void testOneOfParentDiscriminatorEarly() {
         useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
 
@@ -661,7 +661,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfParentDiscriminatorLate() {
+    void testOneOfParentDiscriminatorLate() {
         useFastjson2(StreamingContext.StreamingMode.SHARED_IO);
         String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
 
@@ -673,7 +673,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfParentPathNotSupported() {
+    void testOneOfParentPathNotSupported() {
         useJackson2(StreamingContext.StreamingMode.SHARED_IO);
         System.out.println(Nodes.inspect(sjf4j));
         String json = "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}";
@@ -681,7 +681,7 @@ public class StreamingIOTest {
         assertThrows(JsonException.class, () -> sjf4j.fromJson(json, ParentZooPath.class));
     }
 
-    private void assertAnyOfByDiscriminatorOnField() {
+    private void assertOneOfByDiscriminatorOnField() {
         String json = "{\"pet\":{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9}}";
         Zoo zoo = sjf4j.fromJson(json, Zoo.class);
         assertNotNull(zoo);
@@ -690,7 +690,7 @@ public class StreamingIOTest {
         assertEquals(9, ((Cat) zoo.pet).getLives());
     }
 
-    private void assertAnyOfInContainers() {
+    private void assertOneOfInContainers() {
         String json = "{\"pets\":[{\"kind\":\"cat\",\"name\":\"Mimi\",\"lives\":9},"
                 + "{\"kind\":\"dog\",\"name\":\"Lucky\",\"bark\":3}],"
                 + "\"petMap\":{\"a\":{\"kind\":\"cat\",\"name\":\"Mini\",\"lives\":7}}}";
@@ -701,7 +701,7 @@ public class StreamingIOTest {
         assertInstanceOf(Cat.class, zoo.petMap.get("a"));
     }
 
-    private void assertAnyOfByJsonTypeOnRoot() {
+    private void assertOneOfByJsonTypeOnRoot() {
         Poly p1 = sjf4j.fromJson("{\"a\":1}", Poly.class);
         Poly p2 = sjf4j.fromJson("[1,2,3]", Poly.class);
         assertInstanceOf(PolyObj.class, p1);
@@ -709,7 +709,7 @@ public class StreamingIOTest {
     }
 
     @Test
-    public void assertAnyOfByCurrentPath() {
+    public void assertOneOfByCurrentPath() {
         String json = "{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mimi\",\"lives\":9}";
         PathAnimal animal = sjf4j.fromJson(json, PathAnimal.class);
         assertNotNull(animal);
@@ -718,12 +718,12 @@ public class StreamingIOTest {
         assertEquals(9, ((PathCat) animal).getLives());
     }
 
-    private void assertAnyOfFailbackNull() {
+    private void assertOneOfFailbackNull() {
         NullableAnimal animal = sjf4j.fromJson("{\"kind\":\"bird\",\"name\":\"Sky\"}", NullableAnimal.class);
         assertNull(animal);
     }
 
-    private void assertAnyOfParentDiscriminatorLateCase() {
+    private void assertOneOfParentDiscriminatorLateCase() {
         String json = "{\"pet\":{\"name\":\"Lucky\",\"bark\":3},\"kind\":\"dog\"}";
         ParentZoo zoo = sjf4j.fromJson(json, ParentZoo.class);
         assertNotNull(zoo);
@@ -733,43 +733,43 @@ public class StreamingIOTest {
     }
 
     @Test
-    void testAnyOfPluginModuleByDiscriminatorOnFieldAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfByDiscriminatorOnField);
+    void testOneOfPluginModuleByDiscriminatorOnFieldAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertOneOfByDiscriminatorOnField);
     }
 
     @Test
-    void testAnyOfPluginModuleByJsonTypeOnRootAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfByJsonTypeOnRoot);
+    void testOneOfPluginModuleByJsonTypeOnRootAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertOneOfByJsonTypeOnRoot);
     }
 
     @Test
-    void testAnyOfCurrentPathSharedIoAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertAnyOfByCurrentPath);
+    void testOneOfCurrentPathSharedIoAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertOneOfByCurrentPath);
     }
 
     @Test
-    void testAnyOfCurrentPathPluginModuleAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfByCurrentPath);
+    void testOneOfCurrentPathPluginModuleAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertOneOfByCurrentPath);
     }
 
     @Test
-    void testAnyOfFailbackNullSharedIoAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertAnyOfFailbackNull);
+    void testOneOfFailbackNullSharedIoAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertOneOfFailbackNull);
     }
 
     @Test
-    void testAnyOfFailbackNullPluginModuleAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfFailbackNull);
+    void testOneOfFailbackNullPluginModuleAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertOneOfFailbackNull);
     }
 
     @Test
-    void testAnyOfPluginModuleParentDiscriminatorLateAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertAnyOfParentDiscriminatorLateCase);
+    void testOneOfPluginModuleParentDiscriminatorLateAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.PLUGIN_MODULE, this::assertOneOfParentDiscriminatorLateCase);
     }
 
     @Test
-    void testAnyOfInContainersSharedIoAllBackends() {
-        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertAnyOfInContainers);
+    void testOneOfInContainersSharedIoAllBackends() {
+        runOnAllBackends(StreamingContext.StreamingMode.SHARED_IO, this::assertOneOfInContainers);
     }
 
     private void assertGenericPatchResponse() {

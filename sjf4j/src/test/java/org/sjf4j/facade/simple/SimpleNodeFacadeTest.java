@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
@@ -268,71 +268,71 @@ public class SimpleNodeFacadeTest {
     }
 
     @Data
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = AnyOfCat.class, when = "cat"),
-            @AnyOf.Mapping(value = AnyOfDog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = OneOfCat.class, when = "cat"),
+            @OneOf.Mapping(value = OneOfDog.class, when = "dog")
     }, key = "kind")
-    public static class AnyOfAnimal {
+    public static class OneOfAnimal {
         private String kind;
         private String name;
     }
 
     @EqualsAndHashCode(callSuper = true)
     @Data
-    public static class AnyOfCat extends AnyOfAnimal {
+    public static class OneOfCat extends OneOfAnimal {
         private int lives;
     }
 
     @EqualsAndHashCode(callSuper = true)
     @Data
-    public static class AnyOfDog extends AnyOfAnimal {
+    public static class OneOfDog extends OneOfAnimal {
         private int bark;
     }
 
-    public static class AnyOfZoo {
-        @AnyOf(value = {
-                @AnyOf.Mapping(value = AnyOfCat.class, when = "cat"),
-                @AnyOf.Mapping(value = AnyOfDog.class, when = "dog")
+    public static class OneOfZoo {
+        @OneOf(value = {
+                @OneOf.Mapping(value = OneOfCat.class, when = "cat"),
+                @OneOf.Mapping(value = OneOfDog.class, when = "dog")
         }, key = "kind")
-        public AnyOfAnimal pet;
+        public OneOfAnimal pet;
     }
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(AnyOfPolyObj.class),
-            @AnyOf.Mapping(AnyOfPolyArr.class)
+    @OneOf(value = {
+            @OneOf.Mapping(OneOfPolyObj.class),
+            @OneOf.Mapping(OneOfPolyArr.class)
     })
-    interface AnyOfPoly {}
+    interface OneOfPoly {}
 
-    static class AnyOfPolyObj extends JsonObject implements AnyOfPoly {}
-    static class AnyOfPolyArr extends JsonArray implements AnyOfPoly {}
+    static class OneOfPolyObj extends JsonObject implements OneOfPoly {}
+    static class OneOfPolyArr extends JsonArray implements OneOfPoly {}
 
     @Test
-    void testAnyOfRootByDiscriminator() {
+    void testOneOfRootByDiscriminator() {
         JsonObject jo = JsonObject.of("kind", "cat", "name", "Nana", "lives", 7);
 
-        AnyOfAnimal animal = (AnyOfAnimal) nodeFacade.readNode(jo, AnyOfAnimal.class);
-        assertInstanceOf(AnyOfCat.class, animal);
+        OneOfAnimal animal = (OneOfAnimal) nodeFacade.readNode(jo, OneOfAnimal.class);
+        assertInstanceOf(OneOfCat.class, animal);
         assertEquals("Nana", animal.getName());
-        assertEquals(7, ((AnyOfCat) animal).getLives());
+        assertEquals(7, ((OneOfCat) animal).getLives());
     }
 
     @Test
-    void testAnyOfFieldByDiscriminator() {
+    void testOneOfFieldByDiscriminator() {
         JsonObject jo = JsonObject.of("pet", JsonObject.of("kind", "dog", "name", "Bobo", "bark", 3));
-        AnyOfZoo zoo = (AnyOfZoo) nodeFacade.readNode(jo, AnyOfZoo.class);
+        OneOfZoo zoo = (OneOfZoo) nodeFacade.readNode(jo, OneOfZoo.class);
 
-        assertInstanceOf(AnyOfDog.class, zoo.pet);
+        assertInstanceOf(OneOfDog.class, zoo.pet);
         assertEquals("Bobo", zoo.pet.getName());
-        assertEquals(3, ((AnyOfDog) zoo.pet).getBark());
+        assertEquals(3, ((OneOfDog) zoo.pet).getBark());
     }
 
     @Test
-    void testAnyOfRootByJsonType() {
-        AnyOfPoly p1 = (AnyOfPoly) nodeFacade.readNode(JsonObject.of("k", 1), AnyOfPoly.class);
-        AnyOfPoly p2 = (AnyOfPoly) nodeFacade.readNode(JsonArray.of(1, 2), AnyOfPoly.class);
+    void testOneOfRootByJsonType() {
+        OneOfPoly p1 = (OneOfPoly) nodeFacade.readNode(JsonObject.of("k", 1), OneOfPoly.class);
+        OneOfPoly p2 = (OneOfPoly) nodeFacade.readNode(JsonArray.of(1, 2), OneOfPoly.class);
 
-        assertInstanceOf(AnyOfPolyObj.class, p1);
-        assertInstanceOf(AnyOfPolyArr.class, p2);
+        assertInstanceOf(OneOfPolyObj.class, p1);
+        assertInstanceOf(OneOfPolyArr.class, p2);
     }
 
     @Test

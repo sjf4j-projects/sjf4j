@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
@@ -103,12 +103,12 @@ public final class ReflectUtil {
         }
     }
 
-    public static NodeRegistry.AnyOfInfo resolveAnyOfInfo(Class<?> clazz) {
+    public static NodeRegistry.OneOfInfo resolveOneOfInfo(Class<?> clazz) {
         if (clazz == null || clazz == Object.class) {
             return null;
         }
-        AnyOf ann = clazz.getAnnotation(AnyOf.class);
-        return ann == null ? null : analyzeAnyOf(clazz, ann);
+        OneOf ann = clazz.getAnnotation(OneOf.class);
+        return ann == null ? null : analyzeOneOf(clazz, ann);
     }
 
     public static NodeRegistry.PojoInfo analyzePojo(Class<?> clazz, boolean orElseThrow) {
@@ -241,12 +241,12 @@ public final class ReflectUtil {
                 } else {
                     Type fieldType = Types.fieldType(curType, field);
                     Class<?> fieldClazz = Types.rawClazz(fieldType);
-                    NodeRegistry.AnyOfInfo anyOfInfo = null;
-                    AnyOf ann = field.getAnnotation(AnyOf.class);
+                    NodeRegistry.OneOfInfo oneOfInfo = null;
+                    OneOf ann = field.getAnnotation(OneOf.class);
                     if (ann != null) {
-                        anyOfInfo = ReflectUtil.analyzeAnyOf(fieldClazz, ann);
+                        oneOfInfo = ReflectUtil.analyzeOneOf(fieldClazz, ann);
                     } else {
-                        anyOfInfo = resolveAnyOfInfo(fieldClazz);
+                        oneOfInfo = resolveOneOfInfo(fieldClazz);
                     }
                     NodeRegistry.ValueCodecInfo resolvedValueCodec = null;
                     String valueFormat = getValueFormat(field);
@@ -255,7 +255,7 @@ public final class ReflectUtil {
                     }
                     NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
                             fieldType, getter, lambdaGetter, setter, lambdaSetter,
-                            anyOfInfo, valueFormat, resolvedValueCodec);
+                            oneOfInfo, valueFormat, resolvedValueCodec);
                     String fieldName = _getFieldName(field, curClazz);
                     NodeRegistry.FieldInfo oldFi = fields.putIfAbsent(fieldName, fi);
                     if (oldFi != null) {
@@ -1043,26 +1043,26 @@ public final class ReflectUtil {
     }
 
 
-    /// AnyOf
+    /// OneOf
 
-    public static NodeRegistry.AnyOfInfo analyzeAnyOf(Class<?> clazz, AnyOf ann) {
-        AnyOf.Mapping[] mappings = ann.value();
+    public static NodeRegistry.OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
+        OneOf.Mapping[] mappings = ann.value();
         if (mappings == null || mappings.length == 0) {
-            throw new JsonException("Empty mappings in @" + AnyOf.class.getName() + " of class " + clazz.getName());
+            throw new JsonException("Empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
         }
 
         boolean hasDiscriminator = !ann.key().isEmpty() || !ann.path().isEmpty();
         EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
-        for (AnyOf.Mapping mapping : mappings) {
+        for (OneOf.Mapping mapping : mappings) {
             Class<?> subClazz = mapping.value();
             if (!clazz.isAssignableFrom(subClazz)) {
-                throw new JsonException("Mapping class " + subClazz.getName() + " in @" + AnyOf.class.getName() +
+                throw new JsonException("Mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " is not assignable from " + clazz.getName());
             }
             if (hasDiscriminator) {
                 if (mapping.when().length == 0) {
                     throw new JsonException("Given a discriminator but has empty 'when' in mapping " +
-                            subClazz.getName() + " in @" + AnyOf.class.getName() + " of class " + clazz.getName());
+                            subClazz.getName() + " in @" + OneOf.class.getName() + " of class " + clazz.getName());
                 }
             } else {
                 JsonType jt = JsonType.rawOf(mapping.value());
@@ -1074,7 +1074,7 @@ public final class ReflectUtil {
                 }
             }
         }
-        return new NodeRegistry.AnyOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
+        return new NodeRegistry.OneOfInfo(clazz, mappings, ann.key(), ann.path(), ann.scope(), ann.onNoMatch());
     }
 
 

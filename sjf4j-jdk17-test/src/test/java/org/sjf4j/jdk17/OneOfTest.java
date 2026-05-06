@@ -5,19 +5,19 @@ import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeProperty;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @Slf4j
-public class AnyOfTest {
+public class OneOfTest {
 
-    @AnyOf(key = "cmd", value = {
-            @AnyOf.Mapping(value = StartRequest.class, when = "start"),
-            @AnyOf.Mapping(value = DialectRequest.class, when = "dialect"),
-            @AnyOf.Mapping(value = RunRequest.class, when = "run"),
+    @OneOf(key = "cmd", value = {
+            @OneOf.Mapping(value = StartRequest.class, when = "start"),
+            @OneOf.Mapping(value = DialectRequest.class, when = "dialect"),
+            @OneOf.Mapping(value = RunRequest.class, when = "run"),
     })
     @Data
     public static class BaseRequest {

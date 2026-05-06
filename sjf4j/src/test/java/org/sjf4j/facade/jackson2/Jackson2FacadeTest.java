@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -520,18 +520,18 @@ public class Jackson2FacadeTest {
     interface Pet {}
     static class Cat implements TypedPet { public String meow; }
     static class Dog implements TypedPet { public String bark; }
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = Cat.class, when = "cat"),
-            @AnyOf.Mapping(value = Dog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = Cat.class, when = "cat"),
+            @OneOf.Mapping(value = Dog.class, when = "dog")
     }, key = "kind")
     interface TypedPet extends Pet {}
     static class PetHolder {
         public TypedPet pet;
     }
 
-    private static void assertAnyOf(Jackson2JsonFacade facade) {
-        String anyOfJson = "{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}";
-        PetHolder holder = (PetHolder) facade.readNode(anyOfJson, PetHolder.class);
+    private static void assertOneOf(Jackson2JsonFacade facade) {
+        String oneOfJson = "{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}";
+        PetHolder holder = (PetHolder) facade.readNode(oneOfJson, PetHolder.class);
         assertEquals(Cat.class, holder.pet.getClass());
         StringWriter sw2 = new StringWriter();
         facade.writeNode(sw2, holder);
@@ -552,7 +552,7 @@ public class Jackson2FacadeTest {
                 modeTests("node-naming", Jackson2FacadeTest::assertNodeNaming),
                 modeTests("creator-extra-field", Jackson2FacadeTest::assertCreatorExtraField),
                 modeTests("creator-alias", Jackson2FacadeTest::assertCreatorAlias),
-                modeTests("anyof", Jackson2FacadeTest::assertAnyOf)
+                modeTests("oneof", Jackson2FacadeTest::assertOneOf)
         ).flatMap(s -> s);
     }
 

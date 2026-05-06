@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -27,7 +27,7 @@ class NodeKindJsonTypeTest {
         public String name;
     }
 
-    @AnyOf({@AnyOf.Mapping(value = PolyObj.class), @AnyOf.Mapping(value = PolyArr.class)})
+    @OneOf({@OneOf.Mapping(value = PolyObj.class), @OneOf.Mapping(value = PolyArr.class)})
     interface PolymorphicType {}
 
     static class PolyObj extends JsonObject implements PolymorphicType {}

@@ -49,8 +49,8 @@ public interface GsonModule {
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
-            if (ti.anyOfInfo != null) {
-                return new AnyOfAdapter<>(ti.anyOfInfo, streamingContext);
+            if (ti.oneOfInfo != null) {
+                return new OneOfAdapter<>(ti.oneOfInfo, streamingContext);
             }
 
             if (ti.hasValueCodecs()) {
@@ -150,16 +150,16 @@ public interface GsonModule {
     }
 
 
-    class AnyOfAdapter<T> extends TypeAdapter<T> {
-        private final NodeRegistry.AnyOfInfo anyOfInfo;
+    class OneOfAdapter<T> extends TypeAdapter<T> {
+        private final NodeRegistry.OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
 
-        public AnyOfAdapter(NodeRegistry.AnyOfInfo anyOfInfo) {
-            this(anyOfInfo, StreamingContext.EMPTY);
+        public OneOfAdapter(NodeRegistry.OneOfInfo oneOfInfo) {
+            this(oneOfInfo, StreamingContext.EMPTY);
         }
 
-        public AnyOfAdapter(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
-            this.anyOfInfo = anyOfInfo;
+        public OneOfAdapter(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+            this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext == null ? StreamingContext.EMPTY : streamingContext;
         }
 
@@ -170,7 +170,7 @@ public interface GsonModule {
                 in.nextNull();
                 return null;
             }
-            return (T) StreamingIO.readAnyOf(new GsonReader(in), anyOfInfo, streamingContext);
+            return (T) StreamingIO.readOneOf(new GsonReader(in), oneOfInfo, streamingContext);
         }
 
         @Override

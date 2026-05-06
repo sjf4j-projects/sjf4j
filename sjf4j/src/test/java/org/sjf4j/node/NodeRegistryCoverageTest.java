@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -241,8 +241,8 @@ class NodeRegistryCoverageTest {
         public List<String> names;
         public Set<Integer> numbers;
         public Map<String, Long> mapping;
-        public List<TypedAnyOf> typedList;
-        public Map<String, TypedAnyOf> typedMap;
+        public List<TypedOneOf> typedList;
+        public Map<String, TypedOneOf> typedMap;
         public LinkedList<String> linkedNames;
         public TreeSet<Integer> sortedNumbers;
         public HashMap<String, Long> hashMapping;
@@ -301,23 +301,23 @@ class NodeRegistryCoverageTest {
         transient String userName;
     }
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = JsonSubtype.class, when = {"json"}),
-            @AnyOf.Mapping(value = OtherSubtype.class, when = {"other"})
+    @OneOf(value = {
+            @OneOf.Mapping(value = JsonSubtype.class, when = {"json"}),
+            @OneOf.Mapping(value = OtherSubtype.class, when = {"other"})
     }, key = "type")
-    interface DiscriminatedAnyOf {}
+    interface DiscriminatedOneOf {}
 
-    static class JsonSubtype extends JsonObject implements DiscriminatedAnyOf {}
-    static class OtherSubtype extends JsonObject implements DiscriminatedAnyOf {}
+    static class JsonSubtype extends JsonObject implements DiscriminatedOneOf {}
+    static class OtherSubtype extends JsonObject implements DiscriminatedOneOf {}
 
-    @AnyOf({
-            @AnyOf.Mapping(value = TypedObjectSubtype.class),
-            @AnyOf.Mapping(value = ArraySubtype.class)
+    @OneOf({
+            @OneOf.Mapping(value = TypedObjectSubtype.class),
+            @OneOf.Mapping(value = ArraySubtype.class)
     })
-    interface TypedAnyOf {}
+    interface TypedOneOf {}
 
-    static class TypedObjectSubtype extends JsonObject implements TypedAnyOf {}
-    static class ArraySubtype extends JsonArray implements TypedAnyOf {}
+    static class TypedObjectSubtype extends JsonObject implements TypedOneOf {}
+    static class ArraySubtype extends JsonArray implements TypedOneOf {}
 
     @Test
     void testCreatorInfoPathsAndPrimitiveDefaults() {
@@ -430,7 +430,7 @@ class NodeRegistryCoverageTest {
     }
 
     @Test
-    void testFieldInfoValueCodecInfoAndAnyOfInfoHelpers() throws Exception {
+    void testFieldInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
         NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
         NodeRegistry.FieldInfo namesField = pojoInfo.fields.get("names");
         NodeRegistry.FieldInfo numbersField = pojoInfo.fields.get("numbers");
@@ -451,11 +451,11 @@ class NodeRegistryCoverageTest {
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, mappingField.containerKind);
         assertEquals(Long.class, mappingField.argRawClazz);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, typedListField.containerKind);
-        assertEquals(TypedAnyOf.class, typedListField.argRawClazz);
-        assertNotNull(typedListField.argAnyOfInfo);
+        assertEquals(TypedOneOf.class, typedListField.argRawClazz);
+        assertNotNull(typedListField.argOneOfInfo);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, typedMapField.containerKind);
-        assertEquals(TypedAnyOf.class, typedMapField.argRawClazz);
-        assertNotNull(typedMapField.argAnyOfInfo);
+        assertEquals(TypedOneOf.class, typedMapField.argRawClazz);
+        assertNotNull(typedMapField.argOneOfInfo);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, linkedNamesField.containerKind);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.SET, sortedNumbersField.containerKind);
         assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, hashMappingField.containerKind);
@@ -525,30 +525,30 @@ class NodeRegistryCoverageTest {
         assertThrows(JsonException.class, () -> throwingHandles.rawToValue("x"));
         assertThrows(JsonException.class, () -> throwingHandles.valueCopy(new ThrowingHandleValue()));
 
-        NodeRegistry.AnyOfInfo discriminated = ReflectUtil.analyzeAnyOf(
-                DiscriminatedAnyOf.class,
-                DiscriminatedAnyOf.class.getAnnotation(AnyOf.class)
+        NodeRegistry.OneOfInfo discriminated = ReflectUtil.analyzeOneOf(
+                DiscriminatedOneOf.class,
+                DiscriminatedOneOf.class.getAnnotation(OneOf.class)
         );
         assertTrue(discriminated.hasDiscriminator);
         assertEquals(JsonSubtype.class, discriminated.resolveByWhen("json"));
         assertNull(discriminated.resolveByWhen(null));
 
-        NodeRegistry.AnyOfInfo typed = ReflectUtil.analyzeAnyOf(
-                TypedAnyOf.class,
-                TypedAnyOf.class.getAnnotation(AnyOf.class)
+        NodeRegistry.OneOfInfo typed = ReflectUtil.analyzeOneOf(
+                TypedOneOf.class,
+                TypedOneOf.class.getAnnotation(OneOf.class)
         );
         assertFalse(typed.hasDiscriminator);
         assertEquals(TypedObjectSubtype.class, typed.resolveByJsonType(JsonType.OBJECT));
         assertEquals(ArraySubtype.class, typed.resolveByJsonType(JsonType.ARRAY));
         assertNull(typed.resolveByJsonType(null));
 
-        NodeRegistry.AnyOfInfo compiled = new NodeRegistry.AnyOfInfo(
-                DiscriminatedAnyOf.class,
-                DiscriminatedAnyOf.class.getAnnotation(AnyOf.class).value(),
+        NodeRegistry.OneOfInfo compiled = new NodeRegistry.OneOfInfo(
+                DiscriminatedOneOf.class,
+                DiscriminatedOneOf.class.getAnnotation(OneOf.class).value(),
                 "",
                 "$.type",
-                AnyOf.Scope.PARENT,
-                AnyOf.OnNoMatch.FAILBACK_NULL
+                OneOf.Scope.PARENT,
+                OneOf.OnNoMatch.FAILBACK_NULL
         );
         assertNotNull(compiled.compiledPath);
         assertEquals(JsonSubtype.class, compiled.resolveByWhen("json"));

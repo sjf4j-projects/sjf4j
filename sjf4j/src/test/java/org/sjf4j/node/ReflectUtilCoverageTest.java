@@ -3,7 +3,7 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -141,33 +141,33 @@ class ReflectUtilCoverageTest {
         }
     }
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = DiscA.class, when = {"a"}),
-            @AnyOf.Mapping(value = DiscB.class, when = {"b"})
+    @OneOf(value = {
+            @OneOf.Mapping(value = DiscA.class, when = {"a"}),
+            @OneOf.Mapping(value = DiscB.class, when = {"b"})
     }, key = "type")
-    interface DiscAnyOf {}
+    interface DiscOneOf {}
 
-    static class DiscA extends JsonObject implements DiscAnyOf {}
-    static class DiscB extends JsonObject implements DiscAnyOf {}
+    static class DiscA extends JsonObject implements DiscOneOf {}
+    static class DiscB extends JsonObject implements DiscOneOf {}
 
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = DuplicateA.class),
-            @AnyOf.Mapping(value = DuplicateB.class)
+    @OneOf(value = {
+            @OneOf.Mapping(value = DuplicateA.class),
+            @OneOf.Mapping(value = DuplicateB.class)
     })
-    interface DuplicateRawAnyOf {}
+    interface DuplicateRawOneOf {}
 
-    static class DuplicateA extends JsonObject implements DuplicateRawAnyOf {}
-    static class DuplicateB extends JsonObject implements DuplicateRawAnyOf {}
+    static class DuplicateA extends JsonObject implements DuplicateRawOneOf {}
+    static class DuplicateB extends JsonObject implements DuplicateRawOneOf {}
 
-    @AnyOf(value = {@AnyOf.Mapping(value = NotAssignable.class)})
-    interface WrongAnyOf {}
+    @OneOf(value = {@OneOf.Mapping(value = NotAssignable.class)})
+    interface WrongOneOf {}
 
     static class NotAssignable {}
 
-    @AnyOf(value = {@AnyOf.Mapping(value = MissingWhenSubtype.class)}, key = "type")
-    interface MissingWhenAnyOf {}
+    @OneOf(value = {@OneOf.Mapping(value = MissingWhenSubtype.class)}, key = "type")
+    interface MissingWhenOneOf {}
 
-    static class MissingWhenSubtype extends JsonObject implements MissingWhenAnyOf {}
+    static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
     @NodeBinding(naming = NamingStrategy.IDENTITY)
     static class IdentityNamingPojo {}
@@ -265,22 +265,22 @@ class ReflectUtilCoverageTest {
     }
 
     @Test
-    void testAnalyzeAnyOfAndNamingValidation() {
-        NodeRegistry.AnyOfInfo disc = ReflectUtil.analyzeAnyOf(DiscAnyOf.class, DiscAnyOf.class.getAnnotation(AnyOf.class));
+    void testAnalyzeOneOfAndNamingValidation() {
+        NodeRegistry.OneOfInfo disc = ReflectUtil.analyzeOneOf(DiscOneOf.class, DiscOneOf.class.getAnnotation(OneOf.class));
         assertTrue(disc.hasDiscriminator);
         assertEquals(DiscA.class, disc.resolveByWhen("a"));
 
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeAnyOf(
-                DuplicateRawAnyOf.class,
-                DuplicateRawAnyOf.class.getAnnotation(AnyOf.class)
+        assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
+                DuplicateRawOneOf.class,
+                DuplicateRawOneOf.class.getAnnotation(OneOf.class)
         ));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeAnyOf(
-                WrongAnyOf.class,
-                WrongAnyOf.class.getAnnotation(AnyOf.class)
+        assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
+                WrongOneOf.class,
+                WrongOneOf.class.getAnnotation(OneOf.class)
         ));
-        assertThrows(JsonException.class, () -> ReflectUtil.analyzeAnyOf(
-                MissingWhenAnyOf.class,
-                MissingWhenAnyOf.class.getAnnotation(AnyOf.class)
+        assertThrows(JsonException.class, () -> ReflectUtil.analyzeOneOf(
+                MissingWhenOneOf.class,
+                MissingWhenOneOf.class.getAnnotation(OneOf.class)
         ));
 
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(null));

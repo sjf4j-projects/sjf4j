@@ -62,8 +62,8 @@ public interface Fastjson2Module {
             if (JsonArray.class.isAssignableFrom(rawClazz)) {
                 return new JsonArrayReader<>(ti.pojoInfo);
             }
-            if (ti.anyOfInfo != null) {
-                return new AnyOfReader<>(ti.anyOfInfo, streamingContext);
+            if (ti.oneOfInfo != null) {
+                return new OneOfReader<>(ti.oneOfInfo, streamingContext);
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
@@ -234,14 +234,14 @@ public interface Fastjson2Module {
         }
     }
 
-    class AnyOfReader<T> implements ObjectReader<T> {
-        private final NodeRegistry.AnyOfInfo anyOfInfo;
+    class OneOfReader<T> implements ObjectReader<T> {
+        private final NodeRegistry.OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
         /**
          * Creates reader for JsonArray or JsonArray subclass.
          */
-        public AnyOfReader(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
-            this.anyOfInfo = anyOfInfo;
+        public OneOfReader(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+            this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext;
         }
 
@@ -253,9 +253,9 @@ public interface Fastjson2Module {
         public T readObject(JSONReader reader, Type fieldType, Object fieldName, long features) {
             if (reader.nextIfNull()) return null;
             try {
-                return (T) Fastjson2StreamingIO.readAnyOf(reader, anyOfInfo, streamingContext);
+                return (T) Fastjson2StreamingIO.readOneOf(reader, oneOfInfo, streamingContext);
             } catch (IOException e) {
-                throw new JSONException(reader.info("AnyOfReader.readObject() failed"), e);
+                throw new JSONException(reader.info("OneOfReader.readObject() failed"), e);
             }
         }
     }

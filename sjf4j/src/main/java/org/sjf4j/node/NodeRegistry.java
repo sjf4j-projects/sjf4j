@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
@@ -34,7 +34,7 @@ import java.util.function.Supplier;
  * {@code NodeRegistry} analyzes Java classes once and caches the structural
  * metadata later used by reads, writes, conversion, copying, and traversal.
  * For jar users, this is where SJF4J decides whether a class behaves as a
- * POJO, JOJO, JAJO, {@code @NodeValue}, or {@code @AnyOf} type.
+ * POJO, JOJO, JAJO, {@code @NodeValue}, or {@code @OneOf} type.
  *
  * <p>Most application code does not need to call this class directly, but its
  * metadata model defines the runtime binding semantics used across
@@ -58,7 +58,7 @@ public final class NodeRegistry {
      * Registers type metadata and optionally enforces POJO availability.
      * <p>
      * Resolution order is: cache hit, {@code @NodeValue}/registered codec,
-     * {@code @AnyOf}, POJO analysis, then NONE marker.
+     * {@code @OneOf}, POJO analysis, then NONE marker.
      *
      * @param mustPojo when true, non-POJO results are rejected
      */
@@ -82,9 +82,9 @@ public final class NodeRegistry {
             return ti;
         }
 
-        AnyOf ann = clazz.getAnnotation(AnyOf.class);
+        OneOf ann = clazz.getAnnotation(OneOf.class);
         if (ann != null) {
-            AnyOfInfo aoi = ReflectUtil.analyzeAnyOf(clazz, ann);
+            OneOfInfo aoi = ReflectUtil.analyzeOneOf(clazz, ann);
             ti = new TypeInfo(clazz, null, null, aoi, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
             return ti;
@@ -181,7 +181,7 @@ public final class NodeRegistry {
                     new TypeInfo(valueClazz, vci, null, null, null, null));
             return;
         }
-        if (oldTi.pojoInfo != null || oldTi.anyOfInfo != null || oldTi.containerInfo != null) {
+        if (oldTi.pojoInfo != null || oldTi.oneOfInfo != null || oldTi.containerInfo != null) {
             throw new JsonException("Type '" + valueClazz.getName() +
                     "' is already classified as a non-ValueCodec node type");
         }
@@ -195,7 +195,7 @@ public final class NodeRegistry {
                         "' and default format ''");
             }
             return new TypeInfo(ti.clazz, vci, ti.formattedValueCodecs,
-                    ti.anyOfInfo, ti.containerInfo, ti.pojoInfo);
+                    ti.oneOfInfo, ti.containerInfo, ti.pojoInfo);
         }
 
         for (int i = 0; i < ti.formattedValueCodecs.length; i++) {
@@ -209,7 +209,7 @@ public final class NodeRegistry {
         System.arraycopy(ti.formattedValueCodecs, 0, appended, 0, ti.formattedValueCodecs.length);
         appended[ti.formattedValueCodecs.length] = vci;
         return new TypeInfo(ti.clazz, ti.valueCodecInfo, appended,
-                ti.anyOfInfo, ti.containerInfo, ti.pojoInfo);
+                ti.oneOfInfo, ti.containerInfo, ti.pojoInfo);
     }
 
     /**
@@ -294,7 +294,7 @@ public final class NodeRegistry {
         public final Class<?> clazz;
         public final ValueCodecInfo valueCodecInfo;
         public final ValueCodecInfo[] formattedValueCodecs;
-        public final AnyOfInfo anyOfInfo;
+        public final OneOfInfo oneOfInfo;
         public final ContainerInfo containerInfo;
         public final PojoInfo pojoInfo;
 
@@ -305,11 +305,11 @@ public final class NodeRegistry {
          * Creates immutable type metadata holder.
          */
         public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] formattedValueCodecs,
-                        AnyOfInfo anyOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo) {
+                        OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo) {
             this.clazz = clazz;
             this.valueCodecInfo = valueCodecInfo;
             this.formattedValueCodecs = formattedValueCodecs == null ? EMPTY_VALUE_CODECS : formattedValueCodecs;
-            this.anyOfInfo = anyOfInfo;
+            this.oneOfInfo = oneOfInfo;
             this.containerInfo = containerInfo;
             this.pojoInfo = pojoInfo;
         }
@@ -398,7 +398,7 @@ public final class NodeRegistry {
         public final Map<String, FieldInfo> aliasFields;
         public final boolean isJojo;
         public final boolean isJajo;
-        public final boolean hasParentScopeAnyOf;
+        public final boolean hasParentScopeOneOf;
         public final boolean hasExplicitBinding;
         public final boolean hasCreatorBinding;
         public final boolean hasNonPublicFields;
@@ -445,15 +445,15 @@ public final class NodeRegistry {
             this.aliasFields = aliasFields;
             this.isJojo = JsonObject.class.isAssignableFrom(clazz);
             this.isJajo = JsonArray.class.isAssignableFrom(clazz);
-            boolean hasParentScopeAnyOf = false;
+            boolean hasParentScopeOneOf = false;
             for (FieldInfo fi : fields.values()) {
-                AnyOfInfo aoi = fi.anyOfInfo;
-                if (aoi != null && aoi.scope == AnyOf.Scope.PARENT) {
-                    hasParentScopeAnyOf = true;
+                OneOfInfo aoi = fi.oneOfInfo;
+                if (aoi != null && aoi.scope == OneOf.Scope.PARENT) {
+                    hasParentScopeOneOf = true;
                     break;
                 }
             }
-            this.hasParentScopeAnyOf = hasParentScopeAnyOf;
+            this.hasParentScopeOneOf = hasParentScopeOneOf;
             this.hasExplicitBinding = hasExplicitBinding;
             this.hasCreatorBinding = creatorInfo != null && creatorInfo.argsCreator != null;
             this.hasNonPublicFields = hasNonPublicFields;
@@ -470,7 +470,7 @@ public final class NodeRegistry {
             boolean hasTypeOwnedBinding = namingStrategy != null || accessStrategy == AccessStrategy.FIELD_BASED;
             boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
             boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
-            this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeAnyOf
+            this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeOneOf
                     || hasExplicitBinding || this.hasCreatorBinding
                     || (creatorInfo != null && creatorInfo.hasValueFormatBinding)
                     || hasNonPublicReaderGap || hasCustomDynamicReader || hasFieldValueFormatBinding;
@@ -947,13 +947,13 @@ public final class NodeRegistry {
         public final ContainerKind containerKind;
         public final Type argType;
         public final Class<?> argRawClazz;
-        public final AnyOfInfo argAnyOfInfo;
+        public final OneOfInfo argOneOfInfo;
         public final MethodHandle getter;
         public final Function<Object, Object> lambdaGetter;
         public final MethodHandle setter;
         public final BiConsumer<Object, Object> lambdaSetter;
 
-        public final AnyOfInfo anyOfInfo;
+        public final OneOfInfo oneOfInfo;
         public final String valueFormat;
         public final ValueCodecInfo resolvedValueCodec;
 
@@ -963,7 +963,7 @@ public final class NodeRegistry {
         public FieldInfo(String name, Type type,
                          MethodHandle getter, Function<Object, Object> lambdaGetter,
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter,
-                         AnyOfInfo anyOfInfo,
+                         OneOfInfo oneOfInfo,
                          String valueFormat,
                          ValueCodecInfo resolvedValueCodec) {
             this.name = name;
@@ -992,12 +992,12 @@ public final class NodeRegistry {
             this.containerKind = kind;
             this.argType = argType;
             this.argRawClazz = argRawType;
-            this.argAnyOfInfo = argRawType == null ? null : ReflectUtil.resolveAnyOfInfo(argRawType);
+            this.argOneOfInfo = argRawType == null ? null : ReflectUtil.resolveOneOfInfo(argRawType);
             this.getter = getter;
             this.lambdaGetter = lambdaGetter;
             this.setter = setter;
             this.lambdaSetter = lambdaSetter;
-            this.anyOfInfo = anyOfInfo;
+            this.oneOfInfo = oneOfInfo;
             this.valueFormat = valueFormat;
             this.resolvedValueCodec = resolvedValueCodec;
         }
@@ -1167,22 +1167,22 @@ public final class NodeRegistry {
 
     }
 
-    // AnyOfInfo
+    // OneOfInfo
 
-    public static class AnyOfInfo {
+    public static class OneOfInfo {
         public final Class<?> clazz;
-        public final AnyOf.Mapping[] mappings;
+        public final OneOf.Mapping[] mappings;
         public final String key;
         public final String path;
-        public final AnyOf.Scope scope;
-        public final AnyOf.OnNoMatch onNoMatch;
+        public final OneOf.Scope scope;
+        public final OneOf.OnNoMatch onNoMatch;
         public final boolean hasDiscriminator;
         public final EnumMap<JsonType, Class<?>> byJsonType;
         public final Map<String, Class<?>> byWhen;
         public final JsonPath compiledPath;
 
-        public AnyOfInfo(Class<?> clazz, AnyOf.Mapping[] mappings, String key,
-                         String path, AnyOf.Scope scope, AnyOf.OnNoMatch onNoMatch) {
+        public OneOfInfo(Class<?> clazz, OneOf.Mapping[] mappings, String key,
+                         String path, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
             this.clazz = clazz;
             this.mappings = mappings;
             this.key = key;
@@ -1194,7 +1194,7 @@ public final class NodeRegistry {
             if (hasDiscriminator) {
                 this.byJsonType = null;
                 this.byWhen = new HashMap<>();
-                for (AnyOf.Mapping mapping : mappings) {
+                for (OneOf.Mapping mapping : mappings) {
                     for (String when : mapping.when()) {
                         byWhen.put(when, mapping.value());
                     }
@@ -1202,7 +1202,7 @@ public final class NodeRegistry {
             } else {
                 this.byWhen = null;
                 this.byJsonType = new EnumMap<>(JsonType.class);
-                for (AnyOf.Mapping mapping : mappings) {
+                for (OneOf.Mapping mapping : mappings) {
                     byJsonType.put(JsonType.rawOf(mapping.value()), mapping.value());
                 }
             }

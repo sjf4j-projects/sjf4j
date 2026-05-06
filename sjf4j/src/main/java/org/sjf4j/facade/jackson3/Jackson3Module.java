@@ -77,8 +77,8 @@ public interface Jackson3Module {
                         return new JsonArrayDeserializer<>(clazz);
                     }
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-                    if (ti.anyOfInfo != null) {
-                        return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
+                    if (ti.oneOfInfo != null) {
+                        return new OneOfDeserializer<>(ti.oneOfInfo, streamingContext);
                     }
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
@@ -235,12 +235,12 @@ public interface Jackson3Module {
         }
     }
 
-    class AnyOfDeserializer<T> extends ValueDeserializer<T> {
-        private final NodeRegistry.AnyOfInfo anyOfInfo;
+    class OneOfDeserializer<T> extends ValueDeserializer<T> {
+        private final NodeRegistry.OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
 
-        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
-            this.anyOfInfo = anyOfInfo;
+        public OneOfDeserializer(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+            this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext;
         }
 
@@ -248,7 +248,7 @@ public interface Jackson3Module {
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) {
             try {
-                return (T) StreamingIO.readAnyOf(new Jackson3Reader(p), anyOfInfo, streamingContext);
+                return (T) StreamingIO.readOneOf(new Jackson3Reader(p), oneOfInfo, streamingContext);
             } catch (IOException e) {
                 throw new BindingException(e);
             }

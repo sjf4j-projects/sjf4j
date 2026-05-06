@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.node.AnyOf;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -81,7 +81,7 @@ public class Fastjson2FacadeTest {
                 modeTests("node-naming", Fastjson2FacadeTest::assertNodeNaming),
                 modeTests("creator-extra-field", Fastjson2FacadeTest::assertCreatorExtraField),
                 modeTests("creator-alias", Fastjson2FacadeTest::assertCreatorAlias),
-                modeTests("anyof", Fastjson2FacadeTest::assertAnyOf)
+                modeTests("oneof", Fastjson2FacadeTest::assertOneOf)
         ).flatMap(s -> s);
     }
 
@@ -338,9 +338,9 @@ public class Fastjson2FacadeTest {
     interface Pet {}
     static class Cat implements TypedPet { public String meow; }
     static class Dog implements TypedPet { public String bark; }
-    @AnyOf(value = {
-            @AnyOf.Mapping(value = Cat.class, when = "cat"),
-            @AnyOf.Mapping(value = Dog.class, when = "dog")
+    @OneOf(value = {
+            @OneOf.Mapping(value = Cat.class, when = "cat"),
+            @OneOf.Mapping(value = Dog.class, when = "dog")
     }, key = "kind")
     interface TypedPet extends Pet {}
     static class PetHolder {
@@ -348,10 +348,10 @@ public class Fastjson2FacadeTest {
     }
     static class ParentPetHolder {
         public String kind;
-        @AnyOf(value = {
-                @AnyOf.Mapping(value = Cat.class, when = "cat"),
-                @AnyOf.Mapping(value = Dog.class, when = "dog")
-        }, key = "kind", scope = AnyOf.Scope.PARENT)
+        @OneOf(value = {
+                @OneOf.Mapping(value = Cat.class, when = "cat"),
+                @OneOf.Mapping(value = Dog.class, when = "dog")
+        }, key = "kind", scope = OneOf.Scope.PARENT)
         public TypedPet pet;
     }
 
@@ -448,15 +448,15 @@ public class Fastjson2FacadeTest {
         assertEquals("{}", JSON.toJSONString(local));
     }
 
-    private static void assertAnyOf(Fastjson2JsonFacade facade) {
-        String anyOfJson = "{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}";
-        PetHolder holder = (PetHolder) facade.readNode(anyOfJson, PetHolder.class);
+    private static void assertOneOf(Fastjson2JsonFacade facade) {
+        String oneOfJson = "{\"pet\":{\"kind\":\"cat\",\"meow\":\"m\"}}";
+        PetHolder holder = (PetHolder) facade.readNode(oneOfJson, PetHolder.class);
         assertEquals(Cat.class, holder.pet.getClass());
         assertTrue(facade.writeNodeAsString(holder).contains("meow"));
     }
 
     @Test
-    void testPluginModuleAnyOfFailureMessage() {
+    void testPluginModuleOneOfFailureMessage() {
         Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
         String json = "{\"kind\":\"cat\",\"pet\":{\"meow\":\"m\"}}";
 
@@ -467,12 +467,12 @@ public class Fastjson2FacadeTest {
     }
 
     @Test
-    void testPluginModuleNormalFailureMessageWithoutAnyOfHint() {
+    void testPluginModuleNormalFailureMessageWithoutOneOfHint() {
         Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
 
         JsonException ex = assertThrows(JsonException.class, () -> facade.readNode("{", Book.class));
         assertTrue(ex.getMessage().contains("Failed to read JSON"));
-        assertFalse(ex.getMessage().contains("AnyOf is not supported in Fastjson2 PLUGIN_MODULE mode"));
+        assertFalse(ex.getMessage().contains("OneOf is not supported in Fastjson2 PLUGIN_MODULE mode"));
     }
 
 }

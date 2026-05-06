@@ -81,8 +81,8 @@ public interface Jackson2Module {
                     if (JsonArray.class.isAssignableFrom(clazz)) {
                         return new JsonArrayDeserializer<>(ti.pojoInfo);
                     }
-                    if (ti.anyOfInfo != null) {
-                        return new AnyOfDeserializer<>(ti.anyOfInfo, streamingContext);
+                    if (ti.oneOfInfo != null) {
+                        return new OneOfDeserializer<>(ti.oneOfInfo, streamingContext);
                     }
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
@@ -240,14 +240,14 @@ public interface Jackson2Module {
         }
     }
 
-    class AnyOfDeserializer<T> extends JsonDeserializer<T> {
-        private final NodeRegistry.AnyOfInfo anyOfInfo;
+    class OneOfDeserializer<T> extends JsonDeserializer<T> {
+        private final NodeRegistry.OneOfInfo oneOfInfo;
         private final StreamingContext streamingContext;
         /**
          * Creates serializer backed by ValueCodec metadata.
          */
-        public AnyOfDeserializer(NodeRegistry.AnyOfInfo anyOfInfo, StreamingContext streamingContext) {
-            this.anyOfInfo = anyOfInfo;
+        public OneOfDeserializer(NodeRegistry.OneOfInfo oneOfInfo, StreamingContext streamingContext) {
+            this.oneOfInfo = oneOfInfo;
             this.streamingContext = streamingContext;
         }
 
@@ -257,7 +257,7 @@ public interface Jackson2Module {
         @SuppressWarnings("unchecked")
         @Override
         public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            return (T) Jackson2StreamingIO.readAnyOf(p, anyOfInfo, streamingContext);
+            return (T) Jackson2StreamingIO.readOneOf(p, oneOfInfo, streamingContext);
         }
     }
 

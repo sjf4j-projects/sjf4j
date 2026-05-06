@@ -69,7 +69,7 @@ public enum NodeKind {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
         if (ti.valueCodecInfo != null) {
             return NodeKind.VALUE_NODE_VALUE;
-        } else if (ti.anyOfInfo != null) {
+        } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
         } else if (ti.pojoInfo != null) {
             return NodeKind.OBJECT_POJO;
