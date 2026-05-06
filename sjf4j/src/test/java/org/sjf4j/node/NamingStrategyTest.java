@@ -44,8 +44,8 @@ class NamingStrategyTest {
         assertEquals("han", user.userName);
         assertEquals(2, user.loginCount);
         assertEquals("x1", user._internalId);
-        assertEquals("han", JsonPath.compile("$.user_name").getNode(user));
-        assertNull(JsonPath.compile("$.userName").getNode(user));
+        assertEquals("han", JsonPath.parse("$.user_name").getNode(user));
+        assertNull(JsonPath.parse("$.userName").getNode(user));
         assertEquals("{\"user_name\":\"han\",\"login_count\":2,\"_internal_id\":\"x1\"}",
                 sjf4j.toJsonString(user));
     }

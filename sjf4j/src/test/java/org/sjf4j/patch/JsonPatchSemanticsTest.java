@@ -38,9 +38,9 @@ class JsonPatchSemanticsTest {
     void testRootReplacementFeedsLaterOperations() {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_REPLACE,
-                JsonPointer.compile(""), JsonObject.of("a", 1), null));
+                JsonPointer.parse(""), JsonObject.of("a", 1), null));
         patch.add(new PatchOperation(PatchOperation.STD_ADD,
-                JsonPointer.compile("/b"), 2, null));
+                JsonPointer.parse("/b"), 2, null));
 
         Object result = patch.apply(1);
 
@@ -54,7 +54,7 @@ class JsonPatchSemanticsTest {
         JsonObject target = JsonObject.of("a", null);
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_COPY,
-                JsonPointer.compile("/b"), null, JsonPointer.compile("/a")));
+                JsonPointer.parse("/b"), null, JsonPointer.parse("/a")));
 
         patch.apply(target);
 
@@ -67,7 +67,7 @@ class JsonPatchSemanticsTest {
         JsonObject target = JsonObject.of("a", null);
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
-                JsonPointer.compile("/b"), null, JsonPointer.compile("/a")));
+                JsonPointer.parse("/b"), null, JsonPointer.parse("/a")));
 
         patch.apply(target);
 
@@ -81,7 +81,7 @@ class JsonPatchSemanticsTest {
         JsonObject target = JsonObject.of("a", JsonObject.of("x", 1));
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_COPY,
-                JsonPointer.compile("/b"), null, JsonPointer.compile("/a")));
+                JsonPointer.parse("/b"), null, JsonPointer.parse("/a")));
 
         patch.apply(target);
         JsonObject copied = target.getJsonObject("b");
@@ -98,7 +98,7 @@ class JsonPatchSemanticsTest {
         JsonObject target = JsonObject.of("a", JsonObject.of("x", 1));
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_COPY,
-                JsonPointer.compile("/snapshot"), null, JsonPointer.compile("")));
+                JsonPointer.parse("/snapshot"), null, JsonPointer.parse("")));
 
         patch.apply(target);
 
@@ -116,7 +116,7 @@ class JsonPatchSemanticsTest {
         JsonObject before = target.copy();
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
-                JsonPointer.compile("/a/b"), null, JsonPointer.compile("/a")));
+                JsonPointer.parse("/a/b"), null, JsonPointer.parse("/a")));
 
         assertThrows(JsonException.class, () -> patch.apply(target));
         assertEquals(before, target);
@@ -128,7 +128,7 @@ class JsonPatchSemanticsTest {
         JsonObject before = target.copy();
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
-                JsonPointer.compile("/b/c"), null, JsonPointer.compile("/a")));
+                JsonPointer.parse("/b/c"), null, JsonPointer.parse("/a")));
 
         assertThrows(JsonException.class, () -> patch.apply(target));
         assertEquals(before, target);
@@ -139,7 +139,7 @@ class JsonPatchSemanticsTest {
         JsonObject target = new JsonObject();
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_TEST,
-                JsonPointer.compile("/missing"), null, null));
+                JsonPointer.parse("/missing"), null, null));
 
         assertThrows(JsonException.class, () -> patch.apply(target));
     }

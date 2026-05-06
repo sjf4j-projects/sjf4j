@@ -34,10 +34,10 @@ public class JsonPointer extends JsonPath {
     }
 
     /**
-     * Compiles a JSON Pointer expression (RFC 6901).
+     * Parses a JSON Pointer expression (RFC 6901).
      */
     @RawToValue
-    public static JsonPointer compile(String expr) {
+    public static JsonPointer parse(String expr) {
         Objects.requireNonNull(expr, "expr");
         expr = expr.trim();
 

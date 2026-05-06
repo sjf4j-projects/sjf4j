@@ -1189,7 +1189,7 @@ public final class NodeRegistry {
             this.path = path;
             this.scope = scope;
             this.onNoMatch = onNoMatch;
-            this.compiledPath = path.isEmpty() ? null : JsonPath.compile(path);
+            this.compiledPath = path.isEmpty() ? null : JsonPath.parse(path);
             this.hasDiscriminator = !key.isEmpty() || !path.isEmpty();
             if (hasDiscriminator) {
                 this.byJsonType = null;

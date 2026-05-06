@@ -501,7 +501,7 @@ public class SimpleNodeFacadeTest {
     @Test
     public void testObjectJsonArraySubclassPreserveType() {
         JsonPatch patch = new JsonPatch();
-        patch.add(new PatchOperation("add", JsonPointer.compile("/a"), 1, null));
+        patch.add(new PatchOperation("add", JsonPointer.parse("/a"), 1, null));
 
         Object out = nodeFacade.readNode(patch, Object.class);
         assertEquals(JsonPatch.class, out.getClass());

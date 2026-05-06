@@ -153,7 +153,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     URI getCanonicalUri() {
         if (canonicalUri == null) {
-            return CompileUtil.resolveUri(getId(), retrievalUri);
+            return SchemaCompilers.resolveUri(getId(), retrievalUri);
         }
         return canonicalUri;
     }
@@ -373,21 +373,21 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     void compile(PathSegment ps, ObjectSchema idSchema, ObjectSchema rootSchema) {
         if (evaluators == null) {
             if (this == idSchema) {
-                URI resolved = CompileUtil.resolveUri(getId(), retrievalUri);
+                URI resolved = SchemaCompilers.resolveUri(getId(), retrievalUri);
                 if (resolved != null) {
                     canonicalUri = resolved;
                 } else if (canonicalUri == null) {
                     canonicalUri = retrievalUri != null ? retrievalUri : URI.create("");
                 }
             } else if (canonicalUri == null) {
-                canonicalUri = CompileUtil.resolveUri(getId(), idSchema.getCanonicalUri());
+                canonicalUri = SchemaCompilers.resolveUri(getId(), idSchema.getCanonicalUri());
             }
             if (canonicalUri != null) {
                 idSchema = this;
                 rootSchema.innerRegistry.put(canonicalUri, this);
             }
             this.idSchema = idSchema;
-            evaluators = CompileUtil.compile(ps, this, idSchema, rootSchema);
+            evaluators = SchemaCompilers.compile(ps, this, idSchema, rootSchema);
         }
     }
 
@@ -395,7 +395,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * Loads and applies meta-schema vocabulary constraints.
      */
     void compileMeta() {
-        URI metaUri = CompileUtil.resolveUri(getString("$schema"), null);
+        URI metaUri = SchemaCompilers.resolveUri(getString("$schema"), null);
         if (metaUri != null) {
             ObjectSchema metaSchema = importAndCompile(metaUri);
             if (metaSchema != null) {

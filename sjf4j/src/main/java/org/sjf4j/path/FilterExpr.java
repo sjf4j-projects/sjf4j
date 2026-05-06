@@ -71,7 +71,7 @@ public interface FilterExpr {
          * Creates a path expression from a JSONPath string.
          */
         public PathExpr(String path) {
-            this.path = JsonPath.compile(path);
+            this.path = JsonPath.parse(path);
         }
 
         public PathExpr(JsonPath path) {

@@ -25,7 +25,7 @@ import java.util.function.Function;
 /**
  * JSONPath/JSON Pointer execution engine.
  *
- * <p>JsonPath compiles a textual path expression into a chain of {@link PathSegment}
+ * <p>JsonPath parses a textual path expression into a chain of {@link PathSegment}
  * tokens and then evaluates the path against a JSON container. It supports both:
  * <ul>
  *   <li>JSON Path syntax (starts with '$' or '@')</li>
@@ -75,12 +75,12 @@ public class JsonPath {
     }
 
     /**
-     * Compiles a JSONPath or JSON Pointer expression into executable segments.
+     * Parses a JSONPath or JSON Pointer expression into executable segments.
      * <p>
      * Empty input resolves to root. Expressions starting with {@code /} are
      * parsed as JSON Pointer; others are parsed as JSONPath.
      */
-    public static JsonPath compile(String expr) {
+    public static JsonPath parse(String expr) {
         Objects.requireNonNull(expr, "expr");
         expr = expr.trim();
         PathSegment[] segments;

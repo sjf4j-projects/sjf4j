@@ -769,18 +769,18 @@ class Jackson3FacadeTest {
         ObjectNode objectNode = mapper.createObjectNode().put("0", "zero");
         ArrayNode arrayNode = mapper.createArrayNode().add("a");
 
-        assertNull(JsonPath.compile("/0").ensurePutIfAbsent(objectNode, StringNode.valueOf("ignored")));
-        assertEquals("zero", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").replace(objectNode, StringNode.valueOf("one"))).asString());
-        assertEquals("one", JsonPath.compile("/0").getString(objectNode));
-        assertEquals("one", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").remove(objectNode)).asString());
-        JsonPath.compile("/0").add(objectNode, StringNode.valueOf("again"));
-        assertEquals("again", JsonPath.compile("/0").getString(objectNode));
-        assertThrows(JsonException.class, () -> JsonPath.compile("/missing/name").ensurePut(objectNode, StringNode.valueOf("created")));
+        assertNull(JsonPath.parse("/0").ensurePutIfAbsent(objectNode, StringNode.valueOf("ignored")));
+        assertEquals("zero", ((tools.jackson.databind.JsonNode) JsonPath.parse("/0").replace(objectNode, StringNode.valueOf("one"))).asString());
+        assertEquals("one", JsonPath.parse("/0").getString(objectNode));
+        assertEquals("one", ((tools.jackson.databind.JsonNode) JsonPath.parse("/0").remove(objectNode)).asString());
+        JsonPath.parse("/0").add(objectNode, StringNode.valueOf("again"));
+        assertEquals("again", JsonPath.parse("/0").getString(objectNode));
+        assertThrows(JsonException.class, () -> JsonPath.parse("/missing/name").ensurePut(objectNode, StringNode.valueOf("created")));
 
-        assertNull(JsonPath.compile("/0").ensurePutIfAbsent(arrayNode, StringNode.valueOf("ignored")));
-        assertEquals("a", ((tools.jackson.databind.JsonNode) JsonPath.compile("/0").replace(arrayNode, StringNode.valueOf("b"))).asString());
-        JsonPath.compile("/1").add(arrayNode, StringNode.valueOf("c"));
-        assertEquals("c", JsonPath.compile("/1").getString(arrayNode));
-        assertThrows(JsonException.class, () -> JsonPath.compile("/-/name").ensurePut(arrayNode, StringNode.valueOf("created")));
+        assertNull(JsonPath.parse("/0").ensurePutIfAbsent(arrayNode, StringNode.valueOf("ignored")));
+        assertEquals("a", ((tools.jackson.databind.JsonNode) JsonPath.parse("/0").replace(arrayNode, StringNode.valueOf("b"))).asString());
+        JsonPath.parse("/1").add(arrayNode, StringNode.valueOf("c"));
+        assertEquals("c", JsonPath.parse("/1").getString(arrayNode));
+        assertThrows(JsonException.class, () -> JsonPath.parse("/-/name").ensurePut(arrayNode, StringNode.valueOf("created")));
     }
 }

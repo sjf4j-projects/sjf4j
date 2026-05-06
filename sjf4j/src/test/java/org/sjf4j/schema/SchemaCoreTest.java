@@ -1,6 +1,5 @@
 package org.sjf4j.schema;
 
-import com.alibaba.fastjson2.schema.NumberSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
@@ -98,11 +97,11 @@ public class SchemaCoreTest {
     @Test
     public void testWithoutFragment() {
         assertEquals("https://example.com/a/b?x=1",
-                CompileUtil.withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
+                SchemaCompilers.withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
         assertEquals("classpath:/schemas/user.json",
-                CompileUtil.withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
+                SchemaCompilers.withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
         assertEquals("urn:uuid:deadbeef",
-                CompileUtil.withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
+                SchemaCompilers.withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
     }
 
     @Test

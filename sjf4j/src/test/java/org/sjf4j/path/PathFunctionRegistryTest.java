@@ -25,15 +25,15 @@ public class PathFunctionRegistryTest {
         assertTrue(functionNames.contains("hi"));
 
         JsonObject jo = JsonObject.fromJson("{\"aa\":\"bb\"}");
-        String hi = JsonPath.compile("$.hi('xixi', 5, \"99\")").eval(jo, String.class);
+        String hi = JsonPath.parse("$.hi('xixi', 5, \"99\")").eval(jo, String.class);
         log.info("hi = {}", hi);
         assertEquals("hi, [J{aa=bb}, xixi, 5, 99]", hi);
 
-        hi = JsonPath.compile("$.hi()").eval(jo, String.class);
+        hi = JsonPath.parse("$.hi()").eval(jo, String.class);
         log.info("hi = {}", hi);
         assertEquals("hi, [J{aa=bb}]", hi);
 
-        assertThrows(Exception.class, () -> JsonPath.compile("$.hi(@.aa)").eval(jo, String.class));
+        assertThrows(Exception.class, () -> JsonPath.parse("$.hi(@.aa)").eval(jo, String.class));
     }
 
 }

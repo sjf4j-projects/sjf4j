@@ -250,7 +250,7 @@ public class NodesTest {
         assertEquals(date, Nodes.to("2026-04-18", LocalDate.class));
 
         JsonPointer pointer = Nodes.to("/items/0/name", JsonPointer.class);
-        assertEquals(JsonPointer.compile("/items/0/name"), pointer);
+        assertEquals(JsonPointer.parse("/items/0/name"), pointer);
 
         assertSame(BooleanSchema.TRUE, Nodes.to(true, BooleanSchema.class));
         assertSame(BooleanSchema.FALSE, Nodes.to(false, BooleanSchema.class));

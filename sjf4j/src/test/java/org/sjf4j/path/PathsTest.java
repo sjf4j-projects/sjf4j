@@ -276,7 +276,7 @@ public class PathsTest {
 
     @Test
     public void testToStringRoundTrip() {
-        // Test that toString() produces valid paths that can be recompiled
+        // Test that toString() produces valid paths that can be parsed again
         testRoundTrip("$.name");
         testRoundTrip("$.users[0].name");
         testRoundTrip("$['first name']");
@@ -333,7 +333,7 @@ public class PathsTest {
         System.out.println("fe=" + fe);
         assertEquals("(@.tags && @.tags.contains('urgent'))", fe.toString());
 
-        JsonPath path = JsonPath.compile("$.babies[*][?@.age > 2].name");
+        JsonPath path = JsonPath.parse("$.babies[*][?@.age > 2].name");
         System.out.println("path=" + path);
     }
 

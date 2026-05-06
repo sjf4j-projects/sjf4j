@@ -22,7 +22,7 @@ import java.util.Objects;
  * These utilities normalize subschema nodes, resolve references, and build the
  * ordered evaluator list executed at validation time.
  */
-public final class CompileUtil {
+public final class SchemaCompilers {
 
 
     /**
@@ -93,7 +93,7 @@ public final class CompileUtil {
             String refAnchor = fragment;
             JsonPointer refPath = null;
             if (fragment == null) refAnchor = "";
-            else if (fragment.startsWith("/")) refPath = JsonPointer.compile(fragment);
+            else if (fragment.startsWith("/")) refPath = JsonPointer.parse(fragment);
 
             evaluators.add(new Evaluator.RefEvaluator(new PathSegment.Name(ps, "$ref"),
                     resourceUri, refPath, refAnchor));
@@ -113,7 +113,7 @@ public final class CompileUtil {
             String refDynamicAnchor = fragment;
             JsonPointer refPath = null;
             if (fragment == null) refDynamicAnchor = "";
-            else if (fragment.startsWith("/")) refPath = JsonPointer.compile(fragment);
+            else if (fragment.startsWith("/")) refPath = JsonPointer.parse(fragment);
             evaluators.add(new Evaluator.DynamicRefEvaluator(new PathSegment.Name(ps, "$dynamicRef"),
                     resourceUri, refPath, refDynamicAnchor));
         }

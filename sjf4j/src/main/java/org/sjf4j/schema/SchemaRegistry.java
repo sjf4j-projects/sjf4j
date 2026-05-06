@@ -203,7 +203,7 @@ public class SchemaRegistry {
             throw new SchemaException("Unsupported local schema uri: " + uri);
         }
         if (schema == null) return null;
-        schema.setRetrievalUri(CompileUtil.withoutFragment(uri));
+        schema.setRetrievalUri(SchemaCompilers.withoutFragment(uri));
         return schema;
     }
 

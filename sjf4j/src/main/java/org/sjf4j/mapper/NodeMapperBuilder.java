@@ -238,8 +238,8 @@ public final class NodeMapperBuilder<S, T> {
         Objects.requireNonNull(path, "path");
         String expr = path.trim();
         if (expr.isEmpty()) throw new JsonException("path is empty");
-        if (expr.startsWith("$") || expr.startsWith("/")) return JsonPath.compile(expr);
-        return JsonPath.compile("$." + expr);
+        if (expr.startsWith("$") || expr.startsWith("/")) return JsonPath.parse(expr);
+        return JsonPath.parse("$." + expr);
     }
 
 
@@ -297,7 +297,7 @@ public final class NodeMapperBuilder<S, T> {
             this.targetPath = targetPath;
             this.computer = computer;
             this.ensure = ensure;
-            this.parentPath = targetPath.isSingle() ? JsonPointer.compile(targetPath.toPointerExpr()).parent() : null;
+            this.parentPath = targetPath.isSingle() ? JsonPointer.parse(targetPath.toPointerExpr()).parent() : null;
         }
 
         @Override

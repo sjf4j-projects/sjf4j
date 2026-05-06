@@ -270,7 +270,7 @@ public final class SchemaValidator {
             found = idSchema.getSchemaByDynamicAnchor(fragment);
         }
         if (found == null && fragment.startsWith("/")) {
-            found = idSchema.getSchemaByPath(JsonPointer.compile(fragment));
+            found = idSchema.getSchemaByPath(JsonPointer.parse(fragment));
         }
         if (found == null) {
             throw new SchemaException("No sub-schema found for fragment '" + fragment + "' in schema '" +
