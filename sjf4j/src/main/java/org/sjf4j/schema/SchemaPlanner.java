@@ -5,7 +5,7 @@ import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.path.Paths;
+import org.sjf4j.path.PathSyntax;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -22,7 +22,7 @@ import java.util.Objects;
  * These utilities normalize subschema nodes, resolve references, and build the
  * ordered evaluator list executed at validation time.
  */
-public final class SchemaCompilers {
+public final class SchemaPlanner {
 
 
     /**
@@ -321,7 +321,7 @@ public final class SchemaCompilers {
         Map<String, JsonSchema> schemaMap = new HashMap<>();
         Nodes.replaceInObject(schemaMapNode, (k, subNode) -> {
             PathSegment ccps = new PathSegment.Name(cps, k);
-            if (subNode == null) throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ccps) +
+            if (subNode == null) throw new SchemaException("Invalid schema at '" + PathSyntax.rootedPointerExpr(ccps) +
                     "': null is not allowed");
             JsonSchema subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
             schemaMap.put(k, subSchema);
@@ -342,14 +342,14 @@ public final class SchemaCompilers {
 
         PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(schemaArrayNode).isArray()) {
-            throw new SchemaException("Schema node at " + Paths.rootedPointerExpr(cps) + " must be a JSON Array");
+            throw new SchemaException("Schema node at " + PathSyntax.rootedPointerExpr(cps) + " must be a JSON Array");
         }
         int size = Nodes.sizeInArray(schemaArrayNode);
         JsonSchema[] schemaArr = new JsonSchema[size];
         for (int i = 0; i < size; i++) {
             Object subNode = Nodes.getInArray(schemaArrayNode, i);
             PathSegment ccps = new PathSegment.Index(cps, i);
-            if (subNode == null) throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ccps) +
+            if (subNode == null) throw new SchemaException("Invalid schema at '" + PathSyntax.rootedPointerExpr(ccps) +
                     "': null is not allowed");
             JsonSchema subSchema = compileSchema(subNode, ccps, idSchema, rootSchema);
             if (subSchema != subNode) Nodes.setInArray(schemaArrayNode, i, subSchema);
@@ -367,7 +367,7 @@ public final class SchemaCompilers {
         PathSegment cps = new PathSegment.Name(ps, key);
         if (subNode == null) {
             if (!schema.containsKey(key)) return null;
-            throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(cps) +
+            throw new SchemaException("Invalid schema at '" + PathSyntax.rootedPointerExpr(cps) +
                     "': null is not allowed");
         }
         JsonSchema subSchema = compileSchema(subNode, cps, idSchema, rootSchema);
@@ -390,7 +390,7 @@ public final class SchemaCompilers {
         JsonType jt = JsonType.of(node);
         switch (jt) {
             case NULL:
-                throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ps) +
+                throw new SchemaException("Invalid schema at '" + PathSyntax.rootedPointerExpr(ps) +
                         "': null is not allowed");
             case BOOLEAN: return BooleanSchema.of(Nodes.toBoolean(node), ps);
             case OBJECT: {
@@ -398,7 +398,7 @@ public final class SchemaCompilers {
                 schema.compile(ps, idSchema, rootSchema);
                 return schema;
             }
-            default: throw new SchemaException("Invalid schema at '" + Paths.rootedPointerExpr(ps) +
+            default: throw new SchemaException("Invalid schema at '" + PathSyntax.rootedPointerExpr(ps) +
                     "': node type is " + jt);
         }
     }
