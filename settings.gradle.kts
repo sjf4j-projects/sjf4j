@@ -1,13 +1,8 @@
 
 rootProject.name = "sjf4j"
 
-include("sjf4j")
-include("sjf4j-jdk17-test")
-
-
 
 /// Proxy: +aliyun
-
 pluginManagement {
     repositories {
         gradlePluginPortal()
@@ -22,3 +17,10 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
+
+include("sjf4j")
+include("sjf4j-jdk17-test")
+include("sjf4j-bytecode")
+
+
