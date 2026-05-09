@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added `FacadeNodes.removeIfInObject(...)` with Jackson 2, Jackson 3, and Gson backend support so native facade object nodes can remove matching properties in place.
+- Added scalar/container-specific `Nodes.WalkTarget` modes so traversal visitors can target objects, arrays, strings, numbers, booleans, nulls, and unknown values without post-filtering.
 
 ### Changed
 - Changed patch merge naming and semantics to distinguish RFC 7386 `mergePatch(...)` from SJF4J `indexedMerge(...)`; indexed array merge now supports sparse index updates with skip-on-null entries and trailing-null tail truncation such as `[null] -> []` and `[1, 2, null] -> [1, 2]`.
@@ -16,10 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the path syntax helper type name from `Paths` to `PathSyntax` to better reflect its parse/format responsibilities and avoid confusion with `java.nio.file.Paths`.
 - Changed the path function registry type name from `PathFunctionRegistry` to `FunctionRegistry` to keep the path API surface shorter after the surrounding path helpers were renamed.
 - Changed the schema helper type name from `CompileUtil` to `SchemaPlanner` to keep compiler/registry naming aligned across schema compilation and validation flows.
+- Changed `JsonObject` object conversion to separate explicit map wrapping from object-view projection: `Nodes.toJsonObject(...)` now returns existing `JsonObject` instances as-is, wraps `Map` inputs, and materializes other object-like sources through `putAll(Object)`.
 
 ### Removed
 - Removed `JsonContainer` convenience overloads for the old merge naming, including `merge(...)`, `mergeWithCopy(...)`, and the single-argument `indexedMerge(...)` / `indexedMergeWithCopy(...)` variants, and removed the instance `JsonContainer.mergePatch(...)` wrapper in favor of explicit `indexedMerge(patch, overwrite, deepCopy)` and static `Patches.mergePatch(target, patch)` entry points.
 - Removed the old path/schema helper type names `Paths`, `PathFunctionRegistry`, and `SchemaCompilers` with no compatibility aliases; use `PathSyntax`, `FunctionRegistry`, and `SchemaPlanner` instead.
+- Removed the mixed-semantics `JsonObject(Object)` constructor plus the `putAll(Map)` / `putAll(JsonObject)` overloads in favor of `new JsonObject(map)` and `putAll(Object)`, and renamed JOJO dynamic-map accessors from `getDynamicMap()` / `setDynamicMap(...)` to `_dynamicMap()` / `_dynamicMap(...)`.
+- Removed `Strings.requireNonEmpty(...)`, both `Strings.truncateMiddle(...)` helpers, and the placeholder `LoggerUtil` type.
 
 ### Fixed
 - Fixed `Nodes.removeIfInObject(...)` to stay property-only: structural POJO fields are preserved, while removable JOJO dynamic entries and facade-backed object properties can still be deleted safely.

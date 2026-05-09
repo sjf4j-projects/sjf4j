@@ -581,7 +581,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 pendingFields[j].invokeSetterIfPresent(pojo, pendingValues[j]);
             }
         }
-        if (pi.isJojo) ((JsonObject) pojo).setDynamicMap(dynamicMap);
+        if (pi.isJojo) ((JsonObject) pojo)._dynamicMap(dynamicMap);
         return pojo;
     }
 

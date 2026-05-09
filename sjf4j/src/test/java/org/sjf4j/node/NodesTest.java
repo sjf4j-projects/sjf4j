@@ -434,7 +434,8 @@ public class NodesTest {
                         "city", "New York",
                         "street", "5th Ave"));
         Person p1 = jo.bindNode(Person.class);
-        JsonObject jo1 = new JsonObject(p1);
+        JsonObject jo1 = new JsonObject();
+        jo1.putAll(p1);
         assertTrue(Nodes.equals(p1,jo1));
         assertTrue(Nodes.equals(jo1, p1));
 

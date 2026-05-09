@@ -64,7 +64,7 @@ and can also be configured explicitly when needed.
   - Provides the same JSON-semantic APIs on in-memory object graphs via OBNT. 
   - Useful even without external data sources (e.g., DB result mapping, complex nested data processing).
 
-Common runtime dependencies (pick one JSON backend as needed):
+Common runtime dependencies (pick as needed):
 
 ```groovy
 // Jackson 3
@@ -303,11 +303,12 @@ among the top-performing Java implementations in
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
-JSON is not only well-defined and widely adopted, but also backed by a comprehensive set of RFCs and related standards.  
-Perhaps it’s time for Java to start treating JSON as a first-class data model.
 
 Contributions are welcome in all forms, including code, documentation, bug reports, examples, benchmarks, 
-and thoughtful feedback. 
+and thoughtful feedback.  
 A good place to start is by [opening an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
+
+JSON is a simple and perhaps the most widely used structured data format today,
+backed by an entire ecosystem of standards, including RFCs.
 
 > *So, what might JSON-oriented development look like in Java?*

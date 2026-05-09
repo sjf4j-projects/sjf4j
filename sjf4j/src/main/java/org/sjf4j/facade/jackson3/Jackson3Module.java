@@ -143,7 +143,7 @@ public interface Jackson3Module {
                 Object value = ctxt.readValue(p, Object.class);
                 if (value == null) return null;
                 if (value instanceof JsonObject) return (T) value;
-                if (value instanceof Map) return (T) new JsonObject(value);
+                if (value instanceof Map) return (T) new JsonObject((Map<String, Object>) value);
                 ctxt.reportInputMismatch(JsonObject.class,
                         "Expected object value for JsonObject, but got %s", value.getClass().getName());
                 return null;

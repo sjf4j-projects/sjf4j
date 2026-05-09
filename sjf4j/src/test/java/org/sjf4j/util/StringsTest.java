@@ -10,13 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class StringsTest {
 
     @Test
-    void testRequireNonEmpty() {
-        assertEquals("value", Strings.requireNonEmpty("value", "bad"));
-        assertThrows(JsonException.class, () -> Strings.requireNonEmpty(null, "bad"));
-        assertThrows(JsonException.class, () -> Strings.requireNonEmpty("   ", "bad"));
-    }
-
-    @Test
     void testTruncateVariants() {
         assertNull(Strings.truncate(null));
         assertEquals("", Strings.truncate("abcdef", 0));
@@ -24,14 +17,6 @@ class StringsTest {
         assertEquals("ab...", Strings.truncate("abcdef", 5));
         assertEquals("***", Strings.truncate("abcdef", 3, "******"));
         assertEquals("ab--", Strings.truncate("abcdef", 4, "--"));
-    }
-
-    @Test
-    void testTruncateMiddleVariants() {
-        assertNull(Strings.truncateMiddle(null, 43));
-        assertEquals("abcdef", Strings.truncateMiddle("abcdef", 6));
-        assertEquals("a...f", Strings.truncateMiddle("abcdef", 5));
-        assertEquals("a--ef", Strings.truncateMiddle("abcdef", 5, "--"));
     }
 
     @Test

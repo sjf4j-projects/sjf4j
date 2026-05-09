@@ -311,7 +311,8 @@ class CoverageApiTest {
         fieldBacked.clear();
         assertEquals(2, fieldBacked.size());
         fieldBacked.put("city", "SG");
-        JsonObject wrapped = new JsonObject(fieldBacked);
+        JsonObject wrapped = new JsonObject();
+        wrapped.putAll(fieldBacked);
         assertEquals("HAN", wrapped.getString("name"));
         fieldBacked.prune();
         assertFalse(fieldBacked.containsKey("city"));

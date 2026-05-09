@@ -1,7 +1,6 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
@@ -61,55 +60,15 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates a JsonObject by wrapping or converting an object-like node.
+     * Creates a JsonObject by wrapping a dynamic backing map.
      * <p>
-     * When the source already uses a compatible object backing, this constructor
-     * shares that backing storage. Otherwise, it projects the source into this
-     * container by copying exposed entries. In practice:
-     * <ul>
-     *     <li>{@link Map} shares as the dynamic backing map</li>
-     *     <li>plain {@link JsonObject} shares its dynamic backing map</li>
-     *     <li>JOJO/POJO inputs are copied by exposed node fields</li>
-     *     <li>facade object nodes are copied by exposed entries</li>
-     *     <li>unsupported object kinds fail fast</li>
-     * </ul>
-     *
-     * <p>This is useful when you want object-style APIs on top of an existing
-     * object node, but only plain {@link JsonObject} preserves a shared dynamic
-     * backing map. Facade object nodes plus JOJO and POJO inputs are reprojected
-     * field by field.
+     * The provided map becomes this object's dynamic storage directly; dynamic
+     * reads and writes are therefore shared with the same map instance. Declared
+     * JOJO fields, when present, still live on the object instance itself.
      */
-    @SuppressWarnings("unchecked")
-    public JsonObject(Object node) {
+    public JsonObject(Map<String, Object> map) {
         this();
-        if (node == null) return;
-        if (node instanceof Map) {
-            this.dynamicMap = (Map<String, Object>) node;
-            return;
-        }
-        if (node instanceof JsonObject) {
-            JsonObject jo = (JsonObject) node;
-            if (jo.getClass() == JsonObject.class) {
-                this.dynamicMap = jo.dynamicMap;
-                return;
-            }
-            putAll(jo);
-            return;
-        }
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-        if (pi != null && !pi.isJajo) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                Object v = entry.getValue().invokeGetter(node);
-                put(entry.getKey(), v);
-            }
-            return;
-        }
-        if (FacadeNodes.isNode(node)) {
-            putAll(FacadeNodes.toMap(node));
-            return;
-        }
-        throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
-                "' into JsonObject. Supported types are: Map, JsonObject, JOJO, POJO, or facade object node.");
+        this.dynamicMap = map;
     }
 
     /**
@@ -133,14 +92,14 @@ public class JsonObject extends JsonContainer {
 
     /// Dynamic
 
-    public Map<String, Object> getDynamicMap() {
+    public Map<String, Object> _dynamicMap() {
         return this.dynamicMap;
     }
 
     /**
      * Replaces the dynamic map backing this object.
      */
-    public void setDynamicMap(Map<String, Object> map) {
+    public void _dynamicMap(Map<String, Object> map) {
         this.dynamicMap = map;
     }
 
@@ -874,7 +833,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toMap(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Map<String," + clazz.getName() + ">", e);
+            throw new JsonException("get failed: key '" + key + "' to Map<String," + clazz.getName() + ">", e);
         }
     }
 
@@ -910,7 +869,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toList(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to List<" + clazz.getName() + ">", e);
+            throw new JsonException("get failed: key '" + key + "' to List<" + clazz.getName() + ">", e);
         }
     }
 
@@ -934,7 +893,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toArray(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to " + clazz.getName() + "[]", e);
+            throw new JsonException("get failed: key '" + key + "' to " + clazz.getName() + "[]", e);
         }
     }
 
@@ -1057,21 +1016,16 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Puts all entries from the provided map.
+     * Copies all readable object entries from the given node.
+     * <p>
+     * Supported inputs follow {@link Nodes#forEachObject(Object, BiConsumer)}:
+     * {@link Map}, {@link JsonObject}, JOJO/POJO, and facade object nodes.
+     * Values are transferred through {@link #put(String, Object)} without deep
+     * recursion, so nested child nodes may still be shared with the source.
      */
-    public void putAll(Map<String, Object> map) {
-        if (map == null) return;
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            put(entry.getKey(), entry.getValue());
-        }
-    }
-
-    /**
-     * Puts all entries from another JsonObject.
-     */
-    public void putAll(JsonObject jo) {
-        if (jo == null) return;
-        jo.forEach(this::put);
+    public void putAll(Object node) {
+        if (node == null) return;
+        Nodes.forEachObject(node, this::put);
     }
 
     /**

@@ -320,11 +320,20 @@ public final class Nodes {
 
     /**
      * Converts a node to JsonObject.
+     * <p>
+     * Existing {@link JsonObject} instances are returned as-is. {@link Map}
+     * inputs are wrapped as the dynamic backing map. Other object-like sources
+     * are materialized into a new {@link JsonObject} by copying their readable
+     * entries.
      */
+    @SuppressWarnings("unchecked")
     public static JsonObject toJsonObject(Object node) {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
-        return new JsonObject(node);
+        if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
+        JsonObject jo = new JsonObject();
+        jo.putAll(node);
+        return jo;
     }
 
     /**
@@ -1864,7 +1873,7 @@ public final class Nodes {
     /** Traversal order relative to child nodes. */
     public enum WalkOrder { TOP_DOWN, BOTTOM_UP }
     /** Node selection mode for visitor callbacks. */
-    public enum WalkTarget { ANY, CONTAINER, VALUE }
+    public enum WalkTarget { ANY, CONTAINER, OBJECT, ARRAY, VALUE, STRING, NUMBER, BOOLEAN, NULL, UNKNOWN }
 
     /**
      * Walks the node tree in top-down order and visits both containers and values.
@@ -1890,42 +1899,61 @@ public final class Nodes {
         _walk(container, PathSegment.Root.INSTANCE, visitor, target, order, maxDepth);
     }
 
-    private static void _walk(Object container, PathSegment path,
+    private static void _walk(Object node, PathSegment path,
                               BiFunction<PathSegment, Object, Boolean> visitor,
                               WalkTarget target, WalkOrder order, int remainingDepth) {
         if (remainingDepth == 0) return;
 
-        JsonType jt = JsonType.of(container);
+        JsonType jt = JsonType.of(node);
         if (jt.isObject()) {
-            if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                if (!visitor.apply(path, container)) return;
+            if (order == WalkOrder.TOP_DOWN &&
+                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.OBJECT)) {
+                if (!visitor.apply(path, node)) return;
             }
 
-            Nodes.forEachObject(container, (key, node) -> {
+            Nodes.forEachObject(node, (key, subNode) -> {
                 PathSegment childPath = new PathSegment.Name(path, key);
-                _walk(node, childPath, visitor, target, order, remainingDepth - 1);
+                _walk(subNode, childPath, visitor, target, order, remainingDepth - 1);
             });
-            if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                visitor.apply(path, container);
+            if (order == WalkOrder.BOTTOM_UP &&
+                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.OBJECT)) {
+                visitor.apply(path, node);
             }
         } else if (jt.isArray()) {
-            if (order == WalkOrder.TOP_DOWN && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                if (!visitor.apply(path, container)) return;
+            if (order == WalkOrder.TOP_DOWN &&
+                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.ARRAY)) {
+                if (!visitor.apply(path, node)) return;
             }
 
-            Nodes.forEachArray(container, (idx, node) -> {
+            Nodes.forEachArray(node, (idx, subNode) -> {
                 PathSegment childPath = new PathSegment.Index(path, idx);
-                _walk(node, childPath, visitor, target, order, remainingDepth - 1);
+                _walk(subNode, childPath, visitor, target, order, remainingDepth - 1);
             });
-            if (order == WalkOrder.BOTTOM_UP && (target == WalkTarget.CONTAINER || target == WalkTarget.ANY)) {
-                visitor.apply(path, container);
+            if (order == WalkOrder.BOTTOM_UP &&
+                    (target == WalkTarget.ANY || target == WalkTarget.CONTAINER || target == WalkTarget.ARRAY)) {
+                visitor.apply(path, node);
             }
-        } else {
-            if (target == WalkTarget.VALUE || target == WalkTarget.ANY) {
-                visitor.apply(path, container);
+        } else if (jt.isString()) {
+            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.STRING ) {
+                visitor.apply(path, node);
+            }
+        } else if (jt.isNumber()) {
+            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.NUMBER ) {
+                visitor.apply(path, node);
+            }
+        } else if (jt.isBoolean()) {
+            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.BOOLEAN ) {
+                visitor.apply(path, node);
+            }
+        } else if (jt.isNull()) {
+            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.NULL ) {
+                visitor.apply(path, node);
+            }
+        } else if (jt.isUnknown()) {
+            if (target == WalkTarget.ANY || target == WalkTarget.VALUE || target == WalkTarget.UNKNOWN ) {
+                visitor.apply(path, node);
             }
         }
-
     }
 
 }

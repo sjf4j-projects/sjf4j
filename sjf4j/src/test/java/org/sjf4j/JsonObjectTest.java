@@ -10,6 +10,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
+import org.sjf4j.node.Nodes;
 
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -262,13 +263,15 @@ class JsonObjectTest {
         ObjectNode jacksonObject = mapper.createObjectNode();
         jacksonObject.put("name", "han");
         jacksonObject.put("age", 18);
-        JsonObject wrappedJackson = new JsonObject(jacksonObject);
+        JsonObject wrappedJackson = new JsonObject();
+        wrappedJackson.putAll(jacksonObject);
         jacksonObject.put("name", "li");
         assertEquals("han", wrappedJackson.getString("name"));
         assertEquals(18, wrappedJackson.getInt("age"));
 
         com.google.gson.JsonObject gsonObject = JsonParser.parseString("{\"name\":\"han\",\"age\":18}").getAsJsonObject();
-        JsonObject wrappedGson = new JsonObject(gsonObject);
+        JsonObject wrappedGson = new JsonObject();
+        wrappedGson.putAll(gsonObject);
         gsonObject.addProperty("name", "li");
         assertEquals("han", wrappedGson.getString("name"));
         assertEquals(18, wrappedGson.getInt("age"));
@@ -276,14 +279,15 @@ class JsonObjectTest {
 
     public void testWrapSemantics() {
         JsonObject src = JsonObject.of("a", 1);
-        JsonObject wrapped = new JsonObject(src);
+        JsonObject wrapped = Nodes.toJsonObject(src);
         src.put("b", 2);
         assertEquals(2, wrapped.getInt("b"));
 
         WrapJojo jojo = new WrapJojo();
         jojo.name = "han";
         jojo.put("x", 1);
-        JsonObject copied = new JsonObject(jojo);
+        JsonObject copied = new JsonObject();
+        copied.putAll(jojo);
         jojo.name = "li";
         jojo.put("x", 2);
         assertEquals("han", copied.getString("name"));
@@ -716,7 +720,8 @@ class JsonObjectTest {
         assertEquals(jo, sameReadable);
         assertEquals(jo.hashCode(), sameReadable.hashCode());
 
-        JsonObject copied = new JsonObject(jo);
+        JsonObject copied = new JsonObject();
+        copied.putAll(jo);
         assertEquals(3, copied.size());
         assertFalse(copied.containsKey("writeOnly"));
         assertEquals("rw", copied.getString("readWrite"));

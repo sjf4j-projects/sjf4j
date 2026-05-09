@@ -266,7 +266,7 @@ public final class StreamingIO {
             }
             reader.endObject();
             if (pi.isJojo) {
-                ((JsonObject) pojo).setDynamicMap(dynamicMap);
+                ((JsonObject) pojo)._dynamicMap(dynamicMap);
             }
             return pojo;
         }
@@ -776,7 +776,7 @@ public final class StreamingIO {
             }
         }
         if (pi.isJojo && pi.writeDynamic) {
-            Map<String, Object> dynamicMap = ((JsonObject) node).getDynamicMap();
+            Map<String, Object> dynamicMap = ((JsonObject) node)._dynamicMap();
             if (dynamicMap != null) {
                 for (Map.Entry<String, Object> entry : dynamicMap.entrySet()) {
                     Object value = entry.getValue();
