@@ -92,12 +92,18 @@ public class JsonObject extends JsonContainer {
 
     /// Dynamic
 
+    /**
+     * Internal JOJO hook for framework integrations.
+     * <p>
+     * This exposes the live dynamic-property backing map directly and is not a
+     * general-purpose copy or view API.
+     */
     public Map<String, Object> _dynamicMap() {
         return this.dynamicMap;
     }
 
     /**
-     * Replaces the dynamic map backing this object.
+     * Internal JOJO hook that replaces the dynamic-property backing map.
      */
     public void _dynamicMap(Map<String, Object> map) {
         this.dynamicMap = map;
@@ -415,7 +421,12 @@ public class JsonObject extends JsonContainer {
     /// Node Facade
 
     /**
-     * Converts a node into a JsonObject.
+     * Converts a node into a detached JsonObject.
+     * <p>
+     * This routes through {@link Sjf4j#fromNode(Object, Class)} and does not
+     * preserve source-container aliasing. Use {@link Nodes#toJsonObject(Object)}
+     * when you want target-representation conversion that may reuse an existing
+     * {@link JsonObject} or wrap a backing {@link Map}.
      */
     public static JsonObject fromNode(Object node) {
         return Sjf4j.global().fromNode(node, JsonObject.class);

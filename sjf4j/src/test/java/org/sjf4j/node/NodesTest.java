@@ -180,7 +180,7 @@ public class NodesTest {
 
     @Test
     public void testToJsonArray() {
-        JsonArray ja = new JsonArray(new int[]{1, 2, 3});
+        JsonArray ja = Nodes.toJsonArray(new int[]{1, 2, 3});
         assertEquals(ja, Nodes.toJsonArray(ja));
         assertNull(Nodes.toJsonArray(null));
         
@@ -191,7 +191,7 @@ public class NodesTest {
 
     @Test
     public void testToJsonArray2() {
-        JsonArray ja = new JsonArray(new int[]{1, 2, 3});
+        JsonArray ja = Nodes.toJsonArray(new int[]{1, 2, 3});
         assertEquals(ja, Nodes.toJsonArray(ja));
         
         List<Object> list = new ArrayList<>();

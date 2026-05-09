@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.Nodes;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -139,17 +140,17 @@ class JsonArrayTest {
         JsonArray ja = JsonArray.of("gaga", "haha", JsonArray.of("jiji", "kaka"));
         assertEquals("[\"gaga\",\"haha\",[\"jiji\",\"kaka\"]]", ja.toJson());
 
-        assertEquals(JsonArray.of(1, 2, 3), new JsonArray(new int[]{1, 2, 3}));
+        assertEquals(JsonArray.of(1, 2, 3), Nodes.toJsonArray(new int[]{1, 2, 3}));
     }
 
     public void testWrapSemantics() {
         JsonArray src = JsonArray.of(1, 2);
-        JsonArray wrapped = new JsonArray(src);
+        JsonArray wrapped = Nodes.toJsonArray(src);
         src.add(3);
         assertEquals(3, wrapped.size());
 
         int[] ints = new int[]{1, 2};
-        JsonArray copied = new JsonArray(ints);
+        JsonArray copied = Nodes.toJsonArray(ints);
         ints[0] = 9;
         assertEquals(1, copied.getInt(0));
     }
@@ -175,7 +176,7 @@ class JsonArrayTest {
 
     public void testArray2() {
         int[] ii = {1,2,3};
-        JsonArray ja1 = new JsonArray(ii);
+        JsonArray ja1 = Nodes.toJsonArray(ii);
         System.out.println("ja1: " + ja1);
         assertEquals(3, ja1.size());
         assertEquals(3, ja1.getInt(2));

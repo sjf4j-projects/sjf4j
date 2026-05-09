@@ -338,6 +338,10 @@ public final class Nodes {
 
     /**
      * Converts a node to Map with Object values.
+     * <p>
+     * Existing {@link Map} instances are returned as-is. {@link JsonObject}
+     * and other object-like sources are projected into a new map by readable
+     * entries.
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toMap(Object node) {
@@ -381,15 +385,28 @@ public final class Nodes {
 
     /**
      * Converts a node to JsonArray.
+     * <p>
+     * Existing {@link JsonArray} instances are returned as-is. {@link List}
+     * inputs are wrapped as the backing list. Other array-like sources are
+     * materialized into a new {@link JsonArray} by copying their readable
+     * elements.
      */
+    @SuppressWarnings("unchecked")
     public static JsonArray toJsonArray(Object node) {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
-        return new JsonArray(node);
+        if (node instanceof List) return new JsonArray((List<Object>) node);
+        JsonArray ja = new JsonArray();
+        ja.addAll(node);
+        return ja;
     }
 
     /**
      * Converts a node to List with Object values.
+     * <p>
+     * Existing {@link List} instances are returned as-is. {@link JsonArray}
+     * and other array-like sources are projected into a new list by readable
+     * element order.
      */
     @SuppressWarnings("unchecked")
     public static List<Object> toList(Object node) {

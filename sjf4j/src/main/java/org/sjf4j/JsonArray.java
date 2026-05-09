@@ -1,7 +1,6 @@
 package org.sjf4j;
 
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.Nodes;
 
@@ -59,46 +58,15 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Creates a JsonArray by wrapping or converting an array-like node.
+     * Creates a JsonArray by wrapping a backing list.
      * <p>
-     * When the source already uses a compatible list backing, this constructor
-     * shares that backing storage. Otherwise, it converts the source into a new
-     * list. In practice:
-     * <ul>
-     *     <li>{@link List} and {@link JsonArray} share when possible</li>
-     *     <li>Java arrays and {@link Set} inputs are copied</li>
-     *     <li>facade array nodes are copied by exposed entries</li>
-     * </ul>
+     * The provided list becomes this array's storage directly, so element reads
+     * and writes are shared with the same list instance.
      */
     @SuppressWarnings("unchecked")
-    public JsonArray(Object node) {
+    public JsonArray(List<?> nodeList) {
         this();
-        if (node == null) return;
-        if (node instanceof List) {
-            setNodeList((List<Object>) node);
-            return;
-        }
-        if (node instanceof JsonArray) {
-            setNodeList(((JsonArray) node).nodeList);
-            return;
-        }
-        if (node.getClass().isArray()) {
-            int len = Array.getLength(node);
-            List<Object> list = new ArrayList<>(len);
-            for (int i = 0; i < len; i++) list.add(Array.get(node, i));
-            setNodeList(list);
-            return;
-        }
-        if (node instanceof Set) {
-            setNodeList(new ArrayList<>((Set<Object>) node));
-            return;
-        }
-        if (FacadeNodes.isNode(node)) {
-            setNodeList(FacadeNodes.toList(node));
-            return;
-        }
-        throw new JsonException("Cannot wrap value of type '" + node.getClass().getName() +
-                "' into JsonArray. Supported types are: List, JsonArray, Array, Set, or facade array node.");
+        setNodeList((List<Object>) nodeList);
     }
 
 
@@ -306,7 +274,12 @@ public class JsonArray extends JsonContainer {
     /// Node Facade
 
     /**
-     * Converts a node into a JsonArray.
+     * Converts a node into a detached JsonArray.
+     * <p>
+     * This routes through {@link Sjf4j#fromNode(Object, Class)} and does not
+     * preserve source-container aliasing. Use {@link Nodes#toJsonArray(Object)}
+     * when you want target-representation conversion that may reuse an existing
+     * {@link JsonArray} or wrap a backing {@link List}.
      */
     public static JsonArray fromNode(Object node) {
         return Sjf4j.global().fromNode(node, JsonArray.class);
@@ -902,85 +875,18 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Appends all values, flattening direct Java array arguments one level.
+     * Copies all elements from the given array-like node.
+     * <p>
+     * Supported inputs follow {@link Nodes#forEachArray(Object, BiConsumer)}:
+     * {@link List}, {@link JsonArray}, Java arrays, {@link Set}, and facade
+     * array nodes. Values are appended through {@link #add(Object)} without deep
+     * recursion, so nested child nodes may still be shared with the source.
      */
-    public void addAll(Object... values) {
-        for (Object v : values) {
-            if (v != null && v.getClass().isArray()) {
-                int len = Array.getLength(v);
-                for (int i = 0; i < len; i++) {
-                    add(Array.get(v, i));
-                }
-            } else {
-                add(v);
-            }
-        }
+    public void addAll(Object node) {
+        if (node == null) return;
+        Nodes.forEachArray(node, (i, value) -> add(value));
     }
 
-    /**
-     * Appends all short values.
-     */
-    public void addAll(short... values) {
-        for (short v : values) { add(v); }
-    }
-
-    /**
-     * Appends all int values.
-     */
-    public void addAll(int... values) {
-        for (int v : values) { add(v); }
-    }
-
-    /**
-     * Appends all long values.
-     */
-    public void addAll(long... values) {
-        for (long v : values) { add(v); }
-    }
-
-    /**
-     * Appends all float values.
-     */
-    public void addAll(float... values) {
-        for (float v : values) { add(v); }
-    }
-
-    /**
-     * Appends all double values.
-     */
-    public void addAll(double... values) {
-        for (double v : values) { add(v); }
-    }
-
-    /**
-     * Appends all char values.
-     */
-    public void addAll(char... values) {
-        for (char v : values) { add(v); }
-    }
-
-    /**
-     * Appends all boolean values.
-     */
-    public void addAll(boolean... values) {
-        for (boolean v : values) { add(v); }
-    }
-
-    /**
-     * Appends all values from a collection.
-     */
-    public void addAll(Collection<?> values) {
-        for (Object v : values) { add(v); }
-    }
-
-    /**
-     * Appends all values from another JsonArray.
-     */
-    public void addAll(JsonArray jsonArray) {
-        for (int i=0; i < jsonArray.size(); i++) {
-            add(jsonArray.getNode(i));
-        }
-    }
 
     /**
      * Removes the element at the given index.

@@ -43,7 +43,7 @@ class CoverageApiTest {
         }
 
         TypedIntegerArray(Object node) {
-            super(node);
+            addAll(node);
         }
 
         @Override

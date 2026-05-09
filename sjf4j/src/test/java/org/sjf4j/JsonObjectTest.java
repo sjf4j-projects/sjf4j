@@ -217,7 +217,7 @@ class JsonObjectTest {
     }
 
     public void testOfFactory() {
-        JsonObject jo = JsonObject.of("a", 1, "b", true, "c", new JsonArray(new int[]{1, 2}));
+        JsonObject jo = JsonObject.of("a", 1, "b", true, "c", Nodes.toJsonArray(new int[]{1, 2}));
         assertEquals("{\"a\":1,\"b\":true,\"c\":[1,2]}", jo.toJson());
 
         assertThrows(JsonException.class, () -> JsonObject.of("a", 1, "b"));
