@@ -3,7 +3,6 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Nodes;
-import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.node.Numbers;
 
@@ -39,43 +38,26 @@ public interface Evaluator {
 
     // $ref
     final class RefEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final URI uri;
-        private final JsonPointer refPath;
-        private final String anchor;
+        final PathSegment keywordPs;
+        final URI idUri;
+        final String ref;
+        SchemaPlan plan;
+
         /**
          * Creates evaluator for $ref target.
          */
-        public RefEvaluator(PathSegment keywordPs, URI uri, JsonPointer refPath, String anchor) {
+        public RefEvaluator(PathSegment keywordPs, URI idUri, String ref) {
             this.keywordPs = keywordPs;
-            this.uri = uri;
-            this.refPath = refPath;
-            this.anchor = anchor;
+            this.idUri = idUri;
+            this.ref = ref;
+
         }
-        /**
-         * Resolves $ref and delegates evaluation to the referenced schema.
-         */
+
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (refPath != null) {
-                JsonSchema schema = ctx.getSchemaByPath(uri, refPath);
-                if (schema != null) {
-                    return schema.evaluate(instance, ps, ctx);
-                }
-                ctx.addWarn(ps, keywordPs, "$ref", "Not found schema by path '" + refPath + "' in URI " + uri);
-            }
-            if (anchor != null) { // Always true
-                ObjectSchema schema = ctx.getSchemaByAnchor(uri, anchor);
-                if (schema == null) {
-                    if (anchor.isEmpty()) {
-                        ctx.addError(instance, ps, keywordPs, "$ref", "Not found schema at URI " + uri);
-                    } else {
-                        ctx.addError(instance, ps, keywordPs, "$ref", "Not found anchor '" + anchor + "' in URI " + uri);
-                    }
-                    return false;
-                }
-                if (instance.isRecursiveRef(schema)) return true;
-                return schema.evaluate(instance, ps, ctx);
+            if (plan != null) {
+                instance.checkCyclicRef(plan, keywordPs);
+                return plan.evaluate(instance, ps, ctx);
             }
             throw new AssertionError(RefEvaluator.class);
         }
@@ -83,59 +65,43 @@ public interface Evaluator {
 
     // $dynamicRef
     final class DynamicRefEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final URI uri;
-        private final JsonPointer refPath;
-        private final String dynamicAnchor;
-        /**
-         * Creates evaluator for $dynamicRef target.
-         */
-        public DynamicRefEvaluator(PathSegment keywordPs, URI uri, JsonPointer refPath, String dynamicAnchor) {
-            this.keywordPs = keywordPs;
-            this.uri = uri;
-            this.refPath = refPath;
-            this.dynamicAnchor = dynamicAnchor;
-        }
+        final PathSegment keywordPs;
+        final String dynamicRef;
 
         /**
-         * Resolves $dynamicRef using dynamic anchors or fallback path.
+         * Creates evaluator for $ref target.
          */
+        public DynamicRefEvaluator(PathSegment keywordPs, String dynamicRef) {
+            this.keywordPs = keywordPs;
+            if (!dynamicRef.startsWith("#")) {
+                throw new SchemaException("$dynamicRef must start with '#'");
+            }
+            this.dynamicRef = dynamicRef.substring(1);
+        }
+
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            JsonSchema schema = ctx.getSchemaByDynamicAnchor(uri, dynamicAnchor);
-            if (schema == null) {
-                if (refPath != null) {
-                    schema = ctx.getSchemaByPath(uri, refPath);
-                    if (schema != null) {
-                        return schema.evaluate(instance, ps, ctx);
-                    }
-                    ctx.addWarn(ps, keywordPs, "$dynamicRef",
-                            "Not found schema by path '" + refPath + "' in URI " + uri);
-                }
-                schema = ctx.getSchemaByAnchor(uri, dynamicAnchor);
-                if (schema == null) {
-                    if (dynamicAnchor.isEmpty()) {
-                        ctx.addError(instance, ps, keywordPs, "$dynamicRef", "Not found schema at URI " + uri);
-                        return false;
-                    } else {
-                        ctx.addError(instance, ps, keywordPs, "$dynamicRef",
-                                "Not found anchor '" + dynamicAnchor + "' in URI " + uri);
-                        return false;
-                    }
+            Iterator<SchemaPlan> it = ctx.planStack.descendingIterator();
+            while (it.hasNext()) {
+                SchemaPlan plan = it.next();
+                if (dynamicRef.equals(plan.dynamicAnchor)) {
+                    instance.checkCyclicRef(plan, keywordPs);
+                    return plan.evaluate(instance, ps, ctx);
                 }
             }
-            if (instance.isRecursiveRef(schema)) return true;
-            return schema.evaluate(instance, ps, ctx);
+            throw new SchemaException("Not found dynamicAnchor '" + dynamicRef+
+                    "' (" + keywordPs.rootedPointerExpr() + ")");
         }
     }
 
+
     // type
     final class TypeEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final String type;
-        private final JsonType jsonType;
-        private final String[] types;
-        private final JsonType[] jsonTypes;
+        final PathSegment keywordPs;
+        final String type;
+        final JsonType jsonType;
+        final String[] types;
+        final JsonType[] jsonTypes;
 
         /**
          * Creates evaluator for type keyword value.
@@ -166,7 +132,7 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (jsonType != null) {
-                if (!matches(jsonType, instance)) {
+                if (!_matches(jsonType, instance)) {
                     ctx.addError(instance, ps, keywordPs, "type", "Expected type " + type +
                             ", but was " + instance.jsonType);
                     return false;
@@ -175,7 +141,7 @@ public interface Evaluator {
             }
             if (jsonTypes != null) {
                 for (JsonType expected : jsonTypes) {
-                    if (matches(expected, instance)) {
+                    if (_matches(expected, instance)) {
                         return true;
                     }
                 }
@@ -186,7 +152,7 @@ public interface Evaluator {
             return true;
         }
 
-        private boolean matches(JsonType expected, InstancedNode instance) {
+        private boolean _matches(JsonType expected, InstancedNode instance) {
             JsonType jt = instance.jsonType;
             if (expected != jt) {
                 // JSON Schema compatibility: integer ⊂ number
@@ -203,8 +169,9 @@ public interface Evaluator {
 
     // const
     final class ConstEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final Object constValue;
+        final PathSegment keywordPs;
+        final Object constValue;
+        
         /**
          * Creates evaluator for const keyword.
          */
@@ -229,8 +196,8 @@ public interface Evaluator {
 
     // enum
     final class EnumEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final Object[] enumValues;
+        final PathSegment keywordPs;
+        final Object[] enumValues;
         /**
          * Creates evaluator for enum keyword values.
          */
@@ -255,18 +222,18 @@ public interface Evaluator {
 
     // minimum / maximum / exclusiveMinimum / exclusiveMaximum
     final class NumberEvaluator implements Evaluator {
-        private final PathSegment minimumKeywordPs;
-        private final PathSegment maximumKeywordPs;
-        private final PathSegment exclusiveMinimumKeywordPs;
-        private final PathSegment exclusiveMaximumKeywordPs;
-        private final boolean hasMinimum;
-        private final double minimum;
-        private final boolean hasMaximum;
-        private final double maximum;
-        private final boolean hasExclusiveMinimum;
-        private final double exclusiveMinimum;
-        private final boolean hasExclusiveMaximum;
-        private final double exclusiveMaximum;
+        final PathSegment minimumKeywordPs;
+        final PathSegment maximumKeywordPs;
+        final PathSegment exclusiveMinimumKeywordPs;
+        final PathSegment exclusiveMaximumKeywordPs;
+        final boolean hasMinimum;
+        final double minimum;
+        final boolean hasMaximum;
+        final double maximum;
+        final boolean hasExclusiveMinimum;
+        final double exclusiveMinimum;
+        final boolean hasExclusiveMaximum;
+        final double exclusiveMaximum;
         public NumberEvaluator(PathSegment minimumKeywordPs, PathSegment maximumKeywordPs,
                                PathSegment exclusiveMinimumKeywordPs, PathSegment exclusiveMaximumKeywordPs,
                                Number minimum, Number maximum,
@@ -316,12 +283,12 @@ public interface Evaluator {
 
     // multipleOf
     final class MultipleOfEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final Number multipleOf;
-        private final BigDecimal divisor;
-        private final boolean isIntegerDivisor;
-        private final long divisorLong;
-        private final double divisorDouble;
+        final PathSegment keywordPs;
+        final Number multipleOf;
+        final BigDecimal divisor;
+        final boolean isIntegerDivisor;
+        final long divisorLong;
+        final double divisorDouble;
         /**
          * Creates evaluator for multipleOf divisor.
          */
@@ -372,10 +339,10 @@ public interface Evaluator {
 
     // minLength / maxLength
     final class StringEvaluator implements Evaluator {
-        private final PathSegment minLengthKeywordPs;
-        private final PathSegment maxLengthKeywordPs;
-        private final Integer minLength;
-        private final Integer maxLength;
+        final PathSegment minLengthKeywordPs;
+        final PathSegment maxLengthKeywordPs;
+        final Integer minLength;
+        final Integer maxLength;
         /**
          * Creates evaluator for string length constraints.
          */
@@ -394,7 +361,7 @@ public interface Evaluator {
             if (instance.jsonType != JsonType.STRING) return true;
 
             String actual = Nodes.toString(instance.node);
-            int length = EvaluateUtil.stringIcuLength(actual);
+            int length = SchemaUtil.stringIcuLength(actual);
             if (minLength != null && length < minLength) {
                 ctx.addError(instance, ps, minLengthKeywordPs, "minLength", "String length must >= " + minLength);
                 return false;
@@ -409,16 +376,16 @@ public interface Evaluator {
 
     // pattern
     final class PatternEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final String pattern;
-        private final Pattern pn;
+        final PathSegment keywordPs;
+        final String pattern;
+        final Pattern pn;
         /**
          * Creates evaluator for pattern keyword.
          */
         public PatternEvaluator(PathSegment keywordPs, String pattern) {
             this.keywordPs = keywordPs;
             this.pattern = Objects.requireNonNull(pattern);
-            this.pn = EvaluateUtil.compileRegexPattern(pattern, "pattern");
+            this.pn = SchemaUtil.compileRegexPattern(pattern, "pattern");
         }
 
         /**
@@ -439,9 +406,9 @@ public interface Evaluator {
 
     // format
     final class FormatEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final String format;
-        private final FormatValidator formatValidator;
+        final PathSegment keywordPs;
+        final String format;
+        final FormatValidator formatValidator;
         /**
          * Creates evaluator for format keyword.
          */
@@ -470,10 +437,10 @@ public interface Evaluator {
 
     // minProperties / maxProperties
     final class ObjectEvaluator implements Evaluator {
-        private final PathSegment minPropertiesKeywordPs;
-        private final PathSegment maxPropertiesKeywordPs;
-        private final Integer minProperties;
-        private final Integer maxProperties;
+        final PathSegment minPropertiesKeywordPs;
+        final PathSegment maxPropertiesKeywordPs;
+        final Integer minProperties;
+        final Integer maxProperties;
         /**
          * Creates evaluator for object size constraints.
          */
@@ -510,28 +477,28 @@ public interface Evaluator {
 
     // properties / patternProperties / additionalProperties
     final class PropertiesEvaluator implements Evaluator {
-        private final Map<String, JsonSchema> properties;
-        private final Pattern[] patternPns;
-        private final JsonSchema[] patternSchemas;
-        private final JsonSchema additionalPropertiesSchema;
-        public PropertiesEvaluator(Map<String, JsonSchema> properties,
-                                   Map<String, JsonSchema> patternProperties,
-                                   JsonSchema additionalPropertiesSchema) {
+        final Map<String, SchemaPlan> properties;
+        final Pattern[] patterns;
+        final SchemaPlan[] patternPlans;
+        final SchemaPlan additionalPropertiesPlan;
+        public PropertiesEvaluator(Map<String, SchemaPlan> properties,
+                                   Map<String, SchemaPlan> patternProperties,
+                                   SchemaPlan additionalPropertiesPlan) {
             this.properties = properties;
             if (patternProperties != null) {
-                this.patternPns = new Pattern[patternProperties.size()];
-                this.patternSchemas = new JsonSchema[patternProperties.size()];
+                this.patterns = new Pattern[patternProperties.size()];
+                this.patternPlans = new SchemaPlan[patternProperties.size()];
                 int i = 0;
-                for (Map.Entry<String, JsonSchema> entry : patternProperties.entrySet()) {
-                    this.patternPns[i] = EvaluateUtil.compileRegexPattern(entry.getKey(), "patternProperties");
-                    this.patternSchemas[i] = entry.getValue();
+                for (Map.Entry<String, SchemaPlan> entry : patternProperties.entrySet()) {
+                    this.patterns[i] = SchemaUtil.compileRegexPattern(entry.getKey(), "patternProperties");
+                    this.patternPlans[i] = entry.getValue();
                     i++;
                 }
             } else {
-                this.patternPns = null;
-                this.patternSchemas = null;
+                this.patterns = null;
+                this.patternPlans = null;
             }
-            this.additionalPropertiesSchema = additionalPropertiesSchema;
+            this.additionalPropertiesPlan = additionalPropertiesPlan;
         }
 
         /**
@@ -552,11 +519,11 @@ public interface Evaluator {
                 Object value = entry.getValue();
                 boolean matched = false;
                 if (properties != null) {
-                    JsonSchema subSchema = properties.get(key);
-                    if (subSchema != null) {
+                    SchemaPlan plan = properties.get(key);
+                    if (plan != null) {
                         InstancedNode subInstance = instance.inferSubByKey(key, value);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = subSchema.evaluate(subInstance, cps, ctx);
+                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
                         if (ctx.shouldAbort()) return result;
@@ -564,14 +531,14 @@ public interface Evaluator {
                     }
                 }
 
-                if (patternPns != null) {
-                    for (int i = 0; i < patternPns.length; i++) {
-                        if (patternPns[i].matcher(key).find()) {
-                            JsonSchema subSchema = patternSchemas[i];
-                            if (subSchema != null) {
+                if (patterns != null) {
+                    for (int i = 0; i < patterns.length; i++) {
+                        if (patterns[i].matcher(key).find()) {
+                            SchemaPlan plan = patternPlans[i];
+                            if (plan != null) {
                                 InstancedNode subInstance = instance.inferSubByKey(key, value);
                                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                                boolean subResult = subSchema.evaluate(subInstance, cps, ctx);
+                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
                                 result = result && subResult;
                                 if (ctx.shouldAbort()) return result;
@@ -581,10 +548,10 @@ public interface Evaluator {
                     }
                 }
 
-                if (additionalPropertiesSchema != null && !matched) {
+                if (additionalPropertiesPlan != null && !matched) {
                     InstancedNode subInstance = instance.inferSubByKey(key, value);
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                    boolean subResult = additionalPropertiesSchema.evaluate(subInstance, cps, ctx);
+                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
                     result = result && subResult;
                     if (ctx.shouldAbort()) return result;
@@ -597,10 +564,10 @@ public interface Evaluator {
 
     // required / dependentRequired
     final class RequiredEvaluator implements Evaluator {
-        private final PathSegment requiredKeywordPs;
-        private final PathSegment dependentRequiredKeywordPs;
-        private final String[] required;
-        private final Map<String, String[]> dependentRequired;
+        final PathSegment requiredKeywordPs;
+        final PathSegment dependentRequiredKeywordPs;
+        final String[] required;
+        final Map<String, String[]> dependentRequired;
         /**
          * Creates evaluator for required/dependentRequired.
          */
@@ -654,12 +621,12 @@ public interface Evaluator {
 
     // dependentSchemas
     final class DependentSchemasEvaluator implements Evaluator {
-        private final Map<String, JsonSchema> dependentSchemas;
+        final Map<String, SchemaPlan> dependentPlans;
         /**
          * Creates evaluator for dependentSchemas.
          */
-        public DependentSchemasEvaluator(Map<String, JsonSchema> dependentSchemas) {
-            this.dependentSchemas = dependentSchemas;
+        public DependentSchemasEvaluator(Map<String, SchemaPlan> dependentPlans) {
+            this.dependentPlans = dependentPlans;
         }
         /**
          * Applies schemas when dependent properties are present.
@@ -670,11 +637,11 @@ public interface Evaluator {
 
             Object actual = instance.node;
             boolean result = true;
-            for (Map.Entry<String, JsonSchema> entry : dependentSchemas.entrySet()) {
+            for (Map.Entry<String, SchemaPlan> entry : dependentPlans.entrySet()) {
                 String key = entry.getKey();
                 if (Nodes.containsInObject(actual, key)) {
-                    JsonSchema subSchema = dependentSchemas.get(key);
-                    boolean subResult = subSchema.evaluate(instance, ps, ctx);
+                    SchemaPlan plan = dependentPlans.get(key);
+                    boolean subResult = plan.evaluate(instance, ps, ctx);
                     result = result && subResult;
                     if (ctx.shouldAbort()) return result;
                 }
@@ -685,14 +652,14 @@ public interface Evaluator {
 
     // propertyNames
     final class PropertyNamesEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final JsonSchema propertyNamesSchema;
+        final PathSegment keywordPs;
+        final SchemaPlan propertyNamesPlan;
         /**
          * Creates evaluator for propertyNames schema.
          */
-        public PropertyNamesEvaluator(PathSegment keywordPs, JsonSchema propertyNamesSchema) {
+        public PropertyNamesEvaluator(PathSegment keywordPs, SchemaPlan propertyNamesPlan) {
             this.keywordPs = keywordPs;
-            this.propertyNamesSchema = propertyNamesSchema;
+            this.propertyNamesPlan = propertyNamesPlan;
         }
         /**
          * Validates each property name against propertyNames schema.
@@ -705,7 +672,7 @@ public interface Evaluator {
             boolean result = true;
             for (String key : Nodes.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
-                boolean probed = propertyNamesSchema.evaluate(InstancedNode.infer(key), ps, ctx);
+                boolean probed = propertyNamesPlan.evaluate(InstancedNode.infer(key), ps, ctx);
                 ctx.popIgnoreError();
                 if (!probed) {
                     PathSegment instanceKeywordPs = ps == null
@@ -723,12 +690,12 @@ public interface Evaluator {
 
     // minItems / maxItems / uniqueItems
     final class ArrayEvaluator implements Evaluator {
-        private final PathSegment minItemsKeywordPs;
-        private final PathSegment maxItemsKeywordPs;
-        private final PathSegment uniqueItemsKeywordPs;
-        private final Integer minItems;
-        private final Integer maxItems;
-        private final Boolean uniqueItems;
+        final PathSegment minItemsKeywordPs;
+        final PathSegment maxItemsKeywordPs;
+        final PathSegment uniqueItemsKeywordPs;
+        final Integer minItems;
+        final Integer maxItems;
+        final Boolean uniqueItems;
         /**
          * Creates evaluator for array size/uniqueness constraints.
          */
@@ -779,14 +746,14 @@ public interface Evaluator {
 
     // items / prefixItems
     final class ItemsEvaluator implements Evaluator {
-        private final JsonSchema itemsSchema;
-        private final JsonSchema[] prefixItemsSchemas;
+        final SchemaPlan itemsPlan;
+        final SchemaPlan[] prefixItemsPlans;
         /**
          * Creates evaluator for items/prefixItems schemas.
          */
-        public ItemsEvaluator(JsonSchema itemsSchema, JsonSchema[] prefixItemsSchemas) {
-            this.itemsSchema = itemsSchema;
-            this.prefixItemsSchemas = prefixItemsSchemas;
+        public ItemsEvaluator(SchemaPlan itemsPlan, SchemaPlan[] prefixItemsPlans) {
+            this.itemsPlan = itemsPlan;
+            this.prefixItemsPlans = prefixItemsPlans;
         }
         /**
          * Validates prefixItems and items schemas for array elements.
@@ -799,21 +766,21 @@ public interface Evaluator {
             boolean result = true;
             int size = Nodes.sizeInArray(actual);
             int i = 0;
-            if (prefixItemsSchemas != null) {
-                for (; i < size && i < prefixItemsSchemas.length; i++) {
+            if (prefixItemsPlans != null) {
+                for (; i < size && i < prefixItemsPlans.length; i++) {
                     InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i));
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                    boolean subResult = prefixItemsSchemas[i].evaluate(subInstance, cps, ctx);
+                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
                     if (ctx.shouldAbort()) return result;
                 }
                 if (result) instance.markEvaluated(0, i);
             }
-            if (itemsSchema != null) {
+            if (itemsPlan != null) {
                 for (; i < size; i++) {
                     InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i));
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                    boolean subResult = itemsSchema.evaluate(subInstance, cps, ctx);
+                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
                     if (ctx.shouldAbort()) return result;
                 }
@@ -826,19 +793,19 @@ public interface Evaluator {
 
     // contains / minContains / maxContains
     final class ContainsEvaluator implements Evaluator {
-        private final PathSegment minContainsKeywordPs;
-        private final PathSegment maxContainsKeywordPs;
-        private final JsonSchema containsSchema;
-        private final Integer minContains;
-        private final Integer maxContains;
+        final PathSegment minContainsKeywordPs;
+        final PathSegment maxContainsKeywordPs;
+        final SchemaPlan containsPlan;
+        final Integer minContains;
+        final Integer maxContains;
         /**
          * Creates evaluator for contains/minContains/maxContains.
          */
         public ContainsEvaluator(PathSegment minContainsKeywordPs, PathSegment maxContainsKeywordPs,
-                                 JsonSchema containsSchema, Integer minContains, Integer maxContains) {
+                                 SchemaPlan containsPlan, Integer minContains, Integer maxContains) {
             this.minContainsKeywordPs = minContainsKeywordPs;
             this.maxContainsKeywordPs = maxContainsKeywordPs;
-            this.containsSchema = containsSchema;
+            this.containsPlan = containsPlan;
             this.minContains = minContains == null ? 1 : minContains;
             this.maxContains = maxContains;
         }
@@ -851,7 +818,7 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType != JsonType.ARRAY) return true;
-            if (containsSchema == null) return true;
+            if (containsPlan == null) return true;
 
             Object actual = instance.node;
             int matches = 0;
@@ -861,7 +828,7 @@ public interface Evaluator {
                 ctx.pushIgnoreError();
                 InstancedNode subInstance = instance.inferSubByIndex(i, subActual);
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                boolean result = containsSchema.evaluate(subInstance, cps, ctx);
+                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
                 if (result) {
                     instance.markEvaluated(i);
@@ -869,13 +836,13 @@ public interface Evaluator {
                 }
             }
             if (matches < minContains) {
-                ctx.addError(instance, ps, minContainsKeywordPs, "minContains", "Array must contain at least " +
-                        minContains + " matching items, but found " + matches);
+                ctx.addError(instance, ps, minContainsKeywordPs, "minContains",
+                        "Array must contain at least " + minContains + " matching items, but found " + matches);
                 return false;
             }
             if (maxContains != null && matches > maxContains) {
-                ctx.addError(instance, ps, maxContainsKeywordPs, "maxContains", "Array must contains at most " +
-                        maxContains + " matching items, but found " + matches);
+                ctx.addError(instance, ps, maxContainsKeywordPs, "maxContains",
+                        "Array must contains at most " + maxContains + " matching items, but found " + matches);
                 return false;
             }
             return true;
@@ -884,16 +851,16 @@ public interface Evaluator {
 
     // if / then / else
     final class IfThenElseEvaluator implements Evaluator {
-        private final JsonSchema ifSchema;
-        private final JsonSchema thenSchema;
-        private final JsonSchema elseSchema;
+        final SchemaPlan ifPlan;
+        final SchemaPlan thenPlan;
+        final SchemaPlan elsePlan;
         /**
          * Creates evaluator for if/then/else keywords.
          */
-        public IfThenElseEvaluator(JsonSchema ifSchema, JsonSchema thenSchema, JsonSchema elseSchema) {
-            this.ifSchema = ifSchema;
-            this.thenSchema = thenSchema;
-            this.elseSchema = elseSchema;
+        public IfThenElseEvaluator(SchemaPlan ifPlan, SchemaPlan thenPlan, SchemaPlan elsePlan) {
+            this.ifPlan = ifPlan;
+            this.thenPlan = thenPlan;
+            this.elsePlan = elsePlan;
         }
 
         /**
@@ -901,26 +868,26 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (ifSchema == null) return true;
+            if (ifPlan == null) return true;
 
             boolean result = true;
             BitSet cousinEvaluated = instance.popEvaluated();
             instance.pushEvaluated();
             ctx.pushIgnoreError();
-            boolean tested = ifSchema.evaluate(instance, ps, ctx);
+            boolean tested = ifPlan.evaluate(instance, ps, ctx);
             ctx.popIgnoreError();
             if (tested) {
-                if (thenSchema != null) {
-                    result = thenSchema.evaluate(instance, ps, ctx);
+                if (thenPlan != null) {
+                    result = thenPlan.evaluate(instance, ps, ctx);
                 }
                 BitSet ifThenEvaluated = instance.popEvaluated();
                 if (result && cousinEvaluated != null && ifThenEvaluated != null)
                     cousinEvaluated.or(ifThenEvaluated);
             } else {
                 BitSet droppedEvaluated = instance.popEvaluated();
-                if (elseSchema != null) {
+                if (elsePlan != null) {
                     instance.pushEvaluated();
-                    result = elseSchema.evaluate(instance, ps, ctx);
+                    result = elsePlan.evaluate(instance, ps, ctx);
                     BitSet elseEvaluated = instance.popEvaluated();
                     if (result && cousinEvaluated != null && elseEvaluated != null)
                         cousinEvaluated.or(elseEvaluated);
@@ -933,12 +900,12 @@ public interface Evaluator {
 
     // allOf
     final class AllOfEvaluator implements Evaluator {
-        private final JsonSchema[] allOfSchemas;
+        final SchemaPlan[] allOfPlans;
         /**
          * Creates evaluator for allOf keyword.
          */
-        public AllOfEvaluator(JsonSchema[] allOfSchemas) {
-            this.allOfSchemas = allOfSchemas;
+        public AllOfEvaluator(SchemaPlan[] allOfPlans) {
+            this.allOfPlans = allOfPlans;
         }
         /**
          * Requires all subschemas to match.
@@ -951,12 +918,12 @@ public interface Evaluator {
             BitSet[] evaluatedArr = null;
             BitSet cousinEvaluated = instance.popEvaluated();
             if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[allOfSchemas.length];
+                evaluatedArr = new BitSet[allOfPlans.length];
             }
-            for (int i = 0; i < allOfSchemas.length; i++) {
-                JsonSchema schema = allOfSchemas[i];
+            for (int i = 0; i < allOfPlans.length; i++) {
+                SchemaPlan plan = allOfPlans[i];
                 instance.pushEvaluated();
-                boolean subResult = schema.evaluate(instance, ps, ctx);
+                boolean subResult = plan.evaluate(instance, ps, ctx);
                 BitSet childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
@@ -975,14 +942,14 @@ public interface Evaluator {
 
     // anyOf
     final class AnyOfEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final JsonSchema[] anyOfSchemas;
+        final PathSegment keywordPs;
+        final SchemaPlan[] anyOfPlans;
         /**
          * Creates evaluator for anyOf keyword.
          */
-        public AnyOfEvaluator(PathSegment keywordPs, JsonSchema[] anyOfSchemas) {
+        public AnyOfEvaluator(PathSegment keywordPs, SchemaPlan[] anyOfPlans) {
             this.keywordPs = keywordPs;
-            this.anyOfSchemas = anyOfSchemas;
+            this.anyOfPlans = anyOfPlans;
         }
         /**
          * Requires at least one subschema to match.
@@ -996,13 +963,13 @@ public interface Evaluator {
             BitSet[] evaluatedArr = null;
             BitSet cousinEvaluated = instance.popEvaluated();
             if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[anyOfSchemas.length];
+                evaluatedArr = new BitSet[anyOfPlans.length];
             }
-            for (int i = 0; i < anyOfSchemas.length; i++) {
-                JsonSchema schema = anyOfSchemas[i];
+            for (int i = 0; i < anyOfPlans.length; i++) {
+                SchemaPlan plan = anyOfPlans[i];
                 instance.pushEvaluated();
                 ctx.pushIgnoreError();
-                boolean subResult = schema.evaluate(instance, ps, ctx);
+                boolean subResult = plan.evaluate(instance, ps, ctx);
                 ctx.popIgnoreError();
                 BitSet childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) {
@@ -1026,14 +993,14 @@ public interface Evaluator {
 
     // oneOf
     final class OneOfEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final JsonSchema[] oneOfSchemas;
+        final PathSegment keywordPs;
+        final SchemaPlan[] oneOfPlans;
         /**
          * Creates evaluator for oneOf keyword.
          */
-        public OneOfEvaluator(PathSegment keywordPs, JsonSchema[] oneOfSchemas) {
+        public OneOfEvaluator(PathSegment keywordPs, SchemaPlan[] oneOfPlans) {
             this.keywordPs = keywordPs;
-            this.oneOfSchemas = oneOfSchemas;
+            this.oneOfPlans = oneOfPlans;
         }
         /**
          * Requires exactly one subschema to match.
@@ -1047,13 +1014,13 @@ public interface Evaluator {
             BitSet[] evaluatedArr = null;
             BitSet cousinEvaluated = instance.popEvaluated();
             if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[oneOfSchemas.length];
+                evaluatedArr = new BitSet[oneOfPlans.length];
             }
-            for (int i = 0; i < oneOfSchemas.length; i++) {
-                JsonSchema schema = oneOfSchemas[i];
+            for (int i = 0; i < oneOfPlans.length; i++) {
+                SchemaPlan plan = oneOfPlans[i];
                 instance.pushEvaluated();
                 ctx.pushIgnoreError();
-                boolean subResult = schema.evaluate(instance, ps, ctx);
+                boolean subResult = plan.evaluate(instance, ps, ctx);
                 ctx.popIgnoreError();
                 BitSet childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
@@ -1076,14 +1043,14 @@ public interface Evaluator {
 
     // not
     final class NotEvaluator implements Evaluator {
-        private final PathSegment keywordPs;
-        private final JsonSchema notSchema;
+        final PathSegment keywordPs;
+        final SchemaPlan notPlan;
         /**
          * Creates evaluator for not keyword.
          */
-        public NotEvaluator(PathSegment keywordPs, JsonSchema notSchema) {
+        public NotEvaluator(PathSegment keywordPs, SchemaPlan notPlan) {
             this.keywordPs = keywordPs;
-            this.notSchema = notSchema;
+            this.notPlan = notPlan;
         }
         /**
          * Fails when the subschema matches.
@@ -1092,7 +1059,7 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             instance.pushEvaluated();
             ctx.pushIgnoreError();
-            boolean result = notSchema.evaluate(instance, ps, ctx);
+            boolean result = notPlan.evaluate(instance, ps, ctx);
             ctx.popIgnoreError();
             instance.popEvaluated();
 
@@ -1106,12 +1073,12 @@ public interface Evaluator {
 
     // unevaluatedProperties / unevaluatedItems
     final class UnevaluatedEvaluator implements Evaluator {
-        private final JsonSchema unevaluatedPropertiesSchema;
-        private final JsonSchema unevaluatedItemsSchema;
-        public UnevaluatedEvaluator(JsonSchema unevaluatedPropertiesSchema,
-                                    JsonSchema unevaluatedItemsSchema) {
-            this.unevaluatedPropertiesSchema = unevaluatedPropertiesSchema;
-            this.unevaluatedItemsSchema = unevaluatedItemsSchema;
+        final SchemaPlan unevaluatedPropertiesPlan;
+        final SchemaPlan unevaluatedItemsPlan;
+        public UnevaluatedEvaluator(SchemaPlan unevaluatedPropertiesPlan,
+                                    SchemaPlan unevaluatedItemsPlan) {
+            this.unevaluatedPropertiesPlan = unevaluatedPropertiesPlan;
+            this.unevaluatedItemsPlan = unevaluatedItemsPlan;
         }
         /**
          * Validates unevaluated properties/items against fallback schemas.
@@ -1124,7 +1091,7 @@ public interface Evaluator {
             boolean result = true;
             BitSet merged = instance.mergedEvaluated();
             Object actual = instance.node;
-            if (unevaluatedPropertiesSchema != null) {
+            if (unevaluatedPropertiesPlan != null) {
                 if (instance.jsonType != JsonType.OBJECT) return true;
                 int propIdx = 0;
                 for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
@@ -1132,7 +1099,7 @@ public interface Evaluator {
                     if (!merged.get(propIdx)) {
                         InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = unevaluatedPropertiesSchema.evaluate(subInstance, cps, ctx);
+                        boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
                         if (ctx.shouldAbort()) return false;
@@ -1140,7 +1107,7 @@ public interface Evaluator {
                     propIdx++;
                 }
             }
-            if (unevaluatedItemsSchema != null) {
+            if (unevaluatedItemsPlan != null) {
                 if (instance.jsonType != JsonType.ARRAY) return true;
                 Iterator<Object> it = Nodes.iteratorInArray(actual);
                 for (int i = 0; it.hasNext(); i++) {
@@ -1148,7 +1115,7 @@ public interface Evaluator {
                     if (!merged.get(i)) {
                         InstancedNode subInstance = instance.inferSubByIndex(i, subActual);
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                        boolean subResult = unevaluatedItemsSchema.evaluate(subInstance, cps, ctx);
+                        boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);
                         result = result && subResult;
                         if (ctx.shouldAbort()) return false;

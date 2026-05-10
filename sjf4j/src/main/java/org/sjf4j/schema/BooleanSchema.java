@@ -27,15 +27,11 @@ public final class BooleanSchema implements JsonSchema {
         this.keywordPs = keywordPs;
     }
 
-    /** Boolean schema has no compile step. */
-    @Override
-    public void compile(SchemaRegistry outer) {}
-
     /**
      * Encodes BooleanSchema to raw boolean.
      */
     @ValueToRaw
-    public boolean value2Raw() {
+    public boolean booleanValue() {
         return booleanValue;
     }
 
@@ -43,45 +39,18 @@ public final class BooleanSchema implements JsonSchema {
      * Decodes raw boolean to shared BooleanSchema instance.
      */
     @RawToValue
-    public static BooleanSchema raw2Value(boolean booleanValue) {
+    public static BooleanSchema of(boolean booleanValue) {
         return booleanValue ? TRUE : FALSE;
     }
 
     static BooleanSchema of(boolean booleanValue, PathSegment keywordPs) {
-        if (booleanValue || keywordPs == null || keywordPs == PathSegment.Root.INSTANCE) return raw2Value(booleanValue);
+        if (booleanValue || keywordPs == null || keywordPs == PathSegment.Root.INSTANCE) return of(booleanValue);
         return new BooleanSchema(false, keywordPs);
     }
 
-
-    // validate
-    /**
-     * Validates using boolean-schema semantics.
-     * <p>
-     * For {@code false}, returns an invalid result with one synthetic error.
-     */
     @Override
-    public ValidationResult validate(Object node, ValidationOptions options) {
-        if (booleanValue) {
-            return ValidationResult.VALID;
-        } else {
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                    PathSegment.Root.INSTANCE, keywordPs, "false", "Schema 'false' always fails");
-            return new ValidationResult(false, null, msg);
-        }
-    }
-
-    // evaluate
-    /**
-     * Evaluates using boolean-schema semantics.
-     */
-    @Override
-    public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-        if (booleanValue) {
-            return true;
-        } else {
-            ctx.addError(instance, ps, keywordPs, "false", "Schema 'false' always fails");
-            return false;
-        }
+    public SchemaPlan createPlan(SchemaRegistry registry) {
+        return SchemaPlan.of(PathSegment.Root.INSTANCE, this);
     }
 
 }

@@ -947,7 +947,7 @@ public class JsonPathTest {
     @Test
     public void testComplexRegexWithGroups() {
         JsonArray array = new JsonArray();
-        array.addAll(
+        array.append(
                 JsonObject.of("name", "Alice_01"),
                 JsonObject.of("name", "Bob_99"),
                 JsonObject.of("name", "ALIcE_02"),

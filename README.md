@@ -115,7 +115,7 @@ String out = jo.toJson();
 Starting from this example, the sections below expand into the broader SJF4J feature set.
 
 
-### Full feature walkthrough
+### 5-minutes walkthrough
 
 SJF4J is built around a single structural model: the **Object-Based Node Tree (OBNT)**.
 - All structured data in SJF4J are mapped into OBNT.

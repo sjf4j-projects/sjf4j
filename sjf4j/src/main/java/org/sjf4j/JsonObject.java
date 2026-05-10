@@ -1087,18 +1087,23 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Creates a shallow copy of this JsonObject.
+     * <p>
+     * Plain {@link JsonObject} instances copy their dynamic backing directly.
+     * JOJO subtypes fall back to {@link Nodes#copy(Object)} so subtype fields
+     * remain part of the copied object view.
      */
-    @SuppressWarnings("unchecked")
-    public <T extends JsonObject>  T copy() {
-        return (T) Nodes.copy(this);
+    public JsonObject copy() {
+        if (getClass() == JsonObject.class) {
+            return dynamicMap == null ? new JsonObject() : new JsonObject(new LinkedHashMap<>(dynamicMap));
+        }
+        return Nodes.copy(this);
     }
 
     /**
      * Creates a deep copy of this JsonObject.
      */
-    @SuppressWarnings("unchecked")
-    public <T extends JsonObject>  T deepCopy() {
-        return (T) Sjf4j.global().deepNode(this);
+    public JsonObject deepCopy() {
+        return Sjf4j.global().deepNode(this);
     }
 
     /// Stream
@@ -1115,6 +1120,9 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Returns a builder initialized from this object.
+     * <p>
+     * The builder mutates this object in place; it does not create a detached
+     * copy.
      */
     public Builder toBuilder() {
         return new Builder(this);

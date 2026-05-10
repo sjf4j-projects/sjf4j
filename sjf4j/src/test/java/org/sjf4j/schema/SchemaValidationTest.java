@@ -27,11 +27,11 @@ public class SchemaValidationTest {
                 "  \"const\": \"a\"\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid("a"));
-        assertFalse(schema.isValid("b"));
-        assertFalse(schema.isValid(1));
+        assertTrue(plan.isValid("a"));
+        assertFalse(plan.isValid("b"));
+        assertFalse(plan.isValid(1));
     }
 
     @Test
@@ -44,12 +44,12 @@ public class SchemaValidationTest {
                 "  \"multipleOf\": 2\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(2));
-        assertTrue(schema.isValid(8));
-        assertFalse(schema.isValid(10));
-        assertFalse(schema.isValid(3));
+        assertTrue(plan.isValid(2));
+        assertTrue(plan.isValid(8));
+        assertFalse(plan.isValid(10));
+        assertFalse(plan.isValid(3));
     }
 
     @Test
@@ -62,13 +62,13 @@ public class SchemaValidationTest {
                     "  \"pattern\": \"^[a-z]+$\"\n" +
                     "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid("ab"));
-        assertTrue(schema.isValid("abcd"));
-        assertFalse(schema.isValid("a"));
-        assertFalse(schema.isValid("abcde"));
-        assertFalse(schema.isValid("AB"));
+        assertTrue(plan.isValid("ab"));
+        assertTrue(plan.isValid("abcd"));
+        assertFalse(plan.isValid("a"));
+        assertFalse(plan.isValid("abcde"));
+        assertFalse(plan.isValid("AB"));
     }
 
     @Test
@@ -80,9 +80,9 @@ public class SchemaValidationTest {
                 "  \"maxLength\": 2\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid("e\u0301"));
+        assertTrue(plan.isValid("e\u0301"));
     }
 
     @Test
@@ -96,12 +96,12 @@ public class SchemaValidationTest {
                         "  \"items\": { \"type\": \"integer\" }\n" +
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(Arrays.asList(1, 2)));
-        assertFalse(schema.isValid(Collections.emptyList()));
-        assertFalse(schema.isValid(Arrays.asList(1, 1)));
-        assertFalse(schema.isValid(Arrays.asList(1, "a")));
+        assertTrue(plan.isValid(Arrays.asList(1, 2)));
+        assertFalse(plan.isValid(Collections.emptyList()));
+        assertFalse(plan.isValid(Arrays.asList(1, 1)));
+        assertFalse(plan.isValid(Arrays.asList(1, "a")));
     }
 
     @Test
@@ -116,10 +116,10 @@ public class SchemaValidationTest {
                 "  \"items\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(Arrays.asList("a", 1)));
-        assertFalse(schema.isValid(Arrays.asList("a", 1, 2)));
+        assertTrue(plan.isValid(Arrays.asList("a", 1)));
+        assertFalse(plan.isValid(Arrays.asList("a", 1, 2)));
     }
 
     @Test
@@ -134,7 +134,7 @@ public class SchemaValidationTest {
                         "  }\n" +
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> ok = new HashMap<String, Object>();
         ok.put("a", 1);
@@ -143,8 +143,8 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("b", "x");
 
-        assertTrue(schema.isValid(ok));
-        assertFalse(schema.isValid(bad));
+        assertTrue(plan.isValid(ok));
+        assertFalse(plan.isValid(bad));
     }
 
     @Test
@@ -158,7 +158,7 @@ public class SchemaValidationTest {
                 "  \"additionalProperties\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> ok = new HashMap<String, Object>();
         ok.put("x-a", 1);
@@ -166,8 +166,8 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("y", 1);
 
-        assertTrue(schema.isValid(ok));
-        assertFalse(schema.isValid(bad));
+        assertTrue(plan.isValid(ok));
+        assertFalse(plan.isValid(bad));
     }
 
     @Test
@@ -178,12 +178,12 @@ public class SchemaValidationTest {
                 "  \"additionalProperties\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("y", 1);
 
-        ValidationResult result = schema.validateFailFast(bad);
+        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
         assertEquals("false", result.getLastMessage().getKeyword());
         assertEquals("/y", result.getLastMessage().getInstancePath());
@@ -191,7 +191,7 @@ public class SchemaValidationTest {
         assertEquals("Schema 'false' always fails",
                 result.getLastMessage().getMessage());
 
-        ValidationException ex = assertThrows(ValidationException.class, () -> schema.requireValid(bad));
+        ValidationException ex = assertThrows(ValidationException.class, () -> plan.requireValid(bad));
         assertTrue(ex.getMessage().contains("/additionalProperties"));
         assertTrue(ex.getMessage().contains("instance '/y'"));
         assertTrue(ex.getMessage().contains("Schema 'false' always fails"));
@@ -207,12 +207,12 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("name", 1);
 
-        ValidationResult result = schema.validateFailFast(bad);
+        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
         assertEquals("type", result.getLastMessage().getKeyword());
         assertEquals("/name", result.getLastMessage().getInstancePath());
@@ -227,12 +227,12 @@ public class SchemaValidationTest {
                 "  \"propertyNames\": { \"pattern\": \"^[a-z]+$\" }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("Bad-Name", 1);
 
-        ValidationResult result = schema.validateFailFast(bad);
+        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
         assertEquals("propertyNames", result.getLastMessage().getKeyword());
         assertEquals("/Bad-Name", result.getLastMessage().getInstancePath());
@@ -249,7 +249,7 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> ok = new HashMap<>();
         ok.put("a", 1);
@@ -258,8 +258,8 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<>();
         bad.put("a", 1);
 
-        assertTrue(schema.isValid(ok));
-        assertFalse(schema.isValid(bad));
+        assertTrue(plan.isValid(ok));
+        assertFalse(plan.isValid(bad));
     }
 
     @Test
@@ -272,11 +272,11 @@ public class SchemaValidationTest {
                 "  ]\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid("a"));
-        assertTrue(schema.isValid(1));
-        assertFalse(schema.isValid(true));
+        assertTrue(plan.isValid("a"));
+        assertTrue(plan.isValid(1));
+        assertFalse(plan.isValid(true));
     }
 
     @Test
@@ -288,7 +288,7 @@ public class SchemaValidationTest {
                 "  \"else\": { \"required\": [\"c\"] }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
         Map<String, Object> ok1 = new HashMap<>();
         ok1.put("a", 1);
@@ -302,9 +302,9 @@ public class SchemaValidationTest {
         ok3.put("a", 2);
         ok3.put("d", 4);
 
-        assertTrue(schema.isValid(ok1));
-        assertTrue(schema.isValid(ok2));
-        assertFalse(schema.isValid(ok3));
+        assertTrue(plan.isValid(ok1));
+        assertTrue(plan.isValid(ok2));
+        assertFalse(plan.isValid(ok3));
     }
 
     @Test
@@ -324,11 +324,11 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
-        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
-        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"b\":\"x\"}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"b\":\"x\"}")));
     }
 
     @Test
@@ -342,10 +342,10 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"abc\":1}")));
-        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"Abc\":1}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"abc\":1}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"Abc\":1}")));
     }
 
     @Test
@@ -357,10 +357,10 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(JsonArray.fromJson("[\"a\",1]")));
-        assertFalse(schema.isValid(JsonArray.fromJson("[\"a\",\"b\"]")));
+        assertTrue(plan.isValid(JsonArray.fromJson("[\"a\",1]")));
+        assertFalse(plan.isValid(JsonArray.fromJson("[\"a\",\"b\"]")));
     }
 
     @Test
@@ -373,10 +373,10 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(JsonArray.fromJson("[1,2]")));
-        assertFalse(schema.isValid(JsonArray.fromJson("[1,\"a\"]")));
+        assertTrue(plan.isValid(JsonArray.fromJson("[1,2]")));
+        assertFalse(plan.isValid(JsonArray.fromJson("[1,\"a\"]")));
     }
 
     @Test
@@ -391,10 +391,10 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
-        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":2}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":2}")));
     }
 
     @Test
@@ -409,10 +409,10 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
-        assertFalse(schema.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\",\"c\":3}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\",\"c\":3}")));
     }
 
     @Test
@@ -426,10 +426,10 @@ public class SchemaValidationTest {
                 "  \"unevaluatedItems\": false\n" +
                 "}";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid(JsonArray.fromJson("[1]")));
-        assertFalse(schema.isValid(JsonArray.fromJson("[1,2]")));
+        assertTrue(plan.isValid(JsonArray.fromJson("[1]")));
+        assertFalse(plan.isValid(JsonArray.fromJson("[1,2]")));
     }
 
     @Test
@@ -441,12 +441,12 @@ public class SchemaValidationTest {
                 "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        assertTrue(schema.isValid("a@b.com"));
-        assertTrue(schema.isValid("not-email"));
+        assertTrue(plan.isValid("a@b.com"));
+        assertTrue(plan.isValid("not-email"));
 
-        ValidationResult result = schema.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build());
+        ValidationResult result = plan.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build());
         assertFalse(result.isValid());
     }
 
@@ -462,18 +462,18 @@ public class SchemaValidationTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
 
-        assertDoesNotThrow(() -> schema.compile());
-        assertTrue(schema.isValid("ok"));
-        assertFalse(schema.isValid(1));
+        SchemaPlan plan = assertDoesNotThrow(() -> schema.createPlan());
+        assertTrue(plan.isValid("ok"));
+        assertFalse(plan.isValid(1));
     }
 
     @Test
     public void testUnknownFormatIgnoredInStrictMode() {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"unknown\"}");
-        assertDoesNotThrow(() -> schema.compile());
+        SchemaPlan plan = assertDoesNotThrow(() -> schema.createPlan());
 
         ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
-        assertTrue(schema.validate("still-valid", options).isValid());
+        assertTrue(plan.validate("still-valid", options).isValid());
     }
 
     @Test
@@ -481,26 +481,26 @@ public class SchemaValidationTest {
         ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
 
         JsonSchema hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}");
-        hostname.compile();
-        assertTrue(hostname.validate("hostname", options).isValid());
+        SchemaPlan hostnamePlan = hostname.createPlan();
+        assertTrue(hostnamePlan.validate("hostname", options).isValid());
 
         JsonSchema ipv6 = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"ipv6\"}");
-        ipv6.compile();
-        assertTrue(ipv6.validate("::1", options).isValid());
+        SchemaPlan ipv6Plan = ipv6.createPlan();
+        assertTrue(ipv6Plan.validate("::1", options).isValid());
 
         JsonSchema relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}");
-        relativeJsonPointer.compile();
-        assertTrue(relativeJsonPointer.validate("0#", options).isValid());
+        SchemaPlan relativeJsonPointerPlan = relativeJsonPointer.createPlan();
+        assertTrue(relativeJsonPointerPlan.validate("0#", options).isValid());
 
         JsonSchema uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}");
-        uriTemplate.compile();
-        assertTrue(uriTemplate.validate("http://example.com/dictionary", options).isValid());
+        SchemaPlan uriTemplatePlan = uriTemplate.createPlan();
+        assertTrue(uriTemplatePlan.validate("http://example.com/dictionary", options).isValid());
     }
 
     @Test
     public void testNullSubschemaRejected() {
         JsonSchema schema = JsonSchema.fromJson("{\"items\":null}");
-        assertThrows(SchemaException.class, schema::compile);
+        assertThrows(SchemaException.class, () -> schema.createPlan());
     }
 
     @Test
@@ -512,11 +512,11 @@ public class SchemaValidationTest {
                 "  \"unevaluatedItems\": false\n" +
                 "}";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        schema.requireValid(JsonArray.fromJson("[1]"));
-        assertTrue(schema.isValid(JsonArray.fromJson("[1]")));
-        assertFalse(schema.isValid(JsonArray.fromJson("[1,\"x\"]")));
+        plan.requireValid(JsonArray.fromJson("[1]"));
+        assertTrue(plan.isValid(JsonArray.fromJson("[1]")));
+        assertFalse(plan.isValid(JsonArray.fromJson("[1,\"x\"]")));
     }
 
 

@@ -15,6 +15,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.schema.JsonSchema;
+import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.ValidationOptions;
 
 import java.util.concurrent.TimeUnit;
@@ -100,10 +101,10 @@ public class SchemaBenchmark {
 
         public ValidationOptions options;
 
-        public JsonSchema objectSchema;
-        public JsonSchema arraySchema;
-        public JsonSchema stringSchema;
-        public JsonSchema numberSchema;
+        public SchemaPlan objectSchema;
+        public SchemaPlan arraySchema;
+        public SchemaPlan stringSchema;
+        public SchemaPlan numberSchema;
 
         public Object objectNode;
         public Object arrayNode;
@@ -117,17 +118,17 @@ public class SchemaBenchmark {
                     .strictFormats(Boolean.parseBoolean(strictFormat))
                     .build();
 
-            objectSchema = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
-            objectSchema.compile();
+            JsonSchema objectSchemaDoc = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
+            objectSchema = objectSchemaDoc.plan();
 
-            arraySchema = JsonSchema.fromJson(ARRAY_SCHEMA_JSON);
-            arraySchema.compile();
+            JsonSchema arraySchemaDoc = JsonSchema.fromJson(ARRAY_SCHEMA_JSON);
+            arraySchema = arraySchemaDoc.plan();
 
-            stringSchema = JsonSchema.fromJson(STRING_SCHEMA_JSON);
-            stringSchema.compile();
+            JsonSchema stringSchemaDoc = JsonSchema.fromJson(STRING_SCHEMA_JSON);
+            stringSchema = stringSchemaDoc.plan();
 
-            numberSchema = JsonSchema.fromJson(NUMBER_SCHEMA_JSON);
-            numberSchema.compile();
+            JsonSchema numberSchemaDoc = JsonSchema.fromJson(NUMBER_SCHEMA_JSON);
+            numberSchema = numberSchemaDoc.plan();
 
             objectNode = Sjf4j.global().fromJson(OBJECT_NODE_JSON);
             arrayNode = Sjf4j.global().fromJson(ARRAY_NODE_JSON);
@@ -139,8 +140,7 @@ public class SchemaBenchmark {
     @Benchmark
     public Object schema_compile_object() {
         JsonSchema schema = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
-        schema.compile();
-        return schema;
+        return schema.plan();
     }
 
     @Benchmark

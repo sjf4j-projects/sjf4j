@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.exception.SchemaException;
 
+import java.net.URI;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -10,7 +11,7 @@ import java.util.regex.PatternSyntaxException;
 /**
  * String length helpers for JSON Schema length keywords.
  */
-public final class EvaluateUtil {
+public final class SchemaUtil {
 
     /// Length of Unicode grapheme clusters
 
@@ -98,6 +99,25 @@ public final class EvaluateUtil {
             default:
                 return prop;
         }
+    }
+
+    public static URI resolveUri(URI base, URI ref) {
+        if (ref == null) return base;
+        if (base == null || ref.isAbsolute()) return ref;
+        if (base.isOpaque()) {
+            String r = ref.toString();
+            // "" resolves to base
+            if (r.isEmpty()) return base;
+            if (r.startsWith("#")) return URI.create(stripFragment(base.toString()) + r);
+            throw new SchemaException("Cannot resolve relative URI against opaque base URI: base=" + base + ", ref=" + ref);
+        }
+
+        return base.resolve(ref);
+    }
+
+    public static String stripFragment(String s) {
+        int i = s.indexOf('#');
+        return i >= 0 ? s.substring(0, i) : s;
     }
 
 

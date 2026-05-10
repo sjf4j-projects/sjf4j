@@ -19,8 +19,8 @@ public final class OfficialTest {
         _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
         Path root = locatePath("json-schemas/tests/draft2020-12");
 
-        runTestDir(root, false);
-//        runTestFile(root.resolve("ref.json"), "remote ref, containing refs itself", "");
+//        runTestDir(root, false);
+        runTestFile(root.resolve("vocabulary.json"), "", "");
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
     }
 
@@ -71,7 +71,6 @@ public final class OfficialTest {
 
         try {
             JsonArray cases = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonArray.class);
-//            JsonArray cases = (JsonArray) facade.readNode(Files.readAllBytes(file), JsonArray.class);
 
             for (int i = 0; i < cases.size(); i++) {
                 JsonObject caseObj = cases.getJsonObject(i);
@@ -80,8 +79,9 @@ public final class OfficialTest {
                 if (groupFilter != null && !groupFilter.isEmpty() && !groupDesc.contains(groupFilter))
                     continue;
 
+                SchemaPlan plan;
                 try {
-                    schema.compile(_store);
+                    plan = schema.createPlan(_store);
                 } catch (Exception e) {
                     int size = caseObj.getJsonArray("tests").size();
                     report.total += size;
@@ -105,7 +105,7 @@ public final class OfficialTest {
                         Object data = test.get("data");
                         boolean expected = test.getBoolean("valid");
 
-                        ValidationResult result = schema.validate(data);
+                        ValidationResult result = plan.validate(data);
                         boolean actual = result.isValid();
 
                         if (actual == expected) {
@@ -155,33 +155,34 @@ public final class OfficialTest {
     private static final URI TEST_BASE_URI = URI.create("http://localhost:1234/");
 
     private static SchemaRegistry loadRemotesToStore(Path remotesDir) throws Exception {
-        SchemaRegistry store = new SchemaRegistry();
+        SchemaRegistry registry = new SchemaRegistry();
         Files.walk(remotesDir)
                 .filter(p -> p.toString().endsWith(".json"))
                 .forEach(p -> {
                     try {
                         ObjectSchema schema = Sjf4j.global().fromJson(Files.readAllBytes(p), ObjectSchema.class);
                         URI uri = resolveSchemaUri(schema, remotesDir, p);
+                        schema.setRetrievalUri(uri);
 //                        System.out.println("uri: " + uri);
-                        store.register(uri, schema);
-                        String id = schema.getString("$id", null);
-                        if (id != null) {
-                            URI idUri = URI.create(id);
-                            if (!idUri.equals(uri)) {
-                                ObjectSchema existing = store.resolve(idUri);
-                                if (existing == null) {
-                                    store.register(idUri, schema);
-                                } else if (existing != schema) {
-                                    throw new AssertionError("Conflicting remote schema uri: " + idUri);
-                                }
-                            }
-                        }
+                        registry.index(schema);
+//                        String id = schema.getString("$id", null);
+//                        if (id != null) {
+//                            URI idUri = URI.create(id);
+//                            if (!idUri.equals(uri)) {
+//                                JsonSchema existing = registry.resolve(idUri);
+//                                if (existing == null) {
+//                                    registry.register(idUri, schema);
+//                                } else if (existing != schema) {
+//                                    throw new AssertionError("Conflicting remote schema uri: " + idUri);
+//                                }
+//                            }
+//                        }
 
                     } catch (Exception e) {
                         throw new AssertionError("Failed to load remote schema: " + p, e);
                     }
                 });
-        return store;
+        return registry;
     }
 
     private static URI resolveSchemaUri(ObjectSchema schema, Path remotesDir, Path file) {

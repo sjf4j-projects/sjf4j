@@ -1,20 +1,10 @@
 package org.sjf4j.schema;
 
 
-import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.exception.SchemaException;
-import org.sjf4j.node.Nodes;
-import org.sjf4j.path.PathSegment;
 
 
-/**
- * Base interface for JSON Schema implementations.
- *
- * <p>Schema instances are compiled against a {@link SchemaRegistry} and then
- * evaluated against JSON nodes via {@link #validate} or {@link #evaluate}.
- */
 @OneOf({
         @OneOf.Mapping(BooleanSchema.class),
         @OneOf.Mapping(ObjectSchema.class),
@@ -27,56 +17,15 @@ public interface JsonSchema {
      * Compilation resolves references, anchors, and keyword evaluators against
      * the provided registry context.
      */
-    void compile(SchemaRegistry outer);
-    /**
-     * Validates a node with the given options and returns structured result.
-     */
-    ValidationResult validate(Object node, ValidationOptions options);
-    /**
-     * Evaluates this schema against an instance during validation.
-     * <p>
-     * Implementations should append messages into {@link ValidationContext} and
-     * return whether the current schema branch succeeds.
-     */
-    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
+    SchemaPlan createPlan(SchemaRegistry registry);
+
 
     /// Default
-
     /**
      * Compiles this schema using default resolution context.
      */
-    default void compile() {
-        compile(null);
-    }
-
-    /**
-     * Validates and throws if invalid.
-     */
-    default void requireValid(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
-        if (!result.isValid()) throw new ValidationException(result);
-    }
-
-    /**
-     * Returns true when the node is valid.
-     */
-    default boolean isValid(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
-        return result.isValid();
-    }
-
-    /**
-     * Validates with fail-fast options.
-     */
-    default ValidationResult validateFailFast(Object node) {
-        return validate(node, ValidationOptions.FAILFAST);
-    }
-
-    /**
-     * Validates with default options.
-     */
-    default ValidationResult validate(Object node) {
-        return validate(node, ValidationOptions.DEFAULT);
+    default SchemaPlan createPlan() {
+        return createPlan(null);
     }
 
     /// Static

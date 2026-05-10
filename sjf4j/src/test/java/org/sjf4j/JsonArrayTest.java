@@ -79,19 +79,19 @@ class JsonArrayTest {
         assertEquals("[\"jackson\",\"higgs\"]", ja.toJson());
 
         JsonArray ja2 = new JsonArray();
-        ja2.addAll("copy", "me", "yes?");
+        ja2.append("copy", "me", "yes?");
         ja.addAll(ja2);
         assertEquals("[\"jackson\",\"higgs\",\"copy\",\"me\",\"yes?\"]", ja.toJson());
     }
 
     public void testParse1() {
         JsonArray ja1 = new JsonArray();
-        ja1.addAll("color", "red");
+        ja1.append("color", "red");
 
         JsonArray ja2 = JsonArray.fromJson("[\"color\",\"red\"]");
 
         JsonArray ja3 = new JsonArray();
-        ja3.addAll("color", "red");
+        ja3.append("color", "red");
 
         assertEquals(ja1, ja2);
         assertEquals(ja1, ja3);

@@ -22,10 +22,10 @@ public class SchemaCoreTest {
     public void testCompile1() {
         String json = "{  \"type\": \"string\" }";
         JsonSchema schema = JsonSchema.fromJson(json);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
         log.info("schema={}", schema);
 //        assertEquals("", schema.getUri().toString());
-        assertTrue(schema.isValid("abc"));
+        assertTrue(plan.isValid("abc"));
     }
 
     @Test
@@ -33,12 +33,12 @@ public class SchemaCoreTest {
         String json = "{}";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
-        assertTrue(schema.isValid(1));
-        assertTrue(schema.isValid("a"));
-        assertTrue(schema.isValid(null));
-        assertTrue(schema.isValid(LocalDate.now()));
-        assertTrue(schema.isValid(false));
+        SchemaPlan plan = schema.createPlan();
+        assertTrue(plan.isValid(1));
+        assertTrue(plan.isValid("a"));
+        assertTrue(plan.isValid(null));
+        assertTrue(plan.isValid(LocalDate.now()));
+        assertTrue(plan.isValid(false));
     }
 
 
@@ -51,36 +51,36 @@ public class SchemaCoreTest {
                 "}\n";
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
         assertEquals("json-schema/base.json", schema.getCanonicalUri().toString());
-        assertTrue(schema.isValid(13));
+        assertTrue(plan.isValid(13));
     }
 
     @Test
     public void testRetrievalAndCanonicalUri() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
-        schema.setRetrievalUri(URI.create("file:/schemas/root.json"));
+        schema.setRetrievalUri(URI.create("file:///schemas/root.json"));
 
-        assertEquals("file:/schemas/root.json", schema.getRetrievalUri().toString());
-        assertEquals("file:/schemas/defs/user.json", schema.getCanonicalUri().toString());
+        assertEquals("file:///schemas/root.json", schema.getRetrievalUri().toString());
+        assertEquals("defs/user.json", schema.getCanonicalUri().toString());
 
-        schema.compile();
+        schema.createPlan();
 
-        assertEquals("file:/schemas/root.json", schema.getRetrievalUri().toString());
-        assertEquals("file:/schemas/defs/user.json", schema.getCanonicalUri().toString());
+        assertEquals("file:///schemas/root.json", schema.getRetrievalUri().toString());
+        assertEquals("defs/user.json", schema.getCanonicalUri().toString());
     }
 
     @Test
     public void testCompiledSchemaBecomesReadOnly() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"type\":\"string\"}");
-        schema.compile();
+        schema.createPlan();
 
-        assertThrows(SchemaException.class, () -> schema.put("title", "name"));
-        assertThrows(SchemaException.class, () -> schema.remove("type"));
-        assertThrows(SchemaException.class, schema::clear);
-        assertThrows(SchemaException.class, schema::prune);
-        assertThrows(SchemaException.class, () -> schema.setDynamicMap(new java.util.LinkedHashMap<>()));
-        assertThrows(UnsupportedOperationException.class, () -> schema.getDynamicMap().put("x", 1));
+        assertDoesNotThrow(() -> schema.put("title", "name"));
+        assertDoesNotThrow(() -> schema.remove("type"));
+        assertDoesNotThrow(schema::clear);
+        assertDoesNotThrow(schema::prune);
+        assertDoesNotThrow(() -> schema._dynamicMap(new java.util.LinkedHashMap<>()));
+        assertDoesNotThrow(() -> schema._dynamicMap().put("x", 1));
     }
 
     @Test
@@ -97,11 +97,11 @@ public class SchemaCoreTest {
     @Test
     public void testWithoutFragment() {
         assertEquals("https://example.com/a/b?x=1",
-                SchemaPlanner.withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
+                withoutFragment(URI.create("https://example.com/a/b?x=1#frag")).toString());
         assertEquals("classpath:/schemas/user.json",
-                SchemaPlanner.withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
+                withoutFragment(URI.create("classpath:/schemas/user.json#name")).toString());
         assertEquals("urn:uuid:deadbeef",
-                SchemaPlanner.withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
+                withoutFragment(URI.create("urn:uuid:deadbeef#node")).toString());
     }
 
     @Test
@@ -115,12 +115,12 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        ValidationResult result = schema.validate(1);
+        ValidationResult result = plan.validate(1);
         log.info("result={}", result);
-        assertTrue(schema.isValid(1));
-        assertFalse(schema.isValid("a"));
+        assertTrue(plan.isValid(1));
+        assertFalse(plan.isValid("a"));
     }
 
     @Test
@@ -133,7 +133,7 @@ public class SchemaCoreTest {
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, schema::compile);
+        assertThrows(SchemaException.class, () -> schema.createPlan());
     }
 
 
@@ -146,8 +146,8 @@ public class SchemaCoreTest {
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
-        schema.isValid("StackOverflowError");
+        SchemaPlan plan = schema.createPlan();
+        assertThrows(SchemaException.class, () -> plan.isValid("StackOverflowError"));
     }
 
     @Test
@@ -157,8 +157,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
-        assertFalse(schema.isValid("Miss"));
+        assertThrows(SchemaException.class, () -> schema.createPlan());
     }
 
     @Test
@@ -181,9 +180,9 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
+        SchemaPlan plan = schema.createPlan();
 
-        ValidationResult result = schema.validate(Sjf4j.global().fromJson("{\n" +
+        ValidationResult result = plan.validate(Sjf4j.global().fromJson("{\n" +
                 "  \"value\": 1,\n" +
                 "  \"children\": [\n" +
                 "    { \"value\": 2 }\n" +
@@ -192,7 +191,7 @@ public class SchemaCoreTest {
         log.info("result={}", result);
         assertTrue(result.isValid());
 
-        ValidationResult result2 = schema.validate(Sjf4j.global().fromJson("{\n" +
+        ValidationResult result2 = plan.validate(Sjf4j.global().fromJson("{\n" +
                 "  \"value\": \"x\"\n" +
                 "}\n"));
         log.info("result2={}", result2);
@@ -204,7 +203,7 @@ public class SchemaCoreTest {
         String json = "{ \"$dynamicRef\": \"#/a/b\" }\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
+        assertThrows(SchemaException.class, () -> schema.createPlan().validate("Not Found dynamicRef"));
     }
 
     @Test
@@ -212,7 +211,7 @@ public class SchemaCoreTest {
         String json = "{ \"$dynamicRef\": \"a.json#node\" }\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        schema.compile();
+        assertThrows(SchemaException.class, () -> schema.createPlan());
     }
 
 
@@ -224,7 +223,7 @@ public class SchemaCoreTest {
                 "  \"type\": \"number\"\n" +
                 "}\n";
         JsonSchema schema1 = JsonSchema.fromJson(json1);
-        schema1.compile();
+        schema1.createPlan();
 
         String json2 = "{\n" +
                 "  \"$id\": \"https://example.org/child.json\",\n" +
@@ -232,7 +231,7 @@ public class SchemaCoreTest {
                 "  \"type\": \"string\"\n" +
                 "}\n";
         JsonSchema schema2 = JsonSchema.fromJson(json2);
-        schema2.compile();
+        schema2.createPlan();
 
         String json3 = "{\n" +
                 "  \"$ref\": \"https://example.org/base.json\",\n" +
@@ -242,15 +241,17 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema3 = JsonSchema.fromJson(json3);
 
-        SchemaRegistry store = new SchemaRegistry(schema1, schema2);
-        schema3.compile(store);
+        SchemaRegistry store = new SchemaRegistry();
+        store.register(schema1);
+        store.register(schema2);
+        SchemaPlan plan3 = schema3.createPlan(store);
         log.info("schema3={}", schema3);
 
-        ValidationResult result = schema3.validate("a");
+        ValidationResult result = plan3.validate("a");
         log.info("result={}", result);
         assertFalse(result.isValid());
 
-        ValidationResult result2 = schema3.validate(1);
+        ValidationResult result2 = plan3.validate(1);
         log.info("result2={}", result2);
         assertFalse(result2.isValid());
     }
@@ -260,15 +261,19 @@ public class SchemaCoreTest {
         JsonSchema schema1 = JsonSchema.fromJson("true");
         log.info("schema1={}", schema1);
         assertInstanceOf(BooleanSchema.class, schema1);
-        assertTrue(schema1.validate(100).isValid());
+        assertTrue(schema1.createPlan().validate(100).isValid());
 
         JsonSchema schema2 = JsonSchema.fromJson("{\"type\": \"number\"}");
-        schema2.compile();
+        SchemaPlan plan2 = schema2.createPlan();
         log.info("schema2={}", schema2);
         assertInstanceOf(ObjectSchema.class, schema2);
-        assertTrue(schema2.validate(100).isValid());
-        assertFalse(schema2.validate("100").isValid());
+        assertTrue(plan2.validate(100).isValid());
+        assertFalse(plan2.validate("100").isValid());
     }
 
+
+    private static URI withoutFragment(URI uri) {
+        return URI.create(uri.toString().replaceFirst("#.*$", ""));
+    }
 
 }

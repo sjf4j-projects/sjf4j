@@ -1,13 +1,10 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 
-import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -17,18 +14,15 @@ import java.util.List;
  * and dynamic-anchor resolution stack for nested schema evaluation.
  */
 public class ValidationContext {
-    private final ObjectSchema targetSchema;
     private final ValidationOptions options;
-
-    private boolean valid = true;
     private final List<ValidationMessage> messages;
+    private boolean valid = true;
     private ValidationMessage lastMessage;
-
     private int ignoreErrorAdding = 0;
-    private final Deque<ObjectSchema> idSchemaStack = new ArrayDeque<>();
 
-    ValidationContext(ObjectSchema targetSchema, ValidationOptions options) {
-        this.targetSchema = targetSchema;
+    final Deque<SchemaPlan> planStack = new ArrayDeque<>();
+
+    ValidationContext(ValidationOptions options) {
         this.options = options;
         this.messages = options.isFailFast() ? null : new ArrayList<>();
     }
@@ -69,62 +63,7 @@ public class ValidationContext {
      * Pops an error-ignore frame.
      */
     public void popIgnoreError() {ignoreErrorAdding--;}
-//    public void pushIgnoreEvaluated() {ignoreEvaluatedTracking++;}
-//    public void popIgnoreEvaluated() {ignoreEvaluatedTracking--;}
-//    public boolean ignoreEvaluated() {
-//        return ignoreEvaluatedTracking > 0;
-//    }
 
-    // anchor
-    /**
-     * Resolves a schema by anchor or dynamic anchor.
-     */
-    ObjectSchema getSchemaByAnchor(URI uri, String anchor) {
-        ObjectSchema found = targetSchema.getSchemaByAnchor(uri, anchor);
-        if (found == null && !anchor.isEmpty()) found = targetSchema.getSchemaByDynamicAnchor(anchor);
-        return found;
-    }
-    /**
-     * Resolves a schema by URI and JSON Pointer path.
-     */
-    JsonSchema getSchemaByPath(URI uri, JsonPointer path) {
-        return targetSchema.getSchemaByPath(uri, path);
-    }
-
-    // dynamicAnchor
-    /**
-     * Pushes a schema scope used for dynamicAnchor resolution.
-     */
-    boolean pushIdSchema(ObjectSchema schema) {
-        if (idSchemaStack.peek() != schema) {
-            idSchemaStack.push(schema);
-            return true;
-        }
-        return false;
-    }
-    /**
-     * Pops the current schema scope.
-     */
-    ObjectSchema popIdSchema() {
-        return idSchemaStack.pop();
-    }
-    /**
-     * Resolves a schema by dynamic anchor with scope fallback.
-     * <p>
-     * Resolution starts from referenced resource, then walks current dynamic
-     * scope stack from nearest to farthest.
-     */
-    ObjectSchema getSchemaByDynamicAnchor(URI uri, String dynamicAnchor) {
-        ObjectSchema schema = targetSchema.getSchemaByDynamicAnchor(uri, dynamicAnchor);
-        if (schema != null) {
-            Iterator<ObjectSchema> it = idSchemaStack.descendingIterator();
-            while (it.hasNext()) {
-                ObjectSchema found = it.next().getSchemaByDynamicAnchor(dynamicAnchor);
-                if (found != null) return found;
-            }
-        }
-        return schema;
-    }
 
     // message
     /**

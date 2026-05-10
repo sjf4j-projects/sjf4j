@@ -19,6 +19,11 @@ public class ValidationResult {
     private final ValidationMessage lastMessage;
 
     /**
+     * Shared successful validation result.
+     */
+    public static final ValidationResult SUCCESS = new ValidationResult(true, null, null);
+
+    /**
      * Creates validation result with messages.
      */
     public ValidationResult(boolean valid, List<ValidationMessage> messages, ValidationMessage lastMessage) {
@@ -67,14 +72,6 @@ public class ValidationResult {
     }
 
     /**
-     * Returns messages as debug string.
-     */
-    @Override
-    public String toString() {
-        return Nodes.inspect(getMessages());
-    }
-
-    /**
      * Returns the latest message if present.
      * <p>
      * In non fail-fast mode this is the tail of collected messages.
@@ -90,9 +87,19 @@ public class ValidationResult {
         return lastMessage;
     }
 
+    public ValidationResult mergePrevious(ValidationResult previous) {
+        if (messages != null && previous != null) {
+            messages.addAll(0, previous.getMessages());
+        }
+        return this;
+    }
+
     /**
-     * Shared successful validation result.
+     * Returns messages as debug string.
      */
-    public static final ValidationResult VALID = new ValidationResult(true, null, null);
+    @Override
+    public String toString() {
+        return Nodes.inspect(getMessages());
+    }
 
 }

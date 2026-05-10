@@ -4,11 +4,9 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeStream;
 import org.sjf4j.node.Nodes;
 
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -825,6 +823,18 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
+     * Appends literal values in order.
+     * <p>
+     * Each argument becomes one array element. This method does not flatten
+     * nested arrays or collections; use {@link #addAll(Object)} to copy from an
+     * array-like source.
+     */
+    public void append(Object... values) {
+        if (values == null) return;
+        for (Object value : values) add(value);
+    }
+
+    /**
      * Inserts an element at the given index.
      * <p>
      * Supports negative indexes after normalization. Valid insertion range is
@@ -923,18 +933,23 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Creates a shallow copy of this JsonArray.
+     * <p>
+     * Plain {@link JsonArray} instances copy their backing list directly. JAJO
+     * subtypes fall back to {@link Nodes#copy(Object)} so subtype element rules
+     * and construction semantics remain intact.
      */
-    @SuppressWarnings("unchecked")
-    public <T extends JsonArray> T copy() {
-        return (T) Nodes.copy(this);
+    public JsonArray copy() {
+        if (getClass() == JsonArray.class) {
+            return nodeList == null ? new JsonArray() : new JsonArray(new ArrayList<>(nodeList));
+        }
+        return Nodes.copy(this);
     }
 
     /**
      * Creates a deep copy of this JsonArray.
      */
-    @SuppressWarnings("unchecked")
-    public <T extends JsonArray> T deepCopy() {
-        return (T) Sjf4j.global().deepNode(this);
+    public JsonArray deepCopy() {
+        return Sjf4j.global().deepNode(this);
     }
 
 }

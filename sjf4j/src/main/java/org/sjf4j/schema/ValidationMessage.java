@@ -73,11 +73,6 @@ public class ValidationMessage {
     public String getKeywordPath() { return PathSyntax.rootedPointerExpr(keywordPs); }
 
     /**
-     * @deprecated Use {@link #getInstancePs()} or {@link #getInstancePath()}.
-     */
-    @Deprecated
-    public PathSegment getPs() { return instancePs; }
-    /**
      * Returns the schema keyword that produced this message.
      * Keyword path pinpoints where this keyword lives in the schema.
      */
@@ -98,10 +93,9 @@ public class ValidationMessage {
      */
     @Override
     public String toString() {
-        String keywordPath = getKeywordPath();
         return "[" + severity + "] Keyword '" + keyword + "'" +
-                (keywordPs == null ? "" : " (" + keywordPath + ")") +
-                " failed at instance '" + getInstancePath() + "': " + message;
+                (keywordPs == null ? "" : " (" + PathSyntax.rootedPointerExpr(keywordPs) + ")") +
+                " failed at instance '" + PathSyntax.rootedPointerExpr(instancePs) + "': " + message;
     }
 
 }

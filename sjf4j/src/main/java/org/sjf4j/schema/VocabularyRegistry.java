@@ -13,20 +13,6 @@ public class VocabularyRegistry {
 
     private static final Map<String, String> KEYWORD_VOCAB_CACHE = new ConcurrentHashMap<>();
 
-//    public static class Vocabulary {
-//        private final String uri;
-//        private final Set<String> keywords;
-//        public Vocabulary(String uri, Set<String> keywords) {
-//            Objects.requireNonNull(uri);
-//            Objects.requireNonNull(keywords);
-//            this.uri = uri;
-//            this.keywords = keywords;
-//        }
-//        public String getUri() {return uri;}
-//        public Set<String> getKeywords() {return keywords;}
-//        public boolean contains(String keyword) {return keywords.contains(keyword);}
-//    }
-
     /**
      * Registers one keyword-to-vocabulary mapping.
      * <p>

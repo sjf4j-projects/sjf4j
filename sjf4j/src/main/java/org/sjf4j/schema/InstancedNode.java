@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.path.PathSegment;
@@ -247,20 +248,16 @@ public final class InstancedNode {
         return subInstance;
     }
 
-    // refSchema
-    /**
-     * Returns true when recursive schema-reference cycle is detected.
-     * <p>
-     * First invocation initializes tracking; subsequent invocations check whether
-     * the same schema object appears again in current reference chain.
-     */
-    boolean isRecursiveRef(Object schema) {
+
+    void checkCyclicRef(SchemaPlan plan, PathSegment keywordPs) {
         if (refSchemaTimes++ > 0) {
             if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();
-            if (refSchemaStack.contains(schema)) return true;
-            else refSchemaStack.push(schema);
+            if (refSchemaStack.contains(plan)) {
+                throw new SchemaException("Cyclic schema reference detected: " + keywordPs.rootedPointerExpr());
+            } else {
+                refSchemaStack.push(plan);
+            }
         }
-        return false;
     }
 
 }

@@ -2,12 +2,14 @@ package org.sjf4j.schema;
 
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.SchemaException;
+import org.sjf4j.path.PathSegment;
 
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -20,96 +22,82 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SchemaRegistry {
 
-    private final Map<URI, ObjectSchema> mixedUriSchemas = new ConcurrentHashMap<>();
+    private final Map<String, SchemaPlan> byIdPlans;
+    private final Map<String, ObjectSchema> byIdSchemas;
 
     /**
      * Creates an empty schema registry.
      */
-    public SchemaRegistry() {}
-
-    /**
-     * Creates a registry by importing another registry.
-     */
-    public SchemaRegistry(SchemaRegistry other) {
-        importFrom(other);
+    public SchemaRegistry() {
+        byIdPlans = new ConcurrentHashMap<>();
+        byIdSchemas = new ConcurrentHashMap<>();
     }
 
-    /**
-     * Creates a registry and registers initial schemas.
-     */
-    public SchemaRegistry(JsonSchema... initialSchemas) {
-        for (JsonSchema schema : initialSchemas) {
-            register(schema);
+    public SchemaRegistry index(JsonSchema schema) {
+        Objects.requireNonNull(schema, "schema");
+        if (schema instanceof BooleanSchema) {
+            return this;
         }
-    }
 
-    /**
-     * Registers a schema using its canonical resource URI.
-     *
-     * @return true when schema was registrable (object schema with non-empty URI)
-     */
-    public boolean register(JsonSchema schema) {
-        if (!(schema instanceof ObjectSchema)) return false;
-        ObjectSchema os = (ObjectSchema) schema;
-        URI uri = os.getCanonicalUri();
-        if (uri != null && !uri.toString().isEmpty()) {
-            _register(uri, os);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Registers a schema with explicit URI alias.
-     * <p>
-     * If alias differs from canonical URI, both mappings are inserted.
-     */
-    public boolean register(URI uri, JsonSchema schema) {
-        if (!(schema instanceof ObjectSchema)) return false;
         ObjectSchema os = (ObjectSchema) schema;
         URI canonicalUri = os.getCanonicalUri();
-        if (uri != null) {
-            if (canonicalUri != null && !uri.equals(canonicalUri)) {
-                _register(uri, os);
-                _register(canonicalUri, os);
-            } else {
-                _register(uri, os);
-            }
-            return true;
+        if (canonicalUri == null) {
+            throw new SchemaException("Missing uri: no $id or retrievalUri");
         }
-        if (canonicalUri != null) {
-            _register(canonicalUri, os);
-            return true;
+        _putSchema(canonicalUri, os);
+
+        URI retrievalUri = os.getRetrievalUri();
+        if (retrievalUri != null && !SchemaUtil.stripFragment(retrievalUri.toString())
+                .equals(SchemaUtil.stripFragment(canonicalUri.toString()))) {
+            _putSchema(retrievalUri, os);
         }
-        return false;
+        return this;
     }
+
+    public SchemaPlan register(JsonSchema schema) {
+        Objects.requireNonNull(schema, "schema");
+        if (schema instanceof BooleanSchema) {
+            return SchemaPlan.of(PathSegment.Root.INSTANCE, (BooleanSchema) schema);
+        }
+
+        ObjectSchema os = (ObjectSchema) schema;
+        if (os.getCanonicalUri() == null) {
+            throw new SchemaException("Missing uri: no $id or retrievalUri");
+        }
+        return SchemaPlanner.createPlan(os, this);
+    }
+
 
     /**
      * Registers one URI mapping after validation checks.
      *
      * @throws SchemaException on invalid URI shape or duplicate/conflicting map
      */
-    private void _register(URI uri, JsonSchema schema) {
-        Objects.requireNonNull(uri);
-        Objects.requireNonNull(schema);
-        if (uri.toString().isEmpty())
-            throw new SchemaException("Invalid schema: uri should not be empty");
-        if (!uri.isAbsolute())
-            throw new SchemaException("Invalid schema: uri must be absolute (not relative): " + uri);
-        if (uri.getFragment() != null)
-            throw new SchemaException("Invalid schema: uri should not have fragment: " + uri);
-        if (!(schema instanceof ObjectSchema))
-            throw new SchemaException("Invalid schema: schema must be object (not true or false)");
-        ObjectSchema os = (ObjectSchema) schema;
-        URI canonicalUri = os.getCanonicalUri();
-        ObjectSchema oldOs = mixedUriSchemas.putIfAbsent(uri, os);
-        if (oldOs != null) {
-            if (uri.equals(canonicalUri)) {
-                throw new SchemaException("Duplicate schema uri: " + canonicalUri);
-            } else {
-                throw new SchemaException("Alias conflict, schema uri: " + canonicalUri + ", alias uri: " + uri);
-            }
+    void putPlan(URI uri, SchemaPlan plan) {
+        _checkUri(uri);
+        String id = SchemaUtil.stripFragment(uri.toString());
+        SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
+        if (old != null && old != plan) {
+            throw new SchemaException("Duplicate schema uri: '" + id + "'");
         }
+    }
+
+    private void _putSchema(URI uri, ObjectSchema schema) {
+        _checkUri(uri);
+        String id = SchemaUtil.stripFragment(uri.toString());
+        ObjectSchema old = byIdSchemas.putIfAbsent(id, schema);
+        if (old != null && old != schema) {
+            throw new SchemaException("Duplicate schema uri: '" + id + "'");
+        }
+    }
+
+    private void _checkUri(URI uri) {
+        if (uri.toString().isEmpty())
+            throw new SchemaException("Strict URI check failed: uri should not be empty");
+        if (!uri.isAbsolute())
+            throw new SchemaException("Strict URI check failed: uri must be absolute (not relative): " + uri);
+//        if (uri.getFragment() != null)
+//            throw new SchemaException("Strict URI check failed: uri should not have fragment: " + uri);
     }
 
     /**
@@ -117,69 +105,139 @@ public class SchemaRegistry {
      * <p>
      * Existing mappings must resolve to the same canonical schema resource.
      */
-    public void importFrom(SchemaRegistry other) {
+    public SchemaRegistry copyFrom(SchemaRegistry other) {
         if (other != null) {
-            for (Map.Entry<URI, ObjectSchema> entry : other.mixedUriSchemas.entrySet()) {
-                ObjectSchema os = entry.getValue();
-                ObjectSchema oldOs = mixedUriSchemas.putIfAbsent(entry.getKey(), os);
-                if (oldOs != null && !oldOs.getCanonicalUri().equals(os.getCanonicalUri())) {
-                    throw new SchemaException("Duplicate schema uri: " + os.getCanonicalUri());
+            for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
+                SchemaPlan plan = entry.getValue();
+                SchemaPlan old = byIdPlans.putIfAbsent(entry.getKey(), plan);
+                if (old != null && old != plan) {
+                    throw new SchemaException("Duplicate schema uri: " + entry.getKey());
+                }
+            }
+            for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
+                ObjectSchema schema = entry.getValue();
+                ObjectSchema old = byIdSchemas.putIfAbsent(entry.getKey(), schema);
+                if (old != null && old != schema) {
+                    throw new SchemaException("Duplicate schema uri: " + entry.getKey());
                 }
             }
         }
+        return this;
     }
 
     /**
      * Resolves schema by absolute URI (canonical or alias).
      */
-    public ObjectSchema resolve(URI uri) {
-        return mixedUriSchemas.get(uri);
+    public SchemaPlan resolve(URI uri) {
+        Objects.requireNonNull(uri, "uri");
+        String mixed = uri.toString();
+        int fragIdx = mixed.indexOf("#");
+        if (fragIdx < 0) {
+            return resolve(mixed, null);
+        } else {
+            return resolve(mixed.substring(0, fragIdx), mixed.substring(fragIdx + 1));
+        }
+    }
+
+
+    public SchemaPlan resolve(String id, String fragment) {
+        SchemaPlan plan = _resolvePlan(id, fragment);
+        if (plan != null) return plan;
+
+        ObjectSchema schema = byIdSchemas.get(id);
+        if (schema != null) {
+            plan = SchemaPlanner.createPlan(schema, this);
+            if (fragment == null || fragment.isEmpty()) return plan;
+            return plan.getByFragment(fragment);
+        }
+
+        return null;
+    }
+
+    SchemaPlan resolvePlan(URI uri) {
+        Objects.requireNonNull(uri, "uri");
+        String mixed = uri.toString();
+        int fragIdx = mixed.indexOf('#');
+        if (fragIdx < 0) {
+            return _resolvePlan(mixed, null);
+        } else {
+            return _resolvePlan(mixed.substring(0, fragIdx), mixed.substring(fragIdx + 1));
+        }
+    }
+
+    private SchemaPlan _resolvePlan(String id, String fragment) {
+        Objects.requireNonNull(id, "id");
+        SchemaPlan plan = byIdPlans.get(id);
+        if (plan != null) {
+            if (fragment == null || fragment.isEmpty()) return plan;
+            return plan.getByFragment(fragment);
+        }
+
+        if (this != GLOBAL_SCHEMA_REGISTRY) {
+            _loadGlobalSchemaByPath();
+            return GLOBAL_SCHEMA_REGISTRY._resolvePlan(id, fragment);
+        }
+        return null;
+    }
+
+    public int size() {
+        return idSet().size();
     }
 
     /**
      * Returns true if the URI exists in this registry.
      */
-    public boolean contains(URI uri) {
-        return mixedUriSchemas.containsKey(uri);
+    public boolean contains(String uri) {
+        return byIdPlans.containsKey(uri) || byIdSchemas.containsKey(uri) ||
+                (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(uri));
     }
 
     /**
      * Returns all registered URIs.
      */
-    public Set<URI> uris() {
-        return mixedUriSchemas.keySet();
+    public Set<String> idSet() {
+        Set<String> idSet = new HashSet<>(byIdPlans.keySet());
+        idSet.addAll(byIdSchemas.keySet());
+        if (this != GLOBAL_SCHEMA_REGISTRY) {
+            idSet.addAll(GLOBAL_SCHEMA_REGISTRY.idSet());
+        }
+        return idSet;
     }
 
-    private static final SchemaRegistry GLOBAL_REGISTRY = new SchemaRegistry();
+    /// Global
+    public static final SchemaRegistry GLOBAL_SCHEMA_REGISTRY = new SchemaRegistry();
+    public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:///json-schemas/");
 
     /**
      * Resolves a schema from the global built-in registry.
      */
-    public static ObjectSchema globalResolve(URI uri) {
-        return GLOBAL_REGISTRY.resolve(uri);
+    public static SchemaPlan globalResolve(URI uri) {
+        return GLOBAL_SCHEMA_REGISTRY.resolve(uri);
     }
 
-    private static final String JSON_SCHEMAS_DIR = "json-schemas/";
-    static {
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/core.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/applicator.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/validation.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/meta-data.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/format-annotation.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/unevaluated.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/meta/content.json");
-        registerGlobalSchema(JSON_SCHEMAS_DIR + "draft2020-12/schema.json");
+    public static SchemaPlan globalResolve(String id, String fragment) {
+        return GLOBAL_SCHEMA_REGISTRY.resolve(id, fragment);
     }
 
-    /**
-     * Loads and registers one built-in global schema resource.
-     */
-    private static void registerGlobalSchema(String resourcePath) {
-        ObjectSchema schema = loadSchemaFromResource(resourcePath);
-        if (schema == null) throw new SchemaException("Not found global schema: " + resourcePath);
-        if (!GLOBAL_REGISTRY.register(schema)) {
-            throw new SchemaException("Failed to register global schema: " + resourcePath);
+    private static void _loadGlobalSchemaByPath() {
+        if (GLOBAL_SCHEMA_REGISTRY.size() == 0) {
+            _registerGlobalSchemaByPath("draft2020-12/meta/core.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/applicator.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/validation.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/meta-data.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/format-annotation.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/format-assertion.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/unevaluated.json");
+            _registerGlobalSchemaByPath("draft2020-12/meta/content.json");
+            _registerGlobalSchemaByPath("draft2020-12/schema.json");
         }
+    }
+
+    private static void _registerGlobalSchemaByPath(String filePath) {
+        URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
+        ObjectSchema schema = loadSchemaFromLocalUri(uri);
+        if (schema == null) throw new SchemaException("Not found global schema: " + uri);
+        GLOBAL_SCHEMA_REGISTRY.register(schema);
     }
 
     /**
@@ -192,18 +250,18 @@ public class SchemaRegistry {
         Objects.requireNonNull(uri, "uri");
         ObjectSchema schema;
         if ("file".equalsIgnoreCase(uri.getScheme())) {
-            schema = loadSchemaFromFile(uri.getPath());
+            schema = _loadSchemaFromFile(uri.getPath());
         } else if ("classpath".equalsIgnoreCase(uri.getScheme())) {
             String path = uri.getPath();
             if (path == null || path.isEmpty()) {
                 path = uri.getSchemeSpecificPart();
             }
-            schema = loadSchemaFromResource(path);
+            schema = _loadSchemaFromResource(path);
         } else {
             throw new SchemaException("Unsupported local schema uri: " + uri);
         }
         if (schema == null) return null;
-        schema.setRetrievalUri(SchemaPlanner.withoutFragment(uri));
+        schema.setRetrievalUri(uri);
         return schema;
     }
 
@@ -211,13 +269,13 @@ public class SchemaRegistry {
      * Loads a schema from a file path. Returns {@code null} when the file does
      * not exist.
      */
-    public static ObjectSchema loadSchemaFromFile(String filePath) {
-        try (InputStream in = Files.newInputStream(Paths.get(filePath))) {
+    private static ObjectSchema _loadSchemaFromFile(String path) {
+        try (InputStream in = Files.newInputStream(Paths.get(path))) {
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (NoSuchFileException e) {
             return null;
         } catch (Exception e) {
-            throw new SchemaException("Failed to load schema file: " + filePath, e);
+            throw new SchemaException("Failed to load schema from file: " + path, e);
         }
     }
 
@@ -225,13 +283,14 @@ public class SchemaRegistry {
      * Loads a schema from a classpath resource path. Returns {@code null} when
      * the resource does not exist.
      */
-    public static ObjectSchema loadSchemaFromResource(String resourcePath) {
-        if (resourcePath.startsWith("/")) resourcePath = resourcePath.substring(1);
-        try (InputStream in = SchemaRegistry.class.getClassLoader().getResourceAsStream(resourcePath)) {
+    private static ObjectSchema _loadSchemaFromResource(String path) {
+        if (path.startsWith("/")) path = path.substring(1);
+        try (InputStream in = SchemaRegistry.class.getClassLoader().getResourceAsStream(path)) {
             if (in == null) return null;
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
-            throw new SchemaException("Failed to load schema resource: " + resourcePath, e);
+            throw new SchemaException("Failed to load schema from resource: " + path, e);
         }
     }
+
 }

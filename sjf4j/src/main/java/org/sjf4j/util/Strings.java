@@ -1,7 +1,5 @@
 package org.sjf4j.util;
 
-import org.sjf4j.exception.JsonException;
-
 /**
  * String utility helpers.
  */
@@ -79,7 +77,6 @@ public class Strings {
         if (ellipsis.length() >= maxLen) {
             return ellipsis.substring(0, maxLen);
         }
-
         return str.substring(0, maxLen - ellipsis.length()) + ellipsis;
     }
 

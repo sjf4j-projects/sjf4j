@@ -271,8 +271,6 @@ public class ValidJsonSchemaTest {
 
         String baseDir = "file:" + tempDir.toString();
         SchemaValidator validator = new SchemaValidator(baseDir, null, null);
-        validator.preload("user.json");
-
         ExternalRefUser ok = new ExternalRefUser();
         ok.id = 1;
         ok.name = "han";
@@ -283,7 +281,9 @@ public class ValidJsonSchemaTest {
     public void testPreloadMissingRefThrows(@TempDir Path tempDir) {
         String baseDir = "file:" + tempDir.toString();
         SchemaValidator validator = new SchemaValidator(baseDir, null, null);
-        assertThrows(SchemaException.class, () -> validator.preload("missing.json"));
+        MissingRefUser user = new MissingRefUser();
+        user.name = "han";
+        assertThrows(SchemaException.class, () -> validator.validate(user));
     }
 
     @Test
@@ -302,8 +302,6 @@ public class ValidJsonSchemaTest {
 
         String baseDir = "file:" + tempDir.toString();
         SchemaValidator validator = new SchemaValidator(baseDir, null, null);
-        validator.preloadDirectory(baseDir);
-
         PreloadUser ok = new PreloadUser();
         ok.id = 1;
         ok.name = "han";
@@ -330,7 +328,7 @@ public class ValidJsonSchemaTest {
 
         String baseDir = "file:" + tempDir.toString();
         SchemaValidator validator = new SchemaValidator(baseDir, null, null);
-        validator.preloadDirectory(baseDir);
+        validator.load("defs/non-empty-string.json");
 
         NoIdRelativeRefUser ok = new NoIdRelativeRefUser();
         ok.put("name", "han");
