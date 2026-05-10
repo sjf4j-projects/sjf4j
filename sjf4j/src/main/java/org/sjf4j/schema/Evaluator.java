@@ -409,22 +409,24 @@ public interface Evaluator {
         final PathSegment keywordPs;
         final String format;
         final FormatValidator formatValidator;
+        final boolean assertion;
         /**
          * Creates evaluator for format keyword.
          */
-        public FormatEvaluator(PathSegment keywordPs, String format) {
+        public FormatEvaluator(PathSegment keywordPs, String format, boolean assertion) {
             this.keywordPs = keywordPs;
             this.format = Objects.requireNonNull(format, "format");
             this.formatValidator = FormatValidator.of(format);
+            this.assertion = assertion;
         }
         /**
-         * Validates a string against the configured format in strict mode.
+         * Validates a string against the configured format when assertion is enabled.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType != JsonType.STRING) return true;
             String actual = Nodes.toString(instance.node);
-            if (ctx.getOptions().isStrictFormat()) {
+            if (assertion || ctx.getOptions().isStrictFormat()) {
                 if (!formatValidator.validate(actual)) {
                     ctx.addError(instance, ps, keywordPs, "format",
                             "Value '" + actual + "' does not match format " + format);

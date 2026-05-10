@@ -20,7 +20,8 @@ public final class ValidationOptions {
     /**
      * Returns true when {@code format} validators are enforced as assertions.
      * <p>
-     * When false, format checks are treated as non-failing annotations.
+     * When false, format checks still remain assertions for schemas compiled with
+     * the draft 2020-12 {@code format-assertion} vocabulary.
      */
     public boolean isStrictFormat() {return strictFormat;}
     /**

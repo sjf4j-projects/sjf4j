@@ -64,6 +64,7 @@ public class SchemaRegistry {
         if (os.getCanonicalUri() == null) {
             throw new SchemaException("Missing uri: no $id or retrievalUri");
         }
+        index(os);
         return SchemaPlanner.createPlan(os, this);
     }
 
@@ -163,6 +164,19 @@ public class SchemaRegistry {
         } else {
             return _resolvePlan(mixed.substring(0, fragIdx), mixed.substring(fragIdx + 1));
         }
+    }
+
+    ObjectSchema resolveSchema(URI uri) {
+        Objects.requireNonNull(uri, "uri");
+        String id = SchemaUtil.stripFragment(uri.toString());
+        ObjectSchema schema = byIdSchemas.get(id);
+        if (schema != null) return schema;
+
+        if (this != GLOBAL_SCHEMA_REGISTRY) {
+            _loadGlobalSchemaByPath();
+            return GLOBAL_SCHEMA_REGISTRY.resolveSchema(uri);
+        }
+        return null;
     }
 
     private SchemaPlan _resolvePlan(String id, String fragment) {

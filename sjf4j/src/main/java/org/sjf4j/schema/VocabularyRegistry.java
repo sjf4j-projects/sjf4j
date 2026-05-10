@@ -46,6 +46,8 @@ public class VocabularyRegistry {
             "https://json-schema.org/draft/2020-12/vocab/unevaluated";
     public static final String DRAFT_2020_12_VOCAB_FORMAT =
             "https://json-schema.org/draft/2020-12/vocab/format-annotation";
+    public static final String DRAFT_2020_12_VOCAB_FORMAT_ASSERTION =
+            "https://json-schema.org/draft/2020-12/vocab/format-assertion";
     public static final String DRAFT_2020_12_VOCAB_CONTENT =
             "https://json-schema.org/draft/2020-12/vocab/content";
     public static final String EXTENSION_VOCAB_SJF4J =

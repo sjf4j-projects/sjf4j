@@ -5,6 +5,7 @@ import org.sjf4j.exception.SchemaException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -448,6 +449,19 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build());
         assertFalse(result.isValid());
+    }
+
+    @Test
+    public void testFormatAssertionVocabularyForcesValidation() {
+        ObjectSchema metaSchema = SchemaRegistry.loadSchemaFromLocalUri(
+                URI.create("classpath:///json-schemas/remotes/draft2020-12/format-assertion-true.json"));
+        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+
+        JsonSchema schema = JsonSchema.fromJson("{\"$schema\":\"http://localhost:1234/draft2020-12/format-assertion-true.json\",\"type\":\"string\",\"format\":\"email\"}");
+        SchemaPlan plan = schema.createPlan(registry);
+
+        assertTrue(plan.isValid("a@b.com"));
+        assertFalse(plan.isValid("not-email"));
     }
 
     @Test
