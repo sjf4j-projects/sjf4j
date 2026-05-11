@@ -15,11 +15,13 @@ public final class SchemaPlan {
 
     final String dynamicAnchor;
     final Map<String, SchemaPlan> byAnchorPlans;
+    final Map<String, SchemaPlan> byDynamicAnchorPlans;
     final Map<String, SchemaPlan> byPathPlans;
 
     SchemaPlan(PathSegment keywordPs, Evaluator[] evaluators,
-               boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
-               Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byPathPlans) {
+                boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
+                Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
+                Map<String, SchemaPlan> byPathPlans) {
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
         this.booleanSchema = booleanSchema;
@@ -27,18 +29,20 @@ public final class SchemaPlan {
 
         this.dynamicAnchor = dynamicAnchor;
         this.byAnchorPlans = byAnchorPlans;
+        this.byDynamicAnchorPlans = byDynamicAnchorPlans;
         this.byPathPlans = byPathPlans;
     }
 
     static SchemaPlan of(PathSegment keywordPs, BooleanSchema booleanSchema) {
         return new SchemaPlan(keywordPs, new Evaluator[0], true, booleanSchema.booleanValue(),
-                null, null, null);
+                null, null, null, null);
     }
 
     static SchemaPlan of(PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
-                         Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byPathPlans) {
+                         Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
+                         Map<String, SchemaPlan> byPathPlans) {
         return new SchemaPlan(keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
-                dynamicAnchor, byAnchorPlans, byPathPlans);
+                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
     }
 
     SchemaPlan getByFragment(String fragment) {

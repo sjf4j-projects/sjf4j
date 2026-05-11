@@ -19,8 +19,8 @@ public final class OfficialTest {
         _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
         Path root = locatePath("json-schemas/tests/draft2020-12");
 
-//        runTestDir(root, false);
-        runTestFile(root.resolve("vocabulary.json"), "", "");
+        runTestDir(root, false);
+//        runTestFile(root.resolve("dynamicRef.json"), "", "");
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
     }
 
@@ -162,9 +162,8 @@ public final class OfficialTest {
                     try {
                         ObjectSchema schema = Sjf4j.global().fromJson(Files.readAllBytes(p), ObjectSchema.class);
                         URI uri = resolveSchemaUri(schema, remotesDir, p);
-                        schema.setRetrievalUri(uri);
 //                        System.out.println("uri: " + uri);
-                        registry.index(schema);
+                        registry.index(uri, schema);
 //                        String id = schema.getString("$id", null);
 //                        if (id != null) {
 //                            URI idUri = URI.create(id);

@@ -66,31 +66,41 @@ public interface Evaluator {
     // $dynamicRef
     final class DynamicRefEvaluator implements Evaluator {
         final PathSegment keywordPs;
-        final String dynamicRef;
+        final URI idUri;
+        final String ref;
+        SchemaPlan initialPlan;
+        String dynamicAnchorName;
 
         /**
          * Creates evaluator for $ref target.
          */
-        public DynamicRefEvaluator(PathSegment keywordPs, String dynamicRef) {
+        public DynamicRefEvaluator(PathSegment keywordPs, URI idUri, String ref) {
             this.keywordPs = keywordPs;
-            if (!dynamicRef.startsWith("#")) {
-                throw new SchemaException("$dynamicRef must start with '#'");
-            }
-            this.dynamicRef = dynamicRef.substring(1);
+            this.idUri = idUri;
+            this.ref = ref;
         }
 
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            Iterator<SchemaPlan> it = ctx.planStack.descendingIterator();
-            while (it.hasNext()) {
-                SchemaPlan plan = it.next();
-                if (dynamicRef.equals(plan.dynamicAnchor)) {
-                    instance.checkCyclicRef(plan, keywordPs);
-                    return plan.evaluate(instance, ps, ctx);
+            if (initialPlan != null) {
+                SchemaPlan plan = initialPlan;
+                if (dynamicAnchorName != null) {
+                    Iterator<SchemaPlan> it = ctx.planStack.descendingIterator();
+                    while (it.hasNext()) {
+                        SchemaPlan scopedPlan = it.next();
+                        if (scopedPlan.byDynamicAnchorPlans == null) continue;
+                        SchemaPlan candidate = scopedPlan.byDynamicAnchorPlans.get(dynamicAnchorName);
+                        if (candidate != null && candidate != initialPlan) {
+                            plan = candidate;
+                            break;
+                        }
+                    }
                 }
+
+                instance.checkCyclicRef(plan, keywordPs);
+                return plan.evaluate(instance, ps, ctx);
             }
-            throw new SchemaException("Not found dynamicAnchor '" + dynamicRef+
-                    "' (" + keywordPs.rootedPointerExpr() + ")");
+            throw new AssertionError(DynamicRefEvaluator.class);
         }
     }
 

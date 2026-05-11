@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 import org.sjf4j.exception.SchemaException;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -118,6 +119,25 @@ public final class SchemaUtil {
     public static String stripFragment(String s) {
         int i = s.indexOf('#');
         return i >= 0 ? s.substring(0, i) : s;
+    }
+
+    public static String normalizeUriKey(String uri) {
+        return normalizeUriKey(URI.create(uri));
+    }
+
+    public static String normalizeUriKey(URI uri) {
+        Objects.requireNonNull(uri, "uri");
+        if (uri.getFragment() != null) {
+            uri = URI.create(stripFragment(uri.toString()));
+        }
+        if (!"file".equalsIgnoreCase(uri.getScheme())) {
+            return uri.toString();
+        }
+        try {
+            return new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null).toString();
+        } catch (URISyntaxException e) {
+            throw new SchemaException("Failed to normalize uri key: " + uri, e);
+        }
     }
 
 

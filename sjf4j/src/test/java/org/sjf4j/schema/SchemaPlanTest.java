@@ -48,6 +48,93 @@ class SchemaPlanTest {
     }
 
     @Test
+    void planRefResolvesBooleanSubschemaByPointer() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$defs\":{\"bool\":true}," +
+                "\"$ref\":\"#/$defs/bool\"" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid("ok"));
+    }
+
+    @Test
+    void planRefResolvesEscapedPointerTokens() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$defs\":{\"percent%field\":{\"type\":\"string\"}}," +
+                "\"$ref\":\"#/$defs/percent%25field\"" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid("ok"));
+        assertFalse(plan.isValid(1));
+    }
+
+    @Test
+    void planRefResolvesFileUriPointer() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"file:///folder/file.json\"," +
+                "\"$defs\":{\"foo\":{\"type\":\"number\"}}," +
+                "\"$ref\":\"#/$defs/foo\"" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(1));
+        assertFalse(plan.isValid("a"));
+    }
+
+    @Test
+    void dynamicRefFallsBackToInitialPlanAndUsesScopedOverride() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"type\":\"array\"," +
+                "\"items\":{\"$dynamicRef\":\"#/$defs/number\"}," +
+                "\"$defs\":{" +
+                "\"number\":{\"$dynamicAnchor\":\"number\",\"type\":\"number\"}" +
+                "}" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(new Object[]{1}));
+        assertFalse(plan.isValid(new Object[]{"a"}));
+    }
+
+    @Test
+    void dynamicRefPointerFragmentBehavesLikePlainRef() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$ref\":\"list\"," +
+                "\"$defs\":{" +
+                "\"item\":{\"$dynamicAnchor\":\"item\",\"type\":\"string\"}," +
+                "\"list\":{\"$id\":\"list\",\"type\":\"array\",\"items\":{\"$dynamicRef\":\"#/$defs/item\"},\"$defs\":{\"item\":{\"$dynamicAnchor\":\"item\",\"type\":\"number\"}}}" +
+                "}" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(new Object[]{1}));
+        assertFalse(plan.isValid(new Object[]{"a"}));
+    }
+
+    @Test
+    void dynamicRefUsesOuterScopedOverride() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$ref\":\"list\"," +
+                "\"$defs\":{" +
+                "\"item\":{\"$dynamicAnchor\":\"item\",\"type\":\"string\"}," +
+                "\"list\":{\"$id\":\"list\",\"type\":\"array\",\"items\":{\"$dynamicRef\":\"#item\"},\"$defs\":{\"bookend\":{\"$dynamicAnchor\":\"item\"}}}" +
+                "}" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(new Object[]{"a"}));
+        assertFalse(plan.isValid(new Object[]{1}));
+    }
+
+    @Test
     void planHandlesSelfRefWithoutPlaceholderBreakage() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$ref\":\"#\"}");
 

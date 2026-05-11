@@ -34,33 +34,43 @@ public class SchemaRegistry {
     }
 
     public SchemaRegistry index(JsonSchema schema) {
+        return index(null, schema);
+    }
+
+    public SchemaRegistry index(URI retrievalUri, JsonSchema schema) {
         Objects.requireNonNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             return this;
         }
 
         ObjectSchema os = (ObjectSchema) schema;
+        if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
         URI canonicalUri = os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException("Missing uri: no $id or retrievalUri");
         }
         _putSchema(canonicalUri, os);
 
-        URI retrievalUri = os.getRetrievalUri();
-        if (retrievalUri != null && !SchemaUtil.stripFragment(retrievalUri.toString())
-                .equals(SchemaUtil.stripFragment(canonicalUri.toString()))) {
+        retrievalUri = os.getRetrievalUri();
+        if (retrievalUri != null && !SchemaUtil.normalizeUriKey(retrievalUri)
+                .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
         return this;
     }
 
     public SchemaPlan register(JsonSchema schema) {
+        return register(null, schema);
+    }
+
+    public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
         Objects.requireNonNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             return SchemaPlan.of(PathSegment.Root.INSTANCE, (BooleanSchema) schema);
         }
 
         ObjectSchema os = (ObjectSchema) schema;
+        if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
         if (os.getCanonicalUri() == null) {
             throw new SchemaException("Missing uri: no $id or retrievalUri");
         }
@@ -76,7 +86,7 @@ public class SchemaRegistry {
      */
     void putPlan(URI uri, SchemaPlan plan) {
         _checkUri(uri);
-        String id = SchemaUtil.stripFragment(uri.toString());
+        String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
         if (old != null && old != plan) {
             throw new SchemaException("Duplicate schema uri: '" + id + "'");
@@ -85,7 +95,7 @@ public class SchemaRegistry {
 
     private void _putSchema(URI uri, ObjectSchema schema) {
         _checkUri(uri);
-        String id = SchemaUtil.stripFragment(uri.toString());
+        String id = SchemaUtil.normalizeUriKey(uri);
         ObjectSchema old = byIdSchemas.putIfAbsent(id, schema);
         if (old != null && old != schema) {
             throw new SchemaException("Duplicate schema uri: '" + id + "'");
@@ -132,16 +142,14 @@ public class SchemaRegistry {
     public SchemaPlan resolve(URI uri) {
         Objects.requireNonNull(uri, "uri");
         String mixed = uri.toString();
-        int fragIdx = mixed.indexOf("#");
-        if (fragIdx < 0) {
-            return resolve(mixed, null);
-        } else {
-            return resolve(mixed.substring(0, fragIdx), mixed.substring(fragIdx + 1));
-        }
+        String fragment = uri.getFragment();
+        if (fragment == null) return resolve(mixed, null);
+        return resolve(SchemaUtil.stripFragment(mixed), fragment);
     }
 
 
     public SchemaPlan resolve(String id, String fragment) {
+        id = SchemaUtil.normalizeUriKey(id);
         SchemaPlan plan = _resolvePlan(id, fragment);
         if (plan != null) return plan;
 
@@ -158,17 +166,14 @@ public class SchemaRegistry {
     SchemaPlan resolvePlan(URI uri) {
         Objects.requireNonNull(uri, "uri");
         String mixed = uri.toString();
-        int fragIdx = mixed.indexOf('#');
-        if (fragIdx < 0) {
-            return _resolvePlan(mixed, null);
-        } else {
-            return _resolvePlan(mixed.substring(0, fragIdx), mixed.substring(fragIdx + 1));
-        }
+        String fragment = uri.getFragment();
+        if (fragment == null) return _resolvePlan(mixed, null);
+        return _resolvePlan(SchemaUtil.stripFragment(mixed), fragment);
     }
 
     ObjectSchema resolveSchema(URI uri) {
         Objects.requireNonNull(uri, "uri");
-        String id = SchemaUtil.stripFragment(uri.toString());
+        String id = SchemaUtil.normalizeUriKey(uri);
         ObjectSchema schema = byIdSchemas.get(id);
         if (schema != null) return schema;
 
@@ -181,6 +186,7 @@ public class SchemaRegistry {
 
     private SchemaPlan _resolvePlan(String id, String fragment) {
         Objects.requireNonNull(id, "id");
+        id = SchemaUtil.normalizeUriKey(id);
         SchemaPlan plan = byIdPlans.get(id);
         if (plan != null) {
             if (fragment == null || fragment.isEmpty()) return plan;
@@ -202,8 +208,9 @@ public class SchemaRegistry {
      * Returns true if the URI exists in this registry.
      */
     public boolean contains(String uri) {
-        return byIdPlans.containsKey(uri) || byIdSchemas.containsKey(uri) ||
-                (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(uri));
+        String id = SchemaUtil.normalizeUriKey(uri);
+        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) ||
+                (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
     }
 
     /**
