@@ -1,6 +1,8 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.exception.SchemaException;
+import org.sjf4j.path.PathSegment;
+import org.sjf4j.path.PathSyntax;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,6 +16,137 @@ import java.util.regex.PatternSyntaxException;
  * resolution/normalization.
  */
 public final class SchemaUtil {
+
+    /**
+     * Stable message codes used by schema compilation and validation output.
+     * <p>
+     * Codes stay intentionally coarse-grained so callers can categorize errors
+     * without coupling to every individual keyword message variant.
+     */
+    public static final class Code {
+        public static final String SCHEMA_INVALID = "schema.invalid";
+        public static final String SCHEMA_RESOLVE = "schema.resolve";
+        public static final String SCHEMA_CONFLICT = "schema.conflict";
+        public static final String SCHEMA_URI = "schema.uri";
+        public static final String SCHEMA_LOAD = "schema.load";
+
+        public static final String VALIDATE_FALSE = "validate.false";
+        public static final String VALIDATE_TYPE = "validate.type";
+        public static final String VALIDATE_VALUE = "validate.value";
+        public static final String VALIDATE_RANGE = "validate.range";
+        public static final String VALIDATE_PATTERN = "validate.pattern";
+        public static final String VALIDATE_FORMAT = "validate.format";
+        public static final String VALIDATE_REQUIRED = "validate.required";
+        public static final String VALIDATE_OBJECT = "validate.object";
+        public static final String VALIDATE_ARRAY = "validate.array";
+        public static final String VALIDATE_COMBINATOR = "validate.combinator";
+        public static final String VALIDATE_GENERIC = "validate.generic";
+
+        private Code() {}
+
+    }
+
+    static String validationCode(String keyword) {
+        if (keyword == null) return Code.VALIDATE_GENERIC;
+        switch (keyword) {
+            case "false":
+                return Code.VALIDATE_FALSE;
+            case "type":
+                return Code.VALIDATE_TYPE;
+            case "const":
+            case "enum":
+                return Code.VALIDATE_VALUE;
+            case "minimum":
+            case "maximum":
+            case "exclusiveMinimum":
+            case "exclusiveMaximum":
+            case "multipleOf":
+            case "minLength":
+            case "maxLength":
+            case "minProperties":
+            case "maxProperties":
+            case "minItems":
+            case "maxItems":
+            case "minContains":
+            case "maxContains":
+                return Code.VALIDATE_RANGE;
+            case "pattern":
+                return Code.VALIDATE_PATTERN;
+            case "format":
+                return Code.VALIDATE_FORMAT;
+            case "required":
+            case "dependentRequired":
+                return Code.VALIDATE_REQUIRED;
+            case "propertyNames":
+            case "additionalProperties":
+            case "dependentSchemas":
+            case "unevaluatedProperties":
+                return Code.VALIDATE_OBJECT;
+            case "uniqueItems":
+            case "contains":
+            case "unevaluatedItems":
+                return Code.VALIDATE_ARRAY;
+            case "allOf":
+            case "anyOf":
+            case "oneOf":
+            case "not":
+                return Code.VALIDATE_COMBINATOR;
+            default:
+                return Code.VALIDATE_GENERIC;
+        }
+    }
+
+    static String formatValidationLine(ValidationMessage.Severity severity, String code, String summary,
+                                       PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(severity).append(' ').append(code).append(": ").append(summary);
+        String keywordValue = displayPath(keywordPs);
+        String keywordName = (keyword != null && (keywordValue == null || "/".equals(keywordValue))) ? keyword : null;
+        _appendMeta(sb, _meta("instance", displayPath(instancePs)),
+                _meta("keyword", keywordValue),
+                _meta("name", keywordName),
+                _meta("schema", displaySchemaUri(schemaUri)));
+        return sb.toString();
+    }
+
+    static String formatSchemaLine(String code, String summary, PathSegment keywordPs, URI schemaUri) {
+        return formatSchemaLine(code, summary, displayPath(keywordPs), displaySchemaUri(schemaUri));
+    }
+
+    static String formatSchemaLine(String code, String summary, String keywordPath, String schemaUri) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SCHEMA ").append(code).append(": ").append(summary);
+        _appendMeta(sb, _meta("keyword", keywordPath), _meta("schema", schemaUri));
+        return sb.toString();
+    }
+
+    private static String _meta(String key, String value) {
+        if (value == null || value.isEmpty()) return null;
+        return key + '=' + value;
+    }
+
+    private static void _appendMeta(StringBuilder sb, String... entries) {
+        int count = 0;
+        for (String entry : entries) {
+            if (entry == null) continue;
+            if (count++ == 0) sb.append(" (");
+            else sb.append(", ");
+            sb.append(entry);
+        }
+        if (count > 0) sb.append(')');
+    }
+
+    public static String displayPath(PathSegment ps) {
+        if (ps == null) return null;
+        String path = PathSyntax.rootedPointerExpr(ps);
+        return path == null || path.isEmpty() ? "/" : path;
+    }
+
+    public static String displaySchemaUri(URI schemaUri) {
+        if (schemaUri == null) return "<inline>";
+        if ("sjf4j".equalsIgnoreCase(schemaUri.getScheme())) return "<inline>";
+        return schemaUri.toString();
+    }
 
     // Length of Unicode code points
 
@@ -49,7 +182,9 @@ public final class SchemaUtil {
             try {
                 return Pattern.compile(normalized);
             } catch (PatternSyntaxException e) {
-                throw new SchemaException("Invalid regex for keyword '" + keyword + "': " + pattern, e);
+                throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
+                        "invalid regex for keyword '" + keyword + "': " + pattern,
+                        (String) null, (String) null), e);
             }
         }
     }
@@ -135,7 +270,9 @@ public final class SchemaUtil {
             // "" resolves to base
             if (r.isEmpty()) return base;
             if (r.startsWith("#")) return URI.create(stripFragment(base.toString()) + r);
-            throw new SchemaException("Cannot resolve relative URI against opaque base URI: base=" + base + ", ref=" + ref);
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_RESOLVE,
+                    "cannot resolve relative uri against opaque base uri: base='" + base + "', ref='" + ref + "'",
+                    null, displaySchemaUri(base)));
         }
 
         return base.resolve(ref);
@@ -174,7 +311,8 @@ public final class SchemaUtil {
         try {
             return new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null).toString();
         } catch (URISyntaxException e) {
-            throw new SchemaException("Failed to normalize uri key: " + uri, e);
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_URI,
+                    "failed to normalize uri key '" + uri + "'", null, displaySchemaUri(uri)), e);
         }
     }
 

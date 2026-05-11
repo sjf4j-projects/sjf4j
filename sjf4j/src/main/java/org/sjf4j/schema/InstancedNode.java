@@ -242,7 +242,8 @@ public final class InstancedNode {
         if (refSchemaTimes++ > 0) {
             if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();
             if (refSchemaStack.contains(plan)) {
-                throw new SchemaException("Cyclic schema reference detected: " + keywordPs.rootedPointerExpr());
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cyclic schema reference detected", keywordPs, plan.schemaUri));
             } else {
                 refSchemaStack.push(plan);
             }

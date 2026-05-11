@@ -186,16 +186,19 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
+        assertEquals("validate.false", result.getLastMessage().getCode());
         assertEquals("false", result.getLastMessage().getKeyword());
-        assertEquals("/y", result.getLastMessage().getInstancePath());
-        assertEquals("/additionalProperties", result.getLastMessage().getKeywordPath());
-        assertEquals("Schema 'false' always fails",
+        assertEquals("/y", result.getLastMessage().getInstancePs().rootedPointerExpr());
+        assertEquals("/additionalProperties", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+        assertEquals("<inline>", result.getLastMessage().getSchemaUriText());
+        assertEquals("schema 'false' always fails",
                 result.getLastMessage().getMessage());
 
         ValidationException ex = assertThrows(ValidationException.class, () -> plan.requireValid(bad));
         assertTrue(ex.getMessage().contains("/additionalProperties"));
-        assertTrue(ex.getMessage().contains("instance '/y'"));
-        assertTrue(ex.getMessage().contains("Schema 'false' always fails"));
+        assertTrue(ex.getMessage().contains("instance=/y"));
+        assertTrue(ex.getMessage().contains("schema=<inline>"));
+        assertTrue(ex.getMessage().contains("schema 'false' always fails"));
     }
 
     @Test
@@ -216,8 +219,8 @@ public class SchemaValidationTest {
         ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
         assertEquals("type", result.getLastMessage().getKeyword());
-        assertEquals("/name", result.getLastMessage().getInstancePath());
-        assertEquals("/properties/name/type", result.getLastMessage().getKeywordPath());
+        assertEquals("/name", result.getLastMessage().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/name/type", result.getLastMessage().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
@@ -236,8 +239,8 @@ public class SchemaValidationTest {
         ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
         assertEquals("propertyNames", result.getLastMessage().getKeyword());
-        assertEquals("/Bad-Name", result.getLastMessage().getInstancePath());
-        assertEquals("/propertyNames", result.getLastMessage().getKeywordPath());
+        assertEquals("/Bad-Name", result.getLastMessage().getInstancePs().rootedPointerExpr());
+        assertEquals("/propertyNames", result.getLastMessage().getKeywordPs().rootedPointerExpr());
     }
 
     @Test

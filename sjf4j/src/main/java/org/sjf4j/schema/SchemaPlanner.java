@@ -56,8 +56,9 @@ public final class SchemaPlanner {
             URI refUri = SchemaUtil.resolveUri(refEvaluator.idUri, URI.create(refEvaluator.ref));
             SchemaPlan refPlan = context.registry.resolve(refUri);
             if (refPlan == null) {
-                throw new SchemaException("Not found schema by " + refUri + " with $ref '" + refEvaluator.ref + "' ('" +
-                        refEvaluator.keywordPs.rootedPointerExpr() + "' in " + idUri + ")");
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
+                        refEvaluator.keywordPs, idUri));
             }
             refEvaluator.plan = refPlan;
         }
@@ -65,8 +66,9 @@ public final class SchemaPlanner {
             URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.idUri, URI.create(dynamicRefEvaluator.ref));
             SchemaPlan refPlan = context.registry.resolve(refUri);
             if (refPlan == null) {
-                throw new SchemaException("Not found schema by " + refUri + " with $dynamicRef '" + dynamicRefEvaluator.ref + "' ('" +
-                        dynamicRefEvaluator.keywordPs.rootedPointerExpr() + "' in " + idUri + ")");
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
+                        dynamicRefEvaluator.keywordPs, idUri));
             }
             dynamicRefEvaluator.initialPlan = refPlan;
             String fragment = refUri.getFragment();
@@ -308,7 +310,7 @@ public final class SchemaPlanner {
         }
 
         // end up
-        SchemaPlan plan = SchemaPlan.of(ps, evaluators, dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
+        SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", idUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", idUri, ps);
@@ -322,8 +324,9 @@ public final class SchemaPlanner {
                                           SchemaPlan plan, String keyword, URI idUri, PathSegment ps) {
         SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
         if (old != null) {
-            throw new SchemaException("Duplicate fragment '" + fragment + "' from " + keyword +
-                    " ('" + ps.rootedPointerExpr() + "' in " + idUri + ")");
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate named fragment '" + fragment + "' from " + keyword,
+                    ps, idUri));
         }
     }
 
@@ -344,7 +347,9 @@ public final class SchemaPlanner {
 
         PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(objectNode).isObject()) {
-            throw new SchemaException("Invalid schema at '" + cps.rootedPointerExpr() + "': must be a JSON Object");
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                    "invalid schema node: expected JSON object",
+                    cps, baseUri));
         }
 
         Map<String, SchemaPlan> planMap = new HashMap<>();
@@ -372,7 +377,9 @@ public final class SchemaPlanner {
 
         PathSegment cps = new PathSegment.Name(ps, key);
         if (!JsonType.of(arrayNode).isArray()) {
-            throw new SchemaException("Invalid schema at '" + cps.rootedPointerExpr() + "': must be a JSON Array");
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                    "invalid schema node: expected JSON array",
+                    cps, baseUri));
         }
         int size = Nodes.sizeInArray(arrayNode);
         SchemaPlan[] planArr = new SchemaPlan[size];
@@ -406,11 +413,12 @@ public final class SchemaPlanner {
      * root. Null/other types are invalid for schema positions.
      */
     private static SchemaPlan _buildPlanFromNode(Object node, URI idUri, PathSegment ps,
-                                                  Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
-                                                  Map<String, SchemaPlan> byPathPlans,
-                                                  PlanningContext context, Map<String, Boolean> inheritedVocabulary) {
+                                                   Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
+                                                   Map<String, SchemaPlan> byPathPlans,
+                                                   PlanningContext context, Map<String, Boolean> inheritedVocabulary) {
         if (node == null) {
-            throw new SchemaException("Invalid schema ('" + ps.rootedPointerExpr() + "' in " + idUri + "): schema is null");
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                    "invalid schema node: schema is null", ps, idUri));
         }
 
         JsonSchema schema;
@@ -420,13 +428,13 @@ public final class SchemaPlanner {
             try {
                 schema = Nodes.to(node, JsonSchema.class);
             } catch (Exception e) {
-                throw new SchemaException("Invalid schema at '" + ps.rootedPointerExpr() +
-                        "': node type is " + node.getClass().getName(), e);
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                        "invalid schema node type '" + node.getClass().getName() + "'", ps, idUri), e);
             }
         }
 
         if (schema instanceof BooleanSchema) {
-            SchemaPlan plan = SchemaPlan.of(ps, (BooleanSchema) schema);
+            SchemaPlan plan = SchemaPlan.of(idUri, ps, (BooleanSchema) schema);
             byPathPlans.put(ps.rootedPointerExpr(), plan);
             return plan;
         }

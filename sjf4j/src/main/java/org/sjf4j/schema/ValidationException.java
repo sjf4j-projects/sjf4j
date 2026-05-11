@@ -28,12 +28,9 @@ public class ValidationException extends SchemaException {
      * Builds concise exception message from result state.
      */
     private static String buildMessage(ValidationResult result) {
-        ValidationMessage lastOne = result.getLastMessage();
-        if (lastOne == null) {
-            return "Failed with " + result.count() + " errors";
-        } else {
-            return "Failed with " + result.count() + " errors, last one: " + lastOne;
-        }
+        ValidationMessage first = result.getMessages().isEmpty() ? null : result.getMessages().get(0);
+        if (first == null) return "Validation failed with " + result.count() + " error(s)";
+        return "Validation failed with " + result.count() + " error(s); first: " + first;
     }
 
     /**

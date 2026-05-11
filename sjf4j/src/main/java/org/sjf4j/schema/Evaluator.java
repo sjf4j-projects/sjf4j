@@ -140,8 +140,10 @@ public interface Evaluator {
                 this.jsonTypes = (JsonType[]) Array.newInstance(JsonType.class, types.length);
                 for (int i = 0; i < types.length; i++) this.jsonTypes[i] = JsonType.ofSchema(types[i]);
             } else {
-                throw new SchemaException("Invalid 'type' keyword: expected String or Array, but found " +
-                        type.getClass().getSimpleName());
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                        "invalid 'type' keyword: expected string or array, found '" +
+                                type.getClass().getSimpleName() + "'",
+                        keywordPs, null));
             }
         }
         /**
@@ -151,8 +153,8 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (jsonType != null) {
                 if (!_matches(jsonType, instance)) {
-                    ctx.addError(instance, ps, keywordPs, "type", "Expected type " + type +
-                            ", but was " + instance.jsonType);
+                    ctx.addError(instance, ps, keywordPs, "type", "expected type " + type +
+                            ", found " + instance.jsonType);
                     return false;
                 }
                 return true;
@@ -163,8 +165,8 @@ public interface Evaluator {
                         return true;
                     }
                 }
-                ctx.addError(instance, ps, keywordPs, "type", "Expected one of " + Arrays.toString(types) +
-                        ", but found " + instance.jsonType);
+                ctx.addError(instance, ps, keywordPs, "type", "expected one of " + Arrays.toString(types) +
+                        ", found " + instance.jsonType);
                 return false;
             }
             return true;
@@ -204,8 +206,8 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             Object actual = instance.node;
             if (!Nodes.equals(constValue, actual)) {
-                ctx.addError(instance, ps, keywordPs, "const", "Value does not match constant. Expected: " +
-                        Nodes.inspect(constValue) + ", actual: " + Nodes.inspect(actual));
+                ctx.addError(instance, ps, keywordPs, "const", "expected constant " +
+                        Nodes.inspect(constValue) + ", found " + Nodes.inspect(actual));
                 return false;
             }
             return true;
@@ -232,7 +234,8 @@ public interface Evaluator {
             for (Object allowed : enumValues) {
                 if (Nodes.equals(allowed, actual)) return true;
             }
-            ctx.addError(instance, ps, keywordPs, "enum", "Value not in enum: " + Nodes.inspect(enumValues));
+            ctx.addError(instance, ps, keywordPs, "enum", "expected one of " + Nodes.inspect(enumValues) +
+                    ", found " + Nodes.inspect(actual));
             return false;
         }
     }
@@ -281,18 +284,20 @@ public interface Evaluator {
             Number actual = Nodes.toNumber(instance.node);
             double actualDouble = actual.doubleValue();
             if (hasMinimum && actualDouble < minimum) {
-                ctx.addError(instance, ps, minimumKeywordPs, "minimum", "Number '" + actual + "' must >= " + minimum);
+                ctx.addError(instance, ps, minimumKeywordPs, "minimum", "expected number >= " + minimum +
+                        ", found " + actual);
                 return false;
             } else if (hasMaximum && actualDouble > maximum) {
-                ctx.addError(instance, ps, maximumKeywordPs, "maximum", "Number '" + actual + "' must <= " + maximum);
+                ctx.addError(instance, ps, maximumKeywordPs, "maximum", "expected number <= " + maximum +
+                        ", found " + actual);
                 return false;
             } else if (hasExclusiveMinimum && actualDouble <= exclusiveMinimum) {
                 ctx.addError(instance, ps, exclusiveMinimumKeywordPs, "exclusiveMinimum",
-                        "Number '" + actual + "' must > " + exclusiveMinimum);
+                        "expected number > " + exclusiveMinimum + ", found " + actual);
                 return false;
             } else if (hasExclusiveMaximum && actualDouble >= exclusiveMaximum) {
                 ctx.addError(instance, ps, exclusiveMaximumKeywordPs, "exclusiveMaximum",
-                        "Number '" + actual + "' must < " + exclusiveMaximum);
+                        "expected number < " + exclusiveMaximum + ", found " + actual);
                 return false;
             }
             return true;
@@ -315,7 +320,8 @@ public interface Evaluator {
             this.multipleOf = multipleOf;
             this.divisor = Numbers.normalizeDecimal(multipleOf);
             if (divisor.signum() <= 0)
-                throw new SchemaException("Invalid 'multipleOf' keyword: value must be > 0");
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
+                        "invalid 'multipleOf' keyword: value must be > 0", keywordPs, null));
             this.isIntegerDivisor = divisor.scale() <= 0;
             this.divisorLong = isIntegerDivisor ? divisor.longValueExact() : 0L;
             this.divisorDouble = divisor.doubleValue();
@@ -333,21 +339,24 @@ public interface Evaluator {
             if (isIntegerDivisor && Numbers.isSemanticInteger(actual)) {
                 long v = actual.longValue();
                 if (v % divisorLong != 0) {
-                    ctx.addError(instance, ps, keywordPs, "multipleOf", "Number not a multiple of " + multipleOf);
+                    ctx.addError(instance, ps, keywordPs, "multipleOf", "expected a multiple of " + multipleOf +
+                            ", found " + actual);
                     return false;
                 }
             } else if (isIntegerDivisor && (actual instanceof Double || actual instanceof Float)) {
                 double dv = actual.doubleValue();
                 double q = dv / divisorDouble;
                 if (q != Math.rint(q)) {
-                    ctx.addError(instance, ps, keywordPs, "multipleOf", "Number not a multiple of " + multipleOf);
+                    ctx.addError(instance, ps, keywordPs, "multipleOf", "expected a multiple of " + multipleOf +
+                            ", found " + actual);
                     return false;
                 }
             } else {
                 BigDecimal v = Numbers.normalizeDecimal(actual);
                 BigDecimal[] dr = v.divideAndRemainder(divisor);
                 if (dr[1].signum() != 0) {
-                    ctx.addError(instance, ps, keywordPs, "multipleOf", "Number not a multiple of " + multipleOf);
+                    ctx.addError(instance, ps, keywordPs, "multipleOf", "expected a multiple of " + multipleOf +
+                            ", found " + actual);
                     return false;
                 }
             }
@@ -381,11 +390,13 @@ public interface Evaluator {
             String actual = Nodes.toString(instance.node);
             int length = SchemaUtil.stringIcuLength(actual);
             if (minLength != null && length < minLength) {
-                ctx.addError(instance, ps, minLengthKeywordPs, "minLength", "String length must >= " + minLength);
+                ctx.addError(instance, ps, minLengthKeywordPs, "minLength", "expected string length >= " + minLength +
+                        ", found " + length);
                 return false;
             }
             if (maxLength != null && length > maxLength) {
-                ctx.addError(instance, ps, maxLengthKeywordPs, "maxLength", "String length must <= " + maxLength);
+                ctx.addError(instance, ps, maxLengthKeywordPs, "maxLength", "expected string length <= " + maxLength +
+                        ", found " + length);
                 return false;
             }
             return true;
@@ -415,7 +426,7 @@ public interface Evaluator {
 
             String actual = Nodes.toString(instance.node);
             if (!pn.matcher(actual).find()) {
-                ctx.addError(instance, ps, keywordPs, "pattern", "String must match pattern: " + pattern);
+                ctx.addError(instance, ps, keywordPs, "pattern", "expected string matching pattern '" + pattern + "'");
                 return false;
             }
             return true;
@@ -447,7 +458,7 @@ public interface Evaluator {
             if (assertion || ctx.getOptions().isStrictFormat()) {
                 if (!formatValidator.validate(actual)) {
                     ctx.addError(instance, ps, keywordPs, "format",
-                            "Value '" + actual + "' does not match format " + format);
+                            "expected format " + format + ", found '" + actual + "'");
                     return false;
                 }
             }
@@ -483,12 +494,12 @@ public interface Evaluator {
             int size = Nodes.sizeInObject(actual);
             if (minProperties != null && size < minProperties) {
                 ctx.addError(instance, ps, minPropertiesKeywordPs, "minProperties",
-                        "Object must have >= " + minProperties + " properties");
+                        "expected at least " + minProperties + " properties, found " + size);
                 return false;
             }
             if (maxProperties != null && size > maxProperties) {
                 ctx.addError(instance, ps, maxPropertiesKeywordPs, "maxProperties",
-                        "Object must have <= " + maxProperties + " properties");
+                        "expected at most " + maxProperties + " properties, found " + size);
                 return false;
             }
             return true;
@@ -611,7 +622,7 @@ public interface Evaluator {
                 for (String key : required) {
                     if (!Nodes.containsInObject(actual, key)) {
                         ctx.addError(instance, ps, requiredKeywordPs, "required",
-                                "Missing required property '" + key + "'");
+                                "missing required property '" + key + "'");
                         result = false;
                     }
                 }
@@ -626,8 +637,7 @@ public interface Evaluator {
                         for (String property : required) {
                             if (!Nodes.containsInObject(actual, property)) {
                                 ctx.addError(instance, ps, dependentRequiredKeywordPs, "dependentRequired",
-                                        "Property '" + property + "' is required when property '" + key +
-                                                "' is present");
+                                        "missing property '" + property + "' required when '" + key + "' is present");
                                 result = false;
                             }
                         }
@@ -699,7 +709,7 @@ public interface Evaluator {
                             ? new PathSegment.Name(instance.materializePath(), key)
                             : new PathSegment.Name(ps, key);
                     ctx.addError(instance, instanceKeywordPs, keywordPs,
-                            "propertyNames", "Property name '" + key + "' is invalid");
+                            "propertyNames", "invalid property name '" + key + "'");
                     result = false;
                     if (ctx.shouldAbort()) return result;
                 }
@@ -743,11 +753,13 @@ public interface Evaluator {
             boolean result = true;
             int size = Nodes.sizeInArray(actual);
             if (minItems != null && size < minItems) {
-                ctx.addError(instance, ps, minItemsKeywordPs, "minItems", "Array size must >= " + minItems);
+                ctx.addError(instance, ps, minItemsKeywordPs, "minItems", "expected at least " + minItems +
+                        " items, found " + size);
                 result = false;
             }
             if (maxItems != null && size > maxItems) {
-                ctx.addError(instance, ps, maxItemsKeywordPs, "maxItems", "Array size must <= " + maxItems);
+                ctx.addError(instance, ps, maxItemsKeywordPs, "maxItems", "expected at most " + maxItems +
+                        " items, found " + size);
                 result = false;
             }
             if (ctx.shouldAbort()) return result;
@@ -756,7 +768,7 @@ public interface Evaluator {
                 for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
                     Object v = it.next();
                     if (!set.add(v)) {
-                        ctx.addError(instance, ps, uniqueItemsKeywordPs, "uniqueItems", "Array items must be unique");
+                        ctx.addError(instance, ps, uniqueItemsKeywordPs, "uniqueItems", "expected unique array items");
                         result = false;
                         break;
                     }
@@ -860,12 +872,12 @@ public interface Evaluator {
             }
             if (matches < minContains) {
                 ctx.addError(instance, ps, minContainsKeywordPs, "minContains",
-                        "Array must contain at least " + minContains + " matching items, but found " + matches);
+                        "expected at least " + minContains + " matching items, found " + matches);
                 return false;
             }
             if (maxContains != null && matches > maxContains) {
                 ctx.addError(instance, ps, maxContainsKeywordPs, "maxContains",
-                        "Array must contain at most " + maxContains + " matching items, but found " + matches);
+                        "expected at most " + maxContains + " matching items, found " + matches);
                 return false;
             }
             return true;
@@ -1008,7 +1020,7 @@ public interface Evaluator {
                 }
             }
             if (!result) {
-                ctx.addError(instance, ps, keywordPs, "anyOf", "No schemas matched");
+                ctx.addError(instance, ps, keywordPs, "anyOf", "expected at least one matching schema");
             }
             return result;
         }
@@ -1057,7 +1069,7 @@ public interface Evaluator {
                 }
             }
             if (matches != 1) {
-                ctx.addError(instance, ps, keywordPs, "oneOf", "Must match exactly 1 schema, but found " + matches);
+                ctx.addError(instance, ps, keywordPs, "oneOf", "expected exactly 1 matching schema, found " + matches);
                 return false;
             }
             return true;
@@ -1087,7 +1099,7 @@ public interface Evaluator {
             instance.popEvaluated();
 
             if (result) {
-                ctx.addError(instance, ps, keywordPs, "not", "Must not match schema in not");
+                ctx.addError(instance, ps, keywordPs, "not", "schema in 'not' matched");
                 return false;
             }
             return true;

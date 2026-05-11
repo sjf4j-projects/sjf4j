@@ -1,15 +1,16 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.path.PathSyntax;
 
+import java.net.URI;
 import java.util.Objects;
 
 /**
  * Single validation message produced during schema evaluation.
  * <p>
- * Captures severity, instance path, keyword path, source keyword, and detail.
- * Public path accessors expose JSON Pointer strings by default.
+ * Captures severity, message code, instance path, keyword path, schema
+ * resource, source keyword, and detail. Public path accessors expose JSON
+ * Pointer strings by default.
  */
 public class ValidationMessage {
 
@@ -21,27 +22,24 @@ public class ValidationMessage {
     public enum Severity { ERROR, WARN, INFO, DEBUG }
 
     private final Severity severity;
+    private final String code;
     private final PathSegment instancePs;
     private final PathSegment keywordPs;
+    private final URI schemaUri;
     private final String keyword;
     private final String message;
 
     /**
-     * Creates a validation message entry.
-     */
-    public ValidationMessage(Severity severity, PathSegment instancePs, String keyword, String message) {
-        this(severity, instancePs, null, keyword, message);
-    }
-
-    /**
      * Creates a validation message entry with instance and keyword paths.
      */
-    public ValidationMessage(Severity severity, PathSegment instancePs, PathSegment keywordPs,
-                             String keyword, String message) {
+    public ValidationMessage(Severity severity, String code, PathSegment instancePs, PathSegment keywordPs,
+                             URI schemaUri, String keyword, String message) {
         Objects.requireNonNull(severity, "severity");
+        this.code = Objects.requireNonNull(code, "code");
         this.severity = severity;
         this.instancePs = instancePs;
         this.keywordPs = keywordPs;
+        this.schemaUri = schemaUri;
         this.keyword = keyword;
         this.message = message;
     }
@@ -52,6 +50,10 @@ public class ValidationMessage {
     public Severity getSeverity() {
         return severity;
     }
+    /**
+     * Returns stable coarse-grained message code.
+     */
+    public String getCode() { return code; }
     /**
      * Returns the instance path segment chain.
      * <p>
@@ -69,14 +71,14 @@ public class ValidationMessage {
     public PathSegment getKeywordPs() { return keywordPs; }
 
     /**
-     * Returns the instance path as a JSON Pointer string.
+     * Returns the schema resource URI that owns {@link #getKeywordPs()}.
      */
-    public String getInstancePath() { return PathSyntax.rootedPointerExpr(instancePs); }
+    public URI getSchemaUri() { return schemaUri; }
 
     /**
-     * Returns the keyword path as a JSON Pointer string.
+     * Returns the schema resource URI as a display string.
      */
-    public String getKeywordPath() { return PathSyntax.rootedPointerExpr(keywordPs); }
+    public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
 
     /**
      * Returns the schema keyword that produced this message.
@@ -102,9 +104,7 @@ public class ValidationMessage {
      */
     @Override
     public String toString() {
-        return "[" + severity + "] Keyword '" + keyword + "'" +
-                (keywordPs == null ? "" : " (" + PathSyntax.rootedPointerExpr(keywordPs) + ")") +
-                " failed at instance '" + PathSyntax.rootedPointerExpr(instancePs) + "': " + message;
+        return SchemaUtil.formatValidationLine(severity, code, message, instancePs, keywordPs, schemaUri, keyword);
     }
 
 }

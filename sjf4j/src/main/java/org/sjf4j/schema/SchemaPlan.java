@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import java.util.Map;
  * can be reused across validations.
  */
 public final class SchemaPlan {
+    final URI schemaUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
     final boolean booleanSchema;
@@ -25,10 +27,11 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byDynamicAnchorPlans;
     final Map<String, SchemaPlan> byPathPlans;
 
-    SchemaPlan(PathSegment keywordPs, Evaluator[] evaluators,
+    SchemaPlan(URI schemaUri, PathSegment keywordPs, Evaluator[] evaluators,
                 boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
                 Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                 Map<String, SchemaPlan> byPathPlans) {
+        this.schemaUri = schemaUri;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
         this.booleanSchema = booleanSchema;
@@ -40,15 +43,15 @@ public final class SchemaPlan {
         this.byPathPlans = byPathPlans;
     }
 
-    static SchemaPlan of(PathSegment keywordPs, BooleanSchema booleanSchema) {
-        return new SchemaPlan(keywordPs, new Evaluator[0], true, booleanSchema.booleanValue(),
+    static SchemaPlan of(URI schemaUri, PathSegment keywordPs, BooleanSchema booleanSchema) {
+        return new SchemaPlan(schemaUri, keywordPs, new Evaluator[0], true, booleanSchema.booleanValue(),
                 null, null, null, null);
     }
 
-    static SchemaPlan of(PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
+    static SchemaPlan of(URI schemaUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                          Map<String, SchemaPlan> byPathPlans) {
-        return new SchemaPlan(keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
+        return new SchemaPlan(schemaUri, keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
     }
 
@@ -83,7 +86,8 @@ public final class SchemaPlan {
                 return ValidationResult.SUCCESS;
             } else {
                 ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                        PathSegment.Root.INSTANCE, keywordPs, "false", "Schema 'false' always fails");
+                        SchemaUtil.Code.VALIDATE_FALSE, PathSegment.Root.INSTANCE, keywordPs,
+                        schemaUri, "false", "schema 'false' always fails");
                 return new ValidationResult(false, null, msg);
             }
         }
@@ -118,7 +122,7 @@ public final class SchemaPlan {
             if (booleanValue) {
                 return true;
             } else {
-                ctx.addError(instance, ps, keywordPs, "false", "Schema 'false' always fails");
+                ctx.addError(instance, ps, keywordPs, "false", "schema 'false' always fails");
                 return false;
             }
         }

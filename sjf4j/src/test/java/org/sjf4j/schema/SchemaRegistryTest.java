@@ -47,6 +47,8 @@ class SchemaRegistryTest {
 
         assertTrue(registry.contains("file:///schemas/defs/user.json"));
         assertTrue(registry.contains("file:///schemas/root.json"));
+        assertTrue(registry.contains(URI.create("file:///schemas/defs/user.json")));
+        assertTrue(registry.contains(URI.create("file:///schemas/root.json")));
     }
 
     @Test

@@ -148,7 +148,8 @@ public final class SchemaValidator {
         if (!ref.isEmpty()) {
             URI refUri = baseDirUri.resolve(ref);
             SchemaPlan plan = _registerByRef(refUri);
-            if (plan == null) throw new SchemaException("Failed to load schema by ref uri: " + refUri);
+            if (plan == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+                    "failed to load schema by ref uri", null, refUri.toString()));
             return plan;
         }
 
@@ -162,9 +163,11 @@ public final class SchemaValidator {
         plan = _registerByRef(snakeNameUri);
         if (plan != null) return plan;
 
-        throw new SchemaException("No schema found for @ValidJsonSchema on " + clazz.getName() +
-                ": neither 'value' nor 'ref' is specified, and no schema file exists at '" +
-                simpleNameUri + "' or '" + snakeNameUri + "'.");
+        throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+                "no schema found for @ValidJsonSchema on '" + clazz.getName() +
+                        "'; expected annotation value/ref or file at '" + simpleNameUri +
+                        "' or '" + snakeNameUri + "'",
+                null, (String) null));
     }
 
 

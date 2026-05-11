@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
 
+import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -80,7 +81,7 @@ public class ValidationContext {
                 instancePs = instance.materializePath();
             }
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                    instancePs, keywordPs, keyword, message);
+                    SchemaUtil.validationCode(keyword), instancePs, keywordPs, _currentSchemaUri(), keyword, message);
             if (messages != null) {
                 messages.add(msg);
             } else {
@@ -98,9 +99,14 @@ public class ValidationContext {
     void addWarn(PathSegment instancePs, PathSegment keywordPs, String keyword, String message) {
         if (messages != null) {
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN,
-                    instancePs, keywordPs, keyword, message);
+                    SchemaUtil.validationCode(keyword), instancePs, keywordPs, _currentSchemaUri(), keyword, message);
             messages.add(msg);
         }
+    }
+
+    private URI _currentSchemaUri() {
+        SchemaPlan plan = planStack.peek();
+        return plan == null ? null : plan.schemaUri;
     }
 
 }

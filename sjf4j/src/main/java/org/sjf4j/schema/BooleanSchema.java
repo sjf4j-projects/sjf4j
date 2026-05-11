@@ -63,7 +63,7 @@ public final class BooleanSchema implements JsonSchema {
      */
     @Override
     public SchemaPlan createPlan(SchemaRegistry registry) {
-        return SchemaPlan.of(PathSegment.Root.INSTANCE, this);
+        return SchemaPlan.of(null, PathSegment.Root.INSTANCE, this);
     }
 
 }
