@@ -6,19 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Breaking Changes
+- Schema validation now runs through compiled `SchemaPlan` instances instead of the old in-place schema compile/validate flow. `JsonSchema.createPlan(...)` is the primary entry point, schema registries separate indexed resources from compiled plans, and post-compile mutable schema runtime state assumptions no longer hold.
+- Polymorphic binding annotation naming now uses `@OneOf` in place of `@AnyOf`; the old `@AnyOf` API has been removed with no compatibility alias.
+- Patch merge APIs now distinguish RFC 7386 `mergePatch(...)` from SJF4J `indexedMerge(...)`; old `JsonContainer.merge(...)`, `mergeWithCopy(...)`, single-argument `indexedMerge(...)` / `indexedMergeWithCopy(...)`, and the instance `JsonContainer.mergePatch(...)` wrapper have been removed.
+
 ### Added
 - Added `FacadeNodes.removeIfInObject(...)` with Jackson 2, Jackson 3, and Gson backend support so native facade object nodes can remove matching properties in place.
 - Added scalar/container-specific `Nodes.WalkTarget` modes so traversal visitors can target objects, arrays, strings, numbers, booleans, nulls, and unknown values without post-filtering.
 
 ### Changed
+- Refactored the schema module around compiled `SchemaPlan` instances so schema resources, compiled plans, and runtime validation state are separated cleanly; retrieval/canonical URI handling, deferred remote indexing, `$ref` / `$dynamicRef` resolution, dialect vocabulary activation, and error diagnostics are now consistent across local resources, remotes, refs, and validator-based loading.
+- Changed JSON object conversion to separate explicit map wrapping from object-view projection: `Nodes.toJsonObject(...)` now returns existing `JsonObject` instances as-is, wraps `Map` inputs, and materializes other object-like sources through `putAll(Object)`.
 - Changed patch merge naming and semantics to distinguish RFC 7386 `mergePatch(...)` from SJF4J `indexedMerge(...)`; indexed array merge now supports sparse index updates with skip-on-null entries and trailing-null tail truncation such as `[null] -> []` and `[1, 2, null] -> [1, 2]`.
 - Changed polymorphic binding annotation naming from `@AnyOf` to `@OneOf`, including nested mapping/scope types, diagnostics, and core binding metadata/helper names; the old `@AnyOf` API has been removed with no compatibility alias.
 - Changed JSONPath / JSON Pointer factory naming from `compile(...)` to `parse(...)` across the public path APIs and path-based convenience helpers so the entry point matches the operation these methods perform.
-- Changed the path syntax helper type name from `Paths` to `PathSyntax` to better reflect its parse/format responsibilities and avoid confusion with `java.nio.file.Paths`.
 - Changed the path function registry type name from `PathFunctionRegistry` to `FunctionRegistry` to keep the path API surface shorter after the surrounding path helpers were renamed.
-- Changed the schema helper type name from `CompileUtil` to `SchemaPlanner` to keep compiler/registry naming aligned across schema compilation and validation flows.
-- Refactored the schema module around compiled `SchemaPlan` instances: `JsonSchema.createPlan(...)` now produces reusable validation plans, schema registries separate indexed resources from compiled plans, and retrieval/canonical URI handling is applied consistently across local resources, remotes, refs, and validator-based loading.
-- Changed `JsonObject` object conversion to separate explicit map wrapping from object-view projection: `Nodes.toJsonObject(...)` now returns existing `JsonObject` instances as-is, wraps `Map` inputs, and materializes other object-like sources through `putAll(Object)`.
 
 ### Removed
 - Removed `JsonContainer` convenience overloads for the old merge naming, including `merge(...)`, `mergeWithCopy(...)`, and the single-argument `indexedMerge(...)` / `indexedMergeWithCopy(...)` variants, and removed the instance `JsonContainer.mergePatch(...)` wrapper in favor of explicit `indexedMerge(patch, overwrite, deepCopy)` and static `Patches.mergePatch(target, patch)` entry points.
@@ -29,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed `Nodes.removeIfInObject(...)` to stay property-only: structural POJO fields are preserved, while removable JOJO dynamic entries and facade-backed object properties can still be deleted safely.
-- Fixed schema compilation/validation consistency across official remotes and annotation-driven loading, including deferred remote indexing, relative `$ref` resolution without root `$id`, classpath/resource lookup, anchor and pointer refs, and draft 2020-12 `format-assertion` metaschema coverage.
+- Fixed schema compilation/validation consistency across official remotes and annotation-driven loading, including deferred remote indexing, root relative `$id` handling, classpath/resource lookup, anchor and pointer refs, official `dynamicRef` coverage, and draft 2020-12 `format-assertion` metaschema behavior.
 
 
 ## [1.2.2] - 2026.04.30
