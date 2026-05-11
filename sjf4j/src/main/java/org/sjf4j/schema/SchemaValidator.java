@@ -13,9 +13,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Schema validation entry point for POJOs annotated with {@link ValidJsonSchema}.
+ * <p>
+ * The validator resolves one or more compiled plans for a class hierarchy and
+ * reuses them from an internal cache. Resolution may come from inline schema
+ * text, explicit refs, or filename conventions under the configured base
+ * directory.
  */
 public final class SchemaValidator {
-    private static final String SCHEMA_FILE_SUFFIX_1 = ".schema.json";
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
 
     private final URI baseDirUri;
@@ -25,6 +29,9 @@ public final class SchemaValidator {
 
     /**
      * Creates validator with default configuration.
+     * <p>
+     * Uses classpath schema base directory, {@link ValidationOptions#FAILFAST_STRICT},
+     * and an empty copied registry.
      */
     public SchemaValidator() {
         this(null, null, null);
@@ -32,6 +39,9 @@ public final class SchemaValidator {
 
     /**
      * Creates a validator with base directory, options, and registry.
+     * <p>
+     * The provided registry is copied so later lazy compilation does not mutate
+     * caller-owned registry state.
      */
     public SchemaValidator(String baseDir, ValidationOptions options, SchemaRegistry registry) {
         this.baseDirUri = _resolveBaseDir(baseDir);
@@ -57,8 +67,10 @@ public final class SchemaValidator {
     /**
      * Validates a POJO annotated with {@link ValidJsonSchema}.
      * <p>
-     * Unannotated types are treated as valid and skipped. Resolved schemas are
-     * cached per POJO class.
+     * Unannotated types are treated as valid and skipped. When a class extends
+     * another annotated class, plans are resolved for the full superclass chain
+     * and evaluated in parent-to-child order. Resolved plans are cached per
+     * concrete POJO class.
      */
     public ValidationResult validate(Object pojo) {
         if (pojo == null) return ValidationResult.SUCCESS;
@@ -80,67 +92,14 @@ public final class SchemaValidator {
     /**
      * Preloads and compiles schemas by relative references.
      * <p>
-     * References are resolved against validator base URI.
+     * References are resolved against validator base URI. Returns {@code null}
+     * when no schema can be loaded from the resolved location.
      */
     public SchemaPlan load(String ref) {
         Objects.requireNonNull(ref, "ref");
         URI refUri = baseDirUri.resolve(ref);
         return _registerByRef(refUri);
     }
-
-//    /**
-//     * Preloads and compiles all schema files in a directory.
-//     */
-//    public SchemaValidator preloadDirectory(String dir) {
-//        URI dirUri = _resolveBaseUri(dir);
-//        String scheme = dirUri.getScheme();
-//        if (scheme == null) {
-//            _preloadDir(Paths.get(dir));
-//            return this;
-//        }
-//        if ("file".equalsIgnoreCase(scheme)) {
-//            _preloadDir(Paths.get(dirUri));
-//            return this;
-//        }
-//        if ("classpath".equalsIgnoreCase(scheme)) {
-//            String path = dirUri.getPath();
-//            if (path == null || path.isEmpty()) {
-//                path = dirUri.getSchemeSpecificPart();
-//            }
-//            if (path != null && path.startsWith("/")) {
-//                path = path.substring(1);
-//            }
-//            URL url = SchemaValidator.class.getClassLoader().getResource(path);
-//            if (url == null) {
-//                throw new SchemaException("Classpath directory not found: " + dirUri);
-//            }
-//            if (!"file".equalsIgnoreCase(url.getProtocol())) {
-//                throw new SchemaException("Classpath directory scan not supported: " + url);
-//            }
-//            _preloadDir(Paths.get(url.getPath()));
-//            return this;
-//        }
-//        throw new SchemaException("Unsupported preload directory uri: " + dirUri);
-//    }
-//
-//    /**
-//     * Recursively preloads schema files from a local directory path.
-//     */
-//    private void _preloadDir(Path dir) {
-//        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
-//            throw new SchemaException("Schema directory not found: " + dir);
-//        }
-//        try (Stream<Path> paths = Files.walk(dir)) {
-//            paths.filter(Files::isRegularFile)
-//                    .filter(p -> p.toString().endsWith(SCHEMA_FILE_SUFFIX_2))
-//                    .forEach(p -> {
-//                        JsonSchema schema = SchemaRegistry.loadSchemaFromLocalUri(p.toUri());
-//                        _compileAndRegister(schema);
-//                    });
-//        } catch (IOException e) {
-//            throw new SchemaException("Failed to preload schema directory: " + dir, e);
-//        }
-//    }
 
 
     private List<SchemaPlan> _resolvePlans(Class<?> pojoClazz) {
@@ -169,7 +128,9 @@ public final class SchemaValidator {
      * Loads schema for a POJO from annotation value/ref or naming convention.
      * <p>
      * Resolution order: inline schema text, explicit ref, then
-     * {@code <simple-name>.json}, then {@code <snake-name>.json}.
+     * {@code <simple-name>.json}, then {@code <snake-name>.json}. Inline
+     * schemas receive a synthetic retrieval URI so relative root {@code $id}
+     * values still resolve consistently.
      */
     private SchemaPlan _resolvePlanFromAnno(Class<?> clazz, ValidJsonSchema anno) {
         // From value

@@ -54,11 +54,17 @@ public class ValidationMessage {
     }
     /**
      * Returns the instance path segment chain.
+     * <p>
+     * May be {@code null} when the caller requested fail-fast validation and no
+     * path materialization was needed yet.
      */
     public PathSegment getInstancePs() { return instancePs; }
 
     /**
      * Returns the keyword path segment chain.
+     * <p>
+     * May be {@code null} for ad-hoc messages that are not tied to a concrete
+     * schema keyword location.
      */
     public PathSegment getKeywordPs() { return keywordPs; }
 
@@ -88,6 +94,9 @@ public class ValidationMessage {
 
     /**
      * Formats message for logs and diagnostics.
+     * <p>
+     * This string form is intended for human-readable diagnostics rather than as
+     * a stable machine-facing serialization format.
      * The default external form uses JSON Pointer strings and renders keyword
      * location inline before the failing instance location.
      */

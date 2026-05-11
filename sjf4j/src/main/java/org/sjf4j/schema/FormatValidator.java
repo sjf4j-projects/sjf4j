@@ -15,7 +15,9 @@ import java.util.regex.PatternSyntaxException;
 /**
  * Format validators for JSON Schema {@code format} keyword.
  * <p>
- * Validators are stateless and shared as singleton instances.
+ * Validators are stateless and shared as singleton instances. The
+ * implementations are intentionally pragmatic and lightweight rather than full
+ * RFC-complete parsers for every standard format.
  */
 public interface FormatValidator {
 
@@ -26,6 +28,9 @@ public interface FormatValidator {
 
     /**
      * Returns validator implementation for a standard format name.
+     * <p>
+     * Unknown formats return {@link #NOOP}, matching JSON Schema's
+     * annotation-only behavior for unsupported format names.
      */
     static FormatValidator of(String format) {
         switch (format) {
@@ -82,7 +87,7 @@ public interface FormatValidator {
         private final Pattern pattern = Pattern.compile( "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 
         /**
-         * Validates RFC 5322-like email format.
+         * Performs a lightweight ASCII email syntax check.
          */
         @Override
         public boolean validate(String value) {
@@ -95,7 +100,7 @@ public interface FormatValidator {
         private final Pattern pattern = Pattern.compile( "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$");
 
         /**
-         * Validates internationalized email format.
+         * Performs a lightweight internationalized email syntax check.
          */
         @Override
         public boolean validate(String value) {
@@ -169,7 +174,7 @@ public interface FormatValidator {
                 Pattern.compile("^P(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+(\\.\\d+)?S)?)?$");
 
         /**
-         * Validates ISO-8601 duration syntax.
+         * Performs a lightweight ISO-8601 duration syntax check.
          */
         @Override
         public boolean validate(String value) {
@@ -183,7 +188,7 @@ public interface FormatValidator {
         private final Pattern labelPattern = Pattern.compile("^[a-zA-Z0-9-]+$");
 
         /**
-         * Validates DNS hostname format.
+         * Performs a lightweight DNS hostname syntax check.
          */
         @Override
         public boolean validate(String value) {
@@ -204,7 +209,7 @@ public interface FormatValidator {
         private final Pattern labelPattern = Pattern.compile("^[a-zA-Z0-9-]+$");
 
         /**
-         * Validates internationalized DNS hostname format.
+         * Performs a lightweight internationalized hostname syntax check.
          */
         @Override
         public boolean validate(String value) {
@@ -306,7 +311,7 @@ public interface FormatValidator {
     // uri-template (very simple check for braces)
     class UriTemplateValidator implements FormatValidator {
         /**
-         * Validates URI-template brace structure.
+         * Performs a lightweight URI-template brace-structure check.
          * <p>
          * This is a lightweight RFC 6570 syntax check.
          */
@@ -339,8 +344,9 @@ public interface FormatValidator {
         public boolean validate(String value) {
             if (value == null || value.isEmpty()) return false;
             try {
-                // java.net.URI only support ASCII, so transform from Unicode to ASCII
-                // RFC 3987: Unicode，Punycode + percent-encode
+                // java.net.URI only supports ASCII, so non-ASCII input is first
+                // normalized into an ASCII-oriented form good enough for a
+                // lightweight syntax check.
                 String ascii = IDN.toASCII(value);
                 new URI(ascii);
                 return true;
@@ -451,7 +457,7 @@ public interface FormatValidator {
     // regex (valid regex)
     class RegexValidator implements FormatValidator {
         /**
-         * Validates regular-expression syntax.
+         * Checks whether the string is syntactically valid as a Java regex.
          */
         @Override
         public boolean validate(String value) {

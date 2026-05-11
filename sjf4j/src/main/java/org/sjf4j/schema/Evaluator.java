@@ -22,7 +22,9 @@ import java.util.regex.Pattern;
  * Per-keyword evaluator used by compiled schemas.
  * <p>
  * Implementations validate one keyword (or tightly related keyword group)
- * against current instance node and report messages via context.
+ * against the current instance node and report messages via context. They are
+ * runtime-only executors: parsing, resource registration, and reference binding
+ * happen earlier in {@link SchemaPlanner}.
  */
 public interface Evaluator {
 
@@ -73,6 +75,10 @@ public interface Evaluator {
 
         /**
          * Creates evaluator for $dynamicRef target.
+         * <p>
+         * The final target is resolved in two phases: first to an initial static
+         * plan during compilation, then optionally rebound at runtime using the
+         * active dynamic-anchor scope stack.
          */
         public DynamicRefEvaluator(PathSegment keywordPs, URI idUri, String ref) {
             this.keywordPs = keywordPs;
@@ -725,6 +731,9 @@ public interface Evaluator {
         }
         /**
          * Enforces minItems/maxItems/uniqueItems for arrays.
+         * <p>
+         * Uniqueness currently relies on Java object equality for already mapped
+         * runtime values.
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
@@ -856,7 +865,7 @@ public interface Evaluator {
             }
             if (maxContains != null && matches > maxContains) {
                 ctx.addError(instance, ps, maxContainsKeywordPs, "maxContains",
-                        "Array must contains at most " + maxContains + " matching items, but found " + matches);
+                        "Array must contain at most " + maxContains + " matching items, but found " + matches);
                 return false;
             }
             return true;

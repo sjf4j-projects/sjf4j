@@ -2,11 +2,14 @@ package org.sjf4j.schema;
 
 import org.sjf4j.exception.SchemaException;
 
+import java.util.Objects;
+
 
 /**
  * Exception wrapper carrying a {@link ValidationResult}.
  * <p>
- * Thrown by convenience APIs such as {@code validateOrThrow()}.
+ * Thrown by convenience APIs such as {@link SchemaPlan#requireValid(Object)}
+ * and {@link SchemaValidator#requireValid(Object)}.
  * The exception message is a compact summary of the last validation message,
  * which now includes both instance and keyword JSON Pointer paths when present.
  */
@@ -17,7 +20,7 @@ public class ValidationException extends SchemaException {
      * Creates an exception from a validation result.
      */
     public ValidationException(ValidationResult result) {
-        super(buildMessage(result));
+        super(buildMessage(Objects.requireNonNull(result, "result")));
         this.result = result;
     }
 

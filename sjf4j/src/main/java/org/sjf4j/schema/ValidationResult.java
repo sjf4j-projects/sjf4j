@@ -11,7 +11,8 @@ import java.util.stream.Collectors;
  * <p>
  * Supports both aggregated-message mode and fail-fast mode where only the last
  * message may be retained. Each message may expose both instance and keyword
- * JSON Pointer paths for diagnostics.
+ * JSON Pointer paths for diagnostics. Result instances are treated as immutable
+ * snapshots except for internal message prepending via {@link #mergePrevious(ValidationResult)}.
  */
 public class ValidationResult {
     private final boolean valid;
@@ -87,6 +88,12 @@ public class ValidationResult {
         return lastMessage;
     }
 
+    /**
+     * Prepends messages from an earlier validation result.
+     * <p>
+     * This is used by {@link SchemaValidator} when superclass plans are applied
+     * before subclass plans so message order matches validation order.
+     */
     public ValidationResult mergePrevious(ValidationResult previous) {
         if (messages != null && previous != null) {
             messages.addAll(0, previous.getMessages());

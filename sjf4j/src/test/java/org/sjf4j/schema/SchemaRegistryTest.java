@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import java.net.URI;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,6 +47,13 @@ class SchemaRegistryTest {
 
         assertTrue(registry.contains("file:///schemas/defs/user.json"));
         assertTrue(registry.contains("file:///schemas/root.json"));
+    }
+
+    @Test
+    void resolve_fallsBackToGlobalIndexedSchemas() {
+        SchemaPlan plan = new SchemaRegistry().resolve(URI.create("https://json-schema.org/draft/2020-12/schema"));
+
+        assertNotNull(plan);
     }
 
 }

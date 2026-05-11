@@ -7,7 +7,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Registry mapping schema keywords to vocabulary URIs.
  * <p>
- * Used during compilation to reject unsupported/disallowed keywords.
+ * The planner uses this mapping to decide which known keywords are active for a
+ * dialect's declared {@code $vocabulary}. The registry is process-global and
+ * mutable so extensions can register additional keywords at runtime.
  */
 public class VocabularyRegistry {
 
@@ -32,7 +34,7 @@ public class VocabularyRegistry {
     }
 
 
-    /// Official Vocabulary List
+    /// Built-in vocabulary constants and default keyword mappings
 
     public static final String DRAFT_2020_12_VOCAB_CORE =
             "https://json-schema.org/draft/2020-12/vocab/core";
@@ -71,7 +73,6 @@ public class VocabularyRegistry {
         registerKeyword("default", DRAFT_2020_12_VOCAB_METADATA);
         registerKeyword("deprecated", DRAFT_2020_12_VOCAB_METADATA);
         registerKeyword("readOnly", DRAFT_2020_12_VOCAB_METADATA);
-        registerKeyword("writeOnly", DRAFT_2020_12_VOCAB_METADATA);
         registerKeyword("writeOnly", DRAFT_2020_12_VOCAB_METADATA);
 
         // URI_DRAFT_2020_12_VOCAB_VALIDATION

@@ -10,24 +10,36 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * String length helpers for JSON Schema length keywords.
+ * Shared schema helpers for string lengths, regex compatibility, and URI
+ * resolution/normalization.
  */
 public final class SchemaUtil {
 
-    /// Length of Unicode grapheme clusters
+    // Length of Unicode code points
 
     /**
-     * Returns the length of the given string.
+     * Returns string length measured in Unicode code points.
+     * <p>
+     * This matches JSON Schema's character-counting intent more closely than a
+     * raw UTF-16 {@link String#length()} count, but it is not a grapheme-cluster
+     * implementation.
      */
     public static int stringIcuLength(String s) {
         if (s == null || s.isEmpty()) return 0;
         return s.codePointCount(0, s.length());
     }
 
-    /// Regex Pattern
+    // Regex helpers
 
     private static final Pattern UNICODE_PROPERTY_PATTERN = Pattern.compile("\\\\([pP])\\{([^}]+)}");
 
+    /**
+     * Compiles a regex for schema keywords such as {@code pattern}.
+     * <p>
+     * The helper first tries Java's regex engine directly, then retries after a
+     * small normalization pass for verbose Unicode property names often used in
+     * JSON Schema test suites.
+     */
     public static Pattern compileRegexPattern(String pattern, String keyword) {
         Objects.requireNonNull(pattern, "pattern");
         try {
@@ -42,6 +54,10 @@ public final class SchemaUtil {
         }
     }
 
+    /**
+     * Normalizes long-form Unicode property names to shorter Java-friendly
+     * aliases when possible.
+     */
     public static String normalizeUnicodeProperties(String pattern) {
         Matcher matcher = UNICODE_PROPERTY_PATTERN.matcher(pattern);
         StringBuffer sb = new StringBuffer();
@@ -56,6 +72,9 @@ public final class SchemaUtil {
         return sb.toString();
     }
 
+    /**
+     * Normalizes one Unicode property name used inside a regex escape.
+     */
     public static String normalizeUnicodePropertyName(String prop) {
         if (prop == null || prop.isEmpty()) return prop;
         if (prop.length() <= 3) return prop;
@@ -102,6 +121,12 @@ public final class SchemaUtil {
         }
     }
 
+    /**
+     * Resolves a reference URI against a base schema resource URI.
+     * <p>
+     * Opaque bases are supported only for empty or fragment-only references,
+     * which is enough for SJF4J's synthetic root URIs.
+     */
     public static URI resolveUri(URI base, URI ref) {
         if (ref == null) return base;
         if (base == null || ref.isAbsolute()) return ref;
@@ -116,11 +141,17 @@ public final class SchemaUtil {
         return base.resolve(ref);
     }
 
+    /**
+     * Removes URI fragment text without further normalization.
+     */
     public static String stripFragment(String s) {
         int i = s.indexOf('#');
         return i >= 0 ? s.substring(0, i) : s;
     }
 
+    /**
+     * Normalizes a schema-resource registry key from a URI string.
+     */
     public static String normalizeUriKey(String uri) {
         return normalizeUriKey(URI.create(uri));
     }

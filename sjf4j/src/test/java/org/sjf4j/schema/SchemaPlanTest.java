@@ -158,6 +158,53 @@ class SchemaPlanTest {
     }
 
     @Test
+    void duplicateAnchorInSameResourceIsRejected() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$defs\":{" +
+                "\"a\":{\"$anchor\":\"dup\"}," +
+                "\"b\":{\"$anchor\":\"dup\"}" +
+                "}" +
+                "}");
+
+        assertThrows(SchemaException.class, schema::createPlan);
+    }
+
+    @Test
+    void duplicateDynamicAnchorInSameResourceIsRejected() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$defs\":{" +
+                "\"a\":{\"$dynamicAnchor\":\"dup\"}," +
+                "\"b\":{\"$dynamicAnchor\":\"dup\"}" +
+                "}" +
+                "}");
+
+        assertThrows(SchemaException.class, schema::createPlan);
+    }
+
+    @Test
+    void anchorAndDynamicAnchorCollisionInSameResourceIsRejected() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$defs\":{" +
+                "\"a\":{\"$anchor\":\"dup\"}," +
+                "\"b\":{\"$dynamicAnchor\":\"dup\"}" +
+                "}" +
+                "}");
+
+        assertThrows(SchemaException.class, schema::createPlan);
+    }
+
+    @Test
+    void anchorAndDynamicAnchorCollisionOnSameSchemaIsRejected() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$defs\":{" +
+                "\"a\":{\"$anchor\":\"dup\",\"$dynamicAnchor\":\"dup\"}" +
+                "}" +
+                "}");
+
+        assertThrows(SchemaException.class, schema::createPlan);
+    }
+
+    @Test
     void planHandlesSelfRefWithoutPlaceholderBreakage() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$ref\":\"#\"}");
 

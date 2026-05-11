@@ -11,7 +11,8 @@ import java.util.Map;
  * Plans from the same schema resource share fragment lookup maps:
  * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
  * its own {@code $id} compiles into a different resource and therefore gets a
- * different set of fragment maps.
+ * different set of fragment maps. Instances are immutable after compilation and
+ * can be reused across validations.
  */
 public final class SchemaPlan {
     final PathSegment keywordPs;
@@ -51,6 +52,12 @@ public final class SchemaPlan {
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
     }
 
+    /**
+     * Resolves one fragment inside this compiled resource.
+     * <p>
+     * Named fragments are checked before JSON Pointer fragments because both
+     * live in the same resource-local fragment namespace.
+     */
     SchemaPlan getByFragment(String fragment) {
         // Named anchors and dynamic anchors share one fragment namespace.
         SchemaPlan plan = byAnchorPlans.get(fragment);
@@ -64,6 +71,12 @@ public final class SchemaPlan {
         return validate(node, ValidationOptions.DEFAULT);
     }
 
+    /**
+     * Validates one instance against this compiled schema plan.
+     * <p>
+     * In fail-fast mode only the latest error is retained; otherwise all
+     * collected messages are available in the returned result.
+     */
     public ValidationResult validate(Object node, ValidationOptions options) {
         if (booleanSchema) {
             if (booleanValue) {
@@ -87,6 +100,9 @@ public final class SchemaPlan {
         return result.isValid();
     }
 
+    /**
+     * Validates in fail-fast mode and throws on the first error.
+     */
     public void requireValid(Object node) {
         ValidationResult result = validate(node, ValidationOptions.FAILFAST);
         if (!result.isValid()) throw new ValidationException(result);
@@ -94,6 +110,9 @@ public final class SchemaPlan {
 
 
     /// Evaluate
+    /**
+     * Executes evaluator pipeline for the current instance branch.
+     */
     boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
@@ -108,10 +127,6 @@ public final class SchemaPlan {
         if (len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator) {
             instance.createEvaluated();
         }
-
-//        if (ctx.planStack.contains(this)) {
-//            throw new SchemaException("Cyclic schema reference detected: " + keywordPs.rootedPointerExpr());
-//        }
 
         boolean result = true;
         ctx.planStack.push(this);

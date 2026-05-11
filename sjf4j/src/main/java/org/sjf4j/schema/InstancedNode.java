@@ -17,7 +17,8 @@ import java.util.Map;
  * Runtime wrapper around a validating node with cached type metadata.
  * <p>
  * Also carries mutable per-validation state such as evaluated-location marks
- * and recursion-detection stack.
+ * and recursion-detection stack. Instances are validation-scoped and not
+ * thread-safe.
  */
 public final class InstancedNode {
     final Object node;
@@ -93,7 +94,9 @@ public final class InstancedNode {
      * Infers node metadata and wraps it as an InstancedNode.
      * <p>
      * Registered value-node types are first encoded to raw values for schema
-     * validation against JSON-compatible representation.
+     * validation against JSON-compatible representation. Child wrappers created
+     * later from converted values can be cached and reused within the same
+     * validation traversal.
      */
     static InstancedNode infer(Object node) {
         if (node == null) return NULL.reset().clearPath();
@@ -183,27 +186,6 @@ public final class InstancedNode {
         return merged;
     }
 
-//    void addEvaluatedProperty(String key) {
-//        if (evaluatedProperties == null)
-//            evaluatedProperties = new HashSet<>();
-//        evaluatedProperties.add(key);
-//    }
-//    Set<String> getEvaluatedProperties() {return evaluatedProperties;}
-//
-//    void addEvaluatedItem(int idx) {
-//        if (evaluatedItems == null) {
-//            evaluatedItems = new BitSet();
-//        }
-//        evaluatedItems.set(idx);
-//    }
-//    void addEvaluatedItems(int fromIdx, int toIdx) {
-//        if (evaluatedItems == null) {
-//            evaluatedItems = new BitSet();
-//        }
-//        evaluatedItems.set(fromIdx, toIdx);
-//    }
-//    BitSet getEvaluatedItems() {return evaluatedItems;}
-
     /**
      * Returns child instance for an object key.
      * <p>
@@ -249,6 +231,13 @@ public final class InstancedNode {
     }
 
 
+    /**
+     * Detects cyclic schema references for the current runtime instance branch.
+     * <p>
+     * The same compiled plan may be revisited across independent branches, but a
+     * recursive revisit while validating one branch indicates an unbounded
+     * schema-reference loop.
+     */
     void checkCyclicRef(SchemaPlan plan, PathSegment keywordPs) {
         if (refSchemaTimes++ > 0) {
             if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();

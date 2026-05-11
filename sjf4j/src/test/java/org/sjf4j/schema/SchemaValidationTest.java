@@ -465,6 +465,93 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testValidationKeywordRemainsActiveWhenVocabularyIsOptional() {
+        ObjectSchema metaSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"https://example.com/meta/no-validation\"," +
+                "\"$vocabulary\":{" +
+                "\"https://json-schema.org/draft/2020-12/vocab/core\":true," +
+                "\"https://json-schema.org/draft/2020-12/vocab/validation\":false" +
+                "}" +
+                "}");
+        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://example.com/meta/no-validation\"," +
+                "\"type\":\"string\"" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan(registry);
+
+        assertTrue(plan.isValid("ok"));
+        assertFalse(plan.isValid(1));
+    }
+
+    @Test
+    public void testMissingValidationVocabularyLeavesValidationKeywordsInactive() {
+        ObjectSchema metaSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"https://example.com/meta/core-only\"," +
+                "\"$vocabulary\":{" +
+                "\"https://json-schema.org/draft/2020-12/vocab/core\":true" +
+                "}" +
+                "}");
+        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://example.com/meta/core-only\"," +
+                "\"type\":\"string\"" +
+                "}");
+        SchemaPlan plan = schema.createPlan(registry);
+
+        assertTrue(plan.isValid("ok"));
+        assertTrue(plan.isValid(1));
+    }
+
+    @Test
+    public void testOptionalFormatAssertionVocabularyDoesNotForceAssertion() {
+        ObjectSchema metaSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"https://example.com/meta/format-optional\"," +
+                "\"$vocabulary\":{" +
+                "\"https://json-schema.org/draft/2020-12/vocab/core\":true," +
+                "\"https://json-schema.org/draft/2020-12/vocab/format-assertion\":false" +
+                "}" +
+                "}");
+        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://example.com/meta/format-optional\"," +
+                "\"type\":\"string\"," +
+                "\"format\":\"email\"" +
+                "}");
+        SchemaPlan plan = schema.createPlan(registry);
+
+        assertTrue(plan.isValid("a@b.com"));
+        assertTrue(plan.isValid("not-email"));
+    }
+
+    @Test
+    public void testFormatAnnotationVocabularyAloneDoesNotForceAssertion() {
+        ObjectSchema metaSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"https://example.com/meta/format-annotation-only\"," +
+                "\"$vocabulary\":{" +
+                "\"https://json-schema.org/draft/2020-12/vocab/core\":true," +
+                "\"https://json-schema.org/draft/2020-12/vocab/validation\":true," +
+                "\"https://json-schema.org/draft/2020-12/vocab/format-annotation\":true" +
+                "}" +
+                "}");
+        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://example.com/meta/format-annotation-only\"," +
+                "\"type\":\"string\"," +
+                "\"format\":\"email\"" +
+                "}");
+        SchemaPlan plan = schema.createPlan(registry);
+
+        assertTrue(plan.isValid("a@b.com"));
+        assertTrue(plan.isValid("not-email"));
+    }
+
+    @Test
     public void testUnknownKeywordIgnored() {
         String json =
                 "{\n" +

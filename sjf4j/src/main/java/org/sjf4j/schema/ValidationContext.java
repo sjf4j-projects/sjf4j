@@ -11,7 +11,8 @@ import java.util.List;
  * Mutable validation state shared across evaluator invocations.
  * <p>
  * Holds message aggregation, fail-fast control, temporary ignore-error scopes,
- * and dynamic-anchor resolution stack for nested schema evaluation.
+ * and dynamic-anchor resolution stack for nested schema evaluation. One context
+ * instance is created per validation call and is not thread-safe.
  */
 public class ValidationContext {
     private final ValidationOptions options;
@@ -56,11 +57,12 @@ public class ValidationContext {
     /**
      * Pushes an error-ignore frame.
      * <p>
-     * Errors added while ignore-depth is positive are suppressed.
+     * Errors added while ignore-depth is positive are suppressed. Calls must be
+     * balanced with {@link #popIgnoreError()}.
      */
     public void pushIgnoreError() {ignoreErrorAdding++;}
     /**
-     * Pops an error-ignore frame.
+     * Pops an error-ignore frame started by {@link #pushIgnoreError()}.
      */
     public void popIgnoreError() {ignoreErrorAdding--;}
 

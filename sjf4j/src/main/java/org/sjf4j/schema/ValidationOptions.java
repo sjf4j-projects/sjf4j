@@ -5,7 +5,8 @@ package org.sjf4j.schema;
  * Options controlling schema validation behavior.
  * <p>
  * These options affect error collection strategy and keyword-level strictness,
- * but do not change schema semantics.
+ * but do not change the compiled schema dialect or vocabulary decisions made by
+ * {@link SchemaPlanner}.
  */
 public final class ValidationOptions {
 
@@ -21,7 +22,9 @@ public final class ValidationOptions {
      * Returns true when {@code format} validators are enforced as assertions.
      * <p>
      * When false, format checks still remain assertions for schemas compiled with
-     * the draft 2020-12 {@code format-assertion} vocabulary.
+     * the draft 2020-12 {@code format-assertion} vocabulary. The builder method
+     * uses the plural name {@link Builder#strictFormats(boolean)} for historical
+     * API consistency.
      */
     public boolean isStrictFormat() {return strictFormat;}
     /**
@@ -42,7 +45,7 @@ public final class ValidationOptions {
         private boolean failFast = false;
 
         /**
-         * Sets strict format behavior.
+         * Enables or disables caller-requested strict {@code format} assertions.
          */
         public Builder strictFormats(boolean strictFormats) {
             this.strictFormats = strictFormats;

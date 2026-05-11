@@ -43,11 +43,24 @@ public final class BooleanSchema implements JsonSchema {
         return booleanValue ? TRUE : FALSE;
     }
 
+    /**
+     * Returns a boolean schema preserving keyword location when needed.
+     * <p>
+     * Shared singleton instances are reused whenever keyword location does not
+     * matter. A dedicated {@code false} instance is created for non-root
+     * keyword paths so diagnostics can point at the failing schema position.
+     */
     static BooleanSchema of(boolean booleanValue, PathSegment keywordPs) {
         if (booleanValue || keywordPs == null || keywordPs == PathSegment.Root.INSTANCE) return of(booleanValue);
         return new BooleanSchema(false, keywordPs);
     }
 
+    /**
+     * Compiles this boolean schema into a trivial boolean-only plan.
+     * <p>
+     * External registry context is ignored because boolean schemas contain no
+     * references or nested resources.
+     */
     @Override
     public SchemaPlan createPlan(SchemaRegistry registry) {
         return SchemaPlan.of(PathSegment.Root.INSTANCE, this);

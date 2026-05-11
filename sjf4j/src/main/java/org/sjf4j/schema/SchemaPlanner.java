@@ -82,7 +82,8 @@ public final class SchemaPlanner {
      * Order matters because some keywords produce evaluated-location marks that
      * are consumed by later keywords (for example unevaluated*). All plans in
      * the same schema resource share the same anchor, dynamic-anchor, and
-     * pointer lookup maps.
+     * pointer lookup maps. Named anchors and dynamic anchors share one fragment
+     * namespace, so duplicate names in the same resource are rejected.
      */
     private static SchemaPlan _buildPlan(ObjectSchema schema, URI idUri, PathSegment ps,
                                          Map<String, SchemaPlan> byAnchorPlans,
@@ -308,11 +309,22 @@ public final class SchemaPlanner {
 
         // end up
         SchemaPlan plan = SchemaPlan.of(ps, evaluators, dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
-        if (anchor != null) byAnchorPlans.put(anchor, plan);
-        if (dynamicAnchor != null) byAnchorPlans.put(dynamicAnchor, plan);
-        if (dynamicAnchor != null) byDynamicAnchorPlans.put(dynamicAnchor, plan);
+        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", idUri, ps);
+        if (dynamicAnchor != null) {
+            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", idUri, ps);
+            byDynamicAnchorPlans.put(dynamicAnchor, plan);
+        }
         byPathPlans.put(ps.rootedPointerExpr(), plan);
         return plan;
+    }
+
+    private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
+                                          SchemaPlan plan, String keyword, URI idUri, PathSegment ps) {
+        SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
+        if (old != null) {
+            throw new SchemaException("Duplicate fragment '" + fragment + "' from " + keyword +
+                    " ('" + ps.rootedPointerExpr() + "' in " + idUri + ")");
+        }
     }
 
     /**
@@ -450,34 +462,58 @@ public final class SchemaPlanner {
         return inheritedVocabulary;
     }
 
+    /**
+     * Placeholder hook for vocabulary-specific schema-shape checks.
+     * <p>
+     * SJF4J treats declared vocabularies as active whether they are required or
+     * optional. A missing vocabulary entry means the planner should not compile
+     * known keywords from that vocabulary by default. The current implementation
+     * needs no extra per-keyword rejection here, so the hook is intentionally a
+     * no-op.
+     */
     private static void _checkVocabulary(ObjectSchema schema, PathSegment ps, Map<String, Boolean> vocabulary) {
-        if (vocabulary == null) return;
-        for (String property : schema.keySet()) {
-            String vocabUri = VocabularyRegistry.getVocabUri(property);
-            if (vocabUri == null) continue;
-            Boolean allow = vocabulary.get(vocabUri);
-            if (allow != null && !allow) {
-                throw new SchemaException("Keyword '" + property + "' at '" + ps.rootedPathExpr() +
-                        "' is disallowed by declared vocabulary " + vocabUri);
-            }
-        }
+        // The current planner only needs this hook for vocabulary-aware compile
+        // decisions. Declared vocabularies may be required or optional; both are
+        // still valid dialect members, so there is nothing to reject here.
     }
 
+    /**
+     * Returns whether a keyword should produce runtime evaluators.
+     * <p>
+     * Known keywords stay active when their vocabulary is declared in the
+     * current dialect, regardless of whether that declaration is required or
+     * optional. When a vocabulary is not declared at all, its known keywords
+     * are skipped during compilation.
+     */
     private static boolean _allowsKeyword(Map<String, Boolean> vocabulary, String keyword) {
         if (vocabulary == null) return true;
         String vocabUri = VocabularyRegistry.getVocabUri(keyword);
         if (vocabUri == null) return true;
-        return Boolean.TRUE.equals(vocabulary.get(vocabUri));
+        return vocabulary.containsKey(vocabUri);
     }
 
+    /**
+     * Returns whether the {@code format} keyword should be compiled.
+     * <p>
+     * The keyword is active when either format vocabulary is declared. Default
+     * assertion behavior is controlled separately by
+     * {@link #_isFormatAssertionEnabled(Map)}.
+     */
     private static boolean _allowsFormatKeyword(Map<String, Boolean> vocabulary) {
         if (vocabulary == null) return true;
         return vocabulary.containsKey(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT_ASSERTION) ||
-                Boolean.TRUE.equals(vocabulary.get(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT));
+                vocabulary.containsKey(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT);
     }
 
+    /**
+     * Returns whether {@code format} should behave as an assertion by default.
+     * <p>
+     * Optional format-assertion support keeps the keyword active, but only an
+     * explicit {@code true} entry enables assertion behavior automatically.
+     */
     private static boolean _isFormatAssertionEnabled(Map<String, Boolean> vocabulary) {
-        return vocabulary != null && vocabulary.containsKey(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT_ASSERTION);
+        return vocabulary != null &&
+                Boolean.TRUE.equals(vocabulary.get(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT_ASSERTION));
     }
 
 
