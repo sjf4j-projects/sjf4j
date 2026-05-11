@@ -72,7 +72,7 @@ public interface Evaluator {
         String dynamicAnchorName;
 
         /**
-         * Creates evaluator for $ref target.
+         * Creates evaluator for $dynamicRef target.
          */
         public DynamicRefEvaluator(PathSegment keywordPs, URI idUri, String ref) {
             this.keywordPs = keywordPs;
@@ -85,6 +85,8 @@ public interface Evaluator {
             if (initialPlan != null) {
                 SchemaPlan plan = initialPlan;
                 if (dynamicAnchorName != null) {
+                    // JSON Pointer fragments behave like plain $ref targets.
+                    // Only anchor-like fragments participate in dynamic rebinding.
                     Iterator<SchemaPlan> it = ctx.planStack.descendingIterator();
                     while (it.hasNext()) {
                         SchemaPlan scopedPlan = it.next();

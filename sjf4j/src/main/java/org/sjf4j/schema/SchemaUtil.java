@@ -125,6 +125,13 @@ public final class SchemaUtil {
         return normalizeUriKey(URI.create(uri));
     }
 
+    /**
+     * Normalizes registry keys for schema resources.
+     * <p>
+     * Fragments are stripped because fragment lookup is handled inside a
+     * compiled resource. File URIs are rebuilt component-wise so equivalent
+     * local resource URIs map to one key consistently.
+     */
     public static String normalizeUriKey(URI uri) {
         Objects.requireNonNull(uri, "uri");
         if (uri.getFragment() != null) {

@@ -87,6 +87,29 @@ class SchemaPlanTest {
     }
 
     @Test
+    void rootRelativeIdUsesRetrievalUriAsRefBase() {
+        ObjectSchema rootSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"defs/root.json\"," +
+                "\"$ref\":\"leaf.json\"" +
+                "}");
+        rootSchema.setRetrievalUri(URI.create("file:///schemas/base.json"));
+
+        ObjectSchema leafSchema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"file:///schemas/defs/leaf.json\"," +
+                "\"type\":\"string\"," +
+                "\"minLength\":1" +
+                "}");
+
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(leafSchema);
+
+        SchemaPlan plan = rootSchema.createPlan(registry);
+
+        assertTrue(plan.isValid("x"));
+        assertFalse(plan.isValid(""));
+    }
+
+    @Test
     void dynamicRefFallsBackToInitialPlanAndUsesScopedOverride() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"type\":\"array\"," +

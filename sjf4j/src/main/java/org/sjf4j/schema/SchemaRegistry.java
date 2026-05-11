@@ -45,13 +45,15 @@ public class SchemaRegistry {
 
         ObjectSchema os = (ObjectSchema) schema;
         if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
-        URI canonicalUri = os.getCanonicalUri();
+        retrievalUri = os.getRetrievalUri();
+        URI canonicalUri = retrievalUri != null
+                ? SchemaUtil.resolveUri(retrievalUri, os.getCanonicalUri())
+                : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException("Missing uri: no $id or retrievalUri");
         }
         _putSchema(canonicalUri, os);
 
-        retrievalUri = os.getRetrievalUri();
         if (retrievalUri != null && !SchemaUtil.normalizeUriKey(retrievalUri)
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
@@ -71,7 +73,10 @@ public class SchemaRegistry {
 
         ObjectSchema os = (ObjectSchema) schema;
         if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
-        if (os.getCanonicalUri() == null) {
+        URI canonicalUri = os.getRetrievalUri() != null
+                ? SchemaUtil.resolveUri(os.getRetrievalUri(), os.getCanonicalUri())
+                : os.getCanonicalUri();
+        if (canonicalUri == null) {
             throw new SchemaException("Missing uri: no $id or retrievalUri");
         }
         index(os);

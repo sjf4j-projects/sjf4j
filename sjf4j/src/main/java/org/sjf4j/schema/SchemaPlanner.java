@@ -36,8 +36,10 @@ public final class SchemaPlanner {
 
     static SchemaPlan createPlan(ObjectSchema schema, SchemaRegistry registry) {
         Objects.requireNonNull(schema, "schema");
-        URI idUri = URI.create("sjf4j:/schema-" + schema.hashCode() + "/");
-        idUri = SchemaUtil.resolveUri(idUri, schema.getCanonicalUri());
+        URI retrievalUri = schema.getRetrievalUri();
+        URI idUri = retrievalUri != null
+                ? SchemaUtil.resolveUri(retrievalUri, schema.getCanonicalUri())
+                : SchemaUtil.resolveUri(URI.create("sjf4j:/schema-" + schema.hashCode() + "/"), schema.getCanonicalUri());
         SchemaPlan plan = registry.resolvePlan(idUri);
         if (plan != null) return plan;
 
@@ -46,7 +48,6 @@ public final class SchemaPlanner {
         plan = _buildPlan(schema, idUri, PathSegment.Root.INSTANCE,
                 new HashMap<>(), new HashMap<>(), new HashMap<>(), context, vocabulary);
         context.registry.putPlan(idUri, plan);
-        URI retrievalUri = schema.getRetrievalUri();
         if (retrievalUri != null && !retrievalUri.equals(idUri)) {
             context.registry.putPlan(retrievalUri, plan);
         }
@@ -79,7 +80,9 @@ public final class SchemaPlanner {
      * Compiles one schema object into an ordered evaluator list.
      * <p>
      * Order matters because some keywords produce evaluated-location marks that
-     * are consumed by later keywords (for example unevaluated*).
+     * are consumed by later keywords (for example unevaluated*). All plans in
+     * the same schema resource share the same anchor, dynamic-anchor, and
+     * pointer lookup maps.
      */
     private static SchemaPlan _buildPlan(ObjectSchema schema, URI idUri, PathSegment ps,
                                          Map<String, SchemaPlan> byAnchorPlans,
@@ -315,8 +318,9 @@ public final class SchemaPlanner {
     /**
      * Compiles a map of subschemas from the given keyword.
      * <p>
-     * Source object is rewritten in-place so compiled JsonSchema instances can be
-     * reused directly during evaluation.
+     * Returned plans stay in the current schema resource unless a child schema
+     * declares its own {@code $id}, in which case that child starts a new
+     * resource with its own fragment space.
      */
     private static Map<String, SchemaPlan> _buildPlanMapByKey(
                 String key, ObjectSchema schema, URI baseUri, PathSegment ps,
@@ -343,7 +347,9 @@ public final class SchemaPlanner {
     /**
      * Compiles an array of subschemas from the given keyword.
      * <p>
-     * Source array is rewritten in-place with compiled JsonSchema values.
+     * Returned plans stay in the current schema resource unless an item schema
+     * declares its own {@code $id}, in which case that item starts a new
+     * resource with its own fragment space.
      */
     private static SchemaPlan[] _buildPlanArrayByKey(String key, ObjectSchema schema, URI baseUri, PathSegment ps,
                 Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
@@ -380,10 +386,12 @@ public final class SchemaPlanner {
     }
 
     /**
-     * Compiles a schema node into a JsonSchema implementation.
+     * Compiles a schema node into a {@link SchemaPlan}.
      * <p>
-     * Boolean nodes become boolean schemas; object nodes become compiled
-     * ObjectSchema instances; null/other types are invalid for schema positions.
+     * Boolean nodes compile as inline boolean plans. Object nodes stay in the
+     * current resource unless they declare {@code $id}; a nested {@code $id}
+     * starts a new schema resource and resets fragment lookup to that resource
+     * root. Null/other types are invalid for schema positions.
      */
     private static SchemaPlan _buildPlanFromNode(Object node, URI idUri, PathSegment ps,
                                                   Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,

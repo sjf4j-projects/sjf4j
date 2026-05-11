@@ -34,4 +34,18 @@ class SchemaRegistryTest {
         assertFalse(plan.validate("").isValid());
     }
 
+    @Test
+    void index_resolvesRelativeRootIdAgainstRetrievalUri() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$id\":\"defs/user.json\"," +
+                "\"type\":\"string\"" +
+                "}");
+
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(URI.create("file:///schemas/root.json"), schema);
+
+        assertTrue(registry.contains("file:///schemas/defs/user.json"));
+        assertTrue(registry.contains("file:///schemas/root.json"));
+    }
+
 }

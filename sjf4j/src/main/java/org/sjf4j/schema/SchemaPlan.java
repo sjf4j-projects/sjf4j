@@ -1,12 +1,18 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.path.PathSegment;
 
 import java.util.List;
 import java.util.Map;
 
-
+/**
+ * Compiled schema resource ready for validation.
+ * <p>
+ * Plans from the same schema resource share fragment lookup maps:
+ * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
+ * its own {@code $id} compiles into a different resource and therefore gets a
+ * different set of fragment maps.
+ */
 public final class SchemaPlan {
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
@@ -46,6 +52,7 @@ public final class SchemaPlan {
     }
 
     SchemaPlan getByFragment(String fragment) {
+        // Named anchors and dynamic anchors share one fragment namespace.
         SchemaPlan plan = byAnchorPlans.get(fragment);
         if (plan == null) return byPathPlans.get(fragment);
         return plan;
