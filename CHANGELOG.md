@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+
+## [1.2.3] - 2026.05.11
 ### Breaking Changes
 - Schema validation now runs through compiled `SchemaPlan` instances instead of the old in-place schema compile/validate flow. `JsonSchema.createPlan(...)` is the primary entry point, schema registries separate indexed resources from compiled plans, and post-compile mutable schema runtime state assumptions no longer hold.
 - Polymorphic binding annotation naming now uses `@OneOf` in place of `@AnyOf`; the old `@AnyOf` API has been removed with no compatibility alias.
