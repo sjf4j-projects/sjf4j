@@ -53,7 +53,7 @@ public final class SchemaPlanner {
         }
 
         for (Evaluator.RefEvaluator refEvaluator : context.refEvaluators) {
-            URI refUri = SchemaUtil.resolveUri(refEvaluator.idUri, URI.create(refEvaluator.ref));
+            URI refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
             SchemaPlan refPlan = context.registry.resolve(refUri);
             if (refPlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
@@ -63,7 +63,7 @@ public final class SchemaPlanner {
             refEvaluator.plan = refPlan;
         }
         for (Evaluator.DynamicRefEvaluator dynamicRefEvaluator : context.dynamicRefEvaluators) {
-            URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.idUri, URI.create(dynamicRefEvaluator.ref));
+            URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
             SchemaPlan refPlan = context.registry.resolve(refUri);
             if (refPlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
@@ -129,26 +129,26 @@ public final class SchemaPlanner {
         // format
         String format = schema.getString("format");
         if (format != null && _allowsFormatKeyword(vocabulary)) {
-            evaluators.add(new Evaluator.FormatEvaluator(new PathSegment.Name(ps, "format"), format,
-                    _isFormatAssertionEnabled(vocabulary)));
+            evaluators.add(new Evaluator.FormatEvaluator(new PathSegment.Name(ps, "format"), idUri,
+                    format, _isFormatAssertionEnabled(vocabulary)));
         }
 
         // type
         Object type = schema.getNode("type");
         if (type != null && _allowsKeyword(vocabulary, "type")) {
-            evaluators.add(new Evaluator.TypeEvaluator(new PathSegment.Name(ps, "type"), type));
+            evaluators.add(new Evaluator.TypeEvaluator(new PathSegment.Name(ps, "type"), idUri, type));
         }
 
         // const
         if (schema.containsKey("const") && _allowsKeyword(vocabulary, "const")) {      // Could be null
-            evaluators.add(new Evaluator.ConstEvaluator(new PathSegment.Name(ps, "const"),
+            evaluators.add(new Evaluator.ConstEvaluator(new PathSegment.Name(ps, "const"), idUri,
                     schema.getNode("const")));
         }
 
         // enum
         Object[] enumValues = schema.getArray("enum");
         if (enumValues != null && _allowsKeyword(vocabulary, "enum")) {
-            evaluators.add(new Evaluator.EnumEvaluator(new PathSegment.Name(ps, "enum"), enumValues));
+            evaluators.add(new Evaluator.EnumEvaluator(new PathSegment.Name(ps, "enum"), idUri, enumValues));
         }
 
         // minimum maximum exclusiveMinimum exclusiveMaximum
@@ -163,13 +163,14 @@ public final class SchemaPlanner {
                     new PathSegment.Name(ps, "maximum"),
                     new PathSegment.Name(ps, "exclusiveMinimum"),
                     new PathSegment.Name(ps, "exclusiveMaximum"),
-                    minimum, maximum, exclusiveMinimum, exclusiveMaximum));
+                    idUri, minimum, maximum, exclusiveMinimum, exclusiveMaximum));
         }
 
         // multipleOf
         Number multipleOf = schema.getNumber("multipleOf");
         if (multipleOf != null && _allowsKeyword(vocabulary, "multipleOf")) {
-            evaluators.add(new Evaluator.MultipleOfEvaluator(new PathSegment.Name(ps, "multipleOf"), multipleOf));
+            evaluators.add(new Evaluator.MultipleOfEvaluator(new PathSegment.Name(ps, "multipleOf"), idUri,
+                    multipleOf));
         }
 
         // minLength maxLength
@@ -177,21 +178,23 @@ public final class SchemaPlanner {
         Integer maxLength = schema.getInt("maxLength");
         if (_allowsKeyword(vocabulary, "minLength") && (minLength != null || maxLength != null)) {
             evaluators.add(new Evaluator.StringEvaluator(new PathSegment.Name(ps, "minLength"),
-                    new PathSegment.Name(ps, "maxLength"), minLength, maxLength));
+                    new PathSegment.Name(ps, "maxLength"), idUri, minLength, maxLength));
         }
 
         // pattern
         String pattern = schema.getString("pattern");
         if (pattern != null && _allowsKeyword(vocabulary, "pattern")) {
-            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), pattern));
+            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), idUri, pattern));
         }
 
         // minProperties / maxProperties
         Integer minProperties = schema.getInt("minProperties");
         Integer maxProperties = schema.getInt("maxProperties");
         if (_allowsKeyword(vocabulary, "minProperties") && (minProperties != null || maxProperties != null)) {
-            evaluators.add(new Evaluator.ObjectEvaluator(new PathSegment.Name(ps, "minProperties"),
-                    new PathSegment.Name(ps, "maxProperties"), minProperties, maxProperties));
+            evaluators.add(new Evaluator.ObjectEvaluator(
+                    new PathSegment.Name(ps, "minProperties"),
+                    new PathSegment.Name(ps, "maxProperties"),
+                    idUri, minProperties, maxProperties));
         }
 
         // required / dependentRequired
@@ -199,8 +202,10 @@ public final class SchemaPlanner {
         Map<String, String[]> dependentRequired = schema.getMap("dependentRequired", String[].class);
         if ((_allowsKeyword(vocabulary, "required") || _allowsKeyword(vocabulary, "dependentRequired")) &&
                 (required != null || dependentRequired != null)) {
-            evaluators.add(new Evaluator.RequiredEvaluator(new PathSegment.Name(ps, "required"),
-                    new PathSegment.Name(ps, "dependentRequired"), required, dependentRequired));
+            evaluators.add(new Evaluator.RequiredEvaluator(
+                    new PathSegment.Name(ps, "required"),
+                    new PathSegment.Name(ps, "dependentRequired"),
+                    idUri, required, dependentRequired));
         }
 
         // properties / patternProperties / additionalProperties
@@ -225,8 +230,8 @@ public final class SchemaPlanner {
         SchemaPlan propertyNamesPlan = _allowsKeyword(vocabulary, "propertyNames")
                 ? _buildPlanByKey("propertyNames", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, vocabulary) : null;
         if (propertyNamesPlan != null) {
-            evaluators.add(new Evaluator.PropertyNamesEvaluator(
-                    new PathSegment.Name(ps, "propertyNames"), propertyNamesPlan));
+            evaluators.add(new Evaluator.PropertyNamesEvaluator(new PathSegment.Name(ps, "propertyNames"), idUri,
+                    propertyNamesPlan));
         }
 
         // minItems / maxItems / uniqueItems
@@ -234,9 +239,11 @@ public final class SchemaPlanner {
         Integer maxItems = schema.getInt("maxItems");
         Boolean uniqueItems = schema.getBoolean("uniqueItems");
         if (_allowsKeyword(vocabulary, "minItems") && (minItems != null || maxItems != null || uniqueItems != null)) {
-            evaluators.add(new Evaluator.ArrayEvaluator(new PathSegment.Name(ps, "minItems"),
-                    new PathSegment.Name(ps, "maxItems"), new PathSegment.Name(ps, "uniqueItems"),
-                    minItems, maxItems, uniqueItems));
+            evaluators.add(new Evaluator.ArrayEvaluator(
+                    new PathSegment.Name(ps, "minItems"),
+                    new PathSegment.Name(ps, "maxItems"),
+                    new PathSegment.Name(ps, "uniqueItems"),
+                    idUri, minItems, maxItems, uniqueItems));
         }
 
         // items / prefixItems
@@ -258,7 +265,7 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.ContainsEvaluator(
                     new PathSegment.Name(ps, "minContains"),
                     new PathSegment.Name(ps, "maxContains"),
-                    containsPlan, minContains, maxContains));
+                    idUri, containsPlan, minContains, maxContains));
         }
 
         // if / then / else
@@ -283,21 +290,21 @@ public final class SchemaPlanner {
         SchemaPlan[] anyOfPlans = _allowsKeyword(vocabulary, "anyOf")
                 ? _buildPlanArrayByKey("anyOf", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, vocabulary) : null;
         if (anyOfPlans != null) {
-            evaluators.add(new Evaluator.AnyOfEvaluator(new PathSegment.Name(ps, "anyOf"), anyOfPlans));
+            evaluators.add(new Evaluator.AnyOfEvaluator(new PathSegment.Name(ps, "anyOf"), idUri, anyOfPlans));
         }
 
         // oneOf
         SchemaPlan[] oneOfPlans = _allowsKeyword(vocabulary, "oneOf")
                 ? _buildPlanArrayByKey("oneOf", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, vocabulary) : null;
         if (oneOfPlans != null) {
-            evaluators.add(new Evaluator.OneOfEvaluator(new PathSegment.Name(ps, "oneOf"), oneOfPlans));
+            evaluators.add(new Evaluator.OneOfEvaluator(new PathSegment.Name(ps, "oneOf"), idUri, oneOfPlans));
         }
 
         // not
         SchemaPlan notPlan = _allowsKeyword(vocabulary, "not")
                 ? _buildPlanByKey("not", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, vocabulary) : null;
         if (notPlan != null) {
-            evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), notPlan));
+            evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), idUri, notPlan));
         }
 
         // unevaluatedProperties / unevaluatedItems

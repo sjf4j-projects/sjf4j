@@ -22,9 +22,7 @@ import java.util.Map;
  */
 public final class InstancedNode {
     final Object node;
-    final Class<?> objectType;
     final JsonType jsonType;
-    final NodeKind nodeKind;
     final boolean converted;
 
     private Map<Object, InstancedNode> subInstanceCache;
@@ -39,11 +37,9 @@ public final class InstancedNode {
     private Deque<Object> refSchemaStack;
 
 
-    private InstancedNode(Object node, JsonType jsonType, NodeKind nodeKind, boolean converted) {
+    private InstancedNode(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
-        this.objectType = node == null ? null : node.getClass();
         this.jsonType = jsonType;
-        this.nodeKind = nodeKind;
         this.converted = converted;
     }
 
@@ -88,7 +84,7 @@ public final class InstancedNode {
     }
 
     // NULL
-    static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, null, false);
+    static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, false);
 
     /**
      * Infers node metadata and wraps it as an InstancedNode.
@@ -110,7 +106,7 @@ public final class InstancedNode {
                 nodeKind = NodeKind.of(node);
             }
         }
-        return new InstancedNode(node, JsonType.of(nodeKind), nodeKind, encoded);
+        return new InstancedNode(node, JsonType.of(nodeKind), encoded);
     }
 
     /**

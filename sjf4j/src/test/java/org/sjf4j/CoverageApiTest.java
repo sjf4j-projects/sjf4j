@@ -566,7 +566,7 @@ class CoverageApiTest {
         JsonObject jo = JsonObject.of("a", 1, "b", null, "obj", JsonObject.of("x", 1), "arr", JsonArray.of(1, 2));
         assertEquals("d", jo.getNode("missing", "d"));
         assertEquals(1, JsonObject.of("a", 1).toMap(Integer.class).get("a"));
-        assertTrue(jo.toBuilder().build().containsKey("a"));
+        assertTrue(jo.edit().build().containsKey("a"));
 
         JsonArray ja = JsonArray.of("x");
         assertEquals("d", ja.getNode(99, "d"));

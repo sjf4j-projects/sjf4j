@@ -8,9 +8,9 @@ import java.util.Objects;
 /**
  * Single validation message produced during schema evaluation.
  * <p>
- * Captures severity, message code, instance path, keyword path, schema
- * resource, source keyword, and detail. Public path accessors expose JSON
- * Pointer strings by default.
+ * Captures severity, instance path, keyword path, schema resource, source
+ * keyword, and detail. Public path accessors expose JSON Pointer strings by
+ * default.
  */
 public class ValidationMessage {
 
@@ -22,7 +22,6 @@ public class ValidationMessage {
     public enum Severity { ERROR, WARN, INFO, DEBUG }
 
     private final Severity severity;
-    private final String code;
     private final PathSegment instancePs;
     private final PathSegment keywordPs;
     private final URI schemaUri;
@@ -32,10 +31,9 @@ public class ValidationMessage {
     /**
      * Creates a validation message entry with instance and keyword paths.
      */
-    public ValidationMessage(Severity severity, String code, PathSegment instancePs, PathSegment keywordPs,
+    public ValidationMessage(Severity severity, PathSegment instancePs, PathSegment keywordPs,
                              URI schemaUri, String keyword, String message) {
         Objects.requireNonNull(severity, "severity");
-        this.code = Objects.requireNonNull(code, "code");
         this.severity = severity;
         this.instancePs = instancePs;
         this.keywordPs = keywordPs;
@@ -50,10 +48,6 @@ public class ValidationMessage {
     public Severity getSeverity() {
         return severity;
     }
-    /**
-     * Returns stable coarse-grained message code.
-     */
-    public String getCode() { return code; }
     /**
      * Returns the instance path segment chain.
      * <p>
@@ -104,7 +98,7 @@ public class ValidationMessage {
      */
     @Override
     public String toString() {
-        return SchemaUtil.formatValidationLine(severity, code, message, instancePs, keywordPs, schemaUri, keyword);
+        return SchemaUtil.formatValidationLine(severity, message, instancePs, keywordPs, schemaUri, keyword);
     }
 
 }

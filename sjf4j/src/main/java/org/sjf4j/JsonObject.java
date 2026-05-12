@@ -1119,12 +1119,20 @@ public class JsonObject extends JsonContainer {
     /// builder
 
     /**
+     * @deprecated Use {@link #edit()} instead.
+     */
+    @Deprecated
+    public Builder toBuilder() {
+        return new Builder(this);
+    }
+
+    /**
      * Returns a builder initialized from this object.
      * <p>
      * The builder mutates this object in place; it does not create a detached
      * copy.
      */
-    public Builder toBuilder() {
+    public Builder edit() {
         return new Builder(this);
     }
 

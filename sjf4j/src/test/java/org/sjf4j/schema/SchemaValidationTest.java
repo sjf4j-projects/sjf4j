@@ -14,6 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,6 +34,15 @@ public class SchemaValidationTest {
         assertTrue(plan.isValid("a"));
         assertFalse(plan.isValid("b"));
         assertFalse(plan.isValid(1));
+    }
+
+    @Test
+    public void testValidateSuccessReusesSharedResult() {
+        JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\"}");
+        SchemaPlan plan = schema.createPlan();
+
+        ValidationResult result = plan.validate("ok");
+        assertSame(ValidationResult.SUCCESS, result);
     }
 
     @Test
@@ -186,7 +196,6 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
         assertFalse(result.isValid());
-        assertEquals("validate.false", result.getLastMessage().getCode());
         assertEquals("false", result.getLastMessage().getKeyword());
         assertEquals("/y", result.getLastMessage().getInstancePs().rootedPointerExpr());
         assertEquals("/additionalProperties", result.getLastMessage().getKeywordPs().rootedPointerExpr());

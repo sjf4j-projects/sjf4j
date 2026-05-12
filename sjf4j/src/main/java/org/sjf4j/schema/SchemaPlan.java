@@ -86,7 +86,7 @@ public final class SchemaPlan {
                 return ValidationResult.SUCCESS;
             } else {
                 ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                        SchemaUtil.Code.VALIDATE_FALSE, PathSegment.Root.INSTANCE, keywordPs,
+                        PathSegment.Root.INSTANCE, keywordPs,
                         schemaUri, "false", "schema 'false' always fails");
                 return new ValidationResult(false, null, msg);
             }
@@ -122,7 +122,7 @@ public final class SchemaPlan {
             if (booleanValue) {
                 return true;
             } else {
-                ctx.addError(instance, ps, keywordPs, "false", "schema 'false' always fails");
+                ctx.addError(instance, ps, keywordPs, schemaUri, "false", "schema 'false' always fails");
                 return false;
             }
         }

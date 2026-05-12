@@ -96,10 +96,10 @@ public final class SchemaUtil {
         }
     }
 
-    static String formatValidationLine(ValidationMessage.Severity severity, String code, String summary,
+    static String formatValidationLine(ValidationMessage.Severity severity, String summary,
                                        PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword) {
         StringBuilder sb = new StringBuilder();
-        sb.append(severity).append(' ').append(code).append(": ").append(summary);
+        sb.append(severity).append(' ').append(validationCode(keyword)).append(": ").append(summary);
         String keywordValue = displayPath(keywordPs);
         String keywordName = (keyword != null && (keywordValue == null || "/".equals(keywordValue))) ? keyword : null;
         _appendMeta(sb, _meta("instance", displayPath(instancePs)),

@@ -33,18 +33,24 @@ public class ValidationContext {
      * Returns validation options.
      */
     public ValidationOptions getOptions() {return this.options;}
+
     /**
      * Builds a result snapshot from current context state.
      */
     public ValidationResult toResult() {
+        if (valid && (messages == null || messages.isEmpty()) && lastMessage == null) {
+            return ValidationResult.SUCCESS;
+        }
         return new ValidationResult(valid, messages, lastMessage);
     }
+
     /**
      * Returns true when no validation error was added.
      */
     public boolean isValid() {
         return valid;
     }
+
     /**
      * Returns true when validation should abort early.
      * <p>
@@ -74,14 +80,14 @@ public class ValidationContext {
      * <p>
      * In fail-fast mode only the last error is retained.
      */
-    void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs,
+    void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                   String keyword, String message) {
         if (ignoreErrorAdding < 1) {
             if (instancePs == null && instance != null) {
                 instancePs = instance.materializePath();
             }
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                    SchemaUtil.validationCode(keyword), instancePs, keywordPs, _currentSchemaUri(), keyword, message);
+                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                        instancePs, keywordPs, schemaUri, keyword, message);
             if (messages != null) {
                 messages.add(msg);
             } else {
@@ -96,17 +102,12 @@ public class ValidationContext {
      * <p>
      * Warnings are collected only when message list is enabled (non fail-fast).
      */
-    void addWarn(PathSegment instancePs, PathSegment keywordPs, String keyword, String message) {
+    void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword, String message) {
         if (messages != null) {
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN,
-                    SchemaUtil.validationCode(keyword), instancePs, keywordPs, _currentSchemaUri(), keyword, message);
+                    instancePs, keywordPs, schemaUri, keyword, message);
             messages.add(msg);
         }
-    }
-
-    private URI _currentSchemaUri() {
-        SchemaPlan plan = planStack.peek();
-        return plan == null ? null : plan.schemaUri;
     }
 
 }

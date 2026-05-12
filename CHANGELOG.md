@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added deprecated `JsonObject.toBuilder()` as a compatibility alias for `edit()` so existing builder-style call sites can migrate incrementally.
+
+### Changed
+- Changed schema validation messages to derive rendered validation codes from the failing keyword and to reuse the shared `ValidationResult.SUCCESS` instance for successful `SchemaPlan.validate(...)` calls.
+
+### Removed
+- Removed `ValidationMessage.getCode()` and the stored validation-message code field; callers should use the source keyword or rendered message output instead.
+
+### Fixed
+- Fixed schema validation diagnostics to retain the originating schema resource URI for direct, nested, and referenced keyword failures.
 
 
 ## [1.2.3] - 2026.05.11
