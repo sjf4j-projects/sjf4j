@@ -298,6 +298,8 @@ Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally close
 **JSON Schema Validating Benchmark**  
 SJF4J fully supports JSON Schema Draft 2020-12 and consistently ranks
 among the top-performing Java implementations in
+[Creek Service](https://www.creekservice.org/json-schema-validation-comparison/)
+and
 [Bowtie](https://bowtie.report/) benchmarks.
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
