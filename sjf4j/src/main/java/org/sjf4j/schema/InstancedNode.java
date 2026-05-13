@@ -21,9 +21,9 @@ import java.util.Map;
  * thread-safe.
  */
 public final class InstancedNode {
-    final Object node;
-    final JsonType jsonType;
-    final boolean converted;
+    private Object node;
+    private JsonType jsonType;
+    private boolean converted;
 
     private Map<Object, InstancedNode> subInstanceCache;
     private InstancedNode pathParent;
@@ -41,6 +41,23 @@ public final class InstancedNode {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
+    }
+
+    public Object node() {
+        return node;
+    }
+    public JsonType jsonType() {
+        return jsonType;
+    }
+    public boolean converted() {
+        return converted;
+    }
+
+    InstancedNode reuse(Object node, JsonType jsonType, boolean converted) {
+        this.node = node;
+        this.jsonType = jsonType;
+        this.converted = converted;
+        return reset();
     }
 
     /**
@@ -83,8 +100,9 @@ public final class InstancedNode {
         return pathByIndex ? new PathSegment.Index(parentPs, pathIndex) : new PathSegment.Name(parentPs, pathKey);
     }
 
-    // NULL
-    static final InstancedNode NULL = new InstancedNode(null, JsonType.NULL, false);
+    static InstancedNode infer(Object node) {
+        return infer(node, null);
+    }
 
     /**
      * Infers node metadata and wraps it as an InstancedNode.
@@ -94,8 +112,7 @@ public final class InstancedNode {
      * later from converted values can be cached and reused within the same
      * validation traversal.
      */
-    static InstancedNode infer(Object node) {
-        if (node == null) return NULL.reset().clearPath();
+    static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
         boolean encoded = false;
         NodeKind nodeKind = NodeKind.of(node);
         if (nodeKind == NodeKind.VALUE_NODE_VALUE) {
@@ -106,7 +123,11 @@ public final class InstancedNode {
                 nodeKind = NodeKind.of(node);
             }
         }
-        return new InstancedNode(node, JsonType.of(nodeKind), encoded);
+        JsonType jsonType = JsonType.of(nodeKind);
+        if (!encoded && jsonType.isValue() && reusedLeaf != null) {
+            return reusedLeaf.reuse(node, jsonType, encoded);
+        }
+        return new InstancedNode(node, jsonType, encoded);
     }
 
     /**
@@ -187,16 +208,15 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by key to avoid repeated value-codec encoding.
      */
-    InstancedNode inferSubByKey(String key, Object subNode) {
+    InstancedNode inferSubByKey(String key, Object subNode, InstancedNode reusedLeaf) {
         if (jsonType != JsonType.OBJECT)
             throw new JsonException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         if (subInstanceCache != null) {
             InstancedNode subInstance = subInstanceCache.get(key);
             if (subInstance != null) return subInstance.reset();
         }
-        if (subNode == null) return NULL.reset().bindPathKey(this, key);
 
-        InstancedNode subInstance = InstancedNode.infer(subNode).bindPathKey(this, key);
+        InstancedNode subInstance = InstancedNode.infer(subNode, reusedLeaf).bindPathKey(this, key);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(key, subInstance);
@@ -209,16 +229,15 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by index key to avoid repeated encoding.
      */
-    InstancedNode inferSubByIndex(int idx, Object subNode) {
+    InstancedNode inferSubByIndex(int idx, Object subNode, InstancedNode reusedLeaf) {
         if (jsonType != JsonType.ARRAY)
             throw new JsonException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         if (subInstanceCache != null) {
             InstancedNode subInstance = subInstanceCache.get(idx);
             if (subInstance != null) return subInstance.reset();
         }
-        if (subNode == null) return NULL.reset().bindPathIndex(this, idx);
 
-        InstancedNode subInstance = InstancedNode.infer(subNode).bindPathIndex(this, idx);
+        InstancedNode subInstance = InstancedNode.infer(subNode, reusedLeaf).bindPathIndex(this, idx);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(idx, subInstance);

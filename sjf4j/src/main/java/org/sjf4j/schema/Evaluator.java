@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -93,14 +94,17 @@ public interface Evaluator {
                 if (dynamicAnchorName != null) {
                     // JSON Pointer fragments behave like plain $ref targets.
                     // Only anchor-like fragments participate in dynamic rebinding.
-                    Iterator<SchemaPlan> it = ctx.planStack.descendingIterator();
-                    while (it.hasNext()) {
-                        SchemaPlan scopedPlan = it.next();
-                        if (scopedPlan.byDynamicAnchorPlans == null) continue;
-                        SchemaPlan candidate = scopedPlan.byDynamicAnchorPlans.get(dynamicAnchorName);
-                        if (candidate != null && candidate != initialPlan) {
-                            plan = candidate;
-                            break;
+                    Deque<SchemaPlan> planStack = ctx.planStack();
+                    if (planStack != null) {
+                        Iterator<SchemaPlan> it = planStack.descendingIterator();
+                        while (it.hasNext()) {
+                            SchemaPlan scopedPlan = it.next();
+                            if (scopedPlan.byDynamicAnchorPlans == null) continue;
+                            SchemaPlan candidate = scopedPlan.byDynamicAnchorPlans.get(dynamicAnchorName);
+                            if (candidate != null && candidate != initialPlan) {
+                                plan = candidate;
+                                break;
+                            }
                         }
                     }
                 }
@@ -156,7 +160,7 @@ public interface Evaluator {
             if (jsonType != null) {
                 if (!_matches(jsonType, instance)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "type",
-                            "expected type " + type + ", found " + instance.jsonType);
+                            "expected type " + type + ", found " + instance.jsonType());
                     return false;
                 }
                 return true;
@@ -168,18 +172,18 @@ public interface Evaluator {
                     }
                 }
                 ctx.addError(instance, ps, keywordPs, schemaUri, "type",
-                        "expected one of " + Arrays.toString(types) + ", found " + instance.jsonType);
+                        "expected one of " + Arrays.toString(types) + ", found " + instance.jsonType());
                 return false;
             }
             return true;
         }
 
         private boolean _matches(JsonType expected, InstancedNode instance) {
-            JsonType jt = instance.jsonType;
+            JsonType jt = instance.jsonType();
             if (expected != jt) {
                 // JSON Schema compatibility: integer ⊂ number
                 if (expected == JsonType.INTEGER && jt == JsonType.NUMBER) {
-                    Object actual = instance.node;
+                    Object actual = instance.node();
                     Number number = Nodes.toNumber(actual);
                     return Numbers.isSemanticInteger(number);
                 }
@@ -208,7 +212,7 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            Object actual = instance.node;
+            Object actual = instance.node();
             if (!Nodes.equals(constValue, actual)) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "const",
                         "expected constant " + Nodes.inspect(constValue) + ", found " + Nodes.inspect(actual));
@@ -236,7 +240,7 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            Object actual = instance.node;
+            Object actual = instance.node();
             for (Object allowed : enumValues) {
                 if (Nodes.equals(allowed, actual)) return true;
             }
@@ -286,10 +290,11 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.NUMBER && instance.jsonType != JsonType.INTEGER) {
+            JsonType jt = instance.jsonType();
+            if (jt != JsonType.NUMBER && jt != JsonType.INTEGER) {
                 return true;
             }
-            Number actual = Nodes.toNumber(instance.node);
+            Number actual = Nodes.toNumber(instance.node());
             double actualDouble = actual.doubleValue();
             if (hasMinimum && actualDouble < minimum) {
                 ctx.addError(instance, ps, minimumKeywordPs, schemaUri, "minimum",
@@ -342,10 +347,11 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.NUMBER && instance.jsonType != JsonType.INTEGER) {
+            JsonType jt = instance.jsonType();
+            if (jt != JsonType.NUMBER && jt != JsonType.INTEGER) {
                 return true;
             }
-            Number actual = Nodes.toNumber(instance.node);
+            Number actual = Nodes.toNumber(instance.node());
             if (isIntegerDivisor && Numbers.isSemanticInteger(actual)) {
                 long v = actual.longValue();
                 if (v % divisorLong != 0) {
@@ -397,9 +403,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.STRING) return true;
+            if (instance.jsonType() != JsonType.STRING) return true;
 
-            String actual = Nodes.toString(instance.node);
+            String actual = Nodes.toString(instance.node());
             int length = SchemaUtil.stringIcuLength(actual);
             if (minLength != null && length < minLength) {
                 ctx.addError(instance, ps, minLengthKeywordPs, schemaUri, "minLength",
@@ -436,9 +442,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.STRING) return true;
+            if (instance.jsonType() != JsonType.STRING) return true;
 
-            String actual = Nodes.toString(instance.node);
+            String actual = Nodes.toString(instance.node());
             if (!pn.matcher(actual).find()) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "pattern",
                         "expected string matching pattern '" + pattern + "'");
@@ -470,8 +476,8 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.STRING) return true;
-            String actual = Nodes.toString(instance.node);
+            if (instance.jsonType() != JsonType.STRING) return true;
+            String actual = Nodes.toString(instance.node());
             if (assertion || ctx.getOptions().isStrictFormat()) {
                 if (!formatValidator.validate(actual)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "format",
@@ -507,9 +513,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.OBJECT) return true;
+            if (instance.jsonType() != JsonType.OBJECT) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             int size = Nodes.sizeInObject(actual);
             if (minProperties != null && size < minProperties) {
                 ctx.addError(instance, ps, minPropertiesKeywordPs, schemaUri, "minProperties",
@@ -559,9 +565,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.OBJECT) return true;
+            if (instance.jsonType() != JsonType.OBJECT) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             boolean result = true;
             int propIdx = 0;
             for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
@@ -571,7 +577,7 @@ public interface Evaluator {
                 if (properties != null) {
                     SchemaPlan plan = properties.get(key);
                     if (plan != null) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, value);
+                        InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = plan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
@@ -586,7 +592,7 @@ public interface Evaluator {
                         if (patterns[i].matcher(key).find()) {
                             SchemaPlan plan = patternPlans[i];
                             if (plan != null) {
-                                InstancedNode subInstance = instance.inferSubByKey(key, value);
+                                InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
                                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                                 boolean subResult = plan.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
@@ -599,7 +605,7 @@ public interface Evaluator {
                 }
 
                 if (additionalPropertiesPlan != null && !matched) {
-                    InstancedNode subInstance = instance.inferSubByKey(key, value);
+                    InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                     boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
@@ -635,9 +641,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.OBJECT) return true;
+            if (instance.jsonType() != JsonType.OBJECT) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             boolean result = true;
             if (required != null) {
                 for (String key : required) {
@@ -684,9 +690,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.OBJECT) return true;
+            if (instance.jsonType() != JsonType.OBJECT) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             boolean result = true;
             for (Map.Entry<String, SchemaPlan> entry : dependentPlans.entrySet()) {
                 String key = entry.getKey();
@@ -719,9 +725,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.OBJECT) return true;
+            if (instance.jsonType() != JsonType.OBJECT) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             boolean result = true;
             for (String key : Nodes.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
@@ -772,9 +778,9 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.ARRAY) return true;
+            if (instance.jsonType() != JsonType.ARRAY) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             boolean result = true;
             int size = Nodes.sizeInArray(actual);
             if (minItems != null && size < minItems) {
@@ -821,15 +827,15 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.ARRAY) return true;
+            if (instance.jsonType() != JsonType.ARRAY) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             boolean result = true;
             int size = Nodes.sizeInArray(actual);
             int i = 0;
             if (prefixItemsPlans != null) {
                 for (; i < size && i < prefixItemsPlans.length; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i));
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -839,7 +845,7 @@ public interface Evaluator {
             }
             if (itemsPlan != null) {
                 for (; i < size; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i));
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -880,16 +886,16 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            if (instance.jsonType != JsonType.ARRAY) return true;
+            if (instance.jsonType() != JsonType.ARRAY) return true;
             if (containsPlan == null) return true;
 
-            Object actual = instance.node;
+            Object actual = instance.node();
             int matches = 0;
             Iterator<Object> it = Nodes.iteratorInArray(actual);
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.inferSubByIndex(i, subActual);
+                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                 boolean result = containsPlan.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
@@ -1162,14 +1168,14 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;
             BitSet merged = instance.mergedEvaluated();
-            Object actual = instance.node;
+            Object actual = instance.node();
             if (unevaluatedPropertiesPlan != null) {
-                if (instance.jsonType != JsonType.OBJECT) return true;
+                if (instance.jsonType() != JsonType.OBJECT) return true;
                 int propIdx = 0;
                 for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue());
+                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
@@ -1180,12 +1186,12 @@ public interface Evaluator {
                 }
             }
             if (unevaluatedItemsPlan != null) {
-                if (instance.jsonType != JsonType.ARRAY) return true;
+                if (instance.jsonType() != JsonType.ARRAY) return true;
                 Iterator<Object> it = Nodes.iteratorInArray(actual);
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual);
+                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);

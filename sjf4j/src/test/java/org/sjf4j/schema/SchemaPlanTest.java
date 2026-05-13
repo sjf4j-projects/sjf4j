@@ -158,6 +158,23 @@ class SchemaPlanTest {
     }
 
     @Test
+    void dynamicRefUsesOuterScopedOverrideAcrossIntermediateResourceWithoutDynamicAnchors() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
+                "\"$ref\":\"wrapper\"," +
+                "\"$defs\":{" +
+                "\"item\":{\"$dynamicAnchor\":\"item\",\"type\":\"string\"}," +
+                "\"wrapper\":{\"$id\":\"wrapper\",\"$ref\":\"list\"}," +
+                "\"list\":{\"$id\":\"list\",\"type\":\"array\",\"items\":{\"$dynamicRef\":\"#item\"},\"$defs\":{\"base\":{\"$dynamicAnchor\":\"item\",\"type\":\"number\"}}}" +
+                "}" +
+                "}");
+
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(new Object[]{"a"}));
+        assertFalse(plan.isValid(new Object[]{1}));
+    }
+
+    @Test
     void duplicateAnchorInSameResourceIsRejected() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$defs\":{" +

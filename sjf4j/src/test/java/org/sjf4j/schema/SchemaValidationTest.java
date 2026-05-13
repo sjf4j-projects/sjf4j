@@ -233,6 +233,65 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testNestedKeywordPathForNullLeafTypeError() {
+        String json =
+                "{\n" +
+                "  \"type\": \"object\",\n" +
+                "  \"properties\": {\n" +
+                "    \"name\": { \"type\": \"string\" }\n" +
+                "  }\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+        SchemaPlan plan = schema.createPlan();
+
+        Map<String, Object> bad = new HashMap<>();
+        bad.put("name", null);
+
+        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        assertFalse(result.isValid());
+        assertEquals("type", result.getLastMessage().getKeyword());
+        assertEquals("/name", result.getLastMessage().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/name/type", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+    }
+
+    @Test
+    public void testArrayItemTypeErrorUsesIndexedInstancePathForNullLeaf() {
+        JsonSchema schema = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"string\"}}");
+        SchemaPlan plan = schema.createPlan();
+
+        ValidationResult result = plan.validate(Arrays.asList("ok", null), ValidationOptions.FAILFAST);
+        assertFalse(result.isValid());
+        assertEquals("type", result.getLastMessage().getKeyword());
+        assertEquals("/1", result.getLastMessage().getInstancePs().rootedPointerExpr());
+        assertEquals("/items/type", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+    }
+
+    @Test
+    public void testReferencedPatternErrorPathForConvertedLeaf() {
+        String json =
+                "{\n" +
+                "  \"type\": \"object\",\n" +
+                "  \"properties\": {\n" +
+                "    \"site\": { \"$ref\": \"#/$defs/httpsUri\" }\n" +
+                "  },\n" +
+                "  \"$defs\": {\n" +
+                "    \"httpsUri\": { \"type\": \"string\", \"pattern\": \"^https://\" }\n" +
+                "  }\n" +
+                "}\n";
+        JsonSchema schema = JsonSchema.fromJson(json);
+        SchemaPlan plan = schema.createPlan();
+
+        Map<String, Object> bad = new HashMap<>();
+        bad.put("site", URI.create("ftp://example.com"));
+
+        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        assertFalse(result.isValid());
+        assertEquals("pattern", result.getLastMessage().getKeyword());
+        assertEquals("/site", result.getLastMessage().getInstancePs().rootedPointerExpr());
+        assertEquals("/$defs/httpsUri/pattern", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+    }
+
+    @Test
     public void testPropertyNamesErrorUsesMemberInstancePath() {
         String json =
                 "{\n" +

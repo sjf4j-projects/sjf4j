@@ -18,15 +18,20 @@ import java.util.List;
 public class ValidationContext {
     private final ValidationOptions options;
     private final List<ValidationMessage> messages;
+    // Validation-scoped scratch wrapper reused only for non-converted scalar/null
+    // child instances. Container nodes and converted value nodes must allocate
+    // dedicated wrappers because they can carry branch-local runtime state.
+    private final InstancedNode reusedLeaf;
+
     private boolean valid = true;
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding = 0;
-
-    final Deque<SchemaPlan> planStack = new ArrayDeque<>();
+    private Deque<SchemaPlan> planStack;
 
     ValidationContext(ValidationOptions options) {
         this.options = options;
         this.messages = options.isFailFast() ? null : new ArrayList<>();
+        this.reusedLeaf = InstancedNode.infer(null);
     }
 
     /**
@@ -73,6 +78,22 @@ public class ValidationContext {
      */
     public void popIgnoreError() {ignoreErrorAdding--;}
 
+    // PlanStack
+    public void pushPlan(SchemaPlan plan) {
+        if (planStack == null) planStack = new ArrayDeque<>();
+        planStack.push(plan);
+    }
+    public SchemaPlan popPlan() {
+        if (planStack == null) return null;
+        return planStack.pop();
+    }
+    public Deque<SchemaPlan> planStack() {
+        return planStack;
+    }
+
+    public InstancedNode reusedLeaf() {
+        return reusedLeaf;
+    }
 
     // message
     /**
