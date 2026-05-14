@@ -80,7 +80,7 @@ public class Jackson2StreamingIO {
                 case NULL:
                     return _readNull(parser, rawBoxed, context);
                 default:
-                    throw new JsonException("Unexpected token '" + token + "'");
+                    throw new BindingException("Unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
@@ -114,7 +114,7 @@ public class Jackson2StreamingIO {
                 parser.nextToken();
                 return null;
             default:
-                throw new JsonException("Unexpected token '" + parser.currentToken() + "'");
+                throw new BindingException("Unexpected token '" + parser.currentToken() + "'");
         }
     }
 

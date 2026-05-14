@@ -1,6 +1,6 @@
 package org.sjf4j.facade.snake;
 
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 import org.yaml.snakeyaml.events.AliasEvent;
@@ -93,7 +93,7 @@ public class SnakeReader implements StreamingReader {
                 return Token.STRING;
             }
         } else if (event instanceof AliasEvent) {
-            throw new JsonException("YAML anchors/aliases not supported.");
+            throw new BindingException("YAML anchors/aliases not supported.");
         } else {
             return Token.UNKNOWN;
         }
@@ -236,7 +236,7 @@ public class SnakeReader implements StreamingReader {
         if (low.equals("false") || low.equals("no") || low.equals("off")) {
             return false;
         }
-        throw new JsonException("Expect a Boolean but got '" + value + "'");
+        throw new BindingException("Expect a Boolean but got '" + value + "'");
     }
 
     /**
@@ -251,7 +251,7 @@ public class SnakeReader implements StreamingReader {
                 value.equalsIgnoreCase("null") || value.equals("~")) {
             return;
         }
-        throw new JsonException("Expect a Null but got '" + value + "'");
+        throw new BindingException("Expect a Null but got '" + value + "'");
     }
 
     /**
@@ -360,7 +360,7 @@ public class SnakeReader implements StreamingReader {
 //        if (low.equals("false") || low.equals("no") || low.equals("off")) {
 //            return false;
 //        }
-//        throw new JsonException("Expect a Boolean but got '" + value + "'");
+//        throw new BindingException("Expect a Boolean but got '" + value + "'");
 //    }
 
 }

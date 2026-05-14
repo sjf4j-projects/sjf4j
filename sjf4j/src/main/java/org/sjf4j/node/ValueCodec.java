@@ -14,11 +14,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
@@ -575,6 +577,42 @@ public interface ValueCodec<V, R> {
         }
     }
 
+    // LocalTime
+    final class LocalTimeValueCodec implements PatternedValueCodec<LocalTime, String> {
+        private final DateTimeFormatter formatter;
+
+        LocalTimeValueCodec() {
+            this.formatter = null;
+        }
+
+        private LocalTimeValueCodec(DateTimeFormatter formatter) {
+            this.formatter = formatter;
+        }
+
+        @Override
+        public String valueToRaw(LocalTime value) {
+            if (value == null) return null;
+            return formatter != null ? formatter.format(value) : value.toString();
+        }
+
+        @Override
+        public LocalTime rawToValue(String raw) {
+            if (raw == null) return null;
+            return formatter != null ? LocalTime.parse(raw, formatter) : LocalTime.parse(raw);
+        }
+
+        @Override
+        public Class<LocalTime> valueClass() { return LocalTime.class; }
+
+        @Override
+        public Class<String> rawClass() { return String.class; }
+
+        @Override
+        public ValueCodec<LocalTime, String> withPattern(String pattern) {
+            return new LocalTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
+        }
+    }
+
     // Duration
     final class DurationValueCodec implements ValueCodec<Duration, String> {
 
@@ -875,6 +913,29 @@ public interface ValueCodec<V, R> {
         public Class<String> rawClass() {
             return String.class;
         }
+    }
+
+    // Optional
+    final class OptionalValueCodec implements ValueCodec<Optional<?>, Object> {
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object valueToRaw(Optional<?> value) {
+            if (value == null || !value.isPresent()) return null;
+            return value.get();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Optional<?> rawToValue(Object raw) {
+            return raw == null ? Optional.empty() : Optional.of(raw);
+        }
+
+        @Override
+        public Class<Optional<?>> valueClass() { return (Class) Optional.class; }
+
+        @Override
+        public Class<Object> rawClass() { return Object.class; }
     }
 
 

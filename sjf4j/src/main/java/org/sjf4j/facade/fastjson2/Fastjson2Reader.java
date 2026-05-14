@@ -1,7 +1,7 @@
 package org.sjf4j.facade.fastjson2;
 
 import com.alibaba.fastjson2.JSONReader;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 
 import java.io.IOException;
@@ -79,7 +79,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void startObject() throws IOException {
         peeked = null;
         if (!reader.nextIfObjectStart()) {
-            throw new JsonException("Expected token 'START_OBJECT', but got " + reader.current());
+            throw new BindingException("Expected token 'START_OBJECT', but got " + reader.current());
         }
     }
 
@@ -90,7 +90,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void endObject() throws IOException {
         peeked = null;
         if (!reader.nextIfObjectEnd()) {
-            throw new JsonException("Expected token 'END_OBJECT', but got " + reader.current());
+            throw new BindingException("Expected token 'END_OBJECT', but got " + reader.current());
         }
     }
 
@@ -101,7 +101,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void startArray() throws IOException {
         peeked = null;
         if (!reader.nextIfArrayStart()) {
-            throw new JsonException("Expected token 'START_ARRAY', but got " + reader.current());
+            throw new BindingException("Expected token 'START_ARRAY', but got " + reader.current());
         }
     }
 
@@ -112,7 +112,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void endArray() throws IOException {
         peeked = null;
         if (!reader.nextIfArrayEnd()) {
-            throw new JsonException("Expected token 'END_ARRAY', but got " + reader.current());
+            throw new BindingException("Expected token 'END_ARRAY', but got " + reader.current());
         }
     }
 

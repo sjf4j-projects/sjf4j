@@ -67,7 +67,7 @@ public class Fastjson2StreamingIO {
                 case NULL:
                     return _readNull(reader, rawBoxed, context);
                 default:
-                    throw new JsonException("Unexpected token '" + token + "'");
+                    throw new BindingException("Unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
@@ -92,14 +92,14 @@ public class Fastjson2StreamingIO {
                 reader.readNull();
                 return null;
             default:
-                throw new JsonException("Unexpected token '" + reader.current() + "'");
+                throw new BindingException("Unexpected token '" + reader.current() + "'");
         }
     }
 
     private static Map<String, Object> _readRawObject(JSONReader reader) throws IOException {
         Map<String, Object> map = new LinkedHashMap<>();
         if (!reader.nextIfObjectStart()) {
-            throw new JsonException("Expected token '{', but got " + reader.current());
+            throw new BindingException("Expected token '{', but got " + reader.current());
         }
         while (!reader.nextIfObjectEnd()) {
             map.put(reader.readFieldName(), _readRawNode(reader));
@@ -110,7 +110,7 @@ public class Fastjson2StreamingIO {
     private static List<Object> _readRawArray(JSONReader reader) throws IOException {
         List<Object> list = new ArrayList<>();
         if (!reader.nextIfArrayStart()) {
-            throw new JsonException("Expected token '[', but was " + reader.current());
+            throw new BindingException("Expected token '[', but was " + reader.current());
         }
         while (!reader.nextIfArrayEnd()) {
             list.add(_readRawNode(reader));
@@ -235,7 +235,7 @@ public class Fastjson2StreamingIO {
             Object pojo = ci.newPojoNoArgs();
             Map<String, Object> dynamicMap = null;
             if (!reader.nextIfObjectStart()) {
-                throw new JsonException("Expected token '{', but got " + reader.current());
+                throw new BindingException("Expected token '{', but got " + reader.current());
             }
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
@@ -265,7 +265,7 @@ public class Fastjson2StreamingIO {
         Object parentOneOfValue = UNSET;
 
         if (!reader.nextIfObjectStart()) {
-            throw new JsonException("Expected token '{', but got " + reader.current());
+            throw new BindingException("Expected token '{', but got " + reader.current());
         }
         while (!reader.nextIfObjectEnd()) {
             String key = reader.readFieldName();
@@ -379,7 +379,7 @@ public class Fastjson2StreamingIO {
             Class<?> elemRaw = Types.box(elemType);
             NodeRegistry.OneOfInfo elemOneOf = NodeRegistry.registerTypeInfo(elemRaw).oneOfInfo;
             if (!reader.nextIfArrayStart()) {
-                throw new JsonException("Expected token '[', but was " + reader.current());
+                throw new BindingException("Expected token '[', but was " + reader.current());
             }
             while (!reader.nextIfArrayEnd()) {
                 Object value = _readNode(reader, elemType, elemRaw, elemOneOf, context);
@@ -479,7 +479,7 @@ public class Fastjson2StreamingIO {
                 ? new LinkedHashMap<>()
                 : NodeRegistry.newMapContainer(mapClazz, false);
         if (!reader.nextIfObjectStart()) {
-            throw new JsonException("Expected token '{', but was " + reader.current());
+            throw new BindingException("Expected token '{', but was " + reader.current());
         }
         while (!reader.nextIfObjectEnd()) {
             String key = reader.readFieldName();
@@ -501,7 +501,7 @@ public class Fastjson2StreamingIO {
                 ? new ArrayList<>()
                 : NodeRegistry.newListContainer(listClazz, false);
         if (!reader.nextIfArrayStart()) {
-            throw new JsonException("Expected token '[', but was " + reader.current());
+            throw new BindingException("Expected token '[', but was " + reader.current());
         }
         while (!reader.nextIfArrayEnd()) {
             Object value = _readNode(reader, valueType, valueClazz, valueOneOf, context);
@@ -522,7 +522,7 @@ public class Fastjson2StreamingIO {
                 ? new LinkedHashSet<>()
                 : NodeRegistry.newSetContainer(setClazz, false);
         if (!reader.nextIfArrayStart()) {
-            throw new JsonException("Expected token '[', but was " + reader.current());
+            throw new BindingException("Expected token '[', but was " + reader.current());
         }
         while (!reader.nextIfArrayEnd()) {
             Object value = _readNode(reader, valueType, valueClazz, valueOneOf, context);

@@ -70,7 +70,7 @@ public final class StreamingIO {
                 case NULL:
                     return _readNull(reader, rawBoxed, context);
                 default:
-                    throw new JsonException("Unexpected token '" + token + "'");
+                    throw new BindingException("Unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
@@ -96,7 +96,7 @@ public final class StreamingIO {
                 reader.nextNull();
                 return null;
             default:
-                throw new JsonException("Unexpected token '" + reader.peekToken() + "'");
+                throw new BindingException("Unexpected token '" + reader.peekToken() + "'");
         }
     }
 

@@ -1,7 +1,7 @@
 package org.sjf4j.facade.jsonp;
 
 import jakarta.json.stream.JsonParser;
-import org.sjf4j.exception.JsonException;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.Numbers;
 
@@ -60,7 +60,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void startObject() throws IOException {
         if (current != JsonParser.Event.START_OBJECT) {
-            throw new JsonException("Expected START_OBJECT, but was " + current);
+            throw new BindingException("Expected START_OBJECT, but was " + current);
         }
         _advance();
     }
@@ -71,7 +71,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void endObject() throws IOException {
         if (current != JsonParser.Event.END_OBJECT) {
-            throw new JsonException("Expected END_OBJECT, but was " + current);
+            throw new BindingException("Expected END_OBJECT, but was " + current);
         }
         _advance();
     }
@@ -82,7 +82,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void startArray() throws IOException {
         if (current != JsonParser.Event.START_ARRAY) {
-            throw new JsonException("Expected START_ARRAY, but was " + current);
+            throw new BindingException("Expected START_ARRAY, but was " + current);
         }
         _advance();
     }
@@ -93,7 +93,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void endArray() throws IOException {
         if (current != JsonParser.Event.END_ARRAY) {
-            throw new JsonException("Expected END_ARRAY, but was " + current);
+            throw new BindingException("Expected END_ARRAY, but was " + current);
         }
         _advance();
     }
@@ -104,7 +104,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public String nextName() throws IOException {
         if (current != JsonParser.Event.KEY_NAME) {
-            throw new JsonException("Expected KEY_NAME, but was " + current);
+            throw new BindingException("Expected KEY_NAME, but was " + current);
         }
         String name = parser.getString();
         _advance();

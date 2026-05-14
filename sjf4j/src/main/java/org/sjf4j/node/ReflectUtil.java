@@ -844,7 +844,7 @@ public final class ReflectUtil {
                     try {
                         rawToValueHandle = lookup.unreflectConstructor(ctor);
                     } catch (IllegalAccessException e) {
-                        throw new RuntimeException(e);
+                        throw new JsonException(e);
                     }
                 }
             }
@@ -885,7 +885,7 @@ public final class ReflectUtil {
                     try {
                         rawToValueHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
-                        throw new RuntimeException(e);
+                        throw new JsonException(e);
                     }
                 }
                 // Copy
@@ -903,7 +903,7 @@ public final class ReflectUtil {
                     try {
                         valueCopyHandle = lookup.unreflect(m);
                     } catch (IllegalAccessException e) {
-                        throw new RuntimeException(e);
+                        throw new JsonException(e);
                     }
                 }
             }// for

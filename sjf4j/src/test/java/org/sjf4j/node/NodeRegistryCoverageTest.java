@@ -31,8 +31,10 @@ import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -289,6 +291,93 @@ class NodeRegistryCoverageTest {
     static class InvalidPatternPojo {
         @NodeProperty(codecPattern = "yyyy-MM-dd")
         String name;
+    }
+
+    // ── LocalTime ──
+
+    @Test
+    void testLocalTimeCodecRoundTrip() {
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(java.time.LocalTime.class);
+        assertTrue(ti.hasValueCodecs());
+        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo("");
+        assertNotNull(vci);
+        Object raw = vci.valueToRaw(java.time.LocalTime.of(10, 30, 15));
+        assertEquals("10:30:15", raw);
+        Object decoded = vci.rawToValue(raw);
+        assertEquals(java.time.LocalTime.of(10, 30, 15), decoded);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testLocalTimeCodecPattern() {
+        NodeRegistry.ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(java.time.LocalTime.class, "");
+        assertTrue(base.valueCodec instanceof PatternedValueCodec);
+        // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
+        PatternedValueCodec pc = (PatternedValueCodec) base.valueCodec;
+        ValueCodec patterned = pc.withPattern("HH:mm");
+        Object raw = patterned.valueToRaw(java.time.LocalTime.of(8, 5));
+        assertEquals("08:05", raw);
+        Object decoded = patterned.rawToValue(raw);
+        assertEquals(java.time.LocalTime.of(8, 5), decoded);
+    }
+
+    // ── Optional ──
+
+    @Test
+    void testOptionalCodecPresent() {
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(java.util.Optional.class);
+        assertTrue(ti.hasValueCodecs());
+        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo("");
+        assertNotNull(vci);
+        assertEquals(Object.class, vci.rawClazz);
+
+        Object raw = vci.valueToRaw(java.util.Optional.of("hello"));
+        assertEquals("hello", raw);
+
+        Object decoded = vci.rawToValue(raw);
+        assertInstanceOf(java.util.Optional.class, decoded);
+        assertEquals(java.util.Optional.of("hello"), decoded);
+    }
+
+    @Test
+    void testOptionalCodecEmpty() {
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.resolveValueCodecOrElseThrow(java.util.Optional.class, "");
+        assertNull(vci.valueToRaw(java.util.Optional.empty()));
+        assertSame(java.util.Optional.empty(), vci.rawToValue(null));
+    }
+
+    static class LocalTimeFieldPojo {
+        @NodeProperty(codecPattern = "HH:mm:ss")
+        java.time.LocalTime time;
+    }
+
+    @Test
+    void testLocalTimeFieldWithPattern() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(LocalTimeFieldPojo.class);
+        NodeRegistry.PropertyInfo fi = pi.properties.get("time");
+        assertNotNull(fi);
+        assertNull(fi.codecName);
+        assertNotNull(fi.resolvedValueCodec);
+        Object raw = fi.resolvedValueCodec.valueToRaw(java.time.LocalTime.of(14, 30, 0));
+        assertEquals("14:30:00", raw);
+    }
+
+    static class OptionalFieldPojo {
+        @NodeProperty(codecName = "")
+        java.util.Optional<String> name;
+    }
+
+    @Test
+    void testOptionalFieldWithCodec() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(OptionalFieldPojo.class);
+        NodeRegistry.PropertyInfo fi = pi.properties.get("name");
+        assertNotNull(fi);
+        assertNotNull(fi.resolvedValueCodec);
+        // Present
+        Object raw = fi.resolvedValueCodec.valueToRaw(java.util.Optional.of("Alice"));
+        assertEquals("Alice", raw);
+        // Empty
+        assertNull(fi.resolvedValueCodec.valueToRaw(java.util.Optional.empty()));
     }
 
     static class ThrowingHandleValue {
