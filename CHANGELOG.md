@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
-- Added `@NodeIgnore` so fields, getters, and setters can be excluded from SJF4J property discovery.
+- Added `@NodeIgnore` so types, fields, getters, and setters can be excluded from SJF4J property discovery — class-level `@NodeIgnore` works like Jackson's `@JsonIgnoreType`, excluding all properties referencing the annotated type.
 
 ### Changed
 - Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.

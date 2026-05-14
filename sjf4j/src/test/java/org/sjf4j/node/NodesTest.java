@@ -383,7 +383,14 @@ public class NodesTest {
         assertEquals(3, ((Dog) zoo.pet).getBark());
     }
 
-
+    @Test
+    void testJsonObjectGetWithOneOf() {
+        JsonObject src = JsonObject.of("animal", JsonObject.of("kind", "cat", "name", "Nana", "lives", 7));
+        Animal animal = src.get("animal", Animal.class);
+        assertInstanceOf(Cat.class, animal);
+        assertEquals("Nana", animal.getName());
+        assertEquals(7, ((Cat) animal).getLives());
+    }
 
 
     /// Basic

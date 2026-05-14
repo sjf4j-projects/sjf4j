@@ -293,6 +293,7 @@ public final class ReflectUtil {
             }
             if (!includeFields) continue;
             if (field.getAnnotation(NodeIgnore.class) != null) continue;
+            if (field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
             families.computeIfAbsent(field.getName(), PropertyFamily::new);
         }
         return hasHiddenDeclaredFields;
@@ -306,6 +307,7 @@ public final class ReflectUtil {
             if (Modifier.isStatic(mod) || field.isSynthetic()) continue;
             if (Modifier.isTransient(mod)) continue;
             if (field.getAnnotation(NodeIgnore.class) != null) continue;
+            if (field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
             String explicitName = getExplicitName(field);
             String[] aliases = getAliases(field);
             String valueFormat = getValueFormat(field);
@@ -369,6 +371,17 @@ public final class ReflectUtil {
                 if (isGetter) family.ignoreGetter = true;
                 else family.ignoreSetter = true;
                 continue;
+            }
+            if (isGetter) {
+                if (method.getReturnType().isAnnotationPresent(NodeIgnore.class)) {
+                    family.ignoreGetter = true;
+                    continue;
+                }
+            } else {
+                if (method.getParameterTypes()[0].isAnnotationPresent(NodeIgnore.class)) {
+                    family.ignoreSetter = true;
+                    continue;
+                }
             }
             family.addExplicitName(getExplicitName(method), root);
             family.addAliases(getAliases(method));

@@ -46,6 +46,22 @@ class PropertyDiscoveryTest {
         public String getName() { return name; }
     }
 
+    @NodeIgnore
+    static class IgnoredType {
+        public String street;
+    }
+
+    static class TypeIgnoreContainer {
+        public String name;
+        public IgnoredType address;
+    }
+
+    static class TypeIgnoreBeanContainer {
+        private IgnoredType info;
+        public IgnoredType getInfo() { return info; }
+        public void setInfo(IgnoredType info) { this.info = info; }
+    }
+
     @NodeBinding(propertyStrategy = PropertyStrategy.BEAN_FIELD)
     static class BeanFieldTypePriorityPojo {
         private Object value;
@@ -168,6 +184,27 @@ class PropertyDiscoveryTest {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(IgnorePojo.class);
         assertFalse(pi.properties.containsKey("ignoredField"));
         assertFalse(pi.properties.get("name").hasGetter());
+    }
+
+    @Test
+    void nodeIgnoreTypeOnFieldExcludesProperty() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(TypeIgnoreContainer.class);
+        assertEquals(1, pi.propertyCount);
+        assertTrue(pi.properties.containsKey("name"));
+        assertNull(pi.properties.get("address"));
+    }
+
+    @Test
+    void nodeIgnoreTypeOnBeanMethodExcludesGetterSetter() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(TypeIgnoreBeanContainer.class);
+        assertNull(pi.properties.get("info"));
+    }
+
+    @Test
+    void nodeIgnoreTypeStillAllowsDirectPojoAnalysis() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(IgnoredType.class);
+        assertNotNull(pi);
+        assertTrue(pi.properties.containsKey("street"));
     }
 
     @Test

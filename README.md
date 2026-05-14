@@ -14,8 +14,9 @@ It sits above multiple JSON libraries — including [Jackson](https://github.com
 and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting YAML
 (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml)) and Java Properties.
 
-Its goal is **consistent JSON semantics across backends, formats, and native Java object graphs**.
-SJF4J provides one unified structural model and one family of APIs for [modeling](https://sjf4j.org/docs/modeling) (OBNT),
+SJF4J builds on established JSON standards and semantics to provide 
+a **consistent structural processing model across backends, data formats, and native Java object graphs**.  
+It provides one unified structural model and one family of APIs for [modeling](https://sjf4j.org/docs/modeling) (OBNT),
 [parsing](https://sjf4j.org/docs/parsing) (Codec), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
 [patching](https://sjf4j.org/docs/patching) (JSON Patch), [validating](https://sjf4j.org/docs/validating) (JSON Schema), 
 and [mapping](https://sjf4j.org/docs/mapping) (Transformation).
