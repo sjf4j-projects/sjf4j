@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `PatternedValueCodec<V, R>` optional interface for value codecs that support format pattern parameterization.
 - Added `ValueCodec` for `java.time.LocalTime` (supports `codecPattern`).
 - Added `ValueCodec` for `java.util.Optional` — flattens `Optional.of(x)` → `x`, `Optional.empty()` → `null` (like Jackson).
+- Added `ConcurrentHashMap` cache in `Types.resolveTypeArgument()` to memoize recursive generic type argument resolution results across repeated calls.
 
 ### Changed
 - Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
@@ -26,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `hasValueFormatBinding` / `hasPropertyValueFormatBinding` flags to check resolved value codecs instead of raw format strings, correctly reflecting both `codecName` and `codecPattern` bindings.
 - Changed runtime binding/codec exception types from `JsonException` to `BindingException` in `NodeRegistry` (20 sites), `StreamingIO`, `Jackson2StreamingIO`, `Fastjson2StreamingIO`, `Fastjson2Reader`, `JsonpReader`, and `SnakeReader`.
 - Changed 3 `RuntimeException` to `JsonException` in `ReflectUtil.analyzeNodeValue()`.
+- Changed streaming read paths to thread `NodeRegistry.TypeInfo` (instead of raw `OneOfInfo`) through `_readNode → _readObject / _readArray → _readMap / _readList / _readSet / _readArray`, eliminating redundant `registerTypeInfo()` lookups on each recursive descent. Applied to `StreamingIO`, `Jackson2StreamingIO`, and `Fastjson2StreamingIO`.
+- Renamed `ValueCodecInfo.getFormattedValueCodecInfo()` → `getValueCodecInfo()` and `formattedValueCodecs` → `namedValueCodecs` for clarity. Applied across all backend modules (Jackson 2, Jackson 3, Fastjson2, Gson, Simple) and the test suite.
 
 ### Removed
 - Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
@@ -33,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed property binding consistency for renamed bean properties, field/bean family merging, `@OneOf`/value-format propagation, and creator-bound property conflict detection.
 - Fixed property discovery fail-fast behavior for ambiguous getter/setter selection, duplicate aliases/final names, and transient fields annotated with `@NodeProperty`.
+- Fixed `ReflectionBenchmark` and `SchemaBenchmark` JMH benchmarks to use current APIs (`pi.properties.get("name")` instead of removed `NodeRegistry.getPropertyInfo()`, `createPlan()` instead of removed `plan()`).
 
 
 ## [1.2.3] - 2026.05.11

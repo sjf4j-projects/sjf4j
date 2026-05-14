@@ -111,7 +111,7 @@ public class ReflectionBenchmark {
     private final static MethodHandle ctorMethodHandle = pi.creatorInfo.noArgsCtorHandle;
     private final static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 
-    private final static NodeRegistry.PropertyInfo propertyInfo = NodeRegistry.getPropertyInfo(Person.class, "name");
+    private final static NodeRegistry.PropertyInfo propertyInfo = pi.properties.get("name");
     private final static MethodHandle getterMethodHandle = propertyInfo.getter;
     private final static Function<Object, Object> getterLambda = propertyInfo.lambdaGetter;
     private final static MethodHandle setterMethodHandle = propertyInfo.setter;

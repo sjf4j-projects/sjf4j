@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Reflection type helpers used for generic resolution and raw class lookup.
@@ -83,6 +84,36 @@ public final class Types {
         return box(rawClazz(type));
     }
 
+    // Cache for resolveTypeArgument results (only used for the recursive slow path)
+    private static final ConcurrentHashMap<TypeArgKey, Type> TYPE_ARG_CACHE = new ConcurrentHashMap<>();
+
+    private static final class TypeArgKey {
+        final Type type;
+        final Class<?> target;
+        final int index;
+        private final int hash;
+
+        TypeArgKey(Type type, Class<?> target, int index) {
+            this.type = type;
+            this.target = target;
+            this.index = index;
+            this.hash = Objects.hash(type, target, index);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof TypeArgKey)) return false;
+            TypeArgKey that = (TypeArgKey) o;
+            return index == that.index && target == that.target && type.equals(that.type);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
     /**
      * Resolves a generic type argument for a target supertype.
      */
@@ -97,8 +128,14 @@ public final class Types {
                 return Object.class;
             }
         }
+        // Slow path: recursive resolution. Check/update cache.
+        TypeArgKey key = new TypeArgKey(type, target, index);
+        Type cached = TYPE_ARG_CACHE.get(key);
+        if (cached != null) return cached;
         Map<TypeVariable<?>, Type> typeVarMap = new HashMap<>();
-        return resolve(type, target, index, typeVarMap);
+        Type result = resolve(type, target, index, typeVarMap);
+        TYPE_ARG_CACHE.put(key, result);
+        return result;
     }
 
     /**

@@ -119,16 +119,16 @@ public class SchemaBenchmark {
                     .build();
 
             JsonSchema objectSchemaDoc = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
-            objectSchema = objectSchemaDoc.plan();
+            objectSchema = objectSchemaDoc.createPlan();
 
             JsonSchema arraySchemaDoc = JsonSchema.fromJson(ARRAY_SCHEMA_JSON);
-            arraySchema = arraySchemaDoc.plan();
+            arraySchema = arraySchemaDoc.createPlan();
 
             JsonSchema stringSchemaDoc = JsonSchema.fromJson(STRING_SCHEMA_JSON);
-            stringSchema = stringSchemaDoc.plan();
+            stringSchema = stringSchemaDoc.createPlan();
 
             JsonSchema numberSchemaDoc = JsonSchema.fromJson(NUMBER_SCHEMA_JSON);
-            numberSchema = numberSchemaDoc.plan();
+            numberSchema = numberSchemaDoc.createPlan();
 
             objectNode = Sjf4j.global().fromJson(OBJECT_NODE_JSON);
             arrayNode = Sjf4j.global().fromJson(ARRAY_NODE_JSON);
@@ -140,7 +140,7 @@ public class SchemaBenchmark {
     @Benchmark
     public Object schema_compile_object() {
         JsonSchema schema = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
-        return schema.plan();
+        return schema.createPlan();
     }
 
     @Benchmark

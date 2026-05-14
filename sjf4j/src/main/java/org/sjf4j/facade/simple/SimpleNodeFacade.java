@@ -121,7 +121,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return rawClazz.isInstance(node) ? vci.valueCopy(node) : vci.rawToValue(node);
                 }
@@ -521,7 +521,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = streamingContext.defaultValueFormat(argRaw);
-                    argVci = ti.getFormattedValueCodecInfo(valueFormat);
+                    argVci = ti.getValueCodecInfo(valueFormat);
                 }
                 if (ti.oneOfInfo == null && argVci != null) {
                     args[argIdx] = argRaw.isInstance(rawValue) ? argVci.valueCopy(rawValue) : argVci.rawToValue(rawValue);
@@ -875,7 +875,7 @@ public class SimpleNodeFacade implements NodeFacade {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return vci.valueToRaw(node);
                 }

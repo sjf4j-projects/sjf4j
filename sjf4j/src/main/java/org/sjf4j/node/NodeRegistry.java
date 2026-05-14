@@ -197,20 +197,20 @@ public final class NodeRegistry {
                 throw new JsonException("ValueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and default format ''");
             }
-            return new TypeInfo(ti.clazz, vci, ti.formattedValueCodecs,
+            return new TypeInfo(ti.clazz, vci, ti.namedValueCodecs,
                     ti.oneOfInfo, ti.containerInfo, ti.pojoInfo);
         }
 
-        for (int i = 0; i < ti.formattedValueCodecs.length; i++) {
-            ValueCodecInfo cur = ti.formattedValueCodecs[i];
+        for (int i = 0; i < ti.namedValueCodecs.length; i++) {
+            ValueCodecInfo cur = ti.namedValueCodecs[i];
             if (cur.valueFormat.equals(vci.valueFormat)) {
                 throw new JsonException("ValueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and valueFormat '" + vci.valueFormat + "'");
             }
         }
-        ValueCodecInfo[] appended = new ValueCodecInfo[ti.formattedValueCodecs.length + 1];
-        System.arraycopy(ti.formattedValueCodecs, 0, appended, 0, ti.formattedValueCodecs.length);
-        appended[ti.formattedValueCodecs.length] = vci;
+        ValueCodecInfo[] appended = new ValueCodecInfo[ti.namedValueCodecs.length + 1];
+        System.arraycopy(ti.namedValueCodecs, 0, appended, 0, ti.namedValueCodecs.length);
+        appended[ti.namedValueCodecs.length] = vci;
         return new TypeInfo(ti.clazz, ti.valueCodecInfo, appended,
                 ti.oneOfInfo, ti.containerInfo, ti.pojoInfo);
     }
@@ -221,7 +221,7 @@ public final class NodeRegistry {
     public static ValueCodecInfo resolveValueCodecOrElseThrow(Class<?> clazz, String valueFormat) {
         Objects.requireNonNull(valueFormat, "valueFormat");
         TypeInfo ti = registerTypeInfo(clazz);
-        ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+        ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
         if (vci == null) {
             throw new JsonException("No ValueCodec registered for type '" + clazz.getName() +
                     "' with valueFormat '" + valueFormat + "'");
@@ -290,7 +290,7 @@ public final class NodeRegistry {
     public static class TypeInfo {
         public final Class<?> clazz;
         public final ValueCodecInfo valueCodecInfo;
-        public final ValueCodecInfo[] formattedValueCodecs;
+        public final ValueCodecInfo[] namedValueCodecs;
         public final OneOfInfo oneOfInfo;
         public final ContainerInfo containerInfo;
         public final PojoInfo pojoInfo;
@@ -301,11 +301,11 @@ public final class NodeRegistry {
         /**
          * Creates immutable type metadata holder.
          */
-        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] formattedValueCodecs,
+        public TypeInfo(Class<?> clazz, ValueCodecInfo valueCodecInfo, ValueCodecInfo[] namedValueCodecs,
                         OneOfInfo oneOfInfo, ContainerInfo containerInfo, PojoInfo pojoInfo) {
             this.clazz = clazz;
             this.valueCodecInfo = valueCodecInfo;
-            this.formattedValueCodecs = formattedValueCodecs == null ? EMPTY_VALUE_CODECS : formattedValueCodecs;
+            this.namedValueCodecs = namedValueCodecs == null ? EMPTY_VALUE_CODECS : namedValueCodecs;
             this.oneOfInfo = oneOfInfo;
             this.containerInfo = containerInfo;
             this.pojoInfo = pojoInfo;
@@ -332,12 +332,12 @@ public final class NodeRegistry {
         }
 
         public boolean hasValueCodecs() {
-            return valueCodecInfo != null || formattedValueCodecs.length > 0;
+            return valueCodecInfo != null || namedValueCodecs.length > 0;
         }
 
-        public ValueCodecInfo getFormattedValueCodecInfo(String valueFormat) {
+        public ValueCodecInfo getValueCodecInfo(String valueFormat) {
             if (valueFormat == null || valueFormat.isEmpty()) return valueCodecInfo;
-            for (ValueCodecInfo vci : formattedValueCodecs) {
+            for (ValueCodecInfo vci : namedValueCodecs) {
                 if (vci.valueFormat.equals(valueFormat)) {
                     return vci;
                 }

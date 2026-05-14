@@ -299,7 +299,7 @@ class NodeRegistryCoverageTest {
     void testLocalTimeCodecRoundTrip() {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(java.time.LocalTime.class);
         assertTrue(ti.hasValueCodecs());
-        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo("");
+        NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo("");
         assertNotNull(vci);
         Object raw = vci.valueToRaw(java.time.LocalTime.of(10, 30, 15));
         assertEquals("10:30:15", raw);
@@ -327,7 +327,7 @@ class NodeRegistryCoverageTest {
     void testOptionalCodecPresent() {
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(java.util.Optional.class);
         assertTrue(ti.hasValueCodecs());
-        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo("");
+        NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo("");
         assertNotNull(vci);
         assertEquals(Object.class, vci.rawClazz);
 

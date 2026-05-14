@@ -82,7 +82,7 @@ public interface Jackson3Module {
                     }
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                        NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueDeserializer<>(vci);
                         }
@@ -109,7 +109,7 @@ public interface Jackson3Module {
                     NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
                     if (ti.hasValueCodecs()) {
                         String valueFormat = streamingContext.defaultValueFormat(clazz);
-                        NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                        NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                         if (vci != null) {
                             return new NodeValueSerializer<>(vci);
                         }

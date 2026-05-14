@@ -50,17 +50,18 @@ public class Jackson2StreamingIO {
         Objects.requireNonNull(parser, "parser");
         Objects.requireNonNull(context, "context");
         Class<?> rawBox = Types.rawBox(type);
-        NodeRegistry.OneOfInfo anyOfInfo = NodeRegistry.registerTypeInfo(rawBox).oneOfInfo;
-        return _readNode(parser, type, rawBox, anyOfInfo, context);
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawBox);
+        return _readNode(parser, type, rawBox, ti, context);
     }
 
     private static Object _readNode(JsonParser parser, Type type, Class<?> rawBoxed,
-                                    NodeRegistry.OneOfInfo anyOfInfo,
+                                    NodeRegistry.TypeInfo ti,
                                     StreamingContext context)
             throws IOException {
         try {
-            if (anyOfInfo != null) {
-                return readOneOf(parser, anyOfInfo, context);
+            NodeRegistry.OneOfInfo oneOfInfo = ti != null ? ti.oneOfInfo : null;
+            if (oneOfInfo != null) {
+                return readOneOf(parser, oneOfInfo, context);
             }
             if (rawBoxed == Object.class) {
                 return _readRawNode(parser);
@@ -68,9 +69,9 @@ public class Jackson2StreamingIO {
             StreamingReader.Token token = _peekToken(parser);
             switch (token) {
                 case START_OBJECT:
-                    return _readObject(parser, type, rawBoxed, context);
+                    return _readObject(parser, type, rawBoxed, ti, context);
                 case START_ARRAY:
-                    return _readArray(parser, type, rawBoxed, context);
+                    return _readArray(parser, type, rawBoxed, ti, context);
                 case STRING:
                     return _readString(parser, rawBoxed, context);
                 case NUMBER:
@@ -257,27 +258,31 @@ public class Jackson2StreamingIO {
     }
 
     private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz,
-                                      StreamingContext context)
+                                       NodeRegistry.TypeInfo ti,
+                                       StreamingContext context)
             throws IOException {
         if (Map.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readMap(parser, rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                    NodeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (rawClazz == JsonObject.class) {
             return new JsonObject(_readRawObject(parser));
         }
 
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
+        if (ti == null) {
+            ti = NodeRegistry.registerTypeInfo(rawClazz);
+        }
         if (ti.hasValueCodecs()) {
             String valueFormat = context.defaultValueFormat(rawClazz);
-            NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+            NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
             if (vci != null) {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
-                Map<String, Object> map = _readMap(parser, vci.rawClazz, valueType, valueClazz, ti.oneOfInfo, context);
+                NodeRegistry.TypeInfo valueTi = NodeRegistry.registerTypeInfo(valueClazz);
+                Map<String, Object> map = _readMap(parser, vci.rawClazz, valueType, valueClazz, valueTi, context);
                 return vci.rawToValue(map);
             }
         }
@@ -342,13 +347,13 @@ public class Jackson2StreamingIO {
                 NodeRegistry.ValueCodecInfo argVci = ci.argValueCodecs[argIdx];
                 if (argVci == null && ti.hasValueCodecs()) {
                     String valueFormat = context.defaultValueFormat(argRaw);
-                    argVci = ti.getFormattedValueCodecInfo(valueFormat);
+                    argVci = ti.getValueCodecInfo(valueFormat);
                 }
                 Object argValue;
                 if (ti.oneOfInfo == null && argVci != null) {
                     argValue = _readValueWithCodec(parser, argType, argRaw, argVci, context);
                 } else {
-                    argValue = _readNode(parser, argType, argRaw, ti.oneOfInfo, context);
+                    argValue = _readNode(parser, argType, argRaw, ti, context);
                 }
                 session.acceptCtorArg(argIdx, argValue);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
@@ -411,13 +416,14 @@ public class Jackson2StreamingIO {
     }
 
     private static Object _readArray(JsonParser parser, Type type, Class<?> rawClazz,
-                                     StreamingContext context)
+                                      NodeRegistry.TypeInfo ti,
+                                      StreamingContext context)
             throws IOException {
         if (List.class.isAssignableFrom(rawClazz)) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readList(parser, rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                    NodeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (rawClazz == JsonArray.class) {
@@ -428,36 +434,41 @@ public class Jackson2StreamingIO {
             Type valueType = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             return _readSet(parser, rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                    NodeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (rawClazz.isArray()) {
             Class<?> compType = rawClazz.getComponentType();
             Class<?> valueClazz = Types.box(compType);
             return _readArray(parser, rawClazz, compType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                    NodeRegistry.registerTypeInfo(valueClazz), context);
         }
 
         if (JsonArray.class.isAssignableFrom(rawClazz)) {
             JsonArray ja = (JsonArray) NodeRegistry.registerPojoOrElseThrow(rawClazz).creatorInfo.forceNewPojo();
             Class<?> elemType = ja.elementType();
             Class<?> elemRaw = Types.box(elemType);
-            NodeRegistry.OneOfInfo elemOneOf = NodeRegistry.registerTypeInfo(elemRaw).oneOfInfo;
+            NodeRegistry.TypeInfo elemTi = NodeRegistry.registerTypeInfo(elemRaw);
             parser.nextToken();
             while (parser.currentToken() != JsonToken.END_ARRAY) {
-                Object value = _readNode(parser, elemType, elemRaw, elemOneOf, context);
+                Object value = _readNode(parser, elemType, elemRaw, elemTi, context);
                 ja.add(value);
             }
             parser.nextToken();
             return ja;
         }
 
-        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+        if (ti == null) {
+            ti = NodeRegistry.registerTypeInfo(rawClazz);
+        }
+        NodeRegistry.ValueCodecInfo vci = ti.hasValueCodecs()
+                ? ti.getValueCodecInfo(context.defaultValueFormat(rawClazz))
+                : null;
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
             List<Object> list = _readList(parser, vci.rawClazz, valueType, valueClazz,
-                    NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                    NodeRegistry.registerTypeInfo(valueClazz), context);
             return vci.rawToValue(list);
         }
 
@@ -476,7 +487,7 @@ public class Jackson2StreamingIO {
             fieldOneOf = NodeRegistry.registerTypeInfo(fieldRaw).oneOfInfo;
         }
         if (fieldOneOf != null) {
-            return _readNode(parser, fieldType, fieldRaw, fieldOneOf, context);
+            return readOneOf(parser, fieldOneOf, context);
         }
 
         if (fi.resolvedValueCodec != null) {
@@ -485,13 +496,17 @@ public class Jackson2StreamingIO {
 
         switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.PropertyInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMap(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argOneOfInfo, context);
+                return _readMap(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
+                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
             case LIST:
-                return _readList(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argOneOfInfo, context);
+                return _readList(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
+                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
             case SET:
-                return _readSet(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argOneOfInfo, context);
+                return _readSet(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
+                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
             case ARRAY:
-                return _readArray(parser, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argOneOfInfo, context);
+                return _readArray(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
+                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
             default:
                 return _readNode(parser, fieldType, fieldRaw, null, context);
         }
@@ -507,14 +522,14 @@ public class Jackson2StreamingIO {
                 Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
                 Class<?> valueClazz = Types.rawBox(valueType);
                 Map<String, Object> map = _readMap(parser, valueCodecInfo.rawClazz, valueType, valueClazz,
-                        NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                        NodeRegistry.registerTypeInfo(valueClazz), context);
                 return valueCodecInfo.rawToValue(map);
             }
             case START_ARRAY: {
                 Type valueType = Types.resolveTypeArgument(type, List.class, 0);
                 Class<?> valueClazz = Types.rawBox(valueType);
                 List<Object> list = _readList(parser, valueCodecInfo.rawClazz, valueType, valueClazz,
-                        NodeRegistry.registerTypeInfo(valueClazz).oneOfInfo, context);
+                        NodeRegistry.registerTypeInfo(valueClazz), context);
                 return valueCodecInfo.rawToValue(list);
             }
             case STRING: {
@@ -541,9 +556,9 @@ public class Jackson2StreamingIO {
     }
 
     private static Map<String, Object> _readMap(JsonParser parser, Class<?> mapClazz,
-                                                Type valueType, Class<?> valueClazz,
-                                                NodeRegistry.OneOfInfo valueOneOf,
-                                                StreamingContext context)
+                                                 Type valueType, Class<?> valueClazz,
+                                                 NodeRegistry.TypeInfo valueTi,
+                                                 StreamingContext context)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -556,7 +571,7 @@ public class Jackson2StreamingIO {
         while (parser.currentToken() != JsonToken.END_OBJECT) {
             String key = parser.currentName();
             parser.nextToken();
-            Object value = _readNode(parser, valueType, valueClazz, valueOneOf, context);
+            Object value = _readNode(parser, valueType, valueClazz, valueTi, context);
             map.put(key, value);
         }
         parser.nextToken();
@@ -564,9 +579,9 @@ public class Jackson2StreamingIO {
     }
 
     private static List<Object> _readList(JsonParser parser, Class<?> listClazz,
-                                          Type valueType, Class<?> valueClazz,
-                                          NodeRegistry.OneOfInfo valueOneOf,
-                                          StreamingContext context)
+                                           Type valueType, Class<?> valueClazz,
+                                           NodeRegistry.TypeInfo valueTi,
+                                           StreamingContext context)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -577,7 +592,7 @@ public class Jackson2StreamingIO {
                 : NodeRegistry.newListContainer(listClazz, false);
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            Object value = _readNode(parser, valueType, valueClazz, valueOneOf, context);
+            Object value = _readNode(parser, valueType, valueClazz, valueTi, context);
             list.add(value);
         }
         parser.nextToken();
@@ -585,9 +600,9 @@ public class Jackson2StreamingIO {
     }
 
     private static Set<Object> _readSet(JsonParser parser, Class<?> setClazz,
-                                        Type valueType, Class<?> valueClazz,
-                                        NodeRegistry.OneOfInfo valueOneOf,
-                                        StreamingContext context)
+                                         Type valueType, Class<?> valueClazz,
+                                         NodeRegistry.TypeInfo valueTi,
+                                         StreamingContext context)
             throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
             parser.nextToken();
@@ -598,7 +613,7 @@ public class Jackson2StreamingIO {
                 : NodeRegistry.newSetContainer(setClazz, false);
         parser.nextToken();
         while (parser.currentToken() != JsonToken.END_ARRAY) {
-            Object value = _readNode(parser, valueType, valueClazz, valueOneOf, context);
+            Object value = _readNode(parser, valueType, valueClazz, valueTi, context);
             set.add(value);
         }
         parser.nextToken();
@@ -606,11 +621,11 @@ public class Jackson2StreamingIO {
     }
 
     private static Object _readArray(JsonParser parser, Class<?> rawClazz,
-                                     Type valueType, Class<?> valueClazz,
-                                     NodeRegistry.OneOfInfo valueOneOf,
-                                     StreamingContext context)
+                                      Type valueType, Class<?> valueClazz,
+                                      NodeRegistry.TypeInfo valueTi,
+                                      StreamingContext context)
             throws IOException {
-        List<Object> list = _readList(parser, List.class, valueType, valueClazz, valueOneOf, context);
+        List<Object> list = _readList(parser, List.class, valueType, valueClazz, valueTi, context);
         if (list == null) {
             return null;
         }
@@ -838,7 +853,7 @@ public class Jackson2StreamingIO {
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     Object raw = vci.valueToRaw(node);
                     _writeNode(gen, raw, context);

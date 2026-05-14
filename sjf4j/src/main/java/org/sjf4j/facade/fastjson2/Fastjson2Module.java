@@ -67,7 +67,7 @@ public interface Fastjson2Module {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(rawClazz);
-                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueReader<>(vci);
                 }
@@ -320,7 +320,7 @@ public interface Fastjson2Module {
             }
             if (ti.hasValueCodecs()) {
                 String valueFormat = streamingContext.defaultValueFormat(objectClass);
-                NodeRegistry.ValueCodecInfo vci = ti.getFormattedValueCodecInfo(valueFormat);
+                NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
                 if (vci != null) {
                     return new NodeValueWriter<>(vci);
                 }
