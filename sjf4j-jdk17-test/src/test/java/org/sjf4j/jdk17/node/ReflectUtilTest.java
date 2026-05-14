@@ -175,7 +175,7 @@ class ReflectUtilTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         JsonException ex = assertThrows(JsonException.class,
                 () -> ReflectUtil.analyzeCreator(AliasConflictCreatorPojo.class, lookup));
-        assertTrue(ex.getMessage().contains("mapped to multiple fields"));
+        assertTrue(ex.getMessage().contains("mapped to multiple properties"));
     }
 
     static class AliasConflictCreatorPojo {

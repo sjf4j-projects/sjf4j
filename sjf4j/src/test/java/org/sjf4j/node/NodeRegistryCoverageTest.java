@@ -212,7 +212,7 @@ class NodeRegistryCoverageTest {
         assertEquals(String.class, isoCodec.rawClazz);
         assertEquals(Long.class, epochCodec.rawClazz);
 
-        NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(InstantFieldPojo.class, "createdAt");
+        NodeRegistry.PropertyInfo fi = NodeRegistry.registerPojoOrElseThrow(InstantFieldPojo.class).properties.get("createdAt");
         assertEquals("epochMillis", fi.valueFormat);
         assertNotNull(fi.resolvedValueCodec);
         assertEquals(Long.class, fi.resolvedValueCodec.rawClazz);
@@ -256,7 +256,7 @@ class NodeRegistryCoverageTest {
         public String userName;
     }
 
-    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBasedPrivatePojo {
         private String userName;
     }
@@ -388,11 +388,11 @@ class NodeRegistryCoverageTest {
         assertEquals("later", pending.get("extra"));
 
         NodeRegistry.PojoInfo sessionInfo = NodeRegistry.registerPojoOrElseThrow(SessionPojo.class);
-        NodeRegistry.FieldInfo extraField = sessionInfo.fields.get("extra");
+        NodeRegistry.PropertyInfo extraField = sessionInfo.properties.get("extra");
         NodeRegistry.PojoCreationSession fieldSession = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
-        fieldSession.acceptResolvedField(-1, "value", extraField);
+        fieldSession.acceptResolvedProperty(-1, "value", extraField);
         fieldSession.acceptResolved(0, "id-1", "id", (receiver, key, value) -> {});
-        SessionPojo fieldPojo = (SessionPojo) fieldSession.finishField();
+        SessionPojo fieldPojo = (SessionPojo) fieldSession.finishProperty();
         assertEquals("value", fieldPojo.extra);
 
         NodeRegistry.CreatorInfo jsonCreator = ReflectUtil.analyzeCreator(JsonSessionPojo.class, lookup);
@@ -415,10 +415,10 @@ class NodeRegistryCoverageTest {
 
         NodeRegistry.PojoCreationSession fieldGrowth = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
         for (int i = 0; i < 5; i++) {
-            fieldGrowth.acceptResolvedField(-1, "f" + i, extraField);
+            fieldGrowth.acceptResolvedProperty(-1, "f" + i, extraField);
         }
         fieldGrowth.acceptResolved(0, "field-id", "id", (receiver, key, value) -> {});
-        assertEquals("f4", ((SessionPojo) fieldGrowth.finishField()).extra);
+        assertEquals("f4", ((SessionPojo) fieldGrowth.finishProperty()).extra);
 
         NodeRegistry.PojoCreationSession jsonGrowth = new NodeRegistry.PojoCreationSession(jsonCreator, 0);
         for (int i = 0; i < 5; i++) {
@@ -430,38 +430,38 @@ class NodeRegistryCoverageTest {
     }
 
     @Test
-    void testFieldInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
+    void testPropertyInfoValueCodecInfoAndOneOfInfoHelpers() throws Exception {
         NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
-        NodeRegistry.FieldInfo namesField = pojoInfo.fields.get("names");
-        NodeRegistry.FieldInfo numbersField = pojoInfo.fields.get("numbers");
-        NodeRegistry.FieldInfo mappingField = pojoInfo.fields.get("mapping");
-        NodeRegistry.FieldInfo typedListField = pojoInfo.fields.get("typedList");
-        NodeRegistry.FieldInfo typedMapField = pojoInfo.fields.get("typedMap");
-        NodeRegistry.FieldInfo linkedNamesField = pojoInfo.fields.get("linkedNames");
-        NodeRegistry.FieldInfo sortedNumbersField = pojoInfo.fields.get("sortedNumbers");
-        NodeRegistry.FieldInfo hashMappingField = pojoInfo.fields.get("hashMapping");
-        NodeRegistry.FieldInfo arrayField = pojoInfo.fields.get("array");
-        NodeRegistry.FieldInfo plainField = pojoInfo.fields.get("plain");
-        NodeRegistry.FieldInfo readOnlyField = pojoInfo.fields.get("readOnly");
+        NodeRegistry.PropertyInfo namesField = pojoInfo.properties.get("names");
+        NodeRegistry.PropertyInfo numbersField = pojoInfo.properties.get("numbers");
+        NodeRegistry.PropertyInfo mappingField = pojoInfo.properties.get("mapping");
+        NodeRegistry.PropertyInfo typedListField = pojoInfo.properties.get("typedList");
+        NodeRegistry.PropertyInfo typedMapField = pojoInfo.properties.get("typedMap");
+        NodeRegistry.PropertyInfo linkedNamesField = pojoInfo.properties.get("linkedNames");
+        NodeRegistry.PropertyInfo sortedNumbersField = pojoInfo.properties.get("sortedNumbers");
+        NodeRegistry.PropertyInfo hashMappingField = pojoInfo.properties.get("hashMapping");
+        NodeRegistry.PropertyInfo arrayField = pojoInfo.properties.get("array");
+        NodeRegistry.PropertyInfo plainField = pojoInfo.properties.get("plain");
+        NodeRegistry.PropertyInfo readOnlyField = pojoInfo.properties.get("readOnly");
 
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, namesField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.LIST, namesField.containerKind);
         assertEquals(String.class, namesField.argRawClazz);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.SET, numbersField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.SET, numbersField.containerKind);
         assertEquals(Integer.class, numbersField.argRawClazz);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, mappingField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.MAP, mappingField.containerKind);
         assertEquals(Long.class, mappingField.argRawClazz);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, typedListField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.LIST, typedListField.containerKind);
         assertEquals(TypedOneOf.class, typedListField.argRawClazz);
         assertNotNull(typedListField.argOneOfInfo);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, typedMapField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.MAP, typedMapField.containerKind);
         assertEquals(TypedOneOf.class, typedMapField.argRawClazz);
         assertNotNull(typedMapField.argOneOfInfo);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.LIST, linkedNamesField.containerKind);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.SET, sortedNumbersField.containerKind);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.MAP, hashMappingField.containerKind);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.ARRAY, arrayField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.LIST, linkedNamesField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.SET, sortedNumbersField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.MAP, hashMappingField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.ARRAY, arrayField.containerKind);
         assertEquals(String.class, arrayField.argRawClazz);
-        assertEquals(NodeRegistry.FieldInfo.ContainerKind.NONE, plainField.containerKind);
+        assertEquals(NodeRegistry.PropertyInfo.ContainerKind.NONE, plainField.containerKind);
 
         ContainerPojo pojo = new ContainerPojo();
         plainField.invokeSetter(pojo, "plain");
@@ -474,13 +474,13 @@ class NodeRegistryCoverageTest {
         assertThrows(JsonException.class, () -> readOnlyField.invokeSetter(pojo, "x"));
         assertThrows(NullPointerException.class, () -> plainField.invokeGetter(null));
 
-        NodeRegistry.FieldInfo missingGetter = new NodeRegistry.FieldInfo("name", String.class, null, null, null, null, null, null, null);
+        NodeRegistry.PropertyInfo missingGetter = new NodeRegistry.PropertyInfo("name", String.class, null, null, null, null, null, null, null);
         assertThrows(JsonException.class, () -> missingGetter.invokeGetter(new Object()));
 
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         Method getterMethod = ThrowingAccessor.class.getDeclaredMethod("getName");
         Method setterMethod = ThrowingAccessor.class.getDeclaredMethod("setName", String.class);
-        NodeRegistry.FieldInfo throwingField = new NodeRegistry.FieldInfo(
+        NodeRegistry.PropertyInfo throwingField = new NodeRegistry.PropertyInfo(
                 "name",
                 String.class,
                 lookup.unreflect(getterMethod),

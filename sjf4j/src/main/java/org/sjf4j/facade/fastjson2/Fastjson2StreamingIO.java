@@ -122,7 +122,7 @@ public class Fastjson2StreamingIO {
             throws IOException {
         reader.readNull();
 
-        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
+        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             return vci.rawToValue(null);
         }
@@ -135,7 +135,7 @@ public class Fastjson2StreamingIO {
             return reader.readBoolValue();
         }
 
-        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
+        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             boolean b = reader.readBoolValue();
             return vci.rawToValue(b);
@@ -158,7 +158,7 @@ public class Fastjson2StreamingIO {
         if (rawClazz == BigInteger.class) return reader.readBigInteger();
         if (rawClazz == BigDecimal.class) return reader.readBigDecimal();
 
-        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
+        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             Number n = reader.readNumber();
             return vci.rawToValue(n);
@@ -182,7 +182,7 @@ public class Fastjson2StreamingIO {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
 
-        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
+        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             String s = reader.readString();
             return vci.rawToValue(s);
@@ -239,7 +239,7 @@ public class Fastjson2StreamingIO {
             }
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
-                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+                NodeRegistry.PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
                     Object vv = _readField(reader, fi, ownerType, ownerRawClazz, context);
                     fi.invokeSetterIfPresent(pojo, vv);
@@ -258,8 +258,8 @@ public class Fastjson2StreamingIO {
             return pojo;
         }
 
-        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
-        NodeRegistry.FieldInfo deferredParentOneOfFi = null;
+        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
+        NodeRegistry.PropertyInfo deferredParentOneOfFi = null;
         Object deferredParentOneOfRaw = null;
         String parentOneOfKey = null;
         Object parentOneOfValue = UNSET;
@@ -286,14 +286,14 @@ public class Fastjson2StreamingIO {
                 } else {
                     argValue = _readNode(reader, argType, argRaw, ti.oneOfInfo, context);
                 }
-                session.acceptResolvedField(argIdx, argValue, null);
+                session.acceptResolvedProperty(argIdx, argValue, null);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = argValue;
                 }
                 continue;
             }
 
-            NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 Object vv;
                 NodeRegistry.OneOfInfo fieldOneOf = fi.oneOfInfo;
@@ -324,7 +324,7 @@ public class Fastjson2StreamingIO {
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = vv;
                 }
-                session.acceptResolvedField(-1, vv, fi);
+                session.acceptResolvedProperty(-1, vv, fi);
                 continue;
             }
 
@@ -339,8 +339,8 @@ public class Fastjson2StreamingIO {
             }
         }
 
-        Object pojo = session.finishField();
-        _applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
+        Object pojo = session.finishProperty();
+        StreamingIO.applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
                 parentOneOfValue, UNSET, context);
         return pojo;
     }
@@ -388,7 +388,7 @@ public class Fastjson2StreamingIO {
             return ja;
         }
 
-        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
+        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
             Type valueType = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> valueClazz = Types.rawBox(valueType);
@@ -400,7 +400,7 @@ public class Fastjson2StreamingIO {
         throw new BindingException("Cannot read array value into type '" + rawClazz.getName() + "'");
     }
 
-    private static Object _readField(JSONReader reader, NodeRegistry.FieldInfo fi,
+    private static Object _readField(JSONReader reader, NodeRegistry.PropertyInfo fi,
                                      Type ownerType, Class<?> ownerRawClazz,
                                      StreamingContext context)
             throws IOException {
@@ -419,7 +419,7 @@ public class Fastjson2StreamingIO {
             return _readValueWithCodec(reader, fieldType, fieldRaw, fi.resolvedValueCodec, context);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
+        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.PropertyInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMap(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argOneOfInfo, context);
             case LIST:
@@ -720,7 +720,7 @@ public class Fastjson2StreamingIO {
     public static void writePojo(JSONWriter writer, Object node, NodeRegistry.PojoInfo pi,
                                  StreamingContext context) throws IOException {
         writer.startObject();
-        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+        for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
             Object vv = entry.getValue().invokeGetter(node);
             if (vv == null && !context.includeNulls) continue;
             String key = entry.getKey();
@@ -729,7 +729,7 @@ public class Fastjson2StreamingIO {
             if (vv == null) {
                 writer.writeNull();
             } else {
-                NodeRegistry.FieldInfo fi = entry.getValue();
+                NodeRegistry.PropertyInfo fi = entry.getValue();
                 if (fi.resolvedValueCodec != null) {
                     vv = fi.resolvedValueCodec.valueToRaw(vv);
                 }
@@ -751,54 +751,6 @@ public class Fastjson2StreamingIO {
         writer.endObject();
     }
 
-    /// Support
-
-    private static NodeRegistry.ValueCodecInfo resolveValueCodecInfo(Class<?> clazz, StreamingContext context) {
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
-        if (ti.hasValueCodecs()) {
-            String valueFormat = context.defaultValueFormat(clazz);
-            return ti.getFormattedValueCodecInfo(valueFormat);
-        }
-        return null;
-    }
-
-    private static void _applyDeferredParentOneOf(Object pojo, NodeRegistry.PojoInfo pi,
-                                                  NodeRegistry.FieldInfo deferredParentOneOfFi,
-                                                  Object deferredParentOneOfRaw, Object parentOneOfValue,
-                                                  Object unsetSentinel,
-                                                  StreamingContext context) {
-        if (deferredParentOneOfFi == null) {
-            return;
-        }
-
-        NodeRegistry.OneOfInfo aoi = deferredParentOneOfFi.oneOfInfo;
-        String parentKey = aoi.key;
-        if (parentOneOfValue == unsetSentinel) {
-            Object discriminator = null;
-            NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
-                    ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
-            if (parentFi != null) {
-                discriminator = parentFi.invokeGetter(pojo);
-            } else if (pi.isJojo) {
-                discriminator = ((JsonObject) pojo).getNode(parentKey);
-            }
-            if (discriminator != null) {
-                parentOneOfValue = discriminator;
-            }
-        }
-
-        Class<?> targetClazz = aoi.resolveByWhen(parentOneOfValue == unsetSentinel ? null : parentOneOfValue);
-        Object vv;
-        if (targetClazz != null) {
-            vv = context.nodeFacade.readNode(deferredParentOneOfRaw, targetClazz);
-        } else if (aoi.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
-            vv = null;
-        } else {
-            throw new BindingException("OneOf discriminator has no matching mapping: key='" +
-                    aoi.key + "', value='" + (parentOneOfValue == unsetSentinel ? null : parentOneOfValue) + "'");
-        }
-        deferredParentOneOfFi.invokeSetterIfPresent(pojo, vv);
-    }
 
     private static void _writeNumber(JSONWriter writer, Number value) {
         if (value instanceof Long || value instanceof Integer || value instanceof Short || value instanceof Byte) {
@@ -813,4 +765,7 @@ public class Fastjson2StreamingIO {
             writer.writeInt64(value.longValue());
         }
     }
+
+    /// Support
+
 }

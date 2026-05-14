@@ -14,8 +14,8 @@
  *
  * <p>Common modeling terms used by the public API:
  * <ul>
- *     <li>POJO: a regular Java object bound by declared fields, getters/setters, or creators</li>
- *     <li>JOJO: a {@link org.sjf4j.JsonObject} subtype that combines declared Java fields with dynamic JSON properties</li>
+ *     <li>POJO: a regular Java object bound by discovered properties, getters/setters, or creators</li>
+ *     <li>JOJO: a {@link org.sjf4j.JsonObject} subtype that combines discovered Java properties with dynamic JSON properties</li>
  *     <li>JAJO: a {@link org.sjf4j.JsonArray} subtype that combines a typed Java class with JSON-array behavior</li>
  * </ul>
  *

@@ -73,20 +73,20 @@ public class NodeRegistryTest {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
         log.info("pi={}", pi);
         assertNotNull(pi);
-        assertEquals(4, pi.fieldCount);
-        assertNotNull(pi.fields.get("name").getter);
-        assertNotNull(pi.fields.get("name").setter);
-        assertEquals(int.class, pi.fields.get("age").type);
-        assertEquals(JsonObject.class, pi.fields.get("info").type);
+        assertEquals(4, pi.propertyCount);
+        assertNotNull(pi.properties.get("name").getter);
+        assertNotNull(pi.properties.get("name").setter);
+        assertEquals(int.class, pi.properties.get("age").type);
+        assertEquals(JsonObject.class, pi.properties.get("info").type);
         assertEquals(new TypeReference<List<JojoTest.Person>>(){}.getType(),
-                pi.fields.get("friends").type);
+                pi.properties.get("friends").type);
     }
 
     @Test
     public void testInheritedFieldSameKeyChildWins() {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(ChildSameKey.class);
-        assertNotNull(pi.fields.get("key"));
-        assertEquals(int.class, pi.fields.get("key").type);
+        assertNotNull(pi.properties.get("key"));
+        assertEquals(int.class, pi.properties.get("key").type);
 
         ChildSameKey pojo = Sjf4j.global().fromJson("{\"key\":123}", ChildSameKey.class);
         assertEquals(123, pojo.key);
@@ -111,7 +111,7 @@ public class NodeRegistryTest {
     public void testInvoke1() {
         Person p1 = new Person();
         NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
-        NodeRegistry.FieldInfo fi = pi.fields.get("name");
+        NodeRegistry.PropertyInfo fi = pi.properties.get("name");
 
         fi.invokeSetter(p1, "hahaha");
         String name1 = (String) fi.invokeGetter(p1);

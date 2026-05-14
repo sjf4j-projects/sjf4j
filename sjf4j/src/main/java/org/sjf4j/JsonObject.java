@@ -29,12 +29,12 @@ import java.util.function.Predicate;
  *
  * <p>{@link JsonObject} can be used directly as a mutable JSON object node, or
  * subclassed to define a JOJO (JSON Object Java Object). A JOJO combines
- * declared Java fields with dynamic JSON properties in the same object, so a
- * model can keep typed domain fields without losing extra object members from
+ * discovered Java properties with dynamic JSON properties in the same object, so a
+ * model can keep typed domain properties without losing extra object members from
  * input JSON.
  *
- * <p>Dynamic fields are stored in {@code dynamicMap}; declared fields are mapped
- * via {@link NodeRegistry.FieldInfo}. Accessors use {@link Nodes} conversion
+ * <p>Dynamic fields are stored in {@code dynamicMap}; discovered properties are mapped
+ * via {@link NodeRegistry.PropertyInfo}. Accessors use {@link Nodes} conversion
  * semantics for strict/lenient reads.
  */
 public class JsonObject extends JsonContainer {
@@ -45,7 +45,7 @@ public class JsonObject extends JsonContainer {
     protected transient Map<String, Object> dynamicMap;
     
     /**
-     * Stores field information for POJO mapping.
+     * Stores property metadata for POJO mapping.
      */
     protected final transient NodeRegistry.PojoInfo pi =
             this.getClass() == JsonObject.class
@@ -64,7 +64,7 @@ public class JsonObject extends JsonContainer {
      * <p>
      * The provided map becomes this object's dynamic storage directly; dynamic
      * reads and writes are therefore shared with the same map instance. Declared
-     * JOJO fields, when present, still live on the object instance itself.
+     * JOJO properties, when present, still live on the object instance itself.
      */
     public JsonObject(Map<String, Object> map) {
         this();
@@ -113,13 +113,13 @@ public class JsonObject extends JsonContainer {
     /// Map
 
     /**
-     * Computes hash code from readable declared fields and dynamic entries.
+     * Computes hash code from readable declared properties and dynamic entries.
      */
     @Override
     public int hashCode() {
         int hash = dynamicMap == null ? 0 : dynamicMap.hashCode();
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()){
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
                 hash += Objects.hashCode(entry.getKey()) ^
                         Objects.hashCode(entry.getValue().invokeGetter(this));
             }
@@ -154,10 +154,10 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the number of readable declared fields and dynamic entries.
+     * Returns the number of readable declared properties and dynamic entries.
      */
     public int size() {
-        return (pi == null ? 0 : pi.readableFieldCount) + (dynamicMap == null ? 0 : dynamicMap.size());
+        return (pi == null ? 0 : pi.readablePropertyCount) + (dynamicMap == null ? 0 : dynamicMap.size());
     }
 
     /**
@@ -168,31 +168,31 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a merged key set of readable declared fields and dynamic entries.
+     * Returns a merged key set of readable declared properties and dynamic entries.
      */
     public Set<String> keySet() {
         if (pi == null) {
             return dynamicMap == null ? Collections.emptySet() : dynamicMap.keySet();
         } else if (dynamicMap == null) {
-            return pi.readableFields.keySet();
+            return pi.readableProperties.keySet();
         } else {
             return new AbstractSet<String>() {
                 @SuppressWarnings("NullableProblems")
                 @Override
                 public Iterator<String> iterator() {
                     return new Iterator<String>() {
-                        private final Iterator<String> fieldIterator = pi.readableFields.keySet().iterator();
+                        private final Iterator<String> propertyIterator = pi.readableProperties.keySet().iterator();
                         private final Iterator<String> dynamicIterator = dynamicMap.keySet().iterator();
 
                         @Override
                         public boolean hasNext() {
-                            if (fieldIterator.hasNext()) return true;
+                            if (propertyIterator.hasNext()) return true;
                             return dynamicIterator.hasNext();
                         }
 
                         @Override
                         public String next() {
-                            if (fieldIterator.hasNext()) return fieldIterator.next();
+                            if (propertyIterator.hasNext()) return propertyIterator.next();
                             return dynamicIterator.next();
                         }
                     };
@@ -200,18 +200,18 @@ public class JsonObject extends JsonContainer {
 
                 @Override
                 public int size() {
-                    return pi.readableFieldCount + dynamicMap.size();
+                    return pi.readablePropertyCount + dynamicMap.size();
                 }
             };
         }
     }
 
     /**
-     * Returns true if the key exists in readable declared fields or dynamic entries.
+     * Returns true if the key exists in readable declared properties or dynamic entries.
      */
     public boolean containsKey(String key) {
         if (key == null) return false;
-        return (pi != null && pi.readableFields.containsKey(key))
+        return (pi != null && pi.readableProperties.containsKey(key))
                 || (dynamicMap != null && dynamicMap.containsKey(key));
     }
 
@@ -229,7 +229,7 @@ public class JsonObject extends JsonContainer {
     public void forEach(BiConsumer<String, Object> visitor) {
         Objects.requireNonNull(visitor, "visitor");
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()){
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
                 visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
@@ -246,7 +246,7 @@ public class JsonObject extends JsonContainer {
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
         Objects.requireNonNull(predicate, "predicate");
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()){
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
                 if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
                     return true;
                 }
@@ -263,15 +263,15 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Replaces values for readable-and-writable declared fields and dynamic
+     * Replaces values for readable-and-writable declared properties and dynamic
      * entries in place.
      */
     public boolean replace(BiFunction<String, Object, Object> mapper) {
         Objects.requireNonNull(mapper, "mapper");
         boolean changed = false;
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()){
-                NodeRegistry.FieldInfo fi = entry.getValue();
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+                NodeRegistry.PropertyInfo fi = entry.getValue();
                 if (!fi.hasSetter()) {
                     continue;
                 }
@@ -297,12 +297,12 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a merged Map view of readable declared fields and dynamic entries.
+     * Returns a merged Map view of readable declared properties and dynamic entries.
      */
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()){
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
                 merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
             }
         }
@@ -320,7 +320,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a merged entry set of readable declared fields and dynamic entries.
+     * Returns a merged entry set of readable declared properties and dynamic entries.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
         if (pi == null) {
@@ -330,17 +330,17 @@ public class JsonObject extends JsonContainer {
                 @SuppressWarnings("NullableProblems")
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
-                    final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
-                            pi.readableFields.entrySet().iterator();
+                    final Iterator<Map.Entry<String, NodeRegistry.PropertyInfo>> propertyIterator =
+                            pi.readableProperties.entrySet().iterator();
                     return new Iterator<Map.Entry<String, Object>>() {
                         @Override
                         public boolean hasNext() {
-                            return fieldIterator.hasNext();
+                            return propertyIterator.hasNext();
                         }
 
                         @Override
                         public Map.Entry<String, Object> next() {
-                            Map.Entry<String, NodeRegistry.FieldInfo> entry = fieldIterator.next();
+                            Map.Entry<String, NodeRegistry.PropertyInfo> entry = propertyIterator.next();
                             Object value = entry.getValue().invokeGetter(JsonObject.this);
                             return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
                         }
@@ -349,7 +349,7 @@ public class JsonObject extends JsonContainer {
 
                 @Override
                 public int size() {
-                    return pi.readableFieldCount;
+                    return pi.readablePropertyCount;
                 }
             };
         } else {
@@ -358,21 +358,21 @@ public class JsonObject extends JsonContainer {
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
                     return new Iterator<Map.Entry<String, Object>>() {
-                        private final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
-                                pi.readableFields.entrySet().iterator();
+                        private final Iterator<Map.Entry<String, NodeRegistry.PropertyInfo>> propertyIterator =
+                                pi.readableProperties.entrySet().iterator();
                         private final Iterator<Map.Entry<String, Object>> dynamicIterator =
                                 dynamicMap.entrySet().iterator();
 
                         @Override
                         public boolean hasNext() {
-                            if (fieldIterator.hasNext()) return true;
+                            if (propertyIterator.hasNext()) return true;
                             return dynamicIterator.hasNext();
                         }
 
                         @Override
                         public Map.Entry<String, Object> next() {
-                            if (fieldIterator.hasNext()) {
-                                Map.Entry<String, NodeRegistry.FieldInfo> entry = fieldIterator.next();
+                            if (propertyIterator.hasNext()) {
+                                Map.Entry<String, NodeRegistry.PropertyInfo> entry = propertyIterator.next();
                                 Object value = entry.getValue().invokeGetter(JsonObject.this);
                                 return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
                             }
@@ -383,7 +383,7 @@ public class JsonObject extends JsonContainer {
 
                 @Override
                 public int size() {
-                    return pi.readableFieldCount + dynamicMap.size();
+                    return pi.readablePropertyCount + dynamicMap.size();
                 }
             };
         }
@@ -438,14 +438,14 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns the node for the given key or {@code null}.
      * <p>
-     * Only readable declared fields participate in this value view. When a
-     * declared field is not readable, lookup falls through to dynamic entries
+     * Only readable declared properties participate in this value view. When a
+     * declared property is not readable, lookup falls through to dynamic entries
      * with the same key.
      */
     public Object getNode(String key) {
         if (key == null) return null;
         if (pi != null) {
-            NodeRegistry.FieldInfo fi = pi.readableFields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.readableProperties.get(key);
             if (fi != null) {
                 return fi.invokeGetter(this);
             }
@@ -964,7 +964,7 @@ public class JsonObject extends JsonContainer {
     public Object put(String key, Object object) {
         Objects.requireNonNull(key, "key");
         if (pi != null) {
-            NodeRegistry.FieldInfo fi = pi.fields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.properties.get(key);
             if (fi != null) {
                 Object old = fi.hasGetter() ? fi.invokeGetter(this) : null;
                 fi.invokeSetter(this, object);
@@ -1042,11 +1042,11 @@ public class JsonObject extends JsonContainer {
     /**
      * Removes a dynamic key and returns its previous value.
      * <p>
-     * Declared JOJO/POJO fields are not removable.
+     * Declared JOJO/POJO properties are not removable.
      */
     public Object remove(String key) {
         Objects.requireNonNull(key, "key");
-        if (pi != null && pi.fields.containsKey(key)) {
+        if (pi != null && pi.properties.containsKey(key)) {
             throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }
@@ -1067,7 +1067,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Clears dynamic entries only, keeping declared field values intact.
+     * Clears dynamic entries only, keeping declared property values intact.
      */
     public void clear() {
         if (dynamicMap != null) {
@@ -1076,7 +1076,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Drops the dynamic map reference and keeps only declared field values.
+     * Drops the dynamic map reference and keeps only declared property values.
      */
     public void prune() {
         dynamicMap = null;
@@ -1089,7 +1089,7 @@ public class JsonObject extends JsonContainer {
      * Creates a shallow copy of this JsonObject.
      * <p>
      * Plain {@link JsonObject} instances copy their dynamic backing directly.
-     * JOJO subtypes fall back to {@link Nodes#copy(Object)} so subtype fields
+     * JOJO subtypes fall back to {@link Nodes#copy(Object)} so subtype properties
      * remain part of the copied object view.
      */
     public JsonObject copy() {

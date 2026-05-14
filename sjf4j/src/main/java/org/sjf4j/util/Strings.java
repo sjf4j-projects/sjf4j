@@ -81,4 +81,16 @@ public class Strings {
     }
 
 
+    public static String capitalize(String name) {
+        return name.length() > 1
+                ? Character.toUpperCase(name.charAt(0)) + name.substring(1)
+                : name.toUpperCase();
+    }
+
+    public static String decapitalize(String name) {
+        if (name == null || name.isEmpty()) return name;
+        if (name.length() > 1 && Character.isUpperCase(name.charAt(0)) && Character.isUpperCase(name.charAt(1))) return name;
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
 }

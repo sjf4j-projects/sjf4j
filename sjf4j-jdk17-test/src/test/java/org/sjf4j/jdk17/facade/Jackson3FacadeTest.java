@@ -20,7 +20,7 @@ import org.sjf4j.facade.FacadeFactory;
 import org.sjf4j.facade.FacadeNodes;
 import org.sjf4j.facade.jackson3.Jackson3JsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.node.AccessStrategy;
+import org.sjf4j.node.PropertyStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.node.TypeReference;
@@ -215,7 +215,7 @@ class Jackson3FacadeTest {
         public int loginCount;
     }
 
-    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBasedPrivateBook {
         String userName;
         int loginCount;

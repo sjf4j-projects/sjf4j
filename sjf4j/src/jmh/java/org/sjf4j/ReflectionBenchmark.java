@@ -106,16 +106,16 @@ public class ReflectionBenchmark {
         public int age;
     }
 
-    // Cache PojoInfo/FieldInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
+    // Cache PojoInfo/PropertyInfo once so the benchmark focuses on invocation overhead instead of lookup cost.
     private final static NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(Person.class);
     private final static MethodHandle ctorMethodHandle = pi.creatorInfo.noArgsCtorHandle;
     private final static Supplier<?> ctorLambda = pi.creatorInfo.noArgsCtorLambda;
 
-    private final static NodeRegistry.FieldInfo fi = NodeRegistry.getFieldInfo(Person.class, "name");
-    private final static MethodHandle getterMethodHandle = fi.getter;
-    private final static Function<Object, Object> getterLambda = fi.lambdaGetter;
-    private final static MethodHandle setterMethodHandle = fi.setter;
-    private final static BiConsumer<Object, Object> setterLambda = fi.lambdaSetter;
+    private final static NodeRegistry.PropertyInfo propertyInfo = NodeRegistry.getPropertyInfo(Person.class, "name");
+    private final static MethodHandle getterMethodHandle = propertyInfo.getter;
+    private final static Function<Object, Object> getterLambda = propertyInfo.lambdaGetter;
+    private final static MethodHandle setterMethodHandle = propertyInfo.setter;
+    private final static BiConsumer<Object, Object> setterLambda = propertyInfo.lambdaSetter;
 
     private final static Constructor<Person> personCtor;
     private final static Method getterMethod;

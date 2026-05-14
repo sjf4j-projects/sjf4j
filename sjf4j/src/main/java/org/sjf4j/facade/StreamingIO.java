@@ -251,7 +251,7 @@ public final class StreamingIO {
             reader.startObject();
             while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
                 String key = reader.nextName();
-                NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+                NodeRegistry.PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
                 if (fi != null) {
                     Object vv = _readField(reader, fi, ownerType, ownerRawClazz, context);
                     fi.invokeSetterIfPresent(pojo, vv);
@@ -271,8 +271,8 @@ public final class StreamingIO {
             return pojo;
         }
 
-        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
-        NodeRegistry.FieldInfo deferredParentOneOfFi = null;
+        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
+        NodeRegistry.PropertyInfo deferredParentOneOfFi = null;
         Object deferredParentOneOfRaw = null;
         String parentOneOfKey = null;
         Object parentOneOfValue = UNSET;
@@ -297,14 +297,14 @@ public final class StreamingIO {
                 } else {
                     argValue = _readNode(reader, argType, argRaw, ti.oneOfInfo, context);
                 }
-                session.acceptResolvedField(argIdx, argValue, null);
+                session.acceptResolvedProperty(argIdx, argValue, null);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = argValue;
                 }
                 continue;
             }
 
-            NodeRegistry.FieldInfo fi = pi.aliasFields != null ? pi.aliasFields.get(key) : pi.fields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.aliasProperties != null ? pi.aliasProperties.get(key) : pi.properties.get(key);
             if (fi != null) {
                 Object vv;
                 NodeRegistry.OneOfInfo fieldOneOf = fi.oneOfInfo;
@@ -336,7 +336,7 @@ public final class StreamingIO {
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = vv;
                 }
-                session.acceptResolvedField(-1, vv, fi);
+                session.acceptResolvedProperty(-1, vv, fi);
                 continue;
             }
 
@@ -352,7 +352,7 @@ public final class StreamingIO {
         }
         reader.endObject();
 
-        Object pojo = session.finishField();
+        Object pojo = session.finishProperty();
         applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
                 parentOneOfValue, UNSET, context);
         return pojo;
@@ -418,7 +418,7 @@ public final class StreamingIO {
     /**
      * Reads one object field based on field container metadata.
      */
-    private static Object _readField(StreamingReader reader, NodeRegistry.FieldInfo fi,
+    private static Object _readField(StreamingReader reader, NodeRegistry.PropertyInfo fi,
                                      Type ownerType, Class<?> ownerRawClazz,
                                      StreamingContext context)
             throws IOException {
@@ -437,7 +437,7 @@ public final class StreamingIO {
             return _readValueWithCodec(reader, fieldType, fieldRaw, fi.resolvedValueCodec, context);
         }
 
-        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.FieldInfo.ContainerKind.NONE) {
+        switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.PropertyInfo.ContainerKind.NONE) {
             case MAP:
                 return _readMap(reader, fi.rawClazz, fi.argType, fi.argRawClazz, fi.argOneOfInfo, context);
             case LIST:
@@ -759,7 +759,7 @@ public final class StreamingIO {
                                  StreamingContext context) throws IOException {
         writer.startObject();
         int cnt = 0;
-        for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+        for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
             Object vv = entry.getValue().invokeGetter(node);
             if (vv == null && !context.includeNulls) continue;
             if (cnt++ > 0) writer.writeObjectComma();
@@ -768,7 +768,7 @@ public final class StreamingIO {
             if (vv == null) {
                 writer.writeNull();
             } else {
-                NodeRegistry.FieldInfo fi = entry.getValue();
+                NodeRegistry.PropertyInfo fi = entry.getValue();
                 if (fi.resolvedValueCodec != null) {
                     vv = fi.resolvedValueCodec.valueToRaw(vv);
                 }
@@ -847,7 +847,7 @@ public final class StreamingIO {
     }
 
     public static void applyDeferredParentOneOf(Object pojo, NodeRegistry.PojoInfo pi,
-                                                NodeRegistry.FieldInfo deferredParentOneOfFi,
+                                                NodeRegistry.PropertyInfo deferredParentOneOfFi,
                                                 Object deferredParentOneOfRaw, Object parentOneOfValue,
                                                 Object unsetSentinel,
                                                 StreamingContext context) {
@@ -859,8 +859,8 @@ public final class StreamingIO {
         String parentKey = aoi.key;
         if (parentOneOfValue == unsetSentinel) {
             Object discriminator = null;
-            NodeRegistry.FieldInfo parentFi = pi.aliasFields != null
-                    ? pi.aliasFields.get(parentKey) : pi.fields.get(parentKey);
+            NodeRegistry.PropertyInfo parentFi = pi.aliasProperties != null
+                    ? pi.aliasProperties.get(parentKey) : pi.properties.get(parentKey);
             if (parentFi != null) {
                 discriminator = parentFi.invokeGetter(pojo);
             } else if (pi.isJojo) {

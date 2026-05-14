@@ -1,8 +1,8 @@
 package org.sjf4j.annotation.node;
 
 
-import org.sjf4j.node.AccessStrategy;
 import org.sjf4j.node.NamingStrategy;
+import org.sjf4j.node.PropertyStrategy;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -30,9 +30,12 @@ public @interface NodeBinding {
     NamingStrategy naming() default NamingStrategy.IDENTITY;
 
     /**
-     * Access policy for non-public POJO fields during framework-owned binding.
+     * Property discovery policy for framework-owned POJO binding.
+     * <p>
+     * Default is {@link PropertyStrategy#BEAN_FIELD}, which gives Jackson-like
+     * bean-first discovery while still allowing field fallback where needed.
      */
-    AccessStrategy access() default AccessStrategy.BEAN_BASED;
+    PropertyStrategy propertyStrategy() default PropertyStrategy.BEAN_FIELD;
 
     /**
      * Whether JOJO reads retain unknown JSON object members as dynamic properties.
@@ -40,7 +43,7 @@ public @interface NodeBinding {
     boolean readDynamic() default true;
 
     /**
-     * Whether JOJO writes emit dynamic properties in addition to declared fields.
+     * Whether JOJO writes emit dynamic properties in addition to declared properties.
      */
     boolean writeDynamic() default true;
 }

@@ -351,7 +351,7 @@ public final class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             Map<String, Object> map = new LinkedHashMap<>();
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
                 Object v = entry.getValue().invokeGetter(node);
                 map.put(entry.getKey(), v);
             }
@@ -532,7 +532,7 @@ public final class Nodes {
      * Converts a node to a JOJO subtype.
      * <p>
      * A JOJO is any concrete {@link JsonObject} subclass other than
-     * {@link JsonObject} itself. During conversion, declared fields are bound by
+     * {@link JsonObject} itself. During conversion, declared properties are bound by
      * normal POJO rules. Unknown object members are retained as dynamic
      * properties unless {@link org.sjf4j.annotation.node.NodeBinding#readDynamic()}
      * disables that behavior.
@@ -576,16 +576,16 @@ public final class Nodes {
      * In SJF4J terminology:
      * <ul>
      *     <li>POJO means a regular Java object bound by declared members</li>
-     *     <li>JOJO means a {@link JsonObject} subtype with both declared fields and dynamic object properties</li>
+     *     <li>JOJO means a {@link JsonObject} subtype with both declared properties and dynamic object properties</li>
      *     <li>JAJO means a {@link JsonArray} subtype with array semantics and a dedicated Java type</li>
      * </ul>
      *
-     * <p>For regular POJO targets, fields are mapped by declared field names, with
+     * <p>For regular POJO targets, properties are mapped by discovered property names, with
      * alias support from {@code @NodeProperty}. Constructor-arg mapping is used
      * when required by {@code @NodeCreator}; unmatched values are applied later
      * through setters when available.
      *
-     * <p>For JOJO targets, object members that are not declared fields are
+     * <p>For JOJO targets, object members that are not declared properties are
      * preserved in the dynamic map unless type binding disables dynamic reads.
      * For JAJO targets, array items are appended to the target subtype in order.
      * <p>
@@ -836,13 +836,13 @@ public final class Nodes {
             return (T) ti.valueCodecInfo.valueCopy(node);
         } else if (ti.pojoInfo != null) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(node.getClass());
-            NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.fieldCount);
+            NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
             NodeRegistry.PojoPendingApplier applyPojoField = (target, pendingKey, pendingValue) ->
-                    ((NodeRegistry.FieldInfo) pendingKey).invokeSetterIfPresent(target, pendingValue);
+                    ((NodeRegistry.PropertyInfo) pendingKey).invokeSetterIfPresent(target, pendingValue);
 
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
                 String key = entry.getKey();
-                NodeRegistry.FieldInfo fi = entry.getValue();
+                NodeRegistry.PropertyInfo fi = entry.getValue();
                 Object v = fi.invokeGetter(node);
                 session.accept(key, v, fi, applyPojoField);
             }
@@ -930,7 +930,7 @@ public final class Nodes {
             int[] idx = new int[1];
             jo.forEach((k, v) -> {
                 if (idx[0]++ > 0) sb.append(", ");
-                if (pi != null && pi.fields.containsKey(k)) {
+                if (pi != null && pi.properties.containsKey(k)) {
                     sb.append("*");
                 }
                 sb.append(k).append("=");
@@ -1005,7 +1005,7 @@ public final class Nodes {
             NodeRegistry.PojoInfo pi = ti.pojoInfo;
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
             int idx = 0;
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
                 if (idx++ > 0) sb.append(", ");
                 sb.append("*").append(entry.getKey()).append("=");
                 Object v = entry.getValue().invokeGetter(node);
@@ -1071,7 +1071,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
                 consumer.accept(entry.getKey(), value);
             }
@@ -1105,7 +1105,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
                 Object value = entry.getValue().invokeGetter(node);
                 if (predicate.test(entry.getKey(), value)) {
                     return true;
@@ -1149,8 +1149,8 @@ public final class Nodes {
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
             boolean changed = false;
-            for (Map.Entry<String, NodeRegistry.FieldInfo> entry : pi.readableFields.entrySet()) {
-                NodeRegistry.FieldInfo fi = entry.getValue();
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
+                NodeRegistry.PropertyInfo fi = entry.getValue();
                 if (!fi.hasSetter()) {
                     continue;
                 }
@@ -1173,7 +1173,7 @@ public final class Nodes {
      * Removes object properties that match the predicate.
      * <p>
      * This operation applies to removable object properties only. Structural
-     * POJO fields are not considered removable properties and therefore are left
+     * POJO properties are not considered removable properties and therefore are left
      * unchanged. For facade object nodes, matching keys are collected first and
      * removed afterward so live key views remain safe to traverse.
      */
@@ -1288,7 +1288,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            return pi.readableFieldCount;
+            return pi.readablePropertyCount;
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.sizeInObject(node);
@@ -1333,7 +1333,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            return pi.readableFields.keySet();
+            return pi.readableProperties.keySet();
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.keySetInObject(node);
@@ -1359,8 +1359,8 @@ public final class Nodes {
                 @Override
                 public Iterator<Map.Entry<String, Object>> iterator() {
                     return new Iterator<Map.Entry<String, Object>>() {
-                        private final Iterator<Map.Entry<String, NodeRegistry.FieldInfo>> fieldIterator =
-                                pi.readableFields.entrySet().iterator();
+                        private final Iterator<Map.Entry<String, NodeRegistry.PropertyInfo>> fieldIterator =
+                                pi.readableProperties.entrySet().iterator();
                         @Override
                         public boolean hasNext() {
                             return fieldIterator.hasNext();
@@ -1368,7 +1368,7 @@ public final class Nodes {
 
                         @Override
                         public Map.Entry<String, Object> next() {
-                            Map.Entry<String, NodeRegistry.FieldInfo> entry = fieldIterator.next();
+                            Map.Entry<String, NodeRegistry.PropertyInfo> entry = fieldIterator.next();
                             Object value = entry.getValue().invokeGetter(node);
                             return new AbstractMap.SimpleEntry<>(entry.getKey(), value);
                         }
@@ -1377,7 +1377,7 @@ public final class Nodes {
 
                 @Override
                 public int size() {
-                    return pi.readableFieldCount;
+                    return pi.readablePropertyCount;
                 }
             };
         }
@@ -1435,7 +1435,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            return pi.readableFields.containsKey(key);
+            return pi.readableProperties.containsKey(key);
         }
         if (FacadeNodes.isNode(node)) {
             return FacadeNodes.containsInObject(node, key);
@@ -1457,7 +1457,7 @@ public final class Nodes {
     /**
      * Gets a value by key from an object-like node.
      * <p>
-     * Only readable members participate in this view. For POJO nodes, fields
+     * Only readable members participate in this view. For POJO nodes, properties
      * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {
@@ -1471,7 +1471,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            NodeRegistry.FieldInfo fi = pi.readableFields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.readableProperties.get(key);
             return fi != null ? fi.invokeGetter(node) : null;
         }
         if (FacadeNodes.isNode(node)) {
@@ -1586,7 +1586,7 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            NodeRegistry.FieldInfo fi = pi.fields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.properties.get(key);
             if (fi != null) {
                 out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 out.type = fi.type;
@@ -1680,7 +1680,7 @@ public final class Nodes {
     /**
      * Puts a value into an object-like node and returns the previous value.
      * <p>
-     * For POJO nodes, only declared fields are writable; unknown keys fail.
+     * For POJO nodes, only discovered properties are writable; unknown keys fail.
      */
     @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
@@ -1694,13 +1694,13 @@ public final class Nodes {
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
-            NodeRegistry.FieldInfo fi = pi.fields.get(key);
+            NodeRegistry.PropertyInfo fi = pi.properties.get(key);
             if (fi != null) {
                 Object old = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 fi.invokeSetter(node, value);
                 return old;
             } else {
-                throw new JsonException("Unknown field '" + key + "' in POJO node '" +
+                throw new JsonException("Unknown property '" + key + "' in POJO node '" +
                         node.getClass().getName() + "'");
             }
         }

@@ -12,7 +12,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.CodecFacadeAssertions;
 import org.sjf4j.facade.StreamingContext;
-import org.sjf4j.node.AccessStrategy;
+import org.sjf4j.node.PropertyStrategy;
 import org.sjf4j.node.NamingStrategy;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
@@ -273,7 +273,7 @@ public class GsonFacadeTest {
         int loginCount;
     }
 
-    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBasedPrivateBook {
         String userName;
         int loginCount;

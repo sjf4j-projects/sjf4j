@@ -6,14 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Breaking Changes
+- Removed `AccessStrategy` and the `@NodeBinding(access = ...)` contract in favor of property-family discovery through `@NodeBinding(propertyStrategy = PropertyStrategy...)`.
+- Renamed POJO metadata APIs from field-oriented names to property-oriented names, including `NodeRegistry.FieldInfo` -> `PropertyInfo`, `fields`/`fieldCount` -> `properties`/`propertyCount`, and removal of `NodeRegistry.getFieldInfo(...)`.
+
 ### Added
-- Added deprecated `JsonObject.toBuilder()` as a compatibility alias for `edit()` so existing builder-style call sites can migrate incrementally.
+- Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
+- Added `@NodeIgnore` so fields, getters, and setters can be excluded from SJF4J property discovery.
 
 ### Changed
+- Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
+- Changed `@NodeProperty` to support bean methods in addition to fields and creator parameters, including method-level renames, aliases, and value-format metadata.
+- Changed shared/backend streaming and node-conversion paths to use property-oriented metadata consistently across Jackson 2, Jackson 3, Fastjson2, Gson, and the simple facade.
 
 ### Removed
+- Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
 
 ### Fixed
+- Fixed property binding consistency for renamed bean properties, field/bean family merging, `@OneOf`/value-format propagation, and creator-bound property conflict detection.
+- Fixed property discovery fail-fast behavior for ambiguous getter/setter selection, duplicate aliases/final names, and transient fields annotated with `@NodeProperty`.
 
 
 ## [1.2.3] - 2026.05.11

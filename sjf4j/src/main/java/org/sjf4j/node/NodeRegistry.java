@@ -235,12 +235,6 @@ public final class NodeRegistry {
         return registerTypeInfo(clazz, true).pojoInfo;
     }
 
-    /**
-     * Returns metadata for a named POJO field.
-     */
-    public static FieldInfo getFieldInfo(Class<?> clazz, String fieldName) {
-        return registerPojoOrElseThrow(clazz).fields.get(fieldName);
-    }
 
     @SuppressWarnings("unchecked")
     public static <T> Map<String, T> newMapContainer(Class<?> mapType, boolean fallback) {
@@ -388,14 +382,14 @@ public final class NodeRegistry {
         public final Class<?> clazz;
         public final CreatorInfo creatorInfo;
         public final NamingStrategy namingStrategy;
-        public final AccessStrategy accessStrategy;
+        public final PropertyStrategy propertyStrategy;
         public final boolean readDynamic;
         public final boolean writeDynamic;
-        public final Map<String, FieldInfo> fields;
-        public final int fieldCount;
-        public final Map<String, FieldInfo> readableFields;
-        public final int readableFieldCount;
-        public final Map<String, FieldInfo> aliasFields;
+        public final Map<String, PropertyInfo> properties;
+        public final int propertyCount;
+        public final Map<String, PropertyInfo> readableProperties;
+        public final int readablePropertyCount;
+        public final Map<String, PropertyInfo> aliasProperties;
         public final boolean isJojo;
         public final boolean isJajo;
         public final boolean hasParentScopeOneOf;
@@ -404,7 +398,7 @@ public final class NodeRegistry {
         public final boolean hasNonPublicFields;
         public final boolean hasNonPublicReaderGap;
         public final boolean hasNonPublicWriterGap;
-        public final boolean hasFieldValueFormatBinding;
+        public final boolean hasPropertyValueFormatBinding;
         public final boolean requiresPojoReader;
         public final boolean requiresPojoWriter;
 
@@ -413,11 +407,11 @@ public final class NodeRegistry {
          */
         public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
                         NamingStrategy namingStrategy,
-                        AccessStrategy accessStrategy,
+                        PropertyStrategy propertyStrategy,
                         boolean readDynamic,
                         boolean writeDynamic,
-                        Map<String, FieldInfo> fields,
-                        Map<String, FieldInfo> aliasFields,
+                        Map<String, PropertyInfo> properties,
+                        Map<String, PropertyInfo> aliasProperties,
                         boolean hasExplicitBinding,
                         boolean hasNonPublicFields,
                         boolean hasNonPublicReaderGap,
@@ -425,28 +419,28 @@ public final class NodeRegistry {
             this.clazz = clazz;
             this.creatorInfo = creatorInfo;
             this.namingStrategy = namingStrategy;
-            this.accessStrategy = accessStrategy;
+            this.propertyStrategy = propertyStrategy;
             this.readDynamic = readDynamic;
             this.writeDynamic = writeDynamic;
-            this.fields = fields;
-            this.fieldCount = fields.size();
-            Map<String, FieldInfo> readableFields = null;
-            for (Map.Entry<String, FieldInfo> entry : fields.entrySet()) {
+            this.properties = properties;
+            this.propertyCount = properties.size();
+            Map<String, PropertyInfo> readableProperties = null;
+            for (Map.Entry<String, PropertyInfo> entry : properties.entrySet()) {
                 if (!entry.getValue().hasGetter()) {
                     continue;
                 }
-                if (readableFields == null) {
-                    readableFields = new LinkedHashMap<>();
+                if (readableProperties == null) {
+                    readableProperties = new LinkedHashMap<>();
                 }
-                readableFields.put(entry.getKey(), entry.getValue());
+                readableProperties.put(entry.getKey(), entry.getValue());
             }
-            this.readableFields = readableFields == null ? Collections.emptyMap() : readableFields;
-            this.readableFieldCount = this.readableFields.size();
-            this.aliasFields = aliasFields;
+            this.readableProperties = readableProperties == null ? Collections.emptyMap() : readableProperties;
+            this.readablePropertyCount = this.readableProperties.size();
+            this.aliasProperties = aliasProperties;
             this.isJojo = JsonObject.class.isAssignableFrom(clazz);
             this.isJajo = JsonArray.class.isAssignableFrom(clazz);
             boolean hasParentScopeOneOf = false;
-            for (FieldInfo fi : fields.values()) {
+            for (PropertyInfo fi : properties.values()) {
                 OneOfInfo aoi = fi.oneOfInfo;
                 if (aoi != null && aoi.scope == OneOf.Scope.PARENT) {
                     hasParentScopeOneOf = true;
@@ -459,23 +453,23 @@ public final class NodeRegistry {
             this.hasNonPublicFields = hasNonPublicFields;
             this.hasNonPublicReaderGap = hasNonPublicReaderGap;
             this.hasNonPublicWriterGap = hasNonPublicWriterGap;
-            boolean hasFieldValueFormatBinding = false;
-            for (FieldInfo fi : fields.values()) {
+            boolean hasPropertyValueFormatBinding = false;
+            for (PropertyInfo fi : properties.values()) {
                 if (fi.valueFormat != null) {
-                    hasFieldValueFormatBinding = true;
+                    hasPropertyValueFormatBinding = true;
                     break;
                 }
             }
-            this.hasFieldValueFormatBinding = hasFieldValueFormatBinding;
-            boolean hasTypeOwnedBinding = namingStrategy != null || accessStrategy == AccessStrategy.FIELD_BASED;
+            this.hasPropertyValueFormatBinding = hasPropertyValueFormatBinding;
+            boolean hasTypeOwnedBinding = namingStrategy != null || propertyStrategy != PropertyStrategy.BEAN_FIELD;
             boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
             boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
             this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeOneOf
                     || hasExplicitBinding || this.hasCreatorBinding
                     || (creatorInfo != null && creatorInfo.hasValueFormatBinding)
-                    || hasNonPublicReaderGap || hasCustomDynamicReader || hasFieldValueFormatBinding;
-            this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicWriterGap
-                    || hasCustomDynamicWriter || hasFieldValueFormatBinding;
+                    || hasNonPublicFields || hasNonPublicReaderGap || hasCustomDynamicReader || hasPropertyValueFormatBinding;
+            this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicFields || hasNonPublicWriterGap
+                    || hasCustomDynamicWriter || hasPropertyValueFormatBinding;
         }
 
     }
@@ -493,7 +487,7 @@ public final class NodeRegistry {
         private Object[] pendingKeys;
         private Object[] pendingValues;
         private int pendingSize;
-        private FieldInfo[] pendingFields;
+        private PropertyInfo[] pendingProperties;
         private Object[] pendingFieldValues;
         private int pendingFieldSize;
         private String[] pendingNames;
@@ -532,16 +526,16 @@ public final class NodeRegistry {
             }
         }
 
-        public void acceptResolvedField(int argIdx, Object value, FieldInfo fieldInfo) {
+        public void acceptResolvedProperty(int argIdx, Object value, PropertyInfo propertyInfo) {
             if (argIdx >= 0) {
                 setCtorArg(argIdx, value);
-                _materializeIfReadyField();
+                _materializeIfReadyProperty();
                 return;
             }
             if (pojo != null) {
-                fieldInfo.invokeSetterIfPresent(pojo, value);
+                propertyInfo.invokeSetterIfPresent(pojo, value);
             } else {
-                _addPendingField(fieldInfo, value);
+                _addPendingProperty(propertyInfo, value);
             }
         }
 
@@ -592,11 +586,11 @@ public final class NodeRegistry {
             return pojo;
         }
 
-        public Object finishField() {
+        public Object finishProperty() {
             if (pojo == null) {
                 pojo = creatorInfo.newPojoWithArgs(args);
             }
-            _replayPendingFields();
+            _replayPendingProperties();
             return pojo;
         }
 
@@ -616,24 +610,24 @@ public final class NodeRegistry {
             pendingSize = 0;
         }
 
-        private void _materializeIfReadyField() {
+        private void _materializeIfReadyProperty() {
             if (pojo == null && remainingArgs == 0) {
                 pojo = creatorInfo.newPojoWithArgs(args);
-                _replayPendingFields();
+                _replayPendingProperties();
             }
         }
 
-        private void _addPendingField(FieldInfo fi, Object value) {
-            _ensurePendingFieldCapacity();
-            pendingFields[pendingFieldSize] = fi;
+        private void _addPendingProperty(PropertyInfo pi, Object value) {
+            _ensurePendingPropertyCapacity();
+            pendingProperties[pendingFieldSize] = pi;
             pendingFieldValues[pendingFieldSize] = value;
             pendingFieldSize++;
         }
 
-        private void _replayPendingFields() {
+        private void _replayPendingProperties() {
             if (pendingFieldSize == 0) return;
             for (int i = 0; i < pendingFieldSize; i++) {
-                pendingFields[i].invokeSetterIfPresent(pojo, pendingFieldValues[i]);
+                pendingProperties[i].invokeSetterIfPresent(pojo, pendingFieldValues[i]);
             }
             pendingFieldSize = 0;
         }
@@ -661,21 +655,21 @@ public final class NodeRegistry {
             pendingNameSize = 0;
         }
 
-        private void _ensurePendingFieldCapacity() {
-            if (pendingFields == null || pendingFieldValues == null) {
+        private void _ensurePendingPropertyCapacity() {
+            if (pendingProperties == null || pendingFieldValues == null) {
                 int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
-                pendingFields = new FieldInfo[cap];
+                pendingProperties = new PropertyInfo[cap];
                 pendingFieldValues = new Object[cap];
                 return;
             }
-            if (pendingFieldSize < pendingFields.length) return;
-            int newCap = pendingFields.length << 1;
+            if (pendingFieldSize < pendingProperties.length) return;
+            int newCap = pendingProperties.length << 1;
             if (newCap < 4) newCap = 4;
-            FieldInfo[] newFields = new FieldInfo[newCap];
+            PropertyInfo[] newProperties = new PropertyInfo[newCap];
             Object[] newValues = new Object[newCap];
-            System.arraycopy(pendingFields, 0, newFields, 0, pendingFieldSize);
+            System.arraycopy(pendingProperties, 0, newProperties, 0, pendingFieldSize);
             System.arraycopy(pendingFieldValues, 0, newValues, 0, pendingFieldSize);
-            pendingFields = newFields;
+            pendingProperties = newProperties;
             pendingFieldValues = newValues;
         }
 
@@ -931,8 +925,8 @@ public final class NodeRegistry {
         }
     }
 
-    // FieldInfo
-    public static class FieldInfo {
+    // PropertyInfo
+    public static class PropertyInfo {
         public enum ContainerKind {
             NONE,
             LIST,
@@ -958,9 +952,9 @@ public final class NodeRegistry {
         public final ValueCodecInfo resolvedValueCodec;
 
         /**
-         * Creates immutable field metadata holder.
+         * Creates immutable property metadata holder.
          */
-        public FieldInfo(String name, Type type,
+        public PropertyInfo(String name, Type type,
                          MethodHandle getter, Function<Object, Object> lambdaGetter,
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter,
                          OneOfInfo oneOfInfo,
@@ -1017,7 +1011,7 @@ public final class NodeRegistry {
 
 
         /**
-         * Invokes field getter.
+         * Invokes property getter.
          */
         public Object invokeGetter(Object receiver) {
             Objects.requireNonNull(receiver, "receiver");
@@ -1025,12 +1019,12 @@ public final class NodeRegistry {
                 return lambdaGetter.apply(receiver);
             }
             if (getter == null) {
-                throw new JsonException("No getter available for field '" + name + "' of " + type);
+                throw new JsonException("No getter available for property '" + name + "' of " + type);
             }
             try {
                 return getter.invoke(receiver);
             } catch (Throwable e) {
-                throw new JsonException("Failed to invoke getter for field '" + name + "' of " + type, e);
+                throw new JsonException("Failed to invoke getter for property '" + name + "' of " + type, e);
             }
         }
 
@@ -1044,7 +1038,7 @@ public final class NodeRegistry {
         }
 
         /**
-         * Invokes field setter.
+         * Invokes property setter.
          */
         public void invokeSetter(Object receiver, Object value) {
             Objects.requireNonNull(receiver, "receiver");
@@ -1054,10 +1048,10 @@ public final class NodeRegistry {
                     return;
                 }
                 if (setter == null)
-                    throw new JsonException("No setter available for field '" + name + "' of " + type);
+                    throw new JsonException("No setter available for property '" + name + "' of " + type);
                 setter.invoke(receiver, value);
             } catch (Throwable e) {
-                throw new JsonException("Failed to invoke setter for field '" + name + "' of type '" + type +
+                throw new JsonException("Failed to invoke setter for property '" + name + "' of type '" + type +
                         "' with value '" + Types.name(value) + "' (node type: " + Types.name(receiver)+ ")", e);
             }
         }

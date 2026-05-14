@@ -25,7 +25,7 @@ class NamingStrategyTest {
         public String _internalId;
     }
 
-    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBoundUser {
         private String userName;
         private int loginCount;

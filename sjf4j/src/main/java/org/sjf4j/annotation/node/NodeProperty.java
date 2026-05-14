@@ -7,11 +7,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares the JSON-facing name of a field or creator parameter.
+ * Declares the JSON-facing name of a field, bean method, or creator parameter.
  * <p>
  * This annotation is used during POJO and JOJO binding.
  * <ul>
  *     <li>On a field, {@link #value()} sets the primary property name used by object mapping</li>
+ *     <li>On a getter or setter method, {@link #value()} renames that property family</li>
  *     <li>On a {@link NodeCreator} parameter, it defines which input property supplies that argument</li>
  *     <li>{@link #aliases()} provides additional accepted input names during reads</li>
  * </ul>
@@ -19,7 +20,7 @@ import java.lang.annotation.Target;
  * <p>This is mainly useful when the Java member name should differ from the JSON
  * property name, or when older input names must remain readable.
  */
-@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface NodeProperty {
 
@@ -34,7 +35,7 @@ public @interface NodeProperty {
     String[] aliases() default {};
 
     /**
-     * Explicit value codec format for this field or creator parameter.
+     * Explicit value codec format for this property source or creator parameter.
      * <p>
      * Use {@code ""} to force the default value codec slot. The sentinel default
      * means "not configured".

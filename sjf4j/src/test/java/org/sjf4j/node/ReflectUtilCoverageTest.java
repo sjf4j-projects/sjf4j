@@ -12,6 +12,7 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.util.Strings;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -172,8 +173,13 @@ class ReflectUtilCoverageTest {
     @NodeBinding(naming = NamingStrategy.IDENTITY)
     static class IdentityNamingPojo {}
 
-    @NodeBinding(access = AccessStrategy.FIELD_BASED)
+    @NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
     static class FieldBindingPojo {}
+
+    static class TransientNodePropertyPojo {
+        @NodeProperty("name")
+        transient String name;
+    }
 
     enum SampleEnum { A }
 
@@ -285,10 +291,12 @@ class ReflectUtilCoverageTest {
 
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(null));
         assertEquals(NamingStrategy.IDENTITY, ReflectUtil.getNamingStrategy(IdentityNamingPojo.class));
-        assertEquals(AccessStrategy.FIELD_BASED,
-                ReflectUtil.analyzePojo(FieldBindingPojo.class, true).accessStrategy);
-        assertEquals(AccessStrategy.BEAN_BASED,
-                ReflectUtil.analyzePojo(IdentityNamingPojo.class, true).accessStrategy);
+        assertEquals(PropertyStrategy.FIELD_ONLY,
+                ReflectUtil.analyzePojo(FieldBindingPojo.class, true).propertyStrategy);
+        assertEquals(PropertyStrategy.BEAN_FIELD,
+                ReflectUtil.analyzePojo(IdentityNamingPojo.class, true).propertyStrategy);
+        assertThrows(JsonException.class,
+                () -> ReflectUtil.analyzePojo(TransientNodePropertyPojo.class, true));
 
         assertFalse(ReflectUtil.isPojoCandidate(JsonArray.class));
         assertFalse(ReflectUtil.isPojoCandidate(JsonObject.class));
@@ -320,8 +328,8 @@ class ReflectUtilCoverageTest {
         Field hiddenField = NoGetterPojo.class.getDeclaredField("hidden");
         assertNull(ReflectUtil.createLambdaGetter(lookup, NoGetterPojo.class, hiddenField));
 
-        assertEquals("Name", ReflectUtil.capitalize("name"));
-        assertEquals("X", ReflectUtil.capitalize("x"));
+        assertEquals("Name", Strings.capitalize("name"));
+        assertEquals("X", Strings.capitalize("x"));
 
         MethodHandle ctor = lookup.unreflectConstructor(NoArgsCtorPojo.class.getDeclaredConstructor());
         java.util.function.Supplier<NoArgsCtorPojo> noArgsCtor = ReflectUtil.createLambdaConstructor(lookup, NoArgsCtorPojo.class, ctor);

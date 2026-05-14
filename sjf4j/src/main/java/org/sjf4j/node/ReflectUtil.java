@@ -7,11 +7,13 @@ import org.sjf4j.annotation.node.NodeBinding;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
+import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
+import org.sjf4j.util.Strings;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.LambdaMetafactory;
@@ -29,6 +31,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -130,7 +133,7 @@ public final class ReflectUtil {
 
         NodeBinding nodeBinding = clazz.getAnnotation(NodeBinding.class);
         NamingStrategy namingStrategy = null;
-        AccessStrategy accessStrategy = AccessStrategy.BEAN_BASED;
+        PropertyStrategy propertyStrategy = PropertyStrategy.BEAN_FIELD;
         boolean readDynamic = true;
         boolean writeDynamic = true;
         if (nodeBinding != null) {
@@ -138,206 +141,398 @@ public final class ReflectUtil {
             if (namingStrategy == NamingStrategy.IDENTITY) {
                 namingStrategy = null;
             }
-            accessStrategy = nodeBinding.access();
+            propertyStrategy = nodeBinding.propertyStrategy();
             readDynamic = nodeBinding.readDynamic();
             writeDynamic = nodeBinding.writeDynamic();
         }
 
-        // Fields
-        Map<String, NodeRegistry.FieldInfo> fields = new LinkedHashMap<>();
+        Map<String, PropertyFamily> families = new LinkedHashMap<>();
         Map<String, String> aliasMap = creatorInfo.aliasMap;
         boolean hasExplicitBinding = false;
         boolean hasNonPublicFields = false;
         boolean hasNonPublicReaderGap = false;
         boolean hasNonPublicWriterGap = false;
-        boolean allowPlainPojoFieldAccess = accessStrategy == AccessStrategy.FIELD_BASED;
+        boolean hasHiddenDeclaredFields = false;
+        boolean includeBeans = propertyStrategy != PropertyStrategy.FIELD_ONLY;
+        boolean includeFields = propertyStrategy != PropertyStrategy.BEAN_ONLY;
         Class<?> curClazz = clazz;
         Type curType = clazz;
         do {
-            Field[] fds = curClazz.getDeclaredFields();
-            try { AccessibleObject.setAccessible(fds, true); } catch (RuntimeException ignored) {}
-            for (Field field : fds) {
-                int mod = field.getModifiers();
-                NodeProperty nodeProperty = field.getAnnotation(NodeProperty.class);
-                if (Modifier.isStatic(mod)) { continue; }
-                if (Modifier.isTransient(mod)) {
-                    if (nodeProperty != null) {
-                        throw new JsonException("Transient field '" + field.getName() + "' in " + clazz.getName() +
-                                " cannot use @NodeProperty");
-                    }
-                    continue;
-                }
-                boolean forceFieldBinding = nodeProperty != null;
-                boolean nonPublicField = !Modifier.isPublic(mod);
-                Method publicGetterMethod = null;
-                Method publicSetterMethod = null;
-                boolean fieldReaderGap = false;
-                boolean fieldWriterGap = false;
-                if (nonPublicField) {
-                    publicGetterMethod = _findPublicGetterMethod(clazz, field);
-                    publicSetterMethod = _findPublicSetterMethod(clazz, field);
-                    fieldReaderGap = publicSetterMethod == null;
-                    fieldWriterGap = publicGetterMethod == null;
-                }
-                if (forceFieldBinding) {
-                    hasExplicitBinding = true;
-                }
-                if (nonPublicField) {
-                    hasNonPublicFields = true;
-                }
-                if (fieldReaderGap) {
-                    hasNonPublicReaderGap = true;
-                }
-                if (fieldWriterGap) {
-                    hasNonPublicWriterGap = true;
-                }
-                if (nonPublicField && !forceFieldBinding && !allowPlainPojoFieldAccess
-                        && fieldReaderGap && fieldWriterGap) {
-                    continue;
-                }
-
-                MethodHandle getter = null;
-                if (!nonPublicField || forceFieldBinding || allowPlainPojoFieldAccess) {
-                    try {
-                        getter = lookup.unreflectGetter(field);
-                    } catch (Exception e) {
-                        // log.warn("Failed to get getter for '{}' of {}", field.getName(), curClazz, e);
-                    }
-                } else {
-                    if (publicGetterMethod != null) {
-                        try {
-                            getter = lookup.unreflect(publicGetterMethod);
-                        } catch (Exception e) {
-                            // log.warn("Failed to get method getter for '{}' of {}", field.getName(), curClazz, e);
-                        }
-                    }
-                }
-                Function<Object, Object> lambdaGetter = createLambdaGetter(lookup, curClazz, field);
-
-                MethodHandle setter = null;
-                BiConsumer<Object, Object> lambdaSetter = null;
-                if (!Modifier.isFinal(mod)) {
-                    if (!nonPublicField || forceFieldBinding || allowPlainPojoFieldAccess) {
-                        try {
-                            setter = lookup.unreflectSetter(field);
-                        } catch (Exception e) {
-                            // log.warn("Failed to get setter for '{}' of {}", field.getName(), curClazz, e);
-                        }
-                    } else {
-                        if (publicSetterMethod != null) {
-                            try {
-                                setter = lookup.unreflect(publicSetterMethod);
-                            } catch (Exception e) {
-                                // log.warn("Failed to get method setter for '{}' of {}", field.getName(), curClazz, e);
-                            }
-                        }
-                    }
-                    lambdaSetter = createLambdaSetter(lookup, curClazz, field);
-
-                }
-
-                if (getter == null && lambdaGetter == null && setter == null && lambdaSetter == null) {
-                    // log.warn("No accessible getter or setter found for field '{}' of {}", field.getName(), curClazz);
-                } else {
-                    Type fieldType = Types.fieldType(curType, field);
-                    Class<?> fieldClazz = Types.rawClazz(fieldType);
-                    NodeRegistry.OneOfInfo oneOfInfo = null;
-                    OneOf ann = field.getAnnotation(OneOf.class);
-                    if (ann != null) {
-                        oneOfInfo = ReflectUtil.analyzeOneOf(fieldClazz, ann);
-                    } else {
-                        oneOfInfo = resolveOneOfInfo(fieldClazz);
-                    }
-                    NodeRegistry.ValueCodecInfo resolvedValueCodec = null;
-                    String valueFormat = getValueFormat(field);
-                    if (valueFormat != null) {
-                        resolvedValueCodec = NodeRegistry.resolveValueCodecOrElseThrow(fieldClazz, valueFormat);
-                    }
-                    NodeRegistry.FieldInfo fi = new NodeRegistry.FieldInfo(field.getName(),
-                            fieldType, getter, lambdaGetter, setter, lambdaSetter,
-                            oneOfInfo, valueFormat, resolvedValueCodec);
-                    String fieldName = _getFieldName(field, curClazz);
-                    NodeRegistry.FieldInfo oldFi = fields.putIfAbsent(fieldName, fi);
-                    if (oldFi != null) {
-                        continue;
-                    }
-
-                    String[] aliases = getAliases(field);
-                    if (aliases != null) {
-                        for (String alias : aliases) {
-                            if (alias == null || alias.isEmpty() || alias.equals(fieldName)) continue;
-                            if (aliasMap == null) aliasMap = new HashMap<>();
-                            String old = aliasMap.put(alias, fieldName);
-                            if (old != null)
-                                throw new JsonException("Alias '" + alias + "' is mapped to multiple fields in " +
-                                        clazz.getName());
-                        }
-                    }
-                }
-            }
+            Field[] declared = curClazz.getDeclaredFields();
+            try { AccessibleObject.setAccessible(declared, true); } catch (RuntimeException ignored) {}
+            hasHiddenDeclaredFields |= _reserveFieldFamilies(clazz, declared, propertyStrategy, families, includeFields);
+            if (includeBeans) _collectBeanFamilies(clazz, curClazz, curType, families);
+            if (includeFields) _collectFieldFamilies(clazz, declared, curType, propertyStrategy, families);
             curType = curClazz.getGenericSuperclass();
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
 
-        // Make aliasFields
-        Map<String, NodeRegistry.FieldInfo> aliasFields = null;
-        if (aliasMap != null ) {
-            aliasFields = new HashMap<>(fields);
-            for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
-                NodeRegistry.FieldInfo fi = fields.get(alias.getValue());
-                if (fi != null) aliasFields.put(alias.getKey(), fi);
+        Map<String, NodeRegistry.PropertyInfo> properties = new LinkedHashMap<>();
+        for (PropertyFamily family : families.values()) {
+            hasExplicitBinding |= family.explicitName != null || family.fieldExplicitName != null;
+            MethodHandle getter = null;
+            MethodHandle setter = null;
+            boolean fieldGetter = false;
+            boolean fieldSetter = false;
+            boolean fieldPrimary = propertyStrategy == PropertyStrategy.FIELD_ONLY
+                    || propertyStrategy == PropertyStrategy.FIELD_BEAN;
+            if (fieldPrimary && family.field != null) {
+                try {
+                    getter = lookup.unreflectGetter(family.field);
+                    fieldGetter = true;
+                } catch (Exception ignored) {}
+                if (!Modifier.isFinal(family.field.getModifiers())) {
+                    try {
+                        setter = lookup.unreflectSetter(family.field);
+                        fieldSetter = true;
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (getter == null && family.canUseGetter()) {
+                try { getter = lookup.unreflect(family.getterMethod); } catch (Exception ignored) {}
+            }
+            if (setter == null && family.canUseSetter()) {
+                try { setter = lookup.unreflect(family.setterMethod); } catch (Exception ignored) {}
+            }
+            if (!fieldPrimary && family.field != null) {
+                if (getter == null) {
+                    try {
+                        getter = lookup.unreflectGetter(family.field);
+                        fieldGetter = true;
+                    } catch (Exception ignored) {}
+                }
+                if (setter == null && !Modifier.isFinal(family.field.getModifiers())) {
+                    try {
+                        setter = lookup.unreflectSetter(family.field);
+                        fieldSetter = true;
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (getter == null && setter == null) continue;
+            if (family.field != null && !Modifier.isPublic(family.field.getModifiers())
+                    && (fieldGetter || fieldSetter)) {
+                hasNonPublicFields = true;
+            }
+            if (family.field != null) {
+                if (getter == null && !family.canUseGetter()) hasNonPublicWriterGap = true;
+                if (setter == null && !family.canUseSetter()) hasNonPublicReaderGap = true;
+            }
+            _assertCompatiblePropertyTypes(family, clazz);
+
+            Type type = family.resolveType(propertyStrategy);
+            Class<?> raw = Types.rawClazz(type);
+            String finalName = family.resolveFinalName(clazz, namingStrategy);
+            if (creatorInfo.argIndexes != null) {
+                Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
+                if (implicitIdx != null && !finalName.equals(family.implicitName)) {
+                    Integer finalIdx = creatorInfo.argIndexes.get(finalName);
+                    if (finalIdx != null && !finalIdx.equals(implicitIdx)) {
+                        throw new JsonException("Property '" + finalName + "' conflicts with multiple creator arguments in "
+                                + clazz.getName());
+                    }
+                    throw new JsonException("Property '" + finalName + "' renames creator-bound property '"
+                            + family.implicitName + "' in " + clazz.getName());
+                }
+            }
+            Function<Object, Object> lambdaGetter = getter == null ? null : createLambdaGetter(lookup, getter);
+            BiConsumer<Object, Object> lambdaSetter = setter == null ? null : createLambdaSetter(lookup, setter);
+            NodeRegistry.PropertyInfo pi = new NodeRegistry.PropertyInfo(
+                    finalName, type, getter, lambdaGetter, setter, lambdaSetter,
+                    family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.valueFormat,
+                    family.valueFormat == null ? null : NodeRegistry.resolveValueCodecOrElseThrow(raw, family.valueFormat));
+            NodeRegistry.PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
+            if (oldPi != null) {
+                throw new JsonException("Multiple property families resolve to JSON property '" + pi.name +
+                        "' in " + clazz.getName());
+            }
+
+            if (family.aliases != null) for (String alias : family.aliases) {
+                if (alias == null || alias.isEmpty() || alias.equals(pi.name)) continue;
+                if (aliasMap == null) aliasMap = new HashMap<>();
+                String old = aliasMap.put(alias, pi.name);
+                if (old != null && !old.equals(pi.name)) {
+                    throw new JsonException("Alias '" + alias + "' is mapped to multiple properties in " + clazz.getName());
+                }
             }
         }
 
-        return new NodeRegistry.PojoInfo(clazz, creatorInfo, namingStrategy, accessStrategy,
-                readDynamic, writeDynamic, fields, aliasFields,
+        Map<String, NodeRegistry.PropertyInfo> aliasProperties = null;
+        if (aliasMap != null ) {
+            aliasProperties = new HashMap<>(properties);
+            for (Map.Entry<String, String> alias : aliasMap.entrySet()) {
+                NodeRegistry.PropertyInfo fi = properties.get(alias.getValue());
+                if (fi != null) aliasProperties.put(alias.getKey(), fi);
+            }
+        }
+        if (!hasNonPublicFields && properties.isEmpty() && hasHiddenDeclaredFields) {
+            hasNonPublicFields = true;
+        }
+
+        return new NodeRegistry.PojoInfo(clazz, creatorInfo, namingStrategy, propertyStrategy,
+                readDynamic, writeDynamic, properties, aliasProperties,
                 hasExplicitBinding, hasNonPublicFields, hasNonPublicReaderGap, hasNonPublicWriterGap);
     }
 
-    private static Method _findPublicGetterMethod(Class<?> ownerClass, Field field) {
-        String capitalized = capitalize(field.getName());
-        String getterName = "get" + capitalized;
-        Method getter = _findPublicMethod(ownerClass, getterName);
-        if (getter != null && getter.getReturnType() != void.class) {
-            return getter;
+    private static boolean _reserveFieldFamilies(Class<?> root, Field[] fds,
+                                                 PropertyStrategy strategy,
+                                                 Map<String, PropertyFamily> families,
+                                                 boolean includeFields) {
+        boolean hasHiddenDeclaredFields = false;
+        for (Field field : fds) {
+            int mod = field.getModifiers();
+            if (Modifier.isStatic(mod) || field.isSynthetic()) continue;
+            if (Modifier.isTransient(mod)) {
+                if (field.getAnnotation(NodeProperty.class) != null) {
+                    throw new JsonException("Transient field '" + field.getName() + "' in " + root.getName() +
+                            " cannot use @NodeProperty");
+                }
+                continue;
+            }
+            if (!Modifier.isPublic(mod)) {
+                hasHiddenDeclaredFields = true;
+            }
+            if (!includeFields) continue;
+            if (field.getAnnotation(NodeIgnore.class) != null) continue;
+            families.computeIfAbsent(field.getName(), PropertyFamily::new);
         }
-        if (isRecord(ownerClass)) {
-            Method componentGetter = _findPublicMethod(ownerClass, field.getName());
-            if (componentGetter != null && componentGetter.getReturnType() != void.class) {
-                return componentGetter;
+        return hasHiddenDeclaredFields;
+    }
+
+    private static void _collectFieldFamilies(Class<?> root, Field[] fds, Type ownerType,
+                                              PropertyStrategy strategy,
+                                              Map<String, PropertyFamily> families) {
+        for (Field field : fds) {
+            int mod = field.getModifiers();
+            if (Modifier.isStatic(mod) || field.isSynthetic()) continue;
+            if (Modifier.isTransient(mod)) continue;
+            if (field.getAnnotation(NodeIgnore.class) != null) continue;
+            String explicitName = getExplicitName(field);
+            String[] aliases = getAliases(field);
+            String valueFormat = getValueFormat(field);
+            OneOf oneOf = field.getAnnotation(OneOf.class);
+            boolean explicit = field.getAnnotation(NodeProperty.class) != null || explicitName != null
+                    || oneOf != null || valueFormat != null || aliases != null;
+            boolean nonPublic = !Modifier.isPublic(mod);
+            if (strategy == PropertyStrategy.BEAN_FIELD && nonPublic && !explicit) continue;
+            Type fieldType = Types.fieldType(ownerType, field);
+            PropertyFamily family = families.get(field.getName());
+            if (family == null) continue;
+            if (explicitName != null && !explicitName.equals(field.getName())) {
+                PropertyFamily beanFamily = families.get(explicitName);
+                if (beanFamily != null && (beanFamily.getterMethod != null || beanFamily.setterMethod != null)) {
+                    family = beanFamily;
+                }
+            }
+            if (family.field == null) {
+                family.field = field;
+                family.fieldType = fieldType;
+                family.fieldExplicitName = explicitName;
+                family.addAliases(aliases);
+                family.mergeValueFormat(valueFormat, root);
+                if (oneOf != null) {
+                    family.oneOfInfo = ReflectUtil.analyzeOneOf(Types.rawClazz(fieldType), oneOf);
+                }
             }
         }
-        Class<?> fieldClass = field.getType();
-        if (fieldClass == boolean.class || fieldClass == Boolean.class) {
-            Method booleanGetter = _findPublicMethod(ownerClass, "is" + capitalized);
-            if (booleanGetter != null &&
-                    (booleanGetter.getReturnType() == boolean.class || booleanGetter.getReturnType() == Boolean.class)) {
-                return booleanGetter;
+    }
+
+    private static void _collectBeanFamilies(Class<?> root, Class<?> owner, Type ownerType,
+                                             Map<String, PropertyFamily> families) {
+        Method[] methods = owner.getDeclaredMethods();
+        try { AccessibleObject.setAccessible(methods, true); } catch (RuntimeException ignored) {}
+        for (Method method : methods) {
+            if (Modifier.isStatic(method.getModifiers()) || method.isBridge() || method.isSynthetic()) continue;
+            String implicit = _getBeanImplicitName(method);
+            if (implicit == null) continue;
+            boolean explicit = method.isAnnotationPresent(NodeProperty.class)
+                    || getExplicitName(method) != null || getAliases(method) != null;
+            if (!Modifier.isPublic(method.getModifiers()) && !explicit) continue;
+            PropertyFamily family = families.computeIfAbsent(implicit, PropertyFamily::new);
+            boolean isGetter = method.getParameterCount() == 0;
+            Type resolvedType = method.getParameterCount() == 0
+                    ? Types.resolveMemberType(ownerType, owner, method.getGenericReturnType())
+                    : Types.resolveMemberType(ownerType, owner, method.getGenericParameterTypes()[0]);
+            if (isGetter && family.getterMethod != null) {
+                _mergeGetter(method, resolvedType, family, root);
+                if (family.getterMethod != method) continue;
+            } else if (!isGetter && family.setterMethod != null) {
+                _mergeSetter(method, resolvedType, family, root);
+                if (family.setterMethod != method) continue;
+            } else if (isGetter) {
+                family.getterMethod = method;
+                family.getterType = resolvedType;
+            } else {
+                family.setterMethod = method;
+                family.setterType = resolvedType;
             }
+            if (method.getAnnotation(NodeIgnore.class) != null) {
+                if (isGetter) family.ignoreGetter = true;
+                else family.ignoreSetter = true;
+                continue;
+            }
+            family.addExplicitName(getExplicitName(method), root);
+            family.addAliases(getAliases(method));
+            family.mergeValueFormat(getValueFormat(method), root);
+        }
+    }
+
+    private static void _mergeGetter(Method method, Type resolvedType, PropertyFamily family, Class<?> root) {
+        Method current = family.getterMethod;
+        if (current == null) {
+            family.getterMethod = method;
+            family.getterType = resolvedType;
+            return;
+        }
+        int order = _compareMethodSpecificity(current, method);
+        if (order < 0) {
+            family.getterMethod = method;
+            family.getterType = resolvedType;
+            return;
+        }
+        if (order > 0) {
+            return;
+        }
+
+        boolean currentIs = _isBooleanGetterName(current);
+        boolean candidateIs = _isBooleanGetterName(method);
+        if (candidateIs != currentIs) {
+            if (candidateIs) {
+                family.getterMethod = method;
+                family.getterType = resolvedType;
+            }
+            return;
+        }
+
+        throw new JsonException("Ambiguous getter methods for property '" + family.implicitName +
+                "' in " + root.getName() + ": " + current + " and " + method);
+    }
+
+    private static void _mergeSetter(Method method, Type resolvedType, PropertyFamily family, Class<?> root) {
+        Method current = family.setterMethod;
+        if (current == null) {
+            family.setterMethod = method;
+            family.setterType = resolvedType;
+            return;
+        }
+        int order = _compareSetterSpecificity(current, method);
+        if (order < 0) {
+            family.setterMethod = method;
+            family.setterType = resolvedType;
+            return;
+        }
+        if (order > 0) {
+            return;
+        }
+
+        throw new JsonException("Ambiguous setter methods for property '" + family.implicitName +
+                "' in " + root.getName() + ": " + current + " and " + method);
+    }
+
+    private static int _compareMethodSpecificity(Method current, Method candidate) {
+        Class<?> currentDecl = current.getDeclaringClass();
+        Class<?> candidateDecl = candidate.getDeclaringClass();
+        if (currentDecl == candidateDecl) return 0;
+        if (currentDecl.isAssignableFrom(candidateDecl)) return -1;
+        if (candidateDecl.isAssignableFrom(currentDecl)) return 1;
+        return 0;
+    }
+
+    private static int _compareSetterSpecificity(Method current, Method candidate) {
+        if (!current.getName().equals(candidate.getName())) return 0;
+        if (current.getParameterCount() != candidate.getParameterCount()) return 0;
+        Class<?>[] currentTypes = current.getParameterTypes();
+        Class<?>[] candidateTypes = candidate.getParameterTypes();
+        for (int i = 0; i < currentTypes.length; i++) {
+            if (currentTypes[i] != candidateTypes[i]) return 0;
+        }
+        return _compareMethodSpecificity(current, candidate);
+    }
+
+    private static boolean _isBooleanGetterName(Method method) {
+        return method != null && method.getName().startsWith("is");
+    }
+
+    private static void _assertCompatiblePropertyTypes(PropertyFamily family, Class<?> root) {
+        _assertCompatibleTypes(family.implicitName, "getter", family.getterType, "setter", family.setterType, root);
+        _assertCompatibleTypes(family.implicitName, "field", family.fieldType, "getter", family.getterType, root);
+        _assertCompatibleTypes(family.implicitName, "field", family.fieldType, "setter", family.setterType, root);
+    }
+
+    private static void _assertCompatibleTypes(String propertyName,
+                                               String leftLabel, Type left,
+                                               String rightLabel, Type right,
+                                               Class<?> root) {
+        if (left == null || right == null) return;
+        Class<?> leftRaw = Types.rawBox(left);
+        Class<?> rightRaw = Types.rawBox(right);
+        if (leftRaw == rightRaw || leftRaw.isAssignableFrom(rightRaw) || rightRaw.isAssignableFrom(leftRaw)) return;
+        throw new JsonException("Incompatible " + leftLabel + "/" + rightLabel + " types for property '"
+                + propertyName + "' in " + root.getName() + ": "
+                + leftRaw.getName() + " vs " + rightRaw.getName());
+    }
+
+    private static String _getBeanImplicitName(Method method) {
+        String name = method.getName();
+        if (method.getParameterCount() == 0 && method.getReturnType() != void.class) {
+            if (name.startsWith("get") && name.length() > 3) return Strings.decapitalize(name.substring(3));
+            if ((method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class) && name.startsWith("is") && name.length() > 2)
+                return Strings.decapitalize(name.substring(2));
+            if (isRecord(method.getDeclaringClass())) return name;
+        }
+        if (method.getParameterCount() == 1 && method.getReturnType() == void.class && name.startsWith("set") && name.length() > 3) {
+            return Strings.decapitalize(name.substring(3));
         }
         return null;
     }
 
-    private static Method _findPublicSetterMethod(Class<?> ownerClass, Field field) {
-        if (Modifier.isFinal(field.getModifiers())) {
-            return null;
-        }
-        return _findPublicMethod(ownerClass, "set" + capitalize(field.getName()), field.getType());
-    }
+    private static final class PropertyFamily {
+        final String implicitName;
+        Field field;
+        Type fieldType;
+        String fieldExplicitName;
+        Method getterMethod;
+        Type getterType;
+        Method setterMethod;
+        Type setterType;
+        boolean ignoreGetter;
+        boolean ignoreSetter;
+        String explicitName;
+        String valueFormat;
+        List<String> aliases;
+        NodeRegistry.OneOfInfo oneOfInfo;
 
-    private static Method _findPublicMethod(Class<?> ownerClass, String name, Class<?>... parameterTypes) {
-        try {
-            Method method = ownerClass.getMethod(name, parameterTypes);
-            return Modifier.isPublic(method.getModifiers()) ? method : null;
-        } catch (NoSuchMethodException e) {
-            return null;
+        PropertyFamily(String implicitName) { this.implicitName = implicitName; }
+        void addExplicitName(String name, Class<?> owner) {
+            if (name == null || name.isEmpty()) return;
+            if (explicitName == null) explicitName = name;
+            else if (!explicitName.equals(name)) throw new JsonException("Conflicting explicit names for property '" + implicitName + "' in " + owner.getName());
         }
-    }
-
-    private static String _getFieldName(Field field, Class<?> ownerClass) {
-        String fname = getExplicitName(field);
-        if (fname != null) return fname;
-        return getNamingStrategy(ownerClass).translate(field.getName());
+        void addAliases(String[] src) {
+            if (src == null || src.length == 0) return;
+            if (aliases == null) aliases = new ArrayList<>();
+            for (String alias : src) if (alias != null && !alias.isEmpty()) aliases.add(alias);
+        }
+        void mergeValueFormat(String vf, Class<?> owner) {
+            if (vf == null) return;
+            if (valueFormat == null) valueFormat = vf;
+            else if (!valueFormat.equals(vf)) throw new JsonException("Conflicting valueFormat for property '" + implicitName + "' in " + owner.getName());
+        }
+        boolean canUseGetter() { return getterMethod != null && !ignoreGetter; }
+        boolean canUseSetter() { return setterMethod != null && !ignoreSetter; }
+        Type resolveType(PropertyStrategy strategy) {
+            if (strategy == PropertyStrategy.BEAN_ONLY || strategy == PropertyStrategy.BEAN_FIELD) {
+                if (getterType != null) return getterType;
+                if (setterType != null) return setterType;
+                return fieldType;
+            }
+            if (fieldType != null) return fieldType;
+            return getterType != null ? getterType : setterType;
+        }
+        String resolveFinalName(Class<?> owner, NamingStrategy naming) {
+            addExplicitName(fieldExplicitName, owner);
+            if (explicitName != null && !explicitName.isEmpty()) return explicitName;
+            return naming == null ? implicitName : naming.translate(implicitName);
+        }
     }
 
     public static NamingStrategy getNamingStrategy(Class<?> clazz) {
@@ -400,9 +595,7 @@ public final class ReflectUtil {
         try {
             privateLookupIn = MethodHandles.class.getMethod("privateLookupIn", Class.class,
                     MethodHandles.Lookup.class);
-        } catch (Exception e) {
-//            throw new RuntimeException(e);
-        }
+        } catch (Exception ignored) {}
         PRIVATE_LOOKUP_IN = privateLookupIn;
     }
 
@@ -554,7 +747,7 @@ public final class ReflectUtil {
                     for (String alias : aliases) {
                         String old = aliasMap.put(alias, argNames[i]);
                         if (old != null)
-                            throw new JsonException("Alias '" + alias + "' is mapped to multiple fields in " +
+                            throw new JsonException("Alias '" + alias + "' is mapped to multiple properties in " +
                                     clazz.getName());
                     }
                 }
@@ -956,40 +1149,10 @@ public final class ReflectUtil {
         }
     }
 
-    static String capitalize(String name) {
-        return name.length() > 1
-                ? Character.toUpperCase(name.charAt(0)) + name.substring(1)
-                : name.toUpperCase();
-    }
-
     @SuppressWarnings("unchecked")
     static Function<Object, Object> createLambdaGetter(MethodHandles.Lookup lookup,
-                                                       Class<?> clazz,
-                                                       Field field) {
-        MethodHandle getter = null;
-        Class<?> type = field.getType();
-        if (type == boolean.class || type == Boolean.class) {
-            try {
-                getter = lookup.findVirtual(clazz, "is" + capitalize(field.getName()),
-                        MethodType.methodType(field.getType()));
-            } catch (Exception ignored) {}
-            if (getter == null) {
-                try {
-                    getter = lookup.findVirtual(clazz, "get" + capitalize(field.getName()),
-                            MethodType.methodType(field.getType()));
-                } catch (Exception ignored) {}
-            }
-        } else {
-            try {
-                getter = lookup.findVirtual(clazz, "get" + capitalize(field.getName()),
-                        MethodType.methodType(field.getType()));
-            } catch (Exception ignored) {}
-        }
-        if (getter == null) {
-//            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
-            return null;
-        }
-
+                                                       MethodHandle getter) {
+        if (getter == null) return null;
         try {
             MethodType invokedType = MethodType.methodType(Function.class);
             MethodType samMethodType = MethodType.methodType(Object.class, Object.class);
@@ -1003,7 +1166,59 @@ public final class ReflectUtil {
                     getter.type()
             ).getTarget().invoke();
         } catch (Throwable e) {
-//            log.warn("Failed to create lambda getter for '{}' of {}", field.getName(), clazz, e);
+            return null;
+        }
+    }
+
+    static Function<Object, Object> createLambdaGetter(MethodHandles.Lookup lookup,
+                                                       Class<?> clazz,
+                                                       Field field) {
+        MethodHandle getter = null;
+        Class<?> type = field.getType();
+        if (type == boolean.class || type == Boolean.class) {
+            try {
+                getter = lookup.findVirtual(clazz, "is" + Strings.capitalize(field.getName()),
+                        MethodType.methodType(field.getType()));
+            } catch (Exception ignored) {}
+            if (getter == null) {
+                try {
+                    getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
+                            MethodType.methodType(field.getType()));
+                } catch (Exception ignored) {}
+            }
+        } else {
+            try {
+                getter = lookup.findVirtual(clazz, "get" + Strings.capitalize(field.getName()),
+                        MethodType.methodType(field.getType()));
+            } catch (Exception ignored) {}
+        }
+        if (getter == null) {
+//            log.warn("Failed to find lambda getter for '{}' of {}", field.getName(), clazz);
+            return null;
+        }
+
+        return createLambdaGetter(lookup, getter);
+    }
+
+    @SuppressWarnings("unchecked")
+    static BiConsumer<Object, Object> createLambdaSetter(MethodHandles.Lookup lookup,
+                                                         MethodHandle setter) {
+        if (setter == null || setter.type().parameterCount() < 2 || setter.type().parameterType(1).isPrimitive()) {
+            return null;
+        }
+        try {
+            MethodType invokedType = MethodType.methodType(BiConsumer.class);
+            MethodType samMethodType = MethodType.methodType(void.class, Object.class, Object.class);
+
+            return (BiConsumer<Object, Object>) LambdaMetafactory.metafactory(
+                    lookup,
+                    "accept",
+                    invokedType,
+                    samMethodType,
+                    setter,
+                    setter.type()
+            ).getTarget().invoke();
+        } catch (Throwable e) {
             return null;
         }
     }
@@ -1017,29 +1232,14 @@ public final class ReflectUtil {
 
         MethodHandle setter = null;
         try {
-            setter = lookup.findVirtual(clazz, "set" + capitalize(field.getName()),
+            setter = lookup.findVirtual(clazz, "set" + Strings.capitalize(field.getName()),
                     MethodType.methodType(void.class, field.getType()));
         } catch (Exception e) {
 //            log.warn("Failed to find lambda setter for '{}' of {}", field.getName(), clazz);
             return null;
         }
 
-        try {
-            MethodType invokedType = MethodType.methodType(BiConsumer.class);
-            MethodType samMethodType = MethodType.methodType(void.class, Object.class, Object.class);
-
-            return (BiConsumer<Object, Object>) LambdaMetafactory.metafactory(
-                    lookup,
-                    "accept",   // BiConsumer.accept(T, V)
-                    invokedType,
-                    samMethodType,          // erased signature:  (Object, Object)void
-                    setter,                 // (T, V)void
-                    setter.type()           // implement signature
-            ).getTarget().invoke();
-        } catch (Throwable e) {
-//            log.warn("Failed to create lambda setter for '{}' of {}", field.getName(), clazz, e);
-            return null;
-        }
+        return createLambdaSetter(lookup, setter);
     }
 
 
