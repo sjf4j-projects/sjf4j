@@ -236,10 +236,10 @@ public final class ReflectUtil {
             }
             Function<Object, Object> lambdaGetter = getter == null ? null : createLambdaGetter(lookup, getter);
             BiConsumer<Object, Object> lambdaSetter = setter == null ? null : createLambdaSetter(lookup, setter);
+            NodeRegistry.ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
             NodeRegistry.PropertyInfo pi = new NodeRegistry.PropertyInfo(
                     finalName, type, getter, lambdaGetter, setter, lambdaSetter,
-                    family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.valueFormat,
-                    family.valueFormat == null ? null : NodeRegistry.resolveValueCodecOrElseThrow(raw, family.valueFormat));
+                    family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.codecName, resolvedCodec);
             NodeRegistry.PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new JsonException("Multiple property families resolve to JSON property '" + pi.name +
@@ -310,10 +310,11 @@ public final class ReflectUtil {
             if (field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
             String explicitName = getExplicitName(field);
             String[] aliases = getAliases(field);
-            String valueFormat = getValueFormat(field);
+            String codecName = getCodecName(field);
+            String codecPattern = getCodecPattern(field);
             OneOf oneOf = field.getAnnotation(OneOf.class);
             boolean explicit = field.getAnnotation(NodeProperty.class) != null || explicitName != null
-                    || oneOf != null || valueFormat != null || aliases != null;
+                    || oneOf != null || codecName != null || codecPattern != null || aliases != null;
             boolean nonPublic = !Modifier.isPublic(mod);
             if (strategy == PropertyStrategy.BEAN_FIELD && nonPublic && !explicit) continue;
             Type fieldType = Types.fieldType(ownerType, field);
@@ -330,7 +331,8 @@ public final class ReflectUtil {
                 family.fieldType = fieldType;
                 family.fieldExplicitName = explicitName;
                 family.addAliases(aliases);
-                family.mergeValueFormat(valueFormat, root);
+                family.mergeCodecName(codecName, root);
+                family.mergeCodecPattern(codecPattern, root);
                 if (oneOf != null) {
                     family.oneOfInfo = ReflectUtil.analyzeOneOf(Types.rawClazz(fieldType), oneOf);
                 }
@@ -385,7 +387,8 @@ public final class ReflectUtil {
             }
             family.addExplicitName(getExplicitName(method), root);
             family.addAliases(getAliases(method));
-            family.mergeValueFormat(getValueFormat(method), root);
+            family.mergeCodecName(getCodecName(method), root);
+            family.mergeCodecPattern(getCodecPattern(method), root);
         }
     }
 
@@ -510,7 +513,8 @@ public final class ReflectUtil {
         boolean ignoreGetter;
         boolean ignoreSetter;
         String explicitName;
-        String valueFormat;
+        String codecName;
+        String codecPattern;
         List<String> aliases;
         NodeRegistry.OneOfInfo oneOfInfo;
 
@@ -525,10 +529,15 @@ public final class ReflectUtil {
             if (aliases == null) aliases = new ArrayList<>();
             for (String alias : src) if (alias != null && !alias.isEmpty()) aliases.add(alias);
         }
-        void mergeValueFormat(String vf, Class<?> owner) {
-            if (vf == null) return;
-            if (valueFormat == null) valueFormat = vf;
-            else if (!valueFormat.equals(vf)) throw new JsonException("Conflicting valueFormat for property '" + implicitName + "' in " + owner.getName());
+        void mergeCodecName(String cn, Class<?> owner) {
+            if (cn == null) return;
+            if (codecName == null) codecName = cn;
+            else if (!codecName.equals(cn)) throw new JsonException("Conflicting codecName for property '" + implicitName + "' in " + owner.getName());
+        }
+        void mergeCodecPattern(String cp, Class<?> owner) {
+            if (cp == null) return;
+            if (codecPattern == null) codecPattern = cp;
+            else if (!codecPattern.equals(cp)) throw new JsonException("Conflicting codecPattern for property '" + implicitName + "' in " + owner.getName());
         }
         boolean canUseGetter() { return getterMethod != null && !ignoreGetter; }
         boolean canUseSetter() { return setterMethod != null && !ignoreSetter; }
@@ -583,13 +592,38 @@ public final class ReflectUtil {
         return null;
     }
 
-    public static String getValueFormat(AnnotatedElement element) {
+    public static String getCodecName(AnnotatedElement element) {
         NodeProperty ann = element.getAnnotation(NodeProperty.class);
         if (ann == null) return null;
-        String valueFormat = ann.valueFormat();
-        return NodeProperty.VALUE_FORMAT_UNSET.equals(valueFormat) ? null : valueFormat;
+        String codecName = ann.codecName();
+        return NodeProperty.CODEC_NAME_UNSET.equals(codecName) ? null : codecName;
     }
 
+    public static String getCodecPattern(AnnotatedElement element) {
+        NodeProperty ann = element.getAnnotation(NodeProperty.class);
+        if (ann == null) return null;
+        String vp = ann.codecPattern();
+        return vp.isEmpty() ? null : vp;
+    }
+
+    static NodeRegistry.ValueCodecInfo _resolveCodec(Class<?> rawType, String codecName, String codecPattern) {
+        if (codecPattern != null && !codecPattern.isEmpty()) {
+            // codecPattern takes precedence: get the base codec and parameterize it
+            NodeRegistry.ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(rawType, "");
+            if (base.valueCodec instanceof PatternedValueCodec) {
+                PatternedValueCodec<?, ?> pc = (PatternedValueCodec<?, ?>) base.valueCodec;
+                ValueCodec<?, ?> parameterized = pc.withPattern(codecPattern);
+                return new NodeRegistry.ValueCodecInfo(codecPattern, parameterized.valueClass(),
+                        parameterized.rawClass(), parameterized, null, null, null);
+            }
+            throw new JsonException("Type '" + rawType.getName() + "' does not support codecPattern;" +
+                    " its ValueCodec does not implement " + PatternedValueCodec.class.getName());
+        }
+        if (codecName != null) {
+            return NodeRegistry.resolveValueCodecOrElseThrow(rawType, codecName);
+        }
+        return null;
+    }
 
     private static final String[] FRAMEWORK_PREFIX = {
             "java.", "javax.", "jakarta.", "jdk.",
@@ -743,11 +777,10 @@ public final class ReflectUtil {
                     throw new JsonException("Missing parameter name for creator in " + clazz.getName() +
                             ": parameter index " + i + " (from 0). Use @NodeProperty on parameters.");
                 argNames[i] = name;
-                String valueFormat = getValueFormat(params[i]);
-                argValueFormats[i] = valueFormat;
-                if (valueFormat != null) {
-                    argValueCodecs[i] = NodeRegistry.resolveValueCodecOrElseThrow(Types.rawBox(argTypes[i]), valueFormat);
-                }
+                String codecName = getCodecName(params[i]);
+                String codecPattern = getCodecPattern(params[i]);
+                argValueFormats[i] = codecName;
+                argValueCodecs[i] = _resolveCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
             }
             argIndexes = createArgIndexes(argNames);
         }

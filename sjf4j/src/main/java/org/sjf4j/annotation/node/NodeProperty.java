@@ -35,16 +35,26 @@ public @interface NodeProperty {
     String[] aliases() default {};
 
     /**
-     * Explicit value codec format for this property source or creator parameter.
+     * Named codec variant for this property or creator parameter.
      * <p>
-     * Use {@code ""} to force the default value codec slot. The sentinel default
-     * means "not configured".
+     * Selects among registered codec variants for the target type
+     * (e.g. {@code "epochMillis"} for {@link java.time.Instant}).
+     * The sentinel default means "not configured".
      */
-    String valueFormat() default VALUE_FORMAT_UNSET;
+    String codecName() default CODEC_NAME_UNSET;
 
     /**
-     * Sentinel meaning valueFormat was not specified.
+     * Sentinel meaning {@link #codecName()} was not specified.
      */
-    String VALUE_FORMAT_UNSET = "\u0000";
+    String CODEC_NAME_UNSET = "\u0000";
+
+    /**
+     * Date/time format pattern for this property or creator parameter.
+     * <p>
+     * Only applies to types whose value codec implements
+     * {@link org.sjf4j.node.PatternedValueCodec}.
+     * When specified, takes precedence over {@link #codecName()}.
+     */
+    String codecPattern() default "";
 
 }

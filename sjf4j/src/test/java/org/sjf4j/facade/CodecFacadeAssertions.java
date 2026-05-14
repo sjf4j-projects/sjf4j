@@ -50,7 +50,7 @@ public final class CodecFacadeAssertions {
     }
 
     public static class InstantFieldBook {
-        @NodeProperty(valueFormat = "epochMillis")
+        @NodeProperty(codecName = "epochMillis")
         public Instant createdAt;
         public Instant updatedAt;
     }
@@ -60,7 +60,7 @@ public final class CodecFacadeAssertions {
         public final Instant updatedAt;
 
         @NodeCreator
-        public InstantCreatorBook(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt,
+        public InstantCreatorBook(@NodeProperty(value = "createdAt", codecName = "epochMillis") Instant createdAt,
                                   @NodeProperty("updatedAt") Instant updatedAt) {
             this.createdAt = createdAt;
             this.updatedAt = updatedAt;

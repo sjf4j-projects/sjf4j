@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
@@ -367,14 +368,24 @@ public interface ValueCodec<V, R> {
     }
 
     // LocalDate
-    final class LocalDateValueCodec implements ValueCodec<LocalDate, String> {
+    final class LocalDateValueCodec implements PatternedValueCodec<LocalDate, String> {
+        private final DateTimeFormatter formatter;
+
+        LocalDateValueCodec() {
+            this.formatter = null;
+        }
+
+        private LocalDateValueCodec(DateTimeFormatter formatter) {
+            this.formatter = formatter;
+        }
 
         /**
          * Encodes value into raw representation.
          */
         @Override
         public String valueToRaw(LocalDate value) {
-            return value == null ? null : value.toString();
+            if (value == null) return null;
+            return formatter != null ? formatter.format(value) : value.toString();
         }
 
         /**
@@ -382,7 +393,8 @@ public interface ValueCodec<V, R> {
          */
         @Override
         public LocalDate rawToValue(String raw) {
-            return raw == null ? null : LocalDate.parse(raw);
+            if (raw == null) return null;
+            return formatter != null ? LocalDate.parse(raw, formatter) : LocalDate.parse(raw);
         }
 
         /**
@@ -400,17 +412,32 @@ public interface ValueCodec<V, R> {
         public Class<String> rawClass() {
             return String.class;
         }
+
+        @Override
+        public ValueCodec<LocalDate, String> withPattern(String pattern) {
+            return new LocalDateValueCodec(DateTimeFormatter.ofPattern(pattern));
+        }
     }
 
     // LocalDateTime
-    final class LocalDateTimeValueCodec implements ValueCodec<LocalDateTime, String> {
+    final class LocalDateTimeValueCodec implements PatternedValueCodec<LocalDateTime, String> {
+        private final DateTimeFormatter formatter;
+
+        LocalDateTimeValueCodec() {
+            this.formatter = null;
+        }
+
+        private LocalDateTimeValueCodec(DateTimeFormatter formatter) {
+            this.formatter = formatter;
+        }
 
         /**
          * Encodes value into raw representation.
          */
         @Override
         public String valueToRaw(LocalDateTime value) {
-            return value == null ? null : value.toString();
+            if (value == null) return null;
+            return formatter != null ? formatter.format(value) : value.toString();
         }
 
         /**
@@ -418,7 +445,8 @@ public interface ValueCodec<V, R> {
          */
         @Override
         public LocalDateTime rawToValue(String raw) {
-            return raw == null ? null : LocalDateTime.parse(raw);
+            if (raw == null) return null;
+            return formatter != null ? LocalDateTime.parse(raw, formatter) : LocalDateTime.parse(raw);
         }
 
         /**
@@ -436,17 +464,32 @@ public interface ValueCodec<V, R> {
         public Class<String> rawClass() {
             return String.class;
         }
+
+        @Override
+        public ValueCodec<LocalDateTime, String> withPattern(String pattern) {
+            return new LocalDateTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
+        }
     }
 
     // OffsetDateTime
-    final class OffsetDateTimeValueCodec implements ValueCodec<OffsetDateTime, String> {
+    final class OffsetDateTimeValueCodec implements PatternedValueCodec<OffsetDateTime, String> {
+        private final DateTimeFormatter formatter;
+
+        OffsetDateTimeValueCodec() {
+            this.formatter = null;
+        }
+
+        private OffsetDateTimeValueCodec(DateTimeFormatter formatter) {
+            this.formatter = formatter;
+        }
 
         /**
          * Encodes value into raw representation.
          */
         @Override
         public String valueToRaw(OffsetDateTime value) {
-            return value == null ? null : value.toString();
+            if (value == null) return null;
+            return formatter != null ? formatter.format(value) : value.toString();
         }
 
         /**
@@ -454,7 +497,8 @@ public interface ValueCodec<V, R> {
          */
         @Override
         public OffsetDateTime rawToValue(String raw) {
-            return raw == null ? null : OffsetDateTime.parse(raw);
+            if (raw == null) return null;
+            return formatter != null ? OffsetDateTime.parse(raw, formatter) : OffsetDateTime.parse(raw);
         }
 
         /**
@@ -472,17 +516,32 @@ public interface ValueCodec<V, R> {
         public Class<String> rawClass() {
             return String.class;
         }
+
+        @Override
+        public ValueCodec<OffsetDateTime, String> withPattern(String pattern) {
+            return new OffsetDateTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
+        }
     }
 
     // ZonedDateTime
-    final class ZonedDateTimeValueCodec implements ValueCodec<ZonedDateTime, String> {
+    final class ZonedDateTimeValueCodec implements PatternedValueCodec<ZonedDateTime, String> {
+        private final DateTimeFormatter formatter;
+
+        ZonedDateTimeValueCodec() {
+            this.formatter = null;
+        }
+
+        private ZonedDateTimeValueCodec(DateTimeFormatter formatter) {
+            this.formatter = formatter;
+        }
 
         /**
          * Encodes value into raw representation.
          */
         @Override
         public String valueToRaw(ZonedDateTime value) {
-            return value == null ? null : value.toString();
+            if (value == null) return null;
+            return formatter != null ? formatter.format(value) : value.toString();
         }
 
         /**
@@ -490,7 +549,8 @@ public interface ValueCodec<V, R> {
          */
         @Override
         public ZonedDateTime rawToValue(String raw) {
-            return raw == null ? null : ZonedDateTime.parse(raw);
+            if (raw == null) return null;
+            return formatter != null ? ZonedDateTime.parse(raw, formatter) : ZonedDateTime.parse(raw);
         }
 
         /**
@@ -507,6 +567,11 @@ public interface ValueCodec<V, R> {
         @Override
         public Class<String> rawClass() {
             return String.class;
+        }
+
+        @Override
+        public ValueCodec<ZonedDateTime, String> withPattern(String pattern) {
+            return new ZonedDateTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
         }
     }
 

@@ -398,7 +398,7 @@ public final class NodeRegistry {
         public final boolean hasNonPublicFields;
         public final boolean hasNonPublicReaderGap;
         public final boolean hasNonPublicWriterGap;
-        public final boolean hasPropertyValueFormatBinding;
+        public final boolean hasPropertyCodecNameBinding;
         public final boolean requiresPojoReader;
         public final boolean requiresPojoWriter;
 
@@ -453,23 +453,23 @@ public final class NodeRegistry {
             this.hasNonPublicFields = hasNonPublicFields;
             this.hasNonPublicReaderGap = hasNonPublicReaderGap;
             this.hasNonPublicWriterGap = hasNonPublicWriterGap;
-            boolean hasPropertyValueFormatBinding = false;
+            boolean hasPropertyCodecNameBinding = false;
             for (PropertyInfo fi : properties.values()) {
-                if (fi.valueFormat != null) {
-                    hasPropertyValueFormatBinding = true;
+                if (fi.resolvedValueCodec != null) {
+                    hasPropertyCodecNameBinding = true;
                     break;
                 }
             }
-            this.hasPropertyValueFormatBinding = hasPropertyValueFormatBinding;
+            this.hasPropertyCodecNameBinding = hasPropertyCodecNameBinding;
             boolean hasTypeOwnedBinding = namingStrategy != null || propertyStrategy != PropertyStrategy.BEAN_FIELD;
             boolean hasCustomDynamicReader = this.isJojo && !readDynamic;
             boolean hasCustomDynamicWriter = this.isJojo && !writeDynamic;
             this.requiresPojoReader = hasTypeOwnedBinding || hasParentScopeOneOf
                     || hasExplicitBinding || this.hasCreatorBinding
-                    || (creatorInfo != null && creatorInfo.hasValueFormatBinding)
-                    || hasNonPublicFields || hasNonPublicReaderGap || hasCustomDynamicReader || hasPropertyValueFormatBinding;
+                    || (creatorInfo != null && creatorInfo.hasCodecNameBinding)
+                    || hasNonPublicFields || hasNonPublicReaderGap || hasCustomDynamicReader || hasPropertyCodecNameBinding;
             this.requiresPojoWriter = hasTypeOwnedBinding || hasExplicitBinding || hasNonPublicFields || hasNonPublicWriterGap
-                    || hasCustomDynamicWriter || hasPropertyValueFormatBinding;
+                    || hasCustomDynamicWriter || hasPropertyCodecNameBinding;
         }
 
     }
@@ -641,11 +641,11 @@ public final class NodeRegistry {
         public final Func5 argsCreatorLambda5;
         public final String[] argNames;
         public final Type[] argTypes;
-        public final String[] argValueFormats;
+        public final String[] argCodecNames;
         public final ValueCodecInfo[] argValueCodecs;
         public final Map<String, Integer> argIndexes;
         public final Map<String, String> aliasMap;
-        public final boolean hasValueFormatBinding;
+        public final boolean hasCodecNameBinding;
         /**
          * Creates immutable creator metadata holder.
          */
@@ -654,7 +654,7 @@ public final class NodeRegistry {
                            Func1 argsCreatorLambda1, Func2 argsCreatorLambda2,
                            Func3 argsCreatorLambda3, Func4 argsCreatorLambda4, Func5 argsCreatorLambda5,
                            String[] argNames, Type[] argTypes,
-                           String[] argValueFormats, ValueCodecInfo[] argValueCodecs,
+                           String[] argCodecNames, ValueCodecInfo[] argValueCodecs,
                            Map<String, Integer> argIndexes,
                            Map<String, String> aliasMap) {
             this.clazz = clazz;
@@ -669,20 +669,20 @@ public final class NodeRegistry {
             this.argsCreatorLambda5 = argsCreatorLambda5;
             this.argNames = argNames;
             this.argTypes = argTypes;
-            this.argValueFormats = argValueFormats;
+            this.argCodecNames = argCodecNames;
             this.argValueCodecs = argValueCodecs;
             this.argIndexes = argIndexes;
             this.aliasMap = aliasMap;
-            boolean hasValueFormatBinding = false;
-            if (argValueFormats != null) {
-                for (String argValueFormat : argValueFormats) {
-                    if (argValueFormat != null) {
-                        hasValueFormatBinding = true;
+            boolean hasCodecNameBinding = false;
+            if (argValueCodecs != null) {
+                for (ValueCodecInfo vci : argValueCodecs) {
+                    if (vci != null) {
+                        hasCodecNameBinding = true;
                         break;
                     }
                 }
             }
-            this.hasValueFormatBinding = hasValueFormatBinding;
+            this.hasCodecNameBinding = hasCodecNameBinding;
         }
 
         /**
@@ -841,7 +841,7 @@ public final class NodeRegistry {
         public final BiConsumer<Object, Object> lambdaSetter;
 
         public final OneOfInfo oneOfInfo;
-        public final String valueFormat;
+        public final String codecName;
         public final ValueCodecInfo resolvedValueCodec;
 
         /**
@@ -851,7 +851,7 @@ public final class NodeRegistry {
                          MethodHandle getter, Function<Object, Object> lambdaGetter,
                          MethodHandle setter, BiConsumer<Object, Object> lambdaSetter,
                          OneOfInfo oneOfInfo,
-                         String valueFormat,
+                         String codecName,
                          ValueCodecInfo resolvedValueCodec) {
             this.name = name;
             this.type = type;
@@ -885,7 +885,7 @@ public final class NodeRegistry {
             this.setter = setter;
             this.lambdaSetter = lambdaSetter;
             this.oneOfInfo = oneOfInfo;
-            this.valueFormat = valueFormat;
+            this.codecName = codecName;
             this.resolvedValueCodec = resolvedValueCodec;
         }
 

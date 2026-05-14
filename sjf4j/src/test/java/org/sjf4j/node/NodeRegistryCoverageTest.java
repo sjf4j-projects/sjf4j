@@ -172,7 +172,7 @@ class NodeRegistryCoverageTest {
     }
 
     static class InstantFieldPojo {
-        @NodeProperty(valueFormat = "epochMillis")
+        @NodeProperty(codecName = "epochMillis")
         Instant createdAt;
     }
 
@@ -180,7 +180,7 @@ class NodeRegistryCoverageTest {
         final Instant createdAt;
 
         @NodeCreator
-        InstantCreatorPojo(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt) {
+        InstantCreatorPojo(@NodeProperty(value = "createdAt", codecName = "epochMillis") Instant createdAt) {
             this.createdAt = createdAt;
         }
     }
@@ -231,14 +231,64 @@ class NodeRegistryCoverageTest {
         assertEquals(Long.class, epochCodec.rawClazz);
 
         NodeRegistry.PropertyInfo fi = NodeRegistry.registerPojoOrElseThrow(InstantFieldPojo.class).properties.get("createdAt");
-        assertEquals("epochMillis", fi.valueFormat);
+        assertEquals("epochMillis", fi.codecName);
         assertNotNull(fi.resolvedValueCodec);
         assertEquals(Long.class, fi.resolvedValueCodec.rawClazz);
 
         NodeRegistry.CreatorInfo creatorInfo = NodeRegistry.registerPojoOrElseThrow(InstantCreatorPojo.class).creatorInfo;
-        assertEquals("epochMillis", creatorInfo.argValueFormats[0]);
+        assertEquals("epochMillis", creatorInfo.argCodecNames[0]);
         assertNotNull(creatorInfo.argValueCodecs[0]);
         assertEquals(Long.class, creatorInfo.argValueCodecs[0].rawClazz);
+    }
+
+    @Test
+    void testCodecPatternResolvesLocalDateCodec() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(LocalDatePatternPojo.class);
+        NodeRegistry.PropertyInfo fi = pi.properties.get("date");
+        assertNotNull(fi);
+        // codecName is null when only codecPattern is specified (separate attributes)
+        assertNull(fi.codecName);
+        assertNotNull(fi.resolvedValueCodec);
+        // Round-trip through the patterned codec
+        Object raw = fi.resolvedValueCodec.valueToRaw(java.time.LocalDate.of(2024, 1, 15));
+        assertEquals("2024-01-15", raw);
+        Object decoded = fi.resolvedValueCodec.rawToValue(raw);
+        assertEquals(java.time.LocalDate.of(2024, 1, 15), decoded);
+    }
+
+    @Test
+    void testCodecPatternOnCreatorParam() {
+        NodeRegistry.CreatorInfo ci = NodeRegistry.registerPojoOrElseThrow(LocalDatePatternCreatorPojo.class).creatorInfo;
+        // argCodecNames stores codecName (null when only codecPattern is set)
+        assertNull(ci.argCodecNames[0]);
+        assertNotNull(ci.argValueCodecs[0]);
+        Object raw = ci.argValueCodecs[0].valueToRaw(java.time.LocalDate.of(2024, 6, 7));
+        assertEquals("2024/06/07", raw);
+    }
+
+    @Test
+    void testCodecPatternOnNonPatternTypeThrows() {
+        assertThrows(org.sjf4j.exception.JsonException.class, () ->
+                NodeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
+    }
+
+    static class LocalDatePatternPojo {
+        @NodeProperty(codecPattern = "yyyy-MM-dd")
+        java.time.LocalDate date;
+    }
+
+    static class LocalDatePatternCreatorPojo {
+        final java.time.LocalDate date;
+
+        @NodeCreator
+        LocalDatePatternCreatorPojo(@NodeProperty(value = "date", codecPattern = "yyyy/MM/dd") java.time.LocalDate date) {
+            this.date = date;
+        }
+    }
+
+    static class InvalidPatternPojo {
+        @NodeProperty(codecPattern = "yyyy-MM-dd")
+        String name;
     }
 
     static class ThrowingHandleValue {

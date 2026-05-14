@@ -384,7 +384,7 @@ public class Jackson2FacadeTest {
     }
 
     public static class NativeInstantBook {
-        @NodeProperty(valueFormat = "epochMillis")
+        @NodeProperty(codecName = "epochMillis")
         public Instant createdAt;
 
         public Instant updatedAt;
