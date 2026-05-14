@@ -13,7 +13,11 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.facade.StreamingContext;
+import org.sjf4j.facade.StreamingIO;
+import org.sjf4j.facade.simple.SimpleJsonReader;
 
+import java.io.StringReader;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -187,6 +191,20 @@ class NodeRegistryCoverageTest {
         @NodeCreator
         JsonSessionPojo(@NodeProperty("id") String id) {
             this.id = id;
+        }
+    }
+
+    static class MixedJsonSessionPojo extends JsonObject {
+        final String id;
+        String extra;
+
+        @NodeCreator
+        MixedJsonSessionPojo(@NodeProperty("id") String id) {
+            this.id = id;
+        }
+
+        public void setExtra(String extra) {
+            this.extra = extra;
         }
     }
 
@@ -374,59 +392,81 @@ class NodeRegistryCoverageTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
 
         NodeRegistry.CreatorInfo sessionCreator = ReflectUtil.analyzeCreator(SessionPojo.class, lookup);
-        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(sessionCreator, 1);
-        Map<String, Object> pending = new HashMap<>();
-        NodeRegistry.PojoPendingApplier applier = (pojo, key, value) -> {
-            pending.put(String.valueOf(key), value);
-            ((SessionPojo) pojo).setExtra(String.valueOf(value));
-        };
-        session.acceptResolved(-1, "later", "extra", applier);
-        session.accept("id", "abc", "id", applier);
-        SessionPojo pojo = (SessionPojo) session.finish(applier);
-        assertEquals("abc", pojo.id);
-        assertEquals("later", pojo.extra);
-        assertEquals("later", pending.get("extra"));
-
         NodeRegistry.PojoInfo sessionInfo = NodeRegistry.registerPojoOrElseThrow(SessionPojo.class);
         NodeRegistry.PropertyInfo extraField = sessionInfo.properties.get("extra");
+
+        NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(sessionCreator, 1);
+        session.acceptProperty(extraField, "later");
+        session.acceptCtorArg(0, "abc");
+        SessionPojo pojo = (SessionPojo) session.finish();
+        assertEquals("abc", pojo.id);
+        assertEquals("later", pojo.extra);
+
         NodeRegistry.PojoCreationSession fieldSession = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
-        fieldSession.acceptResolvedProperty(-1, "value", extraField);
-        fieldSession.acceptResolved(0, "id-1", "id", (receiver, key, value) -> {});
-        SessionPojo fieldPojo = (SessionPojo) fieldSession.finishProperty();
+        fieldSession.acceptProperty(extraField, "value");
+        fieldSession.acceptCtorArg(0, "id-1");
+        SessionPojo fieldPojo = (SessionPojo) fieldSession.finish();
         assertEquals("value", fieldPojo.extra);
 
         NodeRegistry.CreatorInfo jsonCreator = ReflectUtil.analyzeCreator(JsonSessionPojo.class, lookup);
         NodeRegistry.PojoCreationSession jsonSession = new NodeRegistry.PojoCreationSession(jsonCreator, 0);
-        jsonSession.acceptResolvedJsonEntry(-1, "extra", 1);
-        jsonSession.acceptResolvedJsonEntry(0, "id", "json-id");
-        JsonObject jsonObject = jsonSession.finishJsonObject();
+        jsonSession.acceptDynamic("extra", 1);
+        jsonSession.acceptCtorArg(0, "json-id");
+        JsonObject jsonObject = (JsonObject) jsonSession.finish();
         assertEquals(1, jsonObject.getInt("extra"));
+
+        NodeRegistry.PojoInfo mixedInfo = NodeRegistry.registerPojoOrElseThrow(MixedJsonSessionPojo.class);
+        NodeRegistry.PojoCreationSession mixedSession = new NodeRegistry.PojoCreationSession(mixedInfo.creatorInfo, 2);
+        mixedSession.acceptProperty(mixedInfo.properties.get("extra"), "later");
+        mixedSession.acceptDynamic("dynamic", 2);
+        mixedSession.acceptCtorArg(0, "mixed-id");
+        MixedJsonSessionPojo mixedPojo = (MixedJsonSessionPojo) mixedSession.finish();
+        assertEquals("later", mixedPojo.extra);
+        assertEquals(2, mixedPojo.getInt("dynamic"));
 
         NodeRegistry.PojoInfo containerInfo = NodeRegistry.registerPojoOrElseThrow(ContainerPojo.class);
         NodeRegistry.PojoCreationSession noArgsSession = new NodeRegistry.PojoCreationSession(containerInfo.creatorInfo, 2);
-        assertEquals(-1, noArgsSession.resolveArgIndex("plain"));
+        noArgsSession.acceptProperty(containerInfo.properties.get("plain"), "plain");
+        assertEquals("plain", ((ContainerPojo) noArgsSession.finish()).plain);
 
         NodeRegistry.PojoCreationSession growthSession = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
         for (int i = 0; i < 5; i++) {
-            growthSession.acceptResolved(-1, "v" + i, "k" + i, (receiver, key, value) -> ((SessionPojo) receiver).setExtra(String.valueOf(value)));
+            growthSession.acceptProperty(extraField, "v" + i);
         }
-        SessionPojo grown = (SessionPojo) growthSession.finish((receiver, key, value) -> ((SessionPojo) receiver).setExtra(String.valueOf(value)));
+        growthSession.acceptCtorArg(0, "grow-id");
+        SessionPojo grown = (SessionPojo) growthSession.finish();
         assertEquals("v4", grown.extra);
 
         NodeRegistry.PojoCreationSession fieldGrowth = new NodeRegistry.PojoCreationSession(sessionCreator, 0);
         for (int i = 0; i < 5; i++) {
-            fieldGrowth.acceptResolvedProperty(-1, "f" + i, extraField);
+            fieldGrowth.acceptProperty(extraField, "f" + i);
         }
-        fieldGrowth.acceptResolved(0, "field-id", "id", (receiver, key, value) -> {});
-        assertEquals("f4", ((SessionPojo) fieldGrowth.finishProperty()).extra);
+        fieldGrowth.acceptCtorArg(0, "field-id");
+        assertEquals("f4", ((SessionPojo) fieldGrowth.finish()).extra);
 
         NodeRegistry.PojoCreationSession jsonGrowth = new NodeRegistry.PojoCreationSession(jsonCreator, 0);
         for (int i = 0; i < 5; i++) {
-            jsonGrowth.acceptResolvedJsonEntry(-1, "k" + i, i);
+            jsonGrowth.acceptDynamic("k" + i, i);
         }
-        jsonGrowth.acceptResolvedJsonEntry(0, "id", "grow");
-        JsonObject grownJson = jsonGrowth.finishJsonObject();
+        jsonGrowth.acceptCtorArg(0, "grow");
+        JsonObject grownJson = (JsonObject) jsonGrowth.finish();
         assertEquals(4, grownJson.getInt("k4"));
+
+        NodeRegistry.CreatorInfo aliasCreator = ReflectUtil.analyzeCreator(AliasCreatorPojo.class, lookup);
+        NodeRegistry.PojoCreationSession duplicateSession = new NodeRegistry.PojoCreationSession(aliasCreator, 0);
+        duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("name"), "first");
+        JsonException duplicate = assertThrows(JsonException.class,
+                () -> duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("n"), "second"));
+        assertTrue(duplicate.getMessage().contains("Duplicate creator argument assignment"));
+    }
+
+    @Test
+    void testDuplicateCreatorBindingFailsAfterMaterialization() {
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(AliasCreatorPojo.class);
+        JsonException duplicate = assertThrows(JsonException.class,
+                () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
+                        AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
+        assertTrue(duplicate.getMessage().contains("Duplicate creator argument assignment"));
     }
 
     @Test

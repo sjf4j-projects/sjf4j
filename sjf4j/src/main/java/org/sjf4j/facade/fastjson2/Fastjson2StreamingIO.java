@@ -270,7 +270,7 @@ public class Fastjson2StreamingIO {
         while (!reader.nextIfObjectEnd()) {
             String key = reader.readFieldName();
 
-            int argIdx = session.resolveArgIndex(key);
+            int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
                 Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
@@ -286,7 +286,7 @@ public class Fastjson2StreamingIO {
                 } else {
                     argValue = _readNode(reader, argType, argRaw, ti.oneOfInfo, context);
                 }
-                session.acceptResolvedProperty(argIdx, argValue, null);
+                session.acceptCtorArg(argIdx, argValue);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = argValue;
                 }
@@ -324,13 +324,13 @@ public class Fastjson2StreamingIO {
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = vv;
                 }
-                session.acceptResolvedProperty(-1, vv, fi);
+                session.acceptProperty(fi, vv);
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
                 Object vv = _readRawNode(reader);
-                session.acceptResolvedJsonEntry(-1, key, vv);
+                session.acceptDynamic(key, vv);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = vv;
                 }
@@ -339,7 +339,7 @@ public class Fastjson2StreamingIO {
             }
         }
 
-        Object pojo = session.finishProperty();
+        Object pojo = session.finish();
         StreamingIO.applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
                 parentOneOfValue, UNSET, context);
         return pojo;

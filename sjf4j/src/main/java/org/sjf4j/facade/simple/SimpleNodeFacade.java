@@ -296,20 +296,20 @@ public class SimpleNodeFacade implements NodeFacade {
 
                 for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
                     String key = entry.getKey();
-                    int argIdx = session.resolveArgIndex(key);
+                    int argIdx = ci.getArgIndexOrAlias(key);
                     if (argIdx >= 0) {
                         PathSegment cps = new PathSegment.Name(ps, key);
                         Object vv = _deepNode(entry.getValue(), ci.argTypes[argIdx], cps);
-                        session.acceptResolvedJsonEntry(argIdx, key, vv);
+                        session.acceptCtorArg(argIdx, vv);
                         continue;
                     }
 
                     PathSegment cps = new PathSegment.Name(ps, key);
                     Object vv = _deepNode(entry.getValue(), Object.class, cps);
-                    session.acceptResolvedJsonEntry(argIdx, key, vv);
+                    session.acceptDynamic(key, vv);
                 }
 
-                return session.finishJsonObject();
+                return session.finish();
             }
 
             if (node instanceof List) {
@@ -365,20 +365,20 @@ public class SimpleNodeFacade implements NodeFacade {
                     String key = entry.getKey();
                     NodeRegistry.PropertyInfo fi = entry.getValue();
 
-                    int argIdx = session.resolveArgIndex(key);
+                    int argIdx = ci.getArgIndexOrAlias(key);
                     if (argIdx >= 0) {
                         Object v = fi.invokeGetter(node);
                         PathSegment cps = new PathSegment.Name(ps, key);
-                        session.acceptResolvedProperty(argIdx, _deepNode(v, ci.argTypes[argIdx], cps), fi);
+                        session.acceptCtorArg(argIdx, _deepNode(v, ci.argTypes[argIdx], cps));
                         continue;
                     }
 
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
                     Object vv = _deepNode(v, fi.type, cps);
-                    session.acceptResolvedProperty(argIdx, vv, fi);
+                    session.acceptProperty(fi, vv);
                 }
-                return session.finishProperty();
+                return session.finish();
             }
 
             return node;

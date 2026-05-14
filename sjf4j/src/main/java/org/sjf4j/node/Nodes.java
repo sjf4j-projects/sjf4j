@@ -795,14 +795,17 @@ public final class Nodes {
             JsonObject srcJo = (JsonObject) node;
             NodeRegistry.PojoInfo pojoInfo = NodeRegistry.registerPojoOrElseThrow(node.getClass());
             NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pojoInfo.creatorInfo, srcJo.size());
-            NodeRegistry.PojoPendingApplier applyJsonObject = (pojo, pendingKey, pendingValue) ->
-                    ((JsonObject) pojo).put((String) pendingKey, pendingValue);
 
             for (Map.Entry<String, Object> entry : srcJo.entrySet()) {
                 String key = entry.getKey();
-                session.accept(key, entry.getValue(), key, applyJsonObject);
+                int argIdx = pojoInfo.creatorInfo.getArgIndexOrAlias(key);
+                if (argIdx >= 0) {
+                    session.acceptCtorArg(argIdx, entry.getValue());
+                } else {
+                    session.acceptDynamic(key, entry.getValue());
+                }
             }
-            JsonObject newJo = (JsonObject) session.finish(applyJsonObject);
+            JsonObject newJo = (JsonObject) session.finish();
             return (T) newJo;
         }
         if (node instanceof List) {
@@ -837,16 +840,19 @@ public final class Nodes {
         } else if (ti.pojoInfo != null) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerPojoOrElseThrow(node.getClass());
             NodeRegistry.PojoCreationSession session = new NodeRegistry.PojoCreationSession(pi.creatorInfo, pi.propertyCount);
-            NodeRegistry.PojoPendingApplier applyPojoField = (target, pendingKey, pendingValue) ->
-                    ((NodeRegistry.PropertyInfo) pendingKey).invokeSetterIfPresent(target, pendingValue);
 
             for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()) {
                 String key = entry.getKey();
                 NodeRegistry.PropertyInfo fi = entry.getValue();
                 Object v = fi.invokeGetter(node);
-                session.accept(key, v, fi, applyPojoField);
+                int argIdx = pi.creatorInfo.getArgIndexOrAlias(key);
+                if (argIdx >= 0) {
+                    session.acceptCtorArg(argIdx, v);
+                } else {
+                    session.acceptProperty(fi, v);
+                }
             }
-            Object pojo = session.finish(applyPojoField);
+            Object pojo = session.finish();
             return (T) pojo;
         }
 

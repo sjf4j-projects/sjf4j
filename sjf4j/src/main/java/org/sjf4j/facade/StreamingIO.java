@@ -281,7 +281,7 @@ public final class StreamingIO {
         while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
             String key = reader.nextName();
 
-            int argIdx = session.resolveArgIndex(key);
+            int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
                 Type argType = Types.resolveMemberType(ownerType, ownerRawClazz, ci.argTypes[argIdx]);
                 Class<?> argRaw = Types.rawBox(argType);
@@ -297,7 +297,7 @@ public final class StreamingIO {
                 } else {
                     argValue = _readNode(reader, argType, argRaw, ti.oneOfInfo, context);
                 }
-                session.acceptResolvedProperty(argIdx, argValue, null);
+                session.acceptCtorArg(argIdx, argValue);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = argValue;
                 }
@@ -336,13 +336,13 @@ public final class StreamingIO {
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = vv;
                 }
-                session.acceptResolvedProperty(-1, vv, fi);
+                session.acceptProperty(fi, vv);
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
                 Object vv = _readRawNode(reader);
-                session.acceptResolvedJsonEntry(-1, key, vv);
+                session.acceptDynamic(key, vv);
                 if (parentOneOfKey != null && parentOneOfKey.equals(key)) {
                     parentOneOfValue = vv;
                 }
@@ -352,7 +352,7 @@ public final class StreamingIO {
         }
         reader.endObject();
 
-        Object pojo = session.finishProperty();
+        Object pojo = session.finish();
         applyDeferredParentOneOf(pojo, pi, deferredParentOneOfFi, deferredParentOneOfRaw,
                 parentOneOfValue, UNSET, context);
         return pojo;

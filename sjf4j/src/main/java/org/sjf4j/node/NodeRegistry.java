@@ -474,19 +474,13 @@ public final class NodeRegistry {
 
     }
 
-    @FunctionalInterface
-    public interface PojoPendingApplier {
-        void apply(Object pojo, Object key, Object value);
-    }
-
     public static class PojoCreationSession {
         private final CreatorInfo creatorInfo;
+        private final int pendingCapacity;
         private Object pojo;
         private Object[] args;
+        private boolean[] argAssigned;
         private int remainingArgs;
-        private Object[] pendingKeys;
-        private Object[] pendingValues;
-        private int pendingSize;
         private PropertyInfo[] pendingProperties;
         private Object[] pendingFieldValues;
         private int pendingFieldSize;
@@ -496,132 +490,63 @@ public final class NodeRegistry {
 
         public PojoCreationSession(CreatorInfo creatorInfo, int pendingCapacity) {
             this.creatorInfo = creatorInfo;
+            this.pendingCapacity = Math.max(pendingCapacity, 6);
             if (creatorInfo.hasNoArgsCreator()) {
                 this.pojo = creatorInfo.newPojoNoArgs();
                 return;
             }
             int argCount = creatorInfo.argNames == null ? 0 : creatorInfo.argNames.length;
             this.args = new Object[argCount];
+            this.argAssigned = new boolean[argCount];
             this.remainingArgs = argCount;
-            int cap = Math.max(pendingCapacity, 4);
-            this.pendingKeys = new Object[cap];
-            this.pendingValues = new Object[cap];
         }
 
-        public void accept(String name, Object value, Object pendingKey, PojoPendingApplier applier) {
-            int argIdx = resolveArgIndex(name);
-            acceptResolved(argIdx, value, pendingKey, applier);
-        }
-
-        public void acceptResolved(int argIdx, Object value, Object pendingKey, PojoPendingApplier applier) {
-            if (argIdx >= 0) {
-                setCtorArg(argIdx, value);
-                materializeIfReady(applier);
-                return;
+        public void acceptCtorArg(int argIndex, Object value) {
+            if (args == null || argIndex < 0) return;
+            if (argAssigned[argIndex]) {
+                String argName = creatorInfo.argNames != null && argIndex < creatorInfo.argNames.length
+                        ? creatorInfo.argNames[argIndex]
+                        : String.valueOf(argIndex);
+                throw new JsonException("Duplicate creator argument assignment for '" + argName + "'");
             }
-            if (pojo != null) {
-                applier.apply(pojo, pendingKey, value);
-            } else {
-                addPending(pendingKey, value);
+            argAssigned[argIndex] = true;
+            args[argIndex] = value;
+            if (--remainingArgs == 0 && pojo == null) {
+                pojo = creatorInfo.newPojoWithArgs(args);
+                _replayPendingProperties();
+                _replayPendingJsonEntries();
             }
         }
 
-        public void acceptResolvedProperty(int argIdx, Object value, PropertyInfo propertyInfo) {
-            if (argIdx >= 0) {
-                setCtorArg(argIdx, value);
-                _materializeIfReadyProperty();
-                return;
-            }
+        public void acceptProperty(PropertyInfo propertyInfo, Object value) {
             if (pojo != null) {
                 propertyInfo.invokeSetterIfPresent(pojo, value);
             } else {
-                _addPendingProperty(propertyInfo, value);
+                _ensurePendingPropertyCapacity();
+                pendingProperties[pendingFieldSize] = propertyInfo;
+                pendingFieldValues[pendingFieldSize] = value;
+                pendingFieldSize++;
             }
         }
 
-        public void acceptResolvedJsonEntry(int argIdx, String key, Object value) {
-            if (argIdx >= 0) {
-                setCtorArg(argIdx, value);
-                _materializeIfReadyJsonObject();
-                return;
-            }
+        public void acceptDynamic(String key, Object value) {
             if (pojo != null) {
                 ((JsonObject) pojo).put(key, value);
             } else {
-                _addPendingName(key, value);
+                _ensurePendingNameCapacity();
+                pendingNames[pendingNameSize] = key;
+                pendingNameValues[pendingNameSize] = value;
+                pendingNameSize++;
             }
         }
 
-        public int resolveArgIndex(String name) {
-            if (pojo != null || args == null) return -1;
-            return creatorInfo.getArgIndexOrAlias(name);
-        }
-
-        public void setCtorArg(int argIndex, Object value) {
-            if (args == null || argIndex < 0) return;
-            args[argIndex] = value;
-            remainingArgs--;
-        }
-
-        public void addPending(Object key, Object value) {
-            if (pojo != null) return;
-            _ensurePendingCapacity();
-            pendingKeys[pendingSize] = key;
-            pendingValues[pendingSize] = value;
-            pendingSize++;
-        }
-
-        public void materializeIfReady(PojoPendingApplier applier) {
-            if (pojo == null && remainingArgs == 0) {
-                pojo = creatorInfo.newPojoWithArgs(args);
-                _replayPending(applier);
-            }
-        }
-
-        public Object finish(PojoPendingApplier applier) {
-            if (pojo == null) {
-                pojo = creatorInfo.newPojoWithArgs(args);
-            }
-            _replayPending(applier);
-            return pojo;
-        }
-
-        public Object finishProperty() {
+        public Object finish() {
             if (pojo == null) {
                 pojo = creatorInfo.newPojoWithArgs(args);
             }
             _replayPendingProperties();
-            return pojo;
-        }
-
-        public JsonObject finishJsonObject() {
-            if (pojo == null) {
-                pojo = creatorInfo.newPojoWithArgs(args);
-            }
             _replayPendingJsonEntries();
-            return (JsonObject) pojo;
-        }
-
-        private void _replayPending(PojoPendingApplier applier) {
-            if (pendingSize == 0) return;
-            for (int i = 0; i < pendingSize; i++) {
-                applier.apply(pojo, pendingKeys[i], pendingValues[i]);
-            }
-            pendingSize = 0;
-        }
-
-        private void _materializeIfReadyProperty() {
-            if (pojo == null && remainingArgs == 0) {
-                pojo = creatorInfo.newPojoWithArgs(args);
-                _replayPendingProperties();
-            }
-        }
-
-        private void _addPendingProperty(PropertyInfo pi, Object value) {
-            _ensurePendingPropertyCapacity();
-            pendingProperties[pendingFieldSize] = pi;
-            pendingFieldValues[pendingFieldSize] = value;
-            pendingFieldSize++;
+            return pojo;
         }
 
         private void _replayPendingProperties() {
@@ -630,20 +555,6 @@ public final class NodeRegistry {
                 pendingProperties[i].invokeSetterIfPresent(pojo, pendingFieldValues[i]);
             }
             pendingFieldSize = 0;
-        }
-
-        private void _materializeIfReadyJsonObject() {
-            if (pojo == null && remainingArgs == 0) {
-                pojo = creatorInfo.newPojoWithArgs(args);
-                _replayPendingJsonEntries();
-            }
-        }
-
-        private void _addPendingName(String key, Object value) {
-            _ensurePendingNameCapacity();
-            pendingNames[pendingNameSize] = key;
-            pendingNameValues[pendingNameSize] = value;
-            pendingNameSize++;
         }
 
         private void _replayPendingJsonEntries() {
@@ -657,14 +568,13 @@ public final class NodeRegistry {
 
         private void _ensurePendingPropertyCapacity() {
             if (pendingProperties == null || pendingFieldValues == null) {
-                int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
+                int cap = pendingCapacity;
                 pendingProperties = new PropertyInfo[cap];
                 pendingFieldValues = new Object[cap];
                 return;
             }
             if (pendingFieldSize < pendingProperties.length) return;
             int newCap = pendingProperties.length << 1;
-            if (newCap < 4) newCap = 4;
             PropertyInfo[] newProperties = new PropertyInfo[newCap];
             Object[] newValues = new Object[newCap];
             System.arraycopy(pendingProperties, 0, newProperties, 0, pendingFieldSize);
@@ -675,14 +585,13 @@ public final class NodeRegistry {
 
         private void _ensurePendingNameCapacity() {
             if (pendingNames == null || pendingNameValues == null) {
-                int cap = Math.max(4, pendingKeys == null ? 0 : pendingKeys.length);
+                int cap = pendingCapacity;
                 pendingNames = new String[cap];
                 pendingNameValues = new Object[cap];
                 return;
             }
             if (pendingNameSize < pendingNames.length) return;
             int newCap = pendingNames.length << 1;
-            if (newCap < 4) newCap = 4;
             String[] newNames = new String[newCap];
             Object[] newValues = new Object[newCap];
             System.arraycopy(pendingNames, 0, newNames, 0, pendingNameSize);
@@ -691,22 +600,6 @@ public final class NodeRegistry {
             pendingNameValues = newValues;
         }
 
-        private void _ensurePendingCapacity() {
-            if (pendingKeys == null || pendingValues == null) {
-                pendingKeys = new Object[4];
-                pendingValues = new Object[4];
-                return;
-            }
-            if (pendingSize < pendingKeys.length) return;
-            int newCap = pendingKeys.length << 1;
-            if (newCap < 4) newCap = 4;
-            Object[] newKeys = new Object[newCap];
-            Object[] newValues = new Object[newCap];
-            System.arraycopy(pendingKeys, 0, newKeys, 0, pendingSize);
-            System.arraycopy(pendingValues, 0, newValues, 0, pendingSize);
-            pendingKeys = newKeys;
-            pendingValues = newValues;
-        }
     }
 
     // CreatorInfo
