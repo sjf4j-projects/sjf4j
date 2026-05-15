@@ -127,11 +127,10 @@ public final class StreamingIO {
     private static Object _readNull(StreamingReader reader, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         reader.nextNull();
-
-        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
-        if (vci != null) {
-            return vci.rawToValue(null);
-        }
+//        NodeRegistry.ValueCodecInfo vci = resolveValueCodecInfo(rawClazz, context);
+//        if (vci != null) {
+//            return vci.rawToValue(null);
+//        }
         return null;
     }
 
@@ -650,22 +649,14 @@ public final class StreamingIO {
                 return;
             }
 
-            Class<?> rawClazz = node.getClass();
-
-            if (node instanceof String || node instanceof Character) {
+            if (node instanceof String) {
                 writer.writeString(node.toString());
                 return;
             }
-            if (node instanceof Enum) {
-                writer.writeString(((Enum<?>) node).name());
-                return;
-            }
-
             if (node instanceof Number) {
                 writer.writeNumber((Number) node);
                 return;
             }
-
             if (node instanceof Boolean) {
                 writer.writeBoolean((Boolean) node);
                 return;
@@ -697,6 +688,7 @@ public final class StreamingIO {
                 return;
             }
 
+            Class<?> rawClazz = node.getClass();
             if (rawClazz == JsonObject.class) {
                 writer.startObject();
                 int cnt = 0;
@@ -744,6 +736,15 @@ public final class StreamingIO {
                 return;
             }
 
+            if (node instanceof Character) {
+                writer.writeString(node.toString());
+                return;
+            }
+            if (node instanceof Enum) {
+                writer.writeString(((Enum<?>) node).name());
+                return;
+            }
+
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
             if (ti.hasValueCodecs()) {
                 String valueFormat = context.defaultValueFormat(rawClazz);
@@ -760,7 +761,6 @@ public final class StreamingIO {
                 writePojo(writer, node, pi, context);
                 return;
             }
-
             throw new BindingException("unsupported node type '" + Types.name(node) + "'");
 
         } catch (BindingException e) {

@@ -122,11 +122,10 @@ public class Fastjson2StreamingIO {
     private static Object _readNull(JSONReader reader, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         reader.readNull();
-
-        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
-        if (vci != null) {
-            return vci.rawToValue(null);
-        }
+//        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+//        if (vci != null) {
+//            return vci.rawToValue(null);
+//        }
         return null;
     }
 
@@ -154,10 +153,10 @@ public class Fastjson2StreamingIO {
         if (rawClazz == Long.class) return reader.readInt64Value();
         if (rawClazz == Float.class) return reader.readFloatValue();
         if (rawClazz == Double.class) return reader.readDoubleValue();
+        if (rawClazz == BigDecimal.class) return reader.readBigDecimal();
         if (rawClazz == Short.class) return reader.readInt16Value();
         if (rawClazz == Byte.class) return reader.readInt8Value();
         if (rawClazz == BigInteger.class) return reader.readBigInteger();
-        if (rawClazz == BigDecimal.class) return reader.readBigDecimal();
 
         NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
         if (vci != null) {
@@ -609,22 +608,14 @@ public class Fastjson2StreamingIO {
                 return;
             }
 
-            Class<?> rawClazz = node.getClass();
-
-            if (node instanceof String || node instanceof Character) {
+            if (node instanceof String) {
                 writer.writeString(node.toString());
                 return;
             }
-            if (node instanceof Enum) {
-                writer.writeString(((Enum<?>) node).name());
-                return;
-            }
-
             if (node instanceof Number) {
                 _writeNumber(writer, (Number) node);
                 return;
             }
-
             if (node instanceof Boolean) {
                 writer.writeBool((Boolean) node);
                 return;
@@ -657,6 +648,7 @@ public class Fastjson2StreamingIO {
                 return;
             }
 
+            Class<?> rawClazz = node.getClass();
             if (rawClazz == JsonObject.class) {
                 writer.startObject();
                 for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
@@ -704,6 +696,15 @@ public class Fastjson2StreamingIO {
                     _writeNode(writer, v, context);
                 }
                 writer.endArray();
+                return;
+            }
+
+            if (node instanceof Character) {
+                writer.writeString(node.toString());
+                return;
+            }
+            if (node instanceof Enum) {
+                writer.writeString(((Enum<?>) node).name());
                 return;
             }
 

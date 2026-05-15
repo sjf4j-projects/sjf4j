@@ -624,28 +624,20 @@ public final class Nodes {
             if (cross) return asBoolean(node);
             else return toBoolean(node);
         }
-        if (clazz == Character.class) {
-            if (cross) return asChar(node);
-            else return toChar(node);
-        }
-        if (clazz.isEnum()) {
-            if (cross) return asEnum(node, (Class<Enum>) clazz);
-            return toEnum(node, (Class<Enum>) clazz);
-        }
-
         if (Map.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> vc = Types.rawBox(vt);
             return _toMap(node, clazz, vc);
         }
-        if (clazz == JsonObject.class) return toJsonObject(node);
-        if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
-
         if (List.class.isAssignableFrom(clazz)) {
             Type vt = Types.resolveTypeArgument(type, List.class, 0);
             Class<?> vc = Types.rawBox(vt);
             return _toList(node, clazz, vc);
         }
+
+        if (clazz == JsonObject.class) return toJsonObject(node);
+        if (JsonObject.class.isAssignableFrom(clazz)) return toJojo(node, clazz);
+
         if (clazz == JsonArray.class) return toJsonArray(node);
         if (JsonArray.class.isAssignableFrom(clazz)) return toJajo(node, clazz);
         if (clazz.isArray()) return toArray(node, clazz.getComponentType());
@@ -653,6 +645,15 @@ public final class Nodes {
             Type vt = Types.resolveTypeArgument(type, Set.class, 0);
             Class<?> vc = Types.rawBox(vt);
             return _toSet(node, clazz, vc);
+        }
+
+        if (clazz == Character.class) {
+            if (cross) return asChar(node);
+            else return toChar(node);
+        }
+        if (clazz.isEnum()) {
+            if (cross) return asEnum(node, (Class<Enum>) clazz);
+            return toEnum(node, (Class<Enum>) clazz);
         }
 
         NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(clazz);
@@ -781,13 +782,23 @@ public final class Nodes {
     @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     public static <T> T copy(T node) {
         if (node == null) return null;
-        Class<?> rawClazz = node.getClass();
 
+        if (node instanceof String || node instanceof Number || node instanceof Boolean) {
+            return node;
+        }
+
+        Class<?> rawClazz = node.getClass();
         if (node instanceof Map) {
             Map<String, Object> map = NodeRegistry.newMapContainer(rawClazz, true);
             map.putAll((Map<String, Object>) node);
             return (T) map;
         }
+        if (node instanceof List) {
+            List<Object> list = NodeRegistry.newListContainer(rawClazz, true);
+            list.addAll((List<Object>) node);
+            return (T) list;
+        }
+
         if (rawClazz == JsonObject.class) {
             return (T) new JsonObject(((JsonObject) node).toMap());
         }
@@ -807,11 +818,6 @@ public final class Nodes {
             }
             JsonObject newJo = (JsonObject) session.finish();
             return (T) newJo;
-        }
-        if (node instanceof List) {
-            List<Object> list = NodeRegistry.newListContainer(rawClazz, true);
-            list.addAll((List<Object>) node);
-            return (T) list;
         }
         if (rawClazz == JsonArray.class) {
             return (T) new JsonArray(((JsonArray) node).toList());
@@ -904,7 +910,7 @@ public final class Nodes {
             sb.append((Object) null);
             return;
         }
-        Class<?> rawClazz = node.getClass();
+
         if (node instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) node;
             sb.append("{");
@@ -917,6 +923,19 @@ public final class Nodes {
             sb.append("}");
             return;
         }
+        if (node instanceof List) {
+            List<Object> list = (List<Object>) node;
+            sb.append("[");
+            for (int i = 0; i < list.size(); i++) {
+                Object v = list.get(i);
+                if (i > 0) sb.append(", ");
+                _inspect(v, sb, shapeOnly);
+            }
+            sb.append("]");
+            return;
+        }
+
+        Class<?> rawClazz = node.getClass();
         if (rawClazz == JsonObject.class) {
             JsonObject jo = (JsonObject) node;
             sb.append("J{");
@@ -943,17 +962,6 @@ public final class Nodes {
                 _inspect(v, sb, shapeOnly);
             });
             sb.append("}");
-            return;
-        }
-        if (node instanceof List) {
-            List<Object> list = (List<Object>) node;
-            sb.append("[");
-            for (int i = 0; i < list.size(); i++) {
-                Object v = list.get(i);
-                if (i > 0) sb.append(", ");
-                _inspect(v, sb, shapeOnly);
-            }
-            sb.append("]");
             return;
         }
         if (rawClazz == JsonArray.class) {
@@ -1844,11 +1852,11 @@ public final class Nodes {
     public static Object removeInObject(Object node, String key) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(key, "key");
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).remove(key);
-        }
         if (node instanceof Map) {
             return ((Map<String, Object>) node).remove(key);
+        }
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).remove(key);
         }
         if (NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
             throw new JsonException("cannot remove field '" + key + "' in POJO '" +

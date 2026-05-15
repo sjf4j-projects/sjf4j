@@ -8,7 +8,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
@@ -144,11 +143,10 @@ public class Jackson2StreamingIO {
     private static Object _readNull(JsonParser parser, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         parser.nextToken();
-
-        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
-        if (vci != null) {
-            return vci.rawToValue(null);
-        }
+//        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
+//        if (vci != null) {
+//            return vci.rawToValue(null);
+//        }
         return null;
     }
 
@@ -765,22 +763,14 @@ public class Jackson2StreamingIO {
                 return;
             }
 
-            Class<?> rawClazz = node.getClass();
-
-            if (node instanceof String || node instanceof Character) {
+            if (node instanceof String) {
                 gen.writeString(node.toString());
                 return;
             }
-            if (node instanceof Enum) {
-                gen.writeString(((Enum<?>) node).name());
-                return;
-            }
-
             if (node instanceof Number) {
-                _writeValue(gen, (Number) node);
+                _writeNumber(gen, (Number) node);
                 return;
             }
-
             if (node instanceof Boolean) {
                 gen.writeBoolean((Boolean) node);
                 return;
@@ -809,6 +799,7 @@ public class Jackson2StreamingIO {
                 return;
             }
 
+            Class<?> rawClazz = node.getClass();
             if (rawClazz == JsonObject.class) {
                 gen.writeStartObject();
                 for (Map.Entry<String, Object> entry : ((JsonObject) node).entrySet()) {
@@ -847,6 +838,15 @@ public class Jackson2StreamingIO {
                     _writeNode(gen, v, context);
                 }
                 gen.writeEndArray();
+                return;
+            }
+
+            if (node instanceof Character) {
+                gen.writeString(node.toString());
+                return;
+            }
+            if (node instanceof Enum) {
+                gen.writeString(((Enum<?>) node).name());
                 return;
             }
 
@@ -907,7 +907,7 @@ public class Jackson2StreamingIO {
         gen.writeEndObject();
     }
 
-    private static void _writeValue(JsonGenerator gen, Number value) throws IOException {
+    private static void _writeNumber(JsonGenerator gen, Number value) throws IOException {
         if (value instanceof Long) {
             gen.writeNumber((Long) value);
         } else if (value instanceof Integer) {

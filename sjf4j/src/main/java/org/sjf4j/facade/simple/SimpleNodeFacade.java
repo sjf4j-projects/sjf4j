@@ -127,20 +127,15 @@ public class SimpleNodeFacade implements NodeFacade {
                 }
             }
 
-            if (node instanceof String || node instanceof Character) {
+            if (node instanceof String) {
                 return _readString(node.toString(), rawClazz, ps);
             }
-            if (node instanceof Enum) {
-                return _readString(((Enum<?>) node).name(), rawClazz, ps);
-            }
-
             if (node instanceof Number) {
                 if (Number.class.isAssignableFrom(rawClazz)) {
                     return Numbers.to((Number) node, rawClazz);
                 }
                 throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
             }
-
             if (node instanceof Boolean) {
                 if (rawClazz == Boolean.class) {
                     return node;
@@ -152,12 +147,12 @@ public class SimpleNodeFacade implements NodeFacade {
                 return _readFromMap((Map<String, Object>) node, rawClazz, type, deepCopy, ps);
             }
 
-            if (node instanceof JsonObject) {
-                return _readFromJsonObject((JsonObject) node, rawClazz, type, deepCopy, ps);
-            }
-
             if (node instanceof List) {
                 return _readFromList((List<Object>) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof JsonObject) {
+                return _readFromJsonObject((JsonObject) node, rawClazz, type, deepCopy, ps);
             }
 
             if (node instanceof JsonArray) {
@@ -170,6 +165,13 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (node instanceof Set) {
                 return _readFromSet((Set<Object>) node, rawClazz, type, deepCopy, ps);
+            }
+
+            if (node instanceof Character) {
+                return _readString(node.toString(), rawClazz, ps);
+            }
+            if (node instanceof Enum) {
+                return _readString(((Enum<?>) node).name(), rawClazz, ps);
             }
 
             NodeRegistry.PojoInfo oldPi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo; // source pi
@@ -266,6 +268,10 @@ public class SimpleNodeFacade implements NodeFacade {
                 return _readNode(node, type, targetRaw, null, true, ps);
             }
 
+            if (node instanceof String || node instanceof Number || node instanceof Boolean) {
+                return node;
+            }
+
             Class<?> nodeClazz = node.getClass();
             if (node instanceof Map) {
                 Map<String, Object> srcMap = (Map<String, Object>) node;
@@ -276,6 +282,17 @@ public class SimpleNodeFacade implements NodeFacade {
                     newMap.put(k, _deepNode(v, valueType, cps));
                 });
                 return newMap;
+            }
+
+            if (node instanceof List) {
+                List<Object> srcList = (List<Object>) node;
+                List<Object> newList = NodeRegistry.newListContainer(nodeClazz, true);
+                Type elemType = Types.resolveTypeArgument(type, List.class, 0);
+                for (int i = 0; i < srcList.size(); i++) {
+                    PathSegment cps = new PathSegment.Index(ps, i);
+                    newList.add(_deepNode(srcList.get(i), elemType, cps));
+                }
+                return newList;
             }
 
             if (node.getClass() == JsonObject.class) {
@@ -310,17 +327,6 @@ public class SimpleNodeFacade implements NodeFacade {
                 }
 
                 return session.finish();
-            }
-
-            if (node instanceof List) {
-                List<Object> srcList = (List<Object>) node;
-                List<Object> newList = NodeRegistry.newListContainer(nodeClazz, true);
-                Type elemType = Types.resolveTypeArgument(type, List.class, 0);
-                for (int i = 0; i < srcList.size(); i++) {
-                    PathSegment cps = new PathSegment.Index(ps, i);
-                    newList.add(_deepNode(srcList.get(i), elemType, cps));
-                }
-                return newList;
             }
             if (node instanceof JsonArray) {
                 JsonArray srcJa = (JsonArray) node;
@@ -776,13 +782,8 @@ public class SimpleNodeFacade implements NodeFacade {
         try {
             if (node == null) return null;
 
-            Class<?> rawClazz = node.getClass();
-
-            if (node instanceof String || node instanceof Character) {
+            if (node instanceof String) {
                 return node.toString();
-            }
-            if (node instanceof Enum) {
-                return ((Enum<?>) node).name();
             }
 
             if (node instanceof Number) {
@@ -815,6 +816,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 return newList;
             }
 
+            Class<?> rawClazz = node.getClass();
             if (node instanceof JsonObject) {
                 JsonObject jo = (JsonObject) node;
                 Map<String, Object> newMap = new LinkedHashMap<>(jo.size());
@@ -849,7 +851,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 return newList;
             }
 
-            if (node.getClass().isArray()) {
+            if (rawClazz.isArray()) {
                 int len = Array.getLength(node);
                 List<Object> newList = new ArrayList<>(len);
                 for (int i = 0; i < len; i++) {
@@ -870,6 +872,13 @@ public class SimpleNodeFacade implements NodeFacade {
                     newList.add(vv);
                 }
                 return newList;
+            }
+
+            if (node instanceof Character) {
+                return node.toString();
+            }
+            if (node instanceof Enum) {
+                return ((Enum<?>) node).name();
             }
 
             NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(rawClazz);
