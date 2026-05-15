@@ -31,7 +31,7 @@ public abstract class TypeReference<T> {
         if (superclass instanceof ParameterizedType) {
             this.type = ((ParameterizedType) superclass).getActualTypeArguments()[0];
         } else {
-            throw new JsonException("Invalid TypeReference declaration: missing type parameter");
+            throw new JsonException("invalid TypeReference declaration: missing type parameter");
         }
     }
 

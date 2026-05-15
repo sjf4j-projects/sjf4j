@@ -472,7 +472,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toString(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: String for key '" + key + "'", e);
+            throw new JsonException("cannot get String at '" + key + "'", e);
         }
     }
 
@@ -500,7 +500,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toNumber(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Number for key '" + key + "'", e);
+            throw new JsonException("cannot get Number at '" + key + "'", e);
         }
     }
     
@@ -520,7 +520,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asNumber(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Number", e);
+            throw new JsonException("cannot coerce to Number at '" + key + "'", e);
         }
     }
 
@@ -532,7 +532,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Long for key '" + key + "'", e);
+            throw new JsonException("cannot get Long at '" + key + "'", e);
         }
     }
     
@@ -552,7 +552,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Long", e);
+            throw new JsonException("cannot coerce to Long at '" + key + "'", e);
         }
     }
 
@@ -564,7 +564,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toInt(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Integer for key '" + key + "'", e);
+            throw new JsonException("cannot get Integer at '" + key + "'", e);
         }
     }
     
@@ -584,7 +584,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asInt(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Integer", e);
+            throw new JsonException("cannot coerce to Integer at '" + key + "'", e);
         }
     }
 
@@ -596,7 +596,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Short for key '" + key + "'", e);
+            throw new JsonException("cannot get Short at '" + key + "'", e);
         }
     }
     
@@ -616,7 +616,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Short", e);
+            throw new JsonException("cannot coerce to Short at '" + key + "'", e);
         }
     }
 
@@ -628,7 +628,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Byte for key '" + key + "'", e);
+            throw new JsonException("cannot get Byte at '" + key + "'", e);
         }
     }
     
@@ -648,7 +648,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Byte", e);
+            throw new JsonException("cannot coerce to Byte at '" + key + "'", e);
         }
     }
 
@@ -660,7 +660,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Double for key '" + key + "'", e);
+            throw new JsonException("cannot get Double at '" + key + "'", e);
         }
     }
     
@@ -680,7 +680,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Double", e);
+            throw new JsonException("cannot coerce to Double at '" + key + "'", e);
         }
     }
 
@@ -692,7 +692,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Float for key '" + key + "'", e);
+            throw new JsonException("cannot get Float at '" + key + "'", e);
         }
     }
     
@@ -712,7 +712,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Float", e);
+            throw new JsonException("cannot coerce to Float at '" + key + "'", e);
         }
     }
 
@@ -724,7 +724,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: BigInteger for key '" + key + "'", e);
+            throw new JsonException("cannot get BigInteger at '" + key + "'", e);
         }
     }
     
@@ -744,7 +744,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to BigInteger", e);
+            throw new JsonException("cannot coerce to BigInteger at '" + key + "'", e);
         }
     }
 
@@ -756,7 +756,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: BigDecimal for key '" + key + "'", e);
+            throw new JsonException("cannot get BigDecimal at '" + key + "'", e);
         }
     }
     
@@ -776,7 +776,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to BigDecimal", e);
+            throw new JsonException("cannot coerce to BigDecimal at '" + key + "'", e);
         }
     }
 
@@ -788,7 +788,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Boolean for key '" + key + "'", e);
+            throw new JsonException("cannot get Boolean at '" + key + "'", e);
         }
     }
     
@@ -808,7 +808,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.asBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to Boolean", e);
+            throw new JsonException("cannot coerce to Boolean at '" + key + "'", e);
         }
     }
 
@@ -820,7 +820,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: JsonObject for key '" + key + "'", e);
+            throw new JsonException("cannot get JsonObject at '" + key + "'", e);
         }
     }
 
@@ -832,7 +832,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toMap(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Map<String,Object> for key '" + key + "'", e);
+            throw new JsonException("cannot get Map<String,Object> at '" + key + "'", e);
         }
     }
 
@@ -844,7 +844,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toMap(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("get failed: key '" + key + "' to Map<String," + clazz.getName() + ">", e);
+            throw new JsonException("cannot get Map<String," + clazz.getName() + "> at '" + key + "'", e);
         }
     }
 
@@ -856,7 +856,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: JsonArray for key '" + key + "'", e);
+            throw new JsonException("cannot get JsonArray at '" + key + "'", e);
         }
     }
 
@@ -868,7 +868,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toList(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: List<Object> for key '" + key + "'", e);
+            throw new JsonException("cannot get List<Object> at '" + key + "'", e);
         }
     }
 
@@ -880,7 +880,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toList(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("get failed: key '" + key + "' to List<" + clazz.getName() + ">", e);
+            throw new JsonException("cannot get List<" + clazz.getName() + "> at '" + key + "'", e);
         }
     }
 
@@ -892,7 +892,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toArray(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Object[] for key '" + key + "'", e);
+            throw new JsonException("cannot get Object[] at '" + key + "'", e);
         }
     }
 
@@ -904,7 +904,7 @@ public class JsonObject extends JsonContainer {
             Object value = getNode(key);
             return Nodes.toArray(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("get failed: key '" + key + "' to " + clazz.getName() + "[]", e);
+            throw new JsonException("cannot get " + clazz.getName() + "[] at '" + key + "'", e);
         }
     }
 
@@ -916,7 +916,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("get failed: " + clazz.getName() + " for key '" + key + "'", e);
+            throw new JsonException("cannot get " + clazz.getName() + " at '" + key + "'", e);
         }
     }
     
@@ -938,7 +938,7 @@ public class JsonObject extends JsonContainer {
         try {
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: key '" + key + "' to " + clazz.getName(), e);
+            throw new JsonException("cannot coerce to " + clazz.getName() + " at '" + key + "'", e);
         }
     }
     
@@ -1047,7 +1047,7 @@ public class JsonObject extends JsonContainer {
     public Object remove(String key) {
         Objects.requireNonNull(key, "key");
         if (pi != null && pi.properties.containsKey(key)) {
-            throw new JsonException("Cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
+            throw new JsonException("cannot remove key '" + key + "' from JOJO '" + getClass().getName() +
                     "'. Only dynamic properties in JsonObject are removable.");
         }
         if (dynamicMap != null) {

@@ -92,13 +92,13 @@ public final class Numbers {
         Objects.requireNonNull(number, "number");
         if (number instanceof Long) return (long) number;
         if ((number instanceof Double || number instanceof Float) && !inLongRange(number.doubleValue())) {
-            throw new JsonException("Cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
+            throw new JsonException("cannot convert floating-point Number '" + number + "' to Long: out of 64-bit range");
         }
         if (number instanceof BigInteger && !inLongRange((BigInteger) number)) {
-            throw new JsonException("Cannot convert BigInteger '" + number + "' to Long: out of 64-bit range");
+            throw new JsonException("cannot convert BigInteger '" + number + "' to Long: out of 64-bit range");
         }
         if (number instanceof BigDecimal && !inLongRange((BigDecimal) number)) {
-            throw new JsonException("Cannot convert BigDecimal '" + number + "' to Long: out of 64-bit range");
+            throw new JsonException("cannot convert BigDecimal '" + number + "' to Long: out of 64-bit range");
         }
         return number.longValue();
     }
@@ -109,7 +109,7 @@ public final class Numbers {
     public static int toInt(Number number) {
         long longValue = toLong(number);
         if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
-            throw new JsonException("Cannot convert Number '" + number + "' to Integer: out of 32-bit range");
+            throw new JsonException("cannot convert Number '" + number + "' to Integer: out of 32-bit range");
         }
         return (int) longValue;
     }
@@ -120,7 +120,7 @@ public final class Numbers {
     public static short toShort(Number number) {
         long longValue = toLong(number);
         if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
-            throw new JsonException("Cannot convert Number '" + number + "' to Short: out of 16-bit range");
+            throw new JsonException("cannot convert Number '" + number + "' to Short: out of 16-bit range");
         }
         return (short) longValue;
     }
@@ -131,7 +131,7 @@ public final class Numbers {
     public static byte toByte(Number number) {
         long longValue = toLong(number);
         if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
-            throw new JsonException("Cannot convert Number '" + number + "' to Byte: out of 8-bit range");
+            throw new JsonException("cannot convert Number '" + number + "' to Byte: out of 8-bit range");
         }
         return (byte) longValue;
     }
@@ -144,7 +144,7 @@ public final class Numbers {
         if (number instanceof Double) return (double) number;
         double d = number.doubleValue();
         if (!Double.isFinite(d)) {
-            throw new JsonException("Cannot convert Number '" + number + "' to Double: non-finite value");
+            throw new JsonException("cannot convert Number '" + number + "' to Double: non-finite value");
         }
         return d;
     }
@@ -158,7 +158,7 @@ public final class Numbers {
 
         float f = number.floatValue();
         if (!Float.isFinite(f)) {
-            throw new JsonException("Cannot convert Number '" + number + "' to Float: non-finite value");
+            throw new JsonException("cannot convert Number '" + number + "' to Float: non-finite value");
         }
         return f;
     }
@@ -173,7 +173,7 @@ public final class Numbers {
         if (number instanceof Double || number instanceof Float) {
             double d = number.doubleValue();
             if (!Double.isFinite(d)) {
-                throw new JsonException("Cannot convert non-finite floating-point '" + number + "' to BigInteger");
+                throw new JsonException("cannot convert non-finite floating-point '" + number + "' to BigInteger");
             }
             return BigInteger.valueOf((long) d);
         }
@@ -209,7 +209,7 @@ public final class Numbers {
         if (boxed == Float.class) return (T) Float.valueOf(Numbers.toFloat(number));
         if (boxed == BigInteger.class) return (T) Numbers.toBigInteger(number);
         if (boxed == BigDecimal.class) return (T) Numbers.toBigDecimal(number);
-        throw new JsonException("Cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
+        throw new JsonException("cannot convert " + Types.name(number) + " '" + number + "' to " + clazz.getName());
     }
 
 
@@ -244,13 +244,13 @@ public final class Numbers {
      * Parses a numeric string into an appropriate Number implementation.
      */
     public static Number parseNumber(String text) {
-        if (text == null || text.isEmpty()) throw new JsonException("Invalid number text: value is null or empty");
+        if (text == null || text.isEmpty()) throw new JsonException("invalid number text: value is null or empty");
         text = text.replace("_", "").trim();
-        if (text.isEmpty()) throw new JsonException("Invalid number text: value is empty");
+        if (text.isEmpty()) throw new JsonException("invalid number text: value is empty");
 
         final int len = text.length();
         if (len > MAX_NUMBER_DIGITS) {
-            throw new JsonException("Invalid number text: too large (" + len + " digits): '" +
+            throw new JsonException("invalid number text: too large (" + len + " digits): '" +
                     Strings.truncate(text) + "'");
         }
 
@@ -270,7 +270,7 @@ public final class Numbers {
                 try {
                     return new BigDecimal(text);
                 } catch (NumberFormatException ex) {
-                    throw new JsonException("Invalid number text: '" + Strings.truncate(text) + "'", ex);
+                    throw new JsonException("invalid number text: '" + Strings.truncate(text) + "'", ex);
                 }
             }
         }
@@ -284,7 +284,7 @@ public final class Numbers {
             try {
                 return Integer.parseInt(text);
             } catch (NumberFormatException e) {
-                throw new JsonException("Invalid number text: '" + Strings.truncate(text) + "'", e);
+                throw new JsonException("invalid number text: '" + Strings.truncate(text) + "'", e);
             }
         }
 
@@ -302,7 +302,7 @@ public final class Numbers {
             try {
                 return new BigInteger(text);
             } catch (NumberFormatException ex) {
-                throw new JsonException("Invalid number text: '" + Strings.truncate(text) + "'", ex);
+                throw new JsonException("invalid number text: '" + Strings.truncate(text) + "'", ex);
             }
         }
     }

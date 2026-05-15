@@ -81,12 +81,12 @@ public class Jackson2StreamingIO {
                 case NULL:
                     return _readNull(parser, rawBoxed, context);
                 default:
-                    throw new BindingException("Unexpected token '" + token + "'");
+                    throw new BindingException("unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into '" + type + "'", null, e);
+            throw new BindingException("failed to read streaming into '" + type + "'", null, e);
         }
     }
 
@@ -115,7 +115,7 @@ public class Jackson2StreamingIO {
                 parser.nextToken();
                 return null;
             default:
-                throw new BindingException("Unexpected token '" + parser.currentToken() + "'");
+                throw new BindingException("unexpected token '" + parser.currentToken() + "'");
         }
     }
 
@@ -167,7 +167,7 @@ public class Jackson2StreamingIO {
             return vci.rawToValue(b);
         }
 
-        throw new BindingException("Cannot read boolean value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read boolean value into type '" + rawClazz.getName() + "'");
     }
 
     private static Object _readNumber(JsonParser parser, Class<?> rawClazz, StreamingContext context)
@@ -225,7 +225,7 @@ public class Jackson2StreamingIO {
             return vci.rawToValue(n);
         }
 
-        throw new BindingException("Cannot read number value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read number value into type '" + rawClazz.getName() + "'");
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -254,7 +254,7 @@ public class Jackson2StreamingIO {
             return vci.rawToValue(s);
         }
 
-        throw new BindingException("Cannot read string value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read string value into type '" + rawClazz.getName() + "'");
     }
 
     private static Object _readObject(JsonParser parser, Type type, Class<?> rawClazz,
@@ -292,7 +292,7 @@ public class Jackson2StreamingIO {
             return readPojo(parser, type, rawClazz, pi, context);
         }
 
-        throw new BindingException("Cannot read object value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read object value into type '" + rawClazz.getName() + "'");
     }
 
     public static Object readPojo(JsonParser parser, Type ownerType, Class<?> ownerRawClazz,
@@ -368,20 +368,20 @@ public class Jackson2StreamingIO {
                 NodeRegistry.OneOfInfo fieldOneOf = fi.oneOfInfo;
                 if (hasParentOneOf && fieldOneOf != null && fieldOneOf.scope == OneOf.Scope.PARENT) {
                     if (!fieldOneOf.path.isEmpty()) {
-                        throw new BindingException("OneOf scope=PARENT does not support path discriminator");
+                        throw new BindingException("oneOf scope=PARENT does not support path discriminator");
                     }
                     String parentKey = fieldOneOf.key;
                     if (parentOneOfKey == null) {
                         parentOneOfKey = parentKey;
                     } else if (!parentOneOfKey.equals(parentKey)) {
-                        throw new BindingException("At most one OneOf parent discriminator key is supported per class");
+                        throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                     }
                     Class<?> targetClazz = fieldOneOf.resolveByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
                     if (targetClazz != null) {
                         vv = _readNode(parser, targetClazz, Types.rawBox(targetClazz), null, context);
                     } else {
                         if (deferredParentOneOfFi != null) {
-                            throw new BindingException("At most one OneOf field with scope=PARENT is supported per class");
+                            throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
                         }
                         deferredParentOneOfFi = fi;
                         deferredParentOneOfRaw = _readRawNode(parser);
@@ -472,7 +472,7 @@ public class Jackson2StreamingIO {
             return vci.rawToValue(list);
         }
 
-        throw new BindingException("Cannot read array value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read array value into type '" + rawClazz.getName() + "'");
     }
 
     private static Object _readField(JsonParser parser, NodeRegistry.PropertyInfo fi,
@@ -551,7 +551,7 @@ public class Jackson2StreamingIO {
                 parser.nextToken();
                 return valueCodecInfo.rawToValue(null);
             default:
-                throw new BindingException("Cannot read value into type '" + rawClazz.getName() + "'");
+                throw new BindingException("cannot read value into type '" + rawClazz.getName() + "'");
         }
     }
 
@@ -690,7 +690,7 @@ public class Jackson2StreamingIO {
             }
             if (token != JsonToken.START_OBJECT) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Node must be a JSON object, when OneOf has a CURRENT discriminator");
+                throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator");
             }
             while (discriminatorParser.nextToken() != JsonToken.END_OBJECT) {
                 String name = discriminatorParser.currentName();
@@ -867,11 +867,11 @@ public class Jackson2StreamingIO {
                 return;
             }
 
-            throw new BindingException("Unsupported node type '" + Types.name(node) + "'");
+            throw new BindingException("unsupported node type '" + Types.name(node) + "'");
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", null, e);
+            throw new BindingException("failed to write node of type '" + Types.name(node) + "'", null, e);
         }
     }
 

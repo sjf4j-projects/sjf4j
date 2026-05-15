@@ -79,7 +79,7 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
 //            SnakeStreamingUtil.endDocument(parser);
 //            return node;
 //        } catch (IOException e) {
-//            throw new JsonException("Failed to read YAML streaming into node of type '" + type + "'", e);
+//            throw new JsonException("failed to read YAML streaming into node of type '" + type + "'", e);
 //        }
 //    }
 //
@@ -91,7 +91,7 @@ public class SnakeYamlFacade implements YamlFacade<SnakeReader, SnakeWriter> {
 //            SnakeStreamingUtil.writeNode(emitter, node);
 //            SnakeStreamingUtil.endDocument(emitter);
 //        } catch (IOException e) {
-//            throw new JsonException("Failed to write node of type '" + TypeUtil.typeName(node) + "' to YAML streaming", e);
+//            throw new JsonException("failed to write node of type '" + TypeUtil.typeName(node) + "' to YAML streaming", e);
 //        }
 //    }
 

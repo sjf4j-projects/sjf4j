@@ -55,7 +55,7 @@ class FacadeMethodCoverageTest {
         assertThrows(BindingException.class, () -> facade.writeNodeAsBytesPlugin(Map.of("a", 1)));
         BindingException failed = assertThrows(BindingException.class,
                 () -> facade.failedToWrite(Map.of("a", 1), new RuntimeException("x")));
-        assertTrue(failed.getMessage().contains("Failed to write node type"));
+        assertTrue(failed.getMessage().contains("failed to write node type"));
     }
 
     @Test

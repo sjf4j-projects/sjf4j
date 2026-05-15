@@ -236,7 +236,7 @@ public class SnakeReader implements StreamingReader {
         if (low.equals("false") || low.equals("no") || low.equals("off")) {
             return false;
         }
-        throw new BindingException("Expect a Boolean but got '" + value + "'");
+        throw new BindingException("expected Boolean, but was '" + value + "'");
     }
 
     /**
@@ -251,7 +251,7 @@ public class SnakeReader implements StreamingReader {
                 value.equalsIgnoreCase("null") || value.equals("~")) {
             return;
         }
-        throw new BindingException("Expect a Null but got '" + value + "'");
+        throw new BindingException("expected null, but was '" + value + "'");
     }
 
     /**
@@ -360,7 +360,7 @@ public class SnakeReader implements StreamingReader {
 //        if (low.equals("false") || low.equals("no") || low.equals("off")) {
 //            return false;
 //        }
-//        throw new BindingException("Expect a Boolean but got '" + value + "'");
+//        throw new BindingException("expected Boolean, but was '" + value + "'");
 //    }
 
 }

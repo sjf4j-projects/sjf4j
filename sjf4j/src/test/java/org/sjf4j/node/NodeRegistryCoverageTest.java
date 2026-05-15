@@ -596,7 +596,7 @@ class NodeRegistryCoverageTest {
         duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("name"), "first");
         JsonException duplicate = assertThrows(JsonException.class,
                 () -> duplicateSession.acceptCtorArg(aliasCreator.getArgIndexOrAlias("n"), "second"));
-        assertTrue(duplicate.getMessage().contains("Duplicate creator argument assignment"));
+        assertTrue(duplicate.getMessage().contains("duplicate creator argument assignment"));
     }
 
     @Test
@@ -605,7 +605,7 @@ class NodeRegistryCoverageTest {
         JsonException duplicate = assertThrows(JsonException.class,
                 () -> StreamingIO.readPojo(new SimpleJsonReader(new StringReader("{\"name\":\"first\",\"n\":\"second\"}")),
                         AliasCreatorPojo.class, AliasCreatorPojo.class, pi, StreamingContext.EMPTY));
-        assertTrue(duplicate.getMessage().contains("Duplicate creator argument assignment"));
+        assertTrue(duplicate.getMessage().contains("duplicate creator argument assignment"));
     }
 
     @Test

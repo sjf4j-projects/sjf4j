@@ -335,7 +335,7 @@ class NodesCoverageEdgeTest {
         assertEquals(2, Nodes.removeInObject(removableMap, "count"));
         assertEquals(2, Nodes.removeInObject(jsonObject, "count"));
         JsonException beanRemove = assertThrows(JsonException.class, () -> Nodes.removeInObject(bean, "name"));
-        assertTrue(beanRemove.getMessage().contains("Cannot remove field 'name'"));
+        assertTrue(beanRemove.getMessage().contains("cannot remove field 'name'"));
         assertEquals("b", Nodes.removeInArray(new ArrayList<>(Arrays.asList("a", "b")), -1));
         assertThrows(JsonException.class, () -> Nodes.removeInArray(numbers, 0));
         assertThrows(JsonException.class, () -> Nodes.removeInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0));

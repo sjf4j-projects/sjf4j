@@ -107,7 +107,7 @@ class PatchesSemanticsTest {
         JsonException e = assertThrows(JsonException.class,
                 () -> Patches.mergePatch(target, JsonObject.of("name", null)));
 
-        assertTrue(e.getMessage().contains("Cannot remove field 'name'"));
+        assertTrue(e.getMessage().contains("cannot remove field 'name'"));
         assertEquals("han", target.getName());
         assertEquals(1, target.getCount());
     }

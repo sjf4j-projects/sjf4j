@@ -479,11 +479,11 @@ public final class GsonNodes {
     }
 
     private static JsonException notNode(Object node) {
-        return new JsonException("Not a Gson's JsonElement, but was '" + Types.name(node) + "'");
+        return new JsonException("not a Gson's JsonElement, but was '" + Types.name(node) + "'");
     }
 
     private static JsonException expected(String expected, Object node) {
-        return new JsonException("Expected " + expected + " but was " + Types.name(node));
+        return new JsonException("expected " + expected + " but was " + Types.name(node));
     }
 
     private static JsonException unsupported(String method) {

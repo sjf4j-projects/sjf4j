@@ -70,7 +70,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -86,7 +86,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -101,7 +101,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -116,7 +116,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             reader.endDocument();
             return node;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into node of '" + type + "'", e);
+            throw new BindingException("failed to read streaming into node of '" + type + "'", e);
         }
     }
 
@@ -149,7 +149,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writer.flush();
             writer.flushTo(output);
         } catch (Exception e) {
-            throw new BindingException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
+            throw new BindingException("failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
     }
 
@@ -166,7 +166,7 @@ public interface StreamingFacade<R extends StreamingReader, W extends StreamingW
             writer.flush();
             writer.flushTo(output);
         } catch (Exception e) {
-            throw new BindingException("Failed to write node type '" + Types.name(node) + "' to streaming", e);
+            throw new BindingException("failed to write node type '" + Types.name(node) + "' to streaming", e);
         }
     }
 

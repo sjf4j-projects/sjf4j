@@ -417,13 +417,13 @@ public class FacadeNodes {
 //    public static Object putInObject(Object node, String key, Object value) {
 //        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.putInObject(node, key, value);
 //        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.putInObject(node, key, value);
-//        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+//        throw new JsonException("unknown node type '" + Types.name(node) + "'");
 //    }
 //
 //    public static Object setInArray(Object node, int idx, Object value) {
 //        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.setInArray(node, idx, value);
 //        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.setInArray(node, idx, value);
-//        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+//        throw new JsonException("unknown node type '" + Types.name(node) + "'");
 //    }
 //
 //    public static void addInArray(Object node, Object value) {
@@ -435,7 +435,7 @@ public class FacadeNodes {
 //            GsonNodes.addInArray(node, value);
 //            return;
 //        }
-//        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+//        throw new JsonException("unknown node type '" + Types.name(node) + "'");
 //    }
 //
 //    public static void addInArray(Object node, int idx, Object value) {
@@ -447,19 +447,19 @@ public class FacadeNodes {
 //            GsonNodes.addInArray(node, idx, value);
 //            return;
 //        }
-//        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+//        throw new JsonException("unknown node type '" + Types.name(node) + "'");
 //    }
 //
 //    public static Object removeInObject(Object node, String key) {
 //        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.removeInObject(node, key);
 //        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.removeInObject(node, key);
-//        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+//        throw new JsonException("unknown node type '" + Types.name(node) + "'");
 //    }
 //
 //    public static Object removeInArray(Object node, int idx) {
 //        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) return Jackson2Nodes.removeInArray(node, idx);
 //        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) return GsonNodes.removeInArray(node, idx);
-//        throw new JsonException("Unknown node type '" + Types.name(node) + "'");
+//        throw new JsonException("unknown node type '" + Types.name(node) + "'");
 //    }
 
     /**
@@ -603,11 +603,11 @@ public class FacadeNodes {
     }
 
     private static JsonException _unknownNode(Object node) {
-        return new JsonException("Unknown node type '" + Types.name(node) + "'");
+        return new JsonException("unknown node type '" + Types.name(node) + "'");
     }
 
     private static JsonException _unknownNode(Class<?> clazz) {
-        return new JsonException("Unknown node type '" + clazz.getName() + "'");
+        return new JsonException("unknown node type '" + clazz.getName() + "'");
     }
 
 }

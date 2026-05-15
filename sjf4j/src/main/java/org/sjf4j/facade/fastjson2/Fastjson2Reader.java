@@ -79,7 +79,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void startObject() throws IOException {
         peeked = null;
         if (!reader.nextIfObjectStart()) {
-            throw new BindingException("Expected token 'START_OBJECT', but got " + reader.current());
+            throw new BindingException("expected token 'START_OBJECT', but got " + reader.current());
         }
     }
 
@@ -90,7 +90,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void endObject() throws IOException {
         peeked = null;
         if (!reader.nextIfObjectEnd()) {
-            throw new BindingException("Expected token 'END_OBJECT', but got " + reader.current());
+            throw new BindingException("expected token 'END_OBJECT', but got " + reader.current());
         }
     }
 
@@ -101,7 +101,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void startArray() throws IOException {
         peeked = null;
         if (!reader.nextIfArrayStart()) {
-            throw new BindingException("Expected token 'START_ARRAY', but got " + reader.current());
+            throw new BindingException("expected token 'START_ARRAY', but got " + reader.current());
         }
     }
 
@@ -112,7 +112,7 @@ public class Fastjson2Reader implements StreamingReader {
     public void endArray() throws IOException {
         peeked = null;
         if (!reader.nextIfArrayEnd()) {
-            throw new BindingException("Expected token 'END_ARRAY', but got " + reader.current());
+            throw new BindingException("expected token 'END_ARRAY', but got " + reader.current());
         }
     }
 

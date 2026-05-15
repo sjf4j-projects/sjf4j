@@ -74,7 +74,7 @@ public final class Types {
             return rawClazz(upperBounds.length > 0 ? upperBounds[0] : Object.class);
         }
 
-        throw new JsonException("Cannot resolve raw class from type: " + type);
+        throw new JsonException("cannot resolve raw class from type: " + type);
     }
 
     /**

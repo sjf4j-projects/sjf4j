@@ -471,7 +471,7 @@ public class Fastjson2FacadeTest {
         Fastjson2JsonFacade facade = newFacade(StreamingContext.StreamingMode.PLUGIN_MODULE);
 
         JsonException ex = assertThrows(JsonException.class, () -> facade.readNode("{", Book.class));
-        assertTrue(ex.getMessage().contains("Failed to read JSON"));
+        assertTrue(ex.getMessage().contains("failed to read JSON"));
         assertFalse(ex.getMessage().contains("OneOf is not supported in Fastjson2 PLUGIN_MODULE mode"));
     }
 

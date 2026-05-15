@@ -93,14 +93,14 @@ class PropertyAccessorResolutionTest {
     void overloadedSetterFailsFastEvenWithGetterAnchor() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> NodeRegistry.registerPojoOrElseThrow(SetterAnchorPojo.class));
-        assertTrue(ex.getMessage().contains("Ambiguous setter"));
+        assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
     void ambiguousSetterFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> NodeRegistry.registerPojoOrElseThrow(AmbiguousSetterPojo.class));
-        assertTrue(ex.getMessage().contains("Ambiguous setter"));
+        assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
@@ -113,7 +113,7 @@ class PropertyAccessorResolutionTest {
     void childSetterOverloadDoesNotSilentlyOverrideParentSetter() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> NodeRegistry.registerPojoOrElseThrow(ChildSetterOverloadPojo.class));
-        assertTrue(ex.getMessage().contains("Ambiguous setter"));
+        assertTrue(ex.getMessage().contains("ambiguous setter"));
     }
 
     @Test
@@ -130,6 +130,6 @@ class PropertyAccessorResolutionTest {
     void incompatibleAccessorTypesFailFast() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> NodeRegistry.registerPojoOrElseThrow(IncompatibleAccessorPojo.class));
-        assertTrue(ex.getMessage().contains("Incompatible getter/setter types"));
+        assertTrue(ex.getMessage().contains("incompatible getter/setter types"));
     }
 }

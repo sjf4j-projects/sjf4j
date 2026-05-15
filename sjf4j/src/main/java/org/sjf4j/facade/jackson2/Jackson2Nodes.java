@@ -61,7 +61,7 @@ public final class Jackson2Nodes {
         if (jsonNode.isBoolean()) return NodeKind.VALUE_BOOLEAN_FACADE;
         if (jsonNode.isObject()) return NodeKind.OBJECT_FACADE;
         if (jsonNode.isArray()) return NodeKind.ARRAY_FACADE;
-        if (jsonNode.isPojo()) throw new JsonException("Not support POJONode of Jackson2");
+        if (jsonNode.isPojo()) throw new JsonException("not support POJONode of Jackson2");
         return NodeKind.UNKNOWN;
     }
 
@@ -475,7 +475,7 @@ public final class Jackson2Nodes {
             an.set(idx, vv);
             return old;
         }
-        throw new JsonException("Cannot set/add index " + idx + " in ArrayNode of size " +
+        throw new JsonException("cannot set/add index " + idx + " in ArrayNode of size " +
                 an.size() + " (index < size: modify; index == size: append)");
     }
 
@@ -497,7 +497,7 @@ public final class Jackson2Nodes {
         ArrayNode an = (ArrayNode) node;
         idx = idx < 0 ? an.size() + idx : idx;
         if (idx < 0 || idx > an.size()) {
-            throw new JsonException("Cannot insert index " + idx + " in ArrayNode of size " + an.size());
+            throw new JsonException("cannot insert index " + idx + " in ArrayNode of size " + an.size());
         }
         an.insert(idx, (JsonNode) value);
     }
@@ -520,7 +520,7 @@ public final class Jackson2Nodes {
             ArrayNode an = (ArrayNode) node;
             idx = idx < 0 ? an.size() + idx : idx;
             if (idx < 0 || idx >= an.size()) {
-                throw new JsonException("Cannot remove index " + idx + " in ArrayNode of size " + an.size());
+                throw new JsonException("cannot remove index " + idx + " in ArrayNode of size " + an.size());
             }
             return an.remove(idx);
         }
@@ -529,11 +529,11 @@ public final class Jackson2Nodes {
 
 
     private static JsonException _notNode(Object node) {
-        return new JsonException("Not a Jackson 2.x JsonNode, but was '" + Types.name(node) + "'");
+        return new JsonException("not a Jackson 2.x JsonNode, but was '" + Types.name(node) + "'");
     }
 
     private static JsonException _expected(String expected, Object node) {
-        return new JsonException("Expected " + expected + " but was " + Types.name(node));
+        return new JsonException("expected " + expected + " but was " + Types.name(node));
     }
 
 

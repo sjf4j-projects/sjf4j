@@ -132,7 +132,7 @@ public interface ValueCodec<V, R> {
             try {
                 return new URL(raw);
             } catch (MalformedURLException e) {
-                throw new JsonException("Invalid URL: " + raw, e);
+                throw new JsonException("invalid URL: " + raw, e);
             }
         }
 
@@ -815,7 +815,7 @@ public interface ValueCodec<V, R> {
             try {
                 return InetAddress.getByName(raw);
             } catch (UnknownHostException e) {
-                throw new JsonException("Invalid InetAddress: " + raw, e);
+                throw new JsonException("invalid InetAddress: " + raw, e);
             }
         }
 

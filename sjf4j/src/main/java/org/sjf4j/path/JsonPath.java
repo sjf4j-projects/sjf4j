@@ -193,8 +193,8 @@ public class JsonPath {
             value = getNode(container);
             return action.apply(value);
         } catch (Exception e) {
-            throw new JsonException("get '" + target + "' failed: path='" + this + "', containerType='" +
-                    Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
+            throw new JsonException("cannot get " + target + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" +  Types.name(value), e);
         }
     }
 
@@ -204,8 +204,8 @@ public class JsonPath {
             value = getNode(container);
             return action.apply(value);
         } catch (Exception e) {
-            throw new JsonException("getAs '" + target + "' failed: path='" + this + "', containerType='" +
-                    Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
+            throw new JsonException("cannot coerce to " + target + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" +  Types.name(value), e);
         }
     }
 
@@ -629,8 +629,8 @@ public class JsonPath {
             value = eval(container);
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("eval failed: path='" + this + "', clazz='" + clazz.getName() +
-                    "', containerType='" +  Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
+            throw new JsonException("cannot eval " + clazz.getName() + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" +  Types.name(value), e);
         }
     }
 
@@ -643,8 +643,8 @@ public class JsonPath {
             value = eval(container);
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("evalAs failed: path='" + this + "', clazz='" + clazz.getName() +
-                    "', containerType='" +  Types.name(container) + "', valueType='" +  Types.name(value) + "'", e);
+            throw new JsonException("cannot coerce to " + clazz.getName() + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" +  Types.name(value), e);
         }
     }
 

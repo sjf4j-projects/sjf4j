@@ -68,7 +68,7 @@ public final class NodeRegistry {
         TypeInfo ti = TYPE_INFO_CACHE.get(clazz);
         if (ti != null) {
             if (mustPojo && ti.pojoInfo == null) {
-                throw new JsonException("Class '" + clazz.getName() + "' is not a POJO");
+                throw new JsonException("class '" + clazz.getName() + "' is not a POJO");
             }
             return ti;
         }
@@ -76,7 +76,7 @@ public final class NodeRegistry {
         ValueCodecInfo vci = ReflectUtil.analyzeNodeValue(clazz);
         if (vci != null) {
             if (mustPojo) {
-                throw new JsonException("Class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
+                throw new JsonException("class '" + clazz.getName() + "' is annotated with @NodeValue, not a POJO");
             }
             ti = new TypeInfo(clazz, vci, null, null, null, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -94,7 +94,7 @@ public final class NodeRegistry {
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
             if (mustPojo) {
-                throw new JsonException("Class '" + clazz.getName() + "' is a container, not a POJO");
+                throw new JsonException("class '" + clazz.getName() + "' is a container, not a POJO");
             }
             ti = new TypeInfo(clazz, null, null, null, ci, null);
             TYPE_INFO_CACHE.put(clazz, ti);
@@ -166,7 +166,7 @@ public final class NodeRegistry {
         Objects.requireNonNull(valueCodec, "valueCodec");
         Class<R> rawClazz = valueCodec.rawClass();
         if (rawClazz != Object.class && !NodeKind.plainOf(rawClazz).isRaw())
-            throw new JsonException("Invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
+            throw new JsonException("invalid raw type in ValueCodec " + valueCodec.getClass().getName() + ": " +
                     rawClazz.getName() + ". The raw type must be one of String, Number, Boolean, Map, List or Object.");
         Class<N> valueClazz = valueCodec.valueClass();
         Objects.requireNonNull(valueClazz, "valueClazz");
@@ -185,7 +185,7 @@ public final class NodeRegistry {
             return;
         }
         if (oldTi.pojoInfo != null || oldTi.oneOfInfo != null || oldTi.containerInfo != null) {
-            throw new JsonException("Type '" + valueClazz.getName() +
+            throw new JsonException("type '" + valueClazz.getName() +
                     "' is already classified as a non-ValueCodec node type");
         }
         TYPE_INFO_CACHE.put(valueClazz, _newTypeInfoWithValueCodec(oldTi, vci));
@@ -194,7 +194,7 @@ public final class NodeRegistry {
     private static TypeInfo _newTypeInfoWithValueCodec(TypeInfo ti, ValueCodecInfo vci) {
         if (vci.isDefaultFormat()) {
             if (ti.valueCodecInfo != null) {
-                throw new JsonException("ValueCodec already registered for type '" + vci.valueClazz.getName() +
+                throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and default format ''");
             }
             return new TypeInfo(ti.clazz, vci, ti.namedValueCodecs,
@@ -204,7 +204,7 @@ public final class NodeRegistry {
         for (int i = 0; i < ti.namedValueCodecs.length; i++) {
             ValueCodecInfo cur = ti.namedValueCodecs[i];
             if (cur.valueFormat.equals(vci.valueFormat)) {
-                throw new JsonException("ValueCodec already registered for type '" + vci.valueClazz.getName() +
+                throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and valueFormat '" + vci.valueFormat + "'");
             }
         }
@@ -223,7 +223,7 @@ public final class NodeRegistry {
         TypeInfo ti = registerTypeInfo(clazz);
         ValueCodecInfo vci = ti.getValueCodecInfo(valueFormat);
         if (vci == null) {
-            throw new JsonException("No ValueCodec registered for type '" + clazz.getName() +
+            throw new JsonException("no ValueCodec registered for type '" + clazz.getName() +
                     "' with valueFormat '" + valueFormat + "'");
         }
         return vci;
@@ -249,7 +249,7 @@ public final class NodeRegistry {
             if (fallback) {
                 return new LinkedHashMap<>();
             }
-            throw new BindingException("Unsupported Map target type '" + mapType.getName() + "'");
+            throw new BindingException("unsupported Map target type '" + mapType.getName() + "'");
         }
         return (Map<String, T>) ci.newContainer();
     }
@@ -264,7 +264,7 @@ public final class NodeRegistry {
             if (fallback) {
                 return new ArrayList<>();
             }
-            throw new BindingException("Unsupported List target type '" + listType.getName() + "'");
+            throw new BindingException("unsupported List target type '" + listType.getName() + "'");
         }
         return (List<T>) ci.newContainer();
     }
@@ -279,7 +279,7 @@ public final class NodeRegistry {
             if (fallback) {
                 return new LinkedHashSet<>();
             }
-            throw new BindingException("Unsupported Set target type '" + setType.getName() + "'");
+            throw new BindingException("unsupported Set target type '" + setType.getName() + "'");
         }
         return (Set<T>) ci.newContainer();
     }
@@ -357,7 +357,7 @@ public final class NodeRegistry {
         public ContainerInfo(Class<?> clazz, NodeKind kind,
                              MethodHandle noArgsCtorHandle, Supplier<?> noArgsCtorLambda) {
             if (kind != NodeKind.OBJECT_MAP && kind != NodeKind.ARRAY_LIST && kind != NodeKind.ARRAY_SET) {
-                throw new JsonException("Invalid container kind '" + kind + "' for " + clazz.getName());
+                throw new JsonException("invalid container kind '" + kind + "' for " + clazz.getName());
             }
             this.clazz = clazz;
             this.kind = kind;
@@ -373,10 +373,10 @@ public final class NodeRegistry {
                 try {
                     return noArgsCtorHandle.invoke();
                 } catch (Throwable e) {
-                    throw new BindingException("Failed to create container instance of " + clazz.getName(), e);
+                    throw new BindingException("failed to create container instance of " + clazz.getName(), e);
                 }
             }
-            throw new BindingException("Failed to create container instance of " + clazz.getName());
+            throw new BindingException("failed to create container instance of " + clazz.getName());
         }
     }
 
@@ -510,7 +510,7 @@ public final class NodeRegistry {
                 String argName = creatorInfo.argNames != null && argIndex < creatorInfo.argNames.length
                         ? creatorInfo.argNames[argIndex]
                         : String.valueOf(argIndex);
-                throw new BindingException("Duplicate creator argument assignment for '" + argName + "'");
+                throw new BindingException("duplicate creator argument assignment for '" + argName + "'");
             }
             argAssigned[argIndex] = true;
             args[argIndex] = value;
@@ -725,10 +725,10 @@ public final class NodeRegistry {
                 try {
                     return noArgsCtorHandle.invoke();
                 } catch (Throwable e) {
-                    throw new BindingException("Failed to invoke constructor of " + clazz, e);
+                    throw new BindingException("failed to invoke constructor of " + clazz, e);
                 }
             }
-            throw new BindingException("Failed to create instance of " + clazz + ": Not found no-args constructor");
+            throw new BindingException("failed to create instance of " + clazz + ": Not found no-args constructor");
         }
 
 
@@ -738,7 +738,7 @@ public final class NodeRegistry {
         public Object newPojoWithArgs(Object[] args) {
             Objects.requireNonNull(args, "args");
             if (argsCreatorHandle == null) {
-                throw new BindingException("Failed to create instance of " + clazz + ": No creator constructor");
+                throw new BindingException("failed to create instance of " + clazz + ": No creator constructor");
             }
             try {
                 for (int i = 0; i < args.length; i++) {
@@ -766,7 +766,7 @@ public final class NodeRegistry {
 
                 return argsCreatorHandle.invokeWithArguments(args);
             } catch (Throwable e) {
-                throw new BindingException("Failed to invoke creator constructor of " + clazz, e);
+                throw new BindingException("failed to invoke creator constructor of " + clazz, e);
             }
         }
 
@@ -915,12 +915,12 @@ public final class NodeRegistry {
                 return lambdaGetter.apply(receiver);
             }
             if (getter == null) {
-                throw new BindingException("No getter available for property '" + name + "' of " + type);
+                throw new BindingException("no getter available for property '" + name + "' of " + type);
             }
             try {
                 return getter.invoke(receiver);
             } catch (Throwable e) {
-                throw new BindingException("Failed to invoke getter for property '" + name + "' of " + type, e);
+                throw new BindingException("failed to invoke getter for property '" + name + "' of " + type, e);
             }
         }
 
@@ -944,10 +944,10 @@ public final class NodeRegistry {
                     return;
                 }
                 if (setter == null)
-                    throw new BindingException("No setter available for property '" + name + "' of " + type);
+                    throw new BindingException("no setter available for property '" + name + "' of " + type);
                 setter.invoke(receiver, value);
             } catch (Throwable e) {
-                throw new BindingException("Failed to invoke setter for property '" + name + "' of type '" + type +
+                throw new BindingException("failed to invoke setter for property '" + name + "' of type '" + type +
                         "' with value '" + Types.name(value) + "' (node type: " + Types.name(receiver)+ ")", e);
             }
         }
@@ -991,18 +991,18 @@ public final class NodeRegistry {
                 try {
                     return valueCodec.valueToRaw(value);
                 } catch (Exception e) {
-                    throw new BindingException("Failed to valueToRaw() for value type " + valueClazz.getName() +
+                    throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
             } else if (valueToRawHandle != null) {
                 try {
                     return valueToRawHandle.invoke(value);
                 } catch (Throwable e) {
-                    throw new BindingException("Failed to valueToRaw() for value type " + valueClazz.getName() +
+                    throw new BindingException("failed to valueToRaw() for value type " + valueClazz.getName() +
                             " using annotated method " + valueToRawHandle, e);
                 }
             }
-            throw new BindingException("No value binding found for type " + valueClazz.getName() +
+            throw new BindingException("no value binding found for type " + valueClazz.getName() +
                     ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
         }
 
@@ -1011,24 +1011,24 @@ public final class NodeRegistry {
          */
         public Object rawToValue(Object raw) {
             if (raw != null && !rawClazz.isInstance(raw))
-                throw new BindingException("Cannot rawToValue() from raw type " + raw.getClass().getName() +
+                throw new BindingException("cannot rawToValue() from raw type " + raw.getClass().getName() +
                         " to value type " + valueClazz.getName() + ". Expected raw type: " + rawClazz.getName());
             if (valueCodec != null) {
                 try {
                     return valueCodec.rawToValue(raw);
                 } catch (Exception e) {
-                    throw new BindingException("Failed to rawToValue() to value type " + valueClazz.getName() +
+                    throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
             } else if (rawToValueHandle != null) {
                 try {
                     return rawToValueHandle.invoke(raw);
                 } catch (Throwable e) {
-                    throw new BindingException("Failed to rawToValue() to value type " + valueClazz.getName() +
+                    throw new BindingException("failed to rawToValue() to value type " + valueClazz.getName() +
                             " using annotated method " + rawToValueHandle, e);
                 }
             }
-            throw new BindingException("No value binding found for type " + valueClazz.getName() +
+            throw new BindingException("no value binding found for type " + valueClazz.getName() +
                     ": missing @" + NodeValue.class.getName()+ " annotation and no ValueCodec registered");
         }
 
@@ -1040,18 +1040,18 @@ public final class NodeRegistry {
                 try {
                     return valueCodec.valueCopy(value);
                 } catch (Exception e) {
-                    throw new BindingException("Failed to valueCopy() for value type " + valueClazz.getName() +
+                    throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
                             " using ValueCodec " + valueCodec.getClass().getName(), e);
                 }
             } else if (valueCopyHandle != null) {
                 try {
                     return valueCopyHandle.invoke(value);
                 } catch (Throwable e) {
-                    throw new BindingException("Failed to valueCopy() for value type " + valueClazz.getName() +
+                    throw new BindingException("failed to valueCopy() for value type " + valueClazz.getName() +
                             " using annotated method " + valueCopyHandle, e);
                 }
             }
-            throw new BindingException("No value binding found for type " + valueClazz.getName() +
+            throw new BindingException("no value binding found for type " + valueClazz.getName() +
                     ": missing @" + NodeValue.class.getName() + " annotation and no ValueCodec registered");
         }
 

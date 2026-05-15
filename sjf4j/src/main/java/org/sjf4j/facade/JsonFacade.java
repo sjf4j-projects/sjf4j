@@ -260,15 +260,15 @@ public interface JsonFacade<R extends StreamingReader, W extends StreamingWriter
     }
 
     default BindingException unsupportedMode(StreamingContext.StreamingMode mode) {
-        return new BindingException("Unsupported streaming mode '" + mode + "'");
+        return new BindingException("unsupported streaming mode '" + mode + "'");
     }
 
     default BindingException failedToRead(Type type, Exception e) {
-        throw new BindingException("Failed to read JSON into type '" + type + "'", e);
+        throw new BindingException("failed to read JSON into type '" + type + "'", e);
     }
 
     default BindingException failedToWrite(Object node, Exception e) {
-        throw new BindingException("Failed to write node type '" + Types.name(node) + "' into JSON", e);
+        throw new BindingException("failed to write node type '" + Types.name(node) + "' into JSON", e);
     }
 
 

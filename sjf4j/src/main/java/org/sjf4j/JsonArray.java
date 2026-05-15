@@ -87,7 +87,7 @@ public class JsonArray extends JsonContainer {
                 for (int i = 0; i < nodeList.size(); i++) {
                     Object v = nodeList.get(i);
                     if (v != null && !elemClazz.isInstance(v))
-                        throw new JsonException("Element type mismatch at " + i + ": expected " + elemClazz.getName() +
+                        throw new JsonException("element type mismatch at [" + i + "]: expected " + elemClazz.getName() +
                                 ", but was " + v.getClass().getName());
                 }
             }
@@ -315,7 +315,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toString(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: String at index " + idx, e);
+            throw new JsonException("cannot get String at [" + idx + "]", e);
         }
     }
     /**
@@ -334,7 +334,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asString(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to String", e);
+            throw new JsonException("cannot coerce to String at [" + idx + "]", e);
         }
     }
 
@@ -346,7 +346,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toNumber(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Number at index " + idx, e);
+            throw new JsonException("cannot get Number at [" + idx + "]", e);
         }
     }
 
@@ -366,7 +366,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asNumber(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Number", e);
+            throw new JsonException("cannot coerce to Number at [" + idx + "]", e);
         }
     }
 
@@ -378,7 +378,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toLong(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Long at index " + idx, e);
+            throw new JsonException("cannot get Long at [" + idx + "]", e);
         }
     }
 
@@ -398,7 +398,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asLong(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Long", e);
+            throw new JsonException("cannot coerce to Long at [" + idx + "]", e);
         }
     }
 
@@ -410,7 +410,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toInt(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Integer at index " + idx, e);
+            throw new JsonException("cannot get Integer at [" + idx + "]", e);
         }
     }
 
@@ -430,7 +430,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asInt(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Integer", e);
+            throw new JsonException("cannot coerce to Integer at [" + idx + "]", e);
         }
     }
 
@@ -442,7 +442,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toShort(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Short at index " + idx, e);
+            throw new JsonException("cannot get Short at [" + idx + "]", e);
         }
     }
 
@@ -462,7 +462,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asShort(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Short", e);
+            throw new JsonException("cannot coerce to Short at [" + idx + "]", e);
         }
     }
 
@@ -474,7 +474,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toByte(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Byte at index " + idx, e);
+            throw new JsonException("cannot get Byte at [" + idx + "]", e);
         }
     }
 
@@ -494,7 +494,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asByte(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Byte", e);
+            throw new JsonException("cannot coerce to Byte at [" + idx + "]", e);
         }
     }
 
@@ -506,7 +506,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toDouble(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Double at index " + idx, e);
+            throw new JsonException("cannot get Double at [" + idx + "]", e);
         }
     }
 
@@ -526,7 +526,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asDouble(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Double", e);
+            throw new JsonException("cannot coerce to Double at [" + idx + "]", e);
         }
     }
 
@@ -538,7 +538,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toFloat(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Float at index " + idx, e);
+            throw new JsonException("cannot get Float at [" + idx + "]", e);
         }
     }
 
@@ -558,7 +558,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asFloat(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Float", e);
+            throw new JsonException("cannot coerce to Float at [" + idx + "]", e);
         }
     }
 
@@ -570,7 +570,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: BigInteger at index " + idx, e);
+            throw new JsonException("cannot get BigInteger at [" + idx + "]", e);
         }
     }
 
@@ -590,7 +590,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asBigInteger(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to BigInteger", e);
+            throw new JsonException("cannot coerce to BigInteger at [" + idx + "]", e);
         }
     }
 
@@ -602,7 +602,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: BigDecimal at index " + idx, e);
+            throw new JsonException("cannot get BigDecimal at [" + idx + "]", e);
         }
     }
 
@@ -622,7 +622,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asBigDecimal(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to BigDecimal", e);
+            throw new JsonException("cannot coerce to BigDecimal at [" + idx + "]", e);
         }
     }
 
@@ -634,7 +634,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Boolean at index " + idx, e);
+            throw new JsonException("cannot get Boolean at [" + idx + "]", e);
         }
     }
 
@@ -654,7 +654,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.asBoolean(value);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Boolean", e);
+            throw new JsonException("cannot coerce to Boolean at [" + idx + "]", e);
         }
     }
 
@@ -666,7 +666,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toJsonObject(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: JsonObject at index " + idx, e);
+            throw new JsonException("cannot get JsonObject at [" + idx + "]", e);
         }
     }
 
@@ -678,7 +678,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toMap(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Map<String,Object> at index " + idx, e);
+            throw new JsonException("cannot get Map<String,Object> at [" + idx + "]", e);
         }
     }
 
@@ -690,8 +690,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toMap(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to Map<String," +
-                    clazz.getName() + ">", e);
+            throw new JsonException("cannot coerce to Map<String," + clazz.getName() + "> at [" + idx + "]", e);
         }
     }
 
@@ -703,7 +702,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toJsonArray(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: JsonArray at index " + idx, e);
+            throw new JsonException("cannot get JsonArray at [" + idx + "]", e);
         }
     }
 
@@ -715,7 +714,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toList(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: List<Object> at index " + idx, e);
+            throw new JsonException("cannot get List<Object> at [" + idx + "]", e);
         }
     }
 
@@ -727,7 +726,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toList(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to List<" + clazz.getName() + ">", e);
+            throw new JsonException("cannot coerce to List<" + clazz.getName() + "> at [" + idx + "]", e);
         }
     }
 
@@ -739,7 +738,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toArray(value);
         } catch (Exception e) {
-            throw new JsonException("get failed: Object[] at index " + idx, e);
+            throw new JsonException("cannot get Object[] at [" + idx + "]", e);
         }
     }
 
@@ -751,7 +750,7 @@ public class JsonArray extends JsonContainer {
             Object value = getNode(idx);
             return Nodes.toArray(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to " + clazz.getName() + "[]", e);
+            throw new JsonException("cannot coerce to " + clazz.getName() + "[] at [" + idx + "]", e);
         }
     }
 
@@ -764,7 +763,7 @@ public class JsonArray extends JsonContainer {
         try {
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("get failed: " + clazz.getName() + " at index " + idx, e);
+            throw new JsonException("cannot get " + clazz.getName() + " at [" + idx + "]", e);
         }
     }
 
@@ -787,7 +786,7 @@ public class JsonArray extends JsonContainer {
         try {
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("as failed: value at index " + idx + " to " + clazz.getName(), e);
+            throw new JsonException("cannot coerce to " + clazz.getName() + " at [" + idx + "]", e);
         }
     }
 
@@ -808,7 +807,7 @@ public class JsonArray extends JsonContainer {
      */
     public void add(Object object) {
         if (object != null && !elementType().isInstance(object))
-            throw new JsonException("Type mismatch: cannot add element of type '" + object.getClass().getName() +
+            throw new JsonException("cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
         if (nodeList == null) nodeList = new ArrayList<>();
@@ -842,12 +841,12 @@ public class JsonArray extends JsonContainer {
      */
     public void add(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
-            throw new JsonException("Type mismatch: cannot add element of type '" + object.getClass().getName() +
+            throw new JsonException("cannot add element of type '" + object.getClass().getName() +
                     " to JsonArray with elementType '" + elementType().getName() + "'");
 
         int pidx = pos(idx);
         if (pidx < 0 || pidx > size()) {
-            throw new JsonException("Cannot add index " + idx + " in JsonArray of size " + size());
+            throw new JsonException("cannot add at index " + idx + " in JsonArray of size " + size());
         }
 
         if (nodeList == null) nodeList = new ArrayList<>();
@@ -862,12 +861,12 @@ public class JsonArray extends JsonContainer {
      */
     public Object set(int idx, Object object) {
         if (object != null && !elementType().isInstance(object))
-            throw new JsonException("Type mismatch: cannot set element of type '" + object.getClass().getName() +
+            throw new JsonException("cannot set element of type '" + object.getClass().getName() +
                     " in JsonArray with elementType '" + elementType().getName() + "'");
 
         int pidx = pos(idx);
         if (pidx < 0 || pidx >= size()) {
-            throw new JsonException("Cannot set index " + idx + " in JsonArray of size " + size());
+            throw new JsonException("cannot set at index " + idx + " in JsonArray of size " + size());
         }
         if (nodeList == null) nodeList = new ArrayList<>();
         return nodeList.set(pidx, object);
@@ -907,7 +906,7 @@ public class JsonArray extends JsonContainer {
         if (nodeList == null) return null;
         int pidx = pos(idx);
         if (pidx < 0 || pidx >= size()) {
-            throw new JsonException("Cannot remove index " + idx + " in JsonArray of size " + size());
+            throw new JsonException("cannot remove at index " + idx + " in JsonArray of size " + size());
         }
         return nodeList.remove(pidx);
     }

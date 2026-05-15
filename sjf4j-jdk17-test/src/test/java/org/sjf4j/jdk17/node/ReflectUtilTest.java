@@ -162,7 +162,7 @@ class ReflectUtilTest {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         JsonException ex = assertThrows(JsonException.class,
                 () -> ReflectUtil.analyzeCreator(MultipleCreatorsPojo.class, lookup));
-        assertTrue(ex.getMessage().contains("Multiple creator definitions"));
+        assertTrue(ex.getMessage().contains("multiple creator definitions"));
     }
 
     static class MultipleCreatorsPojo {

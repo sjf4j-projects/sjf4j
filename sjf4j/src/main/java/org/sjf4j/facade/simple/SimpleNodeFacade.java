@@ -83,7 +83,7 @@ public class SimpleNodeFacade implements NodeFacade {
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
+            throw new BindingException("failed to read node from '" + Types.name(node) + "' to '" + type + "'", e);
         }
     }
 
@@ -102,7 +102,7 @@ public class SimpleNodeFacade implements NodeFacade {
                 if (mapped == null || rawClazz.isInstance(mapped)) {
                     return mapped;
                 }
-                throw new BindingException("NodeConverter returned incompatible value from '" +
+                throw new BindingException("nodeConverter returned incompatible value from '" +
                         Types.name(node) + "' to '" + rawClazz.getName() + "'", ps);
             }
 
@@ -138,14 +138,14 @@ public class SimpleNodeFacade implements NodeFacade {
                 if (Number.class.isAssignableFrom(rawClazz)) {
                     return Numbers.to((Number) node, rawClazz);
                 }
-                throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
+                throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
             }
 
             if (node instanceof Boolean) {
                 if (rawClazz == Boolean.class) {
                     return node;
                 }
-                throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
+                throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
             }
 
             if (node instanceof Map) {
@@ -177,11 +177,11 @@ public class SimpleNodeFacade implements NodeFacade {
                 return _readFromPojo(node, oldPi, rawClazz, type, deepCopy, ps);
             }
 
-            throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
+            throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps, e);
+            throw new BindingException("cannot convert node from '" + Types.name(node) + "' to '" + type + "'", ps, e);
         }
     }
 
@@ -213,12 +213,12 @@ public class SimpleNodeFacade implements NodeFacade {
 
         if (anyOfInfo.hasDiscriminator) {
             if (anyOfInfo.scope != OneOf.Scope.CURRENT) {
-                throw new BindingException("OneOf scope '" + anyOfInfo.scope + "' is not supported", ps);
+                throw new BindingException("oneOf scope '" + anyOfInfo.scope + "' is not supported", ps);
             }
 
             if (!(node instanceof Map) && !(node instanceof JsonObject)) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Node must be a JSON object, when OneOf has a CURRENT discriminator", ps);
+                throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator", ps);
             }
 
             Object discriminatorValue;
@@ -232,20 +232,20 @@ public class SimpleNodeFacade implements NodeFacade {
 
             if (discriminatorValue == null) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("Not found value for discriminator key '" + anyOfInfo.key + "'", ps);
+                throw new BindingException("not found value for discriminator key '" + anyOfInfo.key + "'", ps);
             }
 
             targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
             if (targetClazz == null) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("OneOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
+                throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'", ps);
             }
         } else {
             JsonType jsonType = JsonType.of(node);
             targetClazz = anyOfInfo.resolveByJsonType(jsonType);
             if (targetClazz == null) {
                 if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-                throw new BindingException("OneOf mapping does not support jsonType=" + jsonType +
+                throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +
                         " for type '" + rawClazz.getName() + "'", ps);
             }
         }
@@ -386,7 +386,7 @@ public class SimpleNodeFacade implements NodeFacade {
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to deep copy node '" + Types.name(node) + "'", ps, e);
+            throw new BindingException("failed to deep copy node '" + Types.name(node) + "'", ps, e);
         }
     }
 
@@ -402,7 +402,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (rawClazz.isEnum()) {
             return Enum.valueOf((Class<? extends Enum>) rawClazz, s);
         }
-        throw new BindingException("Cannot convert String '" + Strings.truncate(s) + "' to '" +
+        throw new BindingException("cannot convert String '" + Strings.truncate(s) + "' to '" +
                 rawClazz.getName() + "'", ps);
     }
 
@@ -479,7 +479,7 @@ public class SimpleNodeFacade implements NodeFacade {
         if (pi != null && !pi.isJajo) {
             return _readPojoFromObjectEntries(source.entries(), type, rawClazz, pi, deepCopy, ps);
         }
-        throw new BindingException("Cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
+        throw new BindingException("cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
     }
 
     private Object _readPojoFromObjectEntries(Iterable<Map.Entry<String, Object>> entries,
@@ -713,7 +713,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return set;
         }
-        throw new BindingException("Cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
+        throw new BindingException("cannot convert " + sourceName + " to '" + rawClazz.getName() + "'", ps);
     }
 
     // POJO -> Map/JsonObject/JOJO/POJO
@@ -754,7 +754,7 @@ public class SimpleNodeFacade implements NodeFacade {
             }
             return _readPojoFromObjectEntries(sourceValues.entrySet(), type, rawClazz, pi, deepCopy, ps);
         }
-        throw new BindingException("Cannot convert POJO to '" + rawClazz.getName() + "'", ps);
+        throw new BindingException("cannot convert POJO to '" + rawClazz.getName() + "'", ps);
     }
 
 
@@ -895,12 +895,12 @@ public class SimpleNodeFacade implements NodeFacade {
                 return newMap;
             }
 
-            throw new BindingException("Unsupported node type '" + Types.name(node) + "'", ps);
+            throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
 
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Cannot convert node from '" + Types.name(node) +
+            throw new BindingException("cannot convert node from '" + Types.name(node) +
                     "' to raw (Map/List/String/Number/Boolean/null)", ps, e);
         }
     }

@@ -75,7 +75,7 @@ public class SimpleJsonReader implements StreamingReader {
         PathSegment ps = _prepareValuePath();
         activePath = ps;
         int c = _read();
-        if (c != '{') throw _error("Expected '{'", c);
+        if (c != '{') throw _error("expected '{'", c);
         _pushContainer(true, ps);
         activePath = null;
     }
@@ -89,7 +89,7 @@ public class SimpleJsonReader implements StreamingReader {
         _skipWhitespace();
         activePath = _containerPath();
         int c = _read();
-        if (c != '}') throw _error("Expected '}'", c);
+        if (c != '}') throw _error("expected '}'", c);
         _popContainer();
         activePath = null;
     }
@@ -104,7 +104,7 @@ public class SimpleJsonReader implements StreamingReader {
         PathSegment ps = _prepareValuePath();
         activePath = ps;
         int c = _read();
-        if (c != '[') throw _error("Expected '['", c);
+        if (c != '[') throw _error("expected '['", c);
         _pushContainer(false, ps);
         activePath = null;
     }
@@ -118,7 +118,7 @@ public class SimpleJsonReader implements StreamingReader {
         _skipWhitespace();
         activePath = _containerPath();
         int c = _read();
-        if (c != ']') throw _error("Expected ']'", c);
+        if (c != ']') throw _error("expected ']'", c);
         _popContainer();
         activePath = null;
     }
@@ -136,7 +136,7 @@ public class SimpleJsonReader implements StreamingReader {
         activePath = namePath;
         _skipWhitespace();
         int c = _read();
-        if (c != ':') throw _error("Expected ':'", c);
+        if (c != ':') throw _error("expected ':'", c);
         pendingValuePath = namePath;
         bufferedToken = null;
         activePath = null;
@@ -381,7 +381,7 @@ public class SimpleJsonReader implements StreamingReader {
 
     private String _readString() throws IOException {
         int c = _read();
-        if (c != '"') throw _error("Expected '\"'", c);
+        if (c != '"') throw _error("expected '\"'", c);
 
         StringBuilder sb = new StringBuilder();
         while ((c = _read()) != -1) {
@@ -419,7 +419,7 @@ public class SimpleJsonReader implements StreamingReader {
                                     sb.append(Character.toChars(Character.toCodePoint(ch, low)));
                                     break;
                                 } else {
-                                    throw _error("Expected 'u' after '\\' for surrogate pair", b2);
+                                    throw _error("expected 'u' after '\\' for surrogate pair", b2);
                                 }
                             }
                         }
@@ -451,22 +451,22 @@ public class SimpleJsonReader implements StreamingReader {
         int c = _peek();
         if (c == 't') {
             if (!(_read() == 't' && _read() == 'r' && _read() == 'u' && _read() == 'e')) {
-                throw _error("Expected 'true'", lastChar);
+                throw _error("expected 'true'", lastChar);
             }
             return Boolean.TRUE;
         } else if (c == 'f') {
             if (!(_read() == 'f' && _read() == 'a' && _read() == 'l' && _read() == 's' && _read() == 'e')) {
-                throw _error("Expected 'false'", lastChar);
+                throw _error("expected 'false'", lastChar);
             }
             return Boolean.FALSE;
         } else {
-            throw _error("Expected 'true' or 'false'", c);
+            throw _error("expected 'true' or 'false'", c);
         }
     }
 
     private void _readNull() throws IOException {
         if (!(_read() == 'n' && _read() == 'u' && _read() == 'l' && _read() == 'l')) {
-            throw _error("Expected 'null'",  lastChar);
+            throw _error("expected 'null'",  lastChar);
         }
     }
 
@@ -516,7 +516,7 @@ public class SimpleJsonReader implements StreamingReader {
 
     private void _skipString() throws IOException {
         int c = _read(); // consume opening "
-        if (c != '"') throw _error("Expected '\"'", c);
+        if (c != '"') throw _error("expected '\"'", c);
         while ((c = _read()) != -1) {
             if (c == '"') return; // end string
             if (c == '\\') { // escape
@@ -554,7 +554,7 @@ public class SimpleJsonReader implements StreamingReader {
 
     private void _skipObject(PathSegment objectPs) throws IOException {
         int c = _read();
-        if (c != '{') throw _error("Expected '{'", c);
+        if (c != '{') throw _error("expected '{'", c);
         _pushContainer(true, objectPs);
         activePath = null;
         _skipWhitespace();
@@ -569,13 +569,13 @@ public class SimpleJsonReader implements StreamingReader {
             _skipWhitespace();
             PathSegment parent = _containerPath();
             activePath = parent;
-            if (_peek() != '"') throw _error("Expected '\"' for object key", _peek());
+            if (_peek() != '"') throw _error("expected '\"' for object key", _peek());
             String key = _readString();
             PathSegment keyPs = new PathSegment.Name(parent, key);
             activePath = keyPs;
             _skipWhitespace();
             c = _read();
-            if (c != ':') throw _error("Expected ':'", c);
+            if (c != ':') throw _error("expected ':'", c);
             _skipValue(keyPs);
             _skipWhitespace();
             activePath = parent;
@@ -587,14 +587,14 @@ public class SimpleJsonReader implements StreamingReader {
                 activePath = null;
                 return;
             } else {
-                throw _error("Expected ',' or '}'", c);
+                throw _error("expected ',' or '}'", c);
             }
         }
     }
 
     private void _skipArray(PathSegment arrayPs) throws IOException {
         int c = _read();
-        if (c != '[') throw _error("Expected '['", c);
+        if (c != '[') throw _error("expected '['", c);
         _pushContainer(false, arrayPs);
         activePath = null;
         _skipWhitespace();
@@ -621,7 +621,7 @@ public class SimpleJsonReader implements StreamingReader {
                 activePath = null;
                 return;
             } else {
-                throw _error("Expected ',' or ']'", c);
+                throw _error("expected ',' or ']'", c);
             }
         }
     }

@@ -71,12 +71,12 @@ public final class StreamingIO {
                 case NULL:
                     return _readNull(reader, rawBoxed, context);
                 default:
-                    throw new BindingException("Unexpected token '" + token + "'");
+                    throw new BindingException("unexpected token '" + token + "'");
             }
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to read streaming into '" + type + "'", null, e);
+            throw new BindingException("failed to read streaming into '" + type + "'", null, e);
         }
     }
 
@@ -97,7 +97,7 @@ public final class StreamingIO {
                 reader.nextNull();
                 return null;
             default:
-                throw new BindingException("Unexpected token '" + reader.peekToken() + "'");
+                throw new BindingException("unexpected token '" + reader.peekToken() + "'");
         }
     }
 
@@ -149,7 +149,7 @@ public final class StreamingIO {
             boolean b = reader.nextBoolean();
             return vci.rawToValue(b);
         }
-        throw new BindingException("Cannot read boolean value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read boolean value into type '" + rawClazz.getName() + "'");
     }
 
     /**
@@ -174,7 +174,7 @@ public final class StreamingIO {
             Number n = reader.nextNumber();
             return vci.rawToValue(n);
         }
-        throw new BindingException("Cannot read number value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read number value into type '" + rawClazz.getName() + "'");
     }
 
     /**
@@ -200,7 +200,7 @@ public final class StreamingIO {
             String s = reader.nextString();
             return vci.rawToValue(s);
         }
-        throw new BindingException("Cannot read string value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read string value into type '" + rawClazz.getName() + "'");
     }
 
     /**
@@ -241,7 +241,7 @@ public final class StreamingIO {
             return readPojo(reader, type, rawClazz, pi, context);
         }
 
-        throw new BindingException("Cannot read object value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read object value into type '" + rawClazz.getName() + "'");
     }
 
     public static Object readPojo(StreamingReader reader, Type ownerType, Class<?> ownerRawClazz,
@@ -315,20 +315,20 @@ public final class StreamingIO {
                 NodeRegistry.OneOfInfo fieldOneOf = fi.oneOfInfo;
                 if (hasParentOneOf && fieldOneOf != null && fieldOneOf.scope == OneOf.Scope.PARENT) {
                     if (!fieldOneOf.path.isEmpty()) {
-                        throw new BindingException("OneOf scope=PARENT does not support path discriminator");
+                        throw new BindingException("oneOf scope=PARENT does not support path discriminator");
                     }
                     String parentKey = fieldOneOf.key;
                     if (parentOneOfKey == null) {
                         parentOneOfKey = parentKey;
                     } else if (!parentOneOfKey.equals(parentKey)) {
-                        throw new BindingException("At most one OneOf parent discriminator key is supported per class");
+                        throw new BindingException("at most one OneOf parent discriminator key is supported per class");
                     }
                     Class<?> targetClazz = fieldOneOf.resolveByWhen(parentOneOfValue == UNSET ? null : parentOneOfValue);
                     if (targetClazz != null) {
                         vv = _readNode(reader, targetClazz, Types.rawBox(targetClazz), null, context);
                     } else {
                         if (deferredParentOneOfFi != null) {
-                            throw new BindingException("At most one OneOf field with scope=PARENT is supported per class");
+                            throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
                         }
                         deferredParentOneOfFi = fi;
                         deferredParentOneOfRaw = _readRawNode(reader);
@@ -423,7 +423,7 @@ public final class StreamingIO {
             return vci.rawToValue(list);
         }
 
-        throw new BindingException("Cannot read array value into type '" + rawClazz.getName() + "'");
+        throw new BindingException("cannot read array value into type '" + rawClazz.getName() + "'");
     }
 
     /**
@@ -496,7 +496,7 @@ public final class StreamingIO {
                 reader.nextNull();
                 return valueCodecInfo.rawToValue(null);
             default:
-                throw new BindingException("Cannot read value into type '" + rawClazz.getName() + "'");
+                throw new BindingException("cannot read value into type '" + rawClazz.getName() + "'");
         }
     }
 
@@ -761,12 +761,12 @@ public final class StreamingIO {
                 return;
             }
 
-            throw new BindingException("Unsupported node type '" + Types.name(node) + "'");
+            throw new BindingException("unsupported node type '" + Types.name(node) + "'");
 
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
-            throw new BindingException("Failed to write node of type '" + Types.name(node) + "'", null, e);
+            throw new BindingException("failed to write node of type '" + Types.name(node) + "'", null, e);
         }
     }
 
@@ -822,7 +822,7 @@ public final class StreamingIO {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                 return null;
             }
-            throw new BindingException("OneOf mapping does not support jsonType=" + jsonType +
+            throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +
                     " for type '" + anyOfInfo.clazz.getName() + "'");
         }
         return targetClazz;
@@ -832,24 +832,24 @@ public final class StreamingIO {
         if (discriminatorValue == null) {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
             String source = !anyOfInfo.key.isEmpty() ? "key '" + anyOfInfo.key + "'" : "path '" + anyOfInfo.path + "'";
-            throw new BindingException("Not found value for discriminator " + source);
+            throw new BindingException("not found value for discriminator " + source);
         }
 
         Class<?> targetClazz = anyOfInfo.resolveByWhen(discriminatorValue);
         if (targetClazz == null) {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-            throw new BindingException("OneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
+            throw new BindingException("oneOf discriminator has no matching mapping: value='" + discriminatorValue + "'");
         }
         return targetClazz;
     }
 
     public static Class<?> resolveCurrentDiscriminatorTarget(Object rawNode, NodeRegistry.OneOfInfo anyOfInfo) {
         if (anyOfInfo.scope != OneOf.Scope.CURRENT) {
-            throw new BindingException("OneOf scope '" + anyOfInfo.scope + "' is not supported in streaming parser");
+            throw new BindingException("oneOf scope '" + anyOfInfo.scope + "' is not supported in streaming parser");
         }
         if (!(rawNode instanceof Map)) {
             if (anyOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
-            throw new BindingException("Node must be a JSON object, when OneOf has a CURRENT discriminator");
+            throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator");
         }
 
         Object discriminatorValue = null;
@@ -893,7 +893,7 @@ public final class StreamingIO {
         } else if (aoi.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
             vv = null;
         } else {
-            throw new BindingException("OneOf discriminator has no matching mapping: key='" +
+            throw new BindingException("oneOf discriminator has no matching mapping: key='" +
                     aoi.key + "', value='" + (parentOneOfValue == unsetSentinel ? null : parentOneOfValue) + "'");
         }
         deferredParentOneOfFi.invokeSetterIfPresent(pojo, vv);

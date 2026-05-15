@@ -702,7 +702,7 @@ class Jackson3FacadeTest {
                 ctx(StreamingContext.StreamingMode.EXCLUSIVE_IO));
         JsonException ex = assertThrows(JsonException.class,
                 () -> facade.readNode("{}", Object.class));
-        assertTrue(ex.getMessage().contains("Unsupported"));
+        assertTrue(ex.getMessage().contains("unsupported streaming mode"));
     }
 
     @Test
