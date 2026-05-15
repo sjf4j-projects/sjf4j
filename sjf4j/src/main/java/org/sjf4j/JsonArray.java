@@ -285,6 +285,28 @@ public class JsonArray extends JsonContainer {
 
 
     /// Getter
+    /**
+     * Strict getter helper with index location context.
+     */
+    private <T> T _get(int idx, java.util.function.Function<Object, T> fn, String type) {
+        try {
+            return fn.apply(getNode(idx));
+        } catch (Exception e) {
+            throw new JsonException("cannot get " + type + " at [" + idx + "]", e);
+        }
+    }
+
+    /**
+     * Lenient getter helper with index location context.
+     */
+    private <T> T _getAs(int idx, java.util.function.Function<Object, T> fn, String type) {
+        try {
+            return fn.apply(getNode(idx));
+        } catch (Exception e) {
+            throw new JsonException("cannot coerce to " + type + " at [" + idx + "]", e);
+        }
+    }
+
 
     /**
      * Returns the node at the given index or {@code null} when out of range.
@@ -310,14 +332,7 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a String value using strict conversion.
      */
-    public String getString(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toString(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get String at [" + idx + "]", e);
-        }
-    }
+    public String getString(int idx) { return _get(idx, Nodes::toString, "String"); }
     /**
      * Returns a String value or the default value when missing.
      */
@@ -341,14 +356,7 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Number value using strict conversion.
      */
-    public Number getNumber(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toNumber(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Number at [" + idx + "]", e);
-        }
-    }
+    public Number getNumber(int idx) { return _get(idx, Nodes::toNumber, "Number"); }
 
     /**
      * Returns a Number value or the default value when missing.
@@ -361,26 +369,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Number value using lenient conversion.
      */
-    public Number getAsNumber(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asNumber(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Number at [" + idx + "]", e);
-        }
-    }
+    public Number getAsNumber(int idx) { return _getAs(idx, Nodes::asNumber, "Number"); }
 
     /**
      * Returns a Long value using strict conversion.
      */
-    public Long getLong(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toLong(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Long at [" + idx + "]", e);
-        }
-    }
+    public Long getLong(int idx) { return _get(idx, Nodes::toLong, "Long"); }
 
     /**
      * Returns a Long value or the default value when missing.
@@ -393,26 +387,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Long value using lenient conversion.
      */
-    public Long getAsLong(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asLong(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Long at [" + idx + "]", e);
-        }
-    }
+    public Long getAsLong(int idx) { return _getAs(idx, Nodes::asLong, "Long"); }
 
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInt(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toInt(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Integer at [" + idx + "]", e);
-        }
-    }
+    public Integer getInt(int idx) { return _get(idx, Nodes::toInt, "Integer"); }
 
     /**
      * Returns an Integer value or the default value when missing.
@@ -425,26 +405,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInt(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asInt(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Integer at [" + idx + "]", e);
-        }
-    }
+    public Integer getAsInt(int idx) { return _getAs(idx, Nodes::asInt, "Integer"); }
 
     /**
      * Returns a Short value using strict conversion.
      */
-    public Short getShort(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toShort(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Short at [" + idx + "]", e);
-        }
-    }
+    public Short getShort(int idx) { return _get(idx, Nodes::toShort, "Short"); }
 
     /**
      * Returns a Short value or the default value when missing.
@@ -457,26 +423,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Short value using lenient conversion.
      */
-    public Short getAsShort(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asShort(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Short at [" + idx + "]", e);
-        }
-    }
+    public Short getAsShort(int idx) { return _getAs(idx, Nodes::asShort, "Short"); }
 
     /**
      * Returns a Byte value using strict conversion.
      */
-    public Byte getByte(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toByte(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Byte at [" + idx + "]", e);
-        }
-    }
+    public Byte getByte(int idx) { return _get(idx, Nodes::toByte, "Byte"); }
 
     /**
      * Returns a Byte value or the default value when missing.
@@ -489,26 +441,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Byte value using lenient conversion.
      */
-    public Byte getAsByte(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asByte(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Byte at [" + idx + "]", e);
-        }
-    }
+    public Byte getAsByte(int idx) { return _getAs(idx, Nodes::asByte, "Byte"); }
 
     /**
      * Returns a Double value using strict conversion.
      */
-    public Double getDouble(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toDouble(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Double at [" + idx + "]", e);
-        }
-    }
+    public Double getDouble(int idx) { return _get(idx, Nodes::toDouble, "Double"); }
 
     /**
      * Returns a Double value or the default value when missing.
@@ -521,26 +459,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Double value using lenient conversion.
      */
-    public Double getAsDouble(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asDouble(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Double at [" + idx + "]", e);
-        }
-    }
+    public Double getAsDouble(int idx) { return _getAs(idx, Nodes::asDouble, "Double"); }
 
     /**
      * Returns a Float value using strict conversion.
      */
-    public Float getFloat(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toFloat(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Float at [" + idx + "]", e);
-        }
-    }
+    public Float getFloat(int idx) { return _get(idx, Nodes::toFloat, "Float"); }
 
     /**
      * Returns a Float value or the default value when missing.
@@ -553,26 +477,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Float value using lenient conversion.
      */
-    public Float getAsFloat(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asFloat(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Float at [" + idx + "]", e);
-        }
-    }
+    public Float getAsFloat(int idx) { return _getAs(idx, Nodes::asFloat, "Float"); }
 
     /**
      * Returns a BigInteger value using strict conversion.
      */
-    public BigInteger getBigInteger(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toBigInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get BigInteger at [" + idx + "]", e);
-        }
-    }
+    public BigInteger getBigInteger(int idx) { return _get(idx, Nodes::toBigInteger, "BigInteger"); }
 
     /**
      * Returns a BigInteger value or the default value when missing.
@@ -585,26 +495,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a BigInteger value using lenient conversion.
      */
-    public BigInteger getAsBigInteger(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asBigInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to BigInteger at [" + idx + "]", e);
-        }
-    }
+    public BigInteger getAsBigInteger(int idx) { return _getAs(idx, Nodes::asBigInteger, "BigInteger"); }
 
     /**
      * Returns a BigDecimal value using strict conversion.
      */
-    public BigDecimal getBigDecimal(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toBigDecimal(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get BigDecimal at [" + idx + "]", e);
-        }
-    }
+    public BigDecimal getBigDecimal(int idx) { return _get(idx, Nodes::toBigDecimal, "BigDecimal"); }
 
     /**
      * Returns a BigDecimal value or the default value when missing.
@@ -617,26 +513,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a BigDecimal value using lenient conversion.
      */
-    public BigDecimal getAsBigDecimal(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asBigDecimal(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to BigDecimal at [" + idx + "]", e);
-        }
-    }
+    public BigDecimal getAsBigDecimal(int idx) { return _getAs(idx, Nodes::asBigDecimal, "BigDecimal"); }
 
     /**
      * Returns a Boolean value using strict conversion.
      */
-    public Boolean getBoolean(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toBoolean(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Boolean at [" + idx + "]", e);
-        }
-    }
+    public Boolean getBoolean(int idx) { return _get(idx, Nodes::toBoolean, "Boolean"); }
 
     /**
      * Returns a Boolean value or the default value when missing.
@@ -649,122 +531,54 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Boolean value using lenient conversion.
      */
-    public Boolean getAsBoolean(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.asBoolean(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Boolean at [" + idx + "]", e);
-        }
-    }
+    public Boolean getAsBoolean(int idx) { return _getAs(idx, Nodes::asBoolean, "Boolean"); }
 
     /**
      * Returns a JsonObject value using strict conversion.
      */
-    public JsonObject getJsonObject(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toJsonObject(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get JsonObject at [" + idx + "]", e);
-        }
-    }
+    public JsonObject getJsonObject(int idx) { return _get(idx, Nodes::toJsonObject, "JsonObject"); }
 
     /**
      * Returns a Map value using strict conversion.
      */
-    public Map<String, Object> getMap(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toMap(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Map<String,Object> at [" + idx + "]", e);
-        }
-    }
+    public Map<String, Object> getMap(int idx) { return _get(idx, Nodes::toMap, "Map<String,Object>"); }
 
     /**
      * Returns a typed Map value using strict conversion.
      */
-    public <T> Map<String, T> getMap(int idx, Class<T> clazz) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toMap(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Map<String," + clazz.getName() + "> at [" + idx + "]", e);
-        }
-    }
+    public <T> Map<String, T> getMap(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toMap(v, clazz), "Map<String," + clazz.getName() + ">"); }
 
     /**
      * Returns a JsonArray value using strict conversion.
      */
-    public JsonArray getJsonArray(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toJsonArray(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get JsonArray at [" + idx + "]", e);
-        }
-    }
+    public JsonArray getJsonArray(int idx) { return _get(idx, Nodes::toJsonArray, "JsonArray"); }
 
     /**
      * Returns a List value using strict conversion.
      */
-    public List<Object> getList(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toList(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get List<Object> at [" + idx + "]", e);
-        }
-    }
+    public List<Object> getList(int idx) { return _get(idx, Nodes::toList, "List<Object>"); }
 
     /**
      * Returns a typed List value using strict conversion.
      */
-    public <T> List<T> getList(int idx, Class<T> clazz) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toList(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to List<" + clazz.getName() + "> at [" + idx + "]", e);
-        }
-    }
+    public <T> List<T> getList(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toList(v, clazz), "List<" + clazz.getName() + ">"); }
 
     /**
      * Returns an Object array using strict conversion.
      */
-    public Object[] getArray(int idx) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toArray(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Object[] at [" + idx + "]", e);
-        }
-    }
+    public Object[] getArray(int idx) { return _get(idx, Nodes::toArray, "Object[]"); }
 
     /**
      * Returns a typed array using strict conversion.
      */
-    public <T> T[] getArray(int idx, Class<T> clazz) {
-        try {
-            Object value = getNode(idx);
-            return Nodes.toArray(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + clazz.getName() + "[] at [" + idx + "]", e);
-        }
-    }
+    public <T> T[] getArray(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toArray(v, clazz), clazz.getName() + "[]"); }
 
     /**
      * Returns a value converted to the given type.
      */
     public <T> T get(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz");
-        Object value = getNode(idx);
-        try {
-            return Nodes.to(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot get " + clazz.getName() + " at [" + idx + "]", e);
-        }
+        return _get(idx, v -> Nodes.to(v, clazz), clazz.getName());
     }
 
     /**
@@ -782,12 +596,7 @@ public class JsonArray extends JsonContainer {
      */
     public <T> T getAs(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz");
-        Object value = getNode(idx);
-        try {
-            return Nodes.as(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + clazz.getName() + " at [" + idx + "]", e);
-        }
+        return _getAs(idx, v -> Nodes.as(v, clazz), clazz.getName());
     }
 
     /**

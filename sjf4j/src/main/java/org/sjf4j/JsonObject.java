@@ -434,6 +434,27 @@ public class JsonObject extends JsonContainer {
 
 
     /// Getter
+    /**
+     * Strict getter helper with location context.
+     */
+    private <T> T _get(String key, java.util.function.Function<Object, T> fn, String type) {
+        try {
+            return fn.apply(getNode(key));
+        } catch (Exception e) {
+            throw new JsonException("cannot get " + type + " at '" + key + "'", e);
+        }
+    }
+
+    /**
+     * Lenient getter helper with location context.
+     */
+    private <T> T _getAs(String key, java.util.function.Function<Object, T> fn, String type) {
+        try {
+            return fn.apply(getNode(key));
+        } catch (Exception e) {
+            throw new JsonException("cannot coerce to " + type + " at '" + key + "'", e);
+        }
+    }
 
     /**
      * Returns the node for the given key or {@code null}.
@@ -467,14 +488,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a String value using strict conversion.
      */
-    public String getString(String key) {
-        try {
-            Object value = getNode(key);
-            return Nodes.toString(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get String at '" + key + "'", e);
-        }
-    }
+    public String getString(String key) { return _get(key, Nodes::toString, "String"); }
 
     /**
      * Returns a String value or the default value when missing.
@@ -495,14 +509,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Number value using strict conversion.
      */
-    public Number getNumber(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toNumber(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Number at '" + key + "'", e);
-        }
-    }
+    public Number getNumber(String key) { return _get(key, Nodes::toNumber, "Number"); }
     
     /**
      * Returns a Number value or the default value when missing.
@@ -515,26 +522,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Number value using lenient conversion.
      */
-    public Number getAsNumber(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asNumber(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Number at '" + key + "'", e);
-        }
-    }
+    public Number getAsNumber(String key) { return _getAs(key, Nodes::asNumber, "Number"); }
 
     /**
      * Returns a Long value using strict conversion.
      */
-    public Long getLong(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toLong(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Long at '" + key + "'", e);
-        }
-    }
+    public Long getLong(String key) { return _get(key, Nodes::toLong, "Long"); }
     
     /**
      * Returns a Long value or the default value when missing.
@@ -547,26 +540,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Long value using lenient conversion.
      */
-    public Long getAsLong(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asLong(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Long at '" + key + "'", e);
-        }
-    }
+    public Long getAsLong(String key) { return _getAs(key, Nodes::asLong, "Long"); }
 
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInt(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toInt(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Integer at '" + key + "'", e);
-        }
-    }
+    public Integer getInt(String key) { return _get(key, Nodes::toInt, "Integer"); }
     
     /**
      * Returns an Integer value or the default value when missing.
@@ -579,26 +558,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInt(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asInt(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Integer at '" + key + "'", e);
-        }
-    }
+    public Integer getAsInt(String key) { return _getAs(key, Nodes::asInt, "Integer"); }
 
     /**
      * Returns a Short value using strict conversion.
      */
-    public Short getShort(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toShort(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Short at '" + key + "'", e);
-        }
-    }
+    public Short getShort(String key) { return _get(key, Nodes::toShort, "Short"); }
     
     /**
      * Returns a Short value or the default value when missing.
@@ -611,26 +576,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Short value using lenient conversion.
      */
-    public Short getAsShort(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asShort(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Short at '" + key + "'", e);
-        }
-    }
+    public Short getAsShort(String key) { return _getAs(key, Nodes::asShort, "Short"); }
 
     /**
      * Returns a Byte value using strict conversion.
      */
-    public Byte getByte(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toByte(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Byte at '" + key + "'", e);
-        }
-    }
+    public Byte getByte(String key) { return _get(key, Nodes::toByte, "Byte"); }
     
     /**
      * Returns a Byte value or the default value when missing.
@@ -643,26 +594,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Byte value using lenient conversion.
      */
-    public Byte getAsByte(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asByte(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Byte at '" + key + "'", e);
-        }
-    }
+    public Byte getAsByte(String key) { return _getAs(key, Nodes::asByte, "Byte"); }
 
     /**
      * Returns a Double value using strict conversion.
      */
-    public Double getDouble(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toDouble(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Double at '" + key + "'", e);
-        }
-    }
+    public Double getDouble(String key) { return _get(key, Nodes::toDouble, "Double"); }
     
     /**
      * Returns a Double value or the default value when missing.
@@ -675,26 +612,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Double value using lenient conversion.
      */
-    public Double getAsDouble(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asDouble(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Double at '" + key + "'", e);
-        }
-    }
+    public Double getAsDouble(String key) { return _getAs(key, Nodes::asDouble, "Double"); }
 
     /**
      * Returns a Float value using strict conversion.
      */
-    public Float getFloat(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toFloat(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Float at '" + key + "'", e);
-        }
-    }
+    public Float getFloat(String key) { return _get(key, Nodes::toFloat, "Float"); }
     
     /**
      * Returns a Float value or the default value when missing.
@@ -707,26 +630,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Float value using lenient conversion.
      */
-    public Float getAsFloat(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asFloat(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Float at '" + key + "'", e);
-        }
-    }
+    public Float getAsFloat(String key) { return _getAs(key, Nodes::asFloat, "Float"); }
 
     /**
      * Returns a BigInteger value using strict conversion.
      */
-    public BigInteger getBigInteger(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toBigInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get BigInteger at '" + key + "'", e);
-        }
-    }
+    public BigInteger getBigInteger(String key) { return _get(key, Nodes::toBigInteger, "BigInteger"); }
     
     /**
      * Returns a BigInteger value or the default value when missing.
@@ -739,26 +648,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a BigInteger value using lenient conversion.
      */
-    public BigInteger getAsBigInteger(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asBigInteger(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to BigInteger at '" + key + "'", e);
-        }
-    }
+    public BigInteger getAsBigInteger(String key) { return _getAs(key, Nodes::asBigInteger, "BigInteger"); }
 
     /**
      * Returns a BigDecimal value using strict conversion.
      */
-    public BigDecimal getBigDecimal(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toBigDecimal(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get BigDecimal at '" + key + "'", e);
-        }
-    }
+    public BigDecimal getBigDecimal(String key) { return _get(key, Nodes::toBigDecimal, "BigDecimal"); }
     
     /**
      * Returns a BigDecimal value or the default value when missing.
@@ -771,26 +666,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a BigDecimal value using lenient conversion.
      */
-    public BigDecimal getAsBigDecimal(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asBigDecimal(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to BigDecimal at '" + key + "'", e);
-        }
-    }
+    public BigDecimal getAsBigDecimal(String key) { return _getAs(key, Nodes::asBigDecimal, "BigDecimal"); }
 
     /**
      * Returns a Boolean value using strict conversion.
      */
-    public Boolean getBoolean(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toBoolean(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Boolean at '" + key + "'", e);
-        }
-    }
+    public Boolean getBoolean(String key) { return _get(key, Nodes::toBoolean, "Boolean"); }
     
     /**
      * Returns a Boolean value or the default value when missing.
@@ -803,122 +684,52 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Boolean value using lenient conversion.
      */
-    public Boolean getAsBoolean(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.asBoolean(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to Boolean at '" + key + "'", e);
-        }
-    }
+    public Boolean getAsBoolean(String key) { return _getAs(key, Nodes::asBoolean, "Boolean"); }
 
     /**
      * Returns a JsonObject value using strict conversion.
      */
-    public JsonObject getJsonObject(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toJsonObject(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get JsonObject at '" + key + "'", e);
-        }
-    }
+    public JsonObject getJsonObject(String key) { return _get(key, Nodes::toJsonObject, "JsonObject"); }
 
     /**
      * Returns a Map value using strict conversion.
      */
-    public Map<String, Object> getMap(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toMap(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Map<String,Object> at '" + key + "'", e);
-        }
-    }
+    public Map<String, Object> getMap(String key) { return _get(key, Nodes::toMap, "Map<String,Object>"); }
 
     /**
      * Returns a typed Map value using strict conversion.
      */
-    public <T> Map<String, T> getMap(String key, Class<T> clazz) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toMap(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Map<String," + clazz.getName() + "> at '" + key + "'", e);
-        }
-    }
+    public <T> Map<String, T> getMap(String key, Class<T> clazz) { return _get(key, v -> Nodes.toMap(v, clazz), "Map<String," + clazz.getName() + ">"); }
 
     /**
      * Returns a JsonArray value using strict conversion.
      */
-    public JsonArray getJsonArray(String key) {
-        Object value = getNode(key);
-        try {
-            return Nodes.toJsonArray(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get JsonArray at '" + key + "'", e);
-        }
-    }
+    public JsonArray getJsonArray(String key) { return _get(key, Nodes::toJsonArray, "JsonArray"); }
 
     /**
      * Returns a List value using strict conversion.
      */
-    public List<Object> getList(String key) {
-        try {
-            Object value = getNode(key);
-            return Nodes.toList(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get List<Object> at '" + key + "'", e);
-        }
-    }
+    public List<Object> getList(String key) { return _get(key, Nodes::toList, "List<Object>"); }
 
     /**
      * Returns a typed List value using strict conversion.
      */
-    public <T> List<T> getList(String key, Class<T> clazz) {
-        try {
-            Object value = getNode(key);
-            return Nodes.toList(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot get List<" + clazz.getName() + "> at '" + key + "'", e);
-        }
-    }
+    public <T> List<T> getList(String key, Class<T> clazz) { return _get(key, v -> Nodes.toList(v, clazz), "List<" + clazz.getName() + ">"); }
 
     /**
      * Returns an Object array using strict conversion.
      */
-    public Object[] getArray(String key) {
-        try {
-            Object value = getNode(key);
-            return Nodes.toArray(value);
-        } catch (Exception e) {
-            throw new JsonException("cannot get Object[] at '" + key + "'", e);
-        }
-    }
+    public Object[] getArray(String key) { return _get(key, Nodes::toArray, "Object[]"); }
 
     /**
      * Returns a typed array using strict conversion.
      */
-    public <T> T[] getArray(String key, Class<T> clazz) {
-        try {
-            Object value = getNode(key);
-            return Nodes.toArray(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot get " + clazz.getName() + "[] at '" + key + "'", e);
-        }
-    }
+    public <T> T[] getArray(String key, Class<T> clazz) { return _get(key, v -> Nodes.toArray(v, clazz), clazz.getName() + "[]"); }
 
     /**
      * Returns a value converted to the given type.
      */
-    public <T> T get(String key, Class<T> clazz) {
-        Object value = getNode(key);
-        try {
-            return Nodes.to(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot get " + clazz.getName() + " at '" + key + "'", e);
-        }
-    }
+    public <T> T get(String key, Class<T> clazz) { return _get(key, v -> Nodes.to(v, clazz), clazz.getName()); }
     
     /**
      * Returns a value converted to the inferred type.
@@ -933,14 +744,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a value using lenient conversion.
      */
-    public <T> T getAs(String key, Class<T> clazz) {
-        Object value = getNode(key);
-        try {
-            return Nodes.as(value, clazz);
-        } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + clazz.getName() + " at '" + key + "'", e);
-        }
-    }
+    public <T> T getAs(String key, Class<T> clazz) { return _getAs(key, v -> Nodes.as(v, clazz), clazz.getName()); }
     
     /**
      * Returns a value using lenient conversion with inferred type.
