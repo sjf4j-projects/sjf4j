@@ -12,21 +12,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -72,871 +68,135 @@ public interface ValueCodec<V, R> {
     default V valueCopy(V value) {return value;}
 
 
-    /// Built-in values
+    // ──────────────────────────────────────────────────────────────
+    //  Generic codec implementations
+    // ──────────────────────────────────────────────────────────────
 
-    // URI
-    final class UriValueCodec implements ValueCodec<URI, String> {
+    /**
+     * Simple codec for any (V, R) pair with encoder/decoder functions.
+     */
+    final class SimpleValueCodec<V, R> implements ValueCodec<V, R> {
+        private final Class<V> valueType;
+        private final Class<R> rawType;
+        private final Function<V, R> encoder;
+        private final Function<R, V> decoder;
+        private final Function<V, V> copier;
 
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(URI value) {
-            return value == null ? null : value.toString();
+        public SimpleValueCodec(Class<V> valueType, Class<R> rawType,
+                                Function<V, R> encoder, Function<R, V> decoder) {
+            this(valueType, rawType, encoder, decoder, Function.identity());
         }
 
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public URI rawToValue(String raw) {
-            return raw == null ? null : URI.create(raw);
+        public SimpleValueCodec(Class<V> valueType, Class<R> rawType,
+                                Function<V, R> encoder, Function<R, V> decoder,
+                                Function<V, V> copier) {
+            this.valueType = valueType;
+            this.rawType = rawType;
+            this.encoder = encoder;
+            this.decoder = decoder;
+            this.copier = copier;
         }
 
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<URI> valueClass() {
-            return URI.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
+        @Override public R valueToRaw(V value) { return value == null ? null : encoder.apply(value); }
+        @Override public V rawToValue(R raw)   { return raw == null ? null : decoder.apply(raw); }
+        @Override public Class<V> valueClass() { return valueType; }
+        @Override public Class<R> rawClass()   { return rawType; }
+        @Override public V valueCopy(V value)  { return copier.apply(value); }
     }
 
-    // URL
-    final class UrlValueCodec implements ValueCodec<URL, String> {
+    // ──────────────────────────────────────────────────────────────
+    //  Built-in codec instances
+    // ──────────────────────────────────────────────────────────────
 
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(URL value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public URL rawToValue(String raw) {
-            if (raw == null) {
-                return null;
-            }
-            try {
-                return new URL(raw);
-            } catch (MalformedURLException e) {
-                throw new JsonException("invalid URL: " + raw, e);
-            }
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<URL> valueClass() {
-            return URL.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // UUID
-    final class UuidValueCodec implements ValueCodec<UUID, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(UUID value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public UUID rawToValue(String raw) {
-            return raw == null ? null : UUID.fromString(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<UUID> valueClass() {
-            return UUID.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Locale
-    final class LocaleValueCodec implements ValueCodec<Locale, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Locale value) {
-            return value == null ? null : value.toLanguageTag();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Locale rawToValue(String raw) {
-            return raw == null ? null : Locale.forLanguageTag(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Locale> valueClass() {
-            return Locale.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Currency
-    final class CurrencyValueCodec implements ValueCodec<Currency, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Currency value) {
-            return value == null ? null : value.getCurrencyCode();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Currency rawToValue(String raw) {
-            return raw == null ? null : Currency.getInstance(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Currency> valueClass() {
-            return Currency.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // ZoneId
-    final class ZoneIdValueCodec implements ValueCodec<ZoneId, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(ZoneId value) {
-            return value == null ? null : value.getId();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public ZoneId rawToValue(String raw) {
-            return raw == null ? null : ZoneId.of(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<ZoneId> valueClass() {
-            return ZoneId.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Instant (String)
-    final class InstantStringValueCodec implements ValueCodec<Instant, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Instant value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Instant rawToValue(String raw) {
-            return raw == null ? null : Instant.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Instant> valueClass() {
-            return Instant.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Instant (long, EpochMillis)
-    final class InstantEpochMillisValueCodec implements ValueCodec<Instant, Long> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public Long valueToRaw(Instant value) {
-            return value == null ? null : value.toEpochMilli();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Instant rawToValue(Long raw) {
-            return raw == null ? null : Instant.ofEpochMilli(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Instant> valueClass() {
-            return Instant.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<Long> rawClass() {
-            return Long.class;
-        }
-    }
-
-    // LocalDate
-    final class LocalDateValueCodec implements PatternedValueCodec<LocalDate, String> {
-        private final DateTimeFormatter formatter;
-
-        LocalDateValueCodec() {
-            this.formatter = null;
-        }
-
-        private LocalDateValueCodec(DateTimeFormatter formatter) {
-            this.formatter = formatter;
-        }
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(LocalDate value) {
-            if (value == null) return null;
-            return formatter != null ? formatter.format(value) : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public LocalDate rawToValue(String raw) {
-            if (raw == null) return null;
-            return formatter != null ? LocalDate.parse(raw, formatter) : LocalDate.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<LocalDate> valueClass() {
-            return LocalDate.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-
-        @Override
-        public ValueCodec<LocalDate, String> withPattern(String pattern) {
-            return new LocalDateValueCodec(DateTimeFormatter.ofPattern(pattern));
-        }
-    }
-
-    // LocalDateTime
-    final class LocalDateTimeValueCodec implements PatternedValueCodec<LocalDateTime, String> {
-        private final DateTimeFormatter formatter;
-
-        LocalDateTimeValueCodec() {
-            this.formatter = null;
-        }
-
-        private LocalDateTimeValueCodec(DateTimeFormatter formatter) {
-            this.formatter = formatter;
-        }
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(LocalDateTime value) {
-            if (value == null) return null;
-            return formatter != null ? formatter.format(value) : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public LocalDateTime rawToValue(String raw) {
-            if (raw == null) return null;
-            return formatter != null ? LocalDateTime.parse(raw, formatter) : LocalDateTime.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<LocalDateTime> valueClass() {
-            return LocalDateTime.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-
-        @Override
-        public ValueCodec<LocalDateTime, String> withPattern(String pattern) {
-            return new LocalDateTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
-        }
-    }
-
-    // OffsetDateTime
-    final class OffsetDateTimeValueCodec implements PatternedValueCodec<OffsetDateTime, String> {
-        private final DateTimeFormatter formatter;
-
-        OffsetDateTimeValueCodec() {
-            this.formatter = null;
-        }
-
-        private OffsetDateTimeValueCodec(DateTimeFormatter formatter) {
-            this.formatter = formatter;
-        }
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(OffsetDateTime value) {
-            if (value == null) return null;
-            return formatter != null ? formatter.format(value) : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public OffsetDateTime rawToValue(String raw) {
-            if (raw == null) return null;
-            return formatter != null ? OffsetDateTime.parse(raw, formatter) : OffsetDateTime.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<OffsetDateTime> valueClass() {
-            return OffsetDateTime.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-
-        @Override
-        public ValueCodec<OffsetDateTime, String> withPattern(String pattern) {
-            return new OffsetDateTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
-        }
-    }
-
-    // ZonedDateTime
-    final class ZonedDateTimeValueCodec implements PatternedValueCodec<ZonedDateTime, String> {
-        private final DateTimeFormatter formatter;
-
-        ZonedDateTimeValueCodec() {
-            this.formatter = null;
-        }
-
-        private ZonedDateTimeValueCodec(DateTimeFormatter formatter) {
-            this.formatter = formatter;
-        }
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(ZonedDateTime value) {
-            if (value == null) return null;
-            return formatter != null ? formatter.format(value) : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public ZonedDateTime rawToValue(String raw) {
-            if (raw == null) return null;
-            return formatter != null ? ZonedDateTime.parse(raw, formatter) : ZonedDateTime.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<ZonedDateTime> valueClass() {
-            return ZonedDateTime.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-
-        @Override
-        public ValueCodec<ZonedDateTime, String> withPattern(String pattern) {
-            return new ZonedDateTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
-        }
-    }
-
-    // LocalTime
-    final class LocalTimeValueCodec implements PatternedValueCodec<LocalTime, String> {
-        private final DateTimeFormatter formatter;
-
-        LocalTimeValueCodec() {
-            this.formatter = null;
-        }
-
-        private LocalTimeValueCodec(DateTimeFormatter formatter) {
-            this.formatter = formatter;
-        }
-
-        @Override
-        public String valueToRaw(LocalTime value) {
-            if (value == null) return null;
-            return formatter != null ? formatter.format(value) : value.toString();
-        }
-
-        @Override
-        public LocalTime rawToValue(String raw) {
-            if (raw == null) return null;
-            return formatter != null ? LocalTime.parse(raw, formatter) : LocalTime.parse(raw);
-        }
-
-        @Override
-        public Class<LocalTime> valueClass() { return LocalTime.class; }
-
-        @Override
-        public Class<String> rawClass() { return String.class; }
-
-        @Override
-        public ValueCodec<LocalTime, String> withPattern(String pattern) {
-            return new LocalTimeValueCodec(DateTimeFormatter.ofPattern(pattern));
-        }
-    }
-
-    // Duration
-    final class DurationValueCodec implements ValueCodec<Duration, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Duration value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Duration rawToValue(String raw) {
-            return raw == null ? null : Duration.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Duration> valueClass() {
-            return Duration.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Period
-    final class PeriodValueCodec implements ValueCodec<Period, String> {
+    ValueCodec<URI, String> URI_CODEC = new SimpleValueCodec<>(URI.class, String.class,
+            URI::toString, URI::create);
 
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Period value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Period rawToValue(String raw) {
-            return raw == null ? null : Period.parse(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Period> valueClass() {
-            return Period.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Path
-    final class PathValueCodec implements ValueCodec<Path, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Path value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Path rawToValue(String raw) {
-            return raw == null ? null : Paths.get(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Path> valueClass() {
-            return Path.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // File
-    final class FileValueCodec implements ValueCodec<File, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(File value) {
-            return value == null ? null : value.toString();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public File rawToValue(String raw) {
-            return raw == null ? null : new File(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<File> valueClass() {
-            return File.class;
-        }
+    ValueCodec<URL, String> URL_CODEC = new SimpleValueCodec<>(URL.class, String.class,
+            URL::toString, raw -> {
+                try { return new URL(raw); }
+                catch (MalformedURLException e) { throw new JsonException("invalid URL: " + raw, e); }
+            });
 
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // Pattern
-    final class PatternValueCodec implements ValueCodec<Pattern, String> {
-
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Pattern value) {
-            return value == null ? null : value.pattern();
-        }
-
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Pattern rawToValue(String raw) {
-            return raw == null ? null : Pattern.compile(raw);
-        }
-
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Pattern> valueClass() {
-            return Pattern.class;
-        }
-
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
-
-    // InetAddress
-    final class InetAddressValueCodec implements ValueCodec<InetAddress, String> {
+    ValueCodec<UUID, String> UUID_CODEC = new SimpleValueCodec<>(UUID.class, String.class,
+            UUID::toString, UUID::fromString);
 
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(InetAddress value) {
-            return value == null ? null : value.getHostAddress();
-        }
+    ValueCodec<Locale, String> LOCALE = new SimpleValueCodec<>(Locale.class, String.class,
+            Locale::toLanguageTag, Locale::forLanguageTag);
 
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public InetAddress rawToValue(String raw) {
-            if (raw == null) {
-                return null;
-            }
-            try {
-                return InetAddress.getByName(raw);
-            } catch (UnknownHostException e) {
-                throw new JsonException("invalid InetAddress: " + raw, e);
-            }
-        }
+    ValueCodec<Currency, String> CURRENCY = new SimpleValueCodec<>(Currency.class, String.class,
+            Currency::getCurrencyCode, Currency::getInstance);
 
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<InetAddress> valueClass() {
-            return InetAddress.class;
-        }
+    ValueCodec<ZoneId, String> ZONE_ID = new SimpleValueCodec<>(ZoneId.class, String.class,
+            ZoneId::getId, ZoneId::of);
 
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
+    ValueCodec<Instant, String> INSTANT_STR = new SimpleValueCodec<>(Instant.class, String.class,
+            Instant::toString, Instant::parse);
 
-    // Date
-    final class DateValueCodec implements ValueCodec<Date, String> {
+    ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
+            Instant::toEpochMilli, Instant::ofEpochMilli);
 
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Date value) {
-            return value == null ? null : value.toInstant().toString();
-        }
+    ValueCodec<Duration, String> DURATION = new SimpleValueCodec<>(Duration.class, String.class,
+            Duration::toString, Duration::parse);
 
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Date rawToValue(String raw) {
-            return raw == null ? null : Date.from(Instant.parse(raw));
-        }
+    ValueCodec<Period, String> PERIOD = new SimpleValueCodec<>(Period.class, String.class,
+            Period::toString, Period::parse);
 
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Date> valueClass() {
-            return Date.class;
-        }
+    ValueCodec<Path, String> PATH = new SimpleValueCodec<>(Path.class, String.class,
+            Path::toString, Paths::get);
 
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
+    ValueCodec<File, String> FILE = new SimpleValueCodec<>(File.class, String.class,
+            File::toString, File::new);
 
-    // Calendar
-    final class CalendarValueCodec implements ValueCodec<Calendar, String> {
+    ValueCodec<Pattern, String> PATTERN = new SimpleValueCodec<>(Pattern.class, String.class,
+            Pattern::pattern, Pattern::compile);
 
-        /**
-         * Encodes value into raw representation.
-         */
-        @Override
-        public String valueToRaw(Calendar value) {
-            if (value == null) return null;
-            ZoneId zoneId = value.getTimeZone().toZoneId();
-            ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(value.toInstant(), zoneId);
-            return zonedDateTime.toString();
-        }
+    ValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
+            InetAddress::getHostAddress, raw -> {
+                try { return InetAddress.getByName(raw); }
+                catch (UnknownHostException e) { throw new JsonException("invalid InetAddress: " + raw, e); }
+            });
 
-        /**
-         * Decodes raw representation into value.
-         */
-        @Override
-        public Calendar rawToValue(String raw) {
-            if (raw == null) return null;
-            ZonedDateTime zonedDateTime = ZonedDateTime.parse(raw);
-            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zonedDateTime.getZone()));
-            calendar.setTimeInMillis(zonedDateTime.toInstant().toEpochMilli());
-            return calendar;
-        }
+    ValueCodec<Date, String> DATE = new SimpleValueCodec<>(Date.class, String.class,
+            v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)));
 
-        /**
-         * Returns value class handled by this codec.
-         */
-        @Override
-        public Class<Calendar> valueClass() {
-            return Calendar.class;
-        }
+    // ──────────────────────────────────────────────────────────────
+    //  Complex codecs → private static methods + method reference
+    // ──────────────────────────────────────────────────────────────
 
-        /**
-         * Returns raw class handled by this codec.
-         */
-        @Override
-        public Class<String> rawClass() {
-            return String.class;
-        }
-    }
+    ValueCodec<Calendar, String> CALENDAR = new SimpleValueCodec<>(Calendar.class, String.class,
+            ValueCodec::_calendarToRaw, ValueCodec::_calendarFromRaw);
 
-    // Optional
-    final class OptionalValueCodec implements ValueCodec<Optional<?>, Object> {
+    ValueCodec<Optional<?>, Object> OPTIONAL = new OptionalCodec();
 
+    /** Dedicated codec for Optional — null maps to Optional.empty(), not null. */
+    @SuppressWarnings("unchecked")
+    final class OptionalCodec implements ValueCodec<Optional<?>, Object> {
         @Override
-        @SuppressWarnings("unchecked")
         public Object valueToRaw(Optional<?> value) {
             if (value == null || !value.isPresent()) return null;
             return value.get();
         }
-
         @Override
-        @SuppressWarnings("unchecked")
         public Optional<?> rawToValue(Object raw) {
             return raw == null ? Optional.empty() : Optional.of(raw);
         }
-
-        @Override
-        public Class<Optional<?>> valueClass() { return (Class) Optional.class; }
-
-        @Override
-        public Class<Object> rawClass() { return Object.class; }
+        @Override public Class<Optional<?>> valueClass() { return (Class) Optional.class; }
+        @Override public Class<Object> rawClass() { return Object.class; }
     }
 
+    // calendar → string
+    static String _calendarToRaw(Calendar value) {
+        ZoneId zoneId = value.getTimeZone().toZoneId();
+        ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(value.toInstant(), zoneId);
+        return zonedDateTime.toString();
+    }
+
+    // string → calendar
+    static Calendar _calendarFromRaw(String raw) {
+        ZonedDateTime zonedDateTime = ZonedDateTime.parse(raw);
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone(zonedDateTime.getZone()));
+        calendar.setTimeInMillis(zonedDateTime.toInstant().toEpochMilli());
+        return calendar;
+    }
 
 }

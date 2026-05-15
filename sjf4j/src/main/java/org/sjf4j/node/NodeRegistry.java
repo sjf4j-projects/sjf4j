@@ -122,29 +122,29 @@ public final class NodeRegistry {
 
     // Bootstrap JDK Types
     static {
-        registerValueCodec(new ValueCodec.UriValueCodec());
-        registerValueCodec(new ValueCodec.UrlValueCodec());
-        registerValueCodec(new ValueCodec.UuidValueCodec());
-        registerValueCodec(new ValueCodec.LocaleValueCodec());
-        registerValueCodec(new ValueCodec.CurrencyValueCodec());
-        registerValueCodec(new ValueCodec.ZoneIdValueCodec());
-        registerValueCodec(new ValueCodec.InstantStringValueCodec());
-        registerValueCodec("iso", new ValueCodec.InstantStringValueCodec());
-        registerValueCodec("epochMillis", new ValueCodec.InstantEpochMillisValueCodec());
-        registerValueCodec(new ValueCodec.LocalDateValueCodec());
-        registerValueCodec(new ValueCodec.LocalTimeValueCodec());
-        registerValueCodec(new ValueCodec.LocalDateTimeValueCodec());
-        registerValueCodec(new ValueCodec.OffsetDateTimeValueCodec());
-        registerValueCodec(new ValueCodec.ZonedDateTimeValueCodec());
-        registerValueCodec(new ValueCodec.DurationValueCodec());
-        registerValueCodec(new ValueCodec.PeriodValueCodec());
-        registerValueCodec(new ValueCodec.PathValueCodec());
-        registerValueCodec(new ValueCodec.FileValueCodec());
-        registerValueCodec(new ValueCodec.PatternValueCodec());
-        registerValueCodec(new ValueCodec.InetAddressValueCodec());
-        registerValueCodec(new ValueCodec.DateValueCodec());
-        registerValueCodec(new ValueCodec.CalendarValueCodec());
-        registerValueCodec(new ValueCodec.OptionalValueCodec());
+        registerValueCodec(ValueCodec.URI_CODEC);
+        registerValueCodec(ValueCodec.URL_CODEC);
+        registerValueCodec(ValueCodec.UUID_CODEC);
+        registerValueCodec(ValueCodec.LOCALE);
+        registerValueCodec(ValueCodec.CURRENCY);
+        registerValueCodec(ValueCodec.ZONE_ID);
+        registerValueCodec(ValueCodec.INSTANT_STR);
+        registerValueCodec("iso", ValueCodec.INSTANT_STR);
+        registerValueCodec("epochMillis", ValueCodec.INSTANT_EPOCH_MILLIS);
+        registerValueCodec(PatternedValueCodec.LOCAL_DATE);
+        registerValueCodec(PatternedValueCodec.LOCAL_TIME);
+        registerValueCodec(PatternedValueCodec.LOCAL_DATE_TIME);
+        registerValueCodec(PatternedValueCodec.OFFSET_DATE_TIME);
+        registerValueCodec(PatternedValueCodec.ZONED_DATE_TIME);
+        registerValueCodec(ValueCodec.DURATION);
+        registerValueCodec(ValueCodec.PERIOD);
+        registerValueCodec(ValueCodec.PATH);
+        registerValueCodec(ValueCodec.FILE);
+        registerValueCodec(ValueCodec.PATTERN);
+        registerValueCodec(ValueCodec.INET_ADDR);
+        registerValueCodec(ValueCodec.DATE);
+        registerValueCodec(ValueCodec.CALENDAR);
+        registerValueCodec(ValueCodec.OPTIONAL);
     }
 
     /**

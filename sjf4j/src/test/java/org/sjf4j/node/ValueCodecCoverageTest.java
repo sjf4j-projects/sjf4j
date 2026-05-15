@@ -35,103 +35,105 @@ class ValueCodecCoverageTest {
     @Test
     void testStringBackedCodecsNullBranchesAndClassMetadata() throws Exception {
         URI uri = URI.create("https://example.com/a?b=1");
-        assertStringCodec(new ValueCodec.UriValueCodec(), uri, uri.toString(), URI.class);
+        assertStringCodec(ValueCodec.URI_CODEC, uri, uri.toString(), URI.class);
 
         URL url = new URL("https://example.com/p?q=1");
-        assertStringCodec(new ValueCodec.UrlValueCodec(), url, url.toString(), URL.class);
-        assertThrows(JsonException.class, () -> new ValueCodec.UrlValueCodec().rawToValue(":bad-url"));
+        assertStringCodec(ValueCodec.URL_CODEC, url, url.toString(), URL.class);
+        assertThrows(JsonException.class, () -> ValueCodec.URL_CODEC.rawToValue(":bad-url"));
 
         UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
-        assertStringCodec(new ValueCodec.UuidValueCodec(), uuid, uuid.toString(), UUID.class);
+        assertStringCodec(ValueCodec.UUID_CODEC, uuid, uuid.toString(), UUID.class);
 
         Locale locale = Locale.forLanguageTag("zh-CN");
-        assertStringCodec(new ValueCodec.LocaleValueCodec(), locale, locale.toLanguageTag(), Locale.class);
+        assertStringCodec(ValueCodec.LOCALE, locale, locale.toLanguageTag(), Locale.class);
 
         Currency currency = Currency.getInstance("USD");
-        assertStringCodec(new ValueCodec.CurrencyValueCodec(), currency, currency.getCurrencyCode(), Currency.class);
+        assertStringCodec(ValueCodec.CURRENCY, currency, currency.getCurrencyCode(), Currency.class);
 
         ZoneId zoneId = ZoneId.of("Asia/Shanghai");
-        assertStringCodec(new ValueCodec.ZoneIdValueCodec(), zoneId, zoneId.getId(), ZoneId.class);
+        assertStringCodec(ValueCodec.ZONE_ID, zoneId, zoneId.getId(), ZoneId.class);
 
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        assertStringCodec(new ValueCodec.InstantStringValueCodec(), instant, instant.toString(), Instant.class);
+        assertStringCodec(ValueCodec.INSTANT_STR, instant, instant.toString(), Instant.class);
 
         LocalDate localDate = LocalDate.parse("2024-01-01");
-        assertStringCodec(new ValueCodec.LocalDateValueCodec(), localDate, localDate.toString(), LocalDate.class);
+        assertStringCodec(PatternedValueCodec.LOCAL_DATE, localDate, localDate.toString(), LocalDate.class);
 
         LocalDateTime localDateTime = LocalDateTime.parse("2024-01-01T10:00:00");
-        assertStringCodec(new ValueCodec.LocalDateTimeValueCodec(), localDateTime, localDateTime.toString(), LocalDateTime.class);
+        assertStringCodec(PatternedValueCodec.LOCAL_DATE_TIME, localDateTime, localDateTime.toString(), LocalDateTime.class);
 
         OffsetDateTime offsetDateTime = OffsetDateTime.parse("2024-01-01T10:00:00+08:00");
-        assertStringCodec(new ValueCodec.OffsetDateTimeValueCodec(), offsetDateTime, offsetDateTime.toString(), OffsetDateTime.class);
+        assertStringCodec(PatternedValueCodec.OFFSET_DATE_TIME, offsetDateTime, offsetDateTime.toString(), OffsetDateTime.class);
 
         ZonedDateTime zonedDateTime = ZonedDateTime.parse("2024-01-01T10:00:00+08:00[Asia/Shanghai]");
-        assertStringCodec(new ValueCodec.ZonedDateTimeValueCodec(), zonedDateTime, zonedDateTime.toString(), ZonedDateTime.class);
+        assertStringCodec(PatternedValueCodec.ZONED_DATE_TIME, zonedDateTime, zonedDateTime.toString(), ZonedDateTime.class);
 
         Duration duration = Duration.parse("PT10S");
-        assertStringCodec(new ValueCodec.DurationValueCodec(), duration, duration.toString(), Duration.class);
+        assertStringCodec(ValueCodec.DURATION, duration, duration.toString(), Duration.class);
 
         Period period = Period.parse("P1Y2M3D");
-        assertStringCodec(new ValueCodec.PeriodValueCodec(), period, period.toString(), Period.class);
+        assertStringCodec(ValueCodec.PERIOD, period, period.toString(), Period.class);
 
         Path path = Paths.get("/tmp/test.txt");
-        assertStringCodec(new ValueCodec.PathValueCodec(), path, path.toString(), Path.class);
+        assertStringCodec(ValueCodec.PATH, path, path.toString(), Path.class);
 
         File file = new File("/tmp/test.txt");
-        assertStringCodec(new ValueCodec.FileValueCodec(), file, file.toString(), File.class);
+        assertStringCodec(ValueCodec.FILE, file, file.toString(), File.class);
 
         Pattern pattern = Pattern.compile("[a-z]+\\d?");
-        ValueCodec.PatternValueCodec patternCodec = new ValueCodec.PatternValueCodec();
-        assertEquals(Pattern.class, patternCodec.valueClass());
-        assertEquals(String.class, patternCodec.rawClass());
-        assertNull(patternCodec.valueToRaw(null));
-        assertNull(patternCodec.rawToValue(null));
-        assertEquals(pattern.pattern(), patternCodec.valueToRaw(pattern));
-        assertEquals(pattern.pattern(), patternCodec.rawToValue(pattern.pattern()).pattern());
+        assertEquals(Pattern.class, ValueCodec.PATTERN.valueClass());
+        assertEquals(String.class, ValueCodec.PATTERN.rawClass());
+        assertNull(ValueCodec.PATTERN.valueToRaw(null));
+        assertNull(ValueCodec.PATTERN.rawToValue(null));
+        assertEquals(pattern.pattern(), ValueCodec.PATTERN.valueToRaw(pattern));
+        assertEquals(pattern.pattern(), ValueCodec.PATTERN.rawToValue(pattern.pattern()).pattern());
 
         Date date = new Date(1704103200000L);
-        assertStringCodec(new ValueCodec.DateValueCodec(), date, date.toInstant().toString(), Date.class);
+        assertStringCodec(ValueCodec.DATE, date, date.toInstant().toString(), Date.class);
     }
 
     @Test
     void testNonStringBackedCodecsAndErrorBranches() throws Exception {
         Instant instant = Instant.parse("2024-01-01T10:00:00Z");
-        ValueCodec.InstantEpochMillisValueCodec epochCodec = new ValueCodec.InstantEpochMillisValueCodec();
-        assertEquals(Long.class, epochCodec.rawClass());
-        assertEquals(Instant.class, epochCodec.valueClass());
-        assertNull(epochCodec.valueToRaw(null));
-        assertNull(epochCodec.rawToValue(null));
-        assertEquals(instant.toEpochMilli(), epochCodec.valueToRaw(instant));
-        assertEquals(instant, epochCodec.rawToValue(instant.toEpochMilli()));
+        assertEquals(Long.class, ValueCodec.INSTANT_EPOCH_MILLIS.rawClass());
+        assertEquals(Instant.class, ValueCodec.INSTANT_EPOCH_MILLIS.valueClass());
+        assertNull(ValueCodec.INSTANT_EPOCH_MILLIS.valueToRaw(null));
+        assertNull(ValueCodec.INSTANT_EPOCH_MILLIS.rawToValue(null));
+        assertEquals(instant.toEpochMilli(), ValueCodec.INSTANT_EPOCH_MILLIS.valueToRaw(instant));
+        assertEquals(instant, ValueCodec.INSTANT_EPOCH_MILLIS.rawToValue(instant.toEpochMilli()));
 
         InetAddress address = InetAddress.getByName("127.0.0.1");
-        ValueCodec.InetAddressValueCodec inetCodec = new ValueCodec.InetAddressValueCodec();
-        assertEquals(String.class, inetCodec.rawClass());
-        assertEquals(InetAddress.class, inetCodec.valueClass());
-        assertNull(inetCodec.valueToRaw(null));
-        assertNull(inetCodec.rawToValue(null));
-        assertEquals(address.getHostAddress(), inetCodec.valueToRaw(address));
-        assertEquals(address, inetCodec.rawToValue(address.getHostAddress()));
-        assertThrows(JsonException.class, () -> inetCodec.rawToValue("300.300.300.300"));
+        assertEquals(String.class, ValueCodec.INET_ADDR.rawClass());
+        assertEquals(InetAddress.class, ValueCodec.INET_ADDR.valueClass());
+        assertNull(ValueCodec.INET_ADDR.valueToRaw(null));
+        assertNull(ValueCodec.INET_ADDR.rawToValue(null));
+        assertEquals(address.getHostAddress(), ValueCodec.INET_ADDR.valueToRaw(address));
+        assertEquals(address, ValueCodec.INET_ADDR.rawToValue(address.getHostAddress()));
+        assertThrows(JsonException.class, () -> ValueCodec.INET_ADDR.rawToValue("300.300.300.300"));
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Shanghai"));
         calendar.setTimeInMillis(1704103200000L);
-        ValueCodec.CalendarValueCodec calendarCodec = new ValueCodec.CalendarValueCodec();
-        assertEquals(String.class, calendarCodec.rawClass());
-        assertEquals(Calendar.class, calendarCodec.valueClass());
-        assertNull(calendarCodec.valueToRaw(null));
-        assertNull(calendarCodec.rawToValue(null));
-        String raw = calendarCodec.valueToRaw(calendar);
-        Calendar decoded = calendarCodec.rawToValue(raw);
+        assertEquals(String.class, ValueCodec.CALENDAR.rawClass());
+        assertEquals(Calendar.class, ValueCodec.CALENDAR.valueClass());
+        assertNull(ValueCodec.CALENDAR.valueToRaw(null));
+        assertNull(ValueCodec.CALENDAR.rawToValue(null));
+        String raw = ValueCodec.CALENDAR.valueToRaw(calendar);
+        Calendar decoded = ValueCodec.CALENDAR.rawToValue(raw);
         assertEquals(calendar.getTimeInMillis(), decoded.getTimeInMillis());
         assertEquals(calendar.getTimeZone().getID(), decoded.getTimeZone().getID());
     }
 
     @Test
     void testDefaultValueCopyReturnsSameReference() {
-        ValueCodec.UriValueCodec codec = new ValueCodec.UriValueCodec();
         URI uri = URI.create("https://example.com/default-copy");
-        assertSame(uri, codec.valueCopy(uri));
+        assertSame(uri, ValueCodec.URI_CODEC.valueCopy(uri));
+    }
+
+    @Test
+    void testSimpleValueCodecNullEncoderDecoder() {
+        // Null encoder/decoder should produce null
+        assertNull(ValueCodec.URI_CODEC.valueToRaw(null));
+        assertNull(ValueCodec.URI_CODEC.rawToValue(null));
     }
 
     private static <T> void assertStringCodec(ValueCodec<T, String> codec, T value, String raw, Class<T> valueClass) {
