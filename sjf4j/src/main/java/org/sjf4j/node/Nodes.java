@@ -616,14 +616,6 @@ public final class Nodes {
             if (cross) return asString(node);
             else return toString(node);
         }
-        if (clazz == Character.class) {
-            if (cross) return asChar(node);
-            else return toChar(node);
-        }
-        if (clazz.isEnum()) {
-            if (cross) return asEnum(node, (Class<Enum>) clazz);
-            return toEnum(node, (Class<Enum>) clazz);
-        }
         if (Number.class.isAssignableFrom(clazz)) {
             if (cross) return Numbers.to(asNumber(node), clazz);
             else return Numbers.to(toNumber(node), clazz);
@@ -631,6 +623,14 @@ public final class Nodes {
         if (clazz == Boolean.class) {
             if (cross) return asBoolean(node);
             else return toBoolean(node);
+        }
+        if (clazz == Character.class) {
+            if (cross) return asChar(node);
+            else return toChar(node);
+        }
+        if (clazz.isEnum()) {
+            if (cross) return asEnum(node, (Class<Enum>) clazz);
+            return toEnum(node, (Class<Enum>) clazz);
         }
 
         if (Map.class.isAssignableFrom(clazz)) {

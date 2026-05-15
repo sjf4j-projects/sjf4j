@@ -124,35 +124,43 @@ public enum NodeKind {
         return UNKNOWN;
     }
 
-//    public boolean isNumber() {
-//        return this == VALUE_NUMBER;
-//    }
-//
-//    public boolean isString() {
-//        return this == VALUE_STRING;
-//    }
-//
-//    public boolean isBoolean() {return this == VALUE_BOOLEAN;}
-//
-//    public boolean isNull() {return this == VALUE_NULL;}
-//
-//    public boolean isValue() {
-//        return this == VALUE_STRING || this == VALUE_NUMBER || this == VALUE_BOOLEAN
-//                || this == VALUE_NULL || this == VALUE_REGISTERED;
-//    }
-//
-//    public boolean isObject() {
-//        return this == OBJECT_MAP || this == OBJECT_JSON_OBJECT || this == OBJECT_JOJO || this == OBJECT_POJO;
-//    }
-//
-//    public boolean isArray() {
-//        return this == ARRAY_LIST || this == ARRAY_JSON_ARRAY || this == ARRAY_JAJO || this == ARRAY_ARRAY
-//                || this == ARRAY_SET;
-//    }
-//
-//    public boolean isContainer() {
-//        return isObject() || isArray();
-//    }
+    public boolean isNumber() {
+        return this == VALUE_NUMBER || this == VALUE_NUMBER_FACADE;
+    }
+
+    public boolean isString() {
+        return this == VALUE_STRING || this == VALUE_STRING_CHARACTER
+                || this == VALUE_STRING_ENUM || this == VALUE_STRING_FACADE;
+    }
+
+    public boolean isBoolean() {
+        return this == VALUE_BOOLEAN || this == VALUE_BOOLEAN_FACADE;
+    }
+
+    public boolean isNull() {
+        return this == VALUE_NULL;
+    }
+
+    public boolean isValue() {
+        return isNumber() || isString() || isBoolean() || isNull()
+                || this == VALUE_NODE_VALUE;
+    }
+
+    public boolean isObject() {
+        return this == OBJECT_MAP || this == OBJECT_JSON_OBJECT
+                || this == OBJECT_JOJO || this == OBJECT_POJO
+                || this == OBJECT_FACADE;
+    }
+
+    public boolean isArray() {
+        return this == ARRAY_LIST || this == ARRAY_JSON_ARRAY
+                || this == ARRAY_JAJO || this == ARRAY_ARRAY
+                || this == ARRAY_SET || this == ARRAY_FACADE;
+    }
+
+    public boolean isContainer() {
+        return isObject() || isArray();
+    }
 
     /**
      * Returns true for unknown/unclassified kind.
