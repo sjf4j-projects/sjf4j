@@ -12,6 +12,7 @@ import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
+import org.sjf4j.node.ValueCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -24,6 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -122,10 +124,7 @@ public class Fastjson2StreamingIO {
     private static Object _readNull(JSONReader reader, Class<?> rawClazz, StreamingContext context)
             throws IOException {
         reader.readNull();
-//        NodeRegistry.ValueCodecInfo vci = StreamingIO.resolveValueCodecInfo(rawClazz, context);
-//        if (vci != null) {
-//            return vci.rawToValue(null);
-//        }
+        if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
         return null;
     }
 

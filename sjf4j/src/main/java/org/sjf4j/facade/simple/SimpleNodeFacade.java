@@ -10,6 +10,7 @@ import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.node.ValueCodec;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
@@ -23,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 
@@ -94,7 +96,10 @@ public class SimpleNodeFacade implements NodeFacade {
     private Object _readNode(Object node, Type type, Class<?> rawClazz,
                              NodeRegistry.OneOfInfo anyOfInfo, boolean deepCopy, PathSegment ps) {
         try {
-            if (node == null) return null;
+            if (node == null) {
+                if (rawClazz == Optional.class) return ValueCodec.OPTIONAL.rawToValue(null);
+                return null;
+            }
 
             NodeConverter<Object, Object> converter = _findConverter(node.getClass(), rawClazz);
             if (converter != null) {
