@@ -435,24 +435,30 @@ public class JsonObject extends JsonContainer {
 
     /// Getter
     /**
-     * Strict getter helper with location context.
+     * Strict getter helper. When {@code containerType} is non-null the message
+     * includes the container name; for plain scalar types pass {@code null}.
      */
-    private <T> T _get(String key, java.util.function.Function<Object, T> fn, String type) {
+    private <T> T _get(String key, java.util.function.Function<Object, T> fn, Class<?> elementType, Class<?> containerType) {
         try {
             return fn.apply(getNode(key));
         } catch (Exception e) {
-            throw new JsonException("cannot get " + type + " at '" + key + "'", e);
+            if (containerType == null) {
+                throw new JsonException("cannot get " + elementType.getSimpleName() + " at '" + key + "'", e);
+            } else {
+                throw new JsonException("cannot get " + containerType.getSimpleName() + " with element type " +
+                        elementType.getSimpleName() + " at '" + key + "'", e);
+            }
         }
     }
 
     /**
      * Lenient getter helper with location context.
      */
-    private <T> T _getAs(String key, java.util.function.Function<Object, T> fn, String type) {
+    private <T> T _getAs(String key, java.util.function.Function<Object, T> fn, Class<?> type) {
         try {
             return fn.apply(getNode(key));
         } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + type + " at '" + key + "'", e);
+            throw new JsonException("cannot coerce to " + type.getSimpleName() + " at '" + key + "'", e);
         }
     }
 
@@ -488,7 +494,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a String value using strict conversion.
      */
-    public String getString(String key) { return _get(key, Nodes::toString, "String"); }
+    public String getString(String key) { return _get(key, Nodes::toString, String.class, null); }
 
     /**
      * Returns a String value or the default value when missing.
@@ -509,7 +515,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Number value using strict conversion.
      */
-    public Number getNumber(String key) { return _get(key, Nodes::toNumber, "Number"); }
+    public Number getNumber(String key) { return _get(key, Nodes::toNumber, Number.class, null); }
     
     /**
      * Returns a Number value or the default value when missing.
@@ -522,12 +528,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Number value using lenient conversion.
      */
-    public Number getAsNumber(String key) { return _getAs(key, Nodes::asNumber, "Number"); }
+    public Number getAsNumber(String key) { return _getAs(key, Nodes::asNumber, Number.class); }
 
     /**
      * Returns a Long value using strict conversion.
      */
-    public Long getLong(String key) { return _get(key, Nodes::toLong, "Long"); }
+    public Long getLong(String key) { return _get(key, Nodes::toLong, Long.class, null); }
     
     /**
      * Returns a Long value or the default value when missing.
@@ -540,12 +546,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Long value using lenient conversion.
      */
-    public Long getAsLong(String key) { return _getAs(key, Nodes::asLong, "Long"); }
+    public Long getAsLong(String key) { return _getAs(key, Nodes::asLong, Long.class); }
 
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInt(String key) { return _get(key, Nodes::toInt, "Integer"); }
+    public Integer getInt(String key) { return _get(key, Nodes::toInt, Integer.class, null); }
     
     /**
      * Returns an Integer value or the default value when missing.
@@ -558,12 +564,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInt(String key) { return _getAs(key, Nodes::asInt, "Integer"); }
+    public Integer getAsInt(String key) { return _getAs(key, Nodes::asInt, Integer.class); }
 
     /**
      * Returns a Short value using strict conversion.
      */
-    public Short getShort(String key) { return _get(key, Nodes::toShort, "Short"); }
+    public Short getShort(String key) { return _get(key, Nodes::toShort, Short.class, null); }
     
     /**
      * Returns a Short value or the default value when missing.
@@ -576,12 +582,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Short value using lenient conversion.
      */
-    public Short getAsShort(String key) { return _getAs(key, Nodes::asShort, "Short"); }
+    public Short getAsShort(String key) { return _getAs(key, Nodes::asShort, Short.class); }
 
     /**
      * Returns a Byte value using strict conversion.
      */
-    public Byte getByte(String key) { return _get(key, Nodes::toByte, "Byte"); }
+    public Byte getByte(String key) { return _get(key, Nodes::toByte, Byte.class, null); }
     
     /**
      * Returns a Byte value or the default value when missing.
@@ -594,12 +600,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Byte value using lenient conversion.
      */
-    public Byte getAsByte(String key) { return _getAs(key, Nodes::asByte, "Byte"); }
+    public Byte getAsByte(String key) { return _getAs(key, Nodes::asByte, Byte.class); }
 
     /**
      * Returns a Double value using strict conversion.
      */
-    public Double getDouble(String key) { return _get(key, Nodes::toDouble, "Double"); }
+    public Double getDouble(String key) { return _get(key, Nodes::toDouble, Double.class, null); }
     
     /**
      * Returns a Double value or the default value when missing.
@@ -612,12 +618,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Double value using lenient conversion.
      */
-    public Double getAsDouble(String key) { return _getAs(key, Nodes::asDouble, "Double"); }
+    public Double getAsDouble(String key) { return _getAs(key, Nodes::asDouble, Double.class); }
 
     /**
      * Returns a Float value using strict conversion.
      */
-    public Float getFloat(String key) { return _get(key, Nodes::toFloat, "Float"); }
+    public Float getFloat(String key) { return _get(key, Nodes::toFloat, Float.class, null); }
     
     /**
      * Returns a Float value or the default value when missing.
@@ -630,12 +636,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Float value using lenient conversion.
      */
-    public Float getAsFloat(String key) { return _getAs(key, Nodes::asFloat, "Float"); }
+    public Float getAsFloat(String key) { return _getAs(key, Nodes::asFloat, Float.class); }
 
     /**
      * Returns a BigInteger value using strict conversion.
      */
-    public BigInteger getBigInteger(String key) { return _get(key, Nodes::toBigInteger, "BigInteger"); }
+    public BigInteger getBigInteger(String key) { return _get(key, Nodes::toBigInteger, BigInteger.class, null); }
     
     /**
      * Returns a BigInteger value or the default value when missing.
@@ -648,12 +654,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a BigInteger value using lenient conversion.
      */
-    public BigInteger getAsBigInteger(String key) { return _getAs(key, Nodes::asBigInteger, "BigInteger"); }
+    public BigInteger getAsBigInteger(String key) { return _getAs(key, Nodes::asBigInteger, BigInteger.class); }
 
     /**
      * Returns a BigDecimal value using strict conversion.
      */
-    public BigDecimal getBigDecimal(String key) { return _get(key, Nodes::toBigDecimal, "BigDecimal"); }
+    public BigDecimal getBigDecimal(String key) { return _get(key, Nodes::toBigDecimal, BigDecimal.class, null); }
     
     /**
      * Returns a BigDecimal value or the default value when missing.
@@ -666,12 +672,12 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a BigDecimal value using lenient conversion.
      */
-    public BigDecimal getAsBigDecimal(String key) { return _getAs(key, Nodes::asBigDecimal, "BigDecimal"); }
+    public BigDecimal getAsBigDecimal(String key) { return _getAs(key, Nodes::asBigDecimal, BigDecimal.class); }
 
     /**
      * Returns a Boolean value using strict conversion.
      */
-    public Boolean getBoolean(String key) { return _get(key, Nodes::toBoolean, "Boolean"); }
+    public Boolean getBoolean(String key) { return _get(key, Nodes::toBoolean, Boolean.class, null); }
     
     /**
      * Returns a Boolean value or the default value when missing.
@@ -684,52 +690,52 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a Boolean value using lenient conversion.
      */
-    public Boolean getAsBoolean(String key) { return _getAs(key, Nodes::asBoolean, "Boolean"); }
+    public Boolean getAsBoolean(String key) { return _getAs(key, Nodes::asBoolean, Boolean.class); }
 
     /**
      * Returns a JsonObject value using strict conversion.
      */
-    public JsonObject getJsonObject(String key) { return _get(key, Nodes::toJsonObject, "JsonObject"); }
+    public JsonObject getJsonObject(String key) { return _get(key, Nodes::toJsonObject, JsonObject.class, null); }
 
     /**
      * Returns a Map value using strict conversion.
      */
-    public Map<String, Object> getMap(String key) { return _get(key, Nodes::toMap, "Map<String,Object>"); }
+    public Map<String, Object> getMap(String key) { return _get(key, Nodes::toMap, Map.class, null); }
 
     /**
      * Returns a typed Map value using strict conversion.
      */
-    public <T> Map<String, T> getMap(String key, Class<T> clazz) { return _get(key, v -> Nodes.toMap(v, clazz), "Map<String," + clazz.getName() + ">"); }
+    public <T> Map<String, T> getMap(String key, Class<T> clazz) { return _get(key, v -> Nodes.toMap(v, clazz), clazz, Map.class); }
 
     /**
      * Returns a JsonArray value using strict conversion.
      */
-    public JsonArray getJsonArray(String key) { return _get(key, Nodes::toJsonArray, "JsonArray"); }
+    public JsonArray getJsonArray(String key) { return _get(key, Nodes::toJsonArray, JsonArray.class, null); }
 
     /**
      * Returns a List value using strict conversion.
      */
-    public List<Object> getList(String key) { return _get(key, Nodes::toList, "List<Object>"); }
+    public List<Object> getList(String key) { return _get(key, Nodes::toList, List.class, null); }
 
     /**
      * Returns a typed List value using strict conversion.
      */
-    public <T> List<T> getList(String key, Class<T> clazz) { return _get(key, v -> Nodes.toList(v, clazz), "List<" + clazz.getName() + ">"); }
+    public <T> List<T> getList(String key, Class<T> clazz) { return _get(key, v -> Nodes.toList(v, clazz), clazz, List.class); }
 
     /**
      * Returns an Object array using strict conversion.
      */
-    public Object[] getArray(String key) { return _get(key, Nodes::toArray, "Object[]"); }
+    public Object[] getArray(String key) { return _get(key, Nodes::toArray, Object[].class, null); }
 
     /**
      * Returns a typed array using strict conversion.
      */
-    public <T> T[] getArray(String key, Class<T> clazz) { return _get(key, v -> Nodes.toArray(v, clazz), clazz.getName() + "[]"); }
+    public <T> T[] getArray(String key, Class<T> clazz) { return _get(key, v -> Nodes.toArray(v, clazz), clazz, Object[].class); }
 
     /**
      * Returns a value converted to the given type.
      */
-    public <T> T get(String key, Class<T> clazz) { return _get(key, v -> Nodes.to(v, clazz), clazz.getName()); }
+    public <T> T get(String key, Class<T> clazz) { return _get(key, v -> Nodes.to(v, clazz), clazz, null); }
     
     /**
      * Returns a value converted to the inferred type.
@@ -744,7 +750,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns a value using lenient conversion.
      */
-    public <T> T getAs(String key, Class<T> clazz) { return _getAs(key, v -> Nodes.as(v, clazz), clazz.getName()); }
+    public <T> T getAs(String key, Class<T> clazz) { return _getAs(key, v -> Nodes.as(v, clazz), clazz); }
     
     /**
      * Returns a value using lenient conversion with inferred type.

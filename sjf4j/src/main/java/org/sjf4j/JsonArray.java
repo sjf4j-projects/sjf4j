@@ -286,24 +286,29 @@ public class JsonArray extends JsonContainer {
 
     /// Getter
     /**
-     * Strict getter helper with index location context.
+     * Strict getter helper. When {@code containerType} is non-null the message
+     * includes the container name; for plain scalar types pass {@code null}.
      */
-    private <T> T _get(int idx, java.util.function.Function<Object, T> fn, String type) {
+    private <T> T _get(int idx, java.util.function.Function<Object, T> fn, Class<?> elementType, Class<?> containerType) {
         try {
             return fn.apply(getNode(idx));
         } catch (Exception e) {
-            throw new JsonException("cannot get " + type + " at [" + idx + "]", e);
+            String msg = containerType == null
+                ? "cannot get " + elementType.getSimpleName() + " at [" + idx + "]"
+                : "cannot get " + containerType.getSimpleName() + " with element type " + elementType.getSimpleName() +
+                  " at [" + idx + "]";
+            throw new JsonException(msg, e);
         }
     }
 
     /**
-     * Lenient getter helper with index location context.
+     * Lenient getter helper for scalar types only.
      */
-    private <T> T _getAs(int idx, java.util.function.Function<Object, T> fn, String type) {
+    private <T> T _getAs(int idx, java.util.function.Function<Object, T> fn, Class<?> type) {
         try {
             return fn.apply(getNode(idx));
         } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + type + " at [" + idx + "]", e);
+            throw new JsonException("cannot coerce to " + type.getSimpleName() + " at [" + idx + "]", e);
         }
     }
 
@@ -332,7 +337,7 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a String value using strict conversion.
      */
-    public String getString(int idx) { return _get(idx, Nodes::toString, "String"); }
+    public String getString(int idx) { return _get(idx, Nodes::toString, String.class, null); }
     /**
      * Returns a String value or the default value when missing.
      */
@@ -356,7 +361,7 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Number value using strict conversion.
      */
-    public Number getNumber(int idx) { return _get(idx, Nodes::toNumber, "Number"); }
+    public Number getNumber(int idx) { return _get(idx, Nodes::toNumber, Number.class, null); }
 
     /**
      * Returns a Number value or the default value when missing.
@@ -369,12 +374,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Number value using lenient conversion.
      */
-    public Number getAsNumber(int idx) { return _getAs(idx, Nodes::asNumber, "Number"); }
+    public Number getAsNumber(int idx) { return _getAs(idx, Nodes::asNumber, Number.class); }
 
     /**
      * Returns a Long value using strict conversion.
      */
-    public Long getLong(int idx) { return _get(idx, Nodes::toLong, "Long"); }
+    public Long getLong(int idx) { return _get(idx, Nodes::toLong, Long.class, null); }
 
     /**
      * Returns a Long value or the default value when missing.
@@ -387,12 +392,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Long value using lenient conversion.
      */
-    public Long getAsLong(int idx) { return _getAs(idx, Nodes::asLong, "Long"); }
+    public Long getAsLong(int idx) { return _getAs(idx, Nodes::asLong, Long.class); }
 
     /**
      * Returns an Integer value using strict conversion.
      */
-    public Integer getInt(int idx) { return _get(idx, Nodes::toInt, "Integer"); }
+    public Integer getInt(int idx) { return _get(idx, Nodes::toInt, Integer.class, null); }
 
     /**
      * Returns an Integer value or the default value when missing.
@@ -405,12 +410,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns an Integer value using lenient conversion.
      */
-    public Integer getAsInt(int idx) { return _getAs(idx, Nodes::asInt, "Integer"); }
+    public Integer getAsInt(int idx) { return _getAs(idx, Nodes::asInt, Integer.class); }
 
     /**
      * Returns a Short value using strict conversion.
      */
-    public Short getShort(int idx) { return _get(idx, Nodes::toShort, "Short"); }
+    public Short getShort(int idx) { return _get(idx, Nodes::toShort, Short.class, null); }
 
     /**
      * Returns a Short value or the default value when missing.
@@ -423,12 +428,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Short value using lenient conversion.
      */
-    public Short getAsShort(int idx) { return _getAs(idx, Nodes::asShort, "Short"); }
+    public Short getAsShort(int idx) { return _getAs(idx, Nodes::asShort, Short.class); }
 
     /**
      * Returns a Byte value using strict conversion.
      */
-    public Byte getByte(int idx) { return _get(idx, Nodes::toByte, "Byte"); }
+    public Byte getByte(int idx) { return _get(idx, Nodes::toByte, Byte.class, null); }
 
     /**
      * Returns a Byte value or the default value when missing.
@@ -441,12 +446,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Byte value using lenient conversion.
      */
-    public Byte getAsByte(int idx) { return _getAs(idx, Nodes::asByte, "Byte"); }
+    public Byte getAsByte(int idx) { return _getAs(idx, Nodes::asByte, Byte.class); }
 
     /**
      * Returns a Double value using strict conversion.
      */
-    public Double getDouble(int idx) { return _get(idx, Nodes::toDouble, "Double"); }
+    public Double getDouble(int idx) { return _get(idx, Nodes::toDouble, Double.class, null); }
 
     /**
      * Returns a Double value or the default value when missing.
@@ -459,12 +464,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Double value using lenient conversion.
      */
-    public Double getAsDouble(int idx) { return _getAs(idx, Nodes::asDouble, "Double"); }
+    public Double getAsDouble(int idx) { return _getAs(idx, Nodes::asDouble, Double.class); }
 
     /**
      * Returns a Float value using strict conversion.
      */
-    public Float getFloat(int idx) { return _get(idx, Nodes::toFloat, "Float"); }
+    public Float getFloat(int idx) { return _get(idx, Nodes::toFloat, Float.class, null); }
 
     /**
      * Returns a Float value or the default value when missing.
@@ -477,12 +482,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Float value using lenient conversion.
      */
-    public Float getAsFloat(int idx) { return _getAs(idx, Nodes::asFloat, "Float"); }
+    public Float getAsFloat(int idx) { return _getAs(idx, Nodes::asFloat, Float.class); }
 
     /**
      * Returns a BigInteger value using strict conversion.
      */
-    public BigInteger getBigInteger(int idx) { return _get(idx, Nodes::toBigInteger, "BigInteger"); }
+    public BigInteger getBigInteger(int idx) { return _get(idx, Nodes::toBigInteger, BigInteger.class, null); }
 
     /**
      * Returns a BigInteger value or the default value when missing.
@@ -495,12 +500,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a BigInteger value using lenient conversion.
      */
-    public BigInteger getAsBigInteger(int idx) { return _getAs(idx, Nodes::asBigInteger, "BigInteger"); }
+    public BigInteger getAsBigInteger(int idx) { return _getAs(idx, Nodes::asBigInteger, BigInteger.class); }
 
     /**
      * Returns a BigDecimal value using strict conversion.
      */
-    public BigDecimal getBigDecimal(int idx) { return _get(idx, Nodes::toBigDecimal, "BigDecimal"); }
+    public BigDecimal getBigDecimal(int idx) { return _get(idx, Nodes::toBigDecimal, BigDecimal.class, null); }
 
     /**
      * Returns a BigDecimal value or the default value when missing.
@@ -513,12 +518,12 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a BigDecimal value using lenient conversion.
      */
-    public BigDecimal getAsBigDecimal(int idx) { return _getAs(idx, Nodes::asBigDecimal, "BigDecimal"); }
+    public BigDecimal getAsBigDecimal(int idx) { return _getAs(idx, Nodes::asBigDecimal, BigDecimal.class); }
 
     /**
      * Returns a Boolean value using strict conversion.
      */
-    public Boolean getBoolean(int idx) { return _get(idx, Nodes::toBoolean, "Boolean"); }
+    public Boolean getBoolean(int idx) { return _get(idx, Nodes::toBoolean, Boolean.class, null); }
 
     /**
      * Returns a Boolean value or the default value when missing.
@@ -531,54 +536,54 @@ public class JsonArray extends JsonContainer {
     /**
      * Returns a Boolean value using lenient conversion.
      */
-    public Boolean getAsBoolean(int idx) { return _getAs(idx, Nodes::asBoolean, "Boolean"); }
+    public Boolean getAsBoolean(int idx) { return _getAs(idx, Nodes::asBoolean, Boolean.class); }
 
     /**
      * Returns a JsonObject value using strict conversion.
      */
-    public JsonObject getJsonObject(int idx) { return _get(idx, Nodes::toJsonObject, "JsonObject"); }
+    public JsonObject getJsonObject(int idx) { return _get(idx, Nodes::toJsonObject, JsonObject.class, null); }
 
     /**
      * Returns a Map value using strict conversion.
      */
-    public Map<String, Object> getMap(int idx) { return _get(idx, Nodes::toMap, "Map<String,Object>"); }
+    public Map<String, Object> getMap(int idx) { return _get(idx, Nodes::toMap, Map.class, null); }
 
     /**
      * Returns a typed Map value using strict conversion.
      */
-    public <T> Map<String, T> getMap(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toMap(v, clazz), "Map<String," + clazz.getName() + ">"); }
+    public <T> Map<String, T> getMap(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toMap(v, clazz), clazz, Map.class); }
 
     /**
      * Returns a JsonArray value using strict conversion.
      */
-    public JsonArray getJsonArray(int idx) { return _get(idx, Nodes::toJsonArray, "JsonArray"); }
+    public JsonArray getJsonArray(int idx) { return _get(idx, Nodes::toJsonArray, JsonArray.class, null); }
 
     /**
      * Returns a List value using strict conversion.
      */
-    public List<Object> getList(int idx) { return _get(idx, Nodes::toList, "List<Object>"); }
+    public List<Object> getList(int idx) { return _get(idx, Nodes::toList, List.class, null); }
 
     /**
      * Returns a typed List value using strict conversion.
      */
-    public <T> List<T> getList(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toList(v, clazz), "List<" + clazz.getName() + ">"); }
+    public <T> List<T> getList(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toList(v, clazz), clazz, List.class); }
 
     /**
      * Returns an Object array using strict conversion.
      */
-    public Object[] getArray(int idx) { return _get(idx, Nodes::toArray, "Object[]"); }
+    public Object[] getArray(int idx) { return _get(idx, Nodes::toArray, Object[].class, null); }
 
     /**
      * Returns a typed array using strict conversion.
      */
-    public <T> T[] getArray(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toArray(v, clazz), clazz.getName() + "[]"); }
+    public <T> T[] getArray(int idx, Class<T> clazz) { return _get(idx, v -> Nodes.toArray(v, clazz), clazz, Object[].class); }
 
     /**
      * Returns a value converted to the given type.
      */
     public <T> T get(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz");
-        return _get(idx, v -> Nodes.to(v, clazz), clazz.getName());
+        return _get(idx, v -> Nodes.to(v, clazz), clazz, null);
     }
 
     /**
@@ -596,7 +601,7 @@ public class JsonArray extends JsonContainer {
      */
     public <T> T getAs(int idx, Class<T> clazz) {
         Objects.requireNonNull(clazz, "clazz");
-        return _getAs(idx, v -> Nodes.as(v, clazz), clazz.getName());
+        return _getAs(idx, v -> Nodes.as(v, clazz), clazz);
     }
 
     /**
