@@ -14,6 +14,7 @@ import org.sjf4j.facade.snake.SnakeYamlFacade;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -117,7 +118,7 @@ class FacadeBackendPublicCoverageTest {
     @Test
     void snakeYamlReaderWriterMethods() throws Exception {
         SnakeYamlFacade facade = new SnakeYamlFacade();
-        try (StreamingReader reader = facade.createReader(new java.io.StringReader("v: 3\n"))) {
+        try (StreamingReader reader = facade.createReader(new StringReader("v: 3\n"))) {
             reader.startDocument();
             reader.startObject();
             assertEquals("v", reader.nextName());

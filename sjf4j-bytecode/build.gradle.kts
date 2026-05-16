@@ -8,7 +8,7 @@ dependencies {
 
     // ByteBuddy — high-level bytecode generation
     implementation("net.bytebuddy:byte-buddy:1.15.11")
-    implementation("net.bytebuddy:byte-buddy-agent:1.15.11")
+//    implementation("net.bytebuddy:byte-buddy-agent:1.15.11")
 
     // ASM — low-level bytecode generation
     implementation("org.ow2.asm:asm:9.7.1")

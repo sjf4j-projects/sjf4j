@@ -6,6 +6,7 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * Compare getter overhead: current (with try-catch) vs direct Nodes call.
@@ -98,7 +99,7 @@ public class GetterOverheadBenchmark {
     }
 
     // Helper: template method pattern
-    private static <T> T _get(JsonObject obj, String key, java.util.function.Function<Object, T> fn, String type) {
+    private static <T> T _get(JsonObject obj, String key, Function<Object, T> fn, String type) {
         try {
             return fn.apply(obj.getNode(key));
         } catch (Exception e) {

@@ -166,7 +166,7 @@ public class JsonPath {
      * @throws IllegalArgumentException if container is null
      */
     public Object getNode(Object container) {
-        Objects.requireNonNull(container, "container");
+        if (container == null) return null;
         return _findOne(container, 1, segments.length);
     }
 
@@ -182,12 +182,7 @@ public class JsonPath {
         return null == value ? defaultValue : value;
     }
 
-    private interface _PathAction<T> {
-        T apply(Object value) throws Exception;
-    }
-
-
-    private <T> T _getStrict(Object container, String target, _PathAction<T> action) {
+    private <T> T _getStrict(Object container, String target, Function<Object, T> action) {
         Object value = null;
         try {
             value = getNode(container);
@@ -198,7 +193,7 @@ public class JsonPath {
         }
     }
 
-    private <T> T _getLenient(Object container, String target, _PathAction<T> action) {
+    private <T> T _getLenient(Object container, String target, Function<Object, T> action) {
         Object value = null;
         try {
             value = getNode(container);

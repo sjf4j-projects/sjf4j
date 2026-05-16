@@ -17,6 +17,7 @@ import org.sjf4j.util.Strings;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -332,7 +333,7 @@ class ReflectUtilCoverageTest {
         assertEquals("X", Strings.capitalize("x"));
 
         MethodHandle ctor = lookup.unreflectConstructor(NoArgsCtorPojo.class.getDeclaredConstructor());
-        java.util.function.Supplier<NoArgsCtorPojo> noArgsCtor = ReflectUtil.createLambdaConstructor(lookup, NoArgsCtorPojo.class, ctor);
+        Supplier<NoArgsCtorPojo> noArgsCtor = ReflectUtil.createLambdaConstructor(lookup, NoArgsCtorPojo.class, ctor);
         assertNotNull(noArgsCtor);
         assertNotNull(noArgsCtor.get());
         assertNull(ReflectUtil.createLambdaConstructor(lookup, LambdaCtorPojo.class, null));

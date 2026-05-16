@@ -28,6 +28,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -579,7 +580,7 @@ class CoverageApiTest {
 
         JsonPath path = JsonPath.parse("$.obj.x");
         assertEquals((Object) path.get(jo), (Object) path.copy().get(jo));
-        assertEquals(new java.util.LinkedHashSet<>(Arrays.asList(1, 2)), JsonPath.parse("$.arr").getSet(jo));
+        assertEquals(new LinkedHashSet<>(Arrays.asList(1, 2)), JsonPath.parse("$.arr").getSet(jo));
         assertEquals(1, ((Number) JsonPointer.parse("/obj/x").copy().get(jo)).intValue());
 
         PathSegment.Name quoted = new PathSegment.Name(PathSegment.Root.INSTANCE, "a-b");

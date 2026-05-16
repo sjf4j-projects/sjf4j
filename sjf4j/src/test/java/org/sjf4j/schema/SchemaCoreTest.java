@@ -7,6 +7,7 @@ import org.sjf4j.exception.SchemaException;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,7 +80,7 @@ public class SchemaCoreTest {
         assertDoesNotThrow(() -> schema.remove("type"));
         assertDoesNotThrow(schema::clear);
         assertDoesNotThrow(schema::prune);
-        assertDoesNotThrow(() -> schema._dynamicMap(new java.util.LinkedHashMap<>()));
+        assertDoesNotThrow(() -> schema._dynamicMap(new LinkedHashMap<>()));
         assertDoesNotThrow(() -> schema._dynamicMap().put("x", 1));
     }
 

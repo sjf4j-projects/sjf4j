@@ -22,7 +22,10 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -252,10 +255,10 @@ class NodeRegistryCoverageTest {
         assertNull(fi.codecName);
         assertNotNull(fi.resolvedValueCodec);
         // Round-trip through the patterned codec
-        Object raw = fi.resolvedValueCodec.valueToRaw(java.time.LocalDate.of(2024, 1, 15));
+        Object raw = fi.resolvedValueCodec.valueToRaw(LocalDate.of(2024, 1, 15));
         assertEquals("2024-01-15", raw);
         Object decoded = fi.resolvedValueCodec.rawToValue(raw);
-        assertEquals(java.time.LocalDate.of(2024, 1, 15), decoded);
+        assertEquals(LocalDate.of(2024, 1, 15), decoded);
     }
 
     @Test
@@ -264,26 +267,26 @@ class NodeRegistryCoverageTest {
         // argCodecNames stores codecName (null when only codecPattern is set)
         assertNull(ci.argCodecNames[0]);
         assertNotNull(ci.argValueCodecs[0]);
-        Object raw = ci.argValueCodecs[0].valueToRaw(java.time.LocalDate.of(2024, 6, 7));
+        Object raw = ci.argValueCodecs[0].valueToRaw(LocalDate.of(2024, 6, 7));
         assertEquals("2024/06/07", raw);
     }
 
     @Test
     void testCodecPatternOnNonPatternTypeThrows() {
-        assertThrows(org.sjf4j.exception.JsonException.class, () ->
+        assertThrows(JsonException.class, () ->
                 NodeRegistry.registerPojoOrElseThrow(InvalidPatternPojo.class));
     }
 
     static class LocalDatePatternPojo {
         @NodeProperty(codecPattern = "yyyy-MM-dd")
-        java.time.LocalDate date;
+        LocalDate date;
     }
 
     static class LocalDatePatternCreatorPojo {
-        final java.time.LocalDate date;
+        final LocalDate date;
 
         @NodeCreator
-        LocalDatePatternCreatorPojo(@NodeProperty(value = "date", codecPattern = "yyyy/MM/dd") java.time.LocalDate date) {
+        LocalDatePatternCreatorPojo(@NodeProperty(value = "date", codecPattern = "yyyy/MM/dd") LocalDate date) {
             this.date = date;
         }
     }
@@ -297,58 +300,58 @@ class NodeRegistryCoverageTest {
 
     @Test
     void testLocalTimeCodecRoundTrip() {
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(java.time.LocalTime.class);
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(LocalTime.class);
         assertTrue(ti.hasValueCodecs());
         NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo("");
         assertNotNull(vci);
-        Object raw = vci.valueToRaw(java.time.LocalTime.of(10, 30, 15));
+        Object raw = vci.valueToRaw(LocalTime.of(10, 30, 15));
         assertEquals("10:30:15", raw);
         Object decoded = vci.rawToValue(raw);
-        assertEquals(java.time.LocalTime.of(10, 30, 15), decoded);
+        assertEquals(LocalTime.of(10, 30, 15), decoded);
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void testLocalTimeCodecPattern() {
-        NodeRegistry.ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(java.time.LocalTime.class, "");
+        NodeRegistry.ValueCodecInfo base = NodeRegistry.resolveValueCodecOrElseThrow(LocalTime.class, "");
         assertTrue(base.valueCodec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
         PatternedValueCodec pc = (PatternedValueCodec) base.valueCodec;
         ValueCodec patterned = pc.withPattern("HH:mm");
-        Object raw = patterned.valueToRaw(java.time.LocalTime.of(8, 5));
+        Object raw = patterned.valueToRaw(LocalTime.of(8, 5));
         assertEquals("08:05", raw);
         Object decoded = patterned.rawToValue(raw);
-        assertEquals(java.time.LocalTime.of(8, 5), decoded);
+        assertEquals(LocalTime.of(8, 5), decoded);
     }
 
     // ── Optional ──
 
     @Test
     void testOptionalCodecPresent() {
-        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(java.util.Optional.class);
+        NodeRegistry.TypeInfo ti = NodeRegistry.registerTypeInfo(Optional.class);
         assertTrue(ti.hasValueCodecs());
         NodeRegistry.ValueCodecInfo vci = ti.getValueCodecInfo("");
         assertNotNull(vci);
         assertEquals(Object.class, vci.rawClazz);
 
-        Object raw = vci.valueToRaw(java.util.Optional.of("hello"));
+        Object raw = vci.valueToRaw(Optional.of("hello"));
         assertEquals("hello", raw);
 
         Object decoded = vci.rawToValue(raw);
-        assertInstanceOf(java.util.Optional.class, decoded);
-        assertEquals(java.util.Optional.of("hello"), decoded);
+        assertInstanceOf(Optional.class, decoded);
+        assertEquals(Optional.of("hello"), decoded);
     }
 
     @Test
     void testOptionalCodecEmpty() {
-        NodeRegistry.ValueCodecInfo vci = NodeRegistry.resolveValueCodecOrElseThrow(java.util.Optional.class, "");
-        assertNull(vci.valueToRaw(java.util.Optional.empty()));
-        assertSame(java.util.Optional.empty(), vci.rawToValue(null));
+        NodeRegistry.ValueCodecInfo vci = NodeRegistry.resolveValueCodecOrElseThrow(Optional.class, "");
+        assertNull(vci.valueToRaw(Optional.empty()));
+        assertSame(Optional.empty(), vci.rawToValue(null));
     }
 
     static class LocalTimeFieldPojo {
         @NodeProperty(codecPattern = "HH:mm:ss")
-        java.time.LocalTime time;
+        LocalTime time;
     }
 
     @Test
@@ -358,13 +361,13 @@ class NodeRegistryCoverageTest {
         assertNotNull(fi);
         assertNull(fi.codecName);
         assertNotNull(fi.resolvedValueCodec);
-        Object raw = fi.resolvedValueCodec.valueToRaw(java.time.LocalTime.of(14, 30, 0));
+        Object raw = fi.resolvedValueCodec.valueToRaw(LocalTime.of(14, 30, 0));
         assertEquals("14:30:00", raw);
     }
 
     static class OptionalFieldPojo {
         @NodeProperty(codecName = "")
-        java.util.Optional<String> name;
+        Optional<String> name;
     }
 
     @Test
@@ -374,10 +377,10 @@ class NodeRegistryCoverageTest {
         assertNotNull(fi);
         assertNotNull(fi.resolvedValueCodec);
         // Present
-        Object raw = fi.resolvedValueCodec.valueToRaw(java.util.Optional.of("Alice"));
+        Object raw = fi.resolvedValueCodec.valueToRaw(Optional.of("Alice"));
         assertEquals("Alice", raw);
         // Empty
-        assertNull(fi.resolvedValueCodec.valueToRaw(java.util.Optional.empty()));
+        assertNull(fi.resolvedValueCodec.valueToRaw(Optional.empty()));
     }
 
     static class ThrowingHandleValue {

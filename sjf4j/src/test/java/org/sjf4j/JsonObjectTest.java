@@ -15,6 +15,7 @@ import org.sjf4j.node.Nodes;
 import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -694,7 +695,7 @@ class JsonObjectTest {
         assertEquals(3, jo.entrySet().size());
         List<String> readableKeys = new ArrayList<>();
         jo.forEach((key, value) -> readableKeys.add(key));
-        assertEquals(java.util.Arrays.asList("readWrite", "readOnly", "extra"), readableKeys);
+        assertEquals(Arrays.asList("readWrite", "readOnly", "extra"), readableKeys);
         assertTrue(jo.anyMatch((key, value) -> key.equals("readOnly")));
         assertFalse(jo.anyMatch((key, value) -> key.equals("writeOnly")));
 

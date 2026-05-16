@@ -200,7 +200,7 @@ class JsonArrayTest {
 
     public void testSupplier1() {
         JsonArray ja = JsonArray.of("c", "b", "a");
-        assertInstanceOf(ArrayList.class, ja.nodeList);
+        assertInstanceOf(ArrayList.class, ja.dynamicList);
         assertInstanceOf(ArrayList.class, ja.toList());
         assertInstanceOf(LinkedHashSet.class, ja.toSet());
         assertEquals("[\"c\",\"b\",\"a\"]", ja.toJson());

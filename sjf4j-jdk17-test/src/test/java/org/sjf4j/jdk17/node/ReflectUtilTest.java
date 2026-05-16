@@ -12,6 +12,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Map;
@@ -246,7 +247,7 @@ class ReflectUtilTest {
     // If analyzeCreator/createLambdaSetter are package-private, this test can be cleaner.
     // Use reflection here to avoid changing production code.
 
-    private static java.lang.reflect.Method getPrivateLookupIn() throws Exception {
+    private static Method getPrivateLookupIn() throws Exception {
         return MethodHandles.class.getMethod("privateLookupIn", Class.class, MethodHandles.Lookup.class);
     }
 }

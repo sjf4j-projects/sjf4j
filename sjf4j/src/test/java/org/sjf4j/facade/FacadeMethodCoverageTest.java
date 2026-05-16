@@ -15,8 +15,10 @@ import org.yaml.snakeyaml.LoaderOptions;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -31,12 +33,12 @@ class FacadeMethodCoverageTest {
     void jsonFacadeDefaultUnsupportedHelpersAreCovered() {
         JsonFacade<StreamingReader, StreamingWriter> facade = new JsonFacade<StreamingReader, StreamingWriter>() {
             @Override
-            public StreamingReader createReader(java.io.Reader input) {
+            public StreamingReader createReader(Reader input) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public StreamingWriter createWriter(java.io.Writer output) {
+            public StreamingWriter createWriter(Writer output) {
                 throw new UnsupportedOperationException();
             }
         };
