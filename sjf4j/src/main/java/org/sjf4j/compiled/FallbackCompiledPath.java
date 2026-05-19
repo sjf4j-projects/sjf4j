@@ -1,45 +1,54 @@
-package org.sjf4j.path;
+package org.sjf4j.compiled;
 
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.path.JsonPath;
+import org.sjf4j.path.PathSegment;
 
 import java.util.Objects;
 
-/**
- * Typed single-target path with optional compiled/native access.
- *
- * <p>CompiledPath is the typed counterpart of {@link JsonPath}. It is restricted
- * to a single rooted target path made only of {@link PathSegment.Root},
- * {@link PathSegment.Name}, {@link PathSegment.Index}, and
- * {@link PathSegment.Append} segments, so later runtime code generation can
- * replace the fallback implementation with generated POJO/JOJO-native access code.
- *
- * <p>The base implementation delegates to a validated fallback {@link JsonPath}.
- * Generated subclasses may override hot operations directly while preserving the
- * same public contract.
- */
-public abstract class CompiledPath<R, V> {
+
+public class NonCompiledPath<R, V> {
 
     protected final String expr;
-    protected final JsonPath fallbackPath;
+    protected final JsonPath path;
     protected final PathSegment lastSegment;
     protected final boolean append;
+    protected final Class<R> rootType;
+    protected final Class<V> valueType;
 
-    protected CompiledPath(String expr, JsonPath fallbackPath) {
+
+    protected NonCompiledPath(String expr, Class<R> rootClazz, Class<V> valueClazz) {
         Objects.requireNonNull(expr, "expr");
-        Objects.requireNonNull(fallbackPath, "fallbackPath");
-        _validateFallback(fallbackPath);
+        JsonPath path = JsonPath.parse(expr);
+        _validatePath(path);
         this.expr = expr;
-        this.fallbackPath = fallbackPath;
-        this.lastSegment = fallbackPath.segments[fallbackPath.segments.length - 1];
+        this.path = path;
+        this.lastSegment = path.tail();
         this.append = lastSegment instanceof PathSegment.Append;
+        this.rootType = rootClazz;
+        this.valueType = valueClazz;
     }
 
-    /**
-     * Parses a textual path into a fallback-backed compiled path.
-     */
-    public static <R, V> CompiledPath<R, V> parse(String expr) {
-        JsonPath path = JsonPath.parse(expr);
-        return new RuntimeCompiledPath<>(path.toString(), path);
+    
+    public static <R, V> NonCompiledPath<R, V> compile(String expr, Class<R> rootClazz, Class<V> valueClazz) {
+        return new NonCompiledPath<>(expr, rootClazz, valueClazz);
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public static <R, V> NonCompiledPath<R, V> compile(String expr, Class<R> rootType) {
+        JsonPath fallback = JsonPath.parse(expr);
+        if (OPTIMIZER != null) {
+            // Core can access protected JsonPath.segments because they share package
+            PathSegment[] segments = fallback.segments;
+            try {
+                NonCompiledPath<R, V> opt = OPTIMIZER.optimize(expr, fallback, segments, rootType);
+                if (opt != null) return opt;
+            } catch (Exception ignored) {
+                // optimization failed — fall through to RuntimeCompiledPath
+            }
+        }
+        return new RuntimeCompiledPath<>(fallback.toString(), fallback);
     }
 
     /**
@@ -53,7 +62,7 @@ public abstract class CompiledPath<R, V> {
      * Returns the validated runtime fallback path.
      */
     public final JsonPath fallbackPath() {
-        return fallbackPath;
+        return path;
     }
 
     /**
@@ -69,7 +78,7 @@ public abstract class CompiledPath<R, V> {
     @SuppressWarnings("unchecked")
     public V get(R root) {
         _ensureReadable("get()");
-        return (V) fallbackPath.getNode(root);
+        return (V) path.getNode(root);
     }
 
     /**
@@ -87,7 +96,7 @@ public abstract class CompiledPath<R, V> {
         if (append) {
             return false;
         }
-        return fallbackPath.contains(root);
+        return path.contains(root);
     }
 
     /**
@@ -103,7 +112,7 @@ public abstract class CompiledPath<R, V> {
      */
     @SuppressWarnings("unchecked")
     public V put(R root, V value) {
-        return (V) fallbackPath.put(root, value);
+        return (V) path.put(root, value);
     }
 
     /**
@@ -111,7 +120,7 @@ public abstract class CompiledPath<R, V> {
      */
     @SuppressWarnings("unchecked")
     public V ensurePut(R root, V value) {
-        return (V) fallbackPath.ensurePut(root, value);
+        return (V) path.ensurePut(root, value);
     }
 
     /**
@@ -119,14 +128,14 @@ public abstract class CompiledPath<R, V> {
      */
     @SuppressWarnings("unchecked")
     public V ensurePutIfAbsent(R root, V value) {
-        return (V) fallbackPath.ensurePutIfAbsent(root, value);
+        return (V) path.ensurePutIfAbsent(root, value);
     }
 
     /**
      * Applies JSON Patch add semantics at the target location.
      */
     public void add(R root, V value) {
-        fallbackPath.add(root, value);
+        path.add(root, value);
     }
 
     /**
@@ -135,7 +144,7 @@ public abstract class CompiledPath<R, V> {
     @SuppressWarnings("unchecked")
     public V replace(R root, V value) {
         _ensureReplaceable("replace()");
-        return (V) fallbackPath.replace(root, value);
+        return (V) path.replace(root, value);
     }
 
     /**
@@ -144,7 +153,7 @@ public abstract class CompiledPath<R, V> {
     @SuppressWarnings("unchecked")
     public V remove(R root) {
         _ensureReplaceable("remove()");
-        return (V) fallbackPath.remove(root);
+        return (V) path.remove(root);
     }
 
     @Override
@@ -152,19 +161,19 @@ public abstract class CompiledPath<R, V> {
         return expr;
     }
 
-    private static void _validateFallback(JsonPath fallbackPath) {
-        if (fallbackPath.depth() < 2) {
-            throw new JsonException("CompiledPath requires a non-root target path: '" + fallbackPath + "'");
+    private static void _validatePath(JsonPath path) {
+        if (path.depth() < 2) {
+            throw new JsonException("CompiledPath requires a non-root target path: '" + path + "'");
         }
-        if (!(fallbackPath.head() instanceof PathSegment.Root)) {
-            throw new JsonException("CompiledPath requires a rooted path starting from '$' or '/': '" + fallbackPath + "'");
+        if (!(path.head() instanceof PathSegment.Root)) {
+            throw new JsonException("CompiledPath requires a rooted path starting from '$' or '/': '" + path + "'");
         }
-        if (!fallbackPath.isSingle()) {
-            throw new JsonException("CompiledPath only supports a single target path with Name/Index/Append segments: '" + fallbackPath + "'");
+        if (!path.isSingle()) {
+            throw new JsonException("CompiledPath only supports a single target path with Name/Index/Append segments: '" + path + "'");
         }
-        PathSegment last = fallbackPath.segments[fallbackPath.segments.length - 1];
+        PathSegment last = path.segments[path.segments.length - 1];
         if (!(last instanceof PathSegment.Name || last instanceof PathSegment.Index || last instanceof PathSegment.Append)) {
-            throw new JsonException("CompiledPath requires a terminal Name/Index/Append segment: '" + fallbackPath + "'");
+            throw new JsonException("CompiledPath requires a terminal Name/Index/Append segment: '" + path + "'");
         }
     }
 
@@ -184,7 +193,7 @@ public abstract class CompiledPath<R, V> {
         return Objects.requireNonNull(root, "root");
     }
 
-    private static final class RuntimeCompiledPath<R, V> extends CompiledPath<R, V> {
+    private static final class RuntimeCompiledPath<R, V> extends NonCompiledPath<R, V> {
         private RuntimeCompiledPath(String expr, JsonPath fallbackPath) {
             super(expr, fallbackPath);
         }

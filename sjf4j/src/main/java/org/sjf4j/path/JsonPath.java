@@ -188,8 +188,8 @@ public class JsonPath {
             value = getNode(container);
             return action.apply(value);
         } catch (Exception e) {
-            throw new JsonException("cannot get " + target + " from path '" + this + "': container=" +
-                    Types.name(container) + ", value=" +  Types.name(value), e);
+            throw new JsonException("Cannot get " + target + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" + Types.name(value), e);
         }
     }
 
@@ -199,8 +199,8 @@ public class JsonPath {
             value = getNode(container);
             return action.apply(value);
         } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + target + " from path '" + this + "': container=" +
-                    Types.name(container) + ", value=" +  Types.name(value), e);
+            throw new JsonException("Cannot coerce value at path '" + this + "' to " + target + ": container=" +
+                    Types.name(container) + ", value=" + Types.name(value), e);
         }
     }
 
@@ -529,7 +529,7 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T get(Object container, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new JsonException("Reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return get(container, clazz);
     }
@@ -546,7 +546,7 @@ public class JsonPath {
      */
     @SuppressWarnings("unchecked")
     public <T> T getAs(Object container, T... reified) {
-        if (reified.length > 0) throw new JsonException("reified varargs must be empty");
+        if (reified.length > 0) throw new JsonException("Reified varargs must be empty");
         Class<T> clazz = (Class<T>) reified.getClass().getComponentType();
         return getAs(container, clazz);
     }
@@ -624,8 +624,8 @@ public class JsonPath {
             value = eval(container);
             return Nodes.to(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("cannot eval " + clazz.getName() + " from path '" + this + "': container=" +
-                    Types.name(container) + ", value=" +  Types.name(value), e);
+            throw new JsonException("Cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
+                    Types.name(container) + ", value=" + Types.name(value), e);
         }
     }
 
@@ -638,8 +638,8 @@ public class JsonPath {
             value = eval(container);
             return Nodes.as(value, clazz);
         } catch (Exception e) {
-            throw new JsonException("cannot coerce to " + clazz.getName() + " from path '" + this + "': container=" +
-                    Types.name(container) + ", value=" +  Types.name(value), e);
+            throw new JsonException("Cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
+                    Types.name(container) + ", value=" + Types.name(value), e);
         }
     }
 
@@ -722,7 +722,7 @@ public class JsonPath {
         if (!(lastToken instanceof PathSegment.Name || lastToken instanceof PathSegment.Index
                 || lastToken instanceof PathSegment.Append)) {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; computeMulti() expected Name, Index, or Append token");
+                    "'; compute() expected Name, Index, or Append token");
         }
         List<Object> parents = new ArrayList<>();
         _findAll(container, container, 1, segments.length - 1, parents, Function.identity());
@@ -765,7 +765,7 @@ public class JsonPath {
             return false;
         } else {
             throw new JsonException("Unsupported last path token '" + lastToken +
-                    "'; contains() expected Name, Index");
+                    "'; contains() expected Name or Index token");
         }
     }
 
@@ -917,8 +917,8 @@ public class JsonPath {
                 } else if (result.size() == 1) {
                     return result.get(0);
                 } else {
-                    throw new JsonException("Path matched " + result.size() +
-                            " results, but this method can only returns one value.");
+                    throw new JsonException("Path '" + this + "' matched " + result.size() +
+                            " results, but this method requires a single value");
                 }
             } else {
                 throw new JsonException("Unsupported path token '" + pt + "'");
@@ -1089,8 +1089,8 @@ public class JsonPath {
      */
     private Object _ensureContainersInPath(Object container) {
         if (!isSingle()) {
-            throw new JsonException("JsonPath '" + this + "' must represent a single node " +
-                    "(only Name/Index tokens are allowed to automatically create containers in path.)");
+            throw new JsonException("JsonPath '" + this + "' must represent a single-node path; " +
+                    "automatic container creation supports only Root, Name, Index, and Append segments");
         }
 
         Nodes.Access acc = new Nodes.Access();
@@ -1113,11 +1113,11 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("Cannot put field '" + key + "' on an object node '" + curType + "'");
+                        throw new JsonException("Cannot put field '" + key + "' on object node type '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("Not an object node, but was '" + curType +
-                            "' at '" + ps.rootedPathExpr() + "'");
+                    throw new JsonException("Expected object node at '" + ps.rootedPathExpr() + "', but found '" +
+                            curType + "'");
                 }
             } else if (ps instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) ps;
@@ -1133,7 +1133,7 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("Cannot add or set index " + index.index + " on an array node '" + curType + "'");
+                        throw new JsonException("Cannot add or set index " + index.index + " on array node type '" + curType + "'");
                     }
                 } else if (_isPointerObjectKey(index, jt)) {
                     Nodes.accessInObject(curNode, curType, index.pointerToken, acc);
@@ -1147,11 +1147,11 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("Cannot put field '" + index.pointerToken + "' on an object node '" + curType + "'");
+                        throw new JsonException("Cannot put field '" + index.pointerToken + "' on object node type '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("Not an array node, but was '" + curType +
-                            "' at '" + ps.rootedPathExpr() + "'");
+                    throw new JsonException("Expected array node at '" + ps.rootedPathExpr() + "', but found '" +
+                            curType + "'");
                 }
             } else if (ps instanceof PathSegment.Append) {
                 if (jt.isArray()) {
@@ -1163,11 +1163,11 @@ public class JsonPath {
                         curNode = subNode;
                         curType = acc.type;
                     } else {
-                        throw new JsonException("Cannot append on an array node '" + curType + "'");
+                        throw new JsonException("Cannot append to array node type '" + curType + "'");
                     }
                 } else {
-                    throw new JsonException("Not an array node, but was '" + curType +
-                            "' at '" + ps.rootedPathExpr() + "'");
+                    throw new JsonException("Expected array node at '" + ps.rootedPathExpr() + "', but found '" +
+                            curType + "'");
                 }
             } else {
                 throw new JsonException("Unexpected path token '" + ps + "'");
@@ -1230,7 +1230,7 @@ public class JsonPath {
         } else if (Numbers.isNumeric(raw)) {
             return Numbers.parseNumber(raw);
         } else {
-            throw new JsonException("Invalid raw argument '" + raw + "'");
+            throw new JsonException("Invalid function argument '" + raw + "'");
         }
     }
 

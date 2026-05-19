@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.compiled.FallbackCompiledPath;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;
@@ -18,8 +19,8 @@ public class CompiledPathTest {
 
     @Test
     void testFallbackBackedGetAndPut() {
-        CompiledPath<Map<String, Object>, String> path = CompiledPath.parse("$.user.name");
-
+        FallbackCompiledPath<Map<String, Object>, String> path = FallbackCompiledPath.compile("$.user.name");
+ 
         Map<String, Object> user = new LinkedHashMap<>();
         user.put("name", "Ada");
         Map<String, Object> root = new LinkedHashMap<>();
@@ -36,7 +37,7 @@ public class CompiledPathTest {
 
     @Test
     void testEnsurePutCreatesMissingContainers() {
-        CompiledPath<Map<String, Object>, String> path = CompiledPath.parse("$.user.name");
+        FallbackCompiledPath<Map<String, Object>, String> path = FallbackCompiledPath.compile("$.user.name");
 
         Map<String, Object> root = new LinkedHashMap<>();
         assertNull(path.ensurePut(root, "Ada"));
@@ -49,15 +50,15 @@ public class CompiledPathTest {
 
     @Test
     void testRejectUnsupportedCompiledPathShapes() {
-        assertThrows(JsonException.class, () -> CompiledPath.parse("$"));
-        assertThrows(JsonException.class, () -> CompiledPath.parse("@.name"));
-        assertThrows(JsonException.class, () -> CompiledPath.parse("$.users[*].name"));
-        assertThrows(JsonException.class, () -> CompiledPath.parse("$..name"));
+        assertThrows(JsonException.class, () -> FallbackCompiledPath.compile("$"));
+        assertThrows(JsonException.class, () -> FallbackCompiledPath.compile("@.name"));
+        assertThrows(JsonException.class, () -> FallbackCompiledPath.compile("$.users[*].name"));
+        assertThrows(JsonException.class, () -> FallbackCompiledPath.compile("$..name"));
     }
 
     @Test
     void testAppendPathWriteOnlySemantics() {
-        CompiledPath<List<String>, String> path = CompiledPath.parse("$[+]");
+        FallbackCompiledPath<List<String>, String> path = FallbackCompiledPath.compile("$[+]");
         List<String> root = new ArrayList<>();
 
         path.add(root, "a");
@@ -73,7 +74,7 @@ public class CompiledPathTest {
 
     @Test
     void testCustomSubclassCanOverrideHotPath() {
-        CompiledPath<ManualUser, String> path = new ManualUserNameCompiledPath();
+        FallbackCompiledPath<ManualUser, String> path = new ManualUserNameCompiledPath();
         ManualUser user = new ManualUser();
         user.name = "Ada";
 
@@ -88,7 +89,7 @@ class ManualUser {
     String name;
 }
 
-final class ManualUserNameCompiledPath extends CompiledPath<ManualUser, String> {
+final class ManualUserNameCompiledPath extends FallbackCompiledPath<ManualUser, String> {
     ManualUserNameCompiledPath() {
         super("$.name", JsonPath.parse("$.name"));
     }

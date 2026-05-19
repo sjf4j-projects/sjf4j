@@ -140,7 +140,7 @@ public final class PathSyntax {
             PathSegment token = segments[i];
 
             if (token instanceof PathSegment.Root) {
-                if (i != 0) throw new JsonException("Root token must be the first token in JSON Pointer");
+                if (i != 0) throw new JsonException("Root token must be the first token in a JSON Pointer");
                 // Root token: no output
             } else if (token instanceof PathSegment.Index) {
                 sb.append('/');
@@ -169,7 +169,7 @@ public final class PathSyntax {
                     }
                 }
             } else {
-                throw new JsonException("Unsupported PathToken type: " + token.getClass().getName());
+                throw new JsonException("Unsupported path segment type '" + token.getClass().getName() + "'");
             }
         }
 
@@ -209,7 +209,7 @@ public final class PathSyntax {
      * descendant, union, slice, filter, and terminal function calls.
      */
     public static PathSegment[] parsePath(String expr) {
-        if (expr == null || expr.isEmpty()) throw new JsonException("expr is empty");
+        if (expr == null || expr.isEmpty()) throw new JsonException("Expression must not be empty");
         Deque<PathSegment> segments = new ArrayDeque<>();
         int i = 0;
 
@@ -250,7 +250,7 @@ public final class PathSyntax {
 
                 i++;
                 if (i >= expr.length())
-                    throw new JsonException("Unexpected EOF after '[' in path '" + expr + "' at position " + i);
+                    throw new JsonException("Unexpected end of path after '[' in '" + expr + "' at position " + i);
 
                 // Scan and check
                 int start = i;
@@ -297,7 +297,7 @@ public final class PathSyntax {
                 // Single element: could be [*], [0], [-1], ['name'], or [start:end:step]
                 // Dispatch based on content type
                 if (contentStart >= contentEnd) {
-                    throw new JsonException("Empty content [] in path '" + expr + "' at position " + i);
+                    throw new JsonException("Empty bracket content in path '" + expr + "' at position " + i);
                 } else if (expr.charAt(contentStart) == '?') {
                     // Filter
                     int filterStart = _skipWhitespace(expr, contentStart + 1);
@@ -338,7 +338,7 @@ public final class PathSyntax {
             else if (c == '.' || i == 0) {
                 if (c == '.') i++;
                 if (i >= expr.length())
-                    throw new JsonException("Unexpected EOF after '.' in path '" + expr + "' at position " + i);
+                    throw new JsonException("Unexpected end of path after '.' in '" + expr + "' at position " + i);
 
                 // Wildcard
                 if (expr.charAt(i) == '*') {
@@ -370,7 +370,7 @@ public final class PathSyntax {
                 segments.addLast(new PathSegment.Name(segments.peekLast(), name));
             }
             else {
-                throw new JsonException("Unexpected char '" + c + "' in path '" + expr + "' at position " + i);
+                throw new JsonException("Unexpected character '" + c + "' in path '" + expr + "' at position " + i);
             }
         }
 
@@ -529,7 +529,7 @@ public final class PathSyntax {
                     }
                 }
             } else {
-                throw new JsonException("Invalid first char '" + firstChar + "' at position " + i +
+                throw new JsonException("Invalid first character '" + firstChar + "' at position " + i +
                         " in content '" + content + "'");
             }
         }
@@ -566,7 +566,7 @@ public final class PathSyntax {
             char ch = content.charAt(i);
             if (ch == '\\') {
                 if (i + 1 >= limit) {
-                    throw new JsonException("Invalid escape at end of " + errorContext);
+                    throw new JsonException("Invalid escape sequence at the end of " + errorContext);
                 }
                 char next = content.charAt(i + 1);
                 if (next == quote || next == '\\') {
@@ -611,7 +611,7 @@ public final class PathSyntax {
      */
     static int _findMatchingParen(String s, int start) {
         if (start < 0 || start >= s.length() || s.charAt(start) != '(') {
-            throw new JsonException("Invalid expression: start is not at '(' position");
+            throw new JsonException("Invalid expression: start position does not point to '('");
         }
 
         boolean inString = false;
@@ -658,7 +658,7 @@ public final class PathSyntax {
             }
         }
 
-        throw new JsonException("Invalid expression: no matching ')' found for '(' at position " + start);
+        throw new JsonException("Invalid expression: no matching ')' for '(' at position " + start);
     }
 
     /**
@@ -734,7 +734,7 @@ public final class PathSyntax {
         FilterExpr expr = _parseOr(s, pos);
         _skipWs(s, pos);
         if (pos[0] != endExclusive) {
-            throw new JsonException("Trailing characters at pos " + pos[0]);
+            throw new JsonException("Trailing characters at position " + pos[0]);
         }
         return expr;
     }
@@ -819,7 +819,7 @@ public final class PathSyntax {
             FilterExpr expr = _parseOr(s, pos);
             _skipWs(s, pos);
             if (_peekLast(s, pos) != ')') {
-                throw new JsonException("Missing ')'");
+                throw new JsonException("Missing closing ')' at position " + pos[0]);
             }
             pos[0]++;
             return expr;
@@ -863,7 +863,7 @@ public final class PathSyntax {
             return _parseFunction(s, pos);
         }
 
-        throw new JsonException("Unexpected char '" + c + "' at pos " + pos[0]);
+        throw new JsonException("Unexpected character '" + c + "' at position " + pos[0]);
     }
 
     /**
@@ -877,7 +877,7 @@ public final class PathSyntax {
         _skipWs(s, pos);
 
         if (pos[0] >= s.length() || s.charAt(pos[0]) != '(') {
-            throw new JsonException("Expected '(' after function name: " + name);
+            throw new JsonException("Expected '(' after function name '" + name + "'");
         }
         pos[0]++; // '('
 
@@ -897,7 +897,7 @@ public final class PathSyntax {
             _skipWs(s, pos);
 
             if (pos[0] >= s.length()) {
-                throw new JsonException("Unterminated function call: " + name);
+                throw new JsonException("Unterminated function call '" + name + "'");
             }
 
             char c = s.charAt(pos[0]);
@@ -910,7 +910,7 @@ public final class PathSyntax {
                 pos[0]++;
                 break;
             }
-            throw new JsonException("Expected ',' or ')' in function call: " + name);
+            throw new JsonException("Expected ',' or ')' in function call '" + name + "'");
         }
 
         return new FilterExpr.FunctionExpr(name, args);
@@ -1137,7 +1137,8 @@ public final class PathSyntax {
     @SuppressWarnings("MagicConstant")
     private static FilterExpr.RegexExpr _parseRegex(String s, int[] pos) {
         int start = pos[0];
-        if (s.charAt(pos[0]++) != '/') throw new JsonException("Regex must start with '/' at pos " + pos[0]);
+        if (s.charAt(pos[0]) != '/') throw new JsonException("Regex must start with '/' at position " + pos[0]);
+        pos[0]++;
 
         boolean escape = false;
         while (pos[0] < s.length()) {
@@ -1175,7 +1176,7 @@ public final class PathSyntax {
             pos[0]++;
         }
 
-        throw new JsonException("Unterminated regex starting at pos " + start);
+        throw new JsonException("Unterminated regex starting at position " + start);
     }
 
     /**

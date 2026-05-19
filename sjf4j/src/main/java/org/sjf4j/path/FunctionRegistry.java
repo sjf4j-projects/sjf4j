@@ -38,7 +38,7 @@ public class FunctionRegistry {
          */
         public FunctionDescriptor(String name, PathFunction func) {
             Objects.requireNonNull(name, "name");
-            if (name.isEmpty()) throw new JsonException("Name must not be empty");
+            if (name.isEmpty()) throw new JsonException("Function name must not be empty");
             Objects.requireNonNull(func, "func");
             this.name = name;
             this.func = func;
@@ -91,11 +91,11 @@ public class FunctionRegistry {
      */
     public static Object invoke(String name, Object[] args) {
         FunctionDescriptor fd = get(name);
-        if (fd == null) throw new JsonException("Function '" + name + "' not exist");
+        if (fd == null) throw new JsonException("Function '" + name + "' does not exist");
         try {
             return fd.invoke(args);
         } catch (Exception e) {
-            throw new JsonException("Function '" + name + "' invoke error", e);
+            throw new JsonException("Function '" + name + "' invocation failed", e);
         }
     }
 
@@ -111,7 +111,7 @@ public class FunctionRegistry {
         // length
         FunctionRegistry.register(new FunctionDescriptor("length", args -> {
             if (args.length != 1) 
-                throw new JsonException("length(): expects exactly 1 argument, but got: " + args.length);
+                throw new JsonException("length(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             switch (JsonType.of(node)) {
                 case STRING:
@@ -127,7 +127,7 @@ public class FunctionRegistry {
         // count
         FunctionRegistry.register(new FunctionDescriptor("count", args -> {
             if (args.length != 1) 
-                throw new JsonException("count(): expects exactly 1 argument, but got: " + args.length);
+                throw new JsonException("count(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             switch (JsonType.of(node)) {
                 case ARRAY:
@@ -140,17 +140,17 @@ public class FunctionRegistry {
         // follows RFC i-regexp semantics and does not support full regular expressions.
         FunctionRegistry.register(new FunctionDescriptor("match", args -> {
             if (args.length != 2)
-                throw new JsonException("match(): expects exactly 2 arguments, but got: " + args.length);
+                throw new JsonException("match(): expected exactly 2 arguments, but got " + args.length);
             Object node = args[0];
             String pattern;
             try {
                 pattern = Nodes.toString(args[1]);
             } catch (Exception e) {
-                throw new JsonException("match(): the second argument must be a String but was " +
+                throw new JsonException("match(): expected the second argument to be a String, but was " +
                         Types.name(args[1]), e);
             }
             if (pattern == null) {
-                throw new JsonException("match(): the second argument must be a String but was null");
+                throw new JsonException("match(): expected the second argument to be a String, but was null");
             }
             switch (JsonType.of(node)) {
                 case STRING:
@@ -162,17 +162,17 @@ public class FunctionRegistry {
         // search
         FunctionRegistry.register(new FunctionDescriptor("search", args -> {
             if (args.length != 2)
-                throw new JsonException("search(): expects exactly 2 arguments, but got: " + args.length);
+                throw new JsonException("search(): expected exactly 2 arguments, but got " + args.length);
             Object node = args[0];
             String pattern;
             try {
                 pattern = Nodes.toString(args[1]);
             } catch (Exception e) {
-                throw new JsonException("search(): the second argument must be a String but was " +
+                throw new JsonException("search(): expected the second argument to be a String, but was " +
                         Types.name(args[1]), e);
             }
             if (pattern == null) {
-                throw new JsonException("search(): the second argument must be a String but was null");
+                throw new JsonException("search(): expected the second argument to be a String, but was null");
             }
             switch (JsonType.of(node)) {
                 case STRING:
@@ -184,14 +184,14 @@ public class FunctionRegistry {
         // value
         FunctionRegistry.register(new FunctionDescriptor("value", args -> {
             if (args.length != 1)
-                throw new JsonException("value(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("value(): expected exactly 1 argument, but got " + args.length);
             return args[0];
         }));
 
         // sum
         FunctionRegistry.register(new FunctionDescriptor("sum", args -> {
             if (args.length != 1)
-                throw new JsonException("sum(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("sum(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             double[] sum = new double[1];
             switch (JsonType.of(node)) {
@@ -207,7 +207,7 @@ public class FunctionRegistry {
         // min
         FunctionRegistry.register(new FunctionDescriptor("min", args -> {
             if (args.length != 1)
-                throw new JsonException("min(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("min(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             Double[] min = new Double[1];
             switch (JsonType.of(node)) {
@@ -225,7 +225,7 @@ public class FunctionRegistry {
         // max
         FunctionRegistry.register(new FunctionDescriptor("max", args -> {
             if (args.length != 1)
-                throw new JsonException("max(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("max(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             Double[] max = new Double[1];
             switch (JsonType.of(node)) {
@@ -243,7 +243,7 @@ public class FunctionRegistry {
         // avg
         FunctionRegistry.register(new FunctionDescriptor("avg", args -> {
             if (args.length != 1)
-                throw new JsonException("avg(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("avg(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             double[] sum = new double[1];
             int[] cnt = new int[1];
@@ -264,7 +264,7 @@ public class FunctionRegistry {
         // stddev
         FunctionRegistry.register(new FunctionDescriptor("stddev", args -> {
             if (args.length != 1)
-                throw new JsonException("stddev(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("stddev(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             double[] sum = new double[1];
             int[] cnt = new int[1];
@@ -297,7 +297,7 @@ public class FunctionRegistry {
         // first
         FunctionRegistry.register(new FunctionDescriptor("first", args -> {
             if (args.length != 1)
-                throw new JsonException("first(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("first(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             switch (JsonType.of(node)) {
                 case ARRAY:
@@ -311,7 +311,7 @@ public class FunctionRegistry {
         // last
         FunctionRegistry.register(new FunctionDescriptor("last", args -> {
             if (args.length != 1)
-                throw new JsonException("last(): expects exactly 1 arguments, but got: " + args.length);
+                throw new JsonException("last(): expected exactly 1 argument, but got " + args.length);
             Object node = args[0];
             switch (JsonType.of(node)) {
                 case ARRAY:
@@ -326,10 +326,10 @@ public class FunctionRegistry {
         // index
         FunctionRegistry.register(new FunctionDescriptor("index", args -> {
             if (args.length != 2)
-                throw new JsonException("index(): expects exactly 2 arguments, but got: " + args.length);
+                throw new JsonException("index(): expected exactly 2 arguments, but got " + args.length);
             Object node = args[0];
             if (!JsonType.of(args[1]).isNumber()) {
-                throw new JsonException("index(): the second argument must be a number but was " + Types.name(args[1]));
+                throw new JsonException("index(): expected the second argument to be a number, but was " + Types.name(args[1]));
             }
             int idx = Nodes.toInt(args[1]);
 
