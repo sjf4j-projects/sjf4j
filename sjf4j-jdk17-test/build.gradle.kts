@@ -79,3 +79,25 @@ tasks.test {
 
 
 /////////////////////
+
+val sjf4jMainSourceSet = project(":sjf4j")
+    .extensions
+    .getByType<org.gradle.api.tasks.SourceSetContainer>()
+    .named("main")
+
+tasks.jacocoTestReport {
+    dependsOn(":sjf4j:test", tasks.test)
+    executionData(
+        files(
+            project(":sjf4j").layout.buildDirectory.file("jacoco/test.exec"),
+            layout.buildDirectory.file("jacoco/test.exec")
+        )
+    )
+    classDirectories.setFrom(sjf4jMainSourceSet.map { it.output.classesDirs })
+    sourceDirectories.setFrom(sjf4jMainSourceSet.map { it.allJava.srcDirs })
+    additionalSourceDirs.setFrom(sjf4jMainSourceSet.map { it.allJava.srcDirs })
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}

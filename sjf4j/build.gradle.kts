@@ -79,17 +79,10 @@ tasks.test {
     jvmArgs(
         "-Xshare:off"
     )
-    finalizedBy(tasks.jacocoTestReport)
 }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test, ":sjf4j-jdk17-test:test")
-    executionData(
-        files(
-            layout.buildDirectory.file("jacoco/test.exec"),
-            project(":sjf4j-jdk17-test").layout.buildDirectory.file("jacoco/test.exec")
-        )
-    )
+    dependsOn(tasks.test)
     reports {
         xml.required.set(true)
         html.required.set(true)

@@ -33,14 +33,14 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
-    - name: Build with Gradle Wrapper
-      run: ./gradlew build
+    - name: Run tests with coverage
+      run: ./gradlew :sjf4j-jdk17-test:jacocoTestReport
 
     - name: Print JaCoCo summary
       run: |
         python3 - <<'PY'
         import xml.etree.ElementTree as ET
-        path = 'sjf4j/build/reports/jacoco/test/jacocoTestReport.xml'
+        path = 'sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml'
         root = ET.parse(path).getroot()
         for counter in root.findall('counter'):
             if counter.attrib['type'] in ('BRANCH', 'LINE', 'INSTRUCTION', 'METHOD'):
@@ -55,7 +55,7 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: sjf4j/build/reports/jacoco/test/jacocoTestReport.xml
+        files: sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml
         fail_ci_if_error: true
 
     # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
