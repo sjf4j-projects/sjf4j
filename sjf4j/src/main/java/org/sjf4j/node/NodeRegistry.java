@@ -12,6 +12,8 @@ import org.sjf4j.path.JsonPath;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -192,7 +194,7 @@ public final class NodeRegistry {
     }
 
     private static TypeInfo _newTypeInfoWithValueCodec(TypeInfo ti, ValueCodecInfo vci) {
-        if (vci.isDefaultFormat()) {
+        if (vci.isDefault()) {
             if (ti.valueCodecInfo != null) {
                 throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
                         "' and default format ''");
@@ -203,9 +205,9 @@ public final class NodeRegistry {
 
         for (int i = 0; i < ti.namedValueCodecs.length; i++) {
             ValueCodecInfo cur = ti.namedValueCodecs[i];
-            if (cur.valueFormat.equals(vci.valueFormat)) {
+            if (cur.codecName.equals(vci.codecName)) {
                 throw new JsonException("valueCodec already registered for type '" + vci.valueClazz.getName() +
-                        "' and valueFormat '" + vci.valueFormat + "'");
+                        "' and valueFormat '" + vci.codecName + "'");
             }
         }
         ValueCodecInfo[] appended = new ValueCodecInfo[ti.namedValueCodecs.length + 1];
@@ -338,7 +340,7 @@ public final class NodeRegistry {
         public ValueCodecInfo getValueCodecInfo(String valueFormat) {
             if (valueFormat == null || valueFormat.isEmpty()) return valueCodecInfo;
             for (ValueCodecInfo vci : namedValueCodecs) {
-                if (vci.valueFormat.equals(valueFormat)) {
+                if (vci.codecName.equals(valueFormat)) {
                     return vci;
                 }
             }
@@ -833,15 +835,22 @@ public final class NodeRegistry {
 
         public final String name;
         public final Type type;
-        public final Class<?> rawClazz;
+        public final Class<?> boxed;
+        public final Field publicField;
+
         public final ContainerKind containerKind;
         public final Type argType;
-        public final Class<?> argRawClazz;
+        public final Class<?> argClazz;
+        public final Class<?> argBoxed;
         public final OneOfInfo argOneOfInfo;
-        public final MethodHandle getter;
-        public final Function<Object, Object> lambdaGetter;
-        public final MethodHandle setter;
-        public final BiConsumer<Object, Object> lambdaSetter;
+
+        public final Method publicGetter;
+        public final MethodHandle getterHandle;
+        public final Function<Object, Object> getterLambda;
+
+        public final Method publicSetter;
+        public final MethodHandle setterHandle;
+        public final BiConsumer<Object, Object> setterLambda;
 
         public final OneOfInfo oneOfInfo;
         public final String codecName;
@@ -850,43 +859,49 @@ public final class NodeRegistry {
         /**
          * Creates immutable property metadata holder.
          */
-        public PropertyInfo(String name, Type type,
-                         MethodHandle getter, Function<Object, Object> lambdaGetter,
-                         MethodHandle setter, BiConsumer<Object, Object> lambdaSetter,
-                         OneOfInfo oneOfInfo,
-                         String codecName,
-                         ValueCodecInfo resolvedValueCodec) {
+        public PropertyInfo(String name, Type type, Field publicField,
+                            Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
+                            Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
+                            OneOfInfo oneOfInfo, String codecName, ValueCodecInfo resolvedValueCodec) {
             this.name = name;
             this.type = type;
-            this.rawClazz = Types.rawBox(type);
+            this.boxed = Types.rawBox(type);
+            this.publicField = publicField;
+
             ContainerKind kind = ContainerKind.NONE;
             Type argType = null;
-            Class<?> argRawType = null;
-            if (List.class.isAssignableFrom(this.rawClazz)) {
+            Class<?> argClazz = null;
+            if (List.class.isAssignableFrom(this.boxed)) {
                 kind = ContainerKind.LIST;
                 argType = Types.resolveTypeArgument(type, List.class, 0);
-                argRawType = Types.rawBox(argType);
-            } else if (Set.class.isAssignableFrom(this.rawClazz)) {
+                argClazz = Types.rawBox(argType);
+            } else if (Set.class.isAssignableFrom(this.boxed)) {
                 kind = ContainerKind.SET;
                 argType = Types.resolveTypeArgument(type, Set.class, 0);
-                argRawType = Types.rawBox(argType);
-            } else if (Map.class.isAssignableFrom(this.rawClazz)) {
+                argClazz = Types.rawBox(argType);
+            } else if (Map.class.isAssignableFrom(this.boxed)) {
                 kind = ContainerKind.MAP;
                 argType = Types.resolveTypeArgument(type, Map.class, 1);
-                argRawType = Types.rawBox(argType);
-            } else if (this.rawClazz.isArray()) {
+                argClazz = Types.rawBox(argType);
+            } else if (this.boxed.isArray()) {
                 kind = ContainerKind.ARRAY;
-                argType = this.rawClazz.getComponentType();
-                argRawType = Types.box((Class<?>) argType);
+                argType = this.boxed.getComponentType();
+                argClazz = Types.box((Class<?>) argType);
             }
             this.containerKind = kind;
             this.argType = argType;
-            this.argRawClazz = argRawType;
-            this.argOneOfInfo = argRawType == null ? null : ReflectUtil.resolveOneOfInfo(argRawType);
-            this.getter = getter;
-            this.lambdaGetter = lambdaGetter;
-            this.setter = setter;
-            this.lambdaSetter = lambdaSetter;
+            this.argClazz = argClazz;
+            this.argBoxed = Types.rawBox(argClazz);
+            this.argOneOfInfo = argBoxed == null ? null : ReflectUtil.resolveOneOfInfo(argBoxed);
+
+            this.publicGetter = publicGetter;
+            this.getterHandle = getterHandle;
+            this.getterLambda = getterLambda;
+
+            this.publicSetter = publicSetter;
+            this.setterHandle = setterHandle;
+            this.setterLambda = setterLambda;
+
             this.oneOfInfo = oneOfInfo;
             this.codecName = codecName;
             this.resolvedValueCodec = resolvedValueCodec;
@@ -896,13 +911,13 @@ public final class NodeRegistry {
          * Returns true when a getter is available.
          */
         public boolean hasGetter() {
-            return getter != null || lambdaGetter != null;
+            return getterHandle != null || getterLambda != null;
         }
         /**
          * Returns true when a setter is available.
          */
         public boolean hasSetter() {
-            return setter != null || lambdaSetter != null;
+            return setterHandle != null || setterLambda != null;
         }
 
 
@@ -911,14 +926,14 @@ public final class NodeRegistry {
          */
         public Object invokeGetter(Object receiver) {
             Objects.requireNonNull(receiver, "receiver");
-            if (lambdaGetter != null) {
-                return lambdaGetter.apply(receiver);
+            if (getterLambda != null) {
+                return getterLambda.apply(receiver);
             }
-            if (getter == null) {
+            if (getterHandle == null) {
                 throw new BindingException("no getter available for property '" + name + "' of " + type);
             }
             try {
-                return getter.invoke(receiver);
+                return getterHandle.invoke(receiver);
             } catch (Throwable e) {
                 throw new BindingException("failed to invoke getter for property '" + name + "' of " + type, e);
             }
@@ -928,7 +943,7 @@ public final class NodeRegistry {
          * Invokes setter when present and reports success.
          */
         public boolean invokeSetterIfPresent(Object receiver, Object value) {
-            if (setter == null && lambdaSetter == null) return false;
+            if (setterHandle == null && setterLambda == null) return false;
             invokeSetter(receiver, value);
             return true;
         }
@@ -939,13 +954,13 @@ public final class NodeRegistry {
         public void invokeSetter(Object receiver, Object value) {
             Objects.requireNonNull(receiver, "receiver");
             try {
-                if (lambdaSetter != null) {
-                    lambdaSetter.accept(receiver, value);
+                if (setterLambda != null) {
+                    setterLambda.accept(receiver, value);
                     return;
                 }
-                if (setter == null)
+                if (setterHandle == null)
                     throw new BindingException("no setter available for property '" + name + "' of " + type);
-                setter.invoke(receiver, value);
+                setterHandle.invoke(receiver, value);
             } catch (Throwable e) {
                 throw new BindingException("failed to invoke setter for property '" + name + "' of type '" + type +
                         "' with value '" + Types.name(value) + "' (node type: " + Types.name(receiver)+ ")", e);
@@ -957,7 +972,7 @@ public final class NodeRegistry {
     // ValueCodecInfo
 
     public static class ValueCodecInfo {
-        public final String valueFormat;
+        public final String codecName;
         public final Class<?> valueClazz;
         public final Class<?> rawClazz;
         public final ValueCodec<Object, Object> valueCodec;
@@ -968,9 +983,9 @@ public final class NodeRegistry {
          * Creates immutable value-codec metadata holder.
          */
         @SuppressWarnings("unchecked")
-        public ValueCodecInfo(String valueFormat, Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
+        public ValueCodecInfo(String codecName, Class<?> valueClazz, Class<?> rawClazz, ValueCodec<?, ?> valueCodec,
                               MethodHandle valueToRawHandle, MethodHandle rawToValueHandle, MethodHandle valueCopyHandle) {
-            this.valueFormat = valueFormat == null ? "" : valueFormat;
+            this.codecName = codecName == null ? "" : codecName;
             this.valueClazz = valueClazz;
             this.rawClazz = rawClazz;
             this.valueCodec = (ValueCodec<Object, Object>) valueCodec;
@@ -979,8 +994,8 @@ public final class NodeRegistry {
             this.valueCopyHandle = valueCopyHandle;
         }
 
-        public boolean isDefaultFormat() {
-            return valueFormat.isEmpty();
+        public boolean isDefault() {
+            return codecName.isEmpty();
         }
 
         /**

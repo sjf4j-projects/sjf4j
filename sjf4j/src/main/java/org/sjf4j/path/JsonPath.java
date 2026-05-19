@@ -46,6 +46,7 @@ public class JsonPath {
     protected final PathSegment[] segments;
 
     protected final boolean single;
+    protected final boolean append;
 
     /**
      * Creates a copy of an existing JsonPath instance.
@@ -57,6 +58,7 @@ public class JsonPath {
         this.segments = new PathSegment[target.segments.length];
         System.arraycopy(target.segments, 0, segments, 0, segments.length);
         this.single = target.single;
+        this.append = target.append;
     }
 
     protected JsonPath(String raw, PathSegment[] segments) {
@@ -64,14 +66,18 @@ public class JsonPath {
         this.segments = segments;
 
         boolean isSingle = true;
-        for (PathSegment pt : segments) {
-            if (!(pt instanceof PathSegment.Root || pt instanceof PathSegment.Name ||
-                    pt instanceof PathSegment.Index || pt instanceof PathSegment.Append)) {
+        boolean hasAppend = false;
+        for (PathSegment ps : segments) {
+            if (ps instanceof PathSegment.Append) {
+                hasAppend = true;
+            }
+            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name ||
+                    ps instanceof PathSegment.Index || ps instanceof PathSegment.Append)) {
                 isSingle = false;
-                break;
             }
         }
         this.single = isSingle;
+        this.append = hasAppend;
     }
 
     /**
@@ -113,12 +119,16 @@ public class JsonPath {
     }
 
     /**
-     * Returns the depth of the path (number of tokens).
+     * Returns the length of the path (number of tokens).
      *
      * @return the depth of the path
      */
-    public int depth() {
+    public int length() {
         return segments.length;
+    }
+
+    public PathSegment[] segments() {
+        return segments;
     }
 
     /**
@@ -149,11 +159,19 @@ public class JsonPath {
         return segments.length > 0 ? segments[0] : null;
     }
 
+    public PathSegment tail() {
+        return segments.length > 0 ? segments[segments.length - 1] : null;
+    }
+
     /**
      * Returns true if the path uses only root/name/index tokens.
      */
     public boolean isSingle() {
         return single;
+    }
+
+    public boolean hasAppend() {
+        return append;
     }
 
     /// Find

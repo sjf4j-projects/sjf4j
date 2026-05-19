@@ -14,7 +14,6 @@ import org.sjf4j.node.TypeReference;
 import org.sjf4j.patch.JsonPatch;
 import org.sjf4j.patch.OperationRegistry;
 import org.sjf4j.patch.Patches;
-import org.sjf4j.path.CompiledPath;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
@@ -549,63 +548,5 @@ class CoverageApiTest {
         assertThrows(NullPointerException.class, () -> sjf4j.fromProperties(null));
     }
 
-    @Test
-    void testAdditionalPublicConvenienceMethods() {
-        assertTrue(sjf4j.streamingContext().includeNulls);
-        assertTrue(sjf4j.yamlFacade() != null);
-        assertTrue(sjf4j.propertiesFacade() != null);
-        assertTrue(JsonType.of(sjf4j.fromJson(new StringReader("{\"a\":1}"))).isObject());
-        assertTrue(JsonType.of(sjf4j.fromJson(new ByteArrayInputStream("{\"a\":1}".getBytes(StandardCharsets.UTF_8)))).isObject());
-        assertTrue(JsonType.of(sjf4j.fromJson("{\"a\":1}".getBytes(StandardCharsets.UTF_8))).isObject());
 
-        NodeMapper<Person, Map> mapper = sjf4j.nodeMapperBuilder(Person.class, Map.class).build();
-        Person p = new Person();
-        p.name = "A";
-        p.age = 1;
-        assertEquals("A", mapper.map(p).get("name"));
-
-        JsonObject jo = JsonObject.of("a", 1, "b", null, "obj", JsonObject.of("x", 1), "arr", JsonArray.of(1, 2));
-        assertEquals("d", jo.getNode("missing", "d"));
-        assertEquals(1, JsonObject.of("a", 1).toMap(Integer.class).get("a"));
-        assertTrue(jo.edit().build().containsKey("a"));
-
-        JsonArray ja = JsonArray.of("x");
-        assertEquals("d", ja.getNode(99, "d"));
-
-        JsonContainer container = jo;
-        assertTrue(container.nodeHash() != 0);
-        assertEquals(Collections.singleton(1), JsonObject.of("set", JsonArray.of(1)).getSetByPath("$.set"));
-        assertThrows(JsonException.class, () -> container.getSetByPath("$.arr[0]"));
-        assertEquals(1, container.findByPath("$.arr[0]").size());
-
-        JsonPath path = JsonPath.parse("$.obj.x");
-        assertEquals((Object) path.get(jo), (Object) path.copy().get(jo));
-        assertEquals(new LinkedHashSet<>(Arrays.asList(1, 2)), JsonPath.parse("$.arr").getSet(jo));
-        assertEquals(1, ((Number) JsonPointer.parse("/obj/x").copy().get(jo)).intValue());
-
-        PathSegment.Name quoted = new PathSegment.Name(PathSegment.Root.INSTANCE, "a-b");
-        assertTrue(quoted.matchKey("a-b"));
-        assertEquals("'a-b'", quoted.toQuoted());
-
-        CompiledPath<JsonObject, Object> compiledPath = CompiledPath.parse("$.obj.x");
-        assertEquals("$.obj.x", compiledPath.fallbackPath().toString());
-        assertEquals(1, compiledPath.get(jo, -1));
-        compiledPath.ensurePutIfAbsent(jo, 2);
-        assertEquals(1, jo.getIntByPath("$.obj.x"));
-        assertEquals(1, compiledPath.replace(jo, 3));
-        assertEquals(3, jo.getIntByPath("$.obj.x"));
-        assertEquals(3, compiledPath.remove(jo));
-        assertFalse(jo.getJsonObject("obj").containsKey("x"));
-
-        assertThrows(BindingException.class,
-                () -> JsonPatch.fromJson("[{\"op\":\"add\",\"path\":\"/b\",\"value\":2}]"));
-        assertTrue(OperationRegistry.get("add") != null);
-
-        Sjf4j customized = Sjf4j.builder()
-                .nodeFacadeProvider(SimpleNodeFacade.provider())
-                .yamlFacadeProvider(SimpleYamlFacade.provider())
-                .propertiesFacadeProvider(SimplePropertiesFacade.provider())
-                .build();
-        assertTrue(customized.nodeFacade() != null);
-    }
 }

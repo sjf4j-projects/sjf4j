@@ -28,12 +28,15 @@ configurations {
 
 dependencies {
     implementation(project(":sjf4j"))
+
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
     implementation("tools.jackson.core:jackson-databind:3.1.1")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     implementation("org.yaml:snakeyaml:2.5")
     implementation("com.ibm.icu:icu4j:77.1")
+
+    testImplementation(project(":sjf4j-bytecode"))
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
@@ -77,9 +80,6 @@ tasks.test {
     )
 }
 
-
-/////////////////////
-
 val sjf4jMainSourceSet = project(":sjf4j")
     .extensions
     .getByType<org.gradle.api.tasks.SourceSetContainer>()
@@ -101,3 +101,6 @@ tasks.jacocoTestReport {
         html.required.set(true)
     }
 }
+
+
+/////////////////////

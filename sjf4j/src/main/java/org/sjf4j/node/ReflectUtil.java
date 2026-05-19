@@ -123,7 +123,7 @@ public final class ReflectUtil {
         MethodHandles.Lookup lookup = _resolveLookup(clazz);
 
         // Creator constructor (for final fields / record-style)
-        NodeRegistry.CreatorInfo creatorInfo = null;
+        NodeRegistry.CreatorInfo creatorInfo;
         try {
             creatorInfo = analyzeCreator(clazz, lookup);
         } catch (Exception e) {
@@ -170,52 +170,54 @@ public final class ReflectUtil {
         Map<String, NodeRegistry.PropertyInfo> properties = new LinkedHashMap<>();
         for (PropertyFamily family : families.values()) {
             hasExplicitBinding |= family.explicitName != null || family.fieldExplicitName != null;
-            MethodHandle getter = null;
-            MethodHandle setter = null;
+            MethodHandle getterHandle = null;
+            MethodHandle setterHandle = null;
+            Field publicField = null;
             boolean fieldGetter = false;
             boolean fieldSetter = false;
             boolean fieldPrimary = propertyStrategy == PropertyStrategy.FIELD_ONLY
                     || propertyStrategy == PropertyStrategy.FIELD_BEAN;
             if (fieldPrimary && family.field != null) {
                 try {
-                    getter = lookup.unreflectGetter(family.field);
+                    getterHandle = lookup.unreflectGetter(family.field);
                     fieldGetter = true;
                 } catch (Exception ignored) {}
                 if (!Modifier.isFinal(family.field.getModifiers())) {
                     try {
-                        setter = lookup.unreflectSetter(family.field);
+                        setterHandle = lookup.unreflectSetter(family.field);
                         fieldSetter = true;
                     } catch (Exception ignored) {}
                 }
             }
-            if (getter == null && family.canUseGetter()) {
-                try { getter = lookup.unreflect(family.getterMethod); } catch (Exception ignored) {}
+            if (getterHandle == null && family.canUseGetter()) {
+                try { getterHandle = lookup.unreflect(family.getterMethod); } catch (Exception ignored) {}
             }
-            if (setter == null && family.canUseSetter()) {
-                try { setter = lookup.unreflect(family.setterMethod); } catch (Exception ignored) {}
+            if (setterHandle == null && family.canUseSetter()) {
+                try { setterHandle = lookup.unreflect(family.setterMethod); } catch (Exception ignored) {}
             }
             if (!fieldPrimary && family.field != null) {
-                if (getter == null) {
+                if (getterHandle == null) {
                     try {
-                        getter = lookup.unreflectGetter(family.field);
+                        getterHandle = lookup.unreflectGetter(family.field);
                         fieldGetter = true;
                     } catch (Exception ignored) {}
                 }
-                if (setter == null && !Modifier.isFinal(family.field.getModifiers())) {
+                if (setterHandle == null && !Modifier.isFinal(family.field.getModifiers())) {
                     try {
-                        setter = lookup.unreflectSetter(family.field);
+                        setterHandle = lookup.unreflectSetter(family.field);
                         fieldSetter = true;
                     } catch (Exception ignored) {}
                 }
             }
-            if (getter == null && setter == null) continue;
-            if (family.field != null && !Modifier.isPublic(family.field.getModifiers())
-                    && (fieldGetter || fieldSetter)) {
-                hasNonPublicFields = true;
-            }
+            if (getterHandle == null && setterHandle == null) continue;
             if (family.field != null) {
-                if (getter == null && !family.canUseGetter()) hasNonPublicWriterGap = true;
-                if (setter == null && !family.canUseSetter()) hasNonPublicReaderGap = true;
+                if (Modifier.isPublic(family.field.getModifiers())) {
+                    publicField = family.field;
+                } else if (fieldGetter || fieldSetter) {
+                    hasNonPublicFields = true;
+                }
+                if (getterHandle == null && !family.canUseGetter()) hasNonPublicWriterGap = true;
+                if (setterHandle == null && !family.canUseSetter()) hasNonPublicReaderGap = true;
             }
             _assertCompatiblePropertyTypes(family, clazz);
 
@@ -234,11 +236,12 @@ public final class ReflectUtil {
                             + family.implicitName + "' in " + clazz.getName());
                 }
             }
-            Function<Object, Object> lambdaGetter = getter == null ? null : createLambdaGetter(lookup, getter);
-            BiConsumer<Object, Object> lambdaSetter = setter == null ? null : createLambdaSetter(lookup, setter);
+
+            Function<Object, Object> getterLambda = getterHandle == null ? null : createLambdaGetter(lookup, getterHandle);
+            BiConsumer<Object, Object> setterLambda = setterHandle == null ? null : createLambdaSetter(lookup, setterHandle);
             NodeRegistry.ValueCodecInfo resolvedCodec = _resolveCodec(raw, family.codecName, family.codecPattern);
-            NodeRegistry.PropertyInfo pi = new NodeRegistry.PropertyInfo(
-                    finalName, type, getter, lambdaGetter, setter, lambdaSetter,
+            NodeRegistry.PropertyInfo pi = new NodeRegistry.PropertyInfo(finalName, type, publicField,
+                    family.getterMethod, getterHandle, getterLambda, family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(raw), family.codecName, resolvedCodec);
             NodeRegistry.PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {

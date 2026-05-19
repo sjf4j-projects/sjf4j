@@ -139,7 +139,7 @@ public class OperationRegistry {
     }
 
     private static boolean _isRoot(JsonPointer pointer) {
-        return pointer.depth() == 1;
+        return pointer.length() == 1;
     }
 
     private static boolean _contains(Object target, JsonPointer pointer) {

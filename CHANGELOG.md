@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `AccessStrategy` and the `@NodeBinding(access = ...)` contract in favor of property-family discovery through `@NodeBinding(propertyStrategy = PropertyStrategy...)`.
 - Renamed POJO metadata APIs from field-oriented names to property-oriented names, including `NodeRegistry.FieldInfo` -> `PropertyInfo`, `fields`/`fieldCount` -> `properties`/`propertyCount`, and removal of `NodeRegistry.getFieldInfo(...)`.
 - Renamed `@NodeProperty.valueFormat` to `@NodeProperty.codecName` for clarity.
+- Added the new public `org.sjf4j.compiled.CompiledPath` API and `PathCompiler` SPI; the previous `org.sjf4j.path.CompiledPath` surface and its broader mutation/query helper set are no longer the active compiled-path entry points.
 
 ### Added
 - Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
@@ -19,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ValueCodec` for `java.time.LocalTime` (supports `codecPattern`).
 - Added `ValueCodec` for `java.util.Optional` — flattens `Optional.of(x)` → `x`, `Optional.empty()` → `null` (like Jackson).
 - Added `ConcurrentHashMap` cache in `Types.resolveTypeArgument()` to memoize recursive generic type argument resolution results across repeated calls.
+- Added compiled-path APIs in `org.sjf4j.compiled`, including `CompiledPath.compile(...)` and the `PathCompiler` SPI hook used by optional accelerators.
+- Added the optional `sjf4j-bytecode` module with an ASM-backed `PathCompiler`, service-loader registration, JMH benchmark coverage, and dedicated bytecode tests.
 
 ### Changed
 - Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
@@ -29,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed 3 `RuntimeException` to `JsonException` in `ReflectUtil.analyzeNodeValue()`.
 - Changed streaming read paths to thread `NodeRegistry.TypeInfo` (instead of raw `OneOfInfo`) through `_readNode → _readObject / _readArray → _readMap / _readList / _readSet / _readArray`, eliminating redundant `registerTypeInfo()` lookups on each recursive descent. Applied to `StreamingIO`, `Jackson2StreamingIO`, and `Fastjson2StreamingIO`.
 - Renamed `ValueCodecInfo.getFormattedValueCodecInfo()` → `getValueCodecInfo()` and `formattedValueCodecs` → `namedValueCodecs` for clarity. Applied across all backend modules (Jackson 2, Jackson 3, Fastjson2, Gson, Simple) and the test suite.
+- Changed `FallbackCompiledPath` to parse/validate single-target paths up front, normalize `expr()` to `JsonPath.toExpr()`, and delegate to service-loaded bytecode compilers when available.
 
 ### Removed
 - Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
@@ -37,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed property binding consistency for renamed bean properties, field/bean family merging, `@OneOf`/value-format propagation, and creator-bound property conflict detection.
 - Fixed property discovery fail-fast behavior for ambiguous getter/setter selection, duplicate aliases/final names, and transient fields annotated with `@NodeProperty`.
 - Fixed `ReflectionBenchmark` and `SchemaBenchmark` JMH benchmarks to use current APIs (`pi.properties.get("name")` instead of removed `NodeRegistry.getPropertyInfo()`, `createPlan()` instead of removed `plan()`).
+- Fixed several ASM compiled-path generation issues in `sjf4j-bytecode`, including erased `get(Object)` emission, constructor/class signature generation, primitive boxing, object/primitive array loads, and `List` / `JsonArray` index method descriptors, with regression coverage for POJO, map, array, list, append, and null-chain cases.
 
 
 ## [1.2.3] - 2026.05.11

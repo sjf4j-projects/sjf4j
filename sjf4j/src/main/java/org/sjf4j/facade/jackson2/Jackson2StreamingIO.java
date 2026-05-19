@@ -477,10 +477,10 @@ public class Jackson2StreamingIO {
                                      StreamingContext context)
             throws IOException {
         Type fieldType = Types.resolveMemberType(ownerType, ownerRawClazz, fi.type);
-        Class<?> fieldRaw = fieldType == fi.type ? fi.rawClazz : Types.rawBox(fieldType);
+        Class<?> fieldRaw = fieldType == fi.type ? fi.boxed : Types.rawBox(fieldType);
 
         NodeRegistry.OneOfInfo fieldOneOf = fi.oneOfInfo;
-        if (fieldOneOf == null && fieldRaw != fi.rawClazz) {
+        if (fieldOneOf == null && fieldRaw != fi.boxed) {
             fieldOneOf = NodeRegistry.registerTypeInfo(fieldRaw).oneOfInfo;
         }
         if (fieldOneOf != null) {
@@ -493,17 +493,17 @@ public class Jackson2StreamingIO {
 
         switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.PropertyInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMap(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readMap(parser, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             case LIST:
-                return _readList(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readList(parser, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             case SET:
-                return _readSet(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readSet(parser, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             case ARRAY:
-                return _readArray(parser, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readArray(parser, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             default:
                 return _readNode(parser, fieldType, fieldRaw, null, context);
         }

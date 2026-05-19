@@ -74,8 +74,8 @@ public class NodeRegistryTest {
         log.info("pi={}", pi);
         assertNotNull(pi);
         assertEquals(4, pi.propertyCount);
-        assertNotNull(pi.properties.get("name").getter);
-        assertNotNull(pi.properties.get("name").setter);
+        assertNotNull(pi.properties.get("name").getterHandle);
+        assertNotNull(pi.properties.get("name").setterHandle);
         assertEquals(int.class, pi.properties.get("age").type);
         assertEquals(JsonObject.class, pi.properties.get("info").type);
         assertEquals(new TypeReference<List<JojoTest.Person>>(){}.getType(),

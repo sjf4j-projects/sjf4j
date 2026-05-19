@@ -116,6 +116,7 @@ public final class Types {
 
     /**
      * Resolves a generic type argument for a target supertype.
+     * The {@code index} is zero-based.
      */
     public static Type resolveTypeArgument(Type type, Class<?> target, int index) {
         if (type instanceof ParameterizedType) {

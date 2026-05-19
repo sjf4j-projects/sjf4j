@@ -6,7 +6,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingReader;
@@ -414,10 +413,10 @@ public class Fastjson2StreamingIO {
                                      StreamingContext context)
             throws IOException {
         Type fieldType = Types.resolveMemberType(ownerType, ownerRawClazz, fi.type);
-        Class<?> fieldRaw = fieldType == fi.type ? fi.rawClazz : Types.rawBox(fieldType);
+        Class<?> fieldRaw = fieldType == fi.type ? fi.boxed : Types.rawBox(fieldType);
 
         NodeRegistry.OneOfInfo fieldOneOf = fi.oneOfInfo;
-        if (fieldOneOf == null && fieldRaw != fi.rawClazz) {
+        if (fieldOneOf == null && fieldRaw != fi.boxed) {
             fieldOneOf = NodeRegistry.registerTypeInfo(fieldRaw).oneOfInfo;
         }
         if (fieldOneOf != null) {
@@ -430,17 +429,17 @@ public class Fastjson2StreamingIO {
 
         switch (fieldType == fi.type ? fi.containerKind : NodeRegistry.PropertyInfo.ContainerKind.NONE) {
             case MAP:
-                return _readMap(reader, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readMap(reader, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             case LIST:
-                return _readList(reader, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readList(reader, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             case SET:
-                return _readSet(reader, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readSet(reader, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             case ARRAY:
-                return _readArray(reader, fi.rawClazz, fi.argType, fi.argRawClazz,
-                        NodeRegistry.registerTypeInfo(fi.argRawClazz), context);
+                return _readArray(reader, fi.boxed, fi.argType, fi.argBoxed,
+                        NodeRegistry.registerTypeInfo(fi.argBoxed), context);
             default:
                 return _readNode(reader, fieldType, fieldRaw, null, context);
         }

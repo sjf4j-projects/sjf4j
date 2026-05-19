@@ -229,9 +229,9 @@ class NodeRegistryCoverageTest {
         NodeRegistry.ValueCodecInfo isoCodec = NodeRegistry.resolveValueCodecOrElseThrow(Instant.class, "iso");
         NodeRegistry.ValueCodecInfo epochCodec = NodeRegistry.resolveValueCodecOrElseThrow(Instant.class, "epochMillis");
 
-        assertEquals("", defaultCodec.valueFormat);
-        assertEquals("iso", isoCodec.valueFormat);
-        assertEquals("epochMillis", epochCodec.valueFormat);
+        assertEquals("", defaultCodec.codecName);
+        assertEquals("iso", isoCodec.codecName);
+        assertEquals("epochMillis", epochCodec.codecName);
         assertEquals(String.class, isoCodec.rawClazz);
         assertEquals(Long.class, epochCodec.rawClazz);
 
@@ -627,22 +627,22 @@ class NodeRegistryCoverageTest {
         NodeRegistry.PropertyInfo readOnlyField = pojoInfo.properties.get("readOnly");
 
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.LIST, namesField.containerKind);
-        assertEquals(String.class, namesField.argRawClazz);
+        assertEquals(String.class, namesField.argBoxed);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.SET, numbersField.containerKind);
-        assertEquals(Integer.class, numbersField.argRawClazz);
+        assertEquals(Integer.class, numbersField.argBoxed);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.MAP, mappingField.containerKind);
-        assertEquals(Long.class, mappingField.argRawClazz);
+        assertEquals(Long.class, mappingField.argBoxed);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.LIST, typedListField.containerKind);
-        assertEquals(TypedOneOf.class, typedListField.argRawClazz);
+        assertEquals(TypedOneOf.class, typedListField.argBoxed);
         assertNotNull(typedListField.argOneOfInfo);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.MAP, typedMapField.containerKind);
-        assertEquals(TypedOneOf.class, typedMapField.argRawClazz);
+        assertEquals(TypedOneOf.class, typedMapField.argBoxed);
         assertNotNull(typedMapField.argOneOfInfo);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.LIST, linkedNamesField.containerKind);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.SET, sortedNumbersField.containerKind);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.MAP, hashMappingField.containerKind);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.ARRAY, arrayField.containerKind);
-        assertEquals(String.class, arrayField.argRawClazz);
+        assertEquals(String.class, arrayField.argBoxed);
         assertEquals(NodeRegistry.PropertyInfo.ContainerKind.NONE, plainField.containerKind);
 
         ContainerPojo pojo = new ContainerPojo();
@@ -656,7 +656,20 @@ class NodeRegistryCoverageTest {
         assertThrows(JsonException.class, () -> readOnlyField.invokeSetter(pojo, "x"));
         assertThrows(NullPointerException.class, () -> plainField.invokeGetter(null));
 
-        NodeRegistry.PropertyInfo missingGetter = new NodeRegistry.PropertyInfo("name", String.class, null, null, null, null, null, null, null);
+        NodeRegistry.PropertyInfo missingGetter = new NodeRegistry.PropertyInfo(
+                "name",
+                String.class,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
         assertThrows(JsonException.class, () -> missingGetter.invokeGetter(new Object()));
 
         MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -665,8 +678,11 @@ class NodeRegistryCoverageTest {
         NodeRegistry.PropertyInfo throwingField = new NodeRegistry.PropertyInfo(
                 "name",
                 String.class,
+                null,
+                getterMethod,
                 lookup.unreflect(getterMethod),
                 null,
+                setterMethod,
                 lookup.unreflect(setterMethod),
                 null,
                 null,

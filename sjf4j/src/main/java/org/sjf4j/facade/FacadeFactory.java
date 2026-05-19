@@ -125,7 +125,7 @@ public final class FacadeFactory {
         if (SNAKE_PRESENT) {
             return SnakeYamlFacade.provider();
         } else {
-            System.err.println("SJF4J: Failed to detect any supported YAML library (SnakeYAML).");
+//            System.err.println("SJF4J: Failed to detect any supported YAML library (SnakeYAML).");
             return SimpleYamlFacade.provider();
         }
     }
