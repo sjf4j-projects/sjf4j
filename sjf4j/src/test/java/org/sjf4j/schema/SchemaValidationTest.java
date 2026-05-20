@@ -524,7 +524,7 @@ public class SchemaValidationTest {
 
     @Test
     public void testFormatAssertionVocabularyForcesValidation() {
-        ObjectSchema metaSchema = SchemaRegistry.loadSchemaFromLocalUri(
+        ObjectSchema metaSchema = SchemaUtil.loadSchemaFromLocalUri(
                 URI.create("classpath:///json-schemas/remotes/draft2020-12/format-assertion-true.json"));
         SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
 
@@ -620,6 +620,24 @@ public class SchemaValidationTest {
 
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
+    }
+
+    @Test
+    public void testDraft2019FormatVocabularyActivatesFormatWithoutAssertion() {
+        ObjectSchema metaSchema = SchemaUtil.loadSchemaFromLocalUri(
+                URI.create("classpath:///json-schemas/draft2019-09/schema.json"));
+        SchemaRegistry registry = new SchemaRegistry().index(metaSchema);
+
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +
+                "\"type\":\"string\"," +
+                "\"format\":\"email\"" +
+                "}");
+        SchemaPlan plan = schema.createPlan(registry);
+
+        assertTrue(plan.isValid("a@b.com"));
+        assertTrue(plan.isValid("not-email"));
+        assertFalse(plan.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build()).isValid());
     }
 
     @Test

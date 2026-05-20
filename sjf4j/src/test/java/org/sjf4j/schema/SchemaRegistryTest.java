@@ -12,7 +12,7 @@ class SchemaRegistryTest {
 
     @Test
     void loadSchemaFromMissingLocalUri_returnsNull() {
-        assertNull(SchemaRegistry.loadSchemaFromLocalUri(URI.create("classpath:///json-schemas/missing-schema.json")));
+        assertNull(SchemaUtil.loadSchemaFromLocalUri(URI.create("classpath:///json-schemas/missing-schema.json")));
     }
 
     @Test
@@ -56,6 +56,14 @@ class SchemaRegistryTest {
         SchemaPlan plan = new SchemaRegistry().resolve(URI.create("https://json-schema.org/draft/2020-12/schema"));
 
         assertNotNull(plan);
+    }
+
+    @Test
+    void resolve_fallsBackToGlobalIndexedDraft2019AndDraft7Schemas() {
+        assertNotNull(new SchemaRegistry().resolve(URI.create("https://json-schema.org/draft/2019-09/schema")));
+        assertNotNull(new SchemaRegistry().resolve(URI.create("https://json-schema.org/draft/2019-09/meta/core")));
+        assertNotNull(new SchemaRegistry().resolve(URI.create("http://json-schema.org/draft-07/schema#")));
+        assertNotNull(new SchemaRegistry().resolve(URI.create("https://json-schema.org/draft-07/schema")));
     }
 
 }

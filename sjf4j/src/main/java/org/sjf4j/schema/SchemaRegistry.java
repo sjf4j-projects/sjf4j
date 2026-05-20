@@ -306,80 +306,35 @@ public class SchemaRegistry {
     }
 
     static {
-        _indexGlobalSchemaByPath("draft2020-12/meta/core.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/applicator.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/validation.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/meta-data.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/format-annotation.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/format-assertion.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/unevaluated.json");
-        _indexGlobalSchemaByPath("draft2020-12/meta/content.json");
-        _indexGlobalSchemaByPath("draft2020-12/schema.json");
+        _indexGlobalSchemaByPath("draft07/schema.json", "https://json-schema.org/draft-07/schema");
+
+        _indexGlobalSchemaByPath("draft2019-09/meta/core.json", null);
+        _indexGlobalSchemaByPath("draft2019-09/meta/applicator.json", null);
+        _indexGlobalSchemaByPath("draft2019-09/meta/validation.json", null);
+        _indexGlobalSchemaByPath("draft2019-09/meta/meta-data.json", null);
+        _indexGlobalSchemaByPath("draft2019-09/meta/format.json", null);
+        _indexGlobalSchemaByPath("draft2019-09/meta/content.json", null);
+        _indexGlobalSchemaByPath("draft2019-09/schema.json", null);
+
+        _indexGlobalSchemaByPath("draft2020-12/meta/core.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/applicator.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/validation.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/meta-data.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/format-annotation.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/format-assertion.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/unevaluated.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/meta/content.json", null);
+        _indexGlobalSchemaByPath("draft2020-12/schema.json", null);
     }
 
-
-    private static void _indexGlobalSchemaByPath(String filePath) {
+    private static void _indexGlobalSchemaByPath(String filePath, String alias) {
         URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
-        ObjectSchema schema = loadSchemaFromLocalUri(uri);
+        ObjectSchema schema = SchemaUtil.loadSchemaFromLocalUri(uri);
         if (schema == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema resource not found", null, uri.toString()));
         GLOBAL_SCHEMA_REGISTRY.index(schema);
-    }
-
-    /**
-     * Loads a schema from local URI.
-     * <p>
-     * Supported schemes: {@code file}, {@code classpath}. Returns {@code null}
-     * when the target does not exist. The returned schema keeps the given URI as
-     * its root retrieval URI.
-     */
-    public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
-        Objects.requireNonNull(uri, "uri");
-        ObjectSchema schema;
-        if ("file".equalsIgnoreCase(uri.getScheme())) {
-            schema = _loadSchemaFromFile(uri.getPath());
-        } else if ("classpath".equalsIgnoreCase(uri.getScheme())) {
-            String path = uri.getPath();
-            if (path == null || path.isEmpty()) {
-                path = uri.getSchemeSpecificPart();
-            }
-            schema = _loadSchemaFromResource(path);
-        } else {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "unsupported local schema uri", null, uri.toString()));
-        }
-        if (schema == null) return null;
-        schema.setRetrievalUri(uri);
-        return schema;
-    }
-
-    /**
-     * Loads a schema from a file path. Returns {@code null} when the file does
-     * not exist.
-     */
-    private static ObjectSchema _loadSchemaFromFile(String path) {
-        try (InputStream in = Files.newInputStream(Paths.get(path))) {
-            return Sjf4j.global().fromJson(in, ObjectSchema.class);
-        } catch (NoSuchFileException e) {
-            return null;
-        } catch (Exception e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "failed to load schema from file", null, path), e);
-        }
-    }
-
-    /**
-     * Loads a schema from a classpath resource path. Returns {@code null} when
-     * the resource does not exist.
-     */
-    private static ObjectSchema _loadSchemaFromResource(String path) {
-        if (path.startsWith("/")) path = path.substring(1);
-        try (InputStream in = SchemaRegistry.class.getClassLoader().getResourceAsStream(path)) {
-            if (in == null) return null;
-            return Sjf4j.global().fromJson(in, ObjectSchema.class);
-        } catch (Exception e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "failed to load schema from resource", null, path), e);
+        if (alias != null && !alias.isEmpty()) {
+            GLOBAL_SCHEMA_REGISTRY._putSchema(URI.create(alias), schema);
         }
     }
 

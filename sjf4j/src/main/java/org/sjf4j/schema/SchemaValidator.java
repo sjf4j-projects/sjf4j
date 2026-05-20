@@ -175,7 +175,7 @@ public final class SchemaValidator {
         SchemaPlan plan = registry.resolve(uri);
         if (plan != null) return plan;
 
-        ObjectSchema idSchema = SchemaRegistry.loadSchemaFromLocalUri(uri);
+        ObjectSchema idSchema = SchemaUtil.loadSchemaFromLocalUri(uri);
         if (idSchema == null) return null;
         registry.register(idSchema);
         return registry.resolve(uri);
