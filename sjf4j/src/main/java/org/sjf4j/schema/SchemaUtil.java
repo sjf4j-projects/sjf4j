@@ -170,6 +170,20 @@ public final class SchemaUtil {
     // Regex helpers
 
     private static final Pattern UNICODE_PROPERTY_PATTERN = Pattern.compile("\\\\([pP])\\{([^}]+)}");
+    private static final String ECMA_WS_CHARS =
+            "\\u0009-\\u000D" +
+                    "\\u0020" +
+                    "\\u00A0" +
+                    "\\u1680" +
+                    "\\u2000-\\u200A" +
+                    "\\u2028\\u2029" +
+                    "\\u202F" +
+                    "\\u205F" +
+                    "\\u3000" +
+                    "\\uFEFF";
+    private static final String ECMA_WS_CLASS = "[" + ECMA_WS_CHARS + "]";
+    private static final String ECMA_NON_WS_CLASS = "[^" + ECMA_WS_CHARS + "]";
+
 
     /**
      * Compiles a regex for schema keywords such as {@code pattern}.
@@ -180,19 +194,56 @@ public final class SchemaUtil {
      */
     public static Pattern compileRegexPattern(String pattern, String keyword) {
         Objects.requireNonNull(pattern, "pattern");
+        String normalized = normalizeEcma262Regex(pattern);
+        normalized = normalizeUnicodeProperties(normalized);
         try {
-            return Pattern.compile(pattern);
-        } catch (PatternSyntaxException ignore) {
-            String normalized = normalizeUnicodeProperties(pattern);
-            try {
-                return Pattern.compile(normalized);
-            } catch (PatternSyntaxException e) {
-                throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
-                        "invalid regex for keyword '" + keyword + "': " + pattern,
-                        (String) null, (String) null), e);
-            }
+            return Pattern.compile(normalized);
+        } catch (PatternSyntaxException e) {
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
+                    "invalid regex for keyword '" + keyword + "': " + pattern,
+                    (String) null, (String) null), e);
         }
     }
+
+    static String normalizeEcma262Regex(String pattern) {
+        StringBuilder sb = new StringBuilder(pattern.length() + 16);
+        boolean inClass = false;
+        for (int i = 0; i < pattern.length(); i++) {
+            char ch = pattern.charAt(i);
+            if (ch == '\\' && i + 1 < pattern.length()) {
+                char next = pattern.charAt(i + 1);
+                // \c[a-z] -> \c[A-Z]
+                if (next == 'c' && i + 2 < pattern.length()) {
+                    char ctrl = pattern.charAt(i + 2);
+                    if (ctrl >= 'a' && ctrl <= 'z') {
+                        sb.append("\\c").append((char) (ctrl - ('a' - 'A')));
+                        i += 2;
+                        continue;
+                    }
+                }
+                // \s
+                if (next == 's') {
+                    sb.append(inClass ? ECMA_WS_CHARS : ECMA_WS_CLASS);
+                    i++;
+                    continue;
+                }
+                // \S
+                if (next == 'S' && !inClass) {
+                    sb.append(ECMA_NON_WS_CLASS);
+                    i++;
+                    continue;
+                }
+                sb.append(ch).append(next);
+                i++;
+                continue;
+            }
+            if (ch == '[') inClass = true;
+            else if (ch == ']' && inClass) inClass = false;
+            sb.append(ch);
+        }
+        return sb.toString();
+    }
+
 
     /**
      * Normalizes long-form Unicode property names to shorter Java-friendly
@@ -256,6 +307,7 @@ public final class SchemaUtil {
             case "Private_Use": return "Co";
             case "Surrogate": return "Cs";
             case "Unassigned": return "Cn";
+            case "digit": return "Nd";
             default:
                 return prop;
         }
@@ -287,6 +339,7 @@ public final class SchemaUtil {
      * Removes URI fragment text without further normalization.
      */
     public static String stripFragment(String s) {
+        if (s == null) return s;
         int i = s.indexOf('#');
         return i >= 0 ? s.substring(0, i) : s;
     }
@@ -310,15 +363,15 @@ public final class SchemaUtil {
         if (uri.getFragment() != null) {
             uri = URI.create(stripFragment(uri.toString()));
         }
-        if (!"file".equalsIgnoreCase(uri.getScheme())) {
-            return uri.toString();
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            try {
+                return new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null).toString();
+            } catch (URISyntaxException e) {
+                throw new SchemaException(formatSchemaLine(Code.SCHEMA_URI,
+                        "failed to normalize uri key '" + uri + "'", null, displaySchemaUri(uri)), e);
+            }
         }
-        try {
-            return new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null).toString();
-        } catch (URISyntaxException e) {
-            throw new SchemaException(formatSchemaLine(Code.SCHEMA_URI,
-                    "failed to normalize uri key '" + uri + "'", null, displaySchemaUri(uri)), e);
-        }
+        return uri.toString();
     }
 
 

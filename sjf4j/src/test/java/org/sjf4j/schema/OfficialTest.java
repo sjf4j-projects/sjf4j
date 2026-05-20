@@ -13,28 +13,46 @@ import java.util.*;
 
 public final class OfficialTest {
 
-    private static SchemaRegistry _store;
 
     public static void main(String[] args) throws Exception {
-        _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
-        Path root = locatePath("json-schemas/tests/draft2019-09");
-//        Path root = locatePath("json-schemas/tests/draft2020-12");
+//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
+//        loadRemotes(registry, locatePath("json-schemas/remotes"));
+//        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), false);
 
-        runTestDir(root, false);
+
+//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
+//        loadRemotes(registry, locatePath("json-schemas/remotes"));
+//        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), false);
 //        runTestFile(root.resolve("dynamicRef.json"), "", "");
+
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
+        loadRemotes(registry, locatePath("json-schemas/remotes"));
+        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), false);
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
+
     }
 
     @Test
-    public void testSuite() throws Exception {
-        _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
-
-//        runTestDir(locatePath("json-schemas/tests/draft2020-12"), true);
-        runTestDir(locatePath("json-schemas/tests/draft2019-09"), true);
+    public void testDraft7() throws Exception {
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
+        loadRemotes(registry, locatePath("json-schemas/remotes"));
+        runTestDir(registry, locatePath("json-schemas/tests/draft7"), true);
     }
 
-    private static void runSuite() throws Exception {
+    @Test
+    public void testDraft2019_09() throws Exception {
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
+        loadRemotes(registry, locatePath("json-schemas/remotes"));
+        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09"), true);
     }
+
+    @Test
+    public void testDraft2020_12() throws Exception {
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
+        loadRemotes(registry, locatePath("json-schemas/remotes"));
+        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12"), true);
+    }
+
 
     private static Path locatePath(String dir) throws Exception {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -45,27 +63,24 @@ public final class OfficialTest {
         return Paths.get(url.toURI());
     }
 
-    private static void runTestDir(Path dir, boolean canThrow) throws Exception {
+    private static void runTestDir(SchemaRegistry registry, Path dir, boolean canThrow) throws Exception {
         TestSuiteReport suite = new TestSuiteReport();
         Files.walk(dir, 1)
                 .filter(p -> p.toString().endsWith(".json"))
-                .forEach(p -> runTestFile(p, suite, true, null, null));
+                .forEach(p -> runTestFile(registry, p, suite, true, null, null));
         printSuiteReport(suite);
         if (canThrow && (suite.error > 0 || suite.failed > 0)) {
             throw new RuntimeException("JSON Schema Official tests failed " + suite.failed + " and error " + suite.error);
         }
     }
 
-    private static void runTestFile(Path file, String groupFilter, String testFilter) throws Exception {
+    private static void runTestFile(SchemaRegistry registry, Path file, String groupFilter, String testFilter) throws Exception {
         TestSuiteReport suite = new TestSuiteReport();
-        runTestFile(file, suite, true, groupFilter, testFilter);
+        runTestFile(registry, file, suite, true, groupFilter, testFilter);
     }
 
-    private static void runTestFile(Path file,
-                                    TestSuiteReport suite,
-                                    boolean showDetails,
-                                    String groupFilter,
-                                    String testFilter) {
+    private static void runTestFile(SchemaRegistry registry, Path file, TestSuiteReport suite,
+                                    boolean showDetails, String groupFilter, String testFilter) {
         String fileName = file.getFileName().toString();
         TestFileReport report = suite.file(fileName);
         String groupDesc;
@@ -82,7 +97,7 @@ public final class OfficialTest {
 
                 SchemaPlan plan;
                 try {
-                    plan = schema.createPlan(_store);
+                    plan = schema.createPlan(registry);
                 } catch (Exception e) {
                     int size = caseObj.getJsonArray("tests").size();
                     report.total += size;
@@ -155,8 +170,7 @@ public final class OfficialTest {
 
     private static final URI TEST_BASE_URI = URI.create("http://localhost:1234/");
 
-    private static SchemaRegistry loadRemotesToStore(Path remotesDir) throws Exception {
-        SchemaRegistry registry = new SchemaRegistry();
+    private static void loadRemotes(SchemaRegistry registry, Path remotesDir) throws Exception {
         Files.walk(remotesDir)
                 .filter(p -> p.toString().endsWith(".json"))
                 .forEach(p -> {
@@ -165,24 +179,10 @@ public final class OfficialTest {
                         URI uri = resolveSchemaUri(schema, remotesDir, p);
 //                        System.out.println("uri: " + uri);
                         registry.index(uri, schema);
-//                        String id = schema.getString("$id", null);
-//                        if (id != null) {
-//                            URI idUri = URI.create(id);
-//                            if (!idUri.equals(uri)) {
-//                                JsonSchema existing = registry.resolve(idUri);
-//                                if (existing == null) {
-//                                    registry.register(idUri, schema);
-//                                } else if (existing != schema) {
-//                                    throw new AssertionError("Conflicting remote schema uri: " + idUri);
-//                                }
-//                            }
-//                        }
-
                     } catch (Exception e) {
                         throw new AssertionError("Failed to load remote schema: " + p, e);
                     }
                 });
-        return registry;
     }
 
     private static URI resolveSchemaUri(ObjectSchema schema, Path remotesDir, Path file) {

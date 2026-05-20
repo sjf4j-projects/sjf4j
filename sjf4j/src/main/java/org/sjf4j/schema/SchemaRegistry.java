@@ -29,13 +29,26 @@ public class SchemaRegistry {
 
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
+    private final SchemaDialect defaultDialect;
+
+
 
     /**
      * Creates an empty schema registry.
      */
+    public SchemaRegistry(SchemaDialect defaultDialect) {
+        this.byIdPlans = new ConcurrentHashMap<>();
+        this.byIdSchemas = new ConcurrentHashMap<>();
+        this.defaultDialect = defaultDialect;
+    }
+
     public SchemaRegistry() {
-        byIdPlans = new ConcurrentHashMap<>();
-        byIdSchemas = new ConcurrentHashMap<>();
+        this(SchemaDialect.DRAFT_2020_12);
+    }
+
+
+    public SchemaDialect getDefaultDialect() {
+        return defaultDialect;
     }
 
     /**
@@ -150,26 +163,27 @@ public class SchemaRegistry {
      * <p>
      * Existing mappings must resolve to the same canonical schema resource.
      */
-    public SchemaRegistry copyFrom(SchemaRegistry other) {
-        if (other != null) {
-            for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
-                SchemaPlan plan = entry.getValue();
-                SchemaPlan old = byIdPlans.putIfAbsent(entry.getKey(), plan);
-                if (old != null && old != plan) {
-                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                            "duplicate schema uri '" + entry.getKey() + "'", null, entry.getKey()));
-                }
-            }
-            for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
-                ObjectSchema schema = entry.getValue();
-                ObjectSchema old = byIdSchemas.putIfAbsent(entry.getKey(), schema);
-                if (old != null && old != schema) {
-                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                            "duplicate schema uri '" + entry.getKey() + "'", null, entry.getKey()));
-                }
+    public static SchemaRegistry copyOf(SchemaRegistry other) {
+        if (other == null) return new SchemaRegistry();
+
+        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect);
+        for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
+            SchemaPlan plan = entry.getValue();
+            SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
+            if (old != null && old != plan) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                        "duplicate schema uri '" + entry.getKey() + "'", null, entry.getKey()));
             }
         }
-        return this;
+        for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
+            ObjectSchema schema = entry.getValue();
+            ObjectSchema old = registry.byIdSchemas.putIfAbsent(entry.getKey(), schema);
+            if (old != null && old != schema) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                        "duplicate schema uri '" + entry.getKey() + "'", null, entry.getKey()));
+            }
+        }
+        return registry;
     }
 
     /**

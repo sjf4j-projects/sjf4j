@@ -46,7 +46,7 @@ public final class SchemaValidator {
     public SchemaValidator(String baseDir, ValidationOptions options, SchemaRegistry registry) {
         this.baseDirUri = _resolveBaseDir(baseDir);
         this.options = options == null ? ValidationOptions.FAILFAST_STRICT : options;
-        this.registry = new SchemaRegistry().copyFrom(registry);
+        this.registry = SchemaRegistry.copyOf(registry);
     }
 
     private URI _resolveBaseDir(String baseDir) {
