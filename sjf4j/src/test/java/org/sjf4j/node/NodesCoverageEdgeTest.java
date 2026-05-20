@@ -305,7 +305,8 @@ class NodesCoverageEdgeTest {
         assertThrows(JsonException.class, () -> Nodes.accessInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
 
         assertEquals("jack", Nodes.putInObject(map, "name", "map"));
-        assertEquals("bean", Nodes.putInObject(bean, "name", "pojo"));
+        assertNull(Nodes.putInObject(bean, "name", "pojo"));
+        assertEquals("pojo", bean.getName());
         assertNull(Nodes.putInObject(dynamicBean, "extra2", 3));
         assertThrows(JsonException.class, () -> Nodes.putInObject(bean, "missing", 1));
 

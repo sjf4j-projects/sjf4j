@@ -17,6 +17,7 @@ import org.sjf4j.compiled.CompiledPath;
 import org.sjf4j.compiled.FallbackCompiledPath;
 import org.sjf4j.path.JsonPath;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -159,6 +160,80 @@ public class CompiledPathBenchmark {
         }
     }
 
+    @State(Scope.Thread)
+    public static class PutBenchmarkState {
+        public JsonPath priceRaw;
+        public FallbackCompiledPath<Root, Double> priceFallback;
+        public CompiledPath<Root, Double> priceAsm;
+
+        public JsonPath bookPriceRaw;
+        public FallbackCompiledPath<Root, Double> bookPriceFallback;
+        public CompiledPath<Root, Double> bookPriceAsm;
+
+        public Root pricePojo;
+        public Root bookPricePojo;
+
+        public double nextPrice;
+        public double nextBookPrice;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            priceRaw = JsonPath.parse("$.store.bicycle.price");
+            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
+            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+
+            bookPriceRaw = JsonPath.parse("$.store.book[1].price");
+            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+
+            Root probe = _newRoot();
+            Object priceOldAsm = priceAsm.put(probe, 21.95d);
+            if (priceOldAsm != null || Math.abs(probe.store.bicycle.price - 21.95d) > 0.001d) {
+                throw new AssertionError("price put mismatch");
+            }
+
+            probe = _newRoot();
+            Object bookPriceOldAsm = bookPriceAsm.put(probe, 13.49d);
+            if (bookPriceOldAsm != null || Math.abs(probe.store.book.get(1).price - 13.49d) > 0.001d) {
+                throw new AssertionError("book[1].price put mismatch");
+            }
+        }
+
+        @Setup(Level.Invocation)
+        public void reset() {
+            pricePojo = _newRoot();
+            bookPricePojo = _newRoot();
+            nextPrice = 21.95d;
+            nextBookPrice = 13.49d;
+        }
+
+        private Root _newRoot() {
+            Bicycle bicycle = new Bicycle();
+            bicycle.color = "red";
+            bicycle.price = 19.95d;
+
+            Book first = new Book();
+            first.title = "A";
+            first.price = 8.95d;
+            Book second = new Book();
+            second.title = "B";
+            second.price = 12.99d;
+
+            Store store = new Store();
+            store.bicycle = bicycle;
+            store.book = new ArrayList<>();
+            store.book.add(first);
+            store.book.add(second);
+            store.featured = new Featured();
+            store.featured.price = 15.5d;
+
+            Root root = new Root();
+            root.store = store;
+            root.expensive = 10;
+            return root;
+        }
+    }
+
 
     // ═══════════════════════════════════════════════════════
     //  $.store.bicycle.color
@@ -249,6 +324,60 @@ public class CompiledPathBenchmark {
     @Benchmark
     public Object bookPrice_rawJsonPath(BenchmarkState s) {
         return s.bookPriceRaw.getNode(s.pojo);
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  put($.store.bicycle.price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Double pricePut_native(PutBenchmarkState s) {
+        Double old = s.pricePojo.store.bicycle.price;
+        s.pricePojo.store.bicycle.price = s.nextPrice;
+        return old;
+    }
+
+    @Benchmark
+    public Double pricePut_bytecode(PutBenchmarkState s) {
+        return s.priceAsm.put(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Double pricePut_fallback(PutBenchmarkState s) {
+        return s.priceFallback.put(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Object pricePut_rawJsonPath(PutBenchmarkState s) {
+        return s.priceRaw.put(s.pricePojo, s.nextPrice);
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  put($.store.book[1].price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Double bookPricePut_native(PutBenchmarkState s) {
+        Double old = s.bookPricePojo.store.book.get(1).price;
+        s.bookPricePojo.store.book.get(1).price = s.nextBookPrice;
+        return old;
+    }
+
+    @Benchmark
+    public Double bookPricePut_bytecode(PutBenchmarkState s) {
+        return s.bookPriceAsm.put(s.bookPricePojo, s.nextBookPrice);
+    }
+
+    @Benchmark
+    public Double bookPricePut_fallback(PutBenchmarkState s) {
+        return s.bookPriceFallback.put(s.bookPricePojo, s.nextBookPrice);
+    }
+
+    @Benchmark
+    public Object bookPricePut_rawJsonPath(PutBenchmarkState s) {
+        return s.bookPriceRaw.put(s.bookPricePojo, s.nextBookPrice);
     }
 
 

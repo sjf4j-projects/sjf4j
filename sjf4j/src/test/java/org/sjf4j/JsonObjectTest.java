@@ -708,13 +708,15 @@ class JsonObjectTest {
         assertFalse(map.containsKey("writeOnly"));
         assertEquals(1, map.get("extra"));
 
+        assertNull(jo.put("readWrite", "rw-2"));
+        assertEquals("rw-2", jo.getNode("readWrite"));
         assertNull(jo.put("writeOnly", "secret-2"));
         assertEquals("secret-2", jo.peekWriteOnly());
         assertFalse(jo.replace((key, value) -> key.equals("writeOnly") ? "secret-3" : value));
         assertEquals("secret-2", jo.peekWriteOnly());
 
         AccessModeJojo sameReadable = new AccessModeJojo();
-        sameReadable.setReadWrite("rw");
+        sameReadable.setReadWrite("rw-2");
         sameReadable.setReadOnly("ro");
         sameReadable.setWriteOnly("different-secret");
         sameReadable.put("extra", 1);
@@ -725,7 +727,7 @@ class JsonObjectTest {
         copied.putAll(jo);
         assertEquals(3, copied.size());
         assertFalse(copied.containsKey("writeOnly"));
-        assertEquals("rw", copied.getString("readWrite"));
+        assertEquals("rw-2", copied.getString("readWrite"));
         assertEquals(1, copied.getInt("extra"));
     }
 

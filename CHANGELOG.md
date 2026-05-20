@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ConcurrentHashMap` cache in `Types.resolveTypeArgument()` to memoize recursive generic type argument resolution results across repeated calls.
 - Added compiled-path APIs in `org.sjf4j.compiled`, including `CompiledPath.compile(...)` and the `PathCompiler` SPI hook used by optional accelerators.
 - Added the optional `sjf4j-bytecode` module with an ASM-backed `PathCompiler`, service-loader registration, JMH benchmark coverage, and dedicated bytecode tests.
+- Added `put()` JMH coverage for ASM/fallback/raw/native compiled-path write comparisons in `sjf4j-bytecode`.
 
 ### Changed
 - Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
@@ -33,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed streaming read paths to thread `NodeRegistry.TypeInfo` (instead of raw `OneOfInfo`) through `_readNode → _readObject / _readArray → _readMap / _readList / _readSet / _readArray`, eliminating redundant `registerTypeInfo()` lookups on each recursive descent. Applied to `StreamingIO`, `Jackson2StreamingIO`, and `Fastjson2StreamingIO`.
 - Renamed `ValueCodecInfo.getFormattedValueCodecInfo()` → `getValueCodecInfo()` and `formattedValueCodecs` → `namedValueCodecs` for clarity. Applied across all backend modules (Jackson 2, Jackson 3, Fastjson2, Gson, Simple) and the test suite.
 - Changed `FallbackCompiledPath` to parse/validate single-target paths up front, normalize `expr()` to `JsonPath.toExpr()`, and delegate to service-loaded bytecode compilers when available.
+- Changed compiled-path mutation support so `CompiledPath.put(...)` is available, the ASM path compiler emits bytecode-backed `put(Object,Object)` writes for supported single-target paths, and path/container convenience APIs now document write-return behavior explicitly.
+- Changed POJO-backed object writes in `Nodes.putInObject(...)`, `JsonObject.put(...)`, and path-driven `put(...)` helpers to return `null` instead of reading old property values, while map-like/object-node writes continue returning their native previous values.
 
 ### Removed
 - Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.

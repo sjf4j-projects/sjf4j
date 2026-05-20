@@ -766,19 +766,20 @@ public class JsonObject extends JsonContainer {
     /// Putter
 
     /**
-     * Puts a key/value pair and returns the previous value.
+     * Puts a key/value pair and returns the previous value when the target
+     * storage exposes one.
      * <p>
      * When key matches a declared field, the field setter is used; otherwise the
-     * value is stored in dynamic map.
+     * value is stored in dynamic map. Declared-field writes do not read back the
+     * old value and therefore return {@code null}.
      */
     public Object put(String key, Object object) {
         Objects.requireNonNull(key, "key");
         if (pi != null) {
             NodeRegistry.PropertyInfo fi = pi.properties.get(key);
             if (fi != null) {
-                Object old = fi.hasGetter() ? fi.invokeGetter(this) : null;
                 fi.invokeSetter(this, object);
-                return old;
+                return null;
             }
         }
         if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();

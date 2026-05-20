@@ -665,13 +665,13 @@ public class JsonPath {
 
     /**
      * Writes the value at the final path location and returns the previous value
-     * when that location exposes one.
+     * when the target shape exposes one.
      * <p>
      * The parent container of the final segment must already exist. Object-name
-     * targets upsert and return the previous value. Array index targets write
-     * through {@link Nodes#setInArray(Object, int, Object)} and return
-     * {@code null}. Append targets write through {@link Nodes#addInArray(Object, Object)}
-     * and return {@code null}.
+     * targets upsert. Array index targets write through
+     * {@link Nodes#setInArray(Object, int, Object)}. Append targets write
+     * through {@link Nodes#addInArray(Object, Object)}. POJO property writes
+     * return {@code null} because they avoid reading the old value.
      *
      * @throws JsonException when the parent container does not exist or the last
      *                       segment cannot be written
@@ -693,7 +693,8 @@ public class JsonPath {
      * parent exists, the final write follows the same last-segment rules as
      * {@link #put(Object, Object)}.
      *
-     * @return the previous value when a write occurred, otherwise {@code null}
+     * @return the previous value when a write occurred and the target shape
+     * exposes one, otherwise {@code null}
      */
     public Object putIfPresent(Object container, Object value) {
         Objects.requireNonNull(container, "container");

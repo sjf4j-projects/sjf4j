@@ -55,7 +55,7 @@ public class AsmPathCompilerTest {
         CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
 
-        assertEquals(Integer.valueOf(7), path.put(root, 11));
+        assertNull(path.put(root, 11));
         assertEquals(11, root.holder.leaf.score);
     }
 
@@ -66,7 +66,7 @@ public class AsmPathCompilerTest {
         CompiledPath<Root, Boolean> path = CompiledPath.compile("$.holder.leaf.active", Root.class, Boolean.class);
         assertAsmCompiled(path);
 
-        assertEquals(Boolean.TRUE, path.put(root, Boolean.FALSE));
+        assertNull(path.put(root, Boolean.FALSE));
         assertFalse(root.holder.leaf.isActive());
     }
 

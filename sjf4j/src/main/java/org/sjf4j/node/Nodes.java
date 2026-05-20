@@ -1692,9 +1692,12 @@ public final class Nodes {
 
 
     /**
-     * Puts a value into an object-like node and returns the previous value.
+     * Puts a value into an object-like node and returns the previous value when
+     * the target shape exposes one.
      * <p>
      * For POJO nodes, only discovered properties are writable; unknown keys fail.
+     * POJO property writes do not read back the old value and therefore return
+     * {@code null}.
      */
     @SuppressWarnings("unchecked")
     public static Object putInObject(Object node, String key, Object value) {
@@ -1710,9 +1713,8 @@ public final class Nodes {
         if (pi != null) {
             NodeRegistry.PropertyInfo fi = pi.properties.get(key);
             if (fi != null) {
-                Object old = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 fi.invokeSetter(node, value);
-                return old;
+                return null;
             } else {
                 throw new JsonException("unknown property '" + key + "' in POJO '" +
                         node.getClass().getName() + "'");

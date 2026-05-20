@@ -320,6 +320,18 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testPutPojoReturnsNull() {
+        Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
+
+        assertNull(JsonPath.parse("$.name").put(person, "Bob"));
+        assertEquals("Bob", person.name);
+
+        JsonObject object = JsonObject.of("name", "Alice");
+        assertEquals("Alice", JsonPath.parse("$.name").put(object, "Bob"));
+        assertEquals("Bob", object.getString("name"));
+    }
+
+    @Test
     public void testCompute() {
         JsonObject jo = JsonObject.fromJson("{\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}],\"groups\":[{\"members\":[{\"name\":\"A\"},{\"name\":\"B\"}]},{\"members\":[{\"name\":\"C\"}]}],\"meta\":{\"version\":1,\"nested\":{\"version\":2}}}");
 
