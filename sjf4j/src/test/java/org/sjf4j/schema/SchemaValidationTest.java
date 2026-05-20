@@ -134,6 +134,22 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testDraft2019TupleItemsCompatibility() {
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +
+                "\"type\":\"array\"," +
+                "\"items\":[{" +
+                "\"type\":\"string\"},{\"type\":\"number\"}]," +
+                "\"additionalItems\":false" +
+                "}");
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(Arrays.asList("a", 1)));
+        assertFalse(plan.isValid(Arrays.asList("a", 1, 2)));
+        assertFalse(plan.isValid(Arrays.asList(1, 2)));
+    }
+
+    @Test
     public void testObjectProperties() {
         String json =
                 "{\n" +
@@ -332,6 +348,41 @@ public class SchemaValidationTest {
 
         assertTrue(plan.isValid(ok));
         assertFalse(plan.isValid(bad));
+    }
+
+    @Test
+    public void testDraft2019DependenciesCompatibility() {
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +
+                "\"type\":\"object\"," +
+                "\"properties\":{" +
+                "\"credit_card\":{\"type\":\"number\"}," +
+                "\"billing_address\":{\"type\":\"string\"}," +
+                "\"name\":{\"type\":\"string\"}" +
+                "}," +
+                "\"dependencies\":{" +
+                "\"credit_card\":[\"billing_address\"]," +
+                "\"name\":{\"required\":[\"billing_address\"]}" +
+                "}" +
+                "}");
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"credit_card\":1,\"billing_address\":\"x\"}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"credit_card\":1}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"name\":\"x\",\"billing_address\":\"y\"}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"name\":\"x\"}")));
+    }
+
+    @Test
+    public void testDraft2020DependenciesIgnored() {
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"," +
+                "\"type\":\"object\"," +
+                "\"dependencies\":{\"a\":[\"b\"]}" +
+                "}");
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
     }
 
     @Test
@@ -638,6 +689,23 @@ public class SchemaValidationTest {
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
         assertFalse(plan.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build()).isValid());
+    }
+
+    @Test
+    public void testDraft2019RecursiveKeywordsCompatibility() {
+        JsonSchema schema = JsonSchema.fromJson("{" +
+                "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +
+                "\"$recursiveAnchor\":true," +
+                "\"type\":\"object\"," +
+                "\"properties\":{" +
+                "\"value\":{\"type\":\"string\"}," +
+                "\"child\":{\"$recursiveRef\":\"#\"}" +
+                "}" +
+                "}");
+        SchemaPlan plan = schema.createPlan();
+
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"value\":\"root\",\"child\":{\"value\":\"leaf\"}}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"value\":\"root\",\"child\":{\"value\":1}}")));
     }
 
     @Test

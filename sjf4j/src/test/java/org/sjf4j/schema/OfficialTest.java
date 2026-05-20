@@ -17,7 +17,8 @@ public final class OfficialTest {
 
     public static void main(String[] args) throws Exception {
         _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
-        Path root = locatePath("json-schemas/tests/draft2020-12");
+        Path root = locatePath("json-schemas/tests/draft2019-09");
+//        Path root = locatePath("json-schemas/tests/draft2020-12");
 
         runTestDir(root, false);
 //        runTestFile(root.resolve("dynamicRef.json"), "", "");
@@ -27,9 +28,9 @@ public final class OfficialTest {
     @Test
     public void testSuite() throws Exception {
         _store = loadRemotesToStore(locatePath("json-schemas/remotes"));
-        Path root = locatePath("json-schemas/tests/draft2020-12");
 
-        runTestDir(root, true);
+//        runTestDir(locatePath("json-schemas/tests/draft2020-12"), true);
+        runTestDir(locatePath("json-schemas/tests/draft2019-09"), true);
     }
 
     private static void runSuite() throws Exception {

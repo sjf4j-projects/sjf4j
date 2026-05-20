@@ -676,6 +676,61 @@ public interface Evaluator {
         }
     }
 
+    // dependencies
+    final class DependenciesEvaluator implements Evaluator {
+        final PathSegment keywordPs;
+        final URI schemaUri;
+        final Map<String, String[]> dependentRequired;
+        final Map<String, SchemaPlan> dependentPlans;
+        /**
+         * Creates evaluator for legacy dependencies keyword.
+         */
+        public DependenciesEvaluator(PathSegment keywordPs, URI schemaUri,
+                                     Map<String, String[]> dependentRequired,
+                                     Map<String, SchemaPlan> dependentPlans) {
+            this.keywordPs = keywordPs;
+            this.schemaUri = schemaUri;
+            this.dependentRequired = dependentRequired;
+            this.dependentPlans = dependentPlans;
+        }
+        /**
+         * Applies array and schema forms of legacy dependencies.
+         */
+        @Override
+        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+            if (instance.jsonType() != JsonType.OBJECT) return true;
+
+            Object actual = instance.node();
+            boolean result = true;
+            if (dependentRequired != null) {
+                for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
+                    String key = entry.getKey();
+                    if (Nodes.containsInObject(actual, key)) {
+                        for (String property : entry.getValue()) {
+                            if (!Nodes.containsInObject(actual, property)) {
+                                ctx.addError(instance, ps, keywordPs, schemaUri, "dependencies",
+                                        "missing property '" + property + "' required when '" + key + "' is present");
+                                result = false;
+                            }
+                        }
+                        if (ctx.shouldAbort()) return result;
+                    }
+                }
+            }
+            if (dependentPlans != null) {
+                for (Map.Entry<String, SchemaPlan> entry : dependentPlans.entrySet()) {
+                    String key = entry.getKey();
+                    if (Nodes.containsInObject(actual, key)) {
+                        boolean subResult = entry.getValue().evaluate(instance, ps, ctx);
+                        result = result && subResult;
+                        if (ctx.shouldAbort()) return result;
+                    }
+                }
+            }
+            return result;
+        }
+    }
+
     // dependentSchemas
     final class DependentSchemasEvaluator implements Evaluator {
         final Map<String, SchemaPlan> dependentPlans;

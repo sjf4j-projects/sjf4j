@@ -75,9 +75,11 @@ public class VocabularyRegistry {
         registerKeyword("$id", DRAFT_2020_12_VOCAB_CORE, DRAFT_2019_09_VOCAB_CORE);
         registerKeyword("$ref", DRAFT_2020_12_VOCAB_CORE, DRAFT_2019_09_VOCAB_CORE);
         registerKeyword("$dynamicRef", DRAFT_2020_12_VOCAB_CORE);
+        registerKeyword("$recursiveRef", DRAFT_2019_09_VOCAB_CORE);
         registerKeyword("$defs", DRAFT_2020_12_VOCAB_CORE, DRAFT_2019_09_VOCAB_CORE);
         registerKeyword("$anchor", DRAFT_2020_12_VOCAB_CORE);
         registerKeyword("$dynamicAnchor", DRAFT_2020_12_VOCAB_CORE);
+        registerKeyword("$recursiveAnchor", DRAFT_2019_09_VOCAB_CORE);
         registerKeyword("$comment", DRAFT_2020_12_VOCAB_CORE, DRAFT_2019_09_VOCAB_CORE);
         registerKeyword("$vocabulary", DRAFT_2020_12_VOCAB_CORE, DRAFT_2019_09_VOCAB_CORE);
 
