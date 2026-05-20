@@ -339,10 +339,13 @@ class CoverageApiTest {
                 .putIfAbsent("a", 2)
                 .put("nested", new JsonObject())
                 .putByPath("$.nested.value", 3)
+                .putIfPresentByPath("$.nested.value", 33)
+                .putIfPresentByPath("$.nested.missing", 44)
                 .ensurePutIfAbsentByPath("$.nested.value", 4)
                 .ensurePutByPath("$.nested.other", 5)
                 .build();
-        assertEquals(3, built.getIntByPath("$.nested.value"));
+        assertEquals(33, built.getIntByPath("$.nested.value"));
+        assertEquals(44, built.getIntByPath("$.nested.missing"));
         assertEquals(5, built.getIntByPath("$.nested.other"));
         assertEquals(1, built.stream().count());
 
@@ -434,6 +437,10 @@ class CoverageApiTest {
         assertThrows(JsonException.class, () -> root.getAsByPath("$.string", 1));
 
         root.putByPath("$.obj.added", 1);
+        assertEquals(1, root.putIfPresentByPath("$.obj.added", 2));
+        assertNull(root.putIfPresentByPath("$.obj.missing", 3));
+        assertEquals(3, root.getIntByPath("$.obj.missing"));
+        assertNull(root.putIfPresentByPath("$.missing.path", 4));
         root.ensurePutByPath("$.created.path", "x");
         root.ensurePutIfAbsentByPath("$.created.path", "y");
         assertEquals(2, root.computeByPath("$.items[*].id", (parent, current) ->
@@ -442,6 +449,7 @@ class CoverageApiTest {
         root.replaceByPath("$.obj.k", "vv");
         root.removeByPath("$.obj.added");
         assertEquals("vv", root.getStringByPath("$.obj.k"));
+        assertFalse(root.containsByPath("$.obj.added"));
         assertEquals("x", root.getStringByPath("$.created.path"));
         assertEquals(Arrays.asList(10, 20), root.findByPath("$.items[*].id", Integer.class));
         assertEquals(Arrays.asList("1", "2"), root.findByPath("$.items[*].idText", String.class));

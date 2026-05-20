@@ -3,7 +3,6 @@ package org.sjf4j.compiled;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.PathSegment;
 
 import java.lang.reflect.Type;
 import java.util.Objects;
@@ -30,6 +29,12 @@ public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
     @Override
     public V get(R root) {
         return path.get(root, valueClazz);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public V put(R root, V value) {
+        return (V) path.put(root, value);
     }
 
 

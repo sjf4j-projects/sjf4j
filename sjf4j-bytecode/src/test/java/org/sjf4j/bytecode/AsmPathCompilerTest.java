@@ -49,6 +49,28 @@ public class AsmPathCompilerTest {
     }
 
     @Test
+    public void testPojoFieldPutReturnsOldValue() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        assertAsmCompiled(path);
+
+        assertEquals(Integer.valueOf(7), path.put(root, 11));
+        assertEquals(11, root.holder.leaf.score);
+    }
+
+    @Test
+    public void testPojoSetterPutReturnsOldValue() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, Boolean> path = CompiledPath.compile("$.holder.leaf.active", Root.class, Boolean.class);
+        assertAsmCompiled(path);
+
+        assertEquals(Boolean.TRUE, path.put(root, Boolean.FALSE));
+        assertFalse(root.holder.leaf.isActive());
+    }
+
+    @Test
     public void testMapJsonObjectAndObjectArraySegments() {
         Root root = sampleRoot();
 
@@ -72,6 +94,17 @@ public class AsmPathCompilerTest {
     }
 
     @Test
+    public void testMapBackedPutReturnsOldValue() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
+        assertAsmCompiled(path);
+
+        assertEquals(Integer.valueOf(3), path.put(root, 9));
+        assertEquals(9, root.holder.buckets.get("good").getInt("count"));
+    }
+
+    @Test
     public void testJsonArrayIndexSegment() {
         Root root = sampleRoot();
 
@@ -81,6 +114,28 @@ public class AsmPathCompilerTest {
 
         root.holder.values = null;
         assertNull(path.get(root));
+    }
+
+    @Test
+    public void testJsonArrayIndexPutReturnsNull() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[1]", Root.class, String.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.put(root, "bb"));
+        assertEquals("bb", root.holder.values.getNode(1));
+    }
+
+    @Test
+    public void testAppendPutReturnsNull() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.values[+]", Root.class, Object.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.put(root, "d"));
+        assertEquals("d", root.holder.values.getNode(3));
     }
 
     @Test
@@ -116,6 +171,37 @@ public class AsmPathCompilerTest {
 
         JsonException ex = assertThrows(JsonException.class, () -> path.get(sampleRoot()));
         assertTrue(ex.getMessage().contains("append"));
+    }
+
+    @Test
+    public void testPointerIndexArrayCompilesAndObjectFailsFast() {
+        CompiledPath<JsonArray, Object> arrayPath = CompiledPath.compile("/0", JsonArray.class, Object.class);
+        assertAsmCompiled(arrayPath);
+        assertEquals("a", arrayPath.get(JsonArray.of("a", "b")));
+
+        JsonException ex = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("/0", JsonObject.class, Object.class));
+        assertTrue(ex.getMessage().contains("array-like target"));
+    }
+
+    @Test
+    public void testPutNullRootThrows() {
+        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        assertAsmCompiled(path);
+
+        assertThrows(NullPointerException.class, () -> path.put(null, 1));
+    }
+
+    @Test
+    public void testPutMissingParentThrows() {
+        Root root = sampleRoot();
+        root.holder.leaf = null;
+
+        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        assertAsmCompiled(path);
+
+        JsonException ex = assertThrows(JsonException.class, () -> path.put(root, 1));
+        assertTrue(ex.getMessage().contains("parent container does not exist"));
     }
 
     private static void assertAsmCompiled(CompiledPath<?, ?> path) {
@@ -180,6 +266,10 @@ public class AsmPathCompilerTest {
 
         public boolean isActive() {
             return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
         }
     }
 

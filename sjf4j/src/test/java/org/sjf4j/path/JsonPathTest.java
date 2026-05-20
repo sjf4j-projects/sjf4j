@@ -287,6 +287,39 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testPutIfPresent() {
+        JsonObject jo = JsonObject.of(
+                "obj", JsonObject.of("present", 1),
+                "arr", JsonArray.of("a", "b")
+        );
+
+        JsonPath present = JsonPath.parse("$.obj.present");
+        assertEquals(1, present.putIfPresent(jo, 2));
+        assertEquals(2, jo.getIntByPath("$.obj.present"));
+
+        JsonPath missingKey = JsonPath.parse("$.obj.missing");
+        assertNull(missingKey.putIfPresent(jo, 3));
+        assertEquals(3, jo.getIntByPath("$.obj.missing"));
+
+        JsonPath missingParent = JsonPath.parse("$.missing.value");
+        assertNull(missingParent.putIfPresent(jo, 4));
+        assertNull(JsonPath.parse("$.missing").getNode(jo));
+
+        JsonPath arrayIndex = JsonPath.parse("$.arr[1]");
+        assertNull(arrayIndex.putIfPresent(jo, "bb"));
+        assertEquals("bb", jo.getStringByPath("$.arr[1]"));
+
+        JsonPath append = JsonPath.parse("$.arr[+]");
+        assertNull(append.putIfPresent(jo, "c"));
+        assertEquals(Arrays.asList("a", "bb", "c"), JsonPath.parse("$.arr[*]").find(jo));
+
+        JsonPath pointerObjectKey = JsonPath.parse("/0");
+        JsonObject pointerTarget = new JsonObject();
+        assertNull(pointerObjectKey.putIfPresent(pointerTarget, "zero"));
+        assertEquals("zero", pointerTarget.getString("0"));
+    }
+
+    @Test
     public void testCompute() {
         JsonObject jo = JsonObject.fromJson("{\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}],\"groups\":[{\"members\":[{\"name\":\"A\"},{\"name\":\"B\"}]},{\"members\":[{\"name\":\"C\"}]}],\"meta\":{\"version\":1,\"nested\":{\"version\":2}}}");
 

@@ -669,8 +669,23 @@ public abstract class JsonContainer {
     
     // Put by path
 
+    /**
+     * Writes a value at the given path.
+     * <p>
+     * The parent container of the final segment must already exist.
+     */
     public Object putByPath(String path, Object value) {
         return JsonPath.parse(path).put(this, value);
+    }
+
+    /**
+     * Writes a value only when the parent container of the final path segment
+     * already exists.
+     *
+     * @return the previous value when a write occurred, otherwise {@code null}
+     */
+    public Object putIfPresentByPath(String path, Object value) {
+        return JsonPath.parse(path).putIfPresent(this, value);
     }
 
     /**
@@ -681,7 +696,8 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Ensures path and puts value when absent.
+     * Ensures the final path location exists and writes only when that location
+     * is absent.
      */
     public Object ensurePutIfAbsentByPath(String path, Object value) {
         return JsonPath.parse(path).ensurePutIfAbsent(this, value);

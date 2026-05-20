@@ -13,7 +13,9 @@ public interface CompiledPath<R, V> {
 
     V get(R root);
 
-//    V put(R root, V value);
+    default V put(R root, V value) {
+        throw new UnsupportedOperationException("put() is not implemented");
+    }
 //
 //    V ensurePut(R root, V value);
 

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.compiled.CompiledPath;
 import org.sjf4j.compiled.FallbackCompiledPath;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,6 +19,11 @@ public class CompiledPathTest {
         Assertions.assertInstanceOf(FallbackCompiledPath.class, path);
         int v = path.get(Map.of("a", 5));
         assertEquals(5, v);
+
+        LinkedHashMap<String, Object> root = new LinkedHashMap<>();
+        root.put("a", 5);
+        assertEquals(Integer.valueOf(5), path.put(root, 7));
+        assertEquals(7, root.get("a"));
     }
 
 }

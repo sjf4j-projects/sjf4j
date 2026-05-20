@@ -663,6 +663,19 @@ public class JsonPath {
 
     /// Put
 
+    /**
+     * Writes the value at the final path location and returns the previous value
+     * when that location exposes one.
+     * <p>
+     * The parent container of the final segment must already exist. Object-name
+     * targets upsert and return the previous value. Array index targets write
+     * through {@link Nodes#setInArray(Object, int, Object)} and return
+     * {@code null}. Append targets write through {@link Nodes#addInArray(Object, Object)}
+     * and return {@code null}.
+     *
+     * @throws JsonException when the parent container does not exist or the last
+     *                       segment cannot be written
+     */
     public Object put(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
@@ -673,11 +686,30 @@ public class JsonPath {
     }
 
     /**
-     * Ensures intermediate containers exist and writes the value at the last
-     * segment.
+     * Writes the value only when the parent container of the final path segment
+     * already exists.
+     * <p>
+     * Missing parent containers return {@code null} without writing. Once the
+     * parent exists, the final write follows the same last-segment rules as
+     * {@link #put(Object, Object)}.
+     *
+     * @return the previous value when a write occurred, otherwise {@code null}
+     */
+    public Object putIfPresent(Object container, Object value) {
+        Objects.requireNonNull(container, "container");
+        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        if (lastContainer == null) return null;
+        return _putLast(lastContainer, segments[segments.length - 1], value, "putIfPresent()");
+    }
+
+    /**
+     * Ensures intermediate containers exist and writes the value at the final
+     * path location.
      * <p>
      * Auto-creation is only supported for single paths made of root/name/index
      * segments. Missing containers are created based on inferred static type.
+     * Once the parent container exists, the final write follows the same last-
+     * segment rules as {@link #put(Object, Object)}.
      */
     public Object ensurePut(Object container, Object value) {
         Objects.requireNonNull(container, "container");
@@ -686,9 +718,21 @@ public class JsonPath {
     }
 
     /**
-     * Ensures the value exists; writes only when current value is null.
+     * Ensures the final path location exists; writes only when that location is
+     * absent.
+     * <p>
+     * Missing parent containers are created using {@link #ensurePut(Object, Object)}.
+     * For object-name and pointer-object-key targets, "absent" means the key is
+     * missing, even if a present key currently stores {@code null}. For array
+     * index targets, "absent" means the normalized index is out of range, in
+     * which case the value is written through {@link Nodes#setInArray(Object, int, Object)}.
+     * Append targets always append.
+     *
+     * @return the previous value when one existed at the written location,
+     * otherwise {@code null}
      */
     public Object ensurePutIfAbsent(Object container, Object value) {
+        Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
         if (lastContainer == null) {
             return ensurePut(container, value);

@@ -986,18 +986,33 @@ public class JsonObject extends JsonContainer {
             return this;
         }
         /**
-         * Ensures path containers and puts value by path.
+         * Writes a value at the given path.
          */
         public Builder putByPath(String path, Object value) {
             jo.putByPath(path, value);
             return this;
         }
 
+        /**
+         * Writes a value only when the parent container of the final path
+         * segment already exists.
+         */
+        public Builder putIfPresentByPath(String path, Object value) {
+            jo.putIfPresentByPath(path, value);
+            return this;
+        }
+
+        /**
+         * Ensures the final path location exists and writes only when absent.
+         */
         public Builder ensurePutIfAbsentByPath(String path, Object value) {
             jo.ensurePutIfAbsentByPath(path, value);
             return this;
         }
 
+        /**
+         * Ensures intermediate path containers exist, then writes the value.
+         */
         public Builder ensurePutByPath(String path, Object value) {
             jo.ensurePutByPath(path, value);
             return this;
