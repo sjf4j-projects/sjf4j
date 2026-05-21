@@ -1,6 +1,6 @@
 plugins {
-    java
-    jacoco
+    id("java-library")
+    id("jacoco")
     id("me.champeau.jmh") version "0.7.2"
     id("com.vanniktech.maven.publish") version "0.35.0"
 }
@@ -29,7 +29,7 @@ configurations {
 }
 
 dependencies {
-    implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
+    api(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
     compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test

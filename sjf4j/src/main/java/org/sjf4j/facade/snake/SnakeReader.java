@@ -93,7 +93,7 @@ public class SnakeReader implements StreamingReader {
                 return Token.STRING;
             }
         } else if (event instanceof AliasEvent) {
-            throw new BindingException("YAML anchors/aliases not supported.");
+            throw new BindingException("yaml anchors/aliases are not supported");
         } else {
             return Token.UNKNOWN;
         }
@@ -236,7 +236,7 @@ public class SnakeReader implements StreamingReader {
         if (low.equals("false") || low.equals("no") || low.equals("off")) {
             return false;
         }
-        throw new BindingException("expected Boolean, but was '" + value + "'");
+        throw new BindingException("expected boolean, but was '" + value + "'");
     }
 
     /**

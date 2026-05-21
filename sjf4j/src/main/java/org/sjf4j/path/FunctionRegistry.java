@@ -38,7 +38,7 @@ public class FunctionRegistry {
          */
         public FunctionDescriptor(String name, PathFunction func) {
             Objects.requireNonNull(name, "name");
-            if (name.isEmpty()) throw new JsonException("Function name must not be empty");
+            if (name.isEmpty()) throw new JsonException("function name must not be empty");
             Objects.requireNonNull(func, "func");
             this.name = name;
             this.func = func;
@@ -91,11 +91,11 @@ public class FunctionRegistry {
      */
     public static Object invoke(String name, Object[] args) {
         FunctionDescriptor fd = get(name);
-        if (fd == null) throw new JsonException("Function '" + name + "' does not exist");
+        if (fd == null) throw new JsonException("function '" + name + "' does not exist");
         try {
             return fd.invoke(args);
         } catch (Exception e) {
-            throw new JsonException("Function '" + name + "' invocation failed", e);
+            throw new JsonException("function '" + name + "' invocation failed", e);
         }
     }
 
@@ -146,11 +146,11 @@ public class FunctionRegistry {
             try {
                 pattern = Nodes.toString(args[1]);
             } catch (Exception e) {
-                throw new JsonException("match(): expected the second argument to be a String, but was " +
+                throw new JsonException("match(): expected the second argument to be a string, but was " +
                         Types.name(args[1]), e);
             }
             if (pattern == null) {
-                throw new JsonException("match(): expected the second argument to be a String, but was null");
+                throw new JsonException("match(): expected the second argument to be a string, but was null");
             }
             switch (JsonType.of(node)) {
                 case STRING:
@@ -168,11 +168,11 @@ public class FunctionRegistry {
             try {
                 pattern = Nodes.toString(args[1]);
             } catch (Exception e) {
-                throw new JsonException("search(): expected the second argument to be a String, but was " +
+                throw new JsonException("search(): expected the second argument to be a string, but was " +
                         Types.name(args[1]), e);
             }
             if (pattern == null) {
-                throw new JsonException("search(): expected the second argument to be a String, but was null");
+                throw new JsonException("search(): expected the second argument to be a string, but was null");
             }
             switch (JsonType.of(node)) {
                 case STRING:

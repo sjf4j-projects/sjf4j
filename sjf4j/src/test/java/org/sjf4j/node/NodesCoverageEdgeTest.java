@@ -290,7 +290,7 @@ class NodesCoverageEdgeTest {
 
         Nodes.accessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), 1, access);
         assertNull(access.node);
-        assertTrue(access.puttable);
+        assertFalse(access.puttable);
         assertEquals(String.class, access.type);
         Nodes.accessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), null, access);
         assertNull(access.node);
@@ -311,20 +311,26 @@ class NodesCoverageEdgeTest {
         assertThrows(JsonException.class, () -> Nodes.putInObject(bean, "missing", 1));
 
         List<Object> list = new ArrayList<>(Arrays.asList("a"));
-        assertNull(Nodes.setInArray(list, 1, "b"));
+        assertThrows(JsonException.class, () -> Nodes.setInArray(list, 1, "b"));
         assertEquals("a", Nodes.setInArray(list, 0, "x"));
+        assertNull(Nodes.putInArray(list, 1, "y"));
+        assertEquals(Arrays.asList("x", "y"), list);
 
         JsonArray mutableJsonArray = JsonArray.of("a", "b");
         assertEquals("a", Nodes.setInArray(mutableJsonArray, 0, "x"));
+        assertNull(Nodes.putInArray(mutableJsonArray, 2, "z"));
         Nodes.addInArray(mutableJsonArray, "c");
         Nodes.addInArray(mutableJsonArray, 1, "y");
         assertEquals("b", Nodes.removeInArray(mutableJsonArray, 2));
+        assertEquals("z", Nodes.removeInArray(mutableJsonArray, 2));
 
         int[] numbers = {1, 2};
         assertEquals(2, Nodes.setInArray(numbers, -1, 7));
         assertEquals(7, numbers[1]);
         assertThrows(JsonException.class, () -> Nodes.setInArray(numbers, 2, 9));
+        assertThrows(JsonException.class, () -> Nodes.putInArray(numbers, 2, 9));
         assertThrows(JsonException.class, () -> Nodes.setInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0, "x"));
+        assertThrows(JsonException.class, () -> Nodes.putInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), 0, "x"));
 
         Set<Object> set = new LinkedHashSet<>();
         Nodes.addInArray(set, "x");

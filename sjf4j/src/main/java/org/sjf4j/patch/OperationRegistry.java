@@ -63,15 +63,15 @@ public class OperationRegistry {
                 return _applyAtRoot(target, operation);
             }
             if (target == null) {
-                throw new JsonException("Cannot apply PatchOperation '" + operation.getOp() +
+                throw new JsonException("cannot apply patch operation '" + operation.getOp() +
                         "' to null target at non-root path " + path);
             }
             OperationHandler handler = OPERATION_CACHE.get(operation.getOp());
-            if (handler == null) throw new JsonException("No OperationHandler for '" + operation.getOp() + "'");
+            if (handler == null) throw new JsonException("no operation handler for '" + operation.getOp() + "'");
             handler.apply(target, operation);
             return target;
         } catch (Exception e) {
-            throw new JsonException("Failed to apply PatchOperation '" + operation.getOp() + "'", e);
+            throw new JsonException("failed to apply patch operation '" + operation.getOp() + "'", e);
         }
     }
 
@@ -85,13 +85,13 @@ public class OperationRegistry {
             case PatchOperation.STD_TEST:
                 if (!Nodes.equals(target, operation.getValue())) {
                     throw new JsonException("'test' operation failed at path : expected " +
-                            operation.getValue() + ", found " + target);
+                            operation.getValue() + ", but was " + target);
                 }
                 return target;
             case PatchOperation.STD_COPY: {
                 JsonPointer from = _requireFrom(operation);
                 if (!_contains(target, from)) {
-                    throw new JsonException("'copy' operation failed at from " + from + ": no value exist");
+                    throw new JsonException("'copy' operation failed at from " + from + ": no value exists");
                 }
                 return Sjf4j.global().deepNode(_valueAt(target, from));
             }
@@ -101,7 +101,7 @@ public class OperationRegistry {
                     return target;
                 }
                 if (!_contains(target, from)) {
-                    throw new JsonException("'move' operation failed at from " + from + ": no value exist");
+                    throw new JsonException("'move' operation failed at from " + from + ": no value exists");
                 }
                 return _isRoot(from) ? target : from.remove(target);
             }
@@ -110,10 +110,10 @@ public class OperationRegistry {
             default: {
                 OperationHandler handler = OPERATION_CACHE.get(operation.getOp());
                 if (handler == null) {
-                    throw new JsonException("No OperationHandler for '" + operation.getOp() + "'");
+                    throw new JsonException("no operation handler for '" + operation.getOp() + "'");
                 }
                 if (target == null) {
-                    throw new JsonException("Cannot apply PatchOperation '" + operation.getOp() +
+                    throw new JsonException("cannot apply patch operation '" + operation.getOp() +
                             "' to null root target");
                 }
                 handler.apply(target, operation);
@@ -125,7 +125,7 @@ public class OperationRegistry {
     private static JsonPointer _requirePath(PatchOperation operation) {
         JsonPointer path = operation.getPath();
         if (path == null) {
-            throw new JsonException("PatchOperation '" + operation.getOp() + "' is missing path");
+            throw new JsonException("patch operation '" + operation.getOp() + "' is missing path");
         }
         return path;
     }
@@ -133,7 +133,7 @@ public class OperationRegistry {
     private static JsonPointer _requireFrom(PatchOperation operation) {
         JsonPointer from = operation.getFrom();
         if (from == null) {
-            throw new JsonException("PatchOperation '" + operation.getOp() + "' is missing from");
+            throw new JsonException("patch operation '" + operation.getOp() + "' is missing from");
         }
         return from;
     }
@@ -165,12 +165,12 @@ public class OperationRegistry {
         OperationRegistry.register(PatchOperation.STD_TEST, (target, operation) -> {
             JsonPointer path = _requirePath(operation);
             if (!_contains(target, path)) {
-                throw new JsonException("'test' operation failed at path " + path + ": no value exist");
+                throw new JsonException("'test' operation failed at path " + path + ": no value exists");
             }
             Object node = _valueAt(target, path);
             if (!Nodes.equals(node, operation.getValue())) {
                 throw new JsonException("'test' operation failed at path " + path + ": expected " +
-                        operation.getValue() + ", found " + node);
+                        operation.getValue() + ", but was " + node);
             }
         });
 
@@ -183,7 +183,7 @@ public class OperationRegistry {
         OperationRegistry.register(PatchOperation.STD_REMOVE, (target, operation) -> {
             JsonPointer path = _requirePath(operation);
             if (!path.contains(target)) {
-                throw new JsonException("'remove' operation failed at path " + path + ": no value exist");
+                throw new JsonException("'remove' operation failed at path " + path + ": no value exists");
             }
             path.remove(target);
         });
@@ -197,7 +197,7 @@ public class OperationRegistry {
         OperationRegistry.register(PatchOperation.STD_COPY, (target, operation) -> {
             JsonPointer from = _requireFrom(operation);
             if (!_contains(target, from)) {
-                throw new JsonException("'copy' operation failed at from " + from + ": no value exist");
+                throw new JsonException("'copy' operation failed at from " + from + ": no value exists");
             }
             Object value = Sjf4j.global().deepNode(_valueAt(target, from));
             _requirePath(operation).add(target, value);
@@ -215,7 +215,7 @@ public class OperationRegistry {
                         " is a proper prefix of path " + path);
             }
             if (!_contains(target, from)) {
-                throw new JsonException("'move' operation failed at from " + from + ": no value exist");
+                throw new JsonException("'move' operation failed at from " + from + ": no value exists");
             }
 
             Object working = Sjf4j.global().deepNode(target);

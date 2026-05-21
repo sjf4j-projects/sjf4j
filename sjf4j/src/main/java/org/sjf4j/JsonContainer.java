@@ -672,7 +672,9 @@ public abstract class JsonContainer {
     /**
      * Writes a value at the given path.
      * <p>
-     * The parent container of the final segment must already exist.
+     * The parent container of the final segment must already exist. Indexed
+     * array segments replace existing elements and append when the index equals
+     * the array size; append path syntax remains the explicit append form.
      */
     public Object putByPath(String path, Object value) {
         return JsonPath.parse(path).put(this, value);
@@ -698,6 +700,9 @@ public abstract class JsonContainer {
     /**
      * Ensures the final path location exists and writes only when that location
      * is absent.
+     * <p>
+     * When the parent array already exists, indexed array segments do not append
+     * implicitly.
      */
     public Object ensurePutIfAbsentByPath(String path, Object value) {
         return JsonPath.parse(path).ensurePutIfAbsent(this, value);

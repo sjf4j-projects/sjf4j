@@ -298,6 +298,7 @@ class JsonObjectTest {
     /**
      * Test merge, copyOf, deepMerge
      */
+    @Test
     public void testMerge1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\",\"ee\":{\"ff\":\"gg\"}}}");
         JsonObject jo2 = JsonObject.fromJson("{\"num\":\"6\",\"yo\":77,\"duck\":[\"haha\"],\"attr\":{\"aa\":88,\"kk\":[1,2],\"ee\":{\"ff\":\"uu\"}}}");

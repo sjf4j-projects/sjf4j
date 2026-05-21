@@ -60,7 +60,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void startObject() throws IOException {
         if (current != JsonParser.Event.START_OBJECT) {
-            throw new BindingException("expected START_OBJECT, but was " + current);
+            throw new BindingException("expected start object, but was " + current);
         }
         _advance();
     }
@@ -71,7 +71,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void endObject() throws IOException {
         if (current != JsonParser.Event.END_OBJECT) {
-            throw new BindingException("expected END_OBJECT, but was " + current);
+            throw new BindingException("expected end object, but was " + current);
         }
         _advance();
     }
@@ -82,7 +82,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void startArray() throws IOException {
         if (current != JsonParser.Event.START_ARRAY) {
-            throw new BindingException("expected START_ARRAY, but was " + current);
+            throw new BindingException("expected start array, but was " + current);
         }
         _advance();
     }
@@ -93,7 +93,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public void endArray() throws IOException {
         if (current != JsonParser.Event.END_ARRAY) {
-            throw new BindingException("expected END_ARRAY, but was " + current);
+            throw new BindingException("expected end array, but was " + current);
         }
         _advance();
     }
@@ -104,7 +104,7 @@ public class JsonpReader implements StreamingReader {
     @Override
     public String nextName() throws IOException {
         if (current != JsonParser.Event.KEY_NAME) {
-            throw new BindingException("expected KEY_NAME, but was " + current);
+            throw new BindingException("expected key name, but was " + current);
         }
         String name = parser.getString();
         _advance();

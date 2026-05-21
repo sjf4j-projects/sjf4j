@@ -190,7 +190,7 @@ public class PatchesTest {
         JsonException e = assertThrows(JsonException.class,
                 () -> Patches.indexedMerge(target, patch, true, false));
 
-        assertTrue(e.getMessage().contains("cannot remove index 2 from Java array"));
+        assertTrue(e.getMessage().contains("cannot remove at index 2 from Java array"));
         assertEquals(1, target[0]);
         assertEquals(2, target[1]);
         assertEquals(7, target[2]);

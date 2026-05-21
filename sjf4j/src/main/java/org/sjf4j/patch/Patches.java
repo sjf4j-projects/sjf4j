@@ -82,17 +82,17 @@ public final class Patches {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         subPatch = deepCopy ? Sjf4j.global().deepNode(subPatch) : subPatch;
-                        Nodes.setInArray(target, i, subPatch);
+                        Nodes.putInArray(target, i, subPatch);
                     }
                 } else if (subPatchJt.isArray()) {
                     if (subTargetJt.isArray()) {
                         indexedMerge(subTarget, subPatch, overwrite, deepCopy);
                     } else if (overwrite || subTarget == null) {
                         subPatch = _normalizeArrayPatch(subPatch, deepCopy);
-                        Nodes.setInArray(target, i, subPatch);
+                        Nodes.putInArray(target, i, subPatch);
                     }
                 } else if (overwrite || subTarget == null) {
-                    Nodes.setInArray(target, i, subPatch);
+                    Nodes.putInArray(target, i, subPatch);
                 }
             }
             if (truncate) {
@@ -103,6 +103,11 @@ public final class Patches {
         }
     }
 
+    /**
+     * When an array patch is assigned into a non-array target slot (e.g. replacing a
+     * scalar or object with an array), trailing-null truncation sentinels are stripped
+     * because they are only meaningful for array-to-array merge.
+     */
     private static Object _normalizeArrayPatch(Object patch, boolean deepCopy) {
         int size = Nodes.sizeInArray(patch);
         if (size == 0 || Nodes.getInArray(patch, size - 1) != null) {
@@ -114,7 +119,6 @@ public final class Patches {
         }
         return value;
     }
-
 
     /**
      * Applies RFC 7386 JSON Merge Patch semantics and returns the possibly replaced root.

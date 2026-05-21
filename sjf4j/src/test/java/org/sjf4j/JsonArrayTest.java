@@ -215,12 +215,13 @@ class JsonArrayTest {
         ja1.ensurePutByPath("$[2].a.b", "yes");
         log.info("ja1: {}", ja1);
         assertEquals("[2,3,{\"a\":{\"b\":\"yes\"}}]", ja1.toJson());
+        assertThrows(JsonException.class, () -> JsonArray.fromJson("[]").ensurePutIfAbsentByPath("$[0]", 9));
     }
 
     public void testByPath2() {
         JsonArray ja1 = JsonArray.fromJson("[2,3,{}]");
         ja1.ensurePutByPath("$[2]", new JsonArray());
-        ja1.ensurePutByPath("$[2][0].a.b", "yes");
+        ja1.ensurePutByPath("$[2][+].a.b", "yes");
         log.info("ja1={}", ja1);
         assertEquals("[2,3,[{\"a\":{\"b\":\"yes\"}}]]", ja1.toJson());
     }

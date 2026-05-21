@@ -61,7 +61,7 @@ public final class Jackson2Nodes {
         if (jsonNode.isBoolean()) return NodeKind.VALUE_BOOLEAN_FACADE;
         if (jsonNode.isObject()) return NodeKind.OBJECT_FACADE;
         if (jsonNode.isArray()) return NodeKind.ARRAY_FACADE;
-        if (jsonNode.isPojo()) throw new JsonException("not support POJONode of Jackson2");
+        if (jsonNode.isPojo()) throw new JsonException("Jackson 2.x POJONode is not supported");
         return NodeKind.UNKNOWN;
     }
 
@@ -358,7 +358,6 @@ public final class Jackson2Nodes {
                 out.node = an.get(idx);
                 return;
             }
-            if (idx == an.size()) return;
             out.puttable = false;
             return;
         }
@@ -458,7 +457,7 @@ public final class Jackson2Nodes {
     }
 
     /**
-     * Sets or appends a value in a Jackson array node.
+     * Sets a value in a Jackson array node.
      */
     public static Object setInArray(Object node, int idx, Object value) {
         if (!(node instanceof ArrayNode)) throw _expected("ArrayNode", node);
@@ -466,17 +465,12 @@ public final class Jackson2Nodes {
         ArrayNode an = (ArrayNode) node;
         idx = idx < 0 ? an.size() + idx : idx;
         JsonNode vv = (JsonNode) value;
-        if (idx == an.size()) {
-            an.add(vv);
-            return null;
-        }
         if (idx >= 0 && idx < an.size()) {
             JsonNode old = an.get(idx);
             an.set(idx, vv);
             return old;
         }
-        throw new JsonException("cannot set/add index " + idx + " in ArrayNode of size " +
-                an.size() + " (index < size: modify; index == size: append)");
+        throw new JsonException("cannot set at index " + idx + " in ArrayNode of size " + an.size());
     }
 
     /**
@@ -497,7 +491,7 @@ public final class Jackson2Nodes {
         ArrayNode an = (ArrayNode) node;
         idx = idx < 0 ? an.size() + idx : idx;
         if (idx < 0 || idx > an.size()) {
-            throw new JsonException("cannot insert index " + idx + " in ArrayNode of size " + an.size());
+            throw new JsonException("cannot insert at index " + idx + " in ArrayNode of size " + an.size());
         }
         an.insert(idx, (JsonNode) value);
     }
@@ -520,7 +514,7 @@ public final class Jackson2Nodes {
             ArrayNode an = (ArrayNode) node;
             idx = idx < 0 ? an.size() + idx : idx;
             if (idx < 0 || idx >= an.size()) {
-                throw new JsonException("cannot remove index " + idx + " in ArrayNode of size " + an.size());
+                throw new JsonException("cannot remove at index " + idx + " in ArrayNode of size " + an.size());
             }
             return an.remove(idx);
         }
@@ -529,11 +523,11 @@ public final class Jackson2Nodes {
 
 
     private static JsonException _notNode(Object node) {
-        return new JsonException("not a Jackson 2.x JsonNode, but was '" + Types.name(node) + "'");
+        return new JsonException("expected Jackson 2.x JsonNode, but was " + Types.name(node));
     }
 
     private static JsonException _expected(String expected, Object node) {
-        return new JsonException("expected " + expected + " but was " + Types.name(node));
+        return new JsonException("expected " + expected + ", but was " + Types.name(node));
     }
 
 

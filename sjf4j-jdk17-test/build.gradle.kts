@@ -1,6 +1,6 @@
 plugins {
-    java
-    jacoco
+    id("java-library")
+    id("jacoco")
     id("me.champeau.jmh") version "0.7.2"
 }
 

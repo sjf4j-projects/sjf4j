@@ -101,7 +101,7 @@ public class Fastjson2StreamingIO {
     private static Map<String, Object> _readRawObject(JSONReader reader) throws IOException {
         Map<String, Object> map = new LinkedHashMap<>();
         if (!reader.nextIfObjectStart()) {
-            throw new BindingException("expected token '{', but got " + reader.current());
+            throw new BindingException("expected token '{', but was " + reader.current());
         }
         while (!reader.nextIfObjectEnd()) {
             map.put(reader.readFieldName(), _readRawNode(reader));
@@ -237,7 +237,7 @@ public class Fastjson2StreamingIO {
             Object pojo = ci.newPojoNoArgs();
             Map<String, Object> dynamicMap = null;
             if (!reader.nextIfObjectStart()) {
-                throw new BindingException("expected token '{', but got " + reader.current());
+                throw new BindingException("expected token '{', but was " + reader.current());
             }
             while (!reader.nextIfObjectEnd()) {
                 String key = reader.readFieldName();
@@ -267,7 +267,7 @@ public class Fastjson2StreamingIO {
         Object parentOneOfValue = UNSET;
 
         if (!reader.nextIfObjectStart()) {
-            throw new BindingException("expected token '{', but got " + reader.current());
+            throw new BindingException("expected token '{', but was " + reader.current());
         }
         while (!reader.nextIfObjectEnd()) {
             String key = reader.readFieldName();

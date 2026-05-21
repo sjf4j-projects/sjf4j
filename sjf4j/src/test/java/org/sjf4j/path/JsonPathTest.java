@@ -224,13 +224,13 @@ public class JsonPathTest {
                 "}";
         JsonObject jo1 = JsonObject.fromJson(json1);
 
-        JsonPath.parse("$.book[0].box[0].gg").ensurePut(jo1, "mm");
+        JsonPath.parse("$.book[0].box[+].gg").ensurePut(jo1, "mm");
         JsonObject container1 = JsonPath.parse("$.book[0].box[0]").getJsonObject(jo1);
         log.info("container1={} jo1={}", container1, jo1);
         assertEquals(JsonObject.class, container1.getClass());
         assertEquals(1, jo1.getJsonArrayByPath("$.book[0].box").size());
 
-        JsonPath.parse("$.book[2].tags['gg mm'][0]").ensurePut(jo1, "mm");
+        JsonPath.parse("$.book[2].tags['gg mm'][+]").ensurePut(jo1, "mm");
         JsonArray container2 = JsonPath.parse("$.book[2].tags['gg mm']").getJsonArray(jo1);
         log.info("container2={} jo1={}", container2, jo1);
         assertEquals(JsonArray.class, container2.getClass());
@@ -274,6 +274,7 @@ public class JsonPathTest {
         assertEquals("first", jo.getStringByPath("$.a.e"));
         path4.ensurePutIfAbsent(jo, "second");
         assertEquals("first", jo.getStringByPath("$.a.e")); // should not be overwritten
+        assertThrows(JsonException.class, () -> JsonPath.parse("$.array[3]").ensurePutIfAbsent(jo, 7));
 
         JsonPath path5 = JsonPath.parse("$.a.b");
         assertTrue(path5.hasNonNull(jo));
@@ -312,6 +313,8 @@ public class JsonPathTest {
         JsonPath append = JsonPath.parse("$.arr[+]");
         assertNull(append.putIfPresent(jo, "c"));
         assertEquals(Arrays.asList("a", "bb", "c"), JsonPath.parse("$.arr[*]").find(jo));
+        assertNull(JsonPath.parse("$.arr[3]").putIfPresent(jo, "d"));
+        assertEquals(Arrays.asList("a", "bb", "c", "d"), JsonPath.parse("$.arr[*]").find(jo));
 
         JsonPath pointerObjectKey = JsonPath.parse("/0");
         JsonObject pointerTarget = new JsonObject();
@@ -483,25 +486,25 @@ public class JsonPathTest {
     public void testEnsurePutCreatesTypedContainers() {
         AutoContainerHolder holder = new AutoContainerHolder();
 
-        JsonPath.parse("$.objectField[0].name").ensurePut(holder, "object");
+        JsonPath.parse("$.objectField[+].name").ensurePut(holder, "object");
         assertTrue(holder.objectField instanceof ArrayList);
         assertEquals("object", JsonPath.parse("$.objectField[0].name").getString(holder));
 
-        JsonPath.parse("$.listField[0].name").ensurePut(holder, "list");
+        JsonPath.parse("$.listField[+].name").ensurePut(holder, "list");
         assertTrue(holder.listField instanceof ArrayList);
         assertEquals("list", JsonPath.parse("$.listField[0].name").getString(holder));
 
-        JsonPath.parse("$.jsonArrayField[0].name").ensurePut(holder, "json-array");
+        JsonPath.parse("$.jsonArrayField[+].name").ensurePut(holder, "json-array");
         assertTrue(holder.jsonArrayField instanceof JsonArray);
         assertEquals("json-array", JsonPath.parse("$.jsonArrayField[0].name").getString(holder));
 
-        JsonPath.parse("$.autoJsonArrayField[0].name").ensurePut(holder, "jajo");
+        JsonPath.parse("$.autoJsonArrayField[+].name").ensurePut(holder, "jajo");
         assertTrue(holder.autoJsonArrayField instanceof AutoJsonArray);
         assertEquals("jajo", JsonPath.parse("$.autoJsonArrayField[0].name").getString(holder));
 
         JsonException babyArrayFailure = assertThrows(JsonException.class,
                 () -> JsonPath.parse("$.babyArrayField[2].name").ensurePut(holder, "baby"));
-        assertTrue(babyArrayFailure.getMessage().contains("Only support List/JsonArray/JAJO/Set."));
+        assertTrue(babyArrayFailure.getMessage().contains("only List/JsonArray/JAJO/Set are supported"));
         assertNull(holder.babyArrayField);
 
         assertThrows(JsonException.class, () -> JsonPath.parse("$.setField[0].name").ensurePut(holder, "set"));
@@ -509,6 +512,18 @@ public class JsonPathTest {
 
         assertThrows(JsonException.class, () -> JsonPath.parse("$.unsupportedObjectField.name").ensurePut(holder, "x"));
         assertThrows(JsonException.class, () -> JsonPath.parse("$.unsupportedArrayField[0]").ensurePut(holder, "x"));
+    }
+
+    @Test
+    public void testEnsurePutReplacesNullIntermediateArrayElements() {
+        JsonObject jo = JsonObject.of("items", JsonArray.of((Object) null));
+        JsonPath.parse("$.items[0].name").ensurePut(jo, "Alice");
+        assertEquals("Alice", JsonPath.parse("$.items[0].name").getString(jo));
+
+        AutoContainerHolder holder = new AutoContainerHolder();
+        holder.listField = new ArrayList<>(Collections.singletonList(null));
+        JsonPath.parse("$.listField[0].name").ensurePut(holder, "Bob");
+        assertEquals("Bob", JsonPath.parse("$.listField[0].name").getString(holder));
     }
 
     @Test
@@ -524,7 +539,7 @@ public class JsonPathTest {
         log.info("jo1={}", jo1);
         assertEquals("Grace", jo1.getJsonArray("babies").getJsonObject(1).getString("name"));
 
-        JsonPath.parse("$.babies[3].name").ensurePut(jo1, "Zack");
+        JsonPath.parse("$.babies[+].name").ensurePut(jo1, "Zack");
         log.info("jo1={}", jo1);
         assertEquals("Zack", jo1.getJsonArray("babies").getJsonObject(3).getString("name"));
 
@@ -544,7 +559,7 @@ public class JsonPathTest {
         log.info("p1={}", p1);
         assertEquals("Grace", p1.babies.get(1).name);
 
-        JsonPath.parse("$.babies[3].name").ensurePut(p1, "Zack");
+        JsonPath.parse("$.babies[+].name").ensurePut(p1, "Zack");
         log.info("p1={}", p1);
         assertEquals("Zack", p1.babies.get(3).name);
 

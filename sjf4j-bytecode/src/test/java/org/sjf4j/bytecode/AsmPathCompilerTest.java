@@ -151,10 +151,10 @@ public class AsmPathCompilerTest {
     }
 
     @Test
-    public void testPojoListIndexAppendReturnsNull() {
+    public void testPojoListAppendReturnsNull() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[3]", Root.class, String.class);
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[+]", Root.class, String.class);
         assertAsmCompiled(path);
 
         assertNull(path.put(root, "dina"));
@@ -173,6 +173,17 @@ public class AsmPathCompilerTest {
     }
 
     @Test
+    public void testIndexedPutDoesNotAppend() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.values[3]", Root.class, Object.class);
+        assertAsmCompiled(path);
+
+        JsonException ex = assertThrows(JsonException.class, () -> path.put(root, "d"));
+        assertTrue(ex.getMessage().contains("cannot set at index 3"));
+    }
+
+    @Test
     public void testStaticValueTypeMismatchFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> CompiledPath.compile("$.holder.tags[1]", Root.class, Integer.class));
@@ -183,7 +194,7 @@ public class AsmPathCompilerTest {
     public void testSetIndexFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
                 () -> CompiledPath.compile("$.holder.keys[0]", Root.class, String.class));
-        assertTrue(ex.getMessage().contains("does not support indexed reads on unordered Set type"));
+        assertTrue(ex.getMessage().contains("cannot read by index from unordered Set type"));
     }
 
     @Test

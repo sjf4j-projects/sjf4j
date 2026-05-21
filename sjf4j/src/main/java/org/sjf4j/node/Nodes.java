@@ -1629,10 +1629,11 @@ public final class Nodes {
     /**
      * Resolves array-child access and fills {@link Access} with node/type metadata.
      * <p>
-     * Negative indexes are normalized. {@code idx == size} is treated as appendable
-     * for List/JsonArray/Set, and reported as puttable with {@code node == null}.
+     * Negative indexes are normalized. Indexed access is reported as puttable only
+     * when the normalized index already exists.
      * <p>
-     * If {@code idx == null}, it is treated as append-to-tail (equivalent to {@code idx == size}).
+     * If {@code idx == null}, it is treated as append-to-tail and remains puttable
+     * with {@code node == null}.
      */
     @SuppressWarnings("unchecked")
     public static void accessInArray(Object node, Type type, Integer idx, Access out) {
@@ -1651,9 +1652,6 @@ public final class Nodes {
                 out.node = list.get(idx);
                 return;
             }
-            if (idx == list.size()){
-                return;
-            }
             out.puttable = false;
             return;
         }
@@ -1661,7 +1659,7 @@ public final class Nodes {
             if (idx == null) return;
             JsonArray ja = (JsonArray) node;
             idx = idx < 0 ? ja.size() + idx : idx;
-            if (idx >= 0 && idx <= ja.size()) {
+            if (idx >= 0 && idx < ja.size()) {
                 out.node = ja.getNode(idx);
                 return;
             }
@@ -1681,7 +1679,7 @@ public final class Nodes {
         }
         if (node instanceof Set) {
             if (idx == null) return;
-            throw new JsonException("cannot call accessInArray() with idx " + idx + " on an unordered Java Set");
+            throw new JsonException("cannot call accessInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.accessInArray(node, type, idx, out);
@@ -1726,40 +1724,32 @@ public final class Nodes {
         throw new JsonException("expected Object node, but was " + Types.name(node));
     }
 
-    /**
-     * Sets or appends a value in an array-like node by index.
-     * <p>
-     * For List/JsonArray/Set: {@code idx < size} updates, {@code idx == size}
-     * appends, other indexes fail. For Java arrays: only in-range replacement is
-     * allowed (no append). Negative indexes are supported.
-     */
     @SuppressWarnings("unchecked")
-    public static Object setInArray(Object node, int idx, Object value) {
+    private static Object _putInArray(Object node, int idx, Object value, boolean allowAppend) {
         Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            idx = idx < 0 ? list.size() + idx : idx;
-            if (idx == list.size()) {
+            int size = list.size();
+            idx = idx < 0 ? size + idx : idx;
+            if (idx >= 0 && idx < size) {
+                return list.set(idx, value);
+            }
+            if (allowAppend && idx == size) {
                 list.add(value);
                 return null;
-            } else if (idx >= 0 && idx < list.size()) {
-                return list.set(idx, value);
-            } else {
-                throw new JsonException("cannot set/add at index " + idx + " in List of size " +
-                        list.size() + " (index < size: modify; index == size: append)");
             }
+            throw new JsonException("cannot set at index " + idx + " in List of size " + size);
         }
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
-            if (idx == ja.size()) {
+            if (ja.containsIndex(idx)) {
+                return ja.set(idx, value);
+            }
+            if (allowAppend && idx == ja.size()) {
                 ja.add(value);
                 return null;
-            } else if (ja.containsIndex(idx)) {
-                return ja.set(idx, value);
-            } else {
-                throw new JsonException("cannot set/add at index " + idx + " in JsonArray of size " +
-                        ja.size() + " (index < size: modify; index == size: append)");
             }
+            throw new JsonException("cannot set at index " + idx + " in JsonArray of size " + ja.size());
         }
         if (node.getClass().isArray()) {
             int len = Array.getLength(node);
@@ -1768,18 +1758,47 @@ public final class Nodes {
                 Object old = Array.get(node, idx);
                 Array.set(node, idx, value);
                 return old;
-            } else {
-                throw new JsonException("cannot set at index " + idx + " in Array of size " +
-                        len + " (index < size: modify)");
             }
+            if (allowAppend && idx == len) {
+                throw new JsonException("cannot append to a Java array");
+            }
+            throw new JsonException("cannot set at index " + idx + " in Java array of size " + len);
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot call setInArray() on an unordered Java Set");
+            throw new JsonException("cannot set by index on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
+            if (allowAppend && FacadeNodes.sizeInArray(node) == idx) {
+                FacadeNodes.addInArray(node, value);
+                return null;
+            }
             return FacadeNodes.setInArray(node, idx, value);
         }
         throw new JsonException("expected Array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Sets a value in an array-like node by index.
+     * <p>
+     * For List/JsonArray: only existing normalized indexes may be replaced.
+     * For Java arrays: only in-range replacement is allowed. Negative indexes are
+     * supported.
+     */
+    public static Object setInArray(Object node, int idx, Object value) {
+        return _putInArray(node, idx, value, false);
+    }
+
+    /**
+     * Sets at an existing index or appends when the index equals the array size.
+     * <p>
+     * For {@code List} and {@code JsonArray}: when {@code idx == size} the value is appended;
+     * otherwise delegates to {@link #setInArray(Object, int, Object)} (which rejects out-of-range
+     * indices). Negative indices are resolved by {@code setInArray}, not treated as append.
+     *
+     * @return the previous value at the index when replacing, or {@code null} when appending
+     */
+    public static Object putInArray(Object node, int idx, Object value) {
+        return _putInArray(node, idx, value, true);
     }
 
     /**
@@ -1799,7 +1818,7 @@ public final class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("cannot call addInArray() on a Java array");
+            throw new JsonException("cannot append to a Java array");
         }
         if (node instanceof Set) {
             ((Set<Object>) node).add(value);
@@ -1832,10 +1851,10 @@ public final class Nodes {
             return;
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("cannot call addInArray() with index on a Java array");
+            throw new JsonException("cannot insert into a Java array");
         }
         if (node instanceof Set) {
-            throw new JsonException("cannot call addInArray() at a given index on an unordered Java Set");
+            throw new JsonException("cannot call addInArray() with an index on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
             FacadeNodes.addInArray(node, idx, value);
@@ -1861,7 +1880,7 @@ public final class Nodes {
             return ((JsonObject) node).remove(key);
         }
         if (NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
-            throw new JsonException("cannot remove field '" + key + "' in POJO '" +
+            throw new JsonException("cannot remove field '" + key + "' from POJO '" +
                     node.getClass().getName() + "'");
         }
         if (FacadeNodes.isNode(node)) {
@@ -1888,7 +1907,7 @@ public final class Nodes {
             return ((JsonArray) node).remove(idx);
         }
         if (node.getClass().isArray()) {
-            throw new JsonException("cannot remove index " + idx +
+            throw new JsonException("cannot remove at index " + idx +
                     " from Java array of component type '" + node.getClass().getComponentType().getName() + "'");
         }
         if (node instanceof Set) {

@@ -259,19 +259,19 @@ public class PathSyntaxTest {
     @Test
     public void testEdgeCases() {
         // Empty bracket content should fail
-        testParsePathFailure("$[]", "Empty");
+        testParsePathFailure("$[]", "empty");
 
         // Missing closing bracket
-        testParsePathFailure("$[0", "Missing closing");
+        testParsePathFailure("$[0", "missing closing");
 
         // Unclosed quote
-        testParsePathFailure("$['name", "Unclosed quote");
+        testParsePathFailure("$['name", "unclosed quote");
 
         // Invalid slice step
-        testParsePathFailure("$[::0]", "Slice step cannot be 0");
+        testParsePathFailure("$[::0]", "slice step cannot be 0");
 
         // Too many slice parts
-        testParsePathFailure("$[1:2:3:4]", "Invalid slice syntax");
+        testParsePathFailure("$[1:2:3:4]", "invalid slice syntax");
     }
 
     @Test

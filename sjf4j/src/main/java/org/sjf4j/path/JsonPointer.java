@@ -47,7 +47,7 @@ public class JsonPointer extends JsonPath {
         } else if (expr.startsWith("/")) {
             segments = PathSyntax.parsePointer(expr);
         } else {
-            throw new JsonException("Invalid JSON Pointer expression '" + expr + "': must start with '/'");
+            throw new JsonException("invalid JSON Pointer expression '" + expr + "': must start with '/'");
         }
         return new JsonPointer(expr, segments);
     }

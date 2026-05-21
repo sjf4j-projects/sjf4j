@@ -76,7 +76,7 @@ public class JsonPatch extends JsonArray {
             Object v = get(i, Object.class);
             if (v instanceof PatchOperation) {
                 current = ((PatchOperation) v).apply(current);
-            } else throw new JsonException("Unsupported patch type: " + Types.name(v));
+            } else throw new JsonException("unsupported patch type: " + Types.name(v));
         }
         return current;
     }

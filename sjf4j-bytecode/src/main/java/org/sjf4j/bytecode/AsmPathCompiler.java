@@ -48,7 +48,7 @@ public class AsmPathCompiler implements PathCompiler {
         if (rootClazz == Object.class) return null;
         if (path.length() < 2) return null;
         if (!path.isSingle()) {
-            throw new JsonException("ASM CompiledPath only supports a single target path with Name/Index/Append segments: '" +
+            throw new JsonException("ASM CompiledPath supports only a single target path with Name/Index/Append segments: '" +
                     path.toExpr() + "'");
         }
 
@@ -64,7 +64,7 @@ public class AsmPathCompiler implements PathCompiler {
         try {
             return (CompiledPath<?, ?>) compiledClass.getConstructor().newInstance();
         } catch (Exception e) {
-            throw new JsonException("Failed to instantiate ASM CompiledPath for '" + path.toExpr() +
+            throw new JsonException("failed to instantiate ASM CompiledPath for '" + path.toExpr() +
                     "' (rootType=" + rootClazz.getName() + ", valueType=" + valueClazz.getName() + ")", e);
         }
     }
@@ -109,7 +109,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitCode();
 
         if (path.hasAppend()) {
-            _emitThrow(mv, "Cannot execute get() on a path containing append segments ('/-' or '[+]')");
+            _emitThrow(mv, "cannot execute get() on a path containing append segments ('/-' or '[+]')");
         } else {
             // if (root == null) return null;
             mv.visitVarInsn(Opcodes.ALOAD, 1);
@@ -228,7 +228,7 @@ public class AsmPathCompiler implements PathCompiler {
             } else {
                 NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(currentClazz).pojoInfo;
                 if (pi == null) {
-                    throw new JsonException("ASM CompiledPath cannot read property '" + name +
+                    throw new JsonException("cannot read property '" + name +
                             "' from " + currentClazz.getName() + " at '" + expr + "'");
                 }
 
@@ -254,7 +254,7 @@ public class AsmPathCompiler implements PathCompiler {
                         vvc = AsmUtil.emitCastOrBox(mv, vvc);
                         mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
                     } else {
-                        throw new JsonException("ASM CompiledPath property '" + name + "' on " +
+                        throw new JsonException("property '" + name + "' on " +
                                 currentClazz.getName() + " is not readable through a public field or public getter");
                     }
                     return vvt;
@@ -269,7 +269,7 @@ public class AsmPathCompiler implements PathCompiler {
                     mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
                     return Object.class;
                 } else {
-                    throw new JsonException("ASM CompiledPath cannot resolve property '" + name +
+                    throw new JsonException("cannot resolve property '" + name +
                             "' on " + currentClazz.getName() +
                             ": no readable property found and target is not a JOJO dynamic object");
                 }
@@ -319,14 +319,14 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
                 return vvc;
             } else if (Set.class.isAssignableFrom(currentClazz)) {
-                throw new JsonException("ASM CompiledPath does not support indexed reads on unordered Set type " +
+                throw new JsonException("cannot read by index from unordered Set type " +
                         currentClazz.getName() + " at '" + expr + "'");
             } else {
-                throw new JsonException("ASM CompiledPath expected an array-like target before index [" + idx +
-                        "] at '" + expr + "', but found " + currentClazz.getName());
+                throw new JsonException("expected array-like target before index [" + idx +
+                        "] at '" + expr + "', but was " + currentClazz.getName());
             }
         } else {
-            throw new JsonException("Unsupported path token '" + ps + "'");
+            throw new JsonException("unsupported path token '" + ps + "'");
         }
     }
 
@@ -370,21 +370,22 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitVarInsn(Opcodes.ALOAD, i + 3);
             Label notNull = new Label();
             mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
-            _emitThrow(mv, "Cannot put value at path '" + expr + "': parent container does not exist");
+            _emitThrow(mv, "cannot put value at path '" + expr + "': parent container does not exist");
             mv.visitLabel(notNull);
         }
         return currentType;
     }
 
     private void _emitPutLast(MethodVisitor mv, JsonPath path, Class<?> parentClazz) {
-        PathSegment[] segments = path.segments();
         String expr = path.toExpr();
-        int parentLocal = segments.length == 2 ? 1 : segments.length + 1;
-        int scratchLocal = Math.max(3, parentLocal + 1);
-        PathSegment last = segments[segments.length - 1];
+        int pathLength = path.length();
+        int parentLocal = pathLength == 2 ? 1 : pathLength + 1;
+        int scratchLocal = pathLength == 2 ? 3 : pathLength + 2;
+        PathSegment last = path.tail();
         if (last instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) last).name;
             if (Object.class == parentClazz) {
+                // return Nodes.putInObject(_parent, name, _2);
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                 mv.visitLdcInsn(name);
                 mv.visitVarInsn(Opcodes.ALOAD, 2);
@@ -394,6 +395,7 @@ public class AsmPathCompiler implements PathCompiler {
                         false);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (Map.class.isAssignableFrom(parentClazz)) {
+                // return _parent.put(name, _2);
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                 mv.visitLdcInsn(name);
                 mv.visitVarInsn(Opcodes.ALOAD, 2);
@@ -403,6 +405,7 @@ public class AsmPathCompiler implements PathCompiler {
                         true);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (JsonObject.class.isAssignableFrom(parentClazz)) {
+                // return _parent.put(name, _2);
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                 mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_OBJECT);
                 mv.visitLdcInsn(name);
@@ -418,6 +421,7 @@ public class AsmPathCompiler implements PathCompiler {
                     NodeRegistry.PropertyInfo propInfo = pi.properties.get(name);
                     if (propInfo != null) {
                         if (propInfo.publicField != null) {
+                            // _parent.name = _2; return null;
                             Class<?> fieldClazz = propInfo.publicField.getType();
                             mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                             mv.visitVarInsn(Opcodes.ALOAD, 2);
@@ -429,6 +433,7 @@ public class AsmPathCompiler implements PathCompiler {
                             mv.visitInsn(Opcodes.ARETURN);
                             return;
                         } else if (propInfo.publicSetter != null) {
+                            // _parent.setXxx(_2); return null;
                             Method setter = propInfo.publicSetter;
                             Class<?> argClazz = setter.getParameterTypes()[0];
                             Class<?> returnClazz = setter.getReturnType();
@@ -448,16 +453,17 @@ public class AsmPathCompiler implements PathCompiler {
                 }
 
                 if (pi == null) {
-                    throw new JsonException("ASM CompiledPath cannot write property '" + name +
+                    throw new JsonException("cannot write property '" + name +
                             "' on " + parentClazz.getName() + " at '" + expr + "'");
                 }
-                throw new JsonException("ASM CompiledPath property '" + name + "' on " +
+                throw new JsonException("property '" + name + "' on " +
                         parentClazz.getName() +
                         " is not writable through a public field or public setter");
             }
         } else if (last instanceof PathSegment.Index) {
             int idx = ((PathSegment.Index) last).index;
             if (Object.class == parentClazz) {
+                // return Nodes.setInArray(_parent, _2);
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                 mv.visitLdcInsn(idx);
                 mv.visitVarInsn(Opcodes.ALOAD, 2);
@@ -472,7 +478,6 @@ public class AsmPathCompiler implements PathCompiler {
                 int sizeLocal = scratchLocal;
                 int idxLocal = scratchLocal + 1;
                 Label replace = new Label();
-                Label append = new Label();
                 Label invalid = new Label();
 
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
@@ -489,17 +494,13 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitVarInsn(Opcodes.ISTORE, idxLocal);
 
                 mv.visitVarInsn(Opcodes.ILOAD, idxLocal);
-                mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
-                mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
-
-                mv.visitVarInsn(Opcodes.ILOAD, idxLocal);
                 mv.visitJumpInsn(Opcodes.IFLT, invalid);
                 mv.visitVarInsn(Opcodes.ILOAD, idxLocal);
                 mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
                 mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
 
                 mv.visitLabel(invalid);
-                _emitThrow(mv, "cannot set/add at index " + idx + " in List at '" + expr + "'");
+                _emitThrow(mv, "cannot set at index " + idx + " in List at '" + expr + "'");
 
                 mv.visitLabel(replace);
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
@@ -510,33 +511,18 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitInsn(Opcodes.POP);
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
-
-                mv.visitLabel(append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
             } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
                 Label replace = new Label();
-                Label append = new Label();
 
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                 mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_ARRAY);
                 mv.visitVarInsn(Opcodes.ASTORE, parentLocal);
 
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY, "size", "()I", false);
-                mv.visitLdcInsn(idx);
-                mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
-
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
                 mv.visitLdcInsn(idx);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY, "containsIndex", "(I)Z", false);
                 mv.visitJumpInsn(Opcodes.IFNE, replace);
-                _emitThrow(mv, "cannot set/add at index " + idx + " in JsonArray at '" + expr + "'");
+                _emitThrow(mv, "cannot set at index " + idx + " in JsonArray at '" + expr + "'");
 
                 mv.visitLabel(replace);
                 mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
@@ -545,14 +531,6 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
                         "set", "(ILjava/lang/Object;)Ljava/lang/Object;", false);
                 mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-
-                mv.visitLabel(append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "add", "(Ljava/lang/Object;)V", false);
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (parentClazz.isArray()) {
@@ -593,10 +571,10 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (Set.class.isAssignableFrom(parentClazz)) {
-                _emitThrow(mv, "cannot call setInArray() on an unordered Java Set");
+                _emitThrow(mv, "cannot set by index on an unordered Java Set");
             } else {
-                throw new JsonException("ASM CompiledPath expected an array-like target before index [" + idx +
-                        "] at '" + expr + "', but found " + parentClazz.getName());
+                throw new JsonException("expected array-like target before index [" + idx +
+                        "] at '" + expr + "', but was " + parentClazz.getName());
             }
         } else if (last instanceof PathSegment.Append) {
             if (Object.class == parentClazz) {
@@ -633,13 +611,13 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (parentClazz.isArray()) {
-                _emitThrow(mv, "cannot call addInArray() on a Java array");
+                _emitThrow(mv, "cannot append to a Java array");
             } else {
-                throw new JsonException("ASM CompiledPath expected an array-like target before append at '" +
-                        expr + "', but found " + parentClazz.getName());
+                throw new JsonException("expected array-like target before append at '" +
+                        expr + "', but was " + parentClazz.getName());
             }
         } else {
-            _emitThrow(mv, "Unsupported last path token '" + last +
+            _emitThrow(mv, "unsupported last path token '" + last +
                     "'; put() expected Name, Index, or Append token");
         }
     }

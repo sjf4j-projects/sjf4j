@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `@NodeProperty.valueFormat` to `@NodeProperty.codecName` for clarity.
 - Added the new public `org.sjf4j.compiled.CompiledPath` API and `PathCompiler` SPI; the previous `org.sjf4j.path.CompiledPath` surface and its broader mutation/query helper set are no longer the active compiled-path entry points.
 - Moved `SchemaException` from `org.sjf4j.exception` to `org.sjf4j.schema`, and `SchemaRegistry.resolve(..., fragment)` now throws when the schema URI exists but the fragment cannot be resolved.
+- Tightened direct indexed array replacement semantics so `Nodes.setInArray(...)` and ASM compiled-path indexed `put(...)` no longer append when `idx == size`; callers that need replace-or-append behavior must use `Nodes.putInArray(...)` or explicit append-path syntax where supported.
 
 ### Added
 - Added merged JaCoCo coverage report in `sjf4j-jdk17-test` that aggregates coverage data from all submodules (`sjf4j`, `sjf4j-bytecode`, `sjf4j-schema`).
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added compiled-path APIs in `org.sjf4j.compiled`, including `CompiledPath.compile(...)` and the `PathCompiler` SPI hook used by optional accelerators.
 - Added the optional `sjf4j-bytecode` module with an ASM-backed `PathCompiler`, service-loader registration, JMH benchmark coverage, and dedicated bytecode tests.
 - Added `put()` JMH coverage for ASM/fallback/raw/native compiled-path write comparisons in `sjf4j-bytecode`.
+- Added `Nodes.putInArray(node, idx, value)` for array writes that should replace existing elements or append at the tail explicitly.
 
 ### Changed
 - Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
@@ -40,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `FallbackCompiledPath` to parse/validate single-target paths up front, normalize `expr()` to `JsonPath.toExpr()`, and delegate to service-loaded bytecode compilers when available.
 - Changed compiled-path mutation support so `CompiledPath.put(...)` is available, the ASM path compiler emits bytecode-backed `put(Object,Object)` writes for supported single-target paths, and path/container convenience APIs now document write-return behavior explicitly.
 - Changed POJO-backed object writes in `Nodes.putInObject(...)`, `JsonObject.put(...)`, and path-driven `put(...)` helpers to return `null` instead of reading old property values, while map-like/object-node writes continue returning their native previous values.
+- Changed path/container docs to clarify replace-vs-append behavior across `Nodes.putInArray(...)`, path helpers, and stricter ASM compiled-path indexed writes.
+- Changed `sjf4j-schema` to expose `sjf4j` as an `api` dependency, and normalized Gradle plugin declarations to explicit `java-library` / `jacoco` IDs across modules.
 
 ### Removed
 - Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
@@ -51,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed several ASM compiled-path generation issues in `sjf4j-bytecode`, including erased `get(Object)` emission, constructor/class signature generation, primitive boxing, object/primitive array loads, and `List` / `JsonArray` index method descriptors, with regression coverage for POJO, map, array, list, append, and null-chain cases.
 - Fixed draft 2020-12 schema compatibility so recognized `format-assertion` vocabularies still enforce `format`, and legacy `dependencies` continues to run for optional compatibility tests.
 - Fixed `sjf4j-schema` strict format validation coverage for official draft 2020-12 optional format cases, including hostname / IDN hostname, URI / IRI, email / IDN email, RFC 3339 time/date-time/duration, UUID, IPv4, and regex validation behavior.
+- Fixed `JsonPath.ensurePut(...)` so null intermediate array slots can be replaced with created containers during path growth, while `ensurePutIfAbsent(...)` now rejects missing indexed writes when the parent array already exists and points callers to explicit append syntax.
+- Fixed `Patches.indexedMerge(...)` to preserve array tail-growth behavior after indexed array replacement became strict.
 
 
 ## [1.2.3] - 2026.05.11
