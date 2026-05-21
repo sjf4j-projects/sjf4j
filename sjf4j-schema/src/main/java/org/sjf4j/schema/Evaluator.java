@@ -946,7 +946,7 @@ public interface Evaluator {
             int i = 0;
             if (prefixItemsPlans != null) {
                 for (; i < size && i < prefixItemsPlans.length; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), null);
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -956,7 +956,7 @@ public interface Evaluator {
             }
             if (itemsPlan != null) {
                 for (; i < size; i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), ctx.reusedLeaf());
+                    InstancedNode subInstance = instance.inferSubByIndex(i, Nodes.getInArray(actual, i), null);
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -1006,7 +1006,7 @@ public interface Evaluator {
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, null);
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                 boolean result = containsPlan.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
@@ -1302,7 +1302,7 @@ public interface Evaluator {
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, null);
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);
