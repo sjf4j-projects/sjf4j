@@ -32,6 +32,18 @@ class SchemaPlanTest {
     }
 
     @Test
+    void planStrictFormatDefaultCanBeOverriddenDirectly() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
+
+        assertTrue(plan.validate("not-email").isValid());
+        assertFalse(plan.validate("not-email", true).isValid());
+
+        plan.setStrictFormat(true);
+        assertFalse(plan.validate("not-email").isValid());
+        assertFalse(plan.isValid("not-email"));
+    }
+
+    @Test
     void planRefUsesPreResolvedTarget() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$defs\":{\"s\":{\"type\":\"string\"}}," +

@@ -237,7 +237,10 @@ public class SchemaRegistry {
 
     private SchemaPlan _resolveByFragment(SchemaPlan rootPlan, String fragment) {
         if (fragment == null || fragment.isEmpty()) return rootPlan;
-        SchemaPlan plan = rootPlan.getByFragment(fragment);
+        SchemaPlan plan = rootPlan.byAnchorPlans.get(fragment);
+        if (plan == null) {
+            plan = rootPlan.byPathPlans.get(fragment);
+        }
         if (plan == null) {
             plan = SchemaPlanner.lazyBuildPlanByPath(rootPlan, fragment, this);
         }

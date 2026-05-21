@@ -16,7 +16,8 @@ import java.util.List;
  * instance is created per validation call and is not thread-safe.
  */
 public class ValidationContext {
-    private final ValidationOptions options;
+    private final boolean failFast;
+    private final boolean strictFormat;
     private final List<ValidationMessage> messages;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
@@ -28,16 +29,22 @@ public class ValidationContext {
     private int ignoreErrorAdding = 0;
     private Deque<SchemaPlan> planStack;
 
-    ValidationContext(ValidationOptions options) {
-        this.options = options;
-        this.messages = options.isFailFast() ? null : new ArrayList<>();
+    ValidationContext(boolean failFast, boolean strictFormat) {
+        this.failFast = failFast;
+        this.strictFormat = strictFormat;
+        this.messages = failFast ? null : new ArrayList<>();
         this.reusedLeaf = InstancedNode.infer(null);
     }
 
     /**
-     * Returns validation options.
+     * Returns true when validation stops at first non-ignored error.
      */
-    public ValidationOptions getOptions() {return this.options;}
+    public boolean isFailFast() {return failFast;}
+
+    /**
+     * Returns true when format validators should be enforced as assertions.
+     */
+    public boolean isStrictFormat() {return strictFormat;}
 
     /**
      * Builds a result snapshot from current context state.
@@ -62,7 +69,7 @@ public class ValidationContext {
      * This is true only in fail-fast mode after the first non-ignored error.
      */
     public boolean shouldAbort() {
-        return options.isFailFast() && !valid;
+        return failFast && !valid;
     }
 
     // Ignore

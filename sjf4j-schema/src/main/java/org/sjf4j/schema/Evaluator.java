@@ -482,7 +482,7 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
             String actual = Nodes.toString(instance.node());
-            if (assertion || ctx.getOptions().isStrictFormat()) {
+            if (assertion || ctx.isStrictFormat()) {
                 if (!formatValidator.validate(actual)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "format",
                             "expected format " + format + ", found '" + actual + "'");

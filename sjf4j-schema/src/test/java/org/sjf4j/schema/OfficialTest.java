@@ -128,8 +128,7 @@ public final class OfficialTest {
                         Object data = test.get("data");
                         boolean expected = test.getBoolean("valid");
 
-                        ValidationOptions options = strict ? ValidationOptions.FAILFAST_STRICT : ValidationOptions.FAILFAST;
-                        ValidationResult result = plan.validate(data, options);
+                        ValidationResult result = plan.validate(data, true, strict);
                         boolean actual = result.isValid();
 
                         if (actual == expected) {

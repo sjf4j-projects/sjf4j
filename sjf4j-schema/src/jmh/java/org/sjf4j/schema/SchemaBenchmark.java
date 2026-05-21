@@ -16,9 +16,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.schema.JsonSchema;
-import org.sjf4j.schema.SchemaPlan;
-import org.sjf4j.schema.ValidationOptions;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -106,7 +103,8 @@ public class SchemaBenchmark {
         @Param({"true", "false"})
         public String strictFormat;
 
-        public ValidationOptions options;
+        public boolean failFastEnabled;
+        public boolean strictFormatEnabled;
 
         public SchemaPlan objectSchema;
         public SchemaPlan arraySchema;
@@ -120,10 +118,8 @@ public class SchemaBenchmark {
 
         @Setup(Level.Trial)
         public void setup() {
-            options = new ValidationOptions.Builder()
-                    .failFast(Boolean.parseBoolean(failFast))
-                    .strictFormats(Boolean.parseBoolean(strictFormat))
-                    .build();
+            failFastEnabled = Boolean.parseBoolean(failFast);
+            strictFormatEnabled = Boolean.parseBoolean(strictFormat);
 
             JsonSchema objectSchemaDoc = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
             objectSchema = objectSchemaDoc.createPlan();
@@ -152,22 +148,22 @@ public class SchemaBenchmark {
 
     @Benchmark
     public Object schema_validate_object(SchemaState state) {
-        return state.objectSchema.validate(state.objectNode, state.options);
+        return state.objectSchema.validate(state.objectNode, state.failFastEnabled, state.strictFormatEnabled);
     }
 
     @Benchmark
     public Object schema_validate_array(SchemaState state) {
-        return state.arraySchema.validate(state.arrayNode, state.options);
+        return state.arraySchema.validate(state.arrayNode, state.failFastEnabled, state.strictFormatEnabled);
     }
 
     @Benchmark
     public Object schema_validate_string(SchemaState state) {
-        return state.stringSchema.validate(state.stringNode, state.options);
+        return state.stringSchema.validate(state.stringNode, state.failFastEnabled, state.strictFormatEnabled);
     }
 
     @Benchmark
     public Object schema_validate_number(SchemaState state) {
-        return state.numberSchema.validate(state.numberNode, state.options);
+        return state.numberSchema.validate(state.numberNode, state.failFastEnabled, state.strictFormatEnabled);
     }
 
 }

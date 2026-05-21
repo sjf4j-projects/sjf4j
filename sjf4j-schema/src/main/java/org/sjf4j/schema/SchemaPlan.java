@@ -17,6 +17,114 @@ import java.util.Map;
  * lookup maps for reuse.
  */
 public final class SchemaPlan {
+
+    private boolean strictFormat;
+
+    /// Validate
+
+    public void setStrictFormat(boolean strictFormat) {
+        this.strictFormat = strictFormat;
+    }
+
+    public boolean isStrictFormat() {
+        return strictFormat;
+    }
+
+    public ValidationResult validate(Object node) {
+        return validate(node, false, strictFormat);
+    }
+
+    public ValidationResult validate(Object node, boolean strictFormat) {
+        return validate(node, false, strictFormat);
+    }
+
+    /**
+     * Validates one instance against this compiled schema plan.
+     * <p>
+     * In fail-fast mode only the latest error is retained; otherwise all
+     * collected messages are available in the returned result.
+     */
+    public ValidationResult validate(Object node, boolean failFast, boolean strictFormat) {
+        if (booleanSchema) {
+            if (booleanValue) {
+                return ValidationResult.SUCCESS;
+            } else {
+                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                        PathSegment.Root.INSTANCE, keywordPs,
+                        schemaUri, "false", "schema 'false' always fails");
+                return new ValidationResult(false, null, msg);
+            }
+        }
+
+        InstancedNode instance = InstancedNode.infer(node);
+        ValidationContext ctx = new ValidationContext(failFast, strictFormat);
+        PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
+        evaluate(instance, ps, ctx);
+        return ctx.toResult();
+    }
+
+    public boolean isValid(Object node) {
+        ValidationResult result = validate(node, true, strictFormat);
+        return result.isValid();
+    }
+
+    public boolean isValid(Object node, boolean strictFormat) {
+        ValidationResult result = validate(node, true, strictFormat);
+        return result.isValid();
+    }
+
+    /**
+     * Validates in fail-fast mode and throws on the first error.
+     */
+    public void requireValid(Object node) {
+        requireValid(node, strictFormat);
+    }
+
+    /**
+     * Validates in fail-fast mode and throws on the first error.
+     */
+    public void requireValid(Object node, boolean strictFormat) {
+        ValidationResult result = validate(node, true, strictFormat);
+        if (!result.isValid()) throw new ValidationException(result);
+    }
+
+
+    /// Evaluate
+
+    /**
+     * Executes evaluator pipeline for the current instance branch.
+     */
+    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        if (booleanSchema) {
+            if (booleanValue) {
+                return true;
+            } else {
+                ctx.addError(instance, ps, keywordPs, schemaUri, "false", "schema 'false' always fails");
+                return false;
+            }
+        }
+
+        int len = evaluators.length;
+        if (len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator) {
+            instance.createEvaluated();
+        }
+
+        boolean result = true;
+        // Only resources that declare dynamic anchors participate in runtime
+        // dynamicRef rebinding. Other resources do not need to live on the
+        // validation scope stack.
+        if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
+        for (Evaluator evaluator : evaluators) {
+            result = result && evaluator.evaluate(instance, ps, ctx);
+            if (ctx.shouldAbort()) return result;
+        }
+        if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
+        return result;
+    }
+
+
+    /// Planning
+
     final URI schemaUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
@@ -67,96 +175,6 @@ public final class SchemaPlan {
         return new SchemaPlan(schemaUri, keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                 resourceRootSchema, resourceDialect, resourceVocabulary);
-    }
-
-    /**
-     * Resolves one fragment inside this compiled resource.
-     * <p>
-     * Named fragments are checked before JSON Pointer fragments because both
-     * live in the same resource-local fragment namespace.
-     */
-    SchemaPlan getByFragment(String fragment) {
-        // Named anchors and dynamic anchors share one fragment namespace.
-        SchemaPlan plan = byAnchorPlans.get(fragment);
-        if (plan == null) plan = byPathPlans.get(fragment);
-        return plan;
-    }
-
-    /// Validate
-
-    public ValidationResult validate(Object node) {
-        return validate(node, ValidationOptions.DEFAULT);
-    }
-
-    /**
-     * Validates one instance against this compiled schema plan.
-     * <p>
-     * In fail-fast mode only the latest error is retained; otherwise all
-     * collected messages are available in the returned result.
-     */
-    public ValidationResult validate(Object node, ValidationOptions options) {
-        if (booleanSchema) {
-            if (booleanValue) {
-                return ValidationResult.SUCCESS;
-            } else {
-                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                        PathSegment.Root.INSTANCE, keywordPs,
-                        schemaUri, "false", "schema 'false' always fails");
-                return new ValidationResult(false, null, msg);
-            }
-        }
-
-        InstancedNode instance = InstancedNode.infer(node);
-        ValidationContext ctx = new ValidationContext(options);
-        PathSegment ps = options.isFailFast() ? null : PathSegment.Root.INSTANCE;
-        evaluate(instance, ps, ctx);
-        return ctx.toResult();
-    }
-
-    public boolean isValid(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
-        return result.isValid();
-    }
-
-    /**
-     * Validates in fail-fast mode and throws on the first error.
-     */
-    public void requireValid(Object node) {
-        ValidationResult result = validate(node, ValidationOptions.FAILFAST);
-        if (!result.isValid()) throw new ValidationException(result);
-    }
-
-
-    /// Evaluate
-    /**
-     * Executes evaluator pipeline for the current instance branch.
-     */
-    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-        if (booleanSchema) {
-            if (booleanValue) {
-                return true;
-            } else {
-                ctx.addError(instance, ps, keywordPs, schemaUri, "false", "schema 'false' always fails");
-                return false;
-            }
-        }
-
-        int len = evaluators.length;
-        if (len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator) {
-            instance.createEvaluated();
-        }
-
-        boolean result = true;
-        // Only resources that declare dynamic anchors participate in runtime
-        // dynamicRef rebinding. Other resources do not need to live on the
-        // validation scope stack.
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
-        for (Evaluator evaluator : evaluators) {
-            result = result && evaluator.evaluate(instance, ps, ctx);
-            if (ctx.shouldAbort()) return result;
-        }
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
-        return result;
     }
 
 }

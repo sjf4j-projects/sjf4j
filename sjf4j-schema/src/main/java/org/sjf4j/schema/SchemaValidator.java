@@ -22,29 +22,29 @@ public final class SchemaValidator {
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
 
     private final URI baseDirUri;
+    private final boolean strictFormat;
     private final SchemaRegistry registry;
-    private final ValidationOptions options;
     private final Map<Class<?>, List<SchemaPlan>> pojoHierarchyPlansCache = new ConcurrentHashMap<>();
 
     /**
      * Creates validator with default configuration.
      * <p>
-     * Uses classpath schema base directory, {@link ValidationOptions#FAILFAST_STRICT},
-     * and an empty copied registry.
+     * Uses classpath schema base directory, fail-fast validation, strict format
+     * assertions, and an empty copied registry.
      */
     public SchemaValidator() {
-        this(null, null, null);
+        this(null, true, null);
     }
 
     /**
-     * Creates a validator with base directory, options, and registry.
+     * Creates a validator with base directory, strict format setting, and registry.
      * <p>
      * The provided registry is copied so later lazy compilation does not mutate
      * caller-owned registry state.
      */
-    public SchemaValidator(String baseDir, ValidationOptions options, SchemaRegistry registry) {
+    public SchemaValidator(String baseDir, boolean strictFormat, SchemaRegistry registry) {
         this.baseDirUri = _resolveBaseDir(baseDir);
-        this.options = options == null ? ValidationOptions.FAILFAST_STRICT : options;
+        this.strictFormat = strictFormat;
         this.registry = SchemaRegistry.copyOf(registry);
     }
 
@@ -80,7 +80,7 @@ public final class SchemaValidator {
 
         ValidationResult previous = null;
         for (SchemaPlan plan : plans) {
-            ValidationResult result = plan.validate(pojo, options);
+            ValidationResult result = plan.validate(pojo, true, strictFormat);
             result.mergePrevious(previous);
             if (!result.isValid()) return result;
             previous = result;

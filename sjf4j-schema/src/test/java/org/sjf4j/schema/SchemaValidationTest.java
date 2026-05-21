@@ -209,7 +209,7 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("y", 1);
 
-        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
         assertEquals("false", result.getLastMessage().getKeyword());
         assertEquals("/y", result.getLastMessage().getInstancePs().rootedPointerExpr());
@@ -240,7 +240,7 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("name", 1);
 
-        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
         assertEquals("type", result.getLastMessage().getKeyword());
         assertEquals("/name", result.getLastMessage().getInstancePs().rootedPointerExpr());
@@ -262,7 +262,7 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<>();
         bad.put("name", null);
 
-        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
         assertEquals("type", result.getLastMessage().getKeyword());
         assertEquals("/name", result.getLastMessage().getInstancePs().rootedPointerExpr());
@@ -274,7 +274,7 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"string\"}}");
         SchemaPlan plan = schema.createPlan();
 
-        ValidationResult result = plan.validate(Arrays.asList("ok", null), ValidationOptions.FAILFAST);
+        ValidationResult result = plan.validate(Arrays.asList("ok", null), true, false);
         assertFalse(result.isValid());
         assertEquals("type", result.getLastMessage().getKeyword());
         assertEquals("/1", result.getLastMessage().getInstancePs().rootedPointerExpr());
@@ -299,7 +299,7 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<>();
         bad.put("site", URI.create("ftp://example.com"));
 
-        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
         assertEquals("pattern", result.getLastMessage().getKeyword());
         assertEquals("/site", result.getLastMessage().getInstancePs().rootedPointerExpr());
@@ -319,7 +319,7 @@ public class SchemaValidationTest {
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("Bad-Name", 1);
 
-        ValidationResult result = plan.validate(bad, ValidationOptions.FAILFAST);
+        ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
         assertEquals("propertyNames", result.getLastMessage().getKeyword());
         assertEquals("/Bad-Name", result.getLastMessage().getInstancePs().rootedPointerExpr());
@@ -569,7 +569,7 @@ public class SchemaValidationTest {
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
 
-        ValidationResult result = plan.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build());
+        ValidationResult result = plan.validate("not-email", true);
         assertFalse(result.isValid());
     }
 
@@ -688,7 +688,7 @@ public class SchemaValidationTest {
 
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
-        assertFalse(plan.validate("not-email", new ValidationOptions.Builder().strictFormats(true).build()).isValid());
+        assertFalse(plan.validate("not-email", true).isValid());
     }
 
     @Test
@@ -730,97 +730,92 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"unknown\"}");
         SchemaPlan plan = assertDoesNotThrow(() -> schema.createPlan());
 
-        ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
-        assertTrue(plan.validate("still-valid", options).isValid());
+        assertTrue(plan.validate("still-valid", true).isValid());
     }
 
     @Test
     public void testStrictFormatValidators() {
-        ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
-
         JsonSchema hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}");
         SchemaPlan hostnamePlan = hostname.createPlan();
-        assertTrue(hostnamePlan.validate("hostname", options).isValid());
+        assertTrue(hostnamePlan.validate("hostname", true).isValid());
 
         JsonSchema ipv6 = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"ipv6\"}");
         SchemaPlan ipv6Plan = ipv6.createPlan();
-        assertTrue(ipv6Plan.validate("::1", options).isValid());
+        assertTrue(ipv6Plan.validate("::1", true).isValid());
 
         JsonSchema relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}");
         SchemaPlan relativeJsonPointerPlan = relativeJsonPointer.createPlan();
-        assertTrue(relativeJsonPointerPlan.validate("0#", options).isValid());
+        assertTrue(relativeJsonPointerPlan.validate("0#", true).isValid());
 
         JsonSchema uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}");
         SchemaPlan uriTemplatePlan = uriTemplate.createPlan();
-        assertTrue(uriTemplatePlan.validate("http://example.com/dictionary", options).isValid());
+        assertTrue(uriTemplatePlan.validate("http://example.com/dictionary", true).isValid());
     }
 
     @Test
     public void testStrictFormatValidatorsForDraft2020Fixes() {
-        ValidationOptions options = new ValidationOptions.Builder().strictFormats(true).build();
-
         SchemaPlan time = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"time\"}").createPlan();
-        assertTrue(time.validate("23:59:60Z", options).isValid());
-        assertTrue(time.validate("01:29:60+01:30", options).isValid());
-        assertFalse(time.validate("23:59:60+00:30", options).isValid());
-        assertFalse(time.validate("12:00:00", options).isValid());
+        assertTrue(time.validate("23:59:60Z", true).isValid());
+        assertTrue(time.validate("01:29:60+01:30", true).isValid());
+        assertFalse(time.validate("23:59:60+00:30", true).isValid());
+        assertFalse(time.validate("12:00:00", true).isValid());
 
         SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").createPlan();
-        assertTrue(dateTime.validate("1998-12-31T23:59:60Z", options).isValid());
-        assertFalse(dateTime.validate("+11963-06-19T08:30:06.283185Z", options).isValid());
-        assertFalse(dateTime.validate("1990-12-31T15:59:59-24:00", options).isValid());
+        assertTrue(dateTime.validate("1998-12-31T23:59:60Z", true).isValid());
+        assertFalse(dateTime.validate("+11963-06-19T08:30:06.283185Z", true).isValid());
+        assertFalse(dateTime.validate("1990-12-31T15:59:59-24:00", true).isValid());
 
         SchemaPlan duration = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"duration\"}").createPlan();
-        assertTrue(duration.validate("P1Y2M3DT4H5M6S", options).isValid());
-        assertFalse(duration.validate("P", options).isValid());
-        assertFalse(duration.validate("PT", options).isValid());
-        assertFalse(duration.validate("P1YT", options).isValid());
-        assertFalse(duration.validate("PT0.5S", options).isValid());
-        assertFalse(duration.validate("P1Y2D", options).isValid());
-        assertFalse(duration.validate("PT1H2S", options).isValid());
+        assertTrue(duration.validate("P1Y2M3DT4H5M6S", true).isValid());
+        assertFalse(duration.validate("P", true).isValid());
+        assertFalse(duration.validate("PT", true).isValid());
+        assertFalse(duration.validate("P1YT", true).isValid());
+        assertFalse(duration.validate("PT0.5S", true).isValid());
+        assertFalse(duration.validate("P1Y2D", true).isValid());
+        assertFalse(duration.validate("PT1H2S", true).isValid());
 
         SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
-        assertTrue(email.validate("\"joe bloggs\"@example.com", options).isValid());
-        assertTrue(email.validate("joe.bloggs@[127.0.0.1]", options).isValid());
-        assertTrue(email.validate("joe.bloggs@[IPv6:::1]", options).isValid());
-        assertFalse(email.validate("joe bloggs@example.com", options).isValid());
+        assertTrue(email.validate("\"joe bloggs\"@example.com", true).isValid());
+        assertTrue(email.validate("joe.bloggs@[127.0.0.1]", true).isValid());
+        assertTrue(email.validate("joe.bloggs@[IPv6:::1]", true).isValid());
+        assertFalse(email.validate("joe bloggs@example.com", true).isValid());
 
         SchemaPlan idnEmail = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-email\"}").createPlan();
-        assertTrue(idnEmail.validate("실례@실례.테스트", options).isValid());
+        assertTrue(idnEmail.validate("실례@실례.테스트", true).isValid());
 
         SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
-        assertTrue(iri.validate("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", options).isValid());
-        assertFalse(iri.validate("http://2001:0db8:85a3:0000:0000:8a2e:0370:7334", options).isValid());
+        assertTrue(iri.validate("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", true).isValid());
+        assertFalse(iri.validate("http://2001:0db8:85a3:0000:0000:8a2e:0370:7334", true).isValid());
 
         SchemaPlan iriReference = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri-reference\"}").createPlan();
-        assertTrue(iriReference.validate("//[2001:0db8:85a3:0000:0000:8a2e:0370:7334]/path", options).isValid());
-        assertFalse(iriReference.validate("//2001:0db8:85a3:0000:0000:8a2e:0370:7334/path", options).isValid());
+        assertTrue(iriReference.validate("//[2001:0db8:85a3:0000:0000:8a2e:0370:7334]/path", true).isValid());
+        assertFalse(iriReference.validate("//2001:0db8:85a3:0000:0000:8a2e:0370:7334/path", true).isValid());
 
         SchemaPlan regex = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"regex\"}").createPlan();
-        assertFalse(regex.validate("\\a", options).isValid());
+        assertFalse(regex.validate("\\a", true).isValid());
 
         SchemaPlan hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}").createPlan();
-        assertFalse(hostname.validate("xn--X", options).isValid());
-        assertFalse(hostname.validate("xn--al-0ea", options).isValid());
-        assertFalse(hostname.validate("xn--S-jib3p", options).isValid());
-        assertFalse(hostname.validate("xn--A-2hc5h", options).isValid());
-        assertFalse(hostname.validate("xn--ngb6iyr", options).isValid());
-        assertFalse(hostname.validate("xn--11b2er09f", options).isValid());
-        assertFalse(hostname.validate("XN--aa---o47jg78q", options).isValid());
-        assertTrue(hostname.validate("xn--11b2ezcw70k", options).isValid());
+        assertFalse(hostname.validate("xn--X", true).isValid());
+        assertFalse(hostname.validate("xn--al-0ea", true).isValid());
+        assertFalse(hostname.validate("xn--S-jib3p", true).isValid());
+        assertFalse(hostname.validate("xn--A-2hc5h", true).isValid());
+        assertFalse(hostname.validate("xn--ngb6iyr", true).isValid());
+        assertFalse(hostname.validate("xn--11b2er09f", true).isValid());
+        assertFalse(hostname.validate("XN--aa---o47jg78q", true).isValid());
+        assertTrue(hostname.validate("xn--11b2ezcw70k", true).isValid());
 
         SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").createPlan();
-        assertTrue(idnHostname.validate("a\u3002b", options).isValid());
-        assertFalse(idnHostname.validate("\u3002", options).isValid());
-        assertFalse(idnHostname.validate("example\u3002", options).isValid());
-        assertFalse(idnHostname.validate("\u0903hello", options).isValid());
-        assertFalse(idnHostname.validate("a\u00b7l", options).isValid());
-        assertFalse(idnHostname.validate("\u03b1\u0375", options).isValid());
-        assertFalse(idnHostname.validate("\u05f3\u05d1", options).isValid());
-        assertFalse(idnHostname.validate("def\u30fbabc", options).isValid());
-        assertFalse(idnHostname.validate("\u0628\u0660\u06f0", options).isValid());
-        assertFalse(idnHostname.validate("\u0915\u200d\u0937", options).isValid());
-        assertTrue(idnHostname.validate("\u0628\u064a\u200c\u0628\u064a", options).isValid());
+        assertTrue(idnHostname.validate("a\u3002b", true).isValid());
+        assertFalse(idnHostname.validate("\u3002", true).isValid());
+        assertFalse(idnHostname.validate("example\u3002", true).isValid());
+        assertFalse(idnHostname.validate("\u0903hello", true).isValid());
+        assertFalse(idnHostname.validate("a\u00b7l", true).isValid());
+        assertFalse(idnHostname.validate("\u03b1\u0375", true).isValid());
+        assertFalse(idnHostname.validate("\u05f3\u05d1", true).isValid());
+        assertFalse(idnHostname.validate("def\u30fbabc", true).isValid());
+        assertFalse(idnHostname.validate("\u0628\u0660\u06f0", true).isValid());
+        assertFalse(idnHostname.validate("\u0915\u200d\u0937", true).isValid());
+        assertTrue(idnHostname.validate("\u0628\u064a\u200c\u0628\u064a", true).isValid());
     }
 
     @Test
