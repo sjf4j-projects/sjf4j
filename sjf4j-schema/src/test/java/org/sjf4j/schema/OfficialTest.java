@@ -23,17 +23,16 @@ public final class OfficialTest {
     public static void main(String[] args) throws Exception {
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
 //        loadRemotes(registry, locatePath("json-schemas/remotes"));
-//        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), false);
+//        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional/format"), true, false);
 
-
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-        loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), false);
+//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
+//        loadRemotes(registry, locatePath("json-schemas/remotes"));
+//        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional/format"), true, false);
 //        runTestFile(root.resolve("dynamicRef.json"), "", "");
 
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
 //        loadRemotes(registry, locatePath("json-schemas/remotes"));
-//        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), false);
+//        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional/format"), true, false);
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
 
     }
@@ -42,24 +41,27 @@ public final class OfficialTest {
     public void testDraft7() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
         loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft7"), true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft7"), false, true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), false, true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional/format"), true, true);
     }
 
     @Test
     public void testDraft2019_09() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
         loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09"), true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09"), false, true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), false, true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional/format"), true, true);
     }
 
     @Test
     public void testDraft2020_12() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
         loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12"), true);
-        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12"), false,true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), false, true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional/format"), true,true);
     }
 
 
@@ -72,23 +74,19 @@ public final class OfficialTest {
         return Paths.get(url.toURI());
     }
 
-    private static void runTestDir(SchemaRegistry registry, Path dir, boolean canThrow) throws Exception {
+    private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow) throws Exception {
         TestSuiteReport suite = new TestSuiteReport();
         Files.walk(dir, 1)
                 .filter(p -> p.toString().endsWith(".json"))
-                .forEach(p -> runTestFile(registry, p, suite, true, null, null));
+                .forEach(p -> runTestFile(registry, p, strict, suite, true, null, null));
         printSuiteReport(suite);
         if (canThrow && (suite.error > 0 || suite.failed > 0)) {
             throw new RuntimeException("JSON Schema Official tests failed " + suite.failed + " and error " + suite.error);
         }
     }
 
-    private static void runTestFile(SchemaRegistry registry, Path file, String groupFilter, String testFilter) throws Exception {
-        TestSuiteReport suite = new TestSuiteReport();
-        runTestFile(registry, file, suite, true, groupFilter, testFilter);
-    }
 
-    private static void runTestFile(SchemaRegistry registry, Path file, TestSuiteReport suite,
+    private static void runTestFile(SchemaRegistry registry, Path file, boolean strict, TestSuiteReport suite,
                                     boolean showDetails, String groupFilter, String testFilter) {
         String fileName = file.getFileName().toString();
         TestFileReport report = suite.file(fileName);
@@ -130,7 +128,8 @@ public final class OfficialTest {
                         Object data = test.get("data");
                         boolean expected = test.getBoolean("valid");
 
-                        ValidationResult result = plan.validate(data);
+                        ValidationOptions options = strict ? ValidationOptions.FAILFAST_STRICT : ValidationOptions.FAILFAST;
+                        ValidationResult result = plan.validate(data, options);
                         boolean actual = result.isValid();
 
                         if (actual == expected) {

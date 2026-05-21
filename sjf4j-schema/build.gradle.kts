@@ -30,10 +30,12 @@ configurations {
 
 dependencies {
     implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
+    compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     testImplementation("org.yaml:snakeyaml:2.5")
+    testImplementation("com.ibm.icu:icu4j:77.1")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")

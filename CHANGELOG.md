@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `ReflectionBenchmark` and `SchemaBenchmark` JMH benchmarks to use current APIs (`pi.properties.get("name")` instead of removed `NodeRegistry.getPropertyInfo()`, `createPlan()` instead of removed `plan()`).
 - Fixed several ASM compiled-path generation issues in `sjf4j-bytecode`, including erased `get(Object)` emission, constructor/class signature generation, primitive boxing, object/primitive array loads, and `List` / `JsonArray` index method descriptors, with regression coverage for POJO, map, array, list, append, and null-chain cases.
 - Fixed draft 2020-12 schema compatibility so recognized `format-assertion` vocabularies still enforce `format`, and legacy `dependencies` continues to run for optional compatibility tests.
+- Fixed `sjf4j-schema` strict format validation coverage for official draft 2020-12 optional format cases, including hostname / IDN hostname, URI / IRI, email / IDN email, RFC 3339 time/date-time/duration, UUID, IPv4, and regex validation behavior.
 
 
 ## [1.2.3] - 2026.05.11
