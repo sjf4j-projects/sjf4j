@@ -12,8 +12,9 @@ import java.util.Map;
  * Plans from the same schema resource share fragment lookup maps:
  * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
  * its own {@code $id} compiles into a different resource and therefore gets a
- * different set of fragment maps. Instances are immutable after compilation and
- * can be reused across validations.
+ * different set of fragment maps. Additional JSON Pointer fragment targets may
+ * be compiled lazily on first resolution and cached back into the same resource
+ * lookup maps for reuse.
  */
 public final class SchemaPlan {
     final URI schemaUri;
@@ -27,10 +28,16 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byDynamicAnchorPlans;
     final Map<String, SchemaPlan> byPathPlans;
 
+    final ObjectSchema schema;
+    final SchemaDialect dialect;
+    final Map<String, Boolean> vocabulary;
+
     SchemaPlan(URI schemaUri, PathSegment keywordPs, Evaluator[] evaluators,
-                boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
-                Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
-                Map<String, SchemaPlan> byPathPlans) {
+               boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
+               Map<String, SchemaPlan> byAnchorPlans,
+               Map<String, SchemaPlan> byDynamicAnchorPlans,
+               Map<String, SchemaPlan> byPathPlans,
+               ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary) {
         this.schemaUri = schemaUri;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
@@ -41,18 +48,25 @@ public final class SchemaPlan {
         this.byAnchorPlans = byAnchorPlans;
         this.byDynamicAnchorPlans = byDynamicAnchorPlans;
         this.byPathPlans = byPathPlans;
+
+        this.schema = schema;
+        this.dialect = dialect;
+        this.vocabulary = vocabulary;
     }
 
     static SchemaPlan of(URI schemaUri, PathSegment keywordPs, BooleanSchema booleanSchema) {
         return new SchemaPlan(schemaUri, keywordPs, new Evaluator[0], true, booleanSchema.booleanValue(),
-                null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     static SchemaPlan of(URI schemaUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
-                         Map<String, SchemaPlan> byPathPlans) {
+                         Map<String, SchemaPlan> byPathPlans,
+                         ObjectSchema resourceRootSchema, SchemaDialect resourceDialect,
+                         Map<String, Boolean> resourceVocabulary) {
         return new SchemaPlan(schemaUri, keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
-                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
+                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                resourceRootSchema, resourceDialect, resourceVocabulary);
     }
 
     /**
@@ -64,7 +78,7 @@ public final class SchemaPlan {
     SchemaPlan getByFragment(String fragment) {
         // Named anchors and dynamic anchors share one fragment namespace.
         SchemaPlan plan = byAnchorPlans.get(fragment);
-        if (plan == null) return byPathPlans.get(fragment);
+        if (plan == null) plan = byPathPlans.get(fragment);
         return plan;
     }
 

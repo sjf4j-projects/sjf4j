@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.exception.SchemaException;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

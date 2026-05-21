@@ -1,4 +1,6 @@
-package org.sjf4j.exception;
+package org.sjf4j.schema;
+
+import org.sjf4j.exception.JsonException;
 
 /**
  * Exception for schema compilation/validation errors.

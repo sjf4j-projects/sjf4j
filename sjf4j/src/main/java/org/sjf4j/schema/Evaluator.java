@@ -1,15 +1,19 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.exception.SchemaException;
+import org.sjf4j.facade.StreamingReader;
+import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.node.Numbers;
 
+import java.io.StringReader;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashSet;
@@ -482,6 +486,58 @@ public interface Evaluator {
                 if (!formatValidator.validate(actual)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "format",
                             "expected format " + format + ", found '" + actual + "'");
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    // contentEncoding / contentMediaType
+    final class ContentEvaluator implements Evaluator {
+        final PathSegment contentEncodingKeywordPs;
+        final PathSegment contentMediaTypeKeywordPs;
+        final URI schemaUri;
+        final String contentEncoding;
+        final String contentMediaType;
+
+        public ContentEvaluator(PathSegment contentEncodingKeywordPs, PathSegment contentMediaTypeKeywordPs,
+                                URI schemaUri, String contentEncoding, String contentMediaType) {
+            this.contentEncodingKeywordPs = contentEncodingKeywordPs;
+            this.contentMediaTypeKeywordPs = contentMediaTypeKeywordPs;
+            this.schemaUri = schemaUri;
+            this.contentEncoding = contentEncoding;
+            this.contentMediaType = contentMediaType;
+        }
+
+        @Override
+        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+            if (instance.jsonType() != JsonType.STRING) return true;
+
+            String content = Nodes.toString(instance.node());
+            if (contentEncoding != null) {
+                if (!"base64".equalsIgnoreCase(contentEncoding)) return true;
+                try {
+                    byte[] decoded = Base64.getDecoder().decode(content);
+                    content = new String(decoded, StandardCharsets.UTF_8);
+                } catch (IllegalArgumentException e) {
+                    ctx.addError(instance, ps, contentEncodingKeywordPs, schemaUri, "contentEncoding",
+                            "expected base64-encoded content");
+                    return false;
+                }
+            }
+
+            if (contentMediaType != null) {
+                if (!"application/json".equalsIgnoreCase(contentMediaType)) return true;
+                try {
+                    SimpleJsonReader reader = new SimpleJsonReader(new StringReader(content));
+                    reader.skipNext();
+                    if (reader.peekToken() != StreamingReader.Token.UNKNOWN) {
+                        throw new IllegalArgumentException("trailing content");
+                    }
+                } catch (Exception e) {
+                    ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",
+                            "expected valid JSON content");
                     return false;
                 }
             }

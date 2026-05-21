@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.SchemaException;
 
 import java.net.URI;
 

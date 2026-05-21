@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.NodeKind;
 import org.sjf4j.path.PathSegment;

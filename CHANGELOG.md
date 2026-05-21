@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed POJO metadata APIs from field-oriented names to property-oriented names, including `NodeRegistry.FieldInfo` -> `PropertyInfo`, `fields`/`fieldCount` -> `properties`/`propertyCount`, and removal of `NodeRegistry.getFieldInfo(...)`.
 - Renamed `@NodeProperty.valueFormat` to `@NodeProperty.codecName` for clarity.
 - Added the new public `org.sjf4j.compiled.CompiledPath` API and `PathCompiler` SPI; the previous `org.sjf4j.path.CompiledPath` surface and its broader mutation/query helper set are no longer the active compiled-path entry points.
+- Moved `SchemaException` from `org.sjf4j.exception` to `org.sjf4j.schema`, and `SchemaRegistry.resolve(..., fragment)` now throws when the schema URI exists but the fragment cannot be resolved.
 
 ### Added
 - Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
@@ -45,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed property discovery fail-fast behavior for ambiguous getter/setter selection, duplicate aliases/final names, and transient fields annotated with `@NodeProperty`.
 - Fixed `ReflectionBenchmark` and `SchemaBenchmark` JMH benchmarks to use current APIs (`pi.properties.get("name")` instead of removed `NodeRegistry.getPropertyInfo()`, `createPlan()` instead of removed `plan()`).
 - Fixed several ASM compiled-path generation issues in `sjf4j-bytecode`, including erased `get(Object)` emission, constructor/class signature generation, primitive boxing, object/primitive array loads, and `List` / `JsonArray` index method descriptors, with regression coverage for POJO, map, array, list, append, and null-chain cases.
+- Fixed draft 2020-12 schema compatibility so recognized `format-assertion` vocabularies still enforce `format`, and legacy `dependencies` continues to run for optional compatibility tests.
 
 
 ## [1.2.3] - 2026.05.11

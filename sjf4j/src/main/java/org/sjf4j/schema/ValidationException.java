@@ -1,7 +1,5 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.exception.SchemaException;
-
 import java.util.Objects;
 
 

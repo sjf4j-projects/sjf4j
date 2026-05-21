@@ -1,8 +1,8 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.node.Nodes;
+import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
@@ -34,7 +34,7 @@ public final class SchemaPlanner {
     }
 
 
-    static SchemaPlan createPlan(ObjectSchema schema, SchemaRegistry registry) {
+    static SchemaPlan buildPlan(ObjectSchema schema, SchemaRegistry registry) {
         Objects.requireNonNull(schema, "schema");
         Objects.requireNonNull(registry, "registry");
 
@@ -42,7 +42,7 @@ public final class SchemaPlanner {
         URI idUri = retrievalUri != null
                 ? SchemaUtil.resolveUri(retrievalUri, schema.getCanonicalUri())
                 : SchemaUtil.resolveUri(URI.create("sjf4j:/schema-" + schema.hashCode() + "/"), schema.getCanonicalUri());
-        SchemaPlan plan = registry.resolvePlan(idUri);
+        SchemaPlan plan = registry.resolveBuilt(idUri);
         if (plan != null) return plan;
 
         PlanningContext context = new PlanningContext(registry);
@@ -54,30 +54,7 @@ public final class SchemaPlanner {
         if (retrievalUri != null && !retrievalUri.equals(idUri)) {
             context.registry.putPlan(retrievalUri, plan);
         }
-
-        for (Evaluator.RefEvaluator refEvaluator : context.refEvaluators) {
-            URI refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
-            SchemaPlan refPlan = context.registry.resolve(refUri);
-            if (refPlan == null) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
-                        refEvaluator.keywordPs, idUri));
-            }
-            refEvaluator.plan = refPlan;
-        }
-        for (Evaluator.DynamicRefEvaluator dynamicRefEvaluator : context.dynamicRefEvaluators) {
-            URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
-            SchemaPlan refPlan = context.registry.resolve(refUri);
-            if (refPlan == null) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
-                        dynamicRefEvaluator.keywordPs, idUri));
-            }
-            dynamicRefEvaluator.initialPlan = refPlan;
-            String fragment = refUri.getFragment();
-            dynamicRefEvaluator.dynamicAnchorName = fragment != null && fragment.startsWith("/")
-                    ? null : refPlan.dynamicAnchor;
-        }
+        _bindDeferredRefs(context, idUri);
         return plan;
     }
 
@@ -132,7 +109,9 @@ public final class SchemaPlanner {
 
             if (dialect == SchemaDialect.DRAFT_07) {
                 // end up
-                SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
+                SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor,
+                        byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                        schema, dialect, vocabulary);
                 byPathPlans.put(ps.rootedPointerExpr(), plan);
                 return plan;
             }
@@ -162,6 +141,22 @@ public final class SchemaPlanner {
         if (format != null && _allowsFormatKeyword(vocabulary)) {
             evaluators.add(new Evaluator.FormatEvaluator(new PathSegment.Name(ps, "format"), idUri,
                     format, _isFormatAssertionEnabled(vocabulary)));
+        }
+
+        // contentEncoding / contentMediaType (draft7 optional support)
+        if (dialect == SchemaDialect.DRAFT_07) {
+            String contentEncoding = _allowsKeyword(dialect, vocabulary, "contentEncoding")
+                    ? schema.getString("contentEncoding")
+                    : null;
+            String contentMediaType = _allowsKeyword(dialect, vocabulary, "contentMediaType")
+                    ? schema.getString("contentMediaType")
+                    : null;
+            if (contentEncoding != null || contentMediaType != null) {
+                evaluators.add(new Evaluator.ContentEvaluator(
+                        new PathSegment.Name(ps, "contentEncoding"),
+                        new PathSegment.Name(ps, "contentMediaType"),
+                        idUri, contentEncoding, contentMediaType));
+            }
         }
 
         // type
@@ -265,30 +260,28 @@ public final class SchemaPlanner {
         }
 
         // dependencies
-        if (dialect == SchemaDialect.DRAFT_2019_09 || dialect == SchemaDialect.DRAFT_07) {
-            Object dependenciesNode = schema.getNode("dependencies");
-            Map<String, String[]> dependenciesRequired = null;
-            Map<String, SchemaPlan> dependenciesPlans = null;
-            if (dependenciesNode != null && JsonType.of(dependenciesNode).isObject()) {
-                PathSegment cps = new PathSegment.Name(ps, "dependencies");
-                for (Map.Entry<String, Object> entry : Nodes.toMap(dependenciesNode).entrySet()) {
-                    Object value = entry.getValue();
-                    JsonType valueType = JsonType.of(value);
-                    if (valueType.isArray()) {
-                        if (dependenciesRequired == null) dependenciesRequired = new HashMap<>();
-                        dependenciesRequired.put(entry.getKey(), Nodes.toArray(value, String.class));
-                    } else if (valueType.isObject() || valueType.isBoolean()) {
-                        if (dependenciesPlans == null) dependenciesPlans = new HashMap<>();
-                        PathSegment ccps = new PathSegment.Name(cps, entry.getKey());
-                        dependenciesPlans.put(entry.getKey(), _buildPlanFromNode(value, idUri, ccps,
-                                byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary));
-                    }
+        Object dependenciesNode = schema.getNode("dependencies");
+        Map<String, String[]> dependenciesRequired = null;
+        Map<String, SchemaPlan> dependenciesPlans = null;
+        if (dependenciesNode != null && JsonType.of(dependenciesNode).isObject()) {
+            PathSegment cps = new PathSegment.Name(ps, "dependencies");
+            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(dependenciesNode)) {
+                Object value = entry.getValue();
+                JsonType valueType = JsonType.of(value);
+                if (valueType.isArray()) {
+                    if (dependenciesRequired == null) dependenciesRequired = new HashMap<>();
+                    dependenciesRequired.put(entry.getKey(), Nodes.toArray(value, String.class));
+                } else if (valueType.isObject() || valueType.isBoolean()) {
+                    if (dependenciesPlans == null) dependenciesPlans = new HashMap<>();
+                    PathSegment ccps = new PathSegment.Name(cps, entry.getKey());
+                    SchemaPlan childPlan = _buildPlanFromNode(value, idUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                    dependenciesPlans.put(entry.getKey(), childPlan);
                 }
             }
-            if (dependenciesRequired != null || dependenciesPlans != null) {
-                evaluators.add(new Evaluator.DependenciesEvaluator(new PathSegment.Name(ps, "dependencies"), idUri,
-                        dependenciesRequired, dependenciesPlans));
-            }
+        }
+        if (dependenciesRequired != null || dependenciesPlans != null) {
+            evaluators.add(new Evaluator.DependenciesEvaluator(new PathSegment.Name(ps, "dependencies"), idUri,
+                    dependenciesRequired, dependenciesPlans));
         }
 
         // propertyNames
@@ -411,13 +404,32 @@ public final class SchemaPlanner {
         }
 
         // end up
-        SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans);
+        SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor,
+                byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                schema, dialect, vocabulary);
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", idUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", idUri, ps);
             byDynamicAnchorPlans.put(dynamicAnchor, plan);
         }
         byPathPlans.put(ps.rootedPointerExpr(), plan);
+        return plan;
+    }
+
+    static SchemaPlan lazyBuildPlanByPath(SchemaPlan resourcePlan, String path, SchemaRegistry registry) {
+        Objects.requireNonNull(resourcePlan, "resourcePlan");
+        Objects.requireNonNull(path, "path");
+        Objects.requireNonNull(registry, "registry");
+        if (!path.startsWith("/") || resourcePlan.schema == null) return null;
+
+        JsonPath jsonPath = JsonPath.parse(path);
+        Object node = jsonPath.getNode(resourcePlan.schema);
+        if (node == null) return null;
+        PlanningContext context = new PlanningContext(registry);
+        SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.schemaUri, jsonPath.tail(),
+                resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
+                context, resourcePlan.dialect, resourcePlan.vocabulary);
+        _bindDeferredRefs(context, resourcePlan.schemaUri);
         return plan;
     }
 
@@ -509,6 +521,7 @@ public final class SchemaPlanner {
         PathSegment cps = new PathSegment.Name(ps, key);
         return _buildPlanFromNode(subNode, baseUri, cps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
     }
+
     /**
      * Compiles a schema node into a {@link SchemaPlan}.
      * <p>
@@ -568,6 +581,32 @@ public final class SchemaPlanner {
         }
         byPathPlans.put(path, plan);
         return plan;
+    }
+
+    private static void _bindDeferredRefs(PlanningContext context, URI idUri) {
+        for (Evaluator.RefEvaluator refEvaluator : context.refEvaluators) {
+            URI refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
+            SchemaPlan refPlan = context.registry.resolve(refUri);
+            if (refPlan == null) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
+                        refEvaluator.keywordPs, idUri));
+            }
+            refEvaluator.plan = refPlan;
+        }
+        for (Evaluator.DynamicRefEvaluator dynamicRefEvaluator : context.dynamicRefEvaluators) {
+            URI refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
+            SchemaPlan refPlan = context.registry.resolve(refUri);
+            if (refPlan == null) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cannot resolve $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
+                        dynamicRefEvaluator.keywordPs, idUri));
+            }
+            dynamicRefEvaluator.initialPlan = refPlan;
+            String fragment = refUri.getFragment();
+            dynamicRefEvaluator.dynamicAnchorName = fragment != null && fragment.startsWith("/")
+                    ? null : refPlan.dynamicAnchor;
+        }
     }
 
     private static SchemaDialect _resolveDialect(ObjectSchema schema, SchemaDialect inheritedDialect) {
@@ -669,12 +708,13 @@ public final class SchemaPlanner {
     /**
      * Returns whether {@code format} should behave as an assertion by default.
      * <p>
-     * Optional format-assertion support keeps the keyword active, but only an
-     * explicit {@code true} entry enables assertion behavior automatically.
+     * Once the implementation recognizes the format-assertion vocabulary, the
+     * boolean value only affects unknown-vocabulary handling. Presence of the
+     * vocabulary entry means {@code format} behaves as an assertion.
      */
     private static boolean _isFormatAssertionEnabled(Map<String, Boolean> vocabulary) {
         return vocabulary != null &&
-                Boolean.TRUE.equals(vocabulary.get(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT_ASSERTION));
+                vocabulary.containsKey(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT_ASSERTION);
     }
 
 

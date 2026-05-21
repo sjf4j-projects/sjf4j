@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 

@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.util.Strings;
 
 import java.net.URI;

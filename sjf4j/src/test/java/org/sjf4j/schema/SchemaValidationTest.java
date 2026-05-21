@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 
@@ -374,7 +373,7 @@ public class SchemaValidationTest {
     }
 
     @Test
-    public void testDraft2020DependenciesIgnored() {
+    public void testDraft2020DependenciesCompatibility() {
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"," +
                 "\"type\":\"object\"," +
@@ -382,7 +381,8 @@ public class SchemaValidationTest {
                 "}");
         SchemaPlan plan = schema.createPlan();
 
-        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
+        assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":2}")));
+        assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
     }
 
     @Test
@@ -629,7 +629,7 @@ public class SchemaValidationTest {
     }
 
     @Test
-    public void testOptionalFormatAssertionVocabularyDoesNotForceAssertion() {
+    public void testOptionalFormatAssertionVocabularyStillForcesAssertionWhenRecognized() {
         ObjectSchema metaSchema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$id\":\"https://example.com/meta/format-optional\"," +
                 "\"$vocabulary\":{" +
@@ -647,7 +647,7 @@ public class SchemaValidationTest {
         SchemaPlan plan = schema.createPlan(registry);
 
         assertTrue(plan.isValid("a@b.com"));
-        assertTrue(plan.isValid("not-email"));
+        assertFalse(plan.isValid("not-email"));
     }
 
     @Test

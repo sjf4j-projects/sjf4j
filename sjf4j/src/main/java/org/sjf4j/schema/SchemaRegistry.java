@@ -1,14 +1,8 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.Sjf4j;
-import org.sjf4j.exception.SchemaException;
 import org.sjf4j.path.PathSegment;
 
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -83,7 +77,7 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing schema uri: no $id or retrievalUri", null, (String) null));
+                    "missing root schema uri: no $id or retrievalUri", null, (String) null));
         }
         _putSchema(canonicalUri, os);
 
@@ -117,10 +111,10 @@ public class SchemaRegistry {
                 : os.getCanonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing schema uri: no $id or retrievalUri", null, (String) null));
+                    "missing root schema uri: no $id or retrievalUri", null, (String) null));
         }
         index(os);
-        return SchemaPlanner.createPlan(os, this);
+        return SchemaPlanner.buildPlan(os, this);
     }
 
 
@@ -150,12 +144,15 @@ public class SchemaRegistry {
     }
 
     private void _checkUri(URI uri) {
-        if (uri.toString().isEmpty())
+        Objects.requireNonNull(uri, "uri");
+        if (uri.toString().isEmpty()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema resource uri should not be empty", null, (String) null));
-        if (!uri.isAbsolute())
+                    "schema uri must not be empty", null, (String) null));
+        }
+        if (!uri.isAbsolute()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema resource uri must be absolute", null, uri.toString()));
+                    "schema uri must be absolute", null, uri.toString()));
+        }
     }
 
     /**
@@ -194,12 +191,11 @@ public class SchemaRegistry {
      */
     public SchemaPlan resolve(URI uri) {
         Objects.requireNonNull(uri, "uri");
-        String mixed = uri.toString();
+        String id = uri.toString();
         String fragment = uri.getFragment();
-        if (fragment == null) return resolve(mixed, null);
-        return resolve(SchemaUtil.stripFragment(mixed), fragment);
+        if (fragment != null) id = SchemaUtil.stripFragment(id);
+        return _resolvePlan(id, fragment, true);
     }
-
 
     /**
      * Resolves a resource by normalized absolute URI plus optional fragment.
@@ -208,30 +204,50 @@ public class SchemaRegistry {
      * same resource URI, compilation is triggered lazily at this point.
      */
     public SchemaPlan resolve(String id, String fragment) {
-        id = SchemaUtil.normalizeUriKey(id);
-        SchemaPlan plan = _resolvePlan(id, fragment);
-        if (plan != null) return plan;
+        Objects.requireNonNull(id, "id");
+        return _resolvePlan(id, fragment, true);
+    }
 
-        ObjectSchema schema = byIdSchemas.get(id);
-        if (schema != null) {
-            plan = SchemaPlanner.createPlan(schema, this);
-            if (fragment == null || fragment.isEmpty()) return plan;
-            return plan.getByFragment(fragment);
+    SchemaPlan resolveBuilt(URI uri) {
+        Objects.requireNonNull(uri, "uri");
+        String id = uri.toString();
+        String fragment = uri.getFragment();
+        if (fragment != null) id = SchemaUtil.stripFragment(id);
+        return _resolvePlan(id, fragment, false);
+    }
+
+    private SchemaPlan _resolvePlan(String id, String fragment, boolean allowBuild) {
+        id = SchemaUtil.normalizeUriKey(id);
+        SchemaPlan plan = byIdPlans.get(id);
+        if (plan != null) return _resolveByFragment(plan, fragment);
+
+        if (allowBuild) {
+            ObjectSchema schema = byIdSchemas.get(id);
+            if (schema != null) {
+                plan = SchemaPlanner.buildPlan(schema, this);
+                return _resolveByFragment(plan, fragment);
+            }
         }
 
         if (this != GLOBAL_SCHEMA_REGISTRY) {
-            return GLOBAL_SCHEMA_REGISTRY.resolve(id, fragment);
+            return GLOBAL_SCHEMA_REGISTRY._resolvePlan(id, fragment, allowBuild);
         }
-
         return null;
     }
 
-    SchemaPlan resolvePlan(URI uri) {
-        Objects.requireNonNull(uri, "uri");
-        String mixed = uri.toString();
-        String fragment = uri.getFragment();
-        if (fragment == null) return _resolvePlan(mixed, null);
-        return _resolvePlan(SchemaUtil.stripFragment(mixed), fragment);
+    private SchemaPlan _resolveByFragment(SchemaPlan rootPlan, String fragment) {
+        if (fragment == null || fragment.isEmpty()) return rootPlan;
+        SchemaPlan plan = rootPlan.getByFragment(fragment);
+        if (plan == null) {
+            plan = SchemaPlanner.lazyBuildPlanByPath(rootPlan, fragment, this);
+        }
+        if (plan == null) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cannot resolve schema fragment '#" + fragment + "'",
+                    null, rootPlan.schemaUri));
+        }
+
+        return plan;
     }
 
     /**
@@ -252,20 +268,6 @@ public class SchemaRegistry {
         return null;
     }
 
-    private SchemaPlan _resolvePlan(String id, String fragment) {
-        Objects.requireNonNull(id, "id");
-        id = SchemaUtil.normalizeUriKey(id);
-        SchemaPlan plan = byIdPlans.get(id);
-        if (plan != null) {
-            if (fragment == null || fragment.isEmpty()) return plan;
-            return plan.getByFragment(fragment);
-        }
-
-        if (this != GLOBAL_SCHEMA_REGISTRY) {
-            return GLOBAL_SCHEMA_REGISTRY._resolvePlan(id, fragment);
-        }
-        return null;
-    }
 
     public int size() {
         return idSet().size();
@@ -303,7 +305,7 @@ public class SchemaRegistry {
 
     /// Global
     public static final SchemaRegistry GLOBAL_SCHEMA_REGISTRY = new SchemaRegistry();
-    public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:///json-schemas/");
+    public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
 
     /**
      * Resolves a schema from the global built-in registry.
@@ -345,7 +347,7 @@ public class SchemaRegistry {
         URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
         ObjectSchema schema = SchemaUtil.loadSchemaFromLocalUri(uri);
         if (schema == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                "global schema resource not found", null, uri.toString()));
+                "global schema not found", null, uri.toString()));
         GLOBAL_SCHEMA_REGISTRY.index(schema);
         if (alias != null && !alias.isEmpty()) {
             GLOBAL_SCHEMA_REGISTRY._putSchema(URI.create(alias), schema);

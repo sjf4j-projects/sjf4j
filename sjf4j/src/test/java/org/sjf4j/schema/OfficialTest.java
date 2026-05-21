@@ -20,14 +20,14 @@ public final class OfficialTest {
 //        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), false);
 
 
-//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-//        loadRemotes(registry, locatePath("json-schemas/remotes"));
-//        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), false);
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
+        loadRemotes(registry, locatePath("json-schemas/remotes"));
+        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), false);
 //        runTestFile(root.resolve("dynamicRef.json"), "", "");
 
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-        loadRemotes(registry, locatePath("json-schemas/remotes"));
-        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), false);
+//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
+//        loadRemotes(registry, locatePath("json-schemas/remotes"));
+//        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), false);
 //        runTestFile(root.resolve("vocabulary.json"), "", "");
 
     }
@@ -37,6 +37,7 @@ public final class OfficialTest {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
         loadRemotes(registry, locatePath("json-schemas/remotes"));
         runTestDir(registry, locatePath("json-schemas/tests/draft7"), true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft7/optional"), true);
     }
 
     @Test
@@ -44,6 +45,7 @@ public final class OfficialTest {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
         loadRemotes(registry, locatePath("json-schemas/remotes"));
         runTestDir(registry, locatePath("json-schemas/tests/draft2019-09"), true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2019-09/optional"), true);
     }
 
     @Test
@@ -51,6 +53,7 @@ public final class OfficialTest {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
         loadRemotes(registry, locatePath("json-schemas/remotes"));
         runTestDir(registry, locatePath("json-schemas/tests/draft2020-12"), true);
+        runTestDir(registry, locatePath("json-schemas/tests/draft2020-12/optional"), true);
     }
 
 
