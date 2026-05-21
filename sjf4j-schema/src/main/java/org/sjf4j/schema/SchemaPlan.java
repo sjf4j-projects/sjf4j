@@ -18,20 +18,10 @@ import java.util.Map;
  */
 public final class SchemaPlan {
 
-    private boolean strictFormat;
-
     /// Validate
 
-    public void setStrictFormat(boolean strictFormat) {
-        this.strictFormat = strictFormat;
-    }
-
-    public boolean isStrictFormat() {
-        return strictFormat;
-    }
-
     public ValidationResult validate(Object node) {
-        return validate(node, false, strictFormat);
+        return validate(node, false, false);
     }
 
     public ValidationResult validate(Object node, boolean strictFormat) {
@@ -64,7 +54,7 @@ public final class SchemaPlan {
     }
 
     public boolean isValid(Object node) {
-        ValidationResult result = validate(node, true, strictFormat);
+        ValidationResult result = validate(node, true, false);
         return result.isValid();
     }
 
@@ -77,7 +67,7 @@ public final class SchemaPlan {
      * Validates in fail-fast mode and throws on the first error.
      */
     public void requireValid(Object node) {
-        requireValid(node, strictFormat);
+        requireValid(node, false);
     }
 
     /**

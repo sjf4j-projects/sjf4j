@@ -22,8 +22,8 @@ public final class SchemaValidator {
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
 
     private final URI baseDirUri;
-    private final boolean strictFormat;
     private final SchemaRegistry registry;
+    private final boolean strictFormat;
     private final Map<Class<?>, List<SchemaPlan>> pojoHierarchyPlansCache = new ConcurrentHashMap<>();
 
     /**
@@ -33,7 +33,7 @@ public final class SchemaValidator {
      * assertions, and an empty copied registry.
      */
     public SchemaValidator() {
-        this(null, true, null);
+        this(null, null, true);
     }
 
     /**
@@ -42,10 +42,10 @@ public final class SchemaValidator {
      * The provided registry is copied so later lazy compilation does not mutate
      * caller-owned registry state.
      */
-    public SchemaValidator(String baseDir, boolean strictFormat, SchemaRegistry registry) {
+    public SchemaValidator(String baseDir, SchemaRegistry registry, boolean strictFormat) {
         this.baseDirUri = _resolveBaseDir(baseDir);
-        this.strictFormat = strictFormat;
         this.registry = SchemaRegistry.copyOf(registry);
+        this.strictFormat = strictFormat;
     }
 
     private URI _resolveBaseDir(String baseDir) {

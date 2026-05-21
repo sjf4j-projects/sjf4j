@@ -37,10 +37,6 @@ class SchemaPlanTest {
 
         assertTrue(plan.validate("not-email").isValid());
         assertFalse(plan.validate("not-email", true).isValid());
-
-        plan.setStrictFormat(true);
-        assertFalse(plan.validate("not-email").isValid());
-        assertFalse(plan.isValid("not-email"));
     }
 
     @Test

@@ -5,17 +5,11 @@ import java.net.URI;
 /**
  * Lightweight JSON Schema draft detection for planning decisions.
  */
-public final class SchemaDialect {
+public enum SchemaDialect {
+    DRAFT_07,
+    DRAFT_2019_09,
+    DRAFT_2020_12;
 
-    public static final SchemaDialect DRAFT_2020_12 = new SchemaDialect("2020-12");
-    public static final SchemaDialect DRAFT_2019_09 = new SchemaDialect("2019-09");
-    public static final SchemaDialect DRAFT_07 = new SchemaDialect("draft-07");
-
-    public final String name;
-
-    private SchemaDialect(String name) {
-        this.name = name;
-    }
 
     public static SchemaDialect detect(String schemaUri) {
         if (schemaUri == null || schemaUri.isEmpty()) return null;
@@ -34,6 +28,38 @@ public final class SchemaDialect {
 
     public static SchemaDialect detect(URI schemaUri) {
         return schemaUri == null ? null : detect(schemaUri.toString());
+    }
+
+    boolean supportsKeyword(String keyword) {
+        switch (this) {
+            case DRAFT_07:
+                switch (keyword) {
+                    case "$defs":
+                    case "$anchor":
+                    case "$dynamicAnchor":
+                    case "$dynamicRef":
+                    case "$recursiveAnchor":
+                    case "$recursiveRef":
+                    case "$vocabulary":
+                    case "dependentRequired":
+                    case "dependentSchemas":
+                    case "unevaluatedItems":
+                    case "unevaluatedProperties":
+                    case "prefixItems":
+                        return false;
+                }
+                return true;
+            case DRAFT_2019_09:
+                switch (keyword) {
+                    case "$dynamicRef":
+                    case "$dynamicAnchor":
+                    case "prefixItems":
+                        return false;
+                }
+                return true;
+            default:
+                return true;
+        }
     }
 
 }

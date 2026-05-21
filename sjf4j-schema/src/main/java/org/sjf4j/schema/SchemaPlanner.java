@@ -656,31 +656,7 @@ public final class SchemaPlanner {
      * are skipped during compilation.
      */
     private static boolean _allowsKeyword(SchemaDialect dialect, Map<String, Boolean> vocabulary, String keyword) {
-        if (dialect == SchemaDialect.DRAFT_07) {
-            switch (keyword) {
-                case "$defs":
-                case "$anchor":
-                case "$dynamicAnchor":
-                case "$dynamicRef":
-                case "$recursiveAnchor":
-                case "$recursiveRef":
-                case "$vocabulary":
-                case "dependentRequired":
-                case "dependentSchemas":
-                case "unevaluatedItems":
-                case "unevaluatedProperties":
-                case "prefixItems":
-                    return false;
-            }
-        }
-        if (dialect == SchemaDialect.DRAFT_2019_09) {
-            switch (keyword) {
-                case "$dynamicRef":
-                case "$dynamicAnchor":
-                case "prefixItems":
-                    return false;
-            }
-        }
+        if (!dialect.supportsKeyword(keyword)) return false;
 
         if (vocabulary == null) return true;
         String[] vocabUris = VocabularyRegistry.getVocabUris(keyword);

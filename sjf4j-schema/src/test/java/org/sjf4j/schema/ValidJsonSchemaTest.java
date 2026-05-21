@@ -110,7 +110,7 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testAnchoredSchemaOnClass() {
-        SchemaValidator validator = new SchemaValidator(null, true, null);
+        SchemaValidator validator = new SchemaValidator(null, null, true);
         AnchoredUser ok = new AnchoredUser();
         ok.name = "han";
         ok.email = "han@example.com";
@@ -167,7 +167,7 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testPointerRefInSchema() {
-        SchemaValidator validator = new SchemaValidator(null, true, null);
+        SchemaValidator validator = new SchemaValidator(null, null, true);
         PointerRefUser ok = new PointerRefUser();
         ok.name = "han";
         ok.email = "han@example.com";
@@ -215,7 +215,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, schema.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         ExternalBaseUser ok = new ExternalBaseUser();
         ok.name = "han";
         assertTrue(validator.validate(ok).isValid());
@@ -233,7 +233,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, schema.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         MetaplusDoc ok = new MetaplusDoc();
         ok.name = "han";
         assertTrue(validator.validate(ok).isValid());
@@ -251,7 +251,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, schema.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         FullNameOnlyUser ok = new FullNameOnlyUser();
         ok.name = "han";
 
@@ -265,7 +265,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         ExternalRefUser ok = new ExternalRefUser();
         ok.id = 1;
         ok.name = "han";
@@ -275,7 +275,7 @@ public class ValidJsonSchemaTest {
     @Test
     public void testPreloadMissingRefThrows(@TempDir Path tempDir) {
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         MissingRefUser user = new MissingRefUser();
         user.name = "han";
         assertThrows(SchemaException.class, () -> validator.validate(user));
@@ -284,7 +284,7 @@ public class ValidJsonSchemaTest {
     @Test
     public void testExplicitMissingRefThrows(@TempDir Path tempDir) {
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         MissingRefUser user = new MissingRefUser();
         user.name = "han";
         assertThrows(SchemaException.class, () -> validator.validate(user));
@@ -296,7 +296,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         PreloadUser ok = new PreloadUser();
         ok.id = 1;
         ok.name = "han";
@@ -322,7 +322,7 @@ public class ValidJsonSchemaTest {
         Files.write(defsDir.resolve("non-empty-string.json"), leafSchema.getBytes(StandardCharsets.UTF_8));
 
         String baseDir = "file:" + tempDir.toString();
-        SchemaValidator validator = new SchemaValidator(baseDir, true, null);
+        SchemaValidator validator = new SchemaValidator(baseDir, null, true);
         validator.load("defs/non-empty-string.json");
 
         NoIdRelativeRefUser ok = new NoIdRelativeRefUser();
@@ -377,7 +377,7 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testDefaultStrictFormatDisabled() {
-        SchemaValidator validator = new SchemaValidator(null, false, null);
+        SchemaValidator validator = new SchemaValidator(null, null, false);
         FormatUser user = new FormatUser();
         user.email = "not-email";
         assertTrue(validator.validate(user).isValid());

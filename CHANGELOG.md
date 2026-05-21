@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the new public `org.sjf4j.compiled.CompiledPath` API and `PathCompiler` SPI; the previous `org.sjf4j.path.CompiledPath` surface and its broader mutation/query helper set are no longer the active compiled-path entry points.
 - Moved `SchemaException` from `org.sjf4j.exception` to `org.sjf4j.schema`, and `SchemaRegistry.resolve(..., fragment)` now throws when the schema URI exists but the fragment cannot be resolved.
 - Tightened direct indexed array replacement semantics so `Nodes.setInArray(...)` and ASM compiled-path indexed `put(...)` no longer append when `idx == size`; callers that need replace-or-append behavior must use `Nodes.putInArray(...)` or explicit append-path syntax where supported.
+- Removed `ValidationOptions` from `sjf4j-schema`; `SchemaPlan` and `SchemaValidator` now express fail-fast and strict-format behavior directly through explicit boolean-based methods and constructors instead of an options wrapper.
 
 ### Added
 - Added merged JaCoCo coverage report in `sjf4j-jdk17-test` that aggregates coverage data from all submodules (`sjf4j`, `sjf4j-bytecode`, `sjf4j-schema`).
@@ -44,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed POJO-backed object writes in `Nodes.putInObject(...)`, `JsonObject.put(...)`, and path-driven `put(...)` helpers to return `null` instead of reading old property values, while map-like/object-node writes continue returning their native previous values.
 - Changed path/container docs to clarify replace-vs-append behavior across `Nodes.putInArray(...)`, path helpers, and stricter ASM compiled-path indexed writes.
 - Changed `sjf4j-schema` to expose `sjf4j` as an `api` dependency, and normalized Gradle plugin declarations to explicit `java-library` / `jacoco` IDs across modules.
+- Changed schema validation runtime configuration to use primitive flags internally: `SchemaPlan.validate(...)` now has explicit `failFast` / `strictFormat` overloads, while `SchemaValidator` keeps its default fail-fast + strict-format behavior through a boolean constructor parameter.
 
 ### Removed
 - Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
