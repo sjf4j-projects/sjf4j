@@ -15,6 +15,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.compiled.CompiledPath;
 import org.sjf4j.compiled.FallbackCompiledPath;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 
 import java.util.ArrayList;
@@ -36,9 +37,9 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Warmup(iterations = 8, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 8, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 2)
+@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class CompiledPathBenchmark {
@@ -240,39 +241,51 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public String color_native(BenchmarkState s) {
-        return s.pojo.store.bicycle.color;
+    public String get_color_native(BenchmarkState s) {
+        Root root = s.pojo;
+        if (root == null) {
+            return null;
+        }
+        Store store = root.store;
+        if (store == null) {
+            return null;
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            return null;
+        }
+        return bicycle.color;
     }
 
     @Benchmark
-    public String color_bytecode(BenchmarkState s) {
+    public String get_color_bytecode(BenchmarkState s) {
         return s.colorAsm.get(s.pojo);
     }
 
     @Benchmark
-    public String color_fallback(BenchmarkState s) {
+    public String get_color_fallback(BenchmarkState s) {
         return s.colorFallback.get(s.pojo);
     }
 
     @Benchmark
-    public Object color_rawJsonPath(BenchmarkState s) {
+    public Object get_color_rawJsonPath(BenchmarkState s) {
         return s.colorRaw.getNode(s.pojo);
     }
 
     /** null 中间路径测试 */
     @Benchmark
-    public String color_bytecode_empty(BenchmarkState s) {
+    public String get_color_bytecode_empty(BenchmarkState s) {
         return s.colorAsm.get(s.emptyRoot);
     }
 
     @Benchmark
-    public String color_fallback_empty(BenchmarkState s) {
+    public String get_color_fallback_empty(BenchmarkState s) {
         return s.colorFallback.get(s.emptyRoot);
     }
 
     /** null root 测试 */
     @Benchmark
-    public String color_bytecode_null(BenchmarkState s) {
+    public String get_color_bytecode_null(BenchmarkState s) {
         return s.colorAsm.get(null);
     }
 
@@ -282,22 +295,34 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double price_native(BenchmarkState s) {
-        return s.pojo.store.bicycle.price;
+    public Double get_price_native(BenchmarkState s) {
+        Root root = s.pojo;
+        if (root == null) {
+            return null;
+        }
+        Store store = root.store;
+        if (store == null) {
+            return null;
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            return null;
+        }
+        return bicycle.price;
     }
 
     @Benchmark
-    public Double price_bytecode(BenchmarkState s) {
+    public Double get_price_bytecode(BenchmarkState s) {
         return s.priceAsm.get(s.pojo);
     }
 
     @Benchmark
-    public Double price_fallback(BenchmarkState s) {
+    public Double get_price_fallback(BenchmarkState s) {
         return s.priceFallback.get(s.pojo);
     }
 
     @Benchmark
-    public Object price_rawJsonPath(BenchmarkState s) {
+    public Object get_price_rawJsonPath(BenchmarkState s) {
         return s.priceRaw.getNode(s.pojo);
     }
 
@@ -307,22 +332,38 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double bookPrice_native(BenchmarkState s) {
-        return s.pojo.store.book.get(1).price;
+    public Double get_bookPrice_native(BenchmarkState s) {
+        Root root = s.pojo;
+        if (root == null) {
+            return null;
+        }
+        Store store = root.store;
+        if (store == null) {
+            return null;
+        }
+        List<Book> book = store.book;
+        if (book == null) {
+            return null;
+        }
+        Book item = book.get(1);
+        if (item == null) {
+            return null;
+        }
+        return item.price;
     }
 
     @Benchmark
-    public Double bookPrice_bytecode(BenchmarkState s) {
+    public Double get_bookPrice_bytecode(BenchmarkState s) {
         return s.bookPriceAsm.get(s.pojo);
     }
 
     @Benchmark
-    public Double bookPrice_fallback(BenchmarkState s) {
+    public Double get_bookPrice_fallback(BenchmarkState s) {
         return s.bookPriceFallback.get(s.pojo);
     }
 
     @Benchmark
-    public Object bookPrice_rawJsonPath(BenchmarkState s) {
+    public Object get_bookPrice_rawJsonPath(BenchmarkState s) {
         return s.bookPriceRaw.getNode(s.pojo);
     }
 
@@ -332,24 +373,32 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double pricePut_native(PutBenchmarkState s) {
-        Double old = s.pricePojo.store.bicycle.price;
-        s.pricePojo.store.bicycle.price = s.nextPrice;
-        return old;
+    public Double put_price_native(PutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            throw new JsonException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            throw new JsonException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
+        }
+        bicycle.price = s.nextPrice;
+        return null;
     }
 
     @Benchmark
-    public Double pricePut_bytecode(PutBenchmarkState s) {
+    public Double put_price_bytecode(PutBenchmarkState s) {
         return s.priceAsm.put(s.pricePojo, s.nextPrice);
     }
 
     @Benchmark
-    public Double pricePut_fallback(PutBenchmarkState s) {
+    public Double put_price_fallback(PutBenchmarkState s) {
         return s.priceFallback.put(s.pricePojo, s.nextPrice);
     }
 
     @Benchmark
-    public Object pricePut_rawJsonPath(PutBenchmarkState s) {
+    public Object put_price_rawJsonPath(PutBenchmarkState s) {
         return s.priceRaw.put(s.pricePojo, s.nextPrice);
     }
 
@@ -359,24 +408,36 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double bookPricePut_native(PutBenchmarkState s) {
-        Double old = s.bookPricePojo.store.book.get(1).price;
-        s.bookPricePojo.store.book.get(1).price = s.nextBookPrice;
-        return old;
+    public Double put_bookPrice_native(PutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+        }
+        List<Book> book = store.book;
+        if (book == null) {
+            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+        }
+        Book item = book.get(1);
+        if (item == null) {
+            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+        }
+        item.price = s.nextBookPrice;
+        return null;
     }
 
     @Benchmark
-    public Double bookPricePut_bytecode(PutBenchmarkState s) {
+    public Double put_bookPrice_bytecode(PutBenchmarkState s) {
         return s.bookPriceAsm.put(s.bookPricePojo, s.nextBookPrice);
     }
 
     @Benchmark
-    public Double bookPricePut_fallback(PutBenchmarkState s) {
+    public Double put_bookPrice_fallback(PutBenchmarkState s) {
         return s.bookPriceFallback.put(s.bookPricePojo, s.nextBookPrice);
     }
 
     @Benchmark
-    public Object bookPricePut_rawJsonPath(PutBenchmarkState s) {
+    public Object put_bookPrice_rawJsonPath(PutBenchmarkState s) {
         return s.bookPriceRaw.put(s.bookPricePojo, s.nextBookPrice);
     }
 

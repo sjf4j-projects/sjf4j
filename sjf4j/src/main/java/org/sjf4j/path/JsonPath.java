@@ -62,6 +62,7 @@ public class JsonPath {
     }
 
     protected JsonPath(String raw, PathSegment[] segments) {
+        if (segments.length == 0) throw new JsonException("segments must not be empty");
         this.raw = raw;
         this.segments = segments;
 
@@ -127,6 +128,11 @@ public class JsonPath {
         return segments.length;
     }
 
+    /**
+     * Returns the parsed path segments in stored order.
+     * <p>
+     * The returned array is the internal segment array and is not copied.
+     */
     public PathSegment[] segments() {
         return segments;
     }
@@ -151,25 +157,52 @@ public class JsonPath {
     }
 
     /**
-     * Returns the first token in the path without removing it.
-     *
-     * @return the first path token
+     * Returns whether this path starts from an explicit root token.
+     * <p>
+     * This is true for JSONPath expressions like {@code $.a} and JSON Pointer
+     * expressions like {@code /a}.
      */
-    public PathSegment head() {
-        return segments.length > 0 ? segments[0] : null;
-    }
-
-    public PathSegment tail() {
-        return segments.length > 0 ? segments[segments.length - 1] : null;
+    public boolean rooted() {
+        return segments[0] instanceof PathSegment.Root;
     }
 
     /**
-     * Returns true if the path uses only root/name/index tokens.
+     * Returns the first non-root token in the path.
+     * <p>
+     * For a root-only path, returns {@code null}.
+     *
+     * @return the first segment after {@link PathSegment.Root}, or {@code null}
+     */
+    public PathSegment head() {
+        return segments.length > 1 ? segments[1] : null;
+    }
+
+    /**
+     * Returns the last token in the path.
+     * <p>
+     * For a root-only path, this returns {@link PathSegment.Root}.
+     *
+     * @return the terminal path segment
+     */
+    public PathSegment tail() {
+        return segments[segments.length - 1];
+    }
+
+    /**
+     * Returns whether this path addresses at most one concrete location.
+     * <p>
+     * This is true only when all segments are limited to Root, Name, Index,
+     * and Append, with no wildcard, slice, filter, union, or recursive tokens.
      */
     public boolean isSingle() {
         return single;
     }
 
+    /**
+     * Returns whether this path contains an append segment.
+     * <p>
+     * Append segments come from JSONPath {@code [+]} or JSON Pointer {@code /-}.
+     */
     public boolean hasAppend() {
         return append;
     }

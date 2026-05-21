@@ -9,6 +9,7 @@ import org.sjf4j.exception.JsonException;
 
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -128,6 +129,39 @@ public class AsmPathCompilerTest {
     }
 
     @Test
+    public void testObjectArrayIndexPutReturnsNull() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.tags[1]", Root.class, String.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.put(root, "yy"));
+        assertEquals("yy", root.holder.tags[1]);
+    }
+
+    @Test
+    public void testPojoListIndexPutReturnsNull() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[1]", Root.class, String.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.put(root, "beth"));
+        assertEquals("beth", root.holder.names.get(1));
+    }
+
+    @Test
+    public void testPojoListIndexAppendReturnsNull() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[3]", Root.class, String.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.put(root, "dina"));
+        assertEquals("dina", root.holder.names.get(3));
+    }
+
+    @Test
     public void testAppendPutReturnsNull() {
         Root root = sampleRoot();
 
@@ -220,6 +254,7 @@ public class AsmPathCompilerTest {
         holder.leaf = leaf;
         holder.tags = new String[]{"x", "y", "z"};
         holder.values = JsonArray.of("a", "b", "c");
+        holder.names = new ArrayList<>(List.of("ann", "bob", "cara"));
         holder.dynamic = JsonObject.of("n", "5");
         holder.keys = new LinkedHashSet<>();
         holder.keys.add("k1");
@@ -257,6 +292,7 @@ public class AsmPathCompilerTest {
         public java.util.Set<String> keys;
         public String[] tags;
         public JsonArray values;
+        public List<String> names;
     }
 
     public static class PrimitiveLeaf {
