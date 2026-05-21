@@ -31,40 +31,23 @@ dependencies {
     implementation(project(":sjf4j-bytecode"))
     implementation(project(":sjf4j-schema"))
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     implementation("tools.jackson.core:jackson-databind:3.1.1")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     implementation("org.yaml:snakeyaml:2.5")
-    implementation("com.ibm.icu:icu4j:77.1")
 
-    testImplementation(project(":sjf4j-bytecode"))
-
+    // test
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
-
-    testCompileOnly("org.projectlombok:lombok:1.18.38")
-    annotationProcessor("org.projectlombok:lombok:1.18.38")
     testImplementation("ch.qos.logback:logback-classic:1.5.25")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
-    testImplementation("tools.jackson.core:jackson-databind:3.1.1")
-    testImplementation("com.google.code.gson:gson:2.13.1")
-    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
-    testImplementation("org.yaml:snakeyaml:2.5")
-
-    jmhImplementation(project(":sjf4j"))
+    // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
-    jmhImplementation("tools.jackson.core:jackson-databind:3.1.1")
-    jmhImplementation("com.google.code.gson:gson:2.13.1")
-    jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
-    jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
-    jmhImplementation("org.eclipse.parsson:parsson:1.1.7")
 
 }
 

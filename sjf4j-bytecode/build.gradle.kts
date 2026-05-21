@@ -30,7 +30,7 @@ configurations {
 
 dependencies {
     implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
-    
+
     // ASM — bytecode generation
     implementation("org.ow2.asm:asm:9.7.1")
 
