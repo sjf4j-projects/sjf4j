@@ -58,26 +58,8 @@ public interface FormatValidator {
     // ─────────────────────────────────────────────────────────────────
     // Pattern constants (shared across validators)
     // ─────────────────────────────────────────────────────────────────
-    Pattern _EMAIL_PATTERN = Pattern.compile(
-            "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~+-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~+-]+)*$");
-    Pattern _IPV4_PATTERN = Pattern.compile(
-            "^(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}$");
-    Pattern _UUID_PATTERN = Pattern.compile(
-            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-    Pattern _DURATION_PATTERN = Pattern.compile(
-            "^P(?:\\d+W|(?:\\d+Y(?:\\d+M(?:\\d+D)?|\\d+M|)|\\d+M(?:\\d+D)?|\\d+D)?(?:T(?:\\d+H(?:\\d+M(?:\\d+S)?|\\d+M|)|\\d+M(?:\\d+S)?|\\d+S))?)$",
-            Pattern.CASE_INSENSITIVE);
-    Pattern _TIME_PATTERN = Pattern.compile(
-            "^(\\d{2}):(\\d{2}):(\\d{2})(\\.\\d+)?([zZ]|[+-]\\d{2}:\\d{2})$");
-    Pattern _DATE_TIME_PATTERN = Pattern.compile(
-            "^(\\d{4}-\\d{2}-\\d{2})[tT](\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:[zZ]|[+-]\\d{2}:\\d{2}))$");
-
-    // ─────────────────────────────────────────────────────────────────
-    // Simple: try-parse + catch → lambda field
-    // ─────────────────────────────────────────────────────────────────
-
     FormatValidator DATE = value -> {
-        return _isAsciiDigitsOnly(value) && _isValidDate(value);
+        return _isValidDate(value);
     };
 
     FormatValidator DATETIME = FormatValidator::_validateDateTime;
@@ -100,15 +82,7 @@ public interface FormatValidator {
         }
     };
 
-    FormatValidator JSON_POINTER = value -> {
-        try {
-            if (value == null) return false;
-            PathSyntax.parsePointer(value);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    };
+    FormatValidator JSON_POINTER = FormatValidator::_validateJsonPointer;
 
     FormatValidator REGEX = FormatValidator::_validateRegex;
 
@@ -118,14 +92,12 @@ public interface FormatValidator {
 
     FormatValidator EMAIL = FormatValidator::_validateEmail;
 
-    FormatValidator IPV4 = value ->
-            value != null && _IPV4_PATTERN.matcher(value).matches();
+    FormatValidator IPV4 = FormatValidator::_validateIpv4;
 
     FormatValidator UUID = value ->
-            value != null && _UUID_PATTERN.matcher(value).matches();
+            _validateUuid(value);
 
-    FormatValidator DURATION = value ->
-            value != null && _isAsciiDigitsOnly(value) && value.length() > 1 && _DURATION_PATTERN.matcher(value).matches();
+    FormatValidator DURATION = FormatValidator::_validateDuration;
 
     FormatValidator HOSTNAME = value -> FormatUtil.validateHostname(value, false);
 
@@ -180,14 +152,40 @@ public interface FormatValidator {
 
     // relative-json-pointer
     static boolean _validateRelativeJsonPointer(String value) {
+        if (value == null || value.isEmpty()) return false;
+        char first = value.charAt(0);
+        if (first < '0' || first > '9') {
+            if (Character.isDigit(first)) return _validateRelativeJsonPointerSlow(value);
+            return false;
+        }
+        int len = value.length();
+        int idx = 1;
+        int prefixValue = first - '0';
+        while (idx < len) {
+            char ch = value.charAt(idx);
+            if (ch >= '0' && ch <= '9') {
+                if (first == '0') return false;
+                if (prefixValue > 214748364 || (prefixValue == 214748364 && ch > '7')) return false;
+                prefixValue = prefixValue * 10 + (ch - '0');
+                idx++;
+                continue;
+            }
+            if (Character.isDigit(ch)) return _validateRelativeJsonPointerSlow(value);
+            break;
+        }
+        if (idx == len) return true;
+        if (value.charAt(idx) == '#') return idx == len - 1;
+        return _validateJsonPointer(value, idx);
+    }
+
+    static boolean _validateRelativeJsonPointerSlow(String value) {
         try {
-            if (value == null) return false;
             int idx = 0;
             while (idx < value.length() && Character.isDigit(value.charAt(idx))) idx++;
             if (idx == 0) return false;
             String prefix = value.substring(0, idx);
             if (prefix.length() > 1 && prefix.charAt(0) == '0') return false;
-            if (Integer.parseInt(prefix) < 0) return false;
+            Integer.parseInt(prefix);
             if (idx == value.length()) return true;
             if (value.charAt(idx) == '#') return idx == value.length() - 1;
             PathSyntax.parsePointer(value.substring(idx));
@@ -209,7 +207,19 @@ public interface FormatValidator {
         if (local.charAt(0) == '"') {
             return _isQuotedEmailLocal(local);
         }
-        return _EMAIL_PATTERN.matcher(local).matches();
+        if (local.charAt(0) == '.' || local.charAt(local.length() - 1) == '.') return false;
+        boolean segment = false;
+        for (int i = 0; i < local.length(); i++) {
+            char ch = local.charAt(i);
+            if (ch == '.') {
+                if (!segment) return false;
+                segment = false;
+                continue;
+            }
+            if (!_isEmailAtext(ch)) return false;
+            segment = true;
+        }
+        return segment;
     }
 
     static boolean _validateIdnEmailLocal(String local) {
@@ -234,13 +244,25 @@ public interface FormatValidator {
     }
 
     static boolean _validateTime(String value) {
-        if (!_isAsciiDigitsOnly(value)) return false;
-        java.util.regex.Matcher m = _TIME_PATTERN.matcher(value);
-        if (!m.matches()) return false;
-        int hour = Integer.parseInt(m.group(1));
-        int minute = Integer.parseInt(m.group(2));
-        int second = Integer.parseInt(m.group(3));
-        String offset = m.group(5);
+        if (value == null || value.length() < 9) return false;
+        if (value.charAt(2) != ':' || value.charAt(5) != ':') return false;
+        int hour = _parseInt(value, 0, 2);
+        int minute = _parseInt(value, 3, 5);
+        int second = _parseInt(value, 6, 8);
+        if (hour < 0 || minute < 0 || second < 0) return false;
+        int offsetStart = 8;
+        if (offsetStart < value.length() && value.charAt(offsetStart) == '.') {
+            offsetStart++;
+            int digitsStart = offsetStart;
+            while (offsetStart < value.length()) {
+                char ch = value.charAt(offsetStart);
+                if (ch < '0' || ch > '9') break;
+                offsetStart++;
+            }
+            if (offsetStart == digitsStart) return false;
+        }
+        if (offsetStart >= value.length()) return false;
+        String offset = value.substring(offsetStart);
         if (hour > 23 || minute > 59) return false;
         if (second == 60) return _isValidLeapSecond(hour, minute, offset);
         if (second > 59) return false;
@@ -278,10 +300,22 @@ public interface FormatValidator {
     }
 
     static boolean _validateDateTime(String value) {
-        if (!_isAsciiDigitsOnly(value)) return false;
-        java.util.regex.Matcher m = _DATE_TIME_PATTERN.matcher(value);
-        if (!m.matches()) return false;
-        return _isValidDate(m.group(1)) && _validateTime(m.group(2));
+        if (value == null || value.length() < 20) return false;
+        if (value.charAt(10) != 'T' && value.charAt(10) != 't') return false;
+        return _isValidDate(value.substring(0, 10)) && _validateTime(value.substring(11));
+    }
+
+    static boolean _validateUuid(String value) {
+        if (value == null || value.length() != 36) return false;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (i == 8 || i == 13 || i == 18 || i == 23) {
+                if (ch != '-') return false;
+                continue;
+            }
+            if (!_isHexDigit(ch)) return false;
+        }
+        return true;
     }
 
     static boolean _validateRegex(String value) {
@@ -334,8 +368,128 @@ public interface FormatValidator {
         return (year & 3) == 0 && (year % 100 != 0 || year % 400 == 0);
     }
 
+    static boolean _validateIpv4(String value) {
+        if (value == null) return false;
+        int len = value.length();
+        int start = 0;
+        for (int octet = 0; octet < 4; octet++) {
+            if (start >= len) return false;
+            int end = start;
+            int number = 0;
+            while (end < len) {
+                char ch = value.charAt(end);
+                if (ch < '0' || ch > '9') break;
+                if (end - start == 3) return false;
+                number = number * 10 + (ch - '0');
+                end++;
+            }
+            if (end == start || number > 255) return false;
+            if (end - start > 1 && value.charAt(start) == '0') return false;
+            if (octet == 3) return end == len;
+            if (end >= len || value.charAt(end) != '.') return false;
+            start = end + 1;
+        }
+        return false;
+    }
+
+    static boolean _validateDuration(String value) {
+        if (value == null || value.length() <= 1 || !_isAsciiDigitsOnly(value)) return false;
+        int len = value.length();
+        if (!_matchesIgnoreCase(value.charAt(0), 'P')) return false;
+        int idx = 1;
+        if (idx == len) return false;
+
+        int numberEnd = _scanAsciiDigits(value, idx, len);
+        if (numberEnd > idx) {
+            if (numberEnd < len && _matchesIgnoreCase(value.charAt(numberEnd), 'W')) return numberEnd + 1 == len;
+        }
+
+        boolean hasComponent = false;
+        idx = _parseDurationDate(value, idx, len);
+        if (idx < 0) return false;
+        if (idx > 1) hasComponent = true;
+        if (idx < len && _matchesIgnoreCase(value.charAt(idx), 'T')) {
+            idx = _parseDurationTime(value, idx + 1, len);
+            if (idx < 0) return false;
+            hasComponent = true;
+        }
+        return hasComponent && idx == len;
+    }
+
+    static int _parseDurationDate(String value, int start, int len) {
+        int numberEnd = _scanAsciiDigits(value, start, len);
+        if (numberEnd == start) return start;
+        if (numberEnd >= len) return -1;
+        char unit = value.charAt(numberEnd);
+        if (_matchesIgnoreCase(unit, 'Y')) {
+            int idx = numberEnd + 1;
+            numberEnd = _scanAsciiDigits(value, idx, len);
+            if (numberEnd == idx) return idx;
+            if (numberEnd >= len || !_matchesIgnoreCase(value.charAt(numberEnd), 'M')) return -1;
+            idx = numberEnd + 1;
+            numberEnd = _scanAsciiDigits(value, idx, len);
+            if (numberEnd == idx) return idx;
+            if (numberEnd >= len || !_matchesIgnoreCase(value.charAt(numberEnd), 'D')) return -1;
+            return numberEnd + 1;
+        }
+        if (_matchesIgnoreCase(unit, 'M')) {
+            int idx = numberEnd + 1;
+            numberEnd = _scanAsciiDigits(value, idx, len);
+            if (numberEnd == idx) return idx;
+            if (numberEnd >= len || !_matchesIgnoreCase(value.charAt(numberEnd), 'D')) return -1;
+            return numberEnd + 1;
+        }
+        if (_matchesIgnoreCase(unit, 'D')) return numberEnd + 1;
+        return -1;
+    }
+
+    static int _parseDurationTime(String value, int start, int len) {
+        int numberEnd = _scanAsciiDigits(value, start, len);
+        if (numberEnd == start || numberEnd >= len) return -1;
+        char unit = value.charAt(numberEnd);
+        if (_matchesIgnoreCase(unit, 'H')) {
+            int idx = numberEnd + 1;
+            numberEnd = _scanAsciiDigits(value, idx, len);
+            if (numberEnd == idx) return idx;
+            if (numberEnd >= len || !_matchesIgnoreCase(value.charAt(numberEnd), 'M')) return -1;
+            idx = numberEnd + 1;
+            numberEnd = _scanAsciiDigits(value, idx, len);
+            if (numberEnd == idx) return idx;
+            if (numberEnd >= len || !_matchesIgnoreCase(value.charAt(numberEnd), 'S')) return -1;
+            return numberEnd + 1;
+        }
+        if (_matchesIgnoreCase(unit, 'M')) {
+            int idx = numberEnd + 1;
+            numberEnd = _scanAsciiDigits(value, idx, len);
+            if (numberEnd == idx) return idx;
+            if (numberEnd >= len || !_matchesIgnoreCase(value.charAt(numberEnd), 'S')) return -1;
+            return numberEnd + 1;
+        }
+        if (_matchesIgnoreCase(unit, 'S')) return numberEnd + 1;
+        return -1;
+    }
+
+    static boolean _validateJsonPointer(String value) {
+        return _validateJsonPointer(value, 0);
+    }
+
+    static boolean _validateJsonPointer(String value, int start) {
+        if (value == null || start < 0 || start > value.length()) return false;
+        if (start == value.length()) return true;
+        if (value.charAt(start) != '/') return false;
+        for (int i = start + 1; i < value.length(); i++) {
+            if (value.charAt(i) != '~') continue;
+            if (i + 1 >= value.length()) return false;
+            char escaped = value.charAt(i + 1);
+            if (escaped != '0' && escaped != '1') return false;
+            i++;
+        }
+        return true;
+    }
+
     static boolean _isValidOffset(String offset) {
-        if (offset.length() == 1) return true;
+        if (offset.length() == 1) return offset.charAt(0) == 'Z' || offset.charAt(0) == 'z';
+        if (offset.length() != 6 || (offset.charAt(0) != '+' && offset.charAt(0) != '-') || offset.charAt(3) != ':') return false;
         int hour = _parseInt(offset, 1, 3);
         int minute = _parseInt(offset, 4, 6);
         return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
@@ -362,6 +516,51 @@ public interface FormatValidator {
             n = n * 10 + (ch - '0');
         }
         return n;
+    }
+
+    static boolean _isHexDigit(char ch) {
+        return (ch >= '0' && ch <= '9')
+                || (ch >= 'a' && ch <= 'f')
+                || (ch >= 'A' && ch <= 'F');
+    }
+
+    static int _scanAsciiDigits(String value, int start, int end) {
+        int idx = start;
+        while (idx < end) {
+            char ch = value.charAt(idx);
+            if (ch < '0' || ch > '9') break;
+            idx++;
+        }
+        return idx;
+    }
+
+    static boolean _matchesIgnoreCase(char actual, char expectedUpper) {
+        return actual == expectedUpper || actual == expectedUpper + ('a' - 'A');
+    }
+
+    static boolean _isEmailAtext(char ch) {
+        return (ch >= 'A' && ch <= 'Z')
+                || (ch >= 'a' && ch <= 'z')
+                || (ch >= '0' && ch <= '9')
+                || ch == '!'
+                || ch == '#'
+                || ch == '$'
+                || ch == '%'
+                || ch == '&'
+                || ch == '\''
+                || ch == '*'
+                || ch == '+'
+                || ch == '/'
+                || ch == '='
+                || ch == '?'
+                || ch == '^'
+                || ch == '_'
+                || ch == '`'
+                || ch == '{'
+                || ch == '|'
+                || ch == '}'
+                || ch == '~'
+                || ch == '-';
     }
 
 }

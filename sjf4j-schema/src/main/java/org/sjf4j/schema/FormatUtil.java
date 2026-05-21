@@ -3,11 +3,9 @@ package org.sjf4j.schema;
 import com.ibm.icu.text.IDNA;
 import java.net.IDN;
 import java.net.URI;
-import java.util.regex.Pattern;
 
 final class FormatUtil {
 
-    private static final Pattern HOSTNAME_LABEL = Pattern.compile("^[a-zA-Z0-9-]+$");
     private static final IcuIdnaBridge ICU = IcuIdnaBridge.create();
 
     private FormatUtil() {
@@ -66,6 +64,7 @@ final class FormatUtil {
         if (value == null || value.isEmpty()) return false;
         String normalized = allowUnicode ? normalizeIdnHostnameSeparators(value) : value;
         if (normalized.isEmpty() || normalized.length() > 253 || normalized.startsWith(".") || normalized.endsWith(".")) return false;
+        if (isAsciiOnly(normalized)) return validateAsciiHostname(normalized);
         String[] parts = normalized.split("\\.", -1);
         int asciiLength = 0;
         for (int i = 0; i < parts.length; i++) {
@@ -157,25 +156,38 @@ final class FormatUtil {
     private static String validatedHostnameAsciiLabel(String label, boolean allowUnicode) {
         if (label.isEmpty()) return null;
         if (label.startsWith("-") || label.endsWith("-")) return null;
-        if (isAsciiOnly(label)) return validatedAsciiHostnameLabel(label);
+        if (isAsciiOnly(label)) return validatedAsciiHostnameLabel(label, 0, label.length());
         if (!allowUnicode) return null;
         if (hasInvalidZeroWidthJoiner(label)) return null;
         if (ICU == null && !validateUnicodeLabelFallback(label)) return null;
         try {
             String ascii = toAsciiLabel(label);
-            return validatedAsciiHostnameLabel(ascii);
+            return validatedAsciiHostnameLabel(ascii, 0, ascii.length());
         } catch (Exception e) {
             return null;
         }
     }
 
-    private static String validatedAsciiHostnameLabel(String label) {
-        if (!HOSTNAME_LABEL.matcher(label).matches() || label.startsWith("-") || label.endsWith("-")) return null;
-        if (ICU != null && isAceLabel(label)) {
-            String unicode = ICU.toUnicodeLabel(label);
-            if (unicode == null || unicode.equals(label) || !validateUlabel(unicode)) return null;
+    private static String validatedAsciiHostnameLabel(String label, int start, int end) {
+        if (!isValidAsciiHostnameLabel(label, start, end)) return null;
+        return start == 0 && end == label.length() ? label : label.substring(start, end);
+    }
+
+    private static boolean isValidAsciiHostnameLabel(String label, int start, int end) {
+        if (start >= end || label.charAt(start) == '-' || label.charAt(end - 1) == '-') return false;
+        for (int i = start; i < end; i++) {
+            char ch = label.charAt(i);
+            if (!((ch >= 'a' && ch <= 'z')
+                    || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= '0' && ch <= '9')
+                    || ch == '-')) return false;
         }
-        return label;
+        if (ICU != null && isAceLabel(label, start, end)) {
+            String aceLabel = start == 0 && end == label.length() ? label : label.substring(start, end);
+            String unicode = ICU.toUnicodeLabel(aceLabel);
+            if (unicode == null || unicode.equals(aceLabel) || !validateUlabel(unicode)) return false;
+        }
+        return true;
     }
 
     private static boolean validateUnicodeLabelFallback(String label) {
@@ -231,8 +243,19 @@ final class FormatUtil {
         return true;
     }
 
-    private static boolean isAceLabel(String label) {
-        return label.length() > 4 && label.regionMatches(true, 0, "xn--", 0, 4);
+    private static boolean validateAsciiHostname(String value) {
+        int labelStart = 0;
+        for (int i = 0; i <= value.length(); i++) {
+            if (i < value.length() && value.charAt(i) != '.') continue;
+            if (i == labelStart || i - labelStart > 63) return false;
+            if (!isValidAsciiHostnameLabel(value, labelStart, i)) return false;
+            labelStart = i + 1;
+        }
+        return true;
+    }
+
+    private static boolean isAceLabel(String label, int start, int end) {
+        return end - start > 4 && label.regionMatches(true, start, "xn--", 0, 4);
     }
 
     private static boolean hasDoubleHyphenInThirdAndFourth(String label) {
