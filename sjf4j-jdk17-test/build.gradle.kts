@@ -28,6 +28,8 @@ configurations {
 
 dependencies {
     implementation(project(":sjf4j"))
+    implementation(project(":sjf4j-bytecode"))
+    implementation(project(":sjf4j-schema"))
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.4")
     implementation("tools.jackson.core:jackson-databind:3.1.1")
@@ -80,25 +82,33 @@ tasks.test {
     )
 }
 
-val sjf4jMainSourceSet = project(":sjf4j")
-    .extensions
-    .getByType<org.gradle.api.tasks.SourceSetContainer>()
-    .named("main")
+val coverageProjects = listOf(":sjf4j", ":sjf4j-bytecode", ":sjf4j-schema")
 
 tasks.jacocoTestReport {
-    dependsOn(":sjf4j:test", tasks.test)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test)
     executionData(
         files(
-            project(":sjf4j").layout.buildDirectory.file("jacoco/test.exec"),
+            coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
             layout.buildDirectory.file("jacoco/test.exec")
         )
     )
-    classDirectories.setFrom(sjf4jMainSourceSet.map { it.output.classesDirs })
-    sourceDirectories.setFrom(sjf4jMainSourceSet.map { it.allJava.srcDirs })
-    additionalSourceDirs.setFrom(sjf4jMainSourceSet.map { it.allJava.srcDirs })
     reports {
         xml.required.set(true)
         html.required.set(true)
+    }
+}
+
+gradle.projectsEvaluated {
+    val coverageMainSourceSets = coverageProjects.map {
+        project(it).extensions.getByType<SourceSetContainer>().named("main")
+    }
+    tasks.jacocoTestReport {
+        classDirectories.setFrom(
+            coverageMainSourceSets.map { ss -> ss.map { it.output.classesDirs } }
+        )
+        sourceDirectories.setFrom(
+            coverageMainSourceSets.map { ss -> ss.map { it.allJava.srcDirs } }
+        )
     }
 }
 

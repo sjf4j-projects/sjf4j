@@ -1,6 +1,7 @@
-package org.sjf4j;
+package org.sjf4j.schema;
 
 
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -14,10 +15,12 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.ValidationOptions;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 
@@ -29,6 +32,10 @@ import java.util.concurrent.TimeUnit;
 @Threads(1)
 @State(Scope.Thread)
 public class SchemaBenchmark {
+
+    public static void main(String[] args) throws IOException {
+        Main.main(new String[]{"SchemaBenchmark"});
+    }
 
     private static final String OBJECT_SCHEMA_JSON =
             "{" +

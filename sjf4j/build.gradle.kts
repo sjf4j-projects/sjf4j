@@ -29,7 +29,6 @@ configurations {
 }
 
 dependencies {
-
     compileOnly("tools.jackson.core:jackson-databind:3.1.1")
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     compileOnly("com.google.code.gson:gson:2.13.1")
@@ -39,16 +38,7 @@ dependencies {
     compileOnly("org.yaml:snakeyaml:2.5")
     compileOnly("com.ibm.icu:icu4j:77.1")
 
-    testCompileOnly("org.projectlombok:lombok:1.18.38")
-    testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
-
-    testCompileOnly("org.projectlombok:lombok:1.18.38")
-    annotationProcessor("org.projectlombok:lombok:1.18.38")
-    testImplementation("ch.qos.logback:logback-classic:1.5.25")
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
+    // test
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     testImplementation("com.google.code.gson:gson:2.13.1")
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
@@ -56,7 +46,14 @@ dependencies {
     testImplementation("org.eclipse.parsson:parsson:1.1.7")
     testImplementation("org.yaml:snakeyaml:2.5")
 
-    // JMH
+    testCompileOnly("org.projectlombok:lombok:1.18.38")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
+    testImplementation("ch.qos.logback:logback-classic:1.5.25")
+    testImplementation(platform("org.junit:junit-bom:5.10.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
     jmhImplementation("com.jayway.jsonpath:json-path:2.10.0")
@@ -79,14 +76,6 @@ tasks.test {
     jvmArgs(
         "-Xshare:off"
     )
-}
-
-tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
 }
 
 tasks.withType<Javadoc> {

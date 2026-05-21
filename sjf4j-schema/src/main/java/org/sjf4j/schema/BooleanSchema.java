@@ -1,9 +1,9 @@
 package org.sjf4j.schema;
 
 
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
-import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.path.PathSegment;
 
 /**

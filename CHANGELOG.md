@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Breaking Changes
+- Extracted the schema module from `sjf4j` core into a standalone `sjf4j-schema` subproject, with its own build, tests, and resources. All `org.sjf4j.schema.*` classes, test suites, and JSON Schema test fixtures now live in the new module. The `sjf4j` artifact no longer contains schema validation code; consumers that need JSON Schema support must add `sjf4j-schema` as a dependency.
 - Removed `AccessStrategy` and the `@NodeBinding(access = ...)` contract in favor of property-family discovery through `@NodeBinding(propertyStrategy = PropertyStrategy...)`.
 - Renamed POJO metadata APIs from field-oriented names to property-oriented names, including `NodeRegistry.FieldInfo` -> `PropertyInfo`, `fields`/`fieldCount` -> `properties`/`propertyCount`, and removal of `NodeRegistry.getFieldInfo(...)`.
 - Renamed `@NodeProperty.valueFormat` to `@NodeProperty.codecName` for clarity.
@@ -14,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `SchemaException` from `org.sjf4j.exception` to `org.sjf4j.schema`, and `SchemaRegistry.resolve(..., fragment)` now throws when the schema URI exists but the fragment cannot be resolved.
 
 ### Added
+- Added merged JaCoCo coverage report in `sjf4j-jdk17-test` that aggregates coverage data from all submodules (`sjf4j`, `sjf4j-bytecode`, `sjf4j-schema`).
+- Added `jacoco` plugin to `sjf4j-bytecode` build to enable coverage data collection.
 - Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
 - Added `@NodeIgnore` so types, fields, getters, and setters can be excluded from SJF4J property discovery — class-level `@NodeIgnore` works like Jackson's `@JsonIgnoreType`, excluding all properties referencing the annotated type.
 - Added `@NodeProperty.codecPattern` for DateTimeFormatter-based format patterns (e.g. `"yyyy-MM-dd"`), supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, and `ZonedDateTime` value codecs.

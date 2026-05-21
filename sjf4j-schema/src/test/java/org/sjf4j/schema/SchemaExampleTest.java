@@ -1,10 +1,6 @@
-package org.sjf4j;
+package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.schema.JsonSchema;
-import org.sjf4j.schema.SchemaPlan;
-import org.sjf4j.schema.ValidationResult;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

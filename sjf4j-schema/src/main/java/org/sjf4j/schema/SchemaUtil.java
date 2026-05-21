@@ -395,7 +395,7 @@ public final class SchemaUtil {
             }
             schema = _loadSchemaFromResource(path);
         } else {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+            throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
                     "unsupported local schema uri", null, uri.toString()));
         }
         if (schema == null) return null;
@@ -413,7 +413,7 @@ public final class SchemaUtil {
         } catch (NoSuchFileException e) {
             return null;
         } catch (Exception e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+            throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
                     "failed to load schema from file", null, path), e);
         }
     }
@@ -428,7 +428,7 @@ public final class SchemaUtil {
             if (in == null) return null;
             return Sjf4j.global().fromJson(in, ObjectSchema.class);
         } catch (Exception e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+            throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
                     "failed to load schema from resource", null, path), e);
         }
     }

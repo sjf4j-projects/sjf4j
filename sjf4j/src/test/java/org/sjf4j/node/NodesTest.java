@@ -16,7 +16,6 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.path.JsonPointer;
-import org.sjf4j.schema.BooleanSchema;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -242,20 +241,6 @@ public class NodesTest {
     public void testTo2() {
         assertEquals(123, Nodes.to(123, int.class));
         assertEquals(123L, Nodes.to(123L, long.class));
-    }
-
-    @Test
-    public void testToNodeValue() {
-        LocalDate date = LocalDate.of(2026, 4, 18);
-        assertEquals(date, Nodes.to("2026-04-18", LocalDate.class));
-
-        JsonPointer pointer = Nodes.to("/items/0/name", JsonPointer.class);
-        assertEquals(JsonPointer.parse("/items/0/name"), pointer);
-
-        assertSame(BooleanSchema.TRUE, Nodes.to(true, BooleanSchema.class));
-        assertSame(BooleanSchema.FALSE, Nodes.to(false, BooleanSchema.class));
-
-        assertThrows(JsonException.class, () -> Nodes.to(1, LocalDate.class));
     }
 
     @Test
