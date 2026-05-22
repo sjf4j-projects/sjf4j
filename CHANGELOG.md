@@ -6,59 +6,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+
+## [1.3.0] - 2026.05.22
+### Major Upgrade
+- Modularization & Package Split:
+  - Added `sjf4j-bytecode` module: ASM-backed `PathCompiler`, JMH benchmarks, dedicated bytecode tests.
+  - Added `sjf4j-schema` module: standalone JSON Schema validation, all `org.sjf4j.schema.*` classes, test suites, and fixtures moved here.
+  - Core `sjf4j` no longer contains schema validation code; consumers needing JSON Schema support must add `sjf4j-schema` as a dependency.
+
 ### Breaking Changes
-- Extracted the schema module from `sjf4j` core into a standalone `sjf4j-schema` subproject, with its own build, tests, and resources. All `org.sjf4j.schema.*` classes, test suites, and JSON Schema test fixtures now live in the new module. The `sjf4j` artifact no longer contains schema validation code; consumers that need JSON Schema support must add `sjf4j-schema` as a dependency.
-- Removed `AccessStrategy` and the `@NodeBinding(access = ...)` contract in favor of property-family discovery through `@NodeBinding(propertyStrategy = PropertyStrategy...)`.
-- Renamed POJO metadata APIs from field-oriented names to property-oriented names, including `NodeRegistry.FieldInfo` -> `PropertyInfo`, `fields`/`fieldCount` -> `properties`/`propertyCount`, and removal of `NodeRegistry.getFieldInfo(...)`.
-- Renamed `@NodeProperty.valueFormat` to `@NodeProperty.codecName` for clarity.
-- Added the new public `org.sjf4j.compiled.CompiledPath` API and `PathCompiler` SPI; the previous `org.sjf4j.path.CompiledPath` surface and its broader mutation/query helper set are no longer the active compiled-path entry points.
-- Moved `SchemaException` from `org.sjf4j.exception` to `org.sjf4j.schema`, and `SchemaRegistry.resolve(..., fragment)` now throws when the schema URI exists but the fragment cannot be resolved.
-- Tightened direct indexed array replacement semantics so `Nodes.setInArray(...)` and ASM compiled-path indexed `put(...)` no longer append when `idx == size`; callers that need replace-or-append behavior must use `Nodes.putInArray(...)` or explicit append-path syntax where supported.
-- Removed `ValidationOptions` from `sjf4j-schema`; `SchemaPlan` and `SchemaValidator` now express fail-fast and strict-format behavior directly through explicit boolean-based methods and constructors instead of an options wrapper.
+- Removed `AccessStrategy` and `@NodeBinding(access=...)` in favor of `@NodeBinding(propertyStrategy=PropertyStrategy...)` for property-family discovery.
+- `@NodeProperty.valueFormat` renamed to `@NodeProperty.codecName`
+- New public APIs: `org.sjf4j.compiled.CompiledPath` and `PathCompiler` SPI; old `org.sjf4j.path.CompiledPath` no longer active.
+- Indexed array replacement semantics tightened: `Nodes.setInArray(...)` no longer append when `idx == size`; use `Nodes.putInArray(...)` or explicit append-path for replace-or-append.
+- Removed `ValidationOptions`; `SchemaPlan` and `SchemaValidator` now use explicit boolean parameters for fail-fast and strict-format.
+- `SchemaException` moved from `org.sjf4j.exception` to `org.sjf4j.schema`
 
 ### Added
-- Added merged JaCoCo coverage report in `sjf4j-jdk17-test` that aggregates coverage data from all submodules (`sjf4j`, `sjf4j-bytecode`, `sjf4j-schema`).
-- Added `jacoco` plugin to `sjf4j-bytecode` build to enable coverage data collection.
-- Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
-- Added `@NodeIgnore` so types, fields, getters, and setters can be excluded from SJF4J property discovery — class-level `@NodeIgnore` works like Jackson's `@JsonIgnoreType`, excluding all properties referencing the annotated type.
-- Added `@NodeProperty.codecPattern` for DateTimeFormatter-based format patterns (e.g. `"yyyy-MM-dd"`), supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, and `ZonedDateTime` value codecs.
-- Added `PatternedValueCodec<V, R>` optional interface for value codecs that support format pattern parameterization.
-- Added `ValueCodec` for `java.time.LocalTime` (supports `codecPattern`).
-- Added `ValueCodec` for `java.util.Optional` — flattens `Optional.of(x)` → `x`, `Optional.empty()` → `null` (like Jackson).
-- Added `ConcurrentHashMap` cache in `Types.resolveTypeArgument()` to memoize recursive generic type argument resolution results across repeated calls.
-- Added compiled-path APIs in `org.sjf4j.compiled`, including `CompiledPath.compile(...)` and the `PathCompiler` SPI hook used by optional accelerators.
-- Added the optional `sjf4j-bytecode` module with an ASM-backed `PathCompiler`, service-loader registration, JMH benchmark coverage, and dedicated bytecode tests.
-- Added `put()` JMH coverage for ASM/fallback/raw/native compiled-path write comparisons in `sjf4j-bytecode`.
-- Added `Nodes.putInArray(node, idx, value)` for array writes that should replace existing elements or append at the tail explicitly.
+- `PropertyStrategy` with modes: `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, `FIELD_BEAN`; `BEAN_FIELD` is default.
+- `@NodeIgnore` supports class, field, getter, setter exclusions.
+- `PatternedValueCodec<V,R>` interface and `ValueCodec` for `LocalTime` and `Optional`.
+- `@NodeProperty.codecPattern` for DateTimeFormatter patterns, supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, `ZonedDateTime`.
+- `Nodes.putInArray(node, idx, value)` for explicit replace-or-append.
+- Compiled-path APIs in `org.sjf4j.compiled` with ASM accelerator.
 
 ### Changed
-- Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
-- Changed `@NodeProperty` to support bean methods in addition to fields and creator parameters, including method-level renames, aliases, and value-format metadata.
-- Changed shared/backend streaming and node-conversion paths to use property-oriented metadata consistently across Jackson 2, Jackson 3, Fastjson2, Gson, and the simple facade.
-- Changed `hasValueFormatBinding` / `hasPropertyValueFormatBinding` flags to check resolved value codecs instead of raw format strings, correctly reflecting both `codecName` and `codecPattern` bindings.
-- Changed runtime binding/codec exception types from `JsonException` to `BindingException` in `NodeRegistry` (20 sites), `StreamingIO`, `Jackson2StreamingIO`, `Fastjson2StreamingIO`, `Fastjson2Reader`, `JsonpReader`, and `SnakeReader`.
-- Changed 3 `RuntimeException` to `JsonException` in `ReflectUtil.analyzeNodeValue()`.
-- Changed streaming read paths to thread `NodeRegistry.TypeInfo` (instead of raw `OneOfInfo`) through `_readNode → _readObject / _readArray → _readMap / _readList / _readSet / _readArray`, eliminating redundant `registerTypeInfo()` lookups on each recursive descent. Applied to `StreamingIO`, `Jackson2StreamingIO`, and `Fastjson2StreamingIO`.
-- Renamed `ValueCodecInfo.getFormattedValueCodecInfo()` → `getValueCodecInfo()` and `formattedValueCodecs` → `namedValueCodecs` for clarity. Applied across all backend modules (Jackson 2, Jackson 3, Fastjson2, Gson, Simple) and the test suite.
-- Changed `FallbackCompiledPath` to parse/validate single-target paths up front, normalize `expr()` to `JsonPath.toExpr()`, and delegate to service-loaded bytecode compilers when available.
-- Changed compiled-path mutation support so `CompiledPath.put(...)` is available, the ASM path compiler emits bytecode-backed `put(Object,Object)` writes for supported single-target paths, and path/container convenience APIs now document write-return behavior explicitly.
-- Changed POJO-backed object writes in `Nodes.putInObject(...)`, `JsonObject.put(...)`, and path-driven `put(...)` helpers to return `null` instead of reading old property values, while map-like/object-node writes continue returning their native previous values.
-- Changed path/container docs to clarify replace-vs-append behavior across `Nodes.putInArray(...)`, path helpers, and stricter ASM compiled-path indexed writes.
-- Changed `sjf4j-schema` to expose `sjf4j` as an `api` dependency, and normalized Gradle plugin declarations to explicit `java-library` / `jacoco` IDs across modules.
-- Changed schema validation runtime configuration to use primitive flags internally: `SchemaPlan.validate(...)` now has explicit `failFast` / `strictFormat` overloads, while `SchemaValidator` keeps its default fail-fast + strict-format behavior through a boolean constructor parameter.
+- POJO/JOJO binding discovers merged property families across fields, bean accessors, and record components; `BEAN_FIELD` is default.
+- `@NodeProperty` supports method-level renames, aliases, value-format metadata.
+- Streaming and node-conversion paths unified across Jackson 2/3, Fastjson2, Gson, and simple facade.
+- `SchemaPlan.validate(...)` and `SchemaValidator` use explicit failFast / strictFormat booleans.
 
 ### Removed
-- Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
+-Old field-oriented `AccessStrategy` and POJO metadata naming.
 
 ### Fixed
-- Fixed property binding consistency for renamed bean properties, field/bean family merging, `@OneOf`/value-format propagation, and creator-bound property conflict detection.
-- Fixed property discovery fail-fast behavior for ambiguous getter/setter selection, duplicate aliases/final names, and transient fields annotated with `@NodeProperty`.
-- Fixed `ReflectionBenchmark` and `SchemaBenchmark` JMH benchmarks to use current APIs (`pi.properties.get("name")` instead of removed `NodeRegistry.getPropertyInfo()`, `createPlan()` instead of removed `plan()`).
-- Fixed several ASM compiled-path generation issues in `sjf4j-bytecode`, including erased `get(Object)` emission, constructor/class signature generation, primitive boxing, object/primitive array loads, and `List` / `JsonArray` index method descriptors, with regression coverage for POJO, map, array, list, append, and null-chain cases.
-- Fixed draft 2020-12 schema compatibility so recognized `format-assertion` vocabularies still enforce `format`, and legacy `dependencies` continues to run for optional compatibility tests.
-- Fixed `sjf4j-schema` strict format validation coverage for official draft 2020-12 optional format cases, including hostname / IDN hostname, URI / IRI, email / IDN email, RFC 3339 time/date-time/duration, UUID, IPv4, and regex validation behavior.
-- Fixed `JsonPath.ensurePut(...)` so null intermediate array slots can be replaced with created containers during path growth, while `ensurePutIfAbsent(...)` now rejects missing indexed writes when the parent array already exists and points callers to explicit append syntax.
-- Fixed `Patches.indexedMerge(...)` to preserve array tail-growth behavior after indexed array replacement became strict.
+- `JsonPath.ensurePut(...)` handles null intermediate array slots correctly.
+- `Patches.indexedMerge(...)` preserves tail-growth behavior after strict indexed array replacement.
+- Property binding consistency for renamed bean properties, `@OneOf`/value-format propagation, and creator-bound property conflicts.
+- Draft 2020-12 schema compatibility fixes: `format-assertion`, hostname/IDN, URI/IRI, email, UUID, regex.
 
 
 ## [1.2.3] - 2026.05.11
