@@ -34,13 +34,18 @@ jobs:
       uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
     - name: Run tests with coverage
-      run: ./gradlew :sjf4j-jdk17-test:jacocoTestReport
+      run: ./gradlew :sjf4j-jdk17-test:jacocoTestReport :sjf4j-jdk17-test:jacocoTestCoverageVerification
 
     - name: Print JaCoCo summary
+      if: ${{ always() }}
       run: |
         python3 - <<'PY'
+        import os
         import xml.etree.ElementTree as ET
         path = 'sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml'
+        if not os.path.exists(path):
+            print(f'JaCoCo report not found: {path}')
+            raise SystemExit(0)
         root = ET.parse(path).getroot()
         for counter in root.findall('counter'):
             if counter.attrib['type'] in ('BRANCH', 'LINE', 'INSTRUCTION', 'METHOD'):
@@ -52,6 +57,7 @@ jobs:
         PY
 
     - name: Upload coverage to Codecov
+      if: ${{ always() && hashFiles('sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml') != '' && secrets.CODECOV_TOKEN != '' }}
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}

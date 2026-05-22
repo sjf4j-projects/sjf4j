@@ -1,3 +1,5 @@
+import java.math.BigDecimal
+
 plugins {
     id("java-library")
     id("jacoco")
@@ -66,18 +68,31 @@ tasks.test {
 }
 
 val coverageProjects = listOf(":sjf4j", ":sjf4j-bytecode", ":sjf4j-schema")
+val coverageExecFiles = files(
+    coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
+    layout.buildDirectory.file("jacoco/test.exec")
+)
 
 tasks.jacocoTestReport {
     dependsOn(coverageProjects.map { "$it:test" } + tasks.test)
-    executionData(
-        files(
-            coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
-            layout.buildDirectory.file("jacoco/test.exec")
-        )
-    )
+    executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
         html.required.set(true)
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test)
+    executionData(coverageExecFiles)
+    violationRules {
+        rule {
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = BigDecimal("0.75")
+            }
+        }
     }
 }
 
@@ -86,6 +101,14 @@ gradle.projectsEvaluated {
         project(it).extensions.getByType<SourceSetContainer>().named("main")
     }
     tasks.jacocoTestReport {
+        classDirectories.setFrom(
+            coverageMainSourceSets.map { ss -> ss.map { it.output.classesDirs } }
+        )
+        sourceDirectories.setFrom(
+            coverageMainSourceSets.map { ss -> ss.map { it.allJava.srcDirs } }
+        )
+    }
+    tasks.jacocoTestCoverageVerification {
         classDirectories.setFrom(
             coverageMainSourceSets.map { ss -> ss.map { it.output.classesDirs } }
         )
