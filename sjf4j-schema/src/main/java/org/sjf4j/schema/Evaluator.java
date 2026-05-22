@@ -389,8 +389,8 @@ public interface Evaluator {
         final PathSegment minLengthKeywordPs;
         final PathSegment maxLengthKeywordPs;
         final URI schemaUri;
-        final Integer minLength;
-        final Integer maxLength;
+        final int minLength;
+        final int maxLength;
         /**
          * Creates evaluator for string length constraints.
          */
@@ -399,8 +399,18 @@ public interface Evaluator {
             this.minLengthKeywordPs = minLengthKeywordPs;
             this.maxLengthKeywordPs = maxLengthKeywordPs;
             this.schemaUri = schemaUri;
-            this.minLength = minLength;
-            this.maxLength = maxLength;
+            if (minLength != null) {
+                this.minLength = minLength.intValue();
+                if (minLength < 0) throw new SchemaException("");
+            } else {
+                this.minLength = -1;
+            }
+            if (maxLength != null) {
+                this.maxLength = maxLength.intValue();
+                if (maxLength < 0) throw new SchemaException("");
+            } else {
+                this.maxLength = -1;
+            }
         }
         /**
          * Enforces minLength/maxLength for strings.
@@ -411,12 +421,12 @@ public interface Evaluator {
 
             String actual = Nodes.toString(instance.node());
             int length = SchemaUtil.stringIcuLength(actual);
-            if (minLength != null && length < minLength) {
+            if (minLength >= 0 && length < minLength) {
                 ctx.addError(instance, ps, minLengthKeywordPs, schemaUri, "minLength",
                         "expected string length >= " + minLength + ", found " + length);
                 return false;
             }
-            if (maxLength != null && length > maxLength) {
+            if (maxLength >= 0 && length > maxLength) {
                 ctx.addError(instance, ps, maxLengthKeywordPs, schemaUri, "maxLength",
                         "expected string length <= " + maxLength + ", found " + length);
                 return false;
@@ -550,8 +560,8 @@ public interface Evaluator {
         final PathSegment minPropertiesKeywordPs;
         final PathSegment maxPropertiesKeywordPs;
         final URI schemaUri;
-        final Integer minProperties;
-        final Integer maxProperties;
+        final int minProperties;
+        final int maxProperties;
         /**
          * Creates evaluator for object size constraints.
          */
@@ -560,8 +570,18 @@ public interface Evaluator {
             this.minPropertiesKeywordPs = minPropertiesKeywordPs;
             this.maxPropertiesKeywordPs = maxPropertiesKeywordPs;
             this.schemaUri = schemaUri;
-            this.minProperties = minProperties;
-            this.maxProperties = maxProperties;
+            if (minProperties != null) {
+                this.minProperties = minProperties.intValue();
+                if (minProperties < 0) throw new SchemaException("");
+            } else {
+                this.minProperties = -1;
+            }
+            if (maxProperties != null) {
+                this.maxProperties = maxProperties.intValue();
+                if (maxProperties < 0) throw new SchemaException("");
+            } else {
+                this.maxProperties = -1;
+            }
         }
 
         /**
@@ -573,12 +593,12 @@ public interface Evaluator {
 
             Object actual = instance.node();
             int size = Nodes.sizeInObject(actual);
-            if (minProperties != null && size < minProperties) {
+            if (minProperties >= 0 && size < minProperties) {
                 ctx.addError(instance, ps, minPropertiesKeywordPs, schemaUri, "minProperties",
                         "expected at least " + minProperties + " properties, found " + size);
                 return false;
             }
-            if (maxProperties != null && size > maxProperties) {
+            if (maxProperties >= 0 && size > maxProperties) {
                 ctx.addError(instance, ps, maxPropertiesKeywordPs, schemaUri, "maxProperties",
                         "expected at most " + maxProperties + " properties, found " + size);
                 return false;
@@ -842,7 +862,7 @@ public interface Evaluator {
             boolean result = true;
             for (String key : Nodes.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
-                boolean probed = propertyNamesPlan.evaluate(InstancedNode.infer(key), ps, ctx);
+                boolean probed = propertyNamesPlan.evaluate(InstancedNode.infer(key, ctx.reusedLeaf()), ps, ctx);
                 ctx.popIgnoreError();
                 if (!probed) {
                     PathSegment instanceKeywordPs = ps == null
@@ -864,9 +884,9 @@ public interface Evaluator {
         final PathSegment maxItemsKeywordPs;
         final PathSegment uniqueItemsKeywordPs;
         final URI schemaUri;
-        final Integer minItems;
-        final Integer maxItems;
-        final Boolean uniqueItems;
+        final int minItems;
+        final int maxItems;
+        final boolean uniqueItems;
         /**
          * Creates evaluator for array size/uniqueness constraints.
          */
@@ -877,9 +897,19 @@ public interface Evaluator {
             this.maxItemsKeywordPs = maxItemsKeywordPs;
             this.uniqueItemsKeywordPs = uniqueItemsKeywordPs;
             this.schemaUri = schemaUri;
-            this.minItems = minItems;
-            this.maxItems = maxItems;
-            this.uniqueItems = uniqueItems;
+            if (minItems != null) {
+                this.minItems = minItems.intValue();
+                if (minItems < 0) throw new SchemaException("");
+            } else {
+                this.minItems = -1;
+            }
+            if (maxItems != null) {
+                this.maxItems = maxItems.intValue();
+                if (maxItems < 0) throw new SchemaException("");
+            } else {
+                this.maxItems = -1;
+            }
+            this.uniqueItems = Boolean.TRUE.equals(uniqueItems);
         }
         /**
          * Enforces minItems/maxItems/uniqueItems for arrays.
@@ -894,18 +924,18 @@ public interface Evaluator {
             Object actual = instance.node();
             boolean result = true;
             int size = Nodes.sizeInArray(actual);
-            if (minItems != null && size < minItems) {
+            if (minItems >= 0 && size < minItems) {
                 ctx.addError(instance, ps, minItemsKeywordPs, schemaUri, "minItems",
                         "expected at least " + minItems + " items, found " + size);
                 result = false;
             }
-            if (maxItems != null && size > maxItems) {
+            if (maxItems >= 0 && size > maxItems) {
                 ctx.addError(instance, ps, maxItemsKeywordPs, schemaUri, "maxItems",
                         "expected at most " + maxItems + " items, found " + size);
                 result = false;
             }
             if (ctx.shouldAbort()) return result;
-            if (Boolean.TRUE.equals(uniqueItems)) {
+            if (uniqueItems) {
                 Set<Object> set = new HashSet<>();
                 for (Iterator<Object> it = Nodes.iteratorInArray(actual); it.hasNext(); ) {
                     Object v = it.next();
@@ -975,8 +1005,8 @@ public interface Evaluator {
         final PathSegment maxContainsKeywordPs;
         final URI schemaUri;
         final SchemaPlan containsPlan;
-        final Integer minContains;
-        final Integer maxContains;
+        final int minContains;
+        final int maxContains;
         /**
          * Creates evaluator for contains/minContains/maxContains.
          */
@@ -986,8 +1016,18 @@ public interface Evaluator {
             this.maxContainsKeywordPs = maxContainsKeywordPs;
             this.schemaUri = schemaUri;
             this.containsPlan = containsPlan;
-            this.minContains = minContains == null ? 1 : minContains;
-            this.maxContains = maxContains;
+            if (minContains != null) {
+                this.minContains = minContains.intValue();
+                if (minContains < 0) throw new SchemaException("");
+            } else {
+                this.minContains = 1;
+            }
+            if (maxContains != null) {
+                this.maxContains = maxContains.intValue();
+                if (maxContains < 0) throw new SchemaException("");
+            } else {
+                this.maxContains = -1;
+            }
         }
         /**
          * Validates contains/minContains/maxContains for arrays.
@@ -1013,6 +1053,13 @@ public interface Evaluator {
                 if (result) {
                     instance.markEvaluated(i);
                     matches++;
+                    // Early exit: once minContains is met without an upper bound,
+                    // and no unevaluated tracking is active, further scanning is
+                    // unnecessary for contains semantics.
+                    if (matches >= minContains && maxContains == -1
+                            && instance.peekEvaluated() == null) {
+                        return true;
+                    }
                 }
             }
             if (matches < minContains) {
@@ -1020,7 +1067,7 @@ public interface Evaluator {
                         "expected at least " + minContains + " matching items, found " + matches);
                 return false;
             }
-            if (maxContains != null && matches > maxContains) {
+            if (maxContains >= 0 && matches > maxContains) {
                 ctx.addError(instance, ps, maxContainsKeywordPs, schemaUri, "maxContains",
                         "expected at most " + maxContains + " matching items, found " + matches);
                 return false;
@@ -1157,7 +1204,12 @@ public interface Evaluator {
                 if (subResult && evaluatedArr != null && childEvaluated != null) {
                     evaluatedArr[i] = childEvaluated;
                 }
-                result = result || subResult;
+                if (subResult) {
+                    result = true;
+                    // Early exit: without unevaluated tracking, one success is
+                    // sufficient for anyOf semantics; no merge needed.
+                    if (cousinEvaluated == null) break;
+                }
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
@@ -1209,7 +1261,10 @@ public interface Evaluator {
                 ctx.popIgnoreError();
                 BitSet childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
-                if (subResult) matches++;
+                if (subResult) {
+                    matches++;
+                    if (matches > 1) break;
+                }
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
@@ -1218,9 +1273,13 @@ public interface Evaluator {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
-            if (matches != 1) {
+            if (matches == 0) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
-                        "expected exactly 1 matching schema, found " + matches);
+                        "expected exactly 1 matching schema, found 0");
+                return false;
+            } else if (matches > 1) {
+                ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
+                        "expected exactly 1 matching schema, found at least " + matches);
                 return false;
             }
             return true;
