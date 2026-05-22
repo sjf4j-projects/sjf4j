@@ -71,7 +71,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     @Override
     public SchemaPlan createPlan(SchemaRegistry registry) {
-        return SchemaPlanner.buildPlan(this, SchemaRegistry.copyOf(registry));
+        return SchemaPlanner.buildAndPutPlan(this, SchemaRegistry.copyOf(registry));
     }
 
 

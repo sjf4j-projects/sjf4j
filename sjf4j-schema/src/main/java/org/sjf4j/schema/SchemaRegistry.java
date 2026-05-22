@@ -114,7 +114,7 @@ public class SchemaRegistry {
                     "missing root schema uri: no $id or retrievalUri", null, (String) null));
         }
         index(os);
-        return SchemaPlanner.buildPlan(os, this);
+        return SchemaPlanner.buildAndPutPlan(os, this);
     }
 
 
@@ -224,7 +224,7 @@ public class SchemaRegistry {
         if (allowBuild) {
             ObjectSchema schema = byIdSchemas.get(id);
             if (schema != null) {
-                plan = SchemaPlanner.buildPlan(schema, this);
+                plan = SchemaPlanner.buildAndPutPlan(schema, this);
                 return _resolveByFragment(plan, fragment);
             }
         }
@@ -278,9 +278,7 @@ public class SchemaRegistry {
 
 
     public boolean contains(String id) {
-        id = SchemaUtil.normalizeUriKey(id);
-        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) ||
-                (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
+        return _contains(SchemaUtil.normalizeUriKey(id));
     }
 
     /**
@@ -290,8 +288,12 @@ public class SchemaRegistry {
      * resource plan. The global built-in registry is consulted as a fallback.
      */
     public boolean contains(URI uri) {
-        Objects.requireNonNull(uri, "uri");
-        return contains(SchemaUtil.normalizeUriKey(uri));
+        return _contains(SchemaUtil.normalizeUriKey(uri));
+    }
+
+    private boolean _contains(String id) {
+        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) ||
+                (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
     }
 
     /**

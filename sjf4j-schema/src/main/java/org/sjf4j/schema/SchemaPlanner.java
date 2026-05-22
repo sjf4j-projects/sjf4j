@@ -34,7 +34,7 @@ public final class SchemaPlanner {
     }
 
 
-    static SchemaPlan buildPlan(ObjectSchema schema, SchemaRegistry registry) {
+    static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
         Objects.requireNonNull(schema, "schema");
         Objects.requireNonNull(registry, "registry");
 
@@ -51,6 +51,7 @@ public final class SchemaPlanner {
         plan = _buildPlan(schema, idUri, PathSegment.Root.INSTANCE,
                 new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
         context.registry.putPlan(idUri, plan);
+
         if (retrievalUri != null && !retrievalUri.equals(idUri)) {
             context.registry.putPlan(retrievalUri, plan);
         }
@@ -573,6 +574,7 @@ public final class SchemaPlanner {
                     plan = _buildPlan(os, childIdUri, PathSegment.Root.INSTANCE,
                             new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
                     context.registry.putPlan(childIdUri, plan);
+
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
                         byPathPlans.put(path + entry.getKey(), entry.getValue());
                     }
