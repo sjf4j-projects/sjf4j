@@ -94,8 +94,7 @@ public interface FormatValidator {
 
     FormatValidator IPV4 = FormatValidator::_validateIpv4;
 
-    FormatValidator UUID = value ->
-            _validateUuid(value);
+    FormatValidator UUID = value -> _validateUuid(value);
 
     FormatValidator DURATION = FormatValidator::_validateDuration;
 

@@ -551,7 +551,7 @@ public abstract class JsonContainer {
      * @param path the JSON path to get the value from
      * @return the value at the path converted to a Map, or null if it doesn't exist
      */
-    public <T> Map<String, T> asMapByPath(String path, Class<T> clazz) {
+    public <T> Map<String, T> getMapByPath(String path, Class<T> clazz) {
         return JsonPath.parse(path).getMap(this, clazz);
     }
 
@@ -686,8 +686,8 @@ public abstract class JsonContainer {
      *
      * @return the previous value when a write occurred, otherwise {@code null}
      */
-    public Object putIfPresentByPath(String path, Object value) {
-        return JsonPath.parse(path).putIfPresent(this, value);
+    public Object putIfParentPresentByPath(String path, Object value) {
+        return JsonPath.parse(path).putIfParentPresent(this, value);
     }
 
     /**
@@ -698,11 +698,12 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Ensures the final path location exists and writes only when that location
-     * is absent.
+     * Ensures the final path location exists, and writes only when the current
+     * value is absent or {@code null}.
      * <p>
-     * When the parent array already exists, indexed array segments do not append
-     * implicitly.
+     * Object keys are written when missing or null. Array indexes are written
+     * when the index equals the current size or the existing element is null;
+     * indexes greater than the current size fail.
      */
     public Object ensurePutIfAbsentByPath(String path, Object value) {
         return JsonPath.parse(path).ensurePutIfAbsent(this, value);
@@ -727,10 +728,10 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Removes value at path using JSON Patch remove semantics.
+     * Removes value at path when present.
      */
-    public void removeByPath(String path) {
-        JsonPath.parse(path).remove(this);
+    public void removeIfPresentByPath(String path) {
+        JsonPath.parse(path).removeIfPresent(this);
     }
 
     /// Find

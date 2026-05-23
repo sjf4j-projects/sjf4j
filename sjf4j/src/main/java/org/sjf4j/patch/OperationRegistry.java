@@ -103,7 +103,7 @@ public class OperationRegistry {
                 if (!_contains(target, from)) {
                     throw new JsonException("'move' operation failed at from " + from + ": no value exists");
                 }
-                return _isRoot(from) ? target : from.remove(target);
+                return _isRoot(from) ? target : from.removeIfPresent(target);
             }
             case PatchOperation.EXT_EXIST:
                 return target;
@@ -185,7 +185,7 @@ public class OperationRegistry {
             if (!path.contains(target)) {
                 throw new JsonException("'remove' operation failed at path " + path + ": no value exists");
             }
-            path.remove(target);
+            path.removeIfPresent(target);
         });
 
         // replace
@@ -219,10 +219,10 @@ public class OperationRegistry {
             }
 
             Object working = Sjf4j.global().deepNode(target);
-            Object workingValue = from.remove(working);
+            Object workingValue = from.removeIfPresent(working);
             path.add(working, workingValue);
 
-            Object value = from.remove(target);
+            Object value = from.removeIfPresent(target);
             path.add(target, value);
         });
 

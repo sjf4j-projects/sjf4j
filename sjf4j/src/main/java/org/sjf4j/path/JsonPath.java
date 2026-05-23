@@ -38,6 +38,8 @@ import java.util.function.Function;
  */
 public class JsonPath {
 
+    private static final Object MISSING = new Object();
+
     /**
      * The raw path expression string.
      */
@@ -45,7 +47,9 @@ public class JsonPath {
 
     protected final PathSegment[] segments;
 
-    protected final boolean single;
+    protected final boolean singleGet;
+    protected final boolean singlePut;
+    protected final boolean singleEval;
     protected final boolean append;
 
     /**
@@ -57,7 +61,9 @@ public class JsonPath {
         this.raw = target.raw;
         this.segments = new PathSegment[target.segments.length];
         System.arraycopy(target.segments, 0, segments, 0, segments.length);
-        this.single = target.single;
+        this.singleGet = target.singleGet;
+        this.singlePut = target.singlePut;
+        this.singleEval = target.singleEval;
         this.append = target.append;
     }
 
@@ -66,18 +72,29 @@ public class JsonPath {
         this.raw = raw;
         this.segments = segments;
 
-        boolean isSingle = true;
+        int len = segments.length;
+        boolean isSingleGet = true;
+        boolean isSinglePut = true;
+        boolean isSingleEval = len > 1 && segments[len - 1] instanceof PathSegment.Function;
         boolean hasAppend = false;
-        for (PathSegment ps : segments) {
-            if (ps instanceof PathSegment.Append) {
-                hasAppend = true;
-            }
-            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name ||
-                    ps instanceof PathSegment.Index || ps instanceof PathSegment.Append)) {
-                isSingle = false;
+        for (int i = 0; i < len; i++) {
+            PathSegment ps = segments[i];
+            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index)) {
+                isSingleGet = false;
+                boolean appendToken = ps instanceof PathSegment.Append;
+                if (appendToken) {
+                    hasAppend = true;
+                } else {
+                    isSinglePut = false;
+                }
+                if (i < len - 1) {
+                    isSingleEval = false;
+                }
             }
         }
-        this.single = isSingle;
+        this.singleGet = isSingleGet;
+        this.singlePut = isSinglePut;
+        this.singleEval = isSingleEval;
         this.append = hasAppend;
     }
 
@@ -157,7 +174,7 @@ public class JsonPath {
     }
 
     /**
-     * Returns whether this path starts from an explicit root token.
+     * Returns whether this path starts from root segment.
      * <p>
      * This is true for JSONPath expressions like {@code $.a} and JSON Pointer
      * expressions like {@code /a}.
@@ -194,8 +211,8 @@ public class JsonPath {
      * This is true only when all segments are limited to Root, Name, Index,
      * and Append, with no wildcard, slice, filter, union, or recursive tokens.
      */
-    public boolean isSingle() {
-        return single;
+    public boolean isSinglePut() {
+        return singlePut;
     }
 
     /**
@@ -214,11 +231,11 @@ public class JsonPath {
      *
      * @param container the JSON container to search
      * @return the matched node, or {@code null} when unresolved
-     * @throws IllegalArgumentException if container is null
      */
     public Object getNode(Object container) {
         if (container == null) return null;
-        return _findOne(container, 1, segments.length);
+        Object value = _findOne(container, 1, segments.length);
+        return value == MISSING ? null : value;
     }
 
     /**
@@ -515,7 +532,7 @@ public class JsonPath {
      * Returns a typed Map at this path using strict conversion.
      */
     public <T> Map<String, T> getMap(Object container, Class<T> clazz) {
-        return _getLenient(container, "Map<String," + clazz.getName() + ">", (value) -> Nodes.toMap(value, clazz));
+        return _getStrict(container, "Map<String," + clazz.getName() + ">", (value) -> Nodes.toMap(value, clazz));
     }
 
     /**
@@ -537,7 +554,7 @@ public class JsonPath {
      * Returns a typed List at this path using strict conversion.
      */
     public <T> List<T> getList(Object container, Class<T> clazz) {
-        return _getLenient(container, "List<" + clazz.getName() + ">", (value) -> Nodes.toList(value, clazz));
+        return _getStrict(container, "List<" + clazz.getName() + ">", (value) -> Nodes.toList(value, clazz));
     }
 
     /**
@@ -551,7 +568,7 @@ public class JsonPath {
      * Returns a typed array at this path using strict conversion.
      */
     public <T> T[] getArray(Object container, Class<T> clazz) {
-        return _getLenient(container, clazz.getName() + "[]", (value) -> Nodes.toArray(value, clazz));
+        return _getStrict(container, clazz.getName() + "[]", (value) -> Nodes.toArray(value, clazz));
     }
 
     /**
@@ -565,7 +582,7 @@ public class JsonPath {
      * Returns a typed Set at this path using strict conversion.
      */
     public <T> Set<T> getSet(Object container, Class<T> clazz) {
-        return _getLenient(container, "Set<" + clazz.getName() + ">", (value) -> Nodes.toSet(value, clazz));
+        return _getStrict(container, "Set<" + clazz.getName() + ">", (value) -> Nodes.toSet(value, clazz));
     }
 
     /**
@@ -609,6 +626,12 @@ public class JsonPath {
      */
     public List<Object> find(Object container) {
         Objects.requireNonNull(container, "container");
+        if (singleGet) {
+            List<Object> result = new ArrayList<>(1);
+            Object value = _findOne(container, 1, segments.length);
+            if (value != MISSING) result.add(value);
+            return result;
+        }
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, Function.identity());
         return result;
@@ -620,6 +643,12 @@ public class JsonPath {
     public <T> List<T> find(Object container, Class<T> clazz) {
         Objects.requireNonNull(container, "container");
         Objects.requireNonNull(clazz, "clazz");
+        if (singleGet) {
+            List<T> result = new ArrayList<>(1);
+            Object value = _findOne(container, 1, segments.length);
+            if (value != MISSING) result.add(Nodes.to(value, clazz));
+            return result;
+        }
         List<T> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, (n) -> Nodes.to(n, clazz));
         return result;
@@ -631,6 +660,12 @@ public class JsonPath {
     public <T> List<T> findAs(Object container, Class<T> clazz) {
         Objects.requireNonNull(container, "container");
         Objects.requireNonNull(clazz, "clazz");
+        if (singleGet) {
+            List<T> result = new ArrayList<>(1);
+            Object value = _findOne(container, 1, segments.length);
+            if (value != MISSING) result.add(Nodes.as(value, clazz));
+            return result;
+        }
         List<T> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, (n) -> Nodes.as(n, clazz));
         return result;
@@ -647,11 +682,26 @@ public class JsonPath {
      */
     public Object eval(Object container) {
         Objects.requireNonNull(container, "container");
+        PathSegment tk = segments[segments.length - 1];
+        if (singleGet) {
+            Object value = _findOne(container, 1, segments.length);
+            return value == MISSING ? null : value;
+        }
+        if (singleEval) {
+            Object value = _findOne(container, 1, segments.length - 1);
+            if (value == MISSING) return null;
+            PathSegment.Function func = (PathSegment.Function) tk;
+            Object[] args = new Object[1 + func.args.size()];
+            args[0] = value;
+            for (int i = 0; i < func.args.size(); i++) {
+                args[1 + i] = _resolveFunctionArg(func.args.get(i));
+            }
+            return FunctionRegistry.invoke(func.name, args);
+        }
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, Function.identity());
         if (result.isEmpty()) return null;
 
-        PathSegment tk = segments[segments.length - 1];
         if (tk instanceof PathSegment.Function) {
             PathSegment.Function func = (PathSegment.Function) tk;
             Object[] args = new Object[1 + func.args.size()];
@@ -713,7 +763,7 @@ public class JsonPath {
     public Object put(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if (lastContainer == null) {
+        if (lastContainer == MISSING || lastContainer == null) {
             throw new JsonException("cannot put value at path '" + this + "': parent container does not exist");
         }
         return _putLast(lastContainer, segments[segments.length - 1], value, "put()");
@@ -730,11 +780,11 @@ public class JsonPath {
      * @return the previous value when a write occurred and the target shape
      * exposes one, otherwise {@code null}
      */
-    public Object putIfPresent(Object container, Object value) {
+    public Object putIfParentPresent(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if (lastContainer == null) return null;
-        return _putLast(lastContainer, segments[segments.length - 1], value, "putIfPresent()");
+        if (lastContainer == MISSING || lastContainer == null) return null;
+        return _putLast(lastContainer, segments[segments.length - 1], value, "putIfParentPresent()");
     }
 
     /**
@@ -754,44 +804,56 @@ public class JsonPath {
     }
 
     /**
-     * Ensures the final path location exists; writes only when that location is
-     * absent.
+     * Ensures the final path location exists, and writes only when the current
+     * value is absent or {@code null}.
      * <p>
      * Missing parent containers are created using {@link #ensurePut(Object, Object)}.
-     * For object-name and pointer-object-key targets, "absent" means the key is
-     * missing, even if a present key currently stores {@code null}. When the
-     * parent array already exists, index targets write only when the normalized
-     * index already exists. Append targets always append.
+     * For object-name and pointer-object-key targets, absent means the key is
+     * missing or currently maps to {@code null}. For array-index targets, indexes
+     * are normalized first; indexes greater than the current size fail, indexes
+     * equal to the current size append, and existing indexes are replaced only
+     * when their current value is {@code null}. Append targets always append.
      *
-     * @return the previous value when one existed at the written location,
-     * otherwise {@code null}
+     * @return {@code null} when a write happened at an absent/null location, or
+     * the existing non-null value when no write was performed
      */
     public Object ensurePutIfAbsent(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if (lastContainer == null) {
+        if (lastContainer == MISSING || lastContainer == null) {
             return ensurePut(container, value);
         }
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
-            if (!Nodes.containsInObject(lastContainer, name)) {
+            Object current = Nodes.getInObject(lastContainer, name);
+            if (current == null) {
                 return Nodes.putInObject(lastContainer, name, value);
             }
-            return null;
+            return current;
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
             if (_isPointerObjectKey(index, lastContainer)) {
-                if (!Nodes.containsInObject(lastContainer, index.pointerToken)) {
+                Object current = Nodes.getInObject(lastContainer, index.pointerToken);
+                if (current == null) {
                     return Nodes.putInObject(lastContainer, index.pointerToken, value);
                 }
-                return null;
+                return current;
             }
-            if (!Nodes.containsInArray(lastContainer, index.index)) {
+            int size = Nodes.sizeInArray(lastContainer);
+            int idx = index.index < 0 ? size + index.index : index.index;
+            if (idx < 0 || idx > size) {
                 throw new JsonException("cannot ensure-put-if-absent value at indexed path '" + this +
-                        "': indexed array writes require an existing element; use append path syntax instead");
+                        "': index " + index.index + " is out of bounds for array size " + size);
             }
-            return null;
+            if (idx == size) {
+                return Nodes.putInArray(lastContainer, idx, value);
+            }
+            Object current = Nodes.getInArray(lastContainer, idx);
+            if (current == null) {
+                return Nodes.putInArray(lastContainer, idx, value);
+            }
+            return current;
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(lastContainer, value);
             return null;
@@ -822,10 +884,16 @@ public class JsonPath {
             throw new JsonException("unsupported last path token '" + lastToken +
                     "'; compute() expected Name, Index, or Append token");
         }
+        if (singlePut) {
+            Object parent = _findOne(container, 1, segments.length - 1);
+            if (parent == MISSING || parent == null) return 0;
+            _computeLast(parent, lastToken, computer);
+            return 1;
+        }
         List<Object> parents = new ArrayList<>();
         _findAll(container, container, 1, segments.length - 1, parents, Function.identity());
         for (Object parent : parents) {
-            _putLast(parent, lastToken, computer.apply(parent, _currentAt(parent, lastToken)), "compute()");
+            _computeLast(parent, lastToken, computer);
         }
         return parents.size();
     }
@@ -847,8 +915,9 @@ public class JsonPath {
      */
     public boolean contains(Object container) {
         Objects.requireNonNull(container, "container");
+        if (segments.length == 1 && segments[0] instanceof PathSegment.Root) return true;
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if (lastContainer == null) return false;
+        if (lastContainer == MISSING || lastContainer == null) return false;
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) lastToken).name;
@@ -878,7 +947,7 @@ public class JsonPath {
     public void add(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if  (lastContainer == null)
+        if  (lastContainer == MISSING || lastContainer == null)
             throw new JsonException("cannot add value at path '" + this + "': parent container does not exist");
 
         PathSegment lastToken = segments[segments.length - 1];
@@ -908,7 +977,7 @@ public class JsonPath {
     public Object replace(Object container, Object value) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if  (lastContainer == null) {
+        if  (lastContainer == MISSING || lastContainer == null) {
             throw new JsonException("cannot replace value at path '" + this + "': parent container does not exist");
         }
         PathSegment lastToken = segments[segments.length - 1];
@@ -937,14 +1006,17 @@ public class JsonPath {
     }
 
     /**
-     * Applies JSON Patch {@code remove} semantics.
+     * Removes the value at this path when the target exists.
+     * <p>
+     * Missing parent paths or object keys return {@code null}. Array removals
+     * still follow array index rules and may fail for out-of-range indexes.
      *
-     * @return removed value, or {@code null} when parent path is absent
+     * @return removed value, or {@code null} when no value was removed
      */
-    public Object remove(Object container) {
+    public Object removeIfPresent(Object container) {
         Objects.requireNonNull(container, "container");
         Object lastContainer = _findOne(container, 1, segments.length - 1);
-        if  (lastContainer == null) return null;
+        if  (lastContainer == MISSING || lastContainer == null) return null;
 
         PathSegment lastToken = segments[segments.length - 1];
         if (lastToken instanceof PathSegment.Name) {
@@ -984,34 +1056,48 @@ public class JsonPath {
 
     /**
      * Finds a single match for the path (optionally stopping before the tail).
+     * <p>
+     * Missing locations return the private {@link #MISSING} sentinel, while
+     * existing locations whose value is {@code null} return {@code null}. Public
+     * APIs that collapse missing and null (for example {@link #getNode(Object)})
+     * translate {@code MISSING} back to {@code null}; query APIs such as
+     * {@link #find(Object)} use the sentinel to omit missing locations while
+     * preserving present-null matches.
      */
     private Object _findOne(Object container, int startIdx, int endExclusive) {
         Object node = container;
         for (int i = startIdx; i < endExclusive; i++) {
-            if (node == null) return null;
+            if (node == null) return MISSING;
             PathSegment pt = segments[i];
             JsonType jt = JsonType.of(node);
             if (pt instanceof PathSegment.Name) {
                 if (jt.isObject()) {
-                    node = Nodes.getInObject(node, ((PathSegment.Name) pt).name);
+                    String name = ((PathSegment.Name) pt).name;
+                    Object parent = node;
+                    node = Nodes.getInObject(node, name);
+                    if (node == null && i == endExclusive - 1 && !Nodes.containsInObject(parent, name)) return MISSING;
                 } else {
-                    return null;
+                    return MISSING;
                 }
             } else if (pt instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) pt;
                 if (jt.isArray()) {
+                    Object parent = node;
                     node = Nodes.getInArray(node, index.index);
+                    if (node == null && i == endExclusive - 1 && !Nodes.containsInArray(parent, index.index)) return MISSING;
                 } else if (_isPointerObjectKey(index, jt)) {
+                    Object parent = node;
                     node = Nodes.getInObject(node, index.pointerToken);
+                    if (node == null && i == endExclusive - 1 && !Nodes.containsInObject(parent, index.pointerToken)) return MISSING;
                 } else {
-                    return null;
+                    return MISSING;
                 }
             } else if (pt instanceof PathSegment.Descendant) {
                 if (i + 1 >= segments.length) throw new JsonException("descendant '..' cannot appear at the end");
                 List<Object> result = new ArrayList<>();
                 _findMatch(container, node, i + 1, endExclusive, result, Function.identity());
                 if (result.isEmpty()) {
-                    return null;
+                    return MISSING;
                 } else if (result.size() == 1) {
                     return result.get(0);
                 } else {
@@ -1048,6 +1134,7 @@ public class JsonPath {
             } else if (pt instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) pt;
                 if (jt.isArray()) {
+                    if (!Nodes.containsInArray(node, index.index)) return;
                     node = Nodes.getInArray(node, index.index);
                     continue;
                 } else if (_isPointerObjectKey(index, jt) && Nodes.containsInObject(node, index.pointerToken)) {
@@ -1164,20 +1251,26 @@ public class JsonPath {
         }
     }
 
-    private Object _currentAt(Object lastContainer, PathSegment lastToken) {
+
+    private void _computeLast(Object lastContainer, PathSegment lastToken, BiFunction<Object, Object, Object> computer) {
         if (lastToken instanceof PathSegment.Name) {
-            return Nodes.getInObject(lastContainer, ((PathSegment.Name) lastToken).name);
+            String name = ((PathSegment.Name) lastToken).name;
+            Object current = Nodes.getInObject(lastContainer, name);
+            Nodes.putInObject(lastContainer, name, computer.apply(lastContainer, current));
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
             if (_isPointerObjectKey(index, lastContainer)) {
-                return Nodes.getInObject(lastContainer, index.pointerToken);
+                Object current = Nodes.getInObject(lastContainer, index.pointerToken);
+                Nodes.putInObject(lastContainer, index.pointerToken, computer.apply(lastContainer, current));
+            } else {
+                Object current = Nodes.getInArray(lastContainer, index.index);
+                Nodes.putInArray(lastContainer, index.index, computer.apply(lastContainer, current));
             }
-            return Nodes.getInArray(lastContainer, index.index);
         } else if (lastToken instanceof PathSegment.Append) {
-            return null;
+            Nodes.addInArray(lastContainer, computer.apply(lastContainer, null));
         } else {
             throw new JsonException("unsupported last path token '" + lastToken +
-                    "'; _currentAt() expected Name, Index, or Append token");
+                    "'; compute() expected Name, Index, or Append token");
         }
     }
 
@@ -1186,7 +1279,7 @@ public class JsonPath {
      * returns the parent container of the final segment.
      */
     private Object _ensureContainersInPath(Object container) {
-        if (!isSingle()) {
+        if (!isSinglePut()) {
             throw new JsonException("JsonPath '" + this + "' must represent a single-node path; " +
                     "automatic container creation supports only Root, Name, Index, and Append segments");
         }

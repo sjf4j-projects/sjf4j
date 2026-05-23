@@ -270,7 +270,7 @@ public class FacadeNodes {
         throw _unknownNode(node);
     }
 
-    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> replacer) {
+    public static boolean replaceAllInObject(Object node, BiFunction<String, Object, Object> replacer) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
             return Jackson3Nodes.replaceInObject(node, replacer);
         }

@@ -14,8 +14,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
-import org.sjf4j.path.JsonPointer;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -30,7 +28,6 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.Set;
@@ -611,14 +608,14 @@ public class NodesTest {
 
 
     @Test
-    public void testReplaceInObject() {
+    public void testReplaceAllInObject() {
         JsonObject jo = JsonObject.of("name", "Alice", "age", 18);
 
-        assertFalse(Nodes.replaceInObject(jo, (key, value) -> value));
+        assertFalse(Nodes.replaceAllInObject(jo, (key, value) -> value));
         assertEquals("Alice", jo.getString("name"));
         assertEquals(18, jo.getInt("age"));
 
-        assertTrue(Nodes.replaceInObject(jo, (key, value) -> "age".equals(key) ? 20 : value));
+        assertTrue(Nodes.replaceAllInObject(jo, (key, value) -> "age".equals(key) ? 20 : value));
         assertEquals("Alice", jo.getString("name"));
         assertEquals(20, jo.getInt("age"));
 
@@ -626,8 +623,8 @@ public class NodesTest {
         person.setName("Bob");
         person.setAge(21);
 
-        assertFalse(Nodes.replaceInObject(person, (key, value) -> value));
-        assertTrue(Nodes.replaceInObject(person, (key, value) -> "name".equals(key) ? "Tom" : value));
+        assertFalse(Nodes.replaceAllInObject(person, (key, value) -> value));
+        assertTrue(Nodes.replaceAllInObject(person, (key, value) -> "name".equals(key) ? "Tom" : value));
         assertEquals("Tom", person.getName());
         assertEquals(21, person.getAge());
     }

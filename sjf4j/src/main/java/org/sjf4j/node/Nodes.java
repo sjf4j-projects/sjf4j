@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 
 /**
@@ -717,7 +718,7 @@ public final class Nodes {
             return source.equals(target);
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
-            return !anyMatchObject(source, (k, subSource) -> {
+            return !anyMatchInObject(source, (k, subSource) -> {
                 Object subTarget = getInObject(target, k);
                 if (subTarget == null && !containsInObject(target, k)) return true;
                 return !equals(subSource, subTarget);
@@ -825,7 +826,7 @@ public final class Nodes {
         if (node instanceof JsonArray) {
             NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
             JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
-            jajo.addAll((JsonArray) node);
+            jajo.addAll(node);
             return (T) jajo;
         }
         if (rawClazz.isArray()) {
@@ -1103,7 +1104,7 @@ public final class Nodes {
      * Returns true if any readable object entry matches the predicate.
      */
     @SuppressWarnings("unchecked")
-    public static boolean anyMatchObject(Object node, BiPredicate<String, Object> predicate) {
+    public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(predicate, "predicate");
         if (node instanceof Map) {
@@ -1142,7 +1143,7 @@ public final class Nodes {
      * changes by reference.
      */
     @SuppressWarnings("unchecked")
-    public static boolean replaceInObject(Object node, BiFunction<String, Object, Object> replacer) {
+    public static boolean replaceAllInObject(Object node, BiFunction<String, Object, Object> replacer) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(replacer, "replacer");
         if (node instanceof Map) {
@@ -1158,7 +1159,7 @@ public final class Nodes {
             return changed;
         }
         if (node instanceof JsonObject) {
-            return ((JsonObject) node).replace(replacer);
+            return ((JsonObject) node).replaceAll(replacer);
         }
         NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
         if (pi != null) {
@@ -1178,7 +1179,7 @@ public final class Nodes {
             return changed;
         }
         if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.replaceInObject(node, replacer);
+            return FacadeNodes.replaceAllInObject(node, replacer);
         }
         throw new JsonException("expected Object node, but was " + Types.name(node));
     }
@@ -1251,7 +1252,7 @@ public final class Nodes {
      * Returns true if any element matches the predicate.
      */
     @SuppressWarnings("unchecked")
-    public static boolean anyMatchArray(Object node, BiPredicate<Integer, Object> predicate) {
+    public static boolean anyMatchInArray(Object node, BiPredicate<Integer, Object> predicate) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(predicate, "predicate");
         if (node instanceof List) {
@@ -1566,6 +1567,8 @@ public final class Nodes {
         public Object node;
         /** static Type of child resolved by the access helper */
         public Type type;
+        /** whether the child location currently exists, even when its value is null */
+        public boolean present;
         /**
          * Indicates whether public Nodes/JsonPath write operations can put or
          * auto-create at this location.
@@ -1587,14 +1590,18 @@ public final class Nodes {
         Objects.requireNonNull(out, "out");
 
         if (node instanceof Map) {
-            out.node = ((Map<String, Object>) node).get(key);
+            Map<String, Object> map = (Map<String, Object>) node;
+            out.node = map.get(key);
             out.type = Types.resolveTypeArgument(type, Map.class, 1);
+            out.present = map.containsKey(key);
             out.puttable = true;
             return;
         }
         if (node.getClass() == JsonObject.class) {
-            out.node = ((JsonObject) node).getNode(key);
+            JsonObject jo = (JsonObject) node;
+            out.node = jo.getNode(key);
             out.type = Object.class;
+            out.present = jo.containsKey(key);
             out.puttable = true;
             return;
         }
@@ -1604,17 +1611,21 @@ public final class Nodes {
             if (fi != null) {
                 out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 out.type = fi.type;
+                out.present = true;
                 out.puttable = fi.hasSetter();
                 return;
             }
-            if (node instanceof JsonObject) {
-                out.node = ((JsonObject) node).getNode(key);
+            if (pi.isJojo) {
+                JsonObject jo = (JsonObject) node;
+                out.node = jo.getNode(key);
                 out.type = Object.class;
+                out.present = jo.containsKey(key);
                 out.puttable = true;
                 return;
             }
             out.node = null;
             out.type = Object.class;
+            out.present = false;
             out.puttable = false;
             return;
         }
@@ -1642,6 +1653,7 @@ public final class Nodes {
 
         out.type = Object.class;
         out.node = null;
+        out.present = false;
         out.puttable = true;
         if (node instanceof List) {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
@@ -1650,6 +1662,7 @@ public final class Nodes {
             idx = idx < 0 ? list.size() + idx : idx;
             if (idx >= 0 && idx < list.size()) {
                 out.node = list.get(idx);
+                out.present = true;
                 return;
             }
             out.puttable = false;
@@ -1661,6 +1674,7 @@ public final class Nodes {
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx < ja.size()) {
                 out.node = ja.getNode(idx);
+                out.present = true;
                 return;
             }
             out.puttable = false;
@@ -1672,6 +1686,7 @@ public final class Nodes {
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 && idx < len) {
                 out.node = Array.get(node, idx);
+                out.present = true;
                 return;
             }
             out.puttable = false;
@@ -1722,6 +1737,107 @@ public final class Nodes {
             return FacadeNodes.putInObject(node, key, value);
         }
         throw new JsonException("expected Object node, but was " + Types.name(node));
+    }
+
+    /**
+     * Removes a key from an object-like node and returns the previous value.
+     * <p>
+     * Removal is supported for Map/JsonObject. POJO fields are structural and
+     * cannot be removed.
+     */
+    @SuppressWarnings("unchecked")
+    public static Object removeInObject(Object node, String key) {
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
+        if (node instanceof Map) {
+            return ((Map<String, Object>) node).remove(key);
+        }
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).remove(key);
+        }
+        if (NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
+            throw new JsonException("cannot remove field '" + key + "' from POJO '" +
+                    node.getClass().getName() + "'");
+        }
+        if (FacadeNodes.isNode(node)) {
+            return FacadeNodes.removeInObject(node, key);
+        }
+        throw new JsonException("expected Object node, but was " + Types.name(node));
+    }
+
+    /**
+     * Computes and stores an object value when the current value is null.
+     * <p>
+     * Semantics follow {@link Map#computeIfAbsent(Object, Function)}: a non-null
+     * current value is returned as-is; otherwise the mapping function is invoked,
+     * and a non-null result is stored before being returned.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T computeIfAbsentInObject(Object node, String key, Function<String, T> computer) {
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(computer, "computer");
+        if (node instanceof Map) {
+            return ((Map<String, T>) node).computeIfAbsent(key, computer);
+        }
+        if (node instanceof JsonObject) {
+            return ((JsonObject) node).computeIfAbsent(key, computer);
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
+        if (pi != null) {
+            NodeRegistry.PropertyInfo fi = pi.properties.get(key);
+            if (fi != null) {
+                T old = fi.hasGetter() ? (T) fi.invokeGetter(node) : null;
+                if (old != null) {
+                    return old;
+                }
+                T newNode = computer.apply(key);
+                if (newNode != null) {
+                    fi.invokeSetter(node, newNode);
+                }
+                return newNode;
+            } else {
+                throw new JsonException("unknown property '" + key + "' in POJO '" +
+                        node.getClass().getName() + "'");
+            }
+        }
+        if (FacadeNodes.isNode(node)) {
+            T old = (T) FacadeNodes.getInObject(node, key);
+            if (old != null) {
+                return old;
+            }
+            T newNode = computer.apply(key);
+            if (newNode != null) {
+                FacadeNodes.putInObject(node, key, newNode);
+            }
+            return newNode;
+        }
+        throw new JsonException("expected Object node, but was " + Types.name(node));
+    }
+
+    /**
+     * Sets at an existing index or appends when the index equals the array size.
+     * <p>
+     * For {@code List} and {@code JsonArray}: when {@code idx == size} the value is appended;
+     * otherwise delegates to {@link #setInArray(Object, int, Object)} (which rejects out-of-range
+     * indices). Negative indices are resolved by {@code setInArray}, not treated as append.
+     *
+     * @return the previous value at the index when replacing, or {@code null} when appending
+     */
+    public static Object putInArray(Object node, int idx, Object value) {
+        return _putInArray(node, idx, value, true);
+    }
+
+    /**
+     * Sets a value in an array-like node by index.
+     * <p>
+     * For List/JsonArray: only existing normalized indexes may be replaced.
+     * For Java arrays: only in-range replacement is allowed. Negative indexes are
+     * supported.
+     */
+    public static Object setInArray(Object node, int idx, Object value) {
+        Objects.requireNonNull(node, "node");
+        return _putInArray(node, idx, value, false);
     }
 
     @SuppressWarnings("unchecked")
@@ -1775,30 +1891,6 @@ public final class Nodes {
             return FacadeNodes.setInArray(node, idx, value);
         }
         throw new JsonException("expected Array node, but was " + Types.name(node));
-    }
-
-    /**
-     * Sets a value in an array-like node by index.
-     * <p>
-     * For List/JsonArray: only existing normalized indexes may be replaced.
-     * For Java arrays: only in-range replacement is allowed. Negative indexes are
-     * supported.
-     */
-    public static Object setInArray(Object node, int idx, Object value) {
-        return _putInArray(node, idx, value, false);
-    }
-
-    /**
-     * Sets at an existing index or appends when the index equals the array size.
-     * <p>
-     * For {@code List} and {@code JsonArray}: when {@code idx == size} the value is appended;
-     * otherwise delegates to {@link #setInArray(Object, int, Object)} (which rejects out-of-range
-     * indices). Negative indices are resolved by {@code setInArray}, not treated as append.
-     *
-     * @return the previous value at the index when replacing, or {@code null} when appending
-     */
-    public static Object putInArray(Object node, int idx, Object value) {
-        return _putInArray(node, idx, value, true);
     }
 
     /**
@@ -1861,32 +1953,6 @@ public final class Nodes {
             return;
         }
         throw new JsonException("expected Array node, but was " + Types.name(node));
-    }
-
-    /**
-     * Removes a key from an object-like node and returns the previous value.
-     * <p>
-     * Removal is supported for Map/JsonObject. POJO fields are structural and
-     * cannot be removed.
-     */
-    @SuppressWarnings("unchecked")
-    public static Object removeInObject(Object node, String key) {
-        Objects.requireNonNull(node, "node");
-        Objects.requireNonNull(key, "key");
-        if (node instanceof Map) {
-            return ((Map<String, Object>) node).remove(key);
-        }
-        if (node instanceof JsonObject) {
-            return ((JsonObject) node).remove(key);
-        }
-        if (NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo != null) {
-            throw new JsonException("cannot remove field '" + key + "' from POJO '" +
-                    node.getClass().getName() + "'");
-        }
-        if (FacadeNodes.isNode(node)) {
-            return FacadeNodes.removeInObject(node, key);
-        }
-        throw new JsonException("expected Object node, but was " + Types.name(node));
     }
 
     /**

@@ -99,9 +99,6 @@ public class SimpleExampleTest {
         jo.put("extra", "blabla");
         // See also: `putNonNull()`, `putIfAbsent()`, `computeIfAbsent()`
 
-        jo.edit().putIfAbsent("x", "xx").put("y", "yy");
-        // Supports Builder-style chained operations
-
         jo.remove("extra");
         // See also: `removeIf()`, `forEach()`, `indexedMerge()` etc.
 

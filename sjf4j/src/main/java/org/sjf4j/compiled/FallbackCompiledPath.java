@@ -60,7 +60,7 @@ public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
         if (path.length() < 2) {
             throw new JsonException("CompiledPath requires a non-root target path: '" + path + "'");
         }
-        if (!path.isSingle()) {
+        if (!path.isSinglePut()) {
             throw new JsonException("CompiledPath only supports a single target path with Name/Index/Append segments: '" + path + "'");
         }
 //

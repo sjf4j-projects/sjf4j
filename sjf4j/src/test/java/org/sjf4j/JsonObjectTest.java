@@ -56,7 +56,6 @@ class JsonObjectTest {
         testPojo1();
         testHashCodeEquals();
         testClear();
-        testPutNonNull();
         testComputeIfAbsent();
         testBuilder();
         testOfFactory();
@@ -605,19 +604,6 @@ class JsonObjectTest {
         assertFalse(jo.containsKey("a"));
     }
 
-    public void testPutNonNull() {
-        JsonObject jo = new JsonObject();
-        
-        jo.putNonNull("a", "value");
-        assertEquals("value", jo.getString("a"));
-        
-        jo.putNonNull("b", null);
-        assertFalse(jo.containsKey("b"));
-        
-        jo.putNonNull("c", 0);
-        assertEquals(0, jo.getInt("c"));
-    }
-
     public void testComputeIfAbsent() {
         JsonObject jo = new JsonObject();
         
@@ -640,14 +626,11 @@ class JsonObjectTest {
         JsonObject jo = JsonObject.builder()
                 .put("name", "Alice")
                 .put("age", 25)
-                .putNonNull("email", "alice@example.com")
-                .putIfAbsent("name", "Bob") // already exists, no overwrite
                 .put("status", true)
                 .build();
         
         assertEquals("Alice", jo.getString("name")); // not overwritten
         assertEquals(25, jo.getInt("age"));
-        assertEquals("alice@example.com", jo.getString("email"));
         assertTrue(jo.getBoolean("status"));
         
         // test path operations
@@ -713,7 +696,7 @@ class JsonObjectTest {
         assertEquals("rw-2", jo.getNode("readWrite"));
         assertNull(jo.put("writeOnly", "secret-2"));
         assertEquals("secret-2", jo.peekWriteOnly());
-        assertFalse(jo.replace((key, value) -> key.equals("writeOnly") ? "secret-3" : value));
+        assertFalse(jo.replaceAll((key, value) -> key.equals("writeOnly") ? "secret-3" : value));
         assertEquals("secret-2", jo.peekWriteOnly());
 
         AccessModeJojo sameReadable = new AccessModeJojo();
@@ -736,12 +719,12 @@ class JsonObjectTest {
         JsonObject jo = JsonObject.fromJson("{\"a\":{\"b\":{\"c\":123}},\"array\":[1,2,3]}");
         
         assertTrue(jo.hasNonNullByPath("$.a.b.c"));
-        jo.removeByPath("$.a.b.c");
+        jo.removeIfPresentByPath("$.a.b.c");
         assertFalse(jo.hasNonNullByPath("$.a.b.c"));
         assertTrue(jo.hasNonNullByPath("$.a.b")); // parent object still exists
         
         assertTrue(jo.hasNonNullByPath("$.array[1]"));
-        jo.removeByPath("$.array[1]");
+        jo.removeIfPresentByPath("$.array[1]");
         assertEquals(2, jo.getJsonArray("array").size());
         assertEquals(1, jo.getJsonArray("array").getInt(0));
         assertEquals(3, jo.getJsonArray("array").getInt(1));

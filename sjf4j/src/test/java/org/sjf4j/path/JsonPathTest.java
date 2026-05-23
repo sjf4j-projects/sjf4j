@@ -1,9 +1,6 @@
 package org.sjf4j.path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -109,7 +106,7 @@ public class JsonPathTest {
         assertEquals("first", target.getString("0"));
         assertEquals("first", JsonPath.parse("/0").replace(target, "second"));
         assertEquals("second", target.getString("0"));
-        assertEquals("second", JsonPath.parse("/0").remove(target));
+        assertEquals("second", JsonPath.parse("/0").removeIfPresent(target));
         assertFalse(target.containsKey("0"));
     }
 
@@ -270,55 +267,66 @@ public class JsonPathTest {
         assertEquals("value", jo.getStringByPath("$.a.d")); // should not be overwritten
 
         JsonPath path4 = JsonPath.parse("$.a.e");
-        path4.ensurePutIfAbsent(jo, "first");
+        assertNull(path4.ensurePutIfAbsent(jo, "first"));
         assertEquals("first", jo.getStringByPath("$.a.e"));
-        path4.ensurePutIfAbsent(jo, "second");
+        assertEquals("first", path4.ensurePutIfAbsent(jo, "second"));
         assertEquals("first", jo.getStringByPath("$.a.e")); // should not be overwritten
-        assertThrows(JsonException.class, () -> JsonPath.parse("$.array[3]").ensurePutIfAbsent(jo, 7));
+
+        JsonPath.parse("$.a.nullable").put(jo, null);
+        assertNull(JsonPath.parse("$.a.nullable").ensurePutIfAbsent(jo, "filled"));
+        assertEquals("filled", jo.getStringByPath("$.a.nullable"));
+
+        assertEquals(999, JsonPath.parse("$.array[1]").ensurePutIfAbsent(jo, 111));
+        assertNull(JsonPath.parse("$.array[3]").ensurePutIfAbsent(jo, 7));
+        assertEquals(Arrays.asList(1, 999, 3, 7), JsonPath.parse("$.array[*]").find(jo));
+        JsonPath.parse("$.array[2]").put(jo, null);
+        assertNull(JsonPath.parse("$.array[2]").ensurePutIfAbsent(jo, 333));
+        assertEquals(Arrays.asList(1, 999, 333, 7), JsonPath.parse("$.array[*]").find(jo));
+        assertThrows(JsonException.class, () -> JsonPath.parse("$.array[5]").ensurePutIfAbsent(jo, 8));
 
         JsonPath path5 = JsonPath.parse("$.a.b");
         assertTrue(path5.hasNonNull(jo));
-        path5.remove(jo);
+        path5.removeIfPresent(jo);
         assertFalse(path5.hasNonNull(jo));
 
         JsonPath path6 = JsonPath.parse("$.array[0]");
-        path6.remove(jo);
-        assertEquals(2, jo.getJsonArray("array").size());
+        path6.removeIfPresent(jo);
+        assertEquals(3, jo.getJsonArray("array").size());
         assertEquals(999, jo.getJsonArray("array").getInt(0));
     }
 
     @Test
-    public void testPutIfPresent() {
+    public void testPutIfParentPresent() {
         JsonObject jo = JsonObject.of(
                 "obj", JsonObject.of("present", 1),
                 "arr", JsonArray.of("a", "b")
         );
 
         JsonPath present = JsonPath.parse("$.obj.present");
-        assertEquals(1, present.putIfPresent(jo, 2));
+        assertEquals(1, present.putIfParentPresent(jo, 2));
         assertEquals(2, jo.getIntByPath("$.obj.present"));
 
         JsonPath missingKey = JsonPath.parse("$.obj.missing");
-        assertNull(missingKey.putIfPresent(jo, 3));
+        assertNull(missingKey.putIfParentPresent(jo, 3));
         assertEquals(3, jo.getIntByPath("$.obj.missing"));
 
         JsonPath missingParent = JsonPath.parse("$.missing.value");
-        assertNull(missingParent.putIfPresent(jo, 4));
+        assertNull(missingParent.putIfParentPresent(jo, 4));
         assertNull(JsonPath.parse("$.missing").getNode(jo));
 
         JsonPath arrayIndex = JsonPath.parse("$.arr[1]");
-        assertNull(arrayIndex.putIfPresent(jo, "bb"));
+        assertNull(arrayIndex.putIfParentPresent(jo, "bb"));
         assertEquals("bb", jo.getStringByPath("$.arr[1]"));
 
         JsonPath append = JsonPath.parse("$.arr[+]");
-        assertNull(append.putIfPresent(jo, "c"));
+        assertNull(append.putIfParentPresent(jo, "c"));
         assertEquals(Arrays.asList("a", "bb", "c"), JsonPath.parse("$.arr[*]").find(jo));
-        assertNull(JsonPath.parse("$.arr[3]").putIfPresent(jo, "d"));
+        assertNull(JsonPath.parse("$.arr[3]").putIfParentPresent(jo, "d"));
         assertEquals(Arrays.asList("a", "bb", "c", "d"), JsonPath.parse("$.arr[*]").find(jo));
 
         JsonPath pointerObjectKey = JsonPath.parse("/0");
         JsonObject pointerTarget = new JsonObject();
-        assertNull(pointerObjectKey.putIfPresent(pointerTarget, "zero"));
+        assertNull(pointerObjectKey.putIfParentPresent(pointerTarget, "zero"));
         assertEquals("zero", pointerTarget.getString("0"));
     }
 
@@ -378,6 +386,7 @@ public class JsonPathTest {
         JsonPath root = assertDoesNotThrow(() -> JsonPath.parse("")); // "" is valid in JSON Pointer
         assertEquals("", root.toPointerExpr());
         assertSame(jo, root.getNode(jo));
+        assertTrue(root.contains(jo));
         assertThrows(JsonException.class, () -> JsonPath.parse("$.."));
 
         JsonArray ja = JsonArray.fromJson("[1,2,3]");
@@ -387,7 +396,7 @@ public class JsonPathTest {
         assertFalse(append.contains(ja));
         assertThrows(JsonException.class, () -> append.getNode(ja));
         assertThrows(JsonException.class, () -> append.replace(ja, 4));
-        assertThrows(JsonException.class, () -> append.remove(ja));
+        assertThrows(JsonException.class, () -> append.removeIfPresent(ja));
     }
 
     @Test
@@ -435,6 +444,13 @@ public class JsonPathTest {
         JsonObject withNull = JsonObject.fromJson("{\"a\":null}");
         assertFalse(JsonPath.parse("$.a").hasNonNull(withNull));
         assertNull(JsonPath.parse("$.a").getNode(withNull));
+
+        JsonArray nestedArrays = JsonArray.of(
+                JsonArray.of("a", (Object) null),
+                JsonArray.of("b"),
+                JsonArray.of("c", "d")
+        );
+        assertEquals(Arrays.asList((Object) null, "d"), JsonPath.parse("$[*][1]").find(nestedArrays));
     }
 
     @ToString

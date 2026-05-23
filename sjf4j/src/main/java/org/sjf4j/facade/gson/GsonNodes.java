@@ -329,8 +329,10 @@ public final class GsonNodes {
      */
     public static void accessInObject(Object node, Type type, String key, Nodes.Access out) {
         if (node instanceof JsonObject) {
-            out.node = ((JsonObject) node).get(key);
+            JsonObject objectNode = (JsonObject) node;
+            out.node = objectNode.get(key);
             out.type = JsonElement.class;
+            out.present = objectNode.has(key);
             out.puttable = false;
             return;
         }
@@ -344,12 +346,14 @@ public final class GsonNodes {
         if (node instanceof JsonArray) {
             out.type = JsonElement.class;
             out.node = null;
+            out.present = false;
             out.puttable = false;
             JsonArray ja = (JsonArray) node;
             if (idx == null) return;
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx < ja.size()) {
                 out.node = ja.get(idx);
+                out.present = true;
                 return;
             }
             return;

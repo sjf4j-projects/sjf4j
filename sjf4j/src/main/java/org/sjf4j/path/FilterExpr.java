@@ -336,7 +336,7 @@ public interface FilterExpr {
 
         // Matches if at least one element in the array matches
         if (ajt.isArray()) {
-            return Nodes.anyMatchArray(a,
+            return Nodes.anyMatchInArray(a,
                     (i, v) -> JsonType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
         }
 

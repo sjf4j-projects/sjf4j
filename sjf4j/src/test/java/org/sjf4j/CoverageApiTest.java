@@ -3,20 +3,11 @@ package org.sjf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.exception.BindingException;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
-import org.sjf4j.facade.simple.SimpleNodeFacade;
-import org.sjf4j.facade.simple.SimplePropertiesFacade;
-import org.sjf4j.facade.simple.SimpleYamlFacade;
-import org.sjf4j.mapper.NodeMapper;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.TypeReference;
 import org.sjf4j.patch.JsonPatch;
-import org.sjf4j.patch.OperationRegistry;
 import org.sjf4j.patch.Patches;
-import org.sjf4j.path.JsonPath;
-import org.sjf4j.path.JsonPointer;
-import org.sjf4j.path.PathSegment;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,7 +18,6 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -284,13 +274,6 @@ class CoverageApiTest {
 
         JsonObject dynamic = new JsonObject();
         dynamic.put("present", "value");
-        assertEquals("value", dynamic.putNonNull("present", "next"));
-        assertEquals("next", dynamic.getString("present"));
-        assertEquals("next", dynamic.putIfAbsent("present", "skip"));
-        assertNull(dynamic.putIfAbsent("newKey", "created"));
-        assertEquals("created", dynamic.getString("newKey"));
-        assertEquals("created", dynamic.replace("newKey", "replaced"));
-        assertNull(dynamic.replace("missing", "nope"));
         assertEquals("computed", dynamic.computeIfAbsent("computed", key -> key));
         assertEquals("computed", dynamic.computeIfAbsent("computed", key -> "ignored"));
         dynamic.put("code", "ok");
@@ -315,7 +298,7 @@ class CoverageApiTest {
         assertTrue(fieldBacked.keySet().contains("name"));
         assertTrue(fieldBacked.entrySet().stream().anyMatch(entry -> "city".equals(entry.getKey())));
         assertTrue(fieldBacked.anyMatch((key, value) -> "city".equals(key)));
-        assertTrue(fieldBacked.replace((key, value) -> "name".equals(key) ? "HAN" : value));
+        assertTrue(fieldBacked.replaceAll((key, value) -> "name".equals(key) ? "HAN" : value));
         assertEquals("HAN", fieldBacked.name);
         assertThrows(JsonException.class, () -> fieldBacked.remove("name"));
         fieldBacked.clear();
@@ -335,12 +318,10 @@ class CoverageApiTest {
 
         JsonObject built = JsonObject.builder()
                 .put("a", 1)
-                .putNonNull("b", null)
-                .putIfAbsent("a", 2)
                 .put("nested", new JsonObject())
                 .putByPath("$.nested.value", 3)
-                .putIfPresentByPath("$.nested.value", 33)
-                .putIfPresentByPath("$.nested.missing", 44)
+                .putIfParentPresentByPath("$.nested.value", 33)
+                .putIfParentPresentByPath("$.nested.missing", 44)
                 .ensurePutIfAbsentByPath("$.nested.value", 4)
                 .ensurePutByPath("$.nested.other", 5)
                 .build();
@@ -421,7 +402,7 @@ class CoverageApiTest {
         assertTrue(root.getBooleanByPath("$.missing", true));
         assertFalse(root.getAsBooleanByPath("$.boolString"));
         assertEquals("v", root.getMapByPath("$.obj").get("k"));
-        assertEquals("v", root.asMapByPath("$.obj", String.class).get("k"));
+        assertEquals("v", root.getMapByPath("$.obj", String.class).get("k"));
         assertEquals("v", root.getJsonObjectByPath("$.obj").getString("k"));
         assertEquals(JsonArray.of("x", "y"), root.getJsonArrayByPath("$.strings"));
         assertEquals(Arrays.asList("x", "y"), root.getListByPath("$.strings"));
@@ -437,17 +418,17 @@ class CoverageApiTest {
         assertThrows(JsonException.class, () -> root.getAsByPath("$.string", 1));
 
         root.putByPath("$.obj.added", 1);
-        assertEquals(1, root.putIfPresentByPath("$.obj.added", 2));
-        assertNull(root.putIfPresentByPath("$.obj.missing", 3));
+        assertEquals(1, root.putIfParentPresentByPath("$.obj.added", 2));
+        assertNull(root.putIfParentPresentByPath("$.obj.missing", 3));
         assertEquals(3, root.getIntByPath("$.obj.missing"));
-        assertNull(root.putIfPresentByPath("$.missing.path", 4));
+        assertNull(root.putIfParentPresentByPath("$.missing.path", 4));
         root.ensurePutByPath("$.created.path", "x");
         root.ensurePutIfAbsentByPath("$.created.path", "y");
         assertEquals(2, root.computeByPath("$.items[*].id", (parent, current) ->
                 Integer.parseInt(((JsonObject) parent).getString("idText")) * 10));
         root.addByPath("$.strings", "z");
         root.replaceByPath("$.obj.k", "vv");
-        root.removeByPath("$.obj.added");
+        root.removeIfPresentByPath("$.obj.added");
         assertEquals("vv", root.getStringByPath("$.obj.k"));
         assertFalse(root.containsByPath("$.obj.added"));
         assertEquals("x", root.getStringByPath("$.created.path"));

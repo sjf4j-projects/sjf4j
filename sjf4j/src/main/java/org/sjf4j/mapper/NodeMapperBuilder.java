@@ -1,8 +1,6 @@
 package org.sjf4j.mapper;
 
 import org.sjf4j.exception.JsonException;
-import org.sjf4j.facade.FacadeFactory;
-import org.sjf4j.facade.FacadeProvider;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
 import org.sjf4j.facade.StreamingContext;
@@ -219,7 +217,7 @@ public final class NodeMapperBuilder<S, T> {
 
     private static JsonPath _requireSingleTargetPath(String targetPath, String opName) {
         JsonPath compiledTargetPath = _compilePath(targetPath);
-        if (!compiledTargetPath.isSingle()) {
+        if (!compiledTargetPath.isSinglePut()) {
             throw new JsonException(opName + " does not support multi target path: target='" + compiledTargetPath + "'");
         }
         return compiledTargetPath;
@@ -227,7 +225,7 @@ public final class NodeMapperBuilder<S, T> {
 
     private static JsonPath _requireSingleSourcePath(String sourcePath, String opName, JsonPath compiledTargetPath) {
         JsonPath compiledSourcePath = _compilePath(sourcePath);
-        if (!compiledSourcePath.isSingle()) {
+        if (!compiledSourcePath.isSinglePut()) {
             throw new JsonException(opName + " does not support multi source path: source='" +
                     compiledSourcePath + "', target='" + compiledTargetPath + "'");
         }
@@ -291,18 +289,18 @@ public final class NodeMapperBuilder<S, T> {
         private final JsonPointer parentPath;
 
         private ComputeAction(JsonPath targetPath, ComputeFunction<S> computer, boolean ensure) {
-            if (!targetPath.isSingle() && ensure) {
+            if (!targetPath.isSinglePut() && ensure) {
                 throw new JsonException("ensureCompute() does not support multi target path: target='" + targetPath + "'");
             }
             this.targetPath = targetPath;
             this.computer = computer;
             this.ensure = ensure;
-            this.parentPath = targetPath.isSingle() ? JsonPointer.parse(targetPath.toPointerExpr()).parent() : null;
+            this.parentPath = targetPath.isSinglePut() ? JsonPointer.parse(targetPath.toPointerExpr()).parent() : null;
         }
 
         @Override
         public void apply(S source, T target) {
-            if (targetPath.isSingle()) {
+            if (targetPath.isSinglePut()) {
                 Object parent = parentPath == null ? null : parentPath.getNode(target);
                 Object current = targetPath.getNode(target);
                 Object value = computer.apply(source, parent, current);

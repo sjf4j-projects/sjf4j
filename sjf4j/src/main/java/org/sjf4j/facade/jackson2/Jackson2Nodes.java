@@ -335,8 +335,10 @@ public final class Jackson2Nodes {
      */
     public static void accessInObject(Object node, Type type, String key, Nodes.Access out) {
         if (node instanceof ObjectNode) {
-            out.node = ((ObjectNode) node).get(key);
+            ObjectNode objectNode = (ObjectNode) node;
+            out.node = objectNode.get(key);
             out.type = JsonNode.class;
+            out.present = objectNode.has(key);
             out.puttable = true;
             return;
         }
@@ -350,12 +352,14 @@ public final class Jackson2Nodes {
         if (node instanceof ArrayNode) {
             out.type = JsonNode.class;
             out.node = null;
+            out.present = false;
             out.puttable = true;
             ArrayNode an = (ArrayNode) node;
             if (idx == null) return;
             idx = idx < 0 ? an.size() + idx : idx;
             if (idx >= 0 && idx < an.size()) {
                 out.node = an.get(idx);
+                out.present = true;
                 return;
             }
             out.puttable = false;

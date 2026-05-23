@@ -168,6 +168,23 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
+     * Returns true if the key exists in readable declared properties or dynamic entries.
+     */
+    public boolean containsKey(String key) {
+        if (key == null) return false;
+        return (pi != null && pi.readableProperties.containsKey(key))
+                || (dynamicMap != null && dynamicMap.containsKey(key));
+    }
+
+    /**
+     * Returns true if the key exists and the value is non-null.
+     */
+    public boolean hasNonNull(String key) {
+        if (key == null) return false;
+        return getNode(key) != null;
+    }
+
+    /**
      * Returns a merged key set of readable declared properties and dynamic entries.
      */
     public Set<String> keySet() {
@@ -204,119 +221,6 @@ public class JsonObject extends JsonContainer {
                 }
             };
         }
-    }
-
-    /**
-     * Returns true if the key exists in readable declared properties or dynamic entries.
-     */
-    public boolean containsKey(String key) {
-        if (key == null) return false;
-        return (pi != null && pi.readableProperties.containsKey(key))
-                || (dynamicMap != null && dynamicMap.containsKey(key));
-    }
-
-    /**
-     * Returns true if the key exists and the value is non-null.
-     */
-    public boolean hasNonNull(String key) {
-        if (key == null) return false;
-        return getNode(key) != null;
-    }
-
-    /**
-     * Performs the given visitor for each readable entry.
-     */
-    public void forEach(BiConsumer<String, Object> visitor) {
-        Objects.requireNonNull(visitor, "visitor");
-        if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
-                visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
-            }
-        }
-        if (dynamicMap != null) {
-            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
-                visitor.accept(entry.getKey(), entry.getValue());
-            }
-        }
-    }
-
-    /**
-     * Returns true if any readable entry matches the predicate.
-     */
-    public boolean anyMatch(BiPredicate<String, Object> predicate) {
-        Objects.requireNonNull(predicate, "predicate");
-        if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
-                if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
-                    return true;
-                }
-            }
-        }
-        if (dynamicMap != null) {
-            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
-                if (predicate.test(entry.getKey(), entry.getValue())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Replaces values for readable-and-writable declared properties and dynamic
-     * entries in place.
-     */
-    public boolean replace(BiFunction<String, Object, Object> mapper) {
-        Objects.requireNonNull(mapper, "mapper");
-        boolean changed = false;
-        if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
-                NodeRegistry.PropertyInfo fi = entry.getValue();
-                if (!fi.hasSetter()) {
-                    continue;
-                }
-                Object oldValue = fi.invokeGetter(this);
-                Object newValue = mapper.apply(entry.getKey(), oldValue);
-                if (newValue != oldValue) {
-                    fi.invokeSetter(this, newValue);
-                    changed = true;
-                }
-            }
-        }
-        if (dynamicMap != null) {
-            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
-                Object oldValue = entry.getValue();
-                Object newValue = mapper.apply(entry.getKey(), oldValue);
-                if (newValue != oldValue) {
-                    entry.setValue(newValue);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
-
-    /**
-     * Returns a merged Map view of readable declared properties and dynamic entries.
-     */
-    public Map<String, Object> toMap() {
-        Map<String, Object> merged = new LinkedHashMap<>();
-        if (pi != null) {
-            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
-                merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
-            }
-        }
-        if (dynamicMap != null) {
-            merged.putAll(dynamicMap);
-        }
-        return merged;
-    }
-
-    /**
-     * Converts this object to a typed Map.
-     */
-    public <T> Map<String, T> toMap(Class<T> clazz) {
-        return Nodes.toMap(this, clazz);
     }
 
     /**
@@ -387,6 +291,102 @@ public class JsonObject extends JsonContainer {
                 }
             };
         }
+    }
+
+    /**
+     * Performs the given visitor for each readable entry.
+     */
+    public void forEach(BiConsumer<String, Object> visitor) {
+        Objects.requireNonNull(visitor, "visitor");
+        if (pi != null) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+                visitor.accept(entry.getKey(), entry.getValue().invokeGetter(this));
+            }
+        }
+        if (dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
+                visitor.accept(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /**
+     * Returns true if any readable entry matches the predicate.
+     */
+    public boolean anyMatch(BiPredicate<String, Object> predicate) {
+        Objects.requireNonNull(predicate, "predicate");
+        if (pi != null) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+                if (predicate.test(entry.getKey(), entry.getValue().invokeGetter(this))) {
+                    return true;
+                }
+            }
+        }
+        if (dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
+                if (predicate.test(entry.getKey(), entry.getValue())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Replaces values for readable-and-writable declared properties and dynamic
+     * entries in place.
+     */
+    public boolean replaceAll(BiFunction<String, Object, Object> mapper) {
+        Objects.requireNonNull(mapper, "mapper");
+        boolean changed = false;
+        if (pi != null) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+                NodeRegistry.PropertyInfo fi = entry.getValue();
+                if (!fi.hasSetter()) {
+                    continue;
+                }
+                Object oldValue = fi.invokeGetter(this);
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (newValue != oldValue) {
+                    fi.invokeSetter(this, newValue);
+                    changed = true;
+                }
+            }
+        }
+        if (dynamicMap != null) {
+            for (Map.Entry<String, Object> entry : dynamicMap.entrySet()){
+                Object oldValue = entry.getValue();
+                Object newValue = mapper.apply(entry.getKey(), oldValue);
+                if (newValue != oldValue) {
+                    entry.setValue(newValue);
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
+
+    /**
+     * Returns a merged Map view of readable declared properties and dynamic entries.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> merged = new LinkedHashMap<>();
+        if (pi != null) {
+            for (Map.Entry<String, NodeRegistry.PropertyInfo> entry : pi.readableProperties.entrySet()){
+                merged.put(entry.getKey(), entry.getValue().invokeGetter(this));
+            }
+        }
+        if (dynamicMap != null) {
+            merged.putAll(dynamicMap);
+        }
+        return merged;
+    }
+
+    /**
+     * Converts this object to a typed Map.
+     */
+    public <T> Map<String, T> toMap(Class<T> clazz) {
+        return Nodes.toMap(this, clazz);
     }
 
     /// JSON Facade
@@ -787,54 +787,27 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Puts a value only when it is non-null.
-     */
-    public Object putNonNull(String key, Object node) {
-        if (node != null) {
-            return put(key, node);
-        } else {
-            return getNode(key);
-        }
-    }
-
-    /**
-     * Puts a value only when the current value is null.
-     */
-    public Object putIfAbsent(String key, Object node) {
-        Object old = getNode(key);
-        if (old == null) {
-            old = put(key, node);
-        }
-        return old;
-    }
-
-    /**
-     * Replaces the value only if the key already exists.
-     */
-    public Object replace(String key, Object value) {
-        Object old = getNode(key);
-        if (old != null) {
-            return put(key, value);
-        }
-        return null;
-    }
-
-    // Try generic
-    /**
      * Computes and stores a value when the current value is null.
      */
     @SuppressWarnings("unchecked")
     public <T> T computeIfAbsent(String key, Function<String, T> computer) {
+        Objects.requireNonNull(key, "key");
         Objects.requireNonNull(computer, "computer");
-        T old = get(key);
-        if (old == null) {
+
+        if (pi != null && pi.properties.containsKey(key)) {
+            T old = (T) getNode(key);
+            if (old != null) {
+                return old;
+            }
             T newNode = computer.apply(key);
             if (newNode != null) {
                 put(key, newNode);
-                return newNode;
             }
+            return newNode;
         }
-        return old;
+
+        if (dynamicMap == null) dynamicMap = new LinkedHashMap<>();
+        return (T) dynamicMap.computeIfAbsent(key, computer);
     }
 
     /**
@@ -871,6 +844,7 @@ public class JsonObject extends JsonContainer {
      * Removes dynamic entries that match the predicate.
      */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
+        Objects.requireNonNull(filter, "filter");
         if (dynamicMap != null) {
             return dynamicMap.entrySet().removeIf(filter);
         }
@@ -965,6 +939,7 @@ public class JsonObject extends JsonContainer {
         public Builder(JsonObject jo) {
             this.jo = jo;
         }
+
         /**
          * Puts key/value into target object.
          */
@@ -972,20 +947,7 @@ public class JsonObject extends JsonContainer {
             jo.put(key, value);
             return this;
         }
-        /**
-         * Puts key/value only when value is non-null.
-         */
-        public Builder putNonNull(String key, Object value) {
-            jo.putNonNull(key, value);
-            return this;
-        }
-        /**
-         * Puts key/value only when current value is absent.
-         */
-        public Builder putIfAbsent(String key, Object value) {
-            jo.putIfAbsent(key, value);
-            return this;
-        }
+
         /**
          * Writes a value at the given path.
          */
@@ -998,8 +960,8 @@ public class JsonObject extends JsonContainer {
          * Writes a value only when the parent container of the final path
          * segment already exists.
          */
-        public Builder putIfPresentByPath(String path, Object value) {
-            jo.putIfPresentByPath(path, value);
+        public Builder putIfParentPresentByPath(String path, Object value) {
+            jo.putIfParentPresentByPath(path, value);
             return this;
         }
 

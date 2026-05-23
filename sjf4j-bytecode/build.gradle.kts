@@ -83,8 +83,8 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J")
-        description.set("Simple JSON Facade for Java")
-        inceptionYear.set("2025")
+        description.set("SJF4J bytecode acceleration module — ASM-based compiled-path compiler for SJF4J")
+        inceptionYear.set("2026")
         url.set("https://sjf4j.org")
         licenses {
             license {

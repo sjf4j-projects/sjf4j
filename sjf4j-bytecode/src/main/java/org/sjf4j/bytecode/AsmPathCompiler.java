@@ -47,7 +47,7 @@ public class AsmPathCompiler implements PathCompiler {
 
         if (rootClazz == Object.class) return null;
         if (path.length() < 2) return null;
-        if (!path.isSingle()) {
+        if (!path.isSinglePut()) {
             throw new JsonException("ASM CompiledPath supports only a single target path with Name/Index/Append segments: '" +
                     path.toExpr() + "'");
         }

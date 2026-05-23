@@ -215,7 +215,10 @@ class JsonArrayTest {
         ja1.ensurePutByPath("$[2].a.b", "yes");
         log.info("ja1: {}", ja1);
         assertEquals("[2,3,{\"a\":{\"b\":\"yes\"}}]", ja1.toJson());
-        assertThrows(JsonException.class, () -> JsonArray.fromJson("[]").ensurePutIfAbsentByPath("$[0]", 9));
+        JsonArray empty = JsonArray.fromJson("[]");
+        empty.ensurePutIfAbsentByPath("$[0]", 9);
+        assertEquals("[9]", empty.toJson());
+        assertThrows(JsonException.class, () -> JsonArray.fromJson("[]").ensurePutIfAbsentByPath("$[1]", 9));
     }
 
     public void testByPath2() {

@@ -239,8 +239,8 @@ class Jackson3NodesTest {
         assertEquals(3, visitedObject.size());
         assertTrue(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("age")));
         assertFalse(FacadeNodes.anyMatchObject(objectNode, (key, value) -> key.equals("missing")));
-        assertTrue(FacadeNodes.replaceInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
-        assertFalse(FacadeNodes.replaceInObject(objectNode, (key, value) -> value));
+        assertTrue(FacadeNodes.replaceAllInObject(objectNode, (key, value) -> key.equals("name") ? StringNode.valueOf("jack") : value));
+        assertFalse(FacadeNodes.replaceAllInObject(objectNode, (key, value) -> value));
         assertTrue(FacadeNodes.removeIfInObject(objectNode, (key, value) -> key.equals("active") || key.equals("missing")));
         assertFalse(objectNode.has("active"));
         assertFalse(FacadeNodes.removeIfInObject(objectNode, (key, value) -> false));
