@@ -677,7 +677,7 @@ public class JsonPath {
      * or a function result.
      * <p>
      * When the last segment is a function token, the function is invoked with
-     * the matched value(s) as first argument plus parsed literal arguments.
+     * the matched value(s) as target plus parsed literal arguments.
      */
     public Object eval(Object container) {
         Objects.requireNonNull(container, "container");
@@ -690,11 +690,7 @@ public class JsonPath {
             Object value = _findOne(container, 1, segments.length - 1);
             if (value == MISSING) return null;
             PathSegment.Function func = (PathSegment.Function) tk;
-            Object[] functionArgs = func.resolvedArgs;
-            Object[] args = new Object[1 + functionArgs.length];
-            args[0] = value;
-            System.arraycopy(functionArgs, 0, args, 1, functionArgs.length);
-            return FunctionRegistry.invoke(func.name, args);
+            return FunctionRegistry.invoke(func.name, value, func.resolvedArgs);
         }
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, Function.identity(), new Nodes.Access());
@@ -702,11 +698,7 @@ public class JsonPath {
 
         if (tk instanceof PathSegment.Function) {
             PathSegment.Function func = (PathSegment.Function) tk;
-            Object[] functionArgs = func.resolvedArgs;
-            Object[] args = new Object[1 + functionArgs.length];
-            args[0] = (result.size() == 1 ? result.get(0) : result);
-            System.arraycopy(functionArgs, 0, args, 1, functionArgs.length);
-            return FunctionRegistry.invoke(func.name, args);
+            return FunctionRegistry.invoke(func.name, result.size() == 1 ? result.get(0) : result, func.resolvedArgs);
         } else {
             if (result.size() == 1) return result.get(0);
             else return result;

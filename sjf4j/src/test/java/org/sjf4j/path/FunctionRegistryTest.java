@@ -16,8 +16,11 @@ public class FunctionRegistryTest {
 
     @Test
     public void testRegister1() {
-        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("hi", args -> {
-            return "hi, " + Arrays.toString(args);
+        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("hi", (target, args) -> {
+            Object[] values = new Object[args.length + 1];
+            values[0] = target;
+            System.arraycopy(args, 0, values, 1, args.length);
+            return "hi, " + Arrays.toString(values);
         }));
 
         Set<String> functionNames = FunctionRegistry.getFunctionNames();

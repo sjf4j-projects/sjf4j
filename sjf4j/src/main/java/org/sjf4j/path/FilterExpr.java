@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Numbers;
 
@@ -186,6 +187,8 @@ public interface FilterExpr {
      * Filter expression for a function call.
      */
     class FunctionExpr implements FilterExpr {
+        private static final Object[] NO_ARGS = new Object[0];
+
         final String name;
         final List<FilterExpr> args;
 
@@ -198,15 +201,18 @@ public interface FilterExpr {
         }
 
         /**
-         * Evaluates function with evaluated argument values.
+         * Evaluates function with the first evaluated argument as target and remaining values as args.
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            Object[] values = new Object[args.size()];
-            for (int i = 0; i < args.size(); i++) {
-                values[i] = args.get(i).eval(rootNode, currentNode);
+            int size = args.size();
+            if (size == 0) throw new JsonException("function '" + name + "' requires a target argument");
+            Object target = args.get(0).eval(rootNode, currentNode);
+            Object[] values = size <= 1 ? NO_ARGS : new Object[size - 1];
+            for (int i = 1; i < size; i++) {
+                values[i - 1] = args.get(i).eval(rootNode, currentNode);
             }
-            return FunctionRegistry.invoke(name, values);
+            return FunctionRegistry.invoke(name, target, values);
         }
     }
 

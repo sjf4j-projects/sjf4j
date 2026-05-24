@@ -94,7 +94,7 @@ class FilterExprTest {
         assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.LiteralExpr("ha"), FilterExpr.Op.MATCH).eval(root, root));
         assertEquals("(2 > 1)", new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).toString());
 
-        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("joinCount", args -> ((List<?>) args[0]).size()));
+        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("joinCount", (target, args) -> ((List<?>) target).size()));
         FilterExpr.FunctionExpr functionExpr = new FilterExpr.FunctionExpr("joinCount", Arrays.asList(new FilterExpr.LiteralExpr(Arrays.asList(1, 2, 3))));
         assertEquals(3, functionExpr.eval(root, root));
 
@@ -113,7 +113,7 @@ class FilterExprTest {
         assertThrows(JsonException.class, () -> PathSyntax.parseFilter("'\\uZZZZ'"));
         assertTrue(PathSyntax.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null));
 
-        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("explodeFilterExpr", args -> {
+        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("explodeFilterExpr", (target, args) -> {
             throw new IllegalStateException("boom");
         }));
 
