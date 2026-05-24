@@ -1561,10 +1561,9 @@ public final class Nodes {
      * Callers typically reuse one instance across repeated lookups to avoid
      * allocating short-lived result wrappers.
      * <p>
-     * {@code getAccess*} methods interpret {@link #present} as readable-location
-     * existence and do not update {@link #puttable}. {@code putAccess*} methods
-     * fill {@link #type}/{@link #puttable} for write and auto-create paths and
-     * do not update {@link #present}.
+     * {@code getAccess*} methods fill {@link #node}/{@link #present} for read
+     * paths. {@code putAccess*} methods fill {@link #node}/{@link #type}/
+     * {@link #puttable} for write and auto-create paths.
      */
     public static final class Access {
         /** child value (can be null) */
@@ -1594,7 +1593,6 @@ public final class Nodes {
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(out, "out");
 
-        out.type = Object.class;
         out.node = null;
         out.present = false;
         if (node instanceof Map) {
@@ -1614,7 +1612,6 @@ public final class Nodes {
             NodeRegistry.PropertyInfo fi = pi.readableProperties.get(key);
             if (fi != null) {
                 out.node = fi.invokeGetter(node);
-                out.type = fi.type;
                 out.present = true;
                 return;
             }
@@ -1698,7 +1695,6 @@ public final class Nodes {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(out, "out");
 
-        out.type = Object.class;
         out.node = null;
         out.present = false;
         if (node instanceof List) {
@@ -1724,7 +1720,6 @@ public final class Nodes {
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 && idx < len) {
                 out.node = Array.get(node, idx);
-                out.type = node.getClass().getComponentType();
                 out.present = true;
             }
             return;

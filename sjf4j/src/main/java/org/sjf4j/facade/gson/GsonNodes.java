@@ -331,7 +331,6 @@ public final class GsonNodes {
         if (node instanceof JsonObject) {
             JsonObject objectNode = (JsonObject) node;
             out.node = objectNode.get(key);
-            out.type = JsonElement.class;
             out.present = objectNode.has(key);
             return;
         }
@@ -357,7 +356,6 @@ public final class GsonNodes {
      */
     public static void getAccessInArray(Object node, int idx, Nodes.Access out) {
         if (node instanceof JsonArray) {
-            out.type = JsonElement.class;
             out.node = null;
             out.present = false;
             JsonArray ja = (JsonArray) node;
