@@ -463,38 +463,76 @@ public class FacadeNodes {
 //    }
 
     /**
-     * Resolves child access info for object node.
+     * Resolves readable child access info for object node.
      */
-    public static void accessInObject(Object node, Type type, String key, Nodes.Access out) {
+    public static void getAccessInObject(Object node, String key, Nodes.Access out) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            Jackson3Nodes.accessInObject(node, type, key, out);
+            Jackson3Nodes.getAccessInObject(node, key, out);
             return;
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            Jackson2Nodes.accessInObject(node, type, key, out);
+            Jackson2Nodes.getAccessInObject(node, key, out);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            GsonNodes.accessInObject(node, type, key, out);
+            GsonNodes.getAccessInObject(node, key, out);
             return;
         }
         throw _unknownNode(node);
     }
 
     /**
-     * Resolves child access info for array node.
+     * Resolves writable child access info for object node.
      */
-    public static void accessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
+    public static void putAccessInObject(Object node, Type type, String key, Nodes.Access out) {
         if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
-            Jackson3Nodes.accessInArray(node, type, idx, out);
+            Jackson3Nodes.putAccessInObject(node, type, key, out);
             return;
         }
         if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
-            Jackson2Nodes.accessInArray(node, type, idx, out);
+            Jackson2Nodes.putAccessInObject(node, type, key, out);
             return;
         }
         if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
-            GsonNodes.accessInArray(node, type, idx, out);
+            GsonNodes.putAccessInObject(node, type, key, out);
+            return;
+        }
+        throw _unknownNode(node);
+    }
+
+    /**
+     * Resolves readable child access info for array node.
+     */
+    public static void getAccessInArray(Object node, int idx, Nodes.Access out) {
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.getAccessInArray(node, idx, out);
+            return;
+        }
+        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
+            Jackson2Nodes.getAccessInArray(node, idx, out);
+            return;
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            GsonNodes.getAccessInArray(node, idx, out);
+            return;
+        }
+        throw _unknownNode(node);
+    }
+
+    /**
+     * Resolves writable child access info for array node.
+     */
+    public static void putAccessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
+        if (JACKSON3_NODES_PRESENT && Jackson3Nodes.isNode(node)) {
+            Jackson3Nodes.putAccessInArray(node, type, idx, out);
+            return;
+        }
+        if (JACKSON2_NODES_PRESENT && Jackson2Nodes.isNode(node)) {
+            Jackson2Nodes.putAccessInArray(node, type, idx, out);
+            return;
+        }
+        if (GSON_NODES_PRESENT && GsonNodes.isNode(node)) {
+            GsonNodes.putAccessInArray(node, type, idx, out);
             return;
         }
         throw _unknownNode(node);

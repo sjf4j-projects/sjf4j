@@ -110,22 +110,22 @@ class FacadeNodesTest {
         assertEquals(2, FacadeNodes.toNumber(FacadeNodes.getInArray(arrayNode, 1)).intValue());
 
         Nodes.Access access = new Nodes.Access();
-        FacadeNodes.accessInObject(objectNode, null, "name", access);
+        FacadeNodes.putAccessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
         assertTrue(access.puttable);
-        FacadeNodes.accessInObject(objectNode, null, "missing", access);
+        FacadeNodes.putAccessInObject(objectNode, null, "missing", access);
         assertNull(access.node);
         assertTrue(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, 0, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
         assertTrue(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, null, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, null, access);
         assertNull(access.node);
         assertTrue(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, 3, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
         assertFalse(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, 4, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertFalse(access.puttable);
 
@@ -194,22 +194,22 @@ class FacadeNodesTest {
         assertEquals(2, FacadeNodes.toNumber(FacadeNodes.getInArray(arrayNode, 1)).intValue());
 
         Nodes.Access access = new Nodes.Access();
-        FacadeNodes.accessInObject(objectNode, null, "name", access);
+        FacadeNodes.putAccessInObject(objectNode, null, "name", access);
         assertNotNull(access.node);
         assertFalse(access.puttable);
-        FacadeNodes.accessInObject(objectNode, null, "missing", access);
+        FacadeNodes.putAccessInObject(objectNode, null, "missing", access);
         assertNull(access.node);
         assertFalse(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, 0, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, 0, access);
         assertNotNull(access.node);
         assertFalse(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, null, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, null, access);
         assertNull(access.node);
         assertFalse(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, 3, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
         assertFalse(access.puttable);
-        FacadeNodes.accessInArray(arrayNode, null, 4, access);
+        FacadeNodes.putAccessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertFalse(access.puttable);
 
@@ -264,8 +264,8 @@ class FacadeNodesTest {
         assertThrows(JsonException.class, () -> FacadeNodes.containsInObject("x", "k"));
         assertThrows(JsonException.class, () -> FacadeNodes.getInObject("x", "k"));
         assertThrows(JsonException.class, () -> FacadeNodes.getInArray("x", 0));
-        assertThrows(JsonException.class, () -> FacadeNodes.accessInObject("x", null, "k", new Nodes.Access()));
-        assertThrows(JsonException.class, () -> FacadeNodes.accessInArray("x", null, 0, new Nodes.Access()));
+        assertThrows(JsonException.class, () -> FacadeNodes.putAccessInObject("x", null, "k", new Nodes.Access()));
+        assertThrows(JsonException.class, () -> FacadeNodes.putAccessInArray("x", null, 0, new Nodes.Access()));
         assertThrows(JsonException.class, () -> FacadeNodes.putInObject("x", "k", "v"));
         assertThrows(JsonException.class, () -> FacadeNodes.setInArray("x", 0, "v"));
         assertThrows(JsonException.class, () -> FacadeNodes.addInArray("x", "v"));

@@ -1,6 +1,9 @@
 package org.sjf4j.path;
 
 
+import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.Numbers;
+
 import java.util.List;
 
 
@@ -273,6 +276,7 @@ public abstract class PathSegment {
     public static final class Function extends PathSegment {
         public final String name;
         public final List<String> args;
+        public final Object[] resolvedArgs;
 
         /**
          * Creates a function-call segment.
@@ -281,10 +285,36 @@ public abstract class PathSegment {
             super(parent);
             this.name = name;
             this.args = args;
+            this.resolvedArgs = _resolveFunctionArgs(args);
         }
         @Override public String toString() {
             if (args == null || args.isEmpty()) return "." + name + "()";
             return "." + name + "(" + String.join(", ", args) + ")";
+        }
+    }
+
+    private static Object[] _resolveFunctionArgs(List<String> args) {
+        if (args == null || args.isEmpty()) return new Object[0];
+        Object[] resolved = new Object[args.size()];
+        for (int i = 0; i < args.size(); i++) {
+            resolved[i] = _resolveFunctionArg(args.get(i));
+        }
+        return resolved;
+    }
+
+    private static Object _resolveFunctionArg(String raw) {
+        if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
+            return raw.substring(1, raw.length() - 1);
+        } else if ("true".equals(raw)) {
+            return true;
+        } else if ("false".equals(raw)) {
+            return false;
+        } else if ("null".equals(raw)) {
+            return null;
+        } else if (Numbers.isNumeric(raw)) {
+            return Numbers.parseNumber(raw);
+        } else {
+            throw new JsonException("invalid function argument '" + raw + "'");
         }
     }
 

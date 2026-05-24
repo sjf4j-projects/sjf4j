@@ -119,6 +119,7 @@ public final class Types {
      * The {@code index} is zero-based.
      */
     public static Type resolveTypeArgument(Type type, Class<?> target, int index) {
+        if (type == null || type == Object.class) return Object.class;
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = ((ParameterizedType) type);
             if (pt.getRawType() == target) {

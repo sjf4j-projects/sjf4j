@@ -445,6 +445,13 @@ public class JsonPathTest {
         assertFalse(JsonPath.parse("$.a").hasNonNull(withNull));
         assertNull(JsonPath.parse("$.a").getNode(withNull));
 
+        JsonArray objectArray = JsonArray.of(
+                JsonObject.of("a", null),
+                JsonObject.of("b", 1),
+                JsonObject.of("a", "x")
+        );
+        assertEquals(Arrays.asList((Object) null, "x"), JsonPath.parse("$[*].a").find(objectArray));
+
         JsonArray nestedArrays = JsonArray.of(
                 JsonArray.of("a", (Object) null),
                 JsonArray.of("b"),

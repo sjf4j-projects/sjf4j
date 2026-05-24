@@ -1561,6 +1561,11 @@ public final class Nodes {
      * Callers typically reuse one instance across repeated lookups to avoid
      * allocating short-lived result wrappers. Each access helper call fully
      * overwrites the holder fields.
+     * <p>
+     * {@code getAccess*} methods interpret {@link #present} as readable-location
+     * existence and do not guarantee {@link #puttable}. {@code putAccess*}
+     * methods interpret {@link #present} as structural-location existence and
+     * fill {@link #type}/{@link #puttable} for write and auto-create paths.
      */
     public static final class Access {
         /** child value (can be null) */
@@ -1578,13 +1583,65 @@ public final class Nodes {
     }
 
     /**
-     * Resolves object-child access and fills {@link Access} with node/type metadata.
+     * Resolves readable object-child access and fills {@link Access}.
+     * <p>
+     * The output distinguishes present-null from missing values under read
+     * semantics. Write-only POJO properties are not readable and therefore are
+     * reported as absent.
+     */
+    @SuppressWarnings("unchecked")
+    public static void getAccessInObject(Object node, String key, Access out) {
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(out, "out");
+
+        out.type = Object.class;
+        out.node = null;
+        out.present = false;
+        out.puttable = false;
+        if (node instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) node;
+            out.node = map.get(key);
+            out.present = out.node != null || map.containsKey(key);
+            return;
+        }
+        if (node.getClass() == JsonObject.class) {
+            JsonObject jo = (JsonObject) node;
+            out.node = jo.getNode(key);
+            out.present = out.node != null || jo.containsKey(key);
+            return;
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
+        if (pi != null) {
+            NodeRegistry.PropertyInfo fi = pi.readableProperties.get(key);
+            if (fi != null) {
+                out.node = fi.invokeGetter(node);
+                out.type = fi.type;
+                out.present = true;
+                return;
+            }
+            if (pi.isJojo) {
+                JsonObject jo = (JsonObject) node;
+                out.node = jo.getNode(key);
+                out.present = out.node != null || jo.containsKey(key);
+            }
+            return;
+        }
+        if (FacadeNodes.isNode(node)) {
+            FacadeNodes.getAccessInObject(node, key, out);
+            return;
+        }
+        throw new JsonException("expected Object node, but was " + Types.name(node));
+    }
+
+    /**
+     * Resolves writable object-child access and fills {@link Access} with node/type metadata.
      * <p>
      * The output describes the current child value, inferred static type, and
      * whether public write APIs can create or replace content at this location.
      */
     @SuppressWarnings("unchecked")
-    public static void accessInObject(Object node, Type type, String key, Access out) {
+    public static void putAccessInObject(Object node, Type type, String key, Access out) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(out, "out");
@@ -1593,7 +1650,7 @@ public final class Nodes {
             Map<String, Object> map = (Map<String, Object>) node;
             out.node = map.get(key);
             out.type = Types.resolveTypeArgument(type, Map.class, 1);
-            out.present = map.containsKey(key);
+            out.present = out.node != null || map.containsKey(key);
             out.puttable = true;
             return;
         }
@@ -1601,7 +1658,7 @@ public final class Nodes {
             JsonObject jo = (JsonObject) node;
             out.node = jo.getNode(key);
             out.type = Object.class;
-            out.present = jo.containsKey(key);
+            out.present = out.node != null || jo.containsKey(key);
             out.puttable = true;
             return;
         }
@@ -1619,7 +1676,7 @@ public final class Nodes {
                 JsonObject jo = (JsonObject) node;
                 out.node = jo.getNode(key);
                 out.type = Object.class;
-                out.present = jo.containsKey(key);
+                out.present = out.node != null || jo.containsKey(key);
                 out.puttable = true;
                 return;
             }
@@ -1630,7 +1687,7 @@ public final class Nodes {
             return;
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.accessInObject(node, type, key, out);
+            FacadeNodes.putAccessInObject(node, type, key, out);
             return;
         }
         throw new JsonException("expected Object node, but was " + Types.name(node));
@@ -1638,7 +1695,60 @@ public final class Nodes {
     }
 
     /**
-     * Resolves array-child access and fills {@link Access} with node/type metadata.
+     * Resolves readable array-child access and fills {@link Access}.
+     * <p>
+     * The output distinguishes present-null from missing values under read
+     * semantics. Negative indexes are normalized.
+     */
+    @SuppressWarnings("unchecked")
+    public static void getAccessInArray(Object node, int idx, Access out) {
+        Objects.requireNonNull(node, "node");
+        Objects.requireNonNull(out, "out");
+
+        out.type = Object.class;
+        out.node = null;
+        out.present = false;
+        out.puttable = false;
+        if (node instanceof List) {
+            List<Object> list = (List<Object>) node;
+            idx = idx < 0 ? list.size() + idx : idx;
+            if (idx >= 0 && idx < list.size()) {
+                out.node = list.get(idx);
+                out.present = true;
+            }
+            return;
+        }
+        if (node instanceof JsonArray) {
+            JsonArray ja = (JsonArray) node;
+            idx = idx < 0 ? ja.size() + idx : idx;
+            if (idx >= 0 && idx < ja.size()) {
+                out.node = ja.getNode(idx);
+                out.present = true;
+            }
+            return;
+        }
+        if (node.getClass().isArray()) {
+            int len = Array.getLength(node);
+            idx = idx < 0 ? len + idx : idx;
+            if (idx >= 0 && idx < len) {
+                out.node = Array.get(node, idx);
+                out.type = node.getClass().getComponentType();
+                out.present = true;
+            }
+            return;
+        }
+        if (node instanceof Set) {
+            throw new JsonException("cannot call getAccessInArray() on an unordered Java Set");
+        }
+        if (FacadeNodes.isNode(node)) {
+            FacadeNodes.getAccessInArray(node, idx, out);
+            return;
+        }
+        throw new JsonException("expected Array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Resolves writable array-child access and fills {@link Access} with node/type metadata.
      * <p>
      * Negative indexes are normalized. Indexed access is reported as puttable only
      * when the normalized index already exists.
@@ -1647,7 +1757,7 @@ public final class Nodes {
      * with {@code node == null}.
      */
     @SuppressWarnings("unchecked")
-    public static void accessInArray(Object node, Type type, Integer idx, Access out) {
+    public static void putAccessInArray(Object node, Type type, Integer idx, Access out) {
         Objects.requireNonNull(node, "node");
         Objects.requireNonNull(out, "out");
 
@@ -1682,6 +1792,7 @@ public final class Nodes {
         }
         if (node.getClass().isArray()) {
             out.type = node.getClass().getComponentType();
+            if (idx == null) return;
             int len = Array.getLength(node);
             idx = idx < 0 ? len + idx : idx;
             if (idx >= 0 && idx < len) {
@@ -1694,10 +1805,10 @@ public final class Nodes {
         }
         if (node instanceof Set) {
             if (idx == null) return;
-            throw new JsonException("cannot call accessInArray() on an unordered Java Set");
+            throw new JsonException("cannot call putAccessInArray() on an unordered Java Set");
         }
         if (FacadeNodes.isNode(node)) {
-            FacadeNodes.accessInArray(node, type, idx, out);
+            FacadeNodes.putAccessInArray(node, type, idx, out);
             return;
         }
         throw new JsonException("expected Array node, but was " + Types.name(node));

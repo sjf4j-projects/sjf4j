@@ -325,9 +325,9 @@ public final class GsonNodes {
     }
 
     /**
-     * Resolves child access info for Gson object node.
+     * Resolves readable child access info for Gson object node.
      */
-    public static void accessInObject(Object node, Type type, String key, Nodes.Access out) {
+    public static void getAccessInObject(Object node, String key, Nodes.Access out) {
         if (node instanceof JsonObject) {
             JsonObject objectNode = (JsonObject) node;
             out.node = objectNode.get(key);
@@ -340,16 +340,22 @@ public final class GsonNodes {
     }
 
     /**
-     * Resolves child access info for Gson array node.
+     * Resolves writable child access info for Gson object node.
      */
-    public static void accessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
+    public static void putAccessInObject(Object node, Type type, String key, Nodes.Access out) {
+        getAccessInObject(node, key, out);
+    }
+
+    /**
+     * Resolves readable child access info for Gson array node.
+     */
+    public static void getAccessInArray(Object node, int idx, Nodes.Access out) {
         if (node instanceof JsonArray) {
             out.type = JsonElement.class;
             out.node = null;
             out.present = false;
             out.puttable = false;
             JsonArray ja = (JsonArray) node;
-            if (idx == null) return;
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx < ja.size()) {
                 out.node = ja.get(idx);
@@ -359,6 +365,23 @@ public final class GsonNodes {
             return;
         }
         throw expected("JsonArray", node);
+    }
+
+    /**
+     * Resolves writable child access info for Gson array node.
+     */
+    public static void putAccessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
+        if (idx == null) {
+            if (node instanceof JsonArray) {
+                out.type = JsonElement.class;
+                out.node = null;
+                out.present = false;
+                out.puttable = false;
+                return;
+            }
+            throw expected("JsonArray", node);
+        }
+        getAccessInArray(node, idx, out);
     }
 
     /**

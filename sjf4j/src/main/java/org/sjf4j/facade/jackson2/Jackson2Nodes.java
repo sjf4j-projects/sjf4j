@@ -331,9 +331,24 @@ public final class Jackson2Nodes {
     }
     
     /**
-     * Resolves child access info for Jackson object node.
+     * Resolves readable child access info for Jackson object node.
      */
-    public static void accessInObject(Object node, Type type, String key, Nodes.Access out) {
+    public static void getAccessInObject(Object node, String key, Nodes.Access out) {
+        if (node instanceof ObjectNode) {
+            ObjectNode objectNode = (ObjectNode) node;
+            out.node = objectNode.get(key);
+            out.type = JsonNode.class;
+            out.present = objectNode.has(key);
+            out.puttable = false;
+            return;
+        }
+        throw _expected("ObjectNode", node);
+    }
+
+    /**
+     * Resolves writable child access info for Jackson object node.
+     */
+    public static void putAccessInObject(Object node, Type type, String key, Nodes.Access out) {
         if (node instanceof ObjectNode) {
             ObjectNode objectNode = (ObjectNode) node;
             out.node = objectNode.get(key);
@@ -346,9 +361,29 @@ public final class Jackson2Nodes {
     }
 
     /**
-     * Resolves child access info for Jackson array node.
+     * Resolves readable child access info for Jackson array node.
      */
-    public static void accessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
+    public static void getAccessInArray(Object node, int idx, Nodes.Access out) {
+        if (node instanceof ArrayNode) {
+            out.type = JsonNode.class;
+            out.node = null;
+            out.present = false;
+            out.puttable = false;
+            ArrayNode an = (ArrayNode) node;
+            idx = idx < 0 ? an.size() + idx : idx;
+            if (idx >= 0 && idx < an.size()) {
+                out.node = an.get(idx);
+                out.present = true;
+            }
+            return;
+        }
+        throw _expected("ArrayNode", node);
+    }
+
+    /**
+     * Resolves writable child access info for Jackson array node.
+     */
+    public static void putAccessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
         if (node instanceof ArrayNode) {
             out.type = JsonNode.class;
             out.node = null;

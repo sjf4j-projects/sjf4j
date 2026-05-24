@@ -6,7 +6,6 @@ import org.sjf4j.exception.JsonException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.NodeRegistry;
-import org.sjf4j.node.Numbers;
 import org.sjf4j.node.Types;
 
 import java.lang.reflect.Type;
@@ -633,7 +632,7 @@ public class JsonPath {
             return result;
         }
         List<Object> result = new ArrayList<>();
-        _findAll(container, container, 1, segments.length, result, Function.identity());
+        _findAll(container, container, 1, segments.length, result, Function.identity(), new Nodes.Access());
         return result;
     }
 
@@ -650,7 +649,7 @@ public class JsonPath {
             return result;
         }
         List<T> result = new ArrayList<>();
-        _findAll(container, container, 1, segments.length, result, (n) -> Nodes.to(n, clazz));
+        _findAll(container, container, 1, segments.length, result, (n) -> Nodes.to(n, clazz), new Nodes.Access());
         return result;
     }
 
@@ -667,7 +666,7 @@ public class JsonPath {
             return result;
         }
         List<T> result = new ArrayList<>();
-        _findAll(container, container, 1, segments.length, result, (n) -> Nodes.as(n, clazz));
+        _findAll(container, container, 1, segments.length, result, (n) -> Nodes.as(n, clazz), new Nodes.Access());
         return result;
     }
 
@@ -691,24 +690,22 @@ public class JsonPath {
             Object value = _findOne(container, 1, segments.length - 1);
             if (value == MISSING) return null;
             PathSegment.Function func = (PathSegment.Function) tk;
-            Object[] args = new Object[1 + func.args.size()];
+            Object[] functionArgs = func.resolvedArgs;
+            Object[] args = new Object[1 + functionArgs.length];
             args[0] = value;
-            for (int i = 0; i < func.args.size(); i++) {
-                args[1 + i] = _resolveFunctionArg(func.args.get(i));
-            }
+            System.arraycopy(functionArgs, 0, args, 1, functionArgs.length);
             return FunctionRegistry.invoke(func.name, args);
         }
         List<Object> result = new ArrayList<>();
-        _findAll(container, container, 1, segments.length, result, Function.identity());
+        _findAll(container, container, 1, segments.length, result, Function.identity(), new Nodes.Access());
         if (result.isEmpty()) return null;
 
         if (tk instanceof PathSegment.Function) {
             PathSegment.Function func = (PathSegment.Function) tk;
-            Object[] args = new Object[1 + func.args.size()];
+            Object[] functionArgs = func.resolvedArgs;
+            Object[] args = new Object[1 + functionArgs.length];
             args[0] = (result.size() == 1 ? result.get(0) : result);
-            for (int i = 0; i < func.args.size(); i++) {
-                args[1 + i] = _resolveFunctionArg(func.args.get(i));
-            }
+            System.arraycopy(functionArgs, 0, args, 1, functionArgs.length);
             return FunctionRegistry.invoke(func.name, args);
         } else {
             if (result.size() == 1) return result.get(0);
@@ -891,7 +888,7 @@ public class JsonPath {
             return 1;
         }
         List<Object> parents = new ArrayList<>();
-        _findAll(container, container, 1, segments.length - 1, parents, Function.identity());
+        _findAll(container, container, 1, segments.length - 1, parents, Function.identity(), new Nodes.Access());
         for (Object parent : parents) {
             _computeLast(parent, lastToken, computer);
         }
@@ -1066,6 +1063,7 @@ public class JsonPath {
      */
     private Object _findOne(Object container, int startIdx, int endExclusive) {
         Object node = container;
+        Nodes.Access acc = new Nodes.Access();
         for (int i = startIdx; i < endExclusive; i++) {
             if (node == null) return MISSING;
             PathSegment pt = segments[i];
@@ -1073,29 +1071,29 @@ public class JsonPath {
             if (pt instanceof PathSegment.Name) {
                 if (jt.isObject()) {
                     String name = ((PathSegment.Name) pt).name;
-                    Object parent = node;
-                    node = Nodes.getInObject(node, name);
-                    if (node == null && i == endExclusive - 1 && !Nodes.containsInObject(parent, name)) return MISSING;
+                    Nodes.getAccessInObject(node, name, acc);
+                    if (!acc.present) return MISSING;
+                    node = acc.node;
                 } else {
                     return MISSING;
                 }
             } else if (pt instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) pt;
                 if (jt.isArray()) {
-                    Object parent = node;
-                    node = Nodes.getInArray(node, index.index);
-                    if (node == null && i == endExclusive - 1 && !Nodes.containsInArray(parent, index.index)) return MISSING;
+                    Nodes.getAccessInArray(node, index.index, acc);
+                    if (!acc.present) return MISSING;
+                    node = acc.node;
                 } else if (_isPointerObjectKey(index, jt)) {
-                    Object parent = node;
-                    node = Nodes.getInObject(node, index.pointerToken);
-                    if (node == null && i == endExclusive - 1 && !Nodes.containsInObject(parent, index.pointerToken)) return MISSING;
+                    Nodes.getAccessInObject(node, index.pointerToken, acc);
+                    if (!acc.present) return MISSING;
+                    node = acc.node;
                 } else {
                     return MISSING;
                 }
             } else if (pt instanceof PathSegment.Descendant) {
                 if (i + 1 >= segments.length) throw new JsonException("descendant '..' cannot appear at the end");
                 List<Object> result = new ArrayList<>();
-                _findMatch(container, node, i + 1, endExclusive, result, Function.identity());
+                _findMatch(container, node, i + 1, endExclusive, result, Function.identity(), acc);
                 if (result.isEmpty()) {
                     return MISSING;
                 } else if (result.size() == 1) {
@@ -1115,7 +1113,7 @@ public class JsonPath {
      * Walks the path and collects matches up to {@code endExclusive}.
      */
     private <T> void _findAll(Object root, Object current, int startIdx, int endExclusive,
-                              List<T> result, Function<Object, T> converter) {
+                              List<T> result, Function<Object, T> converter, Nodes.Access acc) {
         Object node = current;
         for (int i = startIdx; i < endExclusive; i++) {
             if (node ==  null) return;
@@ -1126,48 +1124,53 @@ public class JsonPath {
             if (pt instanceof PathSegment.Name) {
                 if (jt.isObject()) {
                     String name = ((PathSegment.Name) pt).name;
-                    if (Nodes.containsInObject(node, name)) {
-                        node = Nodes.getInObject(node, name);
+                    Nodes.getAccessInObject(node, name, acc);
+                    if (acc.present) {
+                        node = acc.node;
                         continue;
                     }
                 }
             } else if (pt instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) pt;
                 if (jt.isArray()) {
-                    if (!Nodes.containsInArray(node, index.index)) return;
-                    node = Nodes.getInArray(node, index.index);
+                    Nodes.getAccessInArray(node, index.index, acc);
+                    if (!acc.present) return;
+                    node = acc.node;
                     continue;
-                } else if (_isPointerObjectKey(index, jt) && Nodes.containsInObject(node, index.pointerToken)) {
-                    node = Nodes.getInObject(node, index.pointerToken);
-                    continue;
+                } else if (_isPointerObjectKey(index, jt)) {
+                    Nodes.getAccessInObject(node, index.pointerToken, acc);
+                    if (acc.present) {
+                        node = acc.node;
+                        continue;
+                    }
                 }
             } else if (pt instanceof PathSegment.Wildcard) {
                 if (jt.isObject()) {
-                    Nodes.forEachObject(node, (k, v) -> _findAll(root, v, nextI, endExclusive, result, converter));
+                    Nodes.forEachObject(node, (k, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
                 } else if (jt.isArray()) {
-                    Nodes.forEachArray(node, (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter));
+                    Nodes.forEachArray(node, (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
                 }
             } else if (pt instanceof PathSegment.Descendant) {
                 if (i + 1 >= segments.length) throw new JsonException("descendant '..' cannot appear at the end");
-                _findMatch(root, node, i + 1, endExclusive, result, converter);
+                _findMatch(root, node, i + 1, endExclusive, result, converter, acc);
             } else if (pt instanceof PathSegment.Slice) {
                 PathSegment.Slice slicePt = (PathSegment.Slice) pt;
                 if (jt.isArray()) {
                     int size = Nodes.sizeInArray(node);
                     Nodes.forEachArray(node, (j, v) -> {
-                        if (slicePt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter);
+                        if (slicePt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter, acc);
                     });
                 }
             } else if (pt instanceof PathSegment.Union) {
                 PathSegment.Union unionPt = (PathSegment.Union) pt;
                 if (jt.isObject()) {
                     Nodes.forEachObject(node, (k, v) -> {
-                        if (unionPt.matchKey(k)) _findAll(root, v, nextI, endExclusive, result, converter);
+                        if (unionPt.matchKey(k)) _findAll(root, v, nextI, endExclusive, result, converter, acc);
                     });
                 } else if (jt.isArray()) {
                     int size = Nodes.sizeInArray(node);
                     Nodes.forEachArray(node, (j, v) -> {
-                        if (unionPt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter);
+                        if (unionPt.matchIndex(j, size)) _findAll(root, v, nextI, endExclusive, result, converter, acc);
                     });
                 }
             } else if (pt instanceof PathSegment.Filter) {
@@ -1175,13 +1178,13 @@ public class JsonPath {
                 if (jt.isArray()) {
                     Nodes.forEachArray(node, (j, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
-                            _findAll(root, v, nextI, endExclusive, result, converter);
+                            _findAll(root, v, nextI, endExclusive, result, converter, acc);
                         }
                     });
                 } else if (jt.isObject()) {
                     Nodes.forEachObject(node, (k, v) -> {
                         if (filterPt.filterExpr.evalTruth(root, v)) {
-                            _findAll(root, v, nextI, endExclusive, result, converter);
+                            _findAll(root, v, nextI, endExclusive, result, converter, acc);
                         }
                     });
                 } else {
@@ -1201,7 +1204,7 @@ public class JsonPath {
      * Recursively scans descendants and matches the next token up to {@code endExclusive}.
      */
     private <T> void _findMatch(Object root, Object current, int startIdx, int endExclusive,
-                                List<T> result, Function<Object, T> converter) {
+                                List<T> result, Function<Object, T> converter, Nodes.Access acc) {
         if (current == null) return;
         PathSegment pt = segments[startIdx];
         JsonType jt = JsonType.of(current);
@@ -1211,10 +1214,10 @@ public class JsonPath {
                     if (startIdx >= endExclusive) {
                         result.add(converter.apply(current));
                     } else {
-                        _findAll(root, v, startIdx + 1, endExclusive, result, converter);
+                        _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
                     }
                 }
-                _findMatch(root, v, startIdx, endExclusive, result, converter);
+                _findMatch(root, v, startIdx, endExclusive, result, converter, acc);
             });
         } else if (jt.isArray()) {
             int size = Nodes.sizeInArray(current);
@@ -1223,10 +1226,10 @@ public class JsonPath {
                     if (startIdx >= endExclusive) {
                         result.add(converter.apply(current));
                     } else {
-                        _findAll(root, v, startIdx + 1, endExclusive, result, converter);
+                        _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
                     }
                 }
-                _findMatch(root, v, startIdx, endExclusive, result, converter);
+                _findMatch(root, v, startIdx, endExclusive, result, converter, acc);
             });
         }
     }
@@ -1293,7 +1296,7 @@ public class JsonPath {
             if (ps instanceof PathSegment.Name) {
                 String key = ((PathSegment.Name) ps).name;
                 if (jt.isObject()) {
-                    Nodes.accessInObject(curNode, curType, key, acc);
+                    Nodes.putAccessInObject(curNode, curType, key, acc);
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
@@ -1313,7 +1316,7 @@ public class JsonPath {
             } else if (ps instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) ps;
                 if (jt.isArray()) {
-                    Nodes.accessInArray(curNode, curType, index.index, acc);
+                    Nodes.putAccessInArray(curNode, curType, index.index, acc);
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
@@ -1328,7 +1331,7 @@ public class JsonPath {
                                 "': indexed array access requires an existing element; use append path syntax instead");
                     }
                 } else if (_isPointerObjectKey(index, jt)) {
-                    Nodes.accessInObject(curNode, curType, index.pointerToken, acc);
+                    Nodes.putAccessInObject(curNode, curType, index.pointerToken, acc);
                     if (acc.node != null) {
                         curNode = acc.node;
                         curType = acc.type;
@@ -1347,7 +1350,7 @@ public class JsonPath {
                 }
             } else if (ps instanceof PathSegment.Append) {
                 if (jt.isArray()) {
-                    Nodes.accessInArray(curNode, curType, null, acc);
+                    Nodes.putAccessInArray(curNode, curType, null, acc);
                     if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Object subNode = _createContainer(nextPt, Types.rawClazz(acc.type));
@@ -1404,25 +1407,6 @@ public class JsonPath {
                     "' at '" + ps.rootedPathExpr() + "'; only List/JsonArray/JAJO/Set are supported");
         } else {
             throw new JsonException("unexpected path token '" + ps + "'");
-        }
-    }
-
-    /**
-     * Parses a literal argument for a path function.
-     */
-    private Object _resolveFunctionArg(String raw) {
-        if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\""))) {
-            return raw.substring(1, raw.length() - 1);
-        } else if ("true".equals(raw)) {
-            return true;
-        } else if ("false".equals(raw)) {
-            return false;
-        } else if ("null".equals(raw)) {
-            return null;
-        } else if (Numbers.isNumeric(raw)) {
-            return Numbers.parseNumber(raw);
-        } else {
-            throw new JsonException("invalid function argument '" + raw + "'");
         }
     }
 
