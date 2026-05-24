@@ -279,47 +279,37 @@ class NodesCoverageEdgeTest {
         Nodes.Access access = new Nodes.Access();
         Nodes.putAccessInObject(bean, Bean.class, "name", access);
         assertEquals("bean", access.node);
-        assertTrue(access.present);
         assertTrue(access.puttable);
         Nodes.putAccessInObject(dynamicBean, DynamicBean.class, "extra", access);
         assertEquals(true, access.node);
-        assertTrue(access.present);
         assertTrue(access.puttable);
         Nodes.putAccessInObject(bean, Bean.class, "missing", access);
         assertNull(access.node);
-        assertFalse(access.present);
         assertFalse(access.puttable);
         map.put("presentNull", null);
         Nodes.putAccessInObject(map, null, "presentNull", access);
         assertNull(access.node);
-        assertTrue(access.present);
         Nodes.getAccessInObject(map, "presentNull", access);
         assertNull(access.node);
         assertTrue(access.present);
-        assertFalse(access.puttable);
 
         Nodes.putAccessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), 1, access);
         assertNull(access.node);
-        assertFalse(access.present);
         assertFalse(access.puttable);
         assertEquals(String.class, access.type);
         Nodes.putAccessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), null, access);
         assertNull(access.node);
-        assertFalse(access.present);
         assertTrue(access.puttable);
         assertEquals(String.class, access.type);
         Nodes.putAccessInArray(new int[]{1, 2}, int[].class, -1, access);
         assertEquals(2, access.node);
-        assertTrue(access.present);
         assertTrue(access.puttable);
         Nodes.putAccessInArray(new int[]{1, 2}, int[].class, 2, access);
         assertNull(access.node);
-        assertFalse(access.present);
         assertFalse(access.puttable);
         Nodes.getAccessInArray(Arrays.asList("x", null), 1, access);
         assertNull(access.node);
         assertTrue(access.present);
-        assertFalse(access.puttable);
         assertThrows(JsonException.class, () -> Nodes.putAccessInArray(new LinkedHashSet<>(Arrays.asList("a", "b")), null, 0, access));
 
         assertEquals("jack", Nodes.putInObject(map, "name", "map"));
@@ -413,11 +403,9 @@ class NodesCoverageEdgeTest {
         Nodes.Access access = new Nodes.Access();
         Nodes.putAccessInObject(objectNode, null, "name", access);
         assertEquals("han", Nodes.asString(access.node));
-        assertTrue(access.present);
         assertTrue(access.puttable);
         Nodes.putAccessInObject(objectNode, null, "missing", access);
         assertNull(access.node);
-        assertFalse(access.present);
 
         List<Integer> indexes = new ArrayList<>();
         Nodes.forEachArray(arrayNode, (idx, value) -> indexes.add(idx));
@@ -433,11 +421,9 @@ class NodesCoverageEdgeTest {
 
         Nodes.putAccessInArray(arrayNode, null, 1, access);
         assertEquals(2, Nodes.toNumber(access.node).intValue());
-        assertTrue(access.present);
         assertTrue(access.puttable);
         Nodes.putAccessInArray(arrayNode, null, 9, access);
         assertNull(access.node);
-        assertFalse(access.present);
 
         assertThrows(JsonException.class, () -> Nodes.copy(objectNode));
         assertEquals("han", Nodes.asString(Nodes.putInObject(objectNode, "name", MAPPER.valueToTree("jack"))));
@@ -530,12 +516,10 @@ class NodesCoverageEdgeTest {
         Nodes.Access access = new Nodes.Access();
         Nodes.putAccessInObject(bean, AccessModeBean.class, "writeOnly", access);
         assertNull(access.node);
-        assertTrue(access.present);
         assertTrue(access.puttable);
         Nodes.getAccessInObject(bean, "writeOnly", access);
         assertNull(access.node);
         assertFalse(access.present);
-        assertFalse(access.puttable);
 
         assertNull(Nodes.putInObject(bean, "writeOnly", "secret-3"));
         assertEquals("secret-3", bean.peekWriteOnly());

@@ -1559,13 +1559,12 @@ public final class Nodes {
      * Mutable holder used by access helpers to report child node metadata.
      * <p>
      * Callers typically reuse one instance across repeated lookups to avoid
-     * allocating short-lived result wrappers. Each access helper call fully
-     * overwrites the holder fields.
+     * allocating short-lived result wrappers.
      * <p>
      * {@code getAccess*} methods interpret {@link #present} as readable-location
-     * existence and do not guarantee {@link #puttable}. {@code putAccess*}
-     * methods interpret {@link #present} as structural-location existence and
-     * fill {@link #type}/{@link #puttable} for write and auto-create paths.
+     * existence and do not update {@link #puttable}. {@code putAccess*} methods
+     * fill {@link #type}/{@link #puttable} for write and auto-create paths and
+     * do not update {@link #present}.
      */
     public static final class Access {
         /** child value (can be null) */
@@ -1598,7 +1597,6 @@ public final class Nodes {
         out.type = Object.class;
         out.node = null;
         out.present = false;
-        out.puttable = false;
         if (node instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) node;
             out.node = map.get(key);
@@ -1650,7 +1648,6 @@ public final class Nodes {
             Map<String, Object> map = (Map<String, Object>) node;
             out.node = map.get(key);
             out.type = Types.resolveTypeArgument(type, Map.class, 1);
-            out.present = out.node != null || map.containsKey(key);
             out.puttable = true;
             return;
         }
@@ -1658,7 +1655,6 @@ public final class Nodes {
             JsonObject jo = (JsonObject) node;
             out.node = jo.getNode(key);
             out.type = Object.class;
-            out.present = out.node != null || jo.containsKey(key);
             out.puttable = true;
             return;
         }
@@ -1668,7 +1664,6 @@ public final class Nodes {
             if (fi != null) {
                 out.node = fi.hasGetter() ? fi.invokeGetter(node) : null;
                 out.type = fi.type;
-                out.present = true;
                 out.puttable = fi.hasSetter();
                 return;
             }
@@ -1676,13 +1671,11 @@ public final class Nodes {
                 JsonObject jo = (JsonObject) node;
                 out.node = jo.getNode(key);
                 out.type = Object.class;
-                out.present = out.node != null || jo.containsKey(key);
                 out.puttable = true;
                 return;
             }
             out.node = null;
             out.type = Object.class;
-            out.present = false;
             out.puttable = false;
             return;
         }
@@ -1708,7 +1701,6 @@ public final class Nodes {
         out.type = Object.class;
         out.node = null;
         out.present = false;
-        out.puttable = false;
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             idx = idx < 0 ? list.size() + idx : idx;
@@ -1763,7 +1755,6 @@ public final class Nodes {
 
         out.type = Object.class;
         out.node = null;
-        out.present = false;
         out.puttable = true;
         if (node instanceof List) {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
@@ -1772,7 +1763,6 @@ public final class Nodes {
             idx = idx < 0 ? list.size() + idx : idx;
             if (idx >= 0 && idx < list.size()) {
                 out.node = list.get(idx);
-                out.present = true;
                 return;
             }
             out.puttable = false;
@@ -1784,7 +1774,6 @@ public final class Nodes {
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx < ja.size()) {
                 out.node = ja.getNode(idx);
-                out.present = true;
                 return;
             }
             out.puttable = false;
@@ -1792,13 +1781,13 @@ public final class Nodes {
         }
         if (node.getClass().isArray()) {
             out.type = node.getClass().getComponentType();
-            if (idx == null) return;
-            int len = Array.getLength(node);
-            idx = idx < 0 ? len + idx : idx;
-            if (idx >= 0 && idx < len) {
-                out.node = Array.get(node, idx);
-                out.present = true;
-                return;
+            if (idx != null) {
+                int len = Array.getLength(node);
+                idx = idx < 0 ? len + idx : idx;
+                if (idx >= 0 && idx < len) {
+                    out.node = Array.get(node, idx);
+                    return;
+                }
             }
             out.puttable = false;
             return;

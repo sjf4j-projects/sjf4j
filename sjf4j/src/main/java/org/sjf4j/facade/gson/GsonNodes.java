@@ -333,7 +333,6 @@ public final class GsonNodes {
             out.node = objectNode.get(key);
             out.type = JsonElement.class;
             out.present = objectNode.has(key);
-            out.puttable = false;
             return;
         }
         throw expected("JsonObject", node);
@@ -343,7 +342,14 @@ public final class GsonNodes {
      * Resolves writable child access info for Gson object node.
      */
     public static void putAccessInObject(Object node, Type type, String key, Nodes.Access out) {
-        getAccessInObject(node, key, out);
+        if (node instanceof JsonObject) {
+            JsonObject objectNode = (JsonObject) node;
+            out.node = objectNode.get(key);
+            out.type = JsonElement.class;
+            out.puttable = false;
+            return;
+        }
+        throw expected("JsonObject", node);
     }
 
     /**
@@ -354,7 +360,6 @@ public final class GsonNodes {
             out.type = JsonElement.class;
             out.node = null;
             out.present = false;
-            out.puttable = false;
             JsonArray ja = (JsonArray) node;
             idx = idx < 0 ? ja.size() + idx : idx;
             if (idx >= 0 && idx < ja.size()) {
@@ -371,17 +376,19 @@ public final class GsonNodes {
      * Resolves writable child access info for Gson array node.
      */
     public static void putAccessInArray(Object node, Type type, Integer idx, Nodes.Access out) {
-        if (idx == null) {
-            if (node instanceof JsonArray) {
-                out.type = JsonElement.class;
-                out.node = null;
-                out.present = false;
-                out.puttable = false;
-                return;
+        if (node instanceof JsonArray) {
+            out.type = JsonElement.class;
+            out.node = null;
+            out.puttable = false;
+            if (idx == null) return;
+            JsonArray ja = (JsonArray) node;
+            idx = idx < 0 ? ja.size() + idx : idx;
+            if (idx >= 0 && idx < ja.size()) {
+                out.node = ja.get(idx);
             }
-            throw expected("JsonArray", node);
+            return;
         }
-        getAccessInArray(node, idx, out);
+        throw expected("JsonArray", node);
     }
 
     /**

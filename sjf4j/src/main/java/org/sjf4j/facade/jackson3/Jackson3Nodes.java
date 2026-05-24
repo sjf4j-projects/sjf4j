@@ -255,7 +255,6 @@ public final class Jackson3Nodes {
             out.node = objectNode.get(key);
             out.type = JsonNode.class;
             out.present = objectNode.has(key);
-            out.puttable = false;
             return;
         }
         throw _expected("ObjectNode", node);
@@ -266,7 +265,6 @@ public final class Jackson3Nodes {
             ObjectNode objectNode = (ObjectNode) node;
             out.node = objectNode.get(key);
             out.type = JsonNode.class;
-            out.present = objectNode.has(key);
             out.puttable = true;
             return;
         }
@@ -278,7 +276,6 @@ public final class Jackson3Nodes {
             out.type = JsonNode.class;
             out.node = null;
             out.present = false;
-            out.puttable = false;
             ArrayNode an = (ArrayNode) node;
             idx = idx < 0 ? an.size() + idx : idx;
             if (idx >= 0 && idx < an.size()) {
@@ -294,14 +291,12 @@ public final class Jackson3Nodes {
         if (node instanceof ArrayNode) {
             out.type = JsonNode.class;
             out.node = null;
-            out.present = false;
             out.puttable = true;
             ArrayNode an = (ArrayNode) node;
             if (idx == null) return;
             idx = idx < 0 ? an.size() + idx : idx;
             if (idx >= 0 && idx < an.size()) {
                 out.node = an.get(idx);
-                out.present = true;
                 return;
             }
             out.puttable = false;

@@ -18,14 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `JsonObject.Builder.putIfPresentByPath(...)` -> `putIfParentPresentByPath(...)`.
   - `Nodes.anyMatchObject(...)` / `anyMatchArray(...)` -> `anyMatchInObject(...)` / `anyMatchInArray(...)`.
   - `Nodes.replaceInObject(...)` and `FacadeNodes.replaceInObject(...)` -> `replaceAllInObject(...)`.
+- Split the mixed read/write access metadata helpers into explicit read and write variants:
+  - `Nodes.accessInObject(...)` / `accessInArray(...)` -> `getAccessInObject(...)` / `getAccessInArray(...)` for read paths and `putAccessInObject(...)` / `putAccessInArray(...)` for write/auto-create paths.
+  - Matching `FacadeNodes`, Jackson 2, Jackson 3, and Gson facade helpers use the same `getAccess*` / `putAccess*` naming.
 - Removed the map-style `JsonObject.putNonNull(...)`, `JsonObject.putIfAbsent(...)`, `JsonObject.replace(key, value)`, and matching builder helpers.
 
 ### Added
-- `Nodes.Access.present` so object/array access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
+- `Nodes.Access.present` so read access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
 - `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
 
 ### Changed
 - `JsonPath` now tracks single-get, single-put, and single-eval paths separately, enabling direct fast paths for single-target `find(...)`, typed `find(...)`, `eval(...)`, and `compute(...)` calls.
+- `JsonPath` now uses read-specific access metadata for traversal, preserving present-`null` matches without a separate contains lookup on each segment.
+- Path function literal arguments are resolved when the path segment is created instead of on every evaluation.
 - `JsonPath.ensurePutIfAbsent(...)` now treats `null` as absent, returns the existing non-null value when no write occurs, fills null array slots, and appends when an indexed target equals the current array size.
 - Typed `JsonPath.getMap(...)`, `getList(...)`, `getArray(...)`, and `getSet(...)` now use strict conversion instead of lenient conversion.
 - Updated `sjf4j-bytecode` and `sjf4j-schema` publishing metadata descriptions for their split module roles.
