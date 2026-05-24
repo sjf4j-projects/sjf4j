@@ -223,6 +223,25 @@ public class JsonPatchTest {
     }
 
     @Test
+    public void testLeadingZeroPointerTokenIsNotArrayIndex() {
+        List<Integer> src = new ArrayList<>(Arrays.asList(1, 2, 3));
+
+        JsonPatch add = new JsonPatch();
+        add.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.parse("/01"), 9, null));
+        assertThrows(JsonException.class, () -> add.apply(src));
+        assertEquals(Arrays.asList(1, 2, 3), src);
+
+        JsonPatch replace = new JsonPatch();
+        replace.add(new PatchOperation(PatchOperation.STD_REPLACE, JsonPointer.parse("/01"), 9, null));
+        assertThrows(JsonException.class, () -> replace.apply(src));
+        assertEquals(Arrays.asList(1, 2, 3), src);
+
+        JsonObject target = JsonObject.of("01", 1);
+        replace.apply(target);
+        assertEquals(9, target.getInt("01"));
+    }
+
+    @Test
     public void testRemoveNonExistingPathIgnored() {
         List<Integer> src = new ArrayList<>(Arrays.asList(1, 2, 3));
 

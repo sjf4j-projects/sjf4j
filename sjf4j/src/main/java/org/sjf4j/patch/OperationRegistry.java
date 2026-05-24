@@ -218,12 +218,17 @@ public class OperationRegistry {
                 throw new JsonException("'move' operation failed at from " + from + ": no value exists");
             }
 
-            Object working = Sjf4j.global().deepNode(target);
-            Object workingValue = from.removeIfPresent(working);
-            path.add(working, workingValue);
-
             Object value = from.removeIfPresent(target);
-            path.add(target, value);
+            try {
+                path.add(target, value);
+            } catch (RuntimeException e) {
+                try {
+                    from.add(target, value);
+                } catch (RuntimeException rollback) {
+                    e.addSuppressed(rollback);
+                }
+                throw e;
+            }
         });
 
         // exist

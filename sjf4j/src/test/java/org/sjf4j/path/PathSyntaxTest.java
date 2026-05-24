@@ -79,11 +79,11 @@ public class PathSyntaxTest {
 
     @Test
     void testNumericEdgeCases() {
-        // leading zeros
+        // leading-zero tokens are object names, not RFC 6902 array indexes
         PathSegment[] segments = PathSyntax.parsePointer("/01/002");
         assertEquals(3, segments.length);
-        assertEquals(1, ((PathSegment.Index) segments[1]).index);
-        assertEquals(2, ((PathSegment.Index) segments[2]).index);
+        assertEquals("01", ((PathSegment.Name) segments[1]).name);
+        assertEquals("002", ((PathSegment.Name) segments[2]).name);
         assertEquals("/01/002", PathSyntax.toPointerExpr(segments));
 
         // large number

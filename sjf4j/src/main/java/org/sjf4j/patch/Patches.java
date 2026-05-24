@@ -174,7 +174,7 @@ public final class Patches {
      */
     public static List<PatchOperation> diff(Object source, Object target) {
         List<PatchOperation> operations = new ArrayList<>();
-        _diff(operations, PathSegment.Root.INSTANCE, source, target);
+        _diff(operations, PathSegment.Root.INSTANCE, source, target, true);
         return operations;
     }
 
@@ -184,11 +184,11 @@ public final class Patches {
      * Array growth emits {@code add} with append path ({@code /-}); array shrink
      * emits {@code remove} from tail to head to keep indexes stable.
      */
-    private static void _diff(List<PatchOperation> operations, PathSegment ps, Object source, Object target) {
-        if (source == null && target == null) return;
-        if (null == source) {
+    private static void _diff(List<PatchOperation> operations, PathSegment ps, Object source, Object target, boolean root) {
+        if (root && source == null && target == null) return;
+        if (root && source == null) {
             operations.add(new PatchOperation(PatchOperation.STD_ADD, JsonPointer.fromLast(ps), target, null));
-        } else if (null == target) {
+        } else if (root && target == null) {
             operations.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.fromLast(ps), null, null));
         } else {
             JsonType sourceJt = JsonType.of(source);
@@ -198,7 +198,7 @@ public final class Patches {
                     PathSegment cps = new PathSegment.Name(ps, k);
                     if (Nodes.containsInObject(target, k)) {
                         Object newTarget = Nodes.getInObject(target, k);
-                        _diff(operations, cps, v, newTarget);
+                        _diff(operations, cps, v, newTarget, false);
                     } else {
                         operations.add(new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.fromLast(cps), null, null));
                     }
@@ -215,7 +215,7 @@ public final class Patches {
                 int size = Math.min(sourceSize, targetSize);
                 for (int i = 0; i < size; i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    _diff(operations, cps, Nodes.getInArray(source, i), Nodes.getInArray(target, i));
+                    _diff(operations, cps, Nodes.getInArray(source, i), Nodes.getInArray(target, i), false);
                 }
                 if (targetSize > sourceSize) {  // add with '/xx/-'
                     PathSegment cps = new PathSegment.Append(ps);

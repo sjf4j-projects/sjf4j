@@ -98,13 +98,14 @@ public final class PathSyntax {
                 name = seg;
             }
 
-            // detect numeric index
-            boolean isNumber = !name.isEmpty();
-            for (int i = 0, len2 = name.length(); i < len2; i++) {
-                char c = name.charAt(i);
-                if (c < '0' || c > '9') {
-                    isNumber = false;
-                    break;
+            // detect RFC 6902 array index: "0" or non-zero digit followed by digits
+            boolean isNumber = name.length() == 1 && name.charAt(0) == '0';
+            if (!isNumber && name.length() > 0) {
+                char c = name.charAt(0);
+                isNumber = c >= '1' && c <= '9';
+                for (int i = 1, len2 = name.length(); isNumber && i < len2; i++) {
+                    c = name.charAt(i);
+                    isNumber = c >= '0' && c <= '9';
                 }
             }
 

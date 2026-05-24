@@ -1,6 +1,7 @@
 package org.sjf4j.patch;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPointer;
@@ -13,6 +14,75 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonPatchSemanticsTest {
+
+    @Test
+    void testDiffTreatsObjectExplicitNullAsValue() {
+        JsonObject source = JsonObject.of("a", 1);
+        JsonObject target = JsonObject.of("a", null);
+
+        JsonPatch patch = JsonPatch.diff(source, target);
+        PatchOperation op = (PatchOperation) patch.get(0, Object.class);
+
+        assertEquals(1, patch.size());
+        assertEquals(PatchOperation.STD_REPLACE, op.getOp());
+        assertEquals("/a", op.getPath().toString());
+        patch.apply(source);
+        assertTrue(source.containsKey("a"));
+        assertNull(source.getNode("a"));
+
+        JsonPatch reverse = JsonPatch.diff(target, JsonObject.of("a", 1));
+        op = (PatchOperation) reverse.get(0, Object.class);
+        assertEquals(1, reverse.size());
+        assertEquals(PatchOperation.STD_REPLACE, op.getOp());
+        reverse.apply(target);
+        assertEquals(1, target.getInt("a"));
+    }
+
+    @Test
+    void testDiffAddsAbsentExplicitNullObjectMember() {
+        JsonObject source = new JsonObject();
+        JsonObject target = JsonObject.of("a", null);
+
+        JsonPatch patch = JsonPatch.diff(source, target);
+        PatchOperation op = (PatchOperation) patch.get(0, Object.class);
+
+        assertEquals(1, patch.size());
+        assertEquals(PatchOperation.STD_ADD, op.getOp());
+        assertEquals("/a", op.getPath().toString());
+        patch.apply(source);
+        assertTrue(source.containsKey("a"));
+        assertNull(source.getNode("a"));
+    }
+
+    @Test
+    void testDiffTreatsArrayExplicitNullAsValue() {
+        JsonArray source = JsonArray.of(null, 2);
+        JsonArray target = JsonArray.of(1, 2);
+
+        JsonPatch patch = JsonPatch.diff(source, target);
+        PatchOperation op = (PatchOperation) patch.get(0, Object.class);
+
+        assertEquals(1, patch.size());
+        assertEquals(PatchOperation.STD_REPLACE, op.getOp());
+        assertEquals("/0", op.getPath().toString());
+        patch.apply(source);
+        assertEquals(target, source);
+    }
+
+    @Test
+    void testDiffRootNullTransitions() {
+        JsonObject object = JsonObject.of("a", 1);
+        JsonPatch add = JsonPatch.diff(null, object);
+        JsonPatch remove = JsonPatch.diff(object, null);
+
+        assertEquals(PatchOperation.STD_ADD,
+                ((PatchOperation) add.get(0, Object.class)).getOp());
+        assertEquals(object, add.apply((Object) null));
+        assertEquals(PatchOperation.STD_REMOVE,
+                ((PatchOperation) remove.get(0, Object.class)).getOp());
+        assertNull(remove.apply(object));
+        assertEquals(0, JsonPatch.diff(null, null).size());
+    }
 
     @Test
     void testDiffAndApplyCanReplaceRootDocument() {
@@ -129,6 +199,18 @@ class JsonPatchSemanticsTest {
         JsonPatch patch = new JsonPatch();
         patch.add(new PatchOperation(PatchOperation.STD_MOVE,
                 JsonPointer.parse("/b/c"), null, JsonPointer.parse("/a")));
+
+        assertThrows(JsonException.class, () -> patch.apply(target));
+        assertEquals(before, target);
+    }
+
+    @Test
+    void testMoveArrayFailureRestoresSourceValue() {
+        JsonArray target = JsonArray.of("a", "b", "c");
+        JsonArray before = target.copy();
+        JsonPatch patch = new JsonPatch();
+        patch.add(new PatchOperation(PatchOperation.STD_MOVE,
+                JsonPointer.parse("/99"), null, JsonPointer.parse("/1")));
 
         assertThrows(JsonException.class, () -> patch.apply(target));
         assertEquals(before, target);

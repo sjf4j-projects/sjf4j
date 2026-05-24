@@ -39,7 +39,6 @@ public class JsonPointer extends JsonPath {
     @RawToValue
     public static JsonPointer parse(String expr) {
         Objects.requireNonNull(expr, "expr");
-        expr = expr.trim();
 
         PathSegment[] segments;
         if (expr.isEmpty()) {

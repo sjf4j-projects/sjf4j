@@ -95,6 +95,14 @@ public class JsonPathTest {
     }
 
     @Test
+    public void testJsonPointerPreservesTokenWhitespace() {
+        assertThrows(JsonException.class, () -> JsonPointer.parse(" /a"));
+
+        JsonObject jo = JsonObject.of("a ", 1);
+        assertEquals(1, JsonPointer.parse("/a ").getNode(jo));
+    }
+
+    @Test
     public void testJsonPointerNumericObjectKeys() {
         JsonObject jo = JsonObject.fromJson("{\"0\":{\"01\":\"value\"},\"arr\":[\"a\",\"b\"]}");
 
