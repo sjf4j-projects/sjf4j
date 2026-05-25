@@ -2,7 +2,9 @@
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
-[![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
+[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j-green)](https://javadoc.io/doc/org.sjf4j/sjf4j)
+[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--schema-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-schema)
+[![Javadoc](https://img.shields.io/badge/javadoc-sjf4j--bytecode-green)](https://javadoc.io/doc/org.sjf4j/sjf4j-bytecode) 
 ![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)  
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
