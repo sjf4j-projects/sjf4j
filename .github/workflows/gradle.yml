@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4
@@ -57,10 +59,10 @@ jobs:
         PY
 
     - name: Upload coverage to Codecov
-      if: ${{ always() && hashFiles('sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml') != '' && secrets.CODECOV_TOKEN != '' }}
+      if: ${{ always() && hashFiles('sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml') != '' && env.CODECOV_TOKEN != '' }}
       uses: codecov/codecov-action@v5
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ env.CODECOV_TOKEN }}
         files: sjf4j-jdk17-test/build/reports/jacoco/test/jacocoTestReport.xml
         fail_ci_if_error: true
 
