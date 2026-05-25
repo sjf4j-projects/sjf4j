@@ -32,8 +32,8 @@ import java.util.Set;
  * Dynamically typed leaves reached through {@code Object}/{@link JsonObject}/{@link JsonArray}
  * access are returned as-is.
  *
- * <p>Once this compiler accepts a path, unsupported shapes also fail fast instead of silently
- * delegating back to the reflective fallback implementation.
+ * <p>Unsupported shapes fail fast instead of silently delegating back to the reflective fallback
+ * implementation.
  */
 public class AsmPathCompiler implements PathCompiler {
 
@@ -45,8 +45,13 @@ public class AsmPathCompiler implements PathCompiler {
         Class<?> rootClazz = Types.rawClazz(rootType);
         Class<?> valueClazz = Types.rawClazz(valueType);
 
-        if (rootClazz == Object.class) return null;
-        if (path.length() < 2) return null;
+        if (rootClazz == Object.class) {
+            throw new JsonException("ASM CompiledPath does not support Object root for '" + path.toExpr() +
+                    "'; use FallbackCompiledPath for fully dynamic roots");
+        }
+        if (path.length() < 2) {
+            throw new JsonException("ASM CompiledPath requires a non-root target path: '" + path.toExpr() + "'");
+        }
         if (!path.isSinglePut()) {
             throw new JsonException("ASM CompiledPath supports only a single target path with Name/Index/Append segments: '" +
                     path.toExpr() + "'");
@@ -109,7 +114,8 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitCode();
 
         if (path.hasAppend()) {
-            _emitThrow(mv, "cannot execute get() on a path containing append segments ('/-' or '[+]')");
+            _emitThrow(mv, "cannot execute get() on append path '" + path.toExpr() +
+                    "' because append segments ('/-' or '[+]') are write-only");
         } else {
             // if (root == null) return null;
             mv.visitVarInsn(Opcodes.ALOAD, 1);
@@ -255,7 +261,8 @@ public class AsmPathCompiler implements PathCompiler {
                         mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
                     } else {
                         throw new JsonException("property '" + name + "' on " +
-                                currentClazz.getName() + " is not readable through a public field or public getter");
+                                currentClazz.getName() + " is not readable through a public field or public getter" +
+                                " at '" + expr + "'");
                     }
                     return vvt;
                 } else if (pi.isJojo) {
@@ -271,7 +278,8 @@ public class AsmPathCompiler implements PathCompiler {
                 } else {
                     throw new JsonException("cannot resolve property '" + name +
                             "' on " + currentClazz.getName() +
-                            ": no readable property found and target is not a JOJO dynamic object");
+                            " at '" + expr +
+                            "': no readable property found and target is not a JOJO dynamic object");
                 }
             }
         } else if (ps instanceof PathSegment.Index) {
@@ -326,7 +334,7 @@ public class AsmPathCompiler implements PathCompiler {
                         "] at '" + expr + "', but was " + currentClazz.getName());
             }
         } else {
-            throw new JsonException("unsupported path token '" + ps + "'");
+            throw new JsonException("unsupported path token '" + ps + "' at '" + expr + "'");
         }
     }
 
@@ -338,9 +346,9 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        // Objects.requireNonNull(root, "container");
+        // Objects.requireNonNull(root, "root");
         mv.visitVarInsn(Opcodes.ALOAD, 1);
-        mv.visitLdcInsn("container");
+        mv.visitLdcInsn("root");
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
                 "requireNonNull", "(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", false);
         // root = (Root) root;
@@ -458,7 +466,7 @@ public class AsmPathCompiler implements PathCompiler {
                 }
                 throw new JsonException("property '" + name + "' on " +
                         parentClazz.getName() +
-                        " is not writable through a public field or public setter");
+                        " is not writable through a public field or public setter at '" + expr + "'");
             }
         } else if (last instanceof PathSegment.Index) {
             int idx = ((PathSegment.Index) last).index;
@@ -571,7 +579,8 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (Set.class.isAssignableFrom(parentClazz)) {
-                _emitThrow(mv, "cannot set by index on an unordered Java Set");
+                _emitThrow(mv, "cannot set by index on unordered Set type " +
+                        parentClazz.getName() + " at '" + expr + "'");
             } else {
                 throw new JsonException("expected array-like target before index [" + idx +
                         "] at '" + expr + "', but was " + parentClazz.getName());
@@ -611,7 +620,8 @@ public class AsmPathCompiler implements PathCompiler {
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
             } else if (parentClazz.isArray()) {
-                _emitThrow(mv, "cannot append to a Java array");
+                _emitThrow(mv, "cannot append to Java array type " +
+                        parentClazz.getName() + " at '" + expr + "'");
             } else {
                 throw new JsonException("expected array-like target before append at '" +
                         expr + "', but was " + parentClazz.getName());
