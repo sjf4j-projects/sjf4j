@@ -36,6 +36,7 @@ public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
     /**
      * Ensures intermediate containers exist and writes the target value.
      */
+    @Override
     @SuppressWarnings("unchecked")
     public V ensurePut(R root, V value) {
         return (V) path.ensurePut(root, value);

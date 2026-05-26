@@ -297,6 +297,7 @@ public final class Jackson3Nodes {
                 out.node = an.get(idx);
                 return;
             }
+            if (idx == an.size()) return;
             out.puttable = false;
             return;
         }

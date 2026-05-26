@@ -95,6 +95,16 @@ public class AsmPathCompilerTest {
     }
 
     @Test
+    public void testDynamicObjectThenArrayIndexSegment() {
+        Root root = sampleRoot();
+        root.holder.dynamic.put("items", List.of("zero", "one"));
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.dynamic.items[1]", Root.class, String.class);
+        assertAsmCompiled(path);
+        assertEquals("one", path.get(root));
+    }
+
+    @Test
     public void testMapBackedPutReturnsOldValue() {
         Root root = sampleRoot();
 
@@ -173,14 +183,36 @@ public class AsmPathCompilerTest {
     }
 
     @Test
-    public void testIndexedPutDoesNotAppend() {
+    public void testIndexedPutAppendsAtSizeAndRejectsPastSize() {
         Root root = sampleRoot();
 
         CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.values[3]", Root.class, Object.class);
         assertAsmCompiled(path);
+        assertNull(path.put(root, "d"));
+        assertEquals("d", root.holder.values.getNode(3));
 
-        JsonException ex = assertThrows(JsonException.class, () -> path.put(root, "d"));
-        assertTrue(ex.getMessage().contains("cannot set at index 3"));
+        CompiledPath<Root, Object> pastEnd = CompiledPath.compile("$.holder.values[5]", Root.class, Object.class);
+        assertAsmCompiled(pastEnd);
+        JsonException ex = assertThrows(JsonException.class, () -> pastEnd.put(root, "x"));
+        assertTrue(ex.getMessage().contains("cannot set at index"));
+    }
+
+    @Test
+    public void testTailIndexPutListAppendAndRejectsNegativeIndexes() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> appendPath = CompiledPath.compile("$.holder.names[3]", Root.class, String.class);
+        assertAsmCompiled(appendPath);
+        assertNull(appendPath.put(root, "dina"));
+        assertEquals("dina", root.holder.names.get(3));
+
+        JsonException listEx = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.holder.names[-1]", Root.class, String.class));
+        assertTrue(listEx.getMessage().contains("negative array index -1"));
+
+        JsonException jsonEx = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.holder.values[-1]", Root.class, Object.class));
+        assertTrue(jsonEx.getMessage().contains("negative array index -1"));
     }
 
     @Test
@@ -195,6 +227,13 @@ public class AsmPathCompilerTest {
         JsonException ex = assertThrows(JsonException.class,
                 () -> CompiledPath.compile("$.holder.keys[0]", Root.class, String.class));
         assertTrue(ex.getMessage().contains("cannot read by index from unordered Set type"));
+    }
+
+    @Test
+    public void testJavaArrayAppendFailsFast() {
+        JsonException ex = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.holder.tags[+]", Root.class, String.class));
+        assertTrue(ex.getMessage().contains("cannot append to Java array type"));
     }
 
     @Test
@@ -249,6 +288,139 @@ public class AsmPathCompilerTest {
         assertTrue(ex.getMessage().contains("parent container does not exist"));
     }
 
+    @Test
+    public void testEnsurePutCreatesPojoNullChain() {
+        Root root = new Root();
+
+        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.ensurePut(root, 41));
+        assertEquals(Integer.valueOf(41), path.get(root));
+        assertEquals(41, root.holder.leaf.score);
+    }
+
+    @Test
+    public void testEnsurePutCreatesMapAndJsonContainers() {
+        Root root = sampleRoot();
+        root.holder.buckets = new LinkedHashMap<>();
+
+        CompiledPath<Root, Integer> mapPath = CompiledPath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
+        assertAsmCompiled(mapPath);
+        assertNull(mapPath.ensurePut(root, 3));
+        assertEquals(Integer.valueOf(3), mapPath.get(root));
+        assertInstanceOf(JsonObject.class, root.holder.buckets.get("good"));
+
+        root.holder.dynamic = new JsonObject();
+        CompiledPath<Root, String> jsonPath = CompiledPath.compile("$.holder.dynamic.items[+].name", Root.class, String.class);
+        assertAsmCompiled(jsonPath);
+        assertNull(jsonPath.ensurePut(root, "Alice"));
+        assertInstanceOf(ArrayList.class, root.holder.dynamic.getNode("items"));
+        assertEquals("Alice", ((Map<?, ?>) ((List<?>) root.holder.dynamic.getNode("items")).get(0)).get("name"));
+    }
+
+    @Test
+    public void testEnsurePutCreatesCustomMapAndListContainers() {
+        Root root = sampleRoot();
+        root.holder.customBuckets = null;
+        root.holder.customBooks = null;
+
+        CompiledPath<Root, Integer> mapPath = CompiledPath.compile("$.holder.customBuckets.good.count", Root.class, Integer.class);
+        assertAsmCompiled(mapPath);
+        assertNull(mapPath.ensurePut(root, 8));
+        assertInstanceOf(CustomBuckets.class, root.holder.customBuckets);
+        assertEquals(8, root.holder.customBuckets.get("good").getInt("count"));
+
+        CompiledPath<Root, Double> listPath = CompiledPath.compile("$.holder.customBooks[+].price", Root.class, Double.class);
+        assertAsmCompiled(listPath);
+        assertNull(listPath.ensurePut(root, 19.5d));
+        assertInstanceOf(CustomBookList.class, root.holder.customBooks);
+        assertEquals(Double.valueOf(19.5d), root.holder.customBooks.get(0).price);
+    }
+
+    @Test
+    public void testEnsurePutCreatesAppendIntermediateElement() {
+        Root root = sampleRoot();
+        root.holder.values = new JsonArray();
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[+].name", Root.class, String.class);
+        assertAsmCompiled(path);
+
+        assertNull(path.ensurePut(root, "neo"));
+        assertEquals("neo", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
+    }
+
+    @Test
+    public void testEnsurePutMiddleListIndexNullCreatesAndRejectsNegativeIndex() {
+        BookStoreRoot root = new BookStoreRoot();
+        root.store = new BookStore();
+        root.store.book = new ArrayList<>();
+        root.store.book.add(null);
+        root.store.book.add(null);
+
+        CompiledPath<BookStoreRoot, Double> first = CompiledPath.compile("$.store.book[0].price", BookStoreRoot.class, Double.class);
+        assertAsmCompiled(first);
+        assertNull(first.ensurePut(root, 10.5d));
+        assertEquals(Double.valueOf(10.5d), first.get(root));
+
+        JsonException ex = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.store.book[-1].price", BookStoreRoot.class, Double.class));
+        assertTrue(ex.getMessage().contains("negative array index -1"));
+    }
+
+    @Test
+    public void testEnsurePutMiddleJsonArrayIndexNullCreatesAndOutOfRangeThrows() {
+        Root root = sampleRoot();
+        root.holder.values = JsonArray.of((Object) null);
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[0].name", Root.class, String.class);
+        assertAsmCompiled(path);
+        assertNull(path.ensurePut(root, "zero"));
+        assertEquals("zero", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
+
+        root.holder.values = new JsonArray();
+        assertNull(path.ensurePut(root, "appended"));
+        assertEquals("appended", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
+
+        CompiledPath<Root, String> outOfRange = CompiledPath.compile("$.holder.values[2].name", Root.class, String.class);
+        assertAsmCompiled(outOfRange);
+        JsonException ex = assertThrows(JsonException.class, () -> outOfRange.ensurePut(root, "bad"));
+        assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
+    }
+
+    @Test
+    public void testEnsurePutIndexedIntermediateAppendsAtSizeUsingPropertyTypes() {
+        CompiledPropertyRoot root = new CompiledPropertyRoot();
+
+        CompiledPath<CompiledPropertyRoot, String> first =
+                CompiledPath.compile("$.a.b[0].c", CompiledPropertyRoot.class, String.class);
+        CompiledPath<CompiledPropertyRoot, String> second =
+                CompiledPath.compile("$.a.b[1].c", CompiledPropertyRoot.class, String.class);
+        assertAsmCompiled(first);
+        assertAsmCompiled(second);
+
+        assertNull(first.ensurePut(root, "b0"));
+        assertNull(second.ensurePut(root, "b1"));
+
+        assertEquals(2, root.a.b.size());
+        assertEquals("b0", root.a.b.get(0).c);
+        assertEquals("b1", root.a.b.get(1).c);
+    }
+
+    @Test
+    public void testCompiledPathRejectsNegativeJavaArrayIndex() {
+        JsonException ex = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.holder.books[-1].price", Root.class, Double.class));
+        assertTrue(ex.getMessage().contains("negative array index -1"));
+    }
+
+    @Test
+    public void testSetterOnlyMiddlePojoPropertyFailsAtCompileTime() {
+        JsonException ex = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.holder.leaf.score", SetterOnlyRoot.class, Integer.class));
+        assertTrue(ex.getMessage().contains("readable property"));
+    }
+
     private static void assertAsmCompiled(CompiledPath<?, ?> path) {
         assertFalse(path instanceof FallbackCompiledPath);
         assertTrue(path.getClass().getName().startsWith("org.sjf4j.bytecode.generated.CompiledPath_"));
@@ -264,6 +436,7 @@ public class AsmPathCompilerTest {
         Holder holder = new Holder();
         holder.leaf = leaf;
         holder.tags = new String[]{"x", "y", "z"};
+        holder.books = new Book[0];
         holder.values = JsonArray.of("a", "b", "c");
         holder.names = new ArrayList<>(List.of("ann", "bob", "cara"));
         holder.dynamic = JsonObject.of("n", "5");
@@ -272,6 +445,8 @@ public class AsmPathCompilerTest {
         holder.keys.add("k2");
         holder.buckets = new LinkedHashMap<>();
         holder.buckets.put("good", JsonObject.of("count", 3));
+        holder.customBuckets = new CustomBuckets();
+        holder.customBooks = new CustomBookList();
 
         Root root = new Root();
         root.holder = holder;
@@ -296,14 +471,31 @@ public class AsmPathCompilerTest {
         public Holder holder;
     }
 
+    public static class SetterOnlyRoot {
+        private Holder holder;
+
+        public void setHolder(Holder holder) {
+            this.holder = holder;
+        }
+    }
+
     public static class Holder {
         public PrimitiveLeaf leaf;
         public Map<String, JsonObject> buckets;
+        public CustomBuckets customBuckets;
         public JsonObject dynamic;
         public java.util.Set<String> keys;
         public String[] tags;
+        public Book[] books;
+        public CustomBookList customBooks;
         public JsonArray values;
         public List<String> names;
+    }
+
+    public static class CustomBuckets extends LinkedHashMap<String, JsonObject> {
+    }
+
+    public static class CustomBookList extends ArrayList<Book> {
     }
 
     public static class PrimitiveLeaf {
@@ -330,5 +522,17 @@ public class AsmPathCompilerTest {
 
     public static class Book {
         public Double price;
+    }
+
+    public static class CompiledPropertyRoot {
+        public CompiledPropertyA a;
+    }
+
+    public static class CompiledPropertyA {
+        public List<CompiledPropertyB> b;
+    }
+
+    public static class CompiledPropertyB {
+        public String c;
     }
 }

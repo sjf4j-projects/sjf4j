@@ -372,7 +372,8 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     private static <T> Map<String, T> _toMap(Object node, Class<?> mapType, Class<T> valueClazz) {
         if (node == null) return null;
-        if ((mapType == null || mapType == Map.class) && node instanceof Map
+        if (node instanceof Map
+                && (mapType == null || mapType.isInstance(node))
                 && (valueClazz == null || valueClazz == Object.class)) {
             return (Map<String, T>) node;
         }
@@ -437,8 +438,11 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     private static <T> List<T> _toList(Object node, Class<?> listType, Class<T> valueClazz) {
         if (node == null) return null;
-        if ((listType == null || listType == List.class) && node instanceof List
-                && (valueClazz == null || valueClazz == Object.class)) return (List<T>) node;
+        if (node instanceof List
+                && (listType == null || listType.isInstance(node))
+                && (valueClazz == null || valueClazz == Object.class)) {
+            return (List<T>) node;
+        }
         List<T> list = NodeRegistry.newListContainer(listType, false);
         forEachArray(node, (i, v) -> list.add(to(v, valueClazz)));
         return list;
@@ -522,8 +526,11 @@ public final class Nodes {
     @SuppressWarnings("unchecked")
     private static <T> Set<T> _toSet(Object node, Class<?> setType, Class<T> valueClazz) {
         if (node == null) return null;
-        if ((setType == null || setType == Set.class) && node instanceof Set
-                && (valueClazz == null || valueClazz == Object.class)) return (Set<T>) node;
+        if (node instanceof Set
+                && (setType == null || setType.isInstance(node))
+                && (valueClazz == null || valueClazz == Object.class)) {
+            return (Set<T>) node;
+        }
         Set<T> set = NodeRegistry.newSetContainer(setType, false);
         forEachArray(node, (i, v) -> set.add(to(v, valueClazz)));
         return set;
@@ -927,7 +934,7 @@ public final class Nodes {
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             sb.append("[");
-            for (int i = 0; i < list.size(); i++) {
+            for (int i = 0, len = list.size(); i < len; i++) {
                 Object v = list.get(i);
                 if (i > 0) sb.append(", ");
                 _inspect(v, sb, shapeOnly);
@@ -968,7 +975,7 @@ public final class Nodes {
         if (rawClazz == JsonArray.class) {
             JsonArray ja = (JsonArray) node;
             sb.append("J[");
-            for (int i = 0; i < ja.size(); i++) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
                 Object v = ja.getNode(i);
                 if (i > 0) sb.append(", ");
                 _inspect(v, sb, shapeOnly);
@@ -979,7 +986,7 @@ public final class Nodes {
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
             sb.append("@").append(node.getClass().getSimpleName()).append("[");
-            for (int i = 0; i < ja.size(); i++) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
                 Object v = ja.getNode(i);
                 if (i > 0) sb.append(", ");
                 _inspect(v, sb, shapeOnly);
@@ -1223,7 +1230,7 @@ public final class Nodes {
         Objects.requireNonNull(consumer, "consumer");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            for (int i = 0; i < list.size(); i++) consumer.accept(i, list.get(i));
+            for (int i = 0, len = list.size(); i < len; i++) consumer.accept(i, list.get(i));
             return;
         }
         if (node instanceof JsonArray) {
@@ -1257,14 +1264,14 @@ public final class Nodes {
         Objects.requireNonNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            for (int i = 0; i < list.size(); i++) {
+            for (int i = 0, len = list.size(); i < len; i++) {
                 if (predicate.test(i, list.get(i))) return true;
             }
             return false;
         }
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
-            for (int i = 0; i < ja.size(); i++) {
+            for (int i = 0, len = ja.size(); i < len; i++) {
                 if (predicate.test(i, ja.getNode(i))) return true;
             }
             return false;
@@ -1517,8 +1524,9 @@ public final class Nodes {
         Objects.requireNonNull(node, "node");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            idx = idx < 0 ? list.size() + idx : idx;
-            if (idx < 0 || idx >= list.size()) {
+            int size = list.size();
+            idx = idx < 0 ? size + idx : idx;
+            if (idx < 0 || idx >= size) {
                 return null;
             } else {
                 return list.get(idx);
@@ -1699,8 +1707,9 @@ public final class Nodes {
         out.present = false;
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            idx = idx < 0 ? list.size() + idx : idx;
-            if (idx >= 0 && idx < list.size()) {
+            int size = list.size();
+            idx = idx < 0 ? size + idx : idx;
+            if (idx >= 0 && idx < size) {
                 out.node = list.get(idx);
                 out.present = true;
             }
@@ -1708,8 +1717,9 @@ public final class Nodes {
         }
         if (node instanceof JsonArray) {
             JsonArray ja = (JsonArray) node;
-            idx = idx < 0 ? ja.size() + idx : idx;
-            if (idx >= 0 && idx < ja.size()) {
+            int size = ja.size();
+            idx = idx < 0 ? size + idx : idx;
+            if (idx >= 0 && idx < size) {
                 out.node = ja.getNode(idx);
                 out.present = true;
             }
@@ -1737,8 +1747,9 @@ public final class Nodes {
     /**
      * Resolves writable array-child access and fills {@link Access} with node/type metadata.
      * <p>
-     * Negative indexes are normalized. Indexed access is reported as puttable only
-     * when the normalized index already exists.
+     * Negative indexes are normalized. Indexed access follows {@link #putInArray(Object, int, Object)}
+     * put semantics: existing normalized indexes are puttable, and for appendable array nodes
+     * {@code idx == size} is also puttable.
      * <p>
      * If {@code idx == null}, it is treated as append-to-tail and remains puttable
      * with {@code node == null}.
@@ -1755,8 +1766,11 @@ public final class Nodes {
             out.type = Types.resolveTypeArgument(type, List.class, 0);
             if (idx == null) return;
             List<Object> list = (List<Object>) node;
-            idx = idx < 0 ? list.size() + idx : idx;
-            if (idx >= 0 && idx < list.size()) {
+            int size = list.size();
+            idx = idx < 0 ? size + idx : idx;
+            if (idx == size) {
+                return;
+            } else if (idx >= 0 && idx < size) {
                 out.node = list.get(idx);
                 return;
             }
@@ -1766,8 +1780,11 @@ public final class Nodes {
         if (node instanceof JsonArray) {
             if (idx == null) return;
             JsonArray ja = (JsonArray) node;
-            idx = idx < 0 ? ja.size() + idx : idx;
-            if (idx >= 0 && idx < ja.size()) {
+            int size = ja.size();
+            idx = idx < 0 ? size + idx : idx;
+            if (idx == size) {
+                return;
+            } else if (idx >= 0 && idx < size) {
                 out.node = ja.getNode(idx);
                 return;
             }
@@ -1796,6 +1813,44 @@ public final class Nodes {
             return;
         }
         throw new JsonException("expected Array node, but was " + Types.name(node));
+    }
+
+    /**
+     * Creates a missing object-like container for path ensure operations.
+     */
+    public static Object createObjectContainer(Class<?> clazz) {
+        if (clazz == null || clazz == Object.class || Map.class.isAssignableFrom(clazz)) {
+            return NodeRegistry.newMapContainer(clazz, false);
+        }
+        if (clazz == JsonObject.class) {
+            return new JsonObject();
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(clazz).pojoInfo;
+        if (pi != null) {
+            return pi.creatorInfo.forceNewPojo();
+        }
+        throw new JsonException("cannot create object node of type '" + clazz +
+                "'; only Map/JsonObject/JOJO/POJO are supported");
+    }
+
+    /**
+     * Creates a missing array-like container for path ensure operations.
+     */
+    public static Object createArrayContainer(Class<?> clazz) {
+        if (clazz == null || clazz == Object.class || List.class.isAssignableFrom(clazz)) {
+            return NodeRegistry.newListContainer(clazz, false);
+        }
+        if (clazz == JsonArray.class) {
+            return new JsonArray();
+        }
+        if (JsonArray.class.isAssignableFrom(clazz)) {
+            return NodeRegistry.registerPojoOrElseThrow(clazz).creatorInfo.forceNewPojo();
+        }
+        if (Set.class.isAssignableFrom(clazz)) {
+            return NodeRegistry.newSetContainer(clazz, false);
+        }
+        throw new JsonException("cannot create array node of type '" + clazz +
+                "'; only List/JsonArray/JAJO/Set are supported");
     }
 
 
@@ -1931,7 +1986,6 @@ public final class Nodes {
      * supported.
      */
     public static Object setInArray(Object node, int idx, Object value) {
-        Objects.requireNonNull(node, "node");
         return _putInArray(node, idx, value, false);
     }
 

@@ -116,7 +116,7 @@ class Jackson3NodesTest {
         Jackson3Nodes.putAccessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
         assertEquals(JsonNode.class, access.type);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         Jackson3Nodes.putAccessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertEquals(JsonNode.class, access.type);
@@ -229,7 +229,7 @@ class Jackson3NodesTest {
         assertTrue(access.puttable);
         FacadeNodes.putAccessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         FacadeNodes.putAccessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertFalse(access.puttable);

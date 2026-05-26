@@ -112,7 +112,7 @@ class Jackson2NodesTest {
         Jackson2Nodes.putAccessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
         assertEquals(JsonNode.class, access.type);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         Jackson2Nodes.putAccessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertEquals(JsonNode.class, access.type);

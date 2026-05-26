@@ -9,6 +9,11 @@ import org.sjf4j.node.TypeReference;
  * such as {@code sjf4j-bytecode}, to be present on the runtime classpath. Core-only or fully
  * dynamic users can instantiate {@link FallbackCompiledPath} with a parsed
  * {@link org.sjf4j.path.JsonPath} when reflective path access is desired.
+ *
+ * <p>Bytecode-compiled paths produced by {@code compile(...)} intentionally support only
+ * non-negative array indexes. Paths containing negative indexes such as {@code [-1]} are
+ * rejected at compile time; use {@link FallbackCompiledPath} or direct
+ * {@link org.sjf4j.path.JsonPath} access when negative-index semantics are required.
  */
 public interface CompiledPath<R, V> {
 
@@ -25,7 +30,9 @@ public interface CompiledPath<R, V> {
         throw new UnsupportedOperationException("put() is not implemented");
     }
 
-//    V ensurePut(R root, V value);
+    default V ensurePut(R root, V value) {
+        throw new UnsupportedOperationException("ensurePut() is not implemented");
+    }
 
 
     /// static

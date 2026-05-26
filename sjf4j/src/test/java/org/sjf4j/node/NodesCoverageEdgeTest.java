@@ -295,7 +295,7 @@ class NodesCoverageEdgeTest {
 
         Nodes.putAccessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), 1, access);
         assertNull(access.node);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         assertEquals(String.class, access.type);
         Nodes.putAccessInArray(Arrays.asList("x"), new TypeReference<List<String>>() {}.getType(), null, access);
         assertNull(access.node);

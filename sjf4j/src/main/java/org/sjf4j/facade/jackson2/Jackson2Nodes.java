@@ -390,6 +390,7 @@ public final class Jackson2Nodes {
                 out.node = an.get(idx);
                 return;
             }
+            if (idx == an.size()) return;
             out.puttable = false;
             return;
         }

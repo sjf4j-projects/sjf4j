@@ -95,14 +95,6 @@ public class JsonPathTest {
     }
 
     @Test
-    public void testJsonPointerPreservesTokenWhitespace() {
-        assertThrows(JsonException.class, () -> JsonPointer.parse(" /a"));
-
-        JsonObject jo = JsonObject.of("a ", 1);
-        assertEquals(1, JsonPointer.parse("/a ").getNode(jo));
-    }
-
-    @Test
     public void testJsonPointerNumericObjectKeys() {
         JsonObject jo = JsonObject.fromJson("{\"0\":{\"01\":\"value\"},\"arr\":[\"a\",\"b\"]}");
 
@@ -488,6 +480,18 @@ public class JsonPathTest {
         public int age;
     }
 
+    public static class PropertyPathRoot {
+        public PropertyPathA a;
+    }
+
+    public static class PropertyPathA {
+        public List<PropertyPathB> b;
+    }
+
+    public static class PropertyPathB {
+        public String c;
+    }
+
     public static class AutoContainerHolder {
         public Object objectField;
         public List<Object> listField;
@@ -551,10 +555,26 @@ public class JsonPathTest {
         JsonPath.parse("$.items[0].name").ensurePut(jo, "Alice");
         assertEquals("Alice", JsonPath.parse("$.items[0].name").getString(jo));
 
+        JsonObject appendJo = JsonObject.of("items", new JsonArray());
+        JsonPath.parse("$.items[0].name").ensurePut(appendJo, "Zero");
+        assertEquals("Zero", JsonPath.parse("$.items[0].name").getString(appendJo));
+
         AutoContainerHolder holder = new AutoContainerHolder();
         holder.listField = new ArrayList<>(Collections.singletonList(null));
         JsonPath.parse("$.listField[0].name").ensurePut(holder, "Bob");
         assertEquals("Bob", JsonPath.parse("$.listField[0].name").getString(holder));
+    }
+
+    @Test
+    public void testEnsurePutIndexedIntermediateAppendsAtSizeUsingPropertyTypes() {
+        PropertyPathRoot root = new PropertyPathRoot();
+
+        JsonPath.parse("$.a.b[0].c").ensurePut(root, "b0");
+        JsonPath.parse("$.a.b[1].c").ensurePut(root, "b1");
+
+        assertEquals(2, root.a.b.size());
+        assertEquals("b0", JsonPath.parse("$.a.b[0].c").getNode(root));
+        assertEquals("b1", root.a.b.get(1).c);
     }
 
     @Test

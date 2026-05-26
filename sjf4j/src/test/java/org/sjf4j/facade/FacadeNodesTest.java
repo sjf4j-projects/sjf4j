@@ -124,7 +124,7 @@ class FacadeNodesTest {
         assertTrue(access.puttable);
         FacadeNodes.putAccessInArray(arrayNode, null, 3, access);
         assertNull(access.node);
-        assertFalse(access.puttable);
+        assertTrue(access.puttable);
         FacadeNodes.putAccessInArray(arrayNode, null, 4, access);
         assertNull(access.node);
         assertFalse(access.puttable);
