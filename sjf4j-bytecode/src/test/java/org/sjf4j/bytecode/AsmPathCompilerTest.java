@@ -324,6 +324,7 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.customBuckets = null;
         root.holder.customBooks = null;
+        root.holder.keys = null;
 
         CompiledPath<Root, Integer> mapPath = CompiledPath.compile("$.holder.customBuckets.good.count", Root.class, Integer.class);
         assertAsmCompiled(mapPath);
@@ -336,6 +337,12 @@ public class AsmPathCompilerTest {
         assertNull(listPath.ensurePut(root, 19.5d));
         assertInstanceOf(CustomBookList.class, root.holder.customBooks);
         assertEquals(Double.valueOf(19.5d), root.holder.customBooks.get(0).price);
+
+        CompiledPath<Root, String> setPath = CompiledPath.compile("$.holder.keys[+]", Root.class, String.class);
+        assertAsmCompiled(setPath);
+        assertNull(setPath.ensurePut(root, "k3"));
+        assertInstanceOf(LinkedHashSet.class, root.holder.keys);
+        assertTrue(root.holder.keys.contains("k3"));
     }
 
     @Test
@@ -405,6 +412,18 @@ public class AsmPathCompilerTest {
         assertEquals(2, root.a.b.size());
         assertEquals("b0", root.a.b.get(0).c);
         assertEquals("b1", root.a.b.get(1).c);
+    }
+
+    @Test
+    public void testEnsurePutUnsupportedJavaArrayCreationThrowsAtRuntime() {
+        Root root = sampleRoot();
+        root.holder.tags = null;
+
+        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.tags[0]", Root.class, String.class);
+        assertAsmCompiled(path);
+
+        JsonException ex = assertThrows(JsonException.class, () -> path.ensurePut(root, "x"));
+        assertTrue(ex.getMessage().contains("cannot create array container"));
     }
 
     @Test

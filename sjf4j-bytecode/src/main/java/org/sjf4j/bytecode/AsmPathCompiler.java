@@ -14,8 +14,13 @@ import org.sjf4j.node.Types;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 
-import java.lang.reflect.Type;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -557,10 +562,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
 
         Class<?> childClazz = Types.rawClazz(childType);
-        String methodName = next instanceof PathSegment.Name ? "createObjectContainer" : "createArrayContainer";
-        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES, methodName,
-                "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        _emitCreateContainer(mv, next, childClazz, expr);
         mv.visitVarInsn(Opcodes.ASTORE, childLocal);
         _emitPutChildByName(mv, path, ps, currentClazz, currentLocal, childLocal, false);
 
@@ -687,10 +689,7 @@ public class AsmPathCompiler implements PathCompiler {
         Label notNull = new Label();
         mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
 
-        String methodName = next instanceof PathSegment.Name ? "createObjectContainer" : "createArrayContainer";
-        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES, methodName,
-                "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        _emitCreateContainer(mv, next, childClazz, expr);
         mv.visitVarInsn(Opcodes.ASTORE, childLocal);
         _emitPutChildByIndex(mv, path, ps, currentClazz, currentLocal, childLocal, childLocal + 1, false);
 
@@ -719,13 +718,87 @@ public class AsmPathCompiler implements PathCompiler {
         }
 
         Class<?> childClazz = Types.rawClazz(childType);
-        String methodName = next instanceof PathSegment.Name ? "createObjectContainer" : "createArrayContainer";
-        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES, methodName,
-                "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        _emitCreateContainer(mv, next, childClazz, expr);
         mv.visitVarInsn(Opcodes.ASTORE, childLocal);
         _emitPutChildByAppend(mv, path, ps, currentClazz, currentLocal, childLocal, false);
         return childType;
+    }
+
+    private void _emitCreateContainer(MethodVisitor mv, PathSegment next, Class<?> childClazz, String expr) {
+        boolean objectContainer = next instanceof PathSegment.Name;
+        Class<?> concreteClazz;
+        try {
+            concreteClazz = objectContainer
+                    ? _resolveObjectContainerClass(childClazz, expr)
+                    : _resolveArrayContainerClass(childClazz, expr);
+        } catch (JsonException e) {
+            _emitThrow(mv, e.getMessage());
+            return;
+        }
+        mv.visitTypeInsn(Opcodes.NEW, AsmUtil.toInternalName(concreteClazz));
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, AsmUtil.toInternalName(concreteClazz),
+                "<init>", "()V", false);
+    }
+
+    private Class<?> _resolveObjectContainerClass(Class<?> childClazz, String expr) {
+        if (childClazz == null || childClazz == Object.class || childClazz == Map.class) {
+            return LinkedHashMap.class;
+        }
+        if (childClazz == JsonObject.class) {
+            return JsonObject.class;
+        }
+        if (Map.class.isAssignableFrom(childClazz)) {
+            return _requirePublicNoArgsCtor(childClazz, "Map", expr);
+        }
+        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(childClazz).pojoInfo;
+        if (pi != null) {
+            return _requirePublicNoArgsCtor(childClazz, "object", expr);
+        }
+        throw new JsonException("cannot create object container of type '" + childClazz.getName() +
+                "' at '" + expr + "'; ASM ensurePut() requires Object/Map/JsonObject/POJO" +
+                " with a public no-args constructor");
+    }
+
+    private Class<?> _resolveArrayContainerClass(Class<?> childClazz, String expr) {
+        if (childClazz == null || childClazz == Object.class || childClazz == List.class) {
+            return ArrayList.class;
+        }
+        if (childClazz == Set.class) {
+            return LinkedHashSet.class;
+        }
+        if (childClazz == JsonArray.class) {
+            return JsonArray.class;
+        }
+        if (List.class.isAssignableFrom(childClazz)) {
+            return _requirePublicNoArgsCtor(childClazz, "List", expr);
+        }
+        if (Set.class.isAssignableFrom(childClazz)) {
+            return _requirePublicNoArgsCtor(childClazz, "Set", expr);
+        }
+        if (JsonArray.class.isAssignableFrom(childClazz)) {
+            return _requirePublicNoArgsCtor(childClazz, "JsonArray", expr);
+        }
+        throw new JsonException("cannot create array container of type '" + childClazz.getName() +
+                "' at '" + expr + "'; ASM ensurePut() requires Object/List/Set/JsonArray" +
+                " with a public no-args constructor");
+    }
+
+    private Class<?> _requirePublicNoArgsCtor(Class<?> clazz, String kind, String expr) {
+        if (!Modifier.isPublic(clazz.getModifiers()) || Modifier.isAbstract(clazz.getModifiers()) || clazz.isInterface()) {
+            throw new JsonException("cannot create " + kind + " container of type '" + clazz.getName() +
+                    "' at '" + expr + "'; ASM ensurePut() requires a public concrete class");
+        }
+        try {
+            Constructor<?> ctor = clazz.getConstructor();
+            if (!Modifier.isPublic(ctor.getModifiers())) {
+                throw new NoSuchMethodException();
+            }
+            return clazz;
+        } catch (NoSuchMethodException e) {
+            throw new JsonException("cannot create " + kind + " container of type '" + clazz.getName() +
+                    "' at '" + expr + "'; ASM ensurePut() requires a public no-args constructor");
+        }
     }
 
 

@@ -10,6 +10,7 @@ import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
@@ -173,6 +174,8 @@ public class CompiledPathBenchmark {
 
         public Root pricePojo;
         public Root bookPricePojo;
+        public Root lastPriceRoot;
+        public Root lastBookPriceRoot;
 
         public double nextPrice;
         public double nextBookPrice;
@@ -204,8 +207,21 @@ public class CompiledPathBenchmark {
         public void reset() {
             pricePojo = _newRoot();
             bookPricePojo = _newRoot();
+            lastPriceRoot = null;
+            lastBookPriceRoot = null;
             nextPrice = 21.95d;
             nextBookPrice = 13.49d;
+        }
+
+        @TearDown(Level.Invocation)
+        public void verify() {
+            if (lastPriceRoot != null && Math.abs(lastPriceRoot.store.bicycle.price - nextPrice) > 0.001d) {
+                throw new AssertionError("price put result was not visible");
+            }
+            if (lastBookPriceRoot != null &&
+                    Math.abs(lastBookPriceRoot.store.book.get(1).price - nextBookPrice) > 0.001d) {
+                throw new AssertionError("book[1].price put result was not visible");
+            }
         }
 
         private Root _newRoot() {
@@ -247,6 +263,8 @@ public class CompiledPathBenchmark {
 
         public Root pricePojo;
         public Root bookPricePojo;
+        public Root lastPriceRoot;
+        public Root lastBookPriceRoot;
 
         public double nextPrice;
         public double nextBookPrice;
@@ -279,8 +297,23 @@ public class CompiledPathBenchmark {
         public void reset() {
             pricePojo = new Root();
             bookPricePojo = _newBookAppendRoot();
+            lastPriceRoot = null;
+            lastBookPriceRoot = null;
             nextPrice = 21.95d;
             nextBookPrice = 13.49d;
+        }
+
+        @TearDown(Level.Invocation)
+        public void verify() {
+            if (lastPriceRoot != null && (lastPriceRoot.store == null || lastPriceRoot.store.bicycle == null ||
+                    Math.abs(lastPriceRoot.store.bicycle.price - nextPrice) > 0.001d)) {
+                throw new AssertionError("price ensurePut result was not visible");
+            }
+            if (lastBookPriceRoot != null && (lastBookPriceRoot.store == null || lastBookPriceRoot.store.book == null ||
+                    lastBookPriceRoot.store.book.size() <= 1 || lastBookPriceRoot.store.book.get(1) == null ||
+                    Math.abs(lastBookPriceRoot.store.book.get(1).price - nextBookPrice) > 0.001d)) {
+                throw new AssertionError("book[1].price ensurePut result was not visible");
+            }
         }
 
         private Root _newBookAppendRoot() {
@@ -295,6 +328,31 @@ public class CompiledPathBenchmark {
             Root root = new Root();
             root.store = store;
             return root;
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class EnsurePutExistingBenchmarkState extends PutBenchmarkState {
+        public Root lastPriceRoot;
+        public Root lastBookPriceRoot;
+
+        @Setup(Level.Invocation)
+        @Override
+        public void reset() {
+            super.reset();
+            lastPriceRoot = null;
+            lastBookPriceRoot = null;
+        }
+
+        @TearDown(Level.Invocation)
+        public void verify() {
+            if (lastPriceRoot != null && Math.abs(lastPriceRoot.store.bicycle.price - nextPrice) > 0.001d) {
+                throw new AssertionError("existing price ensurePut result was not visible");
+            }
+            if (lastBookPriceRoot != null &&
+                    Math.abs(lastBookPriceRoot.store.book.get(1).price - nextBookPrice) > 0.001d) {
+                throw new AssertionError("existing book[1].price ensurePut result was not visible");
+            }
         }
     }
 
@@ -436,7 +494,7 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double put_price_native(PutBenchmarkState s) {
+    public Root put_price_native(PutBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
@@ -447,22 +505,32 @@ public class CompiledPathBenchmark {
             throw new JsonException("Cannot put value at path '$.store.bicycle.price': parent container does not exist");
         }
         bicycle.price = s.nextPrice;
-        return null;
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double put_price_bytecode(PutBenchmarkState s) {
-        return s.priceAsm.put(s.pricePojo, s.nextPrice);
+    public Root put_price_bytecode(PutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceAsm.put(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double put_price_fallback(PutBenchmarkState s) {
-        return s.priceFallback.put(s.pricePojo, s.nextPrice);
+    public Root put_price_fallback(PutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceFallback.put(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Object put_price_rawJsonPath(PutBenchmarkState s) {
-        return s.priceRaw.put(s.pricePojo, s.nextPrice);
+    public Root put_price_rawJsonPath(PutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceRaw.put(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
 
@@ -471,7 +539,7 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double put_bookPrice_native(PutBenchmarkState s) {
+    public Root put_bookPrice_native(PutBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
@@ -486,31 +554,41 @@ public class CompiledPathBenchmark {
             throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
         item.price = s.nextBookPrice;
-        return null;
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double put_bookPrice_bytecode(PutBenchmarkState s) {
-        return s.bookPriceAsm.put(s.bookPricePojo, s.nextBookPrice);
+    public Root put_bookPrice_bytecode(PutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceAsm.put(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double put_bookPrice_fallback(PutBenchmarkState s) {
-        return s.bookPriceFallback.put(s.bookPricePojo, s.nextBookPrice);
+    public Root put_bookPrice_fallback(PutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceFallback.put(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Object put_bookPrice_rawJsonPath(PutBenchmarkState s) {
-        return s.bookPriceRaw.put(s.bookPricePojo, s.nextBookPrice);
+    public Root put_bookPrice_rawJsonPath(PutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceRaw.put(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
 
     // ═══════════════════════════════════════════════════════
-    //  ensurePut($.store.bicycle.price)
+    //  ensurePut missing($.store.bicycle.price)
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double ensurePut_price_native(EnsurePutBenchmarkState s) {
+    public Root ensurePut_missing_price_native(EnsurePutBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
@@ -523,31 +601,41 @@ public class CompiledPathBenchmark {
             store.bicycle = bicycle;
         }
         bicycle.price = s.nextPrice;
-        return null;
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_price_bytecode(EnsurePutBenchmarkState s) {
-        return s.priceAsm.ensurePut(s.pricePojo, s.nextPrice);
+    public Root ensurePut_missing_price_bytecode(EnsurePutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceAsm.ensurePut(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_price_fallback(EnsurePutBenchmarkState s) {
-        return s.priceFallback.ensurePut(s.pricePojo, s.nextPrice);
+    public Root ensurePut_missing_price_fallback(EnsurePutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceFallback.ensurePut(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Object ensurePut_price_rawJsonPath(EnsurePutBenchmarkState s) {
-        return s.priceRaw.ensurePut(s.pricePojo, s.nextPrice);
+    public Root ensurePut_missing_price_rawJsonPath(EnsurePutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceRaw.ensurePut(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
 
     // ═══════════════════════════════════════════════════════
-    //  ensurePut($.store.book[1].price)
+    //  ensurePut missing($.store.book[1].price)
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double ensurePut_bookPrice_native(EnsurePutBenchmarkState s) {
+    public Root ensurePut_missing_bookPrice_native(EnsurePutBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
@@ -566,31 +654,42 @@ public class CompiledPathBenchmark {
                 book.set(1, item);
             }
             item.price = s.nextBookPrice;
-            return null;
+            s.lastBookPriceRoot = root;
+            return root;
         }
         if (book.size() == 1) {
             Book item = new Book();
             item.price = s.nextBookPrice;
             book.add(item);
-            return null;
+            s.lastBookPriceRoot = root;
+            return root;
         }
         throw new JsonException("cannot ensure path segment at index 1 at '$.store.book[1].price': " +
                 "indexed array access requires an existing element; use append path syntax instead");
     }
 
     @Benchmark
-    public Double ensurePut_bookPrice_bytecode(EnsurePutBenchmarkState s) {
-        return s.bookPriceAsm.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    public Root ensurePut_missing_bookPrice_bytecode(EnsurePutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceAsm.ensurePut(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_bookPrice_fallback(EnsurePutBenchmarkState s) {
-        return s.bookPriceFallback.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    public Root ensurePut_missing_bookPrice_fallback(EnsurePutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceFallback.ensurePut(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Object ensurePut_bookPrice_rawJsonPath(EnsurePutBenchmarkState s) {
-        return s.bookPriceRaw.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    public Root ensurePut_missing_bookPrice_rawJsonPath(EnsurePutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceRaw.ensurePut(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
 
@@ -599,7 +698,7 @@ public class CompiledPathBenchmark {
     // ═══════════════════════════════════════════════════════
 
     @Benchmark
-    public Double ensurePut_existing_price_native(PutBenchmarkState s) {
+    public Root ensurePut_existing_price_native(EnsurePutExistingBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
         Store store = root.store;
         if (store == null) {
@@ -612,26 +711,36 @@ public class CompiledPathBenchmark {
             store.bicycle = bicycle;
         }
         bicycle.price = s.nextPrice;
-        return null;
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_existing_price_bytecode(PutBenchmarkState s) {
-        return s.priceAsm.ensurePut(s.pricePojo, s.nextPrice);
+    public Root ensurePut_existing_price_bytecode(EnsurePutExistingBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceAsm.ensurePut(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_existing_price_fallback(PutBenchmarkState s) {
-        return s.priceFallback.ensurePut(s.pricePojo, s.nextPrice);
+    public Root ensurePut_existing_price_fallback(EnsurePutExistingBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceFallback.ensurePut(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Object ensurePut_existing_price_rawJsonPath(PutBenchmarkState s) {
-        return s.priceRaw.ensurePut(s.pricePojo, s.nextPrice);
+    public Root ensurePut_existing_price_rawJsonPath(EnsurePutExistingBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceRaw.ensurePut(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_existing_bookPrice_native(PutBenchmarkState s) {
+    public Root ensurePut_existing_bookPrice_native(EnsurePutExistingBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
         Store store = root.store;
         if (store == null) {
@@ -649,22 +758,32 @@ public class CompiledPathBenchmark {
             book.set(1, item);
         }
         item.price = s.nextBookPrice;
-        return null;
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_existing_bookPrice_bytecode(PutBenchmarkState s) {
-        return s.bookPriceAsm.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    public Root ensurePut_existing_bookPrice_bytecode(EnsurePutExistingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceAsm.ensurePut(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Double ensurePut_existing_bookPrice_fallback(PutBenchmarkState s) {
-        return s.bookPriceFallback.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    public Root ensurePut_existing_bookPrice_fallback(EnsurePutExistingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceFallback.ensurePut(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark
-    public Object ensurePut_existing_bookPrice_rawJsonPath(PutBenchmarkState s) {
-        return s.bookPriceRaw.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    public Root ensurePut_existing_bookPrice_rawJsonPath(EnsurePutExistingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceRaw.ensurePut(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
 
