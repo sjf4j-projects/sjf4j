@@ -356,6 +356,76 @@ public class CompiledPathBenchmark {
         }
     }
 
+    @State(Scope.Thread)
+    public static class PutIfParentPresentMissingBenchmarkState {
+        public JsonPath priceRaw;
+        public FallbackCompiledPath<Root, Double> priceFallback;
+        public CompiledPath<Root, Double> priceAsm;
+
+        public JsonPath bookPriceRaw;
+        public FallbackCompiledPath<Root, Double> bookPriceFallback;
+        public CompiledPath<Root, Double> bookPriceAsm;
+
+        public Root pricePojo;
+        public Root bookPricePojo;
+        public Root lastPriceRoot;
+        public Root lastBookPriceRoot;
+
+        public double nextPrice;
+        public double nextBookPrice;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            priceRaw = JsonPath.parse("$.store.bicycle.price");
+            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
+            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+
+            bookPriceRaw = JsonPath.parse("$.store.book[1].price");
+            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+
+            Root probe = new Root();
+            Object priceOldAsm = priceAsm.putIfParentPresent(probe, 21.95d);
+            if (priceOldAsm != null || probe.store != null) {
+                throw new AssertionError("missing price putIfParentPresent mismatch");
+            }
+
+            probe = _newBookMissingParentRoot();
+            Object bookPriceOldAsm = bookPriceAsm.putIfParentPresent(probe, 13.49d);
+            if (bookPriceOldAsm != null || probe.store.book != null) {
+                throw new AssertionError("missing book[1].price putIfParentPresent mismatch");
+            }
+        }
+
+        @Setup(Level.Invocation)
+        public void reset() {
+            pricePojo = new Root();
+            bookPricePojo = _newBookMissingParentRoot();
+            lastPriceRoot = null;
+            lastBookPriceRoot = null;
+            nextPrice = 21.95d;
+            nextBookPrice = 13.49d;
+        }
+
+        @TearDown(Level.Invocation)
+        public void verify() {
+            if (lastPriceRoot != null && lastPriceRoot.store != null) {
+                throw new AssertionError("missing price putIfParentPresent created a parent");
+            }
+            if (lastBookPriceRoot != null && (lastBookPriceRoot.store == null || lastBookPriceRoot.store.book != null)) {
+                throw new AssertionError("missing book[1].price putIfParentPresent created a parent list");
+            }
+        }
+
+        private Root _newBookMissingParentRoot() {
+            Store store = new Store();
+
+            Root root = new Root();
+            root.store = store;
+            return root;
+        }
+    }
+
 
     // ═══════════════════════════════════════════════════════
     //  $.store.bicycle.color
@@ -578,6 +648,184 @@ public class CompiledPathBenchmark {
     public Root put_bookPrice_rawJsonPath(PutBenchmarkState s) {
         Root root = s.bookPricePojo;
         s.bookPriceRaw.put(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  putIfParentPresent existing($.store.bicycle.price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Root putIfParentPresent_existing_price_native(PutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            return root;
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            return root;
+        }
+        bicycle.price = s.nextPrice;
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_existing_price_bytecode(PutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceAsm.putIfParentPresent(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_existing_price_fallback(PutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceFallback.putIfParentPresent(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_existing_price_rawJsonPath(PutBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceRaw.putIfParentPresent(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  putIfParentPresent existing($.store.book[1].price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Root putIfParentPresent_existing_bookPrice_native(PutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            return root;
+        }
+        List<Book> book = store.book;
+        if (book == null || book.size() <= 1) {
+            return root;
+        }
+        Book item = book.get(1);
+        if (item == null) {
+            return root;
+        }
+        item.price = s.nextBookPrice;
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_existing_bookPrice_bytecode(PutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceAsm.putIfParentPresent(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_existing_bookPrice_fallback(PutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceFallback.putIfParentPresent(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_existing_bookPrice_rawJsonPath(PutBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceRaw.putIfParentPresent(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  putIfParentPresent missing parents
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Root putIfParentPresent_missing_price_native(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store != null) {
+            Bicycle bicycle = store.bicycle;
+            if (bicycle != null) {
+                bicycle.price = s.nextPrice;
+            }
+        }
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_price_bytecode(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceAsm.putIfParentPresent(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_price_fallback(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceFallback.putIfParentPresent(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_price_rawJsonPath(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.pricePojo;
+        s.priceRaw.putIfParentPresent(root, s.nextPrice);
+        s.lastPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_bookPrice_native(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store != null) {
+            List<Book> book = store.book;
+            if (book != null && book.size() > 1) {
+                Book item = book.get(1);
+                if (item != null) {
+                    item.price = s.nextBookPrice;
+                }
+            }
+        }
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_bookPrice_bytecode(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceAsm.putIfParentPresent(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_bookPrice_fallback(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceFallback.putIfParentPresent(root, s.nextBookPrice);
+        s.lastBookPriceRoot = root;
+        return root;
+    }
+
+    @Benchmark
+    public Root putIfParentPresent_missing_bookPrice_rawJsonPath(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        s.bookPriceRaw.putIfParentPresent(root, s.nextBookPrice);
         s.lastBookPriceRoot = root;
         return root;
     }

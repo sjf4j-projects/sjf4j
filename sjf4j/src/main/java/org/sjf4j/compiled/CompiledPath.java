@@ -30,6 +30,10 @@ public interface CompiledPath<R, V> {
         throw new UnsupportedOperationException("put() is not implemented");
     }
 
+    default V putIfParentPresent(R root, V value) {
+        throw new UnsupportedOperationException("putIfParentPresent() is not implemented");
+    }
+
     default V ensurePut(R root, V value) {
         throw new UnsupportedOperationException("ensurePut() is not implemented");
     }

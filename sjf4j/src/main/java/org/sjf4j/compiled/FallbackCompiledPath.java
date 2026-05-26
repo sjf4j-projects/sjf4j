@@ -32,6 +32,12 @@ public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
         return (V) path.put(root, value);
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public V putIfParentPresent(R root, V value) {
+        return (V) path.putIfParentPresent(root, value);
+    }
+
 
     /**
      * Ensures intermediate containers exist and writes the target value.

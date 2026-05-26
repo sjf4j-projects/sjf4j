@@ -68,6 +68,7 @@ public class AsmPathCompiler implements PathCompiler {
         _writeMethodExpr(cw, path);
         _writeMethodGet(cw, path, rootType, rootClazz, valueClazz);
         _writeMethodPut(cw, path, rootType, rootClazz, valueClazz);
+        _writeMethodPutIfParentPresent(cw, path, rootType, rootClazz);
         _writeMethodEnsurePut(cw, path, rootType, rootClazz);
 
         AsmClassLoader acl = AsmClassLoader.of(rootClazz.getClassLoader());
@@ -399,6 +400,34 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitEnd();
     }
 
+    private void _writeMethodPutIfParentPresent(ClassWriter cw, JsonPath path, Type rootType, Class<?> rootClazz) {
+        // Object putIfParentPresent(Object root, Object value) {...}
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "putIfParentPresent",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                null, null);
+        mv.visitCode();
+
+        // Objects.requireNonNull(root, "root");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitLdcInsn("root");
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Objects",
+                "requireNonNull", "(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", false);
+        // root = (Root) root;
+        mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
+        mv.visitVarInsn(Opcodes.ASTORE, 1);
+
+        if (path.hasAppend() && !(path.tail() instanceof PathSegment.Append)) {
+            _emitThrow(mv, "cannot execute putIfParentPresent() on path '" + path.toExpr() +
+                    "' because append segments before the leaf require ensurePut()");
+        } else {
+            Type parentType = _emitPutChain(mv, path, rootType, rootClazz, true);
+            _emitPutLast(mv, path, Types.rawClazz(parentType));
+        }
+
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
 
     private void _emitPutLast(MethodVisitor mv, JsonPath path, Class<?> parentClazz) {
         int pathLength = path.length();
@@ -419,6 +448,11 @@ public class AsmPathCompiler implements PathCompiler {
 
 
     private Type _emitPutChain(MethodVisitor mv, JsonPath path, Type rootType, Class<?> rootClazz) {
+        return _emitPutChain(mv, path, rootType, rootClazz, false);
+    }
+
+    private Type _emitPutChain(MethodVisitor mv, JsonPath path, Type rootType, Class<?> rootClazz,
+                               boolean returnNullOnMissing) {
         // Root _3 = root; ... Parent _n = _n_1.child; if (_n == null) throw; return parentType;
         PathSegment[] segments = path.segments();
         String expr = path.toExpr();
@@ -434,7 +468,12 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitVarInsn(Opcodes.ALOAD, i + 3);
             Label notNull = new Label();
             mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
-            _emitThrow(mv, "cannot put value at path '" + expr + "': parent container does not exist");
+            if (returnNullOnMissing) {
+                mv.visitInsn(Opcodes.ACONST_NULL);
+                mv.visitInsn(Opcodes.ARETURN);
+            } else {
+                _emitThrow(mv, "cannot put value at path '" + expr + "': parent container does not exist");
+            }
             mv.visitLabel(notNull);
         }
         return currentType;
