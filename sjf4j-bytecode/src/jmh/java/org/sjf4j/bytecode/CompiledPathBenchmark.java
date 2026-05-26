@@ -22,6 +22,7 @@ import org.sjf4j.path.JsonPath;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 
 /**
  * Benchmark: bytecode-optimized CompiledPath vs. native access vs. fallback vs. raw JsonPath.
@@ -44,6 +45,14 @@ import java.util.concurrent.TimeUnit;
 @Threads(1)
 @State(Scope.Thread)
 public class CompiledPathBenchmark {
+
+    private static final BiFunction<Object, Object, Object> INCREMENT_DOUBLE =
+            new BiFunction<Object, Object, Object>() {
+                @Override
+                public Object apply(Object parent, Object current) {
+                    return ((Double) current) + 1.0d;
+                }
+            };
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(new String[]{
@@ -357,6 +366,29 @@ public class CompiledPathBenchmark {
     }
 
     @State(Scope.Thread)
+    public static class ComputeBenchmarkState extends PutBenchmarkState {
+        @Setup(Level.Invocation)
+        @Override
+        public void reset() {
+            super.reset();
+            nextPrice = 20.95d;
+            nextBookPrice = 13.99d;
+        }
+
+        @TearDown(Level.Invocation)
+        @Override
+        public void verify() {
+            if (lastPriceRoot != null && Math.abs(lastPriceRoot.store.bicycle.price - nextPrice) > 0.001d) {
+                throw new AssertionError("price compute result was not visible");
+            }
+            if (lastBookPriceRoot != null &&
+                    Math.abs(lastBookPriceRoot.store.book.get(1).price - nextBookPrice) > 0.001d) {
+                throw new AssertionError("book[1].price compute result was not visible");
+            }
+        }
+    }
+
+    @State(Scope.Thread)
     public static class PutIfParentPresentMissingBenchmarkState {
         public JsonPath priceRaw;
         public FallbackCompiledPath<Root, Double> priceFallback;
@@ -650,6 +682,183 @@ public class CompiledPathBenchmark {
         s.bookPriceRaw.put(root, s.nextBookPrice);
         s.lastBookPriceRoot = root;
         return root;
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  compute existing($.store.bicycle.price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public int compute_existing_price_native(ComputeBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            return 0;
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            return 0;
+        }
+        bicycle.price = (Double) INCREMENT_DOUBLE.apply(bicycle, bicycle.price);
+        s.lastPriceRoot = root;
+        return 1;
+    }
+
+    @Benchmark
+    public int compute_existing_price_bytecode(ComputeBenchmarkState s) {
+        Root root = s.pricePojo;
+        int count = s.priceAsm.compute(root, INCREMENT_DOUBLE);
+        s.lastPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_existing_price_fallback(ComputeBenchmarkState s) {
+        Root root = s.pricePojo;
+        int count = s.priceFallback.compute(root, INCREMENT_DOUBLE);
+        s.lastPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_existing_price_rawJsonPath(ComputeBenchmarkState s) {
+        Root root = s.pricePojo;
+        int count = s.priceRaw.compute(root, INCREMENT_DOUBLE);
+        s.lastPriceRoot = root;
+        return count;
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  compute existing($.store.book[1].price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public int compute_existing_bookPrice_native(ComputeBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            return 0;
+        }
+        List<Book> book = store.book;
+        if (book == null || book.size() <= 1) {
+            return 0;
+        }
+        Book item = book.get(1);
+        if (item == null) {
+            return 0;
+        }
+        item.price = (Double) INCREMENT_DOUBLE.apply(item, item.price);
+        s.lastBookPriceRoot = root;
+        return 1;
+    }
+
+    @Benchmark
+    public int compute_existing_bookPrice_bytecode(ComputeBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        int count = s.bookPriceAsm.compute(root, INCREMENT_DOUBLE);
+        s.lastBookPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_existing_bookPrice_fallback(ComputeBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        int count = s.bookPriceFallback.compute(root, INCREMENT_DOUBLE);
+        s.lastBookPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_existing_bookPrice_rawJsonPath(ComputeBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        int count = s.bookPriceRaw.compute(root, INCREMENT_DOUBLE);
+        s.lastBookPriceRoot = root;
+        return count;
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  compute missing parents
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public int compute_missing_price_native(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store != null && store.bicycle != null) {
+            Bicycle bicycle = store.bicycle;
+            bicycle.price = (Double) INCREMENT_DOUBLE.apply(bicycle, bicycle.price);
+            s.lastPriceRoot = root;
+            return 1;
+        }
+        s.lastPriceRoot = root;
+        return 0;
+    }
+
+    @Benchmark
+    public int compute_missing_price_bytecode(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.pricePojo;
+        int count = s.priceAsm.compute(root, INCREMENT_DOUBLE);
+        s.lastPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_missing_price_fallback(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.pricePojo;
+        int count = s.priceFallback.compute(root, INCREMENT_DOUBLE);
+        s.lastPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_missing_price_rawJsonPath(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.pricePojo;
+        int count = s.priceRaw.compute(root, INCREMENT_DOUBLE);
+        s.lastPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_missing_bookPrice_native(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store != null && store.book != null && store.book.size() > 1) {
+            Book item = store.book.get(1);
+            if (item != null) {
+                item.price = (Double) INCREMENT_DOUBLE.apply(item, item.price);
+                s.lastBookPriceRoot = root;
+                return 1;
+            }
+        }
+        s.lastBookPriceRoot = root;
+        return 0;
+    }
+
+    @Benchmark
+    public int compute_missing_bookPrice_bytecode(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        int count = s.bookPriceAsm.compute(root, INCREMENT_DOUBLE);
+        s.lastBookPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_missing_bookPrice_fallback(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        int count = s.bookPriceFallback.compute(root, INCREMENT_DOUBLE);
+        s.lastBookPriceRoot = root;
+        return count;
+    }
+
+    @Benchmark
+    public int compute_missing_bookPrice_rawJsonPath(PutIfParentPresentMissingBenchmarkState s) {
+        Root root = s.bookPricePojo;
+        int count = s.bookPriceRaw.compute(root, INCREMENT_DOUBLE);
+        s.lastBookPriceRoot = root;
+        return count;
     }
 
 

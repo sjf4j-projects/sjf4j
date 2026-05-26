@@ -2,6 +2,8 @@ package org.sjf4j.compiled;
 
 import org.sjf4j.path.JsonPath;
 
+import java.util.function.BiFunction;
+
 
 public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
 
@@ -46,6 +48,11 @@ public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
     @SuppressWarnings("unchecked")
     public V ensurePut(R root, V value) {
         return (V) path.ensurePut(root, value);
+    }
+
+    @Override
+    public int compute(R root, BiFunction<Object, Object, Object> computer) {
+        return path.compute(root, computer);
     }
 
 

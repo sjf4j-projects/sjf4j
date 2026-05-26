@@ -14,6 +14,11 @@ import org.sjf4j.node.TypeReference;
  * non-negative array indexes. Paths containing negative indexes such as {@code [-1]} are
  * rejected at compile time; use {@link FallbackCompiledPath} or direct
  * {@link org.sjf4j.path.JsonPath} access when negative-index semantics are required.
+ * For performance, bytecode-compiled paths also use direct list/array access for indexed
+ * segments. Out-of-range intermediate indexes may therefore throw instead of resolving to
+ * {@code null}, including for {@link #putIfParentPresent(Object, Object)}; use
+ * {@link FallbackCompiledPath} or direct {@link org.sjf4j.path.JsonPath} access when full
+ * missing-index JSON path semantics are required.
  */
 public interface CompiledPath<R, V> {
 
@@ -36,6 +41,10 @@ public interface CompiledPath<R, V> {
 
     default V ensurePut(R root, V value) {
         throw new UnsupportedOperationException("ensurePut() is not implemented");
+    }
+
+    default int compute(R root, java.util.function.BiFunction<Object, Object, Object> computer) {
+        throw new UnsupportedOperationException("compute() is not implemented");
     }
 
 
