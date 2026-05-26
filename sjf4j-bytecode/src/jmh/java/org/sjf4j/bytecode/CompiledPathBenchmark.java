@@ -235,6 +235,69 @@ public class CompiledPathBenchmark {
         }
     }
 
+    @State(Scope.Thread)
+    public static class EnsurePutBenchmarkState {
+        public JsonPath priceRaw;
+        public FallbackCompiledPath<Root, Double> priceFallback;
+        public CompiledPath<Root, Double> priceAsm;
+
+        public JsonPath bookPriceRaw;
+        public FallbackCompiledPath<Root, Double> bookPriceFallback;
+        public CompiledPath<Root, Double> bookPriceAsm;
+
+        public Root pricePojo;
+        public Root bookPricePojo;
+
+        public double nextPrice;
+        public double nextBookPrice;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            priceRaw = JsonPath.parse("$.store.bicycle.price");
+            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
+            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+
+            bookPriceRaw = JsonPath.parse("$.store.book[1].price");
+            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+
+            Root probe = new Root();
+            Object priceOldAsm = priceAsm.ensurePut(probe, 21.95d);
+            if (priceOldAsm != null || Math.abs(probe.store.bicycle.price - 21.95d) > 0.001d) {
+                throw new AssertionError("price ensurePut mismatch");
+            }
+
+            probe = _newBookAppendRoot();
+            Object bookPriceOldAsm = bookPriceAsm.ensurePut(probe, 13.49d);
+            if (bookPriceOldAsm != null || probe.store.book.size() != 2 ||
+                    Math.abs(probe.store.book.get(1).price - 13.49d) > 0.001d) {
+                throw new AssertionError("book[1].price ensurePut mismatch");
+            }
+        }
+
+        @Setup(Level.Invocation)
+        public void reset() {
+            pricePojo = new Root();
+            bookPricePojo = _newBookAppendRoot();
+            nextPrice = 21.95d;
+            nextBookPrice = 13.49d;
+        }
+
+        private Root _newBookAppendRoot() {
+            Book first = new Book();
+            first.title = "A";
+            first.price = 8.95d;
+
+            Store store = new Store();
+            store.book = new ArrayList<>();
+            store.book.add(first);
+
+            Root root = new Root();
+            root.store = store;
+            return root;
+        }
+    }
+
 
     // ═══════════════════════════════════════════════════════
     //  $.store.bicycle.color
@@ -439,6 +502,169 @@ public class CompiledPathBenchmark {
     @Benchmark
     public Object put_bookPrice_rawJsonPath(PutBenchmarkState s) {
         return s.bookPriceRaw.put(s.bookPricePojo, s.nextBookPrice);
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  ensurePut($.store.bicycle.price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Double ensurePut_price_native(EnsurePutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            store = new Store();
+            root.store = store;
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            bicycle = new Bicycle();
+            store.bicycle = bicycle;
+        }
+        bicycle.price = s.nextPrice;
+        return null;
+    }
+
+    @Benchmark
+    public Double ensurePut_price_bytecode(EnsurePutBenchmarkState s) {
+        return s.priceAsm.ensurePut(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Double ensurePut_price_fallback(EnsurePutBenchmarkState s) {
+        return s.priceFallback.ensurePut(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Object ensurePut_price_rawJsonPath(EnsurePutBenchmarkState s) {
+        return s.priceRaw.ensurePut(s.pricePojo, s.nextPrice);
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  ensurePut($.store.book[1].price)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Double ensurePut_bookPrice_native(EnsurePutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            store = new Store();
+            root.store = store;
+        }
+        List<Book> book = store.book;
+        if (book == null) {
+            book = new ArrayList<>();
+            store.book = book;
+        }
+        if (book.size() > 1) {
+            Book item = book.get(1);
+            if (item == null) {
+                item = new Book();
+                book.set(1, item);
+            }
+            item.price = s.nextBookPrice;
+            return null;
+        }
+        if (book.size() == 1) {
+            Book item = new Book();
+            item.price = s.nextBookPrice;
+            book.add(item);
+            return null;
+        }
+        throw new JsonException("cannot ensure path segment at index 1 at '$.store.book[1].price': " +
+                "indexed array access requires an existing element; use append path syntax instead");
+    }
+
+    @Benchmark
+    public Double ensurePut_bookPrice_bytecode(EnsurePutBenchmarkState s) {
+        return s.bookPriceAsm.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    }
+
+    @Benchmark
+    public Double ensurePut_bookPrice_fallback(EnsurePutBenchmarkState s) {
+        return s.bookPriceFallback.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    }
+
+    @Benchmark
+    public Object ensurePut_bookPrice_rawJsonPath(EnsurePutBenchmarkState s) {
+        return s.bookPriceRaw.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    }
+
+
+    // ═══════════════════════════════════════════════════════
+    //  ensurePut with existing parents (same roots as put)
+    // ═══════════════════════════════════════════════════════
+
+    @Benchmark
+    public Double ensurePut_existing_price_native(PutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            store = new Store();
+            root.store = store;
+        }
+        Bicycle bicycle = store.bicycle;
+        if (bicycle == null) {
+            bicycle = new Bicycle();
+            store.bicycle = bicycle;
+        }
+        bicycle.price = s.nextPrice;
+        return null;
+    }
+
+    @Benchmark
+    public Double ensurePut_existing_price_bytecode(PutBenchmarkState s) {
+        return s.priceAsm.ensurePut(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Double ensurePut_existing_price_fallback(PutBenchmarkState s) {
+        return s.priceFallback.ensurePut(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Object ensurePut_existing_price_rawJsonPath(PutBenchmarkState s) {
+        return s.priceRaw.ensurePut(s.pricePojo, s.nextPrice);
+    }
+
+    @Benchmark
+    public Double ensurePut_existing_bookPrice_native(PutBenchmarkState s) {
+        Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
+        Store store = root.store;
+        if (store == null) {
+            store = new Store();
+            root.store = store;
+        }
+        List<Book> book = store.book;
+        if (book == null) {
+            book = new ArrayList<>();
+            store.book = book;
+        }
+        Book item = book.get(1);
+        if (item == null) {
+            item = new Book();
+            book.set(1, item);
+        }
+        item.price = s.nextBookPrice;
+        return null;
+    }
+
+    @Benchmark
+    public Double ensurePut_existing_bookPrice_bytecode(PutBenchmarkState s) {
+        return s.bookPriceAsm.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    }
+
+    @Benchmark
+    public Double ensurePut_existing_bookPrice_fallback(PutBenchmarkState s) {
+        return s.bookPriceFallback.ensurePut(s.bookPricePojo, s.nextBookPrice);
+    }
+
+    @Benchmark
+    public Object ensurePut_existing_bookPrice_rawJsonPath(PutBenchmarkState s) {
+        return s.bookPriceRaw.ensurePut(s.bookPricePojo, s.nextBookPrice);
     }
 
 

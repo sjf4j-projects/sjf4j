@@ -315,7 +315,7 @@ public class JsonPathTest {
         assertNull(JsonPath.parse("$.missing").getNode(jo));
 
         JsonPath arrayIndex = JsonPath.parse("$.arr[1]");
-        assertNull(arrayIndex.putIfParentPresent(jo, "bb"));
+        assertEquals("b", arrayIndex.putIfParentPresent(jo, "bb"));
         assertEquals("bb", jo.getStringByPath("$.arr[1]"));
 
         JsonPath append = JsonPath.parse("$.arr[+]");

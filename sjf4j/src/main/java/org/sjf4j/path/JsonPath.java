@@ -1234,8 +1234,7 @@ public class JsonPath {
             if (_isPointerObjectKey(index, lastContainer)) {
                 return Nodes.putInObject(lastContainer, index.pointerToken, value);
             }
-            Nodes.putInArray(lastContainer, index.index, value);
-            return null;
+            return Nodes.putInArray(lastContainer, index.index, value);
         } else if (lastToken instanceof PathSegment.Append) {
             Nodes.addInArray(lastContainer, value);
             return null;

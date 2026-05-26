@@ -59,7 +59,7 @@ public class AsmPathCompiler implements PathCompiler {
 
         String compiledClassName = AsmUtil.generateClassName(CompiledPath.class, rootClazz.getSimpleName());
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        _writeClassHeader(cw, compiledClassName, rootClazz, valueClazz);
+        _writeClassHead(cw, compiledClassName, rootClazz, valueClazz);
         _writeMethodExpr(cw, path);
         _writeMethodGet(cw, path, rootType, rootClazz, valueClazz);
         _writeMethodPut(cw, path, rootType, rootClazz, valueClazz);
@@ -75,7 +75,7 @@ public class AsmPathCompiler implements PathCompiler {
         }
     }
 
-    private void _writeClassHeader(ClassWriter cw, String compiledClassName, Class<?> rootClazz, Class<?> valueClazz) {
+    private void _writeClassHead(ClassWriter cw, String compiledClassName, Class<?> rootClazz, Class<?> valueClazz) {
         String compiledClassSig = "Ljava/lang/Object;L" + AsmUtil.INAME_COMPILED_PATH +
                 "<L" + AsmUtil.toInternalName(rootClazz) +
                 ";L" + AsmUtil.toInternalName(valueClazz) + ";>;";
@@ -130,7 +130,7 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
             mv.visitVarInsn(Opcodes.ASTORE, 1);
 
-            _emitGetterChain(mv, path, rootType, rootClazz, valueClazz);
+            _emitGetChain(mv, path, rootType, rootClazz, valueClazz);
         }
 
         mv.visitMaxs(0, 0);
@@ -158,8 +158,8 @@ public class AsmPathCompiler implements PathCompiler {
     //
     //  return Nodes.getInArray(_6, 3);
     // }
-    private void _emitGetterChain(MethodVisitor mv, JsonPath path, Type rootType,
-                                  Class<?> rootClazz, Class<?> valueClazz) {
+    private void _emitGetChain(MethodVisitor mv, JsonPath path, Type rootType,
+                               Class<?> rootClazz, Class<?> valueClazz) {
         PathSegment[] segments = path.segments();
         String expr = path.toExpr();
         Type currentType = rootType;
@@ -167,7 +167,7 @@ public class AsmPathCompiler implements PathCompiler {
         Class<?> boxedValueClazz = Types.box(valueClazz);
         int i = 1;
         for (; i < segments.length; i++) {
-            currentType = _emitGetterStep(mv, i, segments[i], currentType, currentClazz, expr);
+            currentType = _emitGetChild(mv, i, segments[i], currentType, currentClazz, expr);
             currentClazz = Types.rawClazz(currentType);
 
             if (i < segments.length - 1) {
@@ -194,8 +194,8 @@ public class AsmPathCompiler implements PathCompiler {
         }
     }
 
-    private Type _emitGetterStep(MethodVisitor mv, int currentLocal, PathSegment ps,
-                                 Type currentType, Class<?> currentClazz, String expr) {
+    private Type _emitGetChild(MethodVisitor mv, int currentLocal, PathSegment ps,
+                               Type currentType, Class<?> currentClazz, String expr) {
         if (ps instanceof PathSegment.Name) {
             String name = ((PathSegment.Name) ps).name;
             if (Object.class == currentClazz) {
@@ -363,7 +363,7 @@ public class AsmPathCompiler implements PathCompiler {
             _emitThrow(mv, "cannot execute put() on path '" + path.toExpr() +
                     "' because append segments before the leaf require ensurePut()");
         } else {
-            Type parentType = _emitLastParent(mv, path, rootType, rootClazz);
+            Type parentType = _emitPutChain(mv, path, rootType, rootClazz);
             _emitPutLast(mv, path, Types.rawClazz(parentType));
         }
 
@@ -387,7 +387,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
         mv.visitVarInsn(Opcodes.ASTORE, 1);
 
-        Type parentType = _emitEnsureLastParent(mv, path, rootType, rootClazz);
+        Type parentType = _emitEnsureChain(mv, path, rootType, rootClazz);
         _emitPutLast(mv, path, Types.rawClazz(parentType));
 
         mv.visitMaxs(0, 0);
@@ -395,7 +395,25 @@ public class AsmPathCompiler implements PathCompiler {
     }
 
 
-    private Type _emitLastParent(MethodVisitor mv, JsonPath path, Type rootType, Class<?> rootClazz) {
+    private void _emitPutLast(MethodVisitor mv, JsonPath path, Class<?> parentClazz) {
+        int pathLength = path.length();
+        int parentLocal = pathLength == 2 ? 1 : pathLength + 1;
+        int scratchLocal = pathLength == 2 ? 3 : pathLength + 2;
+        PathSegment last = path.tail();
+        if (last instanceof PathSegment.Name) {
+            _emitPutChildByName(mv, path, (PathSegment.Name) last, parentClazz, parentLocal, 2, true);
+        } else if (last instanceof PathSegment.Index) {
+            _emitPutChildByIndex(mv, path, (PathSegment.Index) last, parentClazz, parentLocal, 2, scratchLocal, true);
+        } else if (last instanceof PathSegment.Append) {
+            _emitPutChildByAppend(mv, path, (PathSegment.Append) last, parentClazz, parentLocal, 2, true);
+        } else {
+            throw new JsonException("unsupported last path token '" + last +
+                    "'; put() expected Name, Index, or Append token");
+        }
+    }
+
+
+    private Type _emitPutChain(MethodVisitor mv, JsonPath path, Type rootType, Class<?> rootClazz) {
         // Root _3 = root; ... Parent _n = _n_1.child; if (_n == null) throw; return parentType;
         PathSegment[] segments = path.segments();
         String expr = path.toExpr();
@@ -404,7 +422,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitVarInsn(Opcodes.ASTORE, 3);
         for (int i = 1; i < segments.length - 1; i++) {
-            currentType = _emitGetterStep(mv, i + 2, segments[i], currentType, currentClazz, expr);
+            currentType = _emitGetChild(mv, i + 2, segments[i], currentType, currentClazz, expr);
             currentClazz = Types.rawClazz(currentType);
 
             // if (_n == null) throw parent-missing;
@@ -417,7 +435,8 @@ public class AsmPathCompiler implements PathCompiler {
         return currentType;
     }
 
-    private Type _emitEnsureLastParent(MethodVisitor mv, JsonPath path, Type rootType, Class<?> rootClazz) {
+
+    private Type _emitEnsureChain(MethodVisitor mv, JsonPath path, Type rootType, Class<?> rootClazz) {
         // Root _3 = root; ... if (_child == null) { _child = JsonPath.createXxxContainer(...); parent.child = _child; }
         PathSegment[] segments = path.segments();
         String expr = path.toExpr();
@@ -430,91 +449,22 @@ public class AsmPathCompiler implements PathCompiler {
         for (int i = 1; i < segments.length - 1; i++) {
             PathSegment ps = segments[i];
             Type childType;
-            Class<?> childClazz;
             int childLocal = currentLocal + 1;
 
-            if (ps instanceof PathSegment.Append) {
-                if (Object.class == currentClazz) {
-                    childType = Object.class;
-                } else if (List.class.isAssignableFrom(currentClazz)) {
-                    childType = Types.resolveTypeArgument(currentType, List.class, 0);
-                } else if (JsonArray.class.isAssignableFrom(currentClazz)) {
-                    childType = Object.class;
-                } else if (Set.class.isAssignableFrom(currentClazz)) {
-                    childType = Types.resolveTypeArgument(currentType, Set.class, 0);
-                } else if (currentClazz.isArray()) {
-                    childType = currentClazz.getComponentType();
-                } else {
-                    throw new JsonException("expected array-like target before append at '" + expr +
-                            "', but was " + currentClazz.getName());
-                }
-                childClazz = Types.rawClazz(childType);
-                _emitCreateContainer(mv, segments[i + 1], childClazz);
-                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-                _emitWriteIntermediate(mv, path, ps, currentClazz, currentLocal, childLocal);
-            } else if (ps instanceof PathSegment.Name) {
-                childType = _emitEnsureNameStep(mv, currentLocal, (PathSegment.Name) ps,
-                        currentType, currentClazz, expr);
-                childClazz = Types.rawClazz(childType);
-
-                mv.visitVarInsn(Opcodes.ALOAD, childLocal);
-                Label notNull = new Label();
-                mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
-
-                _emitCreateContainer(mv, segments[i + 1], childClazz);
-                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-                _emitWriteIntermediate(mv, path, ps, currentClazz, currentLocal, childLocal);
-
-                mv.visitLabel(notNull);
+            if (ps instanceof PathSegment.Name) {
+                childType = _emitEnsureChildByName(mv, path, (PathSegment.Name) ps, segments[i + 1],
+                        currentType, currentClazz, currentLocal, childLocal);
             } else if (ps instanceof PathSegment.Index) {
-                int idx = ((PathSegment.Index) ps).index;
-                if (idx < 0) {
-                    throw new JsonException("ASM CompiledPath does not support negative array index " + idx +
-                            " at '" + expr + "'");
-                }
-                if (Object.class == currentClazz) {
-                    childType = Object.class;
-                } else if (List.class.isAssignableFrom(currentClazz)) {
-                    childType = Types.resolveTypeArgument(currentType, List.class, 0);
-                } else if (JsonArray.class.isAssignableFrom(currentClazz)) {
-                    childType = Object.class;
-                } else if (currentClazz.isArray()) {
-                    childType = currentClazz.getComponentType();
-                } else if (Set.class.isAssignableFrom(currentClazz)) {
-                    throw new JsonException("cannot read by index from unordered Set type " +
-                            currentClazz.getName() + " at '" + expr + "'");
-                } else {
-                    throw new JsonException("expected array-like target before index at '" + expr +
-                            "', but was " + currentClazz.getName());
-                }
-                childClazz = Types.rawClazz(childType);
-
-                _emitEnsureMiddleIndexGet(mv, currentClazz, currentLocal, childLocal, childClazz, idx, expr);
-
-                mv.visitVarInsn(Opcodes.ALOAD, childLocal);
-                Label notNull = new Label();
-                mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
-
-                _emitCreateContainer(mv, segments[i + 1], childClazz);
-                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-                _emitWriteIntermediate(mv, path, ps, currentClazz, currentLocal, childLocal);
-
-                mv.visitLabel(notNull);
+                childType = _emitEnsureChildByIndex(mv, path, (PathSegment.Index) ps, segments[i + 1],
+                        currentType, currentClazz, currentLocal, childLocal);
+            } else if (ps instanceof PathSegment.Append) {
+                childType = _emitEnsureChildByAppend(mv, path, (PathSegment.Append) ps, segments[i + 1],
+                        currentType, currentClazz, currentLocal, childLocal);
             } else {
-                childType = _emitGetterStep(mv, currentLocal, ps, currentType, currentClazz, expr);
-                childClazz = Types.rawClazz(childType);
-
-                mv.visitVarInsn(Opcodes.ALOAD, childLocal);
-                Label notNull = new Label();
-                mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
-
-                _emitCreateContainer(mv, segments[i + 1], childClazz);
-                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-                _emitWriteIntermediate(mv, path, ps, currentClazz, currentLocal, childLocal);
-
-                mv.visitLabel(notNull);
+                throw new JsonException("unsupported path token '" + ps + "' at '" + expr + "'");
             }
 
+            Class<?> childClazz = Types.rawClazz(childType);
             if (childClazz != Object.class && !childClazz.isPrimitive()) {
                 mv.visitVarInsn(Opcodes.ALOAD, childLocal);
                 mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(childClazz));
@@ -528,17 +478,20 @@ public class AsmPathCompiler implements PathCompiler {
         return currentType;
     }
 
-    private Type _emitEnsureNameStep(MethodVisitor mv, int currentLocal, PathSegment.Name ps,
-                                     Type currentType, Class<?> currentClazz, String expr) {
-        // Child _next = parent.name; // readable existing child, or null when absent.
+    private Type _emitEnsureChildByName(MethodVisitor mv, JsonPath path, PathSegment.Name ps, PathSegment next,
+                                        Type currentType, Class<?> currentClazz,
+                                        int currentLocal, int childLocal) {
+        // Child _next = parent.name; if null, create a container matching the next segment and write it back.
+        String expr = path.toExpr();
         String name = ps.name;
+        Type childType;
         if (Object.class == currentClazz) {
             mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
             mv.visitLdcInsn(name);
             mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
                     "getInObject", "(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", false);
-            mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
-            return Object.class;
+            mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+            childType = Object.class;
         } else if (Map.class.isAssignableFrom(currentClazz)) {
             Type vvt = Types.resolveTypeArgument(currentType, Map.class, 1);
             Class<?> vvc = Types.rawClazz(vvt);
@@ -547,67 +500,101 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map",
                     "get", "(Ljava/lang/Object;)Ljava/lang/Object;", true);
             AsmUtil.emitCastOrBox(mv, vvc);
-            mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
-            return vvt;
+            mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+            childType = vvt;
         } else if (JsonObject.class == currentClazz) {
             mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
             mv.visitLdcInsn(name);
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_OBJECT,
                     "getNode", "(Ljava/lang/String;)Ljava/lang/Object;", false);
-            mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
-            return Object.class;
-        }
-
-        NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(currentClazz).pojoInfo;
-        if (pi == null) {
-            throw new JsonException("cannot resolve property '" + name +
-                    "' on " + currentClazz.getName() + " at '" + expr + "'");
-        }
-
-        NodeRegistry.PropertyInfo propInfo = pi.properties.get(name);
-        if (propInfo != null) {
-            Type vvt = propInfo.type;
-            Class<?> vvc = Types.rawClazz(vvt);
-            if (propInfo.publicField != null) {
-                mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
-                mv.visitFieldInsn(Opcodes.GETFIELD, AsmUtil.toInternalName(currentClazz),
-                        propInfo.publicField.getName(), org.objectweb.asm.Type.getDescriptor(vvc));
-                AsmUtil.emitCastOrBox(mv, vvc);
-            } else if (propInfo.publicGetter != null) {
-                mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.toInternalName(currentClazz),
-                        propInfo.publicGetter.getName(), "()" + org.objectweb.asm.Type.getDescriptor(vvc), false);
-                AsmUtil.emitCastOrBox(mv, vvc);
-            } else if (propInfo.publicSetter != null) {
-                throw new JsonException("property '" + name + "' on " + currentClazz.getName() +
-                        " is not readable through a public field or public getter at '" + expr + "'");
-            } else {
-                throw new JsonException("property '" + name + "' on " + currentClazz.getName() +
-                        " is not writable through a public field or public setter at '" + expr + "'");
+            mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+            childType = Object.class;
+        } else {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(currentClazz).pojoInfo;
+            if (pi == null) {
+                throw new JsonException("cannot resolve property '" + name +
+                        "' on " + currentClazz.getName() + " at '" + expr + "'");
             }
-            mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
-            return vvt;
+
+            NodeRegistry.PropertyInfo propInfo = pi.properties.get(name);
+            if (propInfo != null) {
+                Type vvt = propInfo.type;
+                Class<?> vvc = Types.rawClazz(vvt);
+                if (propInfo.publicField != null) {
+                    mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
+                    mv.visitFieldInsn(Opcodes.GETFIELD, AsmUtil.toInternalName(currentClazz),
+                            propInfo.publicField.getName(), org.objectweb.asm.Type.getDescriptor(vvc));
+                    AsmUtil.emitCastOrBox(mv, vvc);
+                } else if (propInfo.publicGetter != null) {
+                    mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
+                    mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.toInternalName(currentClazz),
+                            propInfo.publicGetter.getName(), "()" + org.objectweb.asm.Type.getDescriptor(vvc), false);
+                    AsmUtil.emitCastOrBox(mv, vvc);
+                } else if (propInfo.publicSetter != null) {
+                    throw new JsonException("property '" + name + "' on " + currentClazz.getName() +
+                            " is not readable through a public field or public getter at '" + expr + "'");
+                } else {
+                    throw new JsonException("property '" + name + "' on " + currentClazz.getName() +
+                            " is not writable through a public field or public setter at '" + expr + "'");
+                }
+                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+                childType = vvt;
+            } else if (pi.isJojo) {
+                mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
+                mv.visitLdcInsn(name);
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_OBJECT,
+                        "getNode", "(Ljava/lang/String;)Ljava/lang/Object;", false);
+                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+                childType = Object.class;
+            } else {
+                throw new JsonException("cannot resolve property '" + name + "' on " + currentClazz.getName() +
+                        " at '" + expr + "': no property found and target is not a JOJO dynamic object");
+            }
         }
 
-        if (pi.isJojo) {
-            mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
-            mv.visitLdcInsn(name);
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_OBJECT,
-                    "getNode", "(Ljava/lang/String;)Ljava/lang/Object;", false);
-            mv.visitVarInsn(Opcodes.ASTORE, currentLocal + 1);
-            return Object.class;
-        }
+        mv.visitVarInsn(Opcodes.ALOAD, childLocal);
+        Label notNull = new Label();
+        mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
 
-        throw new JsonException("cannot resolve property '" + name + "' on " + currentClazz.getName() +
-                " at '" + expr + "': no property found and target is not a JOJO dynamic object");
+        Class<?> childClazz = Types.rawClazz(childType);
+        String methodName = next instanceof PathSegment.Name ? "createObjectContainer" : "createArrayContainer";
+        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES, methodName,
+                "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+        _emitPutChildByName(mv, path, ps, currentClazz, currentLocal, childLocal, false);
+
+        mv.visitLabel(notNull);
+        return childType;
     }
 
-    private void _emitEnsureMiddleIndexGet(MethodVisitor mv, Class<?> currentClazz, int currentLocal,
-                                           int childLocal, Class<?> childClazz, int idx, String expr) {
+    private Type _emitEnsureChildByIndex(MethodVisitor mv, JsonPath path, PathSegment.Index ps, PathSegment next,
+                                         Type currentType, Class<?> currentClazz,
+                                         int currentLocal, int childLocal) {
+        String expr = path.toExpr();
+        int idx = ps.index;
         if (idx < 0) {
             throw new JsonException("ASM CompiledPath does not support negative array index " + idx +
                     " at '" + expr + "'");
         }
+        Type childType;
+        if (Object.class == currentClazz) {
+            childType = Object.class;
+        } else if (List.class.isAssignableFrom(currentClazz)) {
+            childType = Types.resolveTypeArgument(currentType, List.class, 0);
+        } else if (JsonArray.class.isAssignableFrom(currentClazz)) {
+            childType = Object.class;
+        } else if (currentClazz.isArray()) {
+            childType = currentClazz.getComponentType();
+        } else if (Set.class.isAssignableFrom(currentClazz)) {
+            throw new JsonException("cannot read by index from unordered Set type " +
+                    currentClazz.getName() + " at '" + expr + "'");
+        } else {
+            throw new JsonException("expected array-like target before index at '" + expr +
+                    "', but was " + currentClazz.getName());
+        }
+
+        Class<?> childClazz = Types.rawClazz(childType);
         if (Object.class == currentClazz) {
             mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
             mv.visitLdcInsn(idx);
@@ -615,22 +602,20 @@ public class AsmPathCompiler implements PathCompiler {
                     "getInArray", "(Ljava/lang/Object;I)Ljava/lang/Object;", false);
             AsmUtil.emitCastOrBox(mv, childClazz);
             mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-            return;
-        }
-
-        if (List.class.isAssignableFrom(currentClazz)) {
+        } else if (List.class.isAssignableFrom(currentClazz)) {
+            int sizeLocal = childLocal + 1;
             Label exists = new Label();
             Label missing = new Label();
             Label done = new Label();
             mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
                     "size", "()I", true);
+            mv.visitVarInsn(Opcodes.ISTORE, sizeLocal);
             mv.visitLdcInsn(idx);
-            mv.visitJumpInsn(Opcodes.IF_ICMPGT, exists);
-            mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
-            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                    "size", "()I", true);
+            mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPLT, exists);
             mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
             mv.visitJumpInsn(Opcodes.IF_ICMPEQ, missing);
             _emitThrow(mv, "cannot ensure path segment at index " + idx + " at '" + expr +
                     "': indexed array access requires an existing element; use append path syntax instead");
@@ -649,21 +634,20 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitVarInsn(Opcodes.ASTORE, childLocal);
 
             mv.visitLabel(done);
-            return;
-        }
-        if (JsonArray.class.isAssignableFrom(currentClazz)) {
+        } else if (JsonArray.class.isAssignableFrom(currentClazz)) {
+            int sizeLocal = childLocal + 1;
             Label exists = new Label();
             Label missing = new Label();
             Label done = new Label();
             mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
                     "size", "()I", false);
+            mv.visitVarInsn(Opcodes.ISTORE, sizeLocal);
             mv.visitLdcInsn(idx);
-            mv.visitJumpInsn(Opcodes.IF_ICMPGT, exists);
-            mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                    "size", "()I", false);
+            mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPLT, exists);
             mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
             mv.visitJumpInsn(Opcodes.IF_ICMPEQ, missing);
             _emitThrow(mv, "cannot ensure path segment at index " + idx + " at '" + expr +
                     "': indexed array access requires an existing element; use append path syntax instead");
@@ -682,9 +666,7 @@ public class AsmPathCompiler implements PathCompiler {
             mv.visitVarInsn(Opcodes.ASTORE, childLocal);
 
             mv.visitLabel(done);
-            return;
-        }
-        if (currentClazz.isArray()) {
+        } else if (currentClazz.isArray()) {
             Label exists = new Label();
             mv.visitVarInsn(Opcodes.ALOAD, currentLocal);
             mv.visitInsn(Opcodes.ARRAYLENGTH);
@@ -699,453 +681,289 @@ public class AsmPathCompiler implements PathCompiler {
             AsmUtil.emitArrayLoad(mv, childClazz);
             AsmUtil.emitCastOrBox(mv, childClazz);
             mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-            return;
         }
-        throw new JsonException("expected array-like target before index [" + idx +
-                "] at '" + expr + "', but was " + currentClazz.getName());
-    }
 
-    private void _emitCreateContainer(MethodVisitor mv, PathSegment next, Class<?> childClazz) {
-        // Object _child = Nodes.createObjectContainer(Child.class); // or createArrayContainer(...)
-        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
+        mv.visitVarInsn(Opcodes.ALOAD, childLocal);
+        Label notNull = new Label();
+        mv.visitJumpInsn(Opcodes.IFNONNULL, notNull);
+
         String methodName = next instanceof PathSegment.Name ? "createObjectContainer" : "createArrayContainer";
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                methodName, "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES, methodName,
+                "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+        _emitPutChildByIndex(mv, path, ps, currentClazz, currentLocal, childLocal, childLocal + 1, false);
+
+        mv.visitLabel(notNull);
+        return childType;
     }
 
-    private void _emitWriteIntermediate(MethodVisitor mv, JsonPath path, PathSegment segment,
-                                        Class<?> parentClazz, int parentLocal, int valueLocal) {
-        // parent.segment = _child; // Map/JsonObject/POJO/List/JsonArray/array/append write-back.
+    private Type _emitEnsureChildByAppend(MethodVisitor mv, JsonPath path, PathSegment.Append ps, PathSegment next,
+                                          Type currentType, Class<?> currentClazz,
+                                          int currentLocal, int childLocal) {
         String expr = path.toExpr();
-        if (segment instanceof PathSegment.Name) {
-            String name = ((PathSegment.Name) segment).name;
-            if (Object.class == parentClazz) {
-                // Nodes.putInObject(_parent, name, _value);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(name);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                        "putInObject", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", false);
-                mv.visitInsn(Opcodes.POP);
-            } else if (Map.class.isAssignableFrom(parentClazz)) {
-                // ((Map) _parent).put(name, _value);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(name);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map",
-                        "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
-                mv.visitInsn(Opcodes.POP);
-            } else if (JsonObject.class.isAssignableFrom(parentClazz)) {
-                // ((JsonObject) _parent).put(name, _value);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_OBJECT);
-                mv.visitLdcInsn(name);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_OBJECT,
-                        "put", "(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", false);
-                mv.visitInsn(Opcodes.POP);
-            } else {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(parentClazz).pojoInfo;
-                NodeRegistry.PropertyInfo propInfo = pi == null ? null : pi.properties.get(name);
-                if (propInfo != null && propInfo.publicField != null) {
-                    // ((T) _parent).xxx = _value;
-                    Class<?> fieldClazz = propInfo.publicField.getType();
-                    mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                    mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                    AsmUtil.emitCastOrUnbox(mv, fieldClazz);
-                    mv.visitFieldInsn(Opcodes.PUTFIELD, AsmUtil.toInternalName(parentClazz),
-                            propInfo.publicField.getName(), org.objectweb.asm.Type.getDescriptor(fieldClazz));
-                } else if (propInfo != null && propInfo.publicSetter != null) {
-                    // ((T) _parent).setXxx(_value);
-                    Method setter = propInfo.publicSetter;
-                    Class<?> returnClazz = setter.getReturnType();
-                    mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                    mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                    AsmUtil.emitCastOrUnbox(mv, setter.getParameterTypes()[0]);
-                    mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.toInternalName(parentClazz),
-                            setter.getName(), org.objectweb.asm.Type.getMethodDescriptor(setter), false);
-                    if (returnClazz != void.class) {
-                        mv.visitInsn(returnClazz == long.class || returnClazz == double.class ? Opcodes.POP2 : Opcodes.POP);
-                    }
-                } else {
-                    throw new JsonException("property '" + name + "' on " + parentClazz.getName() +
-                            " is not writable through a public field or public setter at '" + expr + "'");
-                }
-            }
-        } else if (segment instanceof PathSegment.Index) {
-            int idx = ((PathSegment.Index) segment).index;
-            if (idx < 0) {
-                throw new JsonException("ASM CompiledPath does not support negative array index " + idx +
-                        " at '" + expr + "'");
-            }
-            if (Object.class == parentClazz) {
-                // Nodes.putInArray(_parent, idx, _value);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                        "putInArray", "(Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", false);
-                mv.visitInsn(Opcodes.POP);
-            } else if (List.class.isAssignableFrom(parentClazz)) {
-                Label append = new Label();
-                Label replace = new Label();
-                Label done = new Label();
-
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "size", "()I", true);
-                mv.visitLdcInsn(idx);
-                mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "size", "()I", true);
-                mv.visitLdcInsn(idx);
-                mv.visitJumpInsn(Opcodes.IF_ICMPGT, replace);
-                _emitThrow(mv, "cannot set at index " + idx + " in List at '" + expr + "'");
-
-                mv.visitLabel(append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitJumpInsn(Opcodes.GOTO, done);
-
-                mv.visitLabel(replace);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
-                mv.visitInsn(Opcodes.POP);
-
-                mv.visitLabel(done);
-            } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
-                Label append = new Label();
-                Label replace = new Label();
-                Label done = new Label();
-
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "size", "()I", false);
-                mv.visitLdcInsn(idx);
-                mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "size", "()I", false);
-                mv.visitLdcInsn(idx);
-                mv.visitJumpInsn(Opcodes.IF_ICMPGT, replace);
-                _emitThrow(mv, "cannot set at index " + idx + " in JsonArray at '" + expr + "'");
-
-                mv.visitLabel(append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "add", "(Ljava/lang/Object;)V", false);
-                mv.visitJumpInsn(Opcodes.GOTO, done);
-
-                mv.visitLabel(replace);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "set", "(ILjava/lang/Object;)Ljava/lang/Object;", false);
-                mv.visitInsn(Opcodes.POP);
-
-                mv.visitLabel(done);
-            } else if (parentClazz.isArray()) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                Class<?> componentClazz = parentClazz.getComponentType();
-                AsmUtil.emitCastOrUnbox(mv, componentClazz);
-                AsmUtil.emitArrayStore(mv, componentClazz);
-            } else if (Set.class.isAssignableFrom(parentClazz)) {
-                throw new JsonException("cannot set by index on unordered Set type " +
-                        parentClazz.getName() + " at '" + expr + "'");
-            } else {
-                throw new JsonException("expected array-like target before index [" + idx +
-                        "] at '" + expr + "', but was " + parentClazz.getName());
-            }
-        } else if (segment instanceof PathSegment.Append) {
-            if (Object.class == parentClazz) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                        "addInArray", "(Ljava/lang/Object;Ljava/lang/Object;)V", false);
-            } else if (List.class.isAssignableFrom(parentClazz)) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-            } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_ARRAY);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "add", "(Ljava/lang/Object;)V", false);
-            } else if (Set.class.isAssignableFrom(parentClazz)) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Set",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-            } else {
-                throw new JsonException("expected array-like target before append at '" +
-                        expr + "', but was " + parentClazz.getName());
-            }
+        Type childType;
+        if (Object.class == currentClazz) {
+            childType = Object.class;
+        } else if (List.class.isAssignableFrom(currentClazz)) {
+            childType = Types.resolveTypeArgument(currentType, List.class, 0);
+        } else if (JsonArray.class.isAssignableFrom(currentClazz)) {
+            childType = Object.class;
+        } else if (Set.class.isAssignableFrom(currentClazz)) {
+            childType = Types.resolveTypeArgument(currentType, Set.class, 0);
+        } else if (currentClazz.isArray()) {
+            childType = currentClazz.getComponentType();
+        } else {
+            throw new JsonException("expected array-like target before append at '" + expr +
+                    "', but was " + currentClazz.getName());
         }
+
+        Class<?> childClazz = Types.rawClazz(childType);
+        String methodName = next instanceof PathSegment.Name ? "createObjectContainer" : "createArrayContainer";
+        mv.visitLdcInsn(org.objectweb.asm.Type.getType(childClazz));
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES, methodName,
+                "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+        mv.visitVarInsn(Opcodes.ASTORE, childLocal);
+        _emitPutChildByAppend(mv, path, ps, currentClazz, currentLocal, childLocal, false);
+        return childType;
     }
 
-    private void _emitPutLast(MethodVisitor mv, JsonPath path, Class<?> parentClazz) {
-        // return parent.tail = value; // last Name/Index/Append write.
-        String expr = path.toExpr();
-        int pathLength = path.length();
-        int parentLocal = pathLength == 2 ? 1 : pathLength + 1;
-        int scratchLocal = pathLength == 2 ? 3 : pathLength + 2;
-        PathSegment last = path.tail();
-        if (last instanceof PathSegment.Name) {
-            String name = ((PathSegment.Name) last).name;
-            if (Object.class == parentClazz) {
-                // return Nodes.putInObject(_parent, name, _2);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(name);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                        "putInObject",
-                        "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;",
-                        false);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (Map.class.isAssignableFrom(parentClazz)) {
-                // return _parent.put(name, _2);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(name);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map",
-                        "put",
-                        "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                        true);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (JsonObject.class.isAssignableFrom(parentClazz)) {
-                // return _parent.put(name, _2);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_OBJECT);
-                mv.visitLdcInsn(name);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_OBJECT,
-                        "put",
-                        "(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;",
-                        false);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else {
-                NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(parentClazz).pojoInfo;
-                if (pi != null) {
-                    NodeRegistry.PropertyInfo propInfo = pi.properties.get(name);
-                    if (propInfo != null) {
-                        if (propInfo.publicField != null) {
-                            // _parent.name = _2; return null;
-                            Class<?> fieldClazz = propInfo.publicField.getType();
-                            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                            mv.visitVarInsn(Opcodes.ALOAD, 2);
-                            AsmUtil.emitCastOrUnbox(mv, fieldClazz);
-                            mv.visitFieldInsn(Opcodes.PUTFIELD, AsmUtil.toInternalName(parentClazz),
-                                    propInfo.publicField.getName(),
-                                    org.objectweb.asm.Type.getDescriptor(fieldClazz));
-                            mv.visitInsn(Opcodes.ACONST_NULL);
-                            mv.visitInsn(Opcodes.ARETURN);
-                            return;
-                        } else if (propInfo.publicSetter != null) {
-                            // _parent.setXxx(_2); return null;
-                            Method setter = propInfo.publicSetter;
-                            Class<?> argClazz = setter.getParameterTypes()[0];
-                            Class<?> returnClazz = setter.getReturnType();
-                            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                            mv.visitVarInsn(Opcodes.ALOAD, 2);
-                            AsmUtil.emitCastOrUnbox(mv, argClazz);
-                            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.toInternalName(parentClazz),
-                                    setter.getName(), org.objectweb.asm.Type.getMethodDescriptor(setter), false);
-                            if (returnClazz != void.class) {
-                                mv.visitInsn(returnClazz == long.class || returnClazz == double.class ? Opcodes.POP2 : Opcodes.POP);
-                            }
-                            mv.visitInsn(Opcodes.ACONST_NULL);
-                            mv.visitInsn(Opcodes.ARETURN);
-                            return;
-                        }
-                    }
-                }
 
+    private void _emitPutChildByName(MethodVisitor mv, JsonPath path, PathSegment.Name segment,
+                                     Class<?> parentClazz, int parentLocal, int valueLocal,
+                                     boolean _emitReturn) {
+        String expr = path.toExpr();
+        String name = segment.name;
+        if (Object.class == parentClazz) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitLdcInsn(name);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
+                    "putInObject", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", false);
+            mv.visitInsn(_emitReturn ? Opcodes.ARETURN : Opcodes.POP);
+        } else if (Map.class.isAssignableFrom(parentClazz)) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitLdcInsn(name);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Map",
+                    "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
+            mv.visitInsn(_emitReturn ? Opcodes.ARETURN : Opcodes.POP);
+        } else if (JsonObject.class.isAssignableFrom(parentClazz)) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_OBJECT);
+            mv.visitLdcInsn(name);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_OBJECT,
+                    "put", "(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", false);
+            mv.visitInsn(_emitReturn ? Opcodes.ARETURN : Opcodes.POP);
+        } else {
+            NodeRegistry.PojoInfo pi = NodeRegistry.registerTypeInfo(parentClazz).pojoInfo;
+            NodeRegistry.PropertyInfo propInfo = pi == null ? null : pi.properties.get(name);
+            if (propInfo != null && propInfo.publicField != null) {
+                Class<?> fieldClazz = propInfo.publicField.getType();
+                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+                AsmUtil.emitCastOrUnbox(mv, fieldClazz);
+                mv.visitFieldInsn(Opcodes.PUTFIELD, AsmUtil.toInternalName(parentClazz),
+                        propInfo.publicField.getName(), org.objectweb.asm.Type.getDescriptor(fieldClazz));
+            } else if (propInfo != null && propInfo.publicSetter != null) {
+                Method setter = propInfo.publicSetter;
+                Class<?> returnClazz = setter.getReturnType();
+                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+                mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+                AsmUtil.emitCastOrUnbox(mv, setter.getParameterTypes()[0]);
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.toInternalName(parentClazz),
+                        setter.getName(), org.objectweb.asm.Type.getMethodDescriptor(setter), false);
+                if (returnClazz != void.class) {
+                    mv.visitInsn(returnClazz == long.class || returnClazz == double.class ? Opcodes.POP2 : Opcodes.POP);
+                }
+            } else {
                 if (pi == null) {
                     throw new JsonException("cannot write property '" + name +
                             "' on " + parentClazz.getName() + " at '" + expr + "'");
                 }
-                throw new JsonException("property '" + name + "' on " +
-                        parentClazz.getName() +
+                throw new JsonException("property '" + name + "' on " + parentClazz.getName() +
                         " is not writable through a public field or public setter at '" + expr + "'");
             }
-        } else if (last instanceof PathSegment.Index) {
-            int idx = ((PathSegment.Index) last).index;
-            if (idx < 0) {
-                throw new JsonException("ASM CompiledPath does not support negative array index " + idx +
-                        " at '" + expr + "'");
+            if (_emitReturn) {
+                mv.visitInsn(Opcodes.ACONST_NULL);
+                mv.visitInsn(Opcodes.ARETURN);
             }
-            if (Object.class == parentClazz) {
-                // Nodes.putInArray(_parent, idx, _2); return null;
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                        "putInArray",
-                        "(Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;",
-                        false);
-                mv.visitInsn(Opcodes.POP);
+        }
+    }
+
+    private void _emitPutChildByIndex(MethodVisitor mv, JsonPath path, PathSegment.Index segment,
+                                      Class<?> parentClazz, int parentLocal, int valueLocal,
+                                      int scratchLocal, boolean _emitReturn) {
+        String expr = path.toExpr();
+        int idx = segment.index;
+        if (idx < 0) {
+            throw new JsonException("ASM CompiledPath does not support negative array index " + idx +
+                    " at '" + expr + "'");
+        }
+        if (Object.class == parentClazz) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
+                    "putInArray", "(Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", false);
+            mv.visitInsn(_emitReturn ? Opcodes.ARETURN : Opcodes.POP);
+        } else if (List.class.isAssignableFrom(parentClazz)) {
+            Label append = new Label();
+            Label replace = new Label();
+            Label done = new Label();
+
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
+                    "size", "()I", true);
+            mv.visitVarInsn(Opcodes.ISTORE, scratchLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, scratchLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, scratchLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
+            _emitThrow(mv, "cannot set at index " + idx + " in List at '" + expr + "'");
+
+            mv.visitLabel(append);
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
+                    "add", "(Ljava/lang/Object;)Z", true);
+            mv.visitInsn(Opcodes.POP);
+            if (_emitReturn) {
                 mv.visitInsn(Opcodes.ACONST_NULL);
                 mv.visitInsn(Opcodes.ARETURN);
-            } else if (List.class.isAssignableFrom(parentClazz)) {
-                int sizeLocal = scratchLocal;
-                Label append = new Label();
-                Label replace = new Label();
-
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "size", "()I", true);
-                mv.visitVarInsn(Opcodes.ISTORE, sizeLocal);
-
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
-                mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
-                mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
-                _emitThrow(mv, "cannot set at index " + idx + " in List at '" + expr + "'");
-
-                mv.visitLabel(append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-
-                mv.visitLabel(replace);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
-                int sizeLocal = scratchLocal;
-                Label append = new Label();
-                Label replace = new Label();
-
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "size", "()I", false);
-                mv.visitVarInsn(Opcodes.ISTORE, sizeLocal);
-
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
-                mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
-                mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
-                _emitThrow(mv, "cannot set at index " + idx + " in JsonArray at '" + expr + "'");
-
-                mv.visitLabel(append);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "add", "(Ljava/lang/Object;)V", false);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-
-                mv.visitLabel(replace);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "set", "(ILjava/lang/Object;)Ljava/lang/Object;", false);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (parentClazz.isArray()) {
-                Class<?> componentClazz = parentClazz.getComponentType();
-                int sizeLocal = scratchLocal;
-                Label replace = new Label();
-
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitInsn(Opcodes.ARRAYLENGTH);
-                mv.visitVarInsn(Opcodes.ISTORE, sizeLocal);
-
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ILOAD, sizeLocal);
-                mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
-                _emitThrow(mv, "cannot set at index " + idx + " in Array at '" + expr + "'");
-
-                mv.visitLabel(replace);
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitLdcInsn(idx);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                AsmUtil.emitCastOrUnbox(mv, componentClazz);
-                AsmUtil.emitArrayStore(mv, componentClazz);
-
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (Set.class.isAssignableFrom(parentClazz)) {
-                throw new JsonException("cannot set by index on unordered Set type " +
-                        parentClazz.getName() + " at '" + expr + "'");
             } else {
-                throw new JsonException("expected array-like target before index [" + idx +
-                        "] at '" + expr + "', but was " + parentClazz.getName());
+                mv.visitJumpInsn(Opcodes.GOTO, done);
             }
-        } else if (last instanceof PathSegment.Append) {
-            if (Object.class == parentClazz) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
-                        "addInArray",
-                        "(Ljava/lang/Object;Ljava/lang/Object;)V",
-                        false);
-                mv.visitInsn(Opcodes.ACONST_NULL);
+
+            mv.visitLabel(replace);
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
+                    "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+            if (_emitReturn) {
                 mv.visitInsn(Opcodes.ARETURN);
-            } else if (List.class.isAssignableFrom(parentClazz)) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_ARRAY);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
-                        "add", "(Ljava/lang/Object;)V", false);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (Set.class.isAssignableFrom(parentClazz)) {
-                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
-                mv.visitVarInsn(Opcodes.ALOAD, 2);
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Set",
-                        "add", "(Ljava/lang/Object;)Z", true);
-                mv.visitInsn(Opcodes.POP);
-                mv.visitInsn(Opcodes.ACONST_NULL);
-                mv.visitInsn(Opcodes.ARETURN);
-            } else if (parentClazz.isArray()) {
-                throw new JsonException("cannot append to Java array type " +
-                        parentClazz.getName() + " at '" + expr + "'");
             } else {
-                throw new JsonException("expected array-like target before append at '" +
-                        expr + "', but was " + parentClazz.getName());
+                mv.visitInsn(Opcodes.POP);
+                mv.visitLabel(done);
             }
+        } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
+            Label append = new Label();
+            Label replace = new Label();
+            Label done = new Label();
+
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
+                    "size", "()I", false);
+            mv.visitVarInsn(Opcodes.ISTORE, scratchLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, scratchLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPEQ, append);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, scratchLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
+            _emitThrow(mv, "cannot set at index " + idx + " in JsonArray at '" + expr + "'");
+
+            mv.visitLabel(append);
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
+                    "add", "(Ljava/lang/Object;)V", false);
+            if (_emitReturn) {
+                mv.visitInsn(Opcodes.ACONST_NULL);
+                mv.visitInsn(Opcodes.ARETURN);
+            } else {
+                mv.visitJumpInsn(Opcodes.GOTO, done);
+            }
+
+            mv.visitLabel(replace);
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
+                    "set", "(ILjava/lang/Object;)Ljava/lang/Object;", false);
+            if (_emitReturn) {
+                mv.visitInsn(Opcodes.ARETURN);
+            } else {
+                mv.visitInsn(Opcodes.POP);
+                mv.visitLabel(done);
+            }
+        } else if (parentClazz.isArray()) {
+            Class<?> componentClazz = parentClazz.getComponentType();
+            Label replace = new Label();
+
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitInsn(Opcodes.ARRAYLENGTH);
+            mv.visitVarInsn(Opcodes.ISTORE, scratchLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ILOAD, scratchLocal);
+            mv.visitJumpInsn(Opcodes.IF_ICMPLT, replace);
+            _emitThrow(mv, "cannot set at index " + idx + " in Array at '" + expr + "'");
+
+            mv.visitLabel(replace);
+            if (_emitReturn) {
+                mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+                mv.visitLdcInsn(idx);
+                AsmUtil.emitArrayLoad(mv, componentClazz);
+                AsmUtil.emitCastOrBox(mv, componentClazz);
+            }
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitLdcInsn(idx);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            AsmUtil.emitCastOrUnbox(mv, componentClazz);
+            AsmUtil.emitArrayStore(mv, componentClazz);
+            if (_emitReturn) {
+                mv.visitInsn(Opcodes.ARETURN);
+            }
+        } else if (Set.class.isAssignableFrom(parentClazz)) {
+            throw new JsonException("cannot set by index on unordered Set type " +
+                    parentClazz.getName() + " at '" + expr + "'");
         } else {
-            throw new JsonException("unsupported last path token '" + last +
-                    "'; put() expected Name, Index, or Append token");
+            throw new JsonException("expected array-like target before index [" + idx +
+                    "] at '" + expr + "', but was " + parentClazz.getName());
+        }
+    }
+
+    private void _emitPutChildByAppend(MethodVisitor mv, JsonPath path, PathSegment.Append segment,
+                                       Class<?> parentClazz, int parentLocal, int valueLocal,
+                                       boolean _emitReturn) {
+        String expr = path.toExpr();
+        if (Object.class == parentClazz) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKESTATIC, AsmUtil.INAME_NODES,
+                    "addInArray", "(Ljava/lang/Object;Ljava/lang/Object;)V", false);
+        } else if (List.class.isAssignableFrom(parentClazz)) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/List",
+                    "add", "(Ljava/lang/Object;)Z", true);
+            mv.visitInsn(Opcodes.POP);
+        } else if (JsonArray.class.isAssignableFrom(parentClazz)) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.INAME_JSON_ARRAY);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, AsmUtil.INAME_JSON_ARRAY,
+                    "add", "(Ljava/lang/Object;)V", false);
+        } else if (Set.class.isAssignableFrom(parentClazz)) {
+            mv.visitVarInsn(Opcodes.ALOAD, parentLocal);
+            mv.visitVarInsn(Opcodes.ALOAD, valueLocal);
+            mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Set",
+                    "add", "(Ljava/lang/Object;)Z", true);
+            mv.visitInsn(Opcodes.POP);
+        } else if (parentClazz.isArray()) {
+            throw new JsonException("cannot append to Java array type " +
+                    parentClazz.getName() + " at '" + expr + "'");
+        } else {
+            throw new JsonException("expected array-like target before append at '" +
+                    expr + "', but was " + parentClazz.getName());
+        }
+        if (_emitReturn) {
+            mv.visitInsn(Opcodes.ACONST_NULL);
+            mv.visitInsn(Opcodes.ARETURN);
         }
     }
 

@@ -128,35 +128,35 @@ public class AsmPathCompilerTest {
     }
 
     @Test
-    public void testJsonArrayIndexPutReturnsNull() {
+    public void testJsonArrayIndexPutReturnsOldValue() {
         Root root = sampleRoot();
 
         CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[1]", Root.class, String.class);
         assertAsmCompiled(path);
 
-        assertNull(path.put(root, "bb"));
+        assertEquals("b", path.put(root, "bb"));
         assertEquals("bb", root.holder.values.getNode(1));
     }
 
     @Test
-    public void testObjectArrayIndexPutReturnsNull() {
+    public void testObjectArrayIndexPutReturnsOldValue() {
         Root root = sampleRoot();
 
         CompiledPath<Root, String> path = CompiledPath.compile("$.holder.tags[1]", Root.class, String.class);
         assertAsmCompiled(path);
 
-        assertNull(path.put(root, "yy"));
+        assertEquals("y", path.put(root, "yy"));
         assertEquals("yy", root.holder.tags[1]);
     }
 
     @Test
-    public void testPojoListIndexPutReturnsNull() {
+    public void testPojoListIndexPutReturnsOldValue() {
         Root root = sampleRoot();
 
         CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[1]", Root.class, String.class);
         assertAsmCompiled(path);
 
-        assertNull(path.put(root, "beth"));
+        assertEquals("bob", path.put(root, "beth"));
         assertEquals("beth", root.holder.names.get(1));
     }
 
