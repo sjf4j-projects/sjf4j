@@ -47,6 +47,10 @@ public class AsmPathCompilerTest {
         CompiledPath<Root, Long> idPath = CompiledPath.compile("$.holder.leaf.ids[1]", Root.class, Long.class);
         assertAsmCompiled(idPath);
         assertEquals(Long.valueOf(9L), idPath.get(root));
+
+        CompiledPath<Root, Long> lastIdPath = CompiledPath.compile("$.holder.leaf.ids[-1]", Root.class, Long.class);
+        assertAsmCompiled(lastIdPath);
+        assertEquals(Long.valueOf(12L), lastIdPath.get(root));
     }
 
     @Test
@@ -198,7 +202,7 @@ public class AsmPathCompilerTest {
     }
 
     @Test
-    public void testTailIndexPutListAppendAndRejectsNegativeIndexes() {
+    public void testTailIndexPutListAppendAndNegativeIndexes() {
         Root root = sampleRoot();
 
         CompiledPath<Root, String> appendPath = CompiledPath.compile("$.holder.names[3]", Root.class, String.class);
@@ -206,13 +210,61 @@ public class AsmPathCompilerTest {
         assertNull(appendPath.put(root, "dina"));
         assertEquals("dina", root.holder.names.get(3));
 
-        JsonException listEx = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.names[-1]", Root.class, String.class));
-        assertTrue(listEx.getMessage().contains("negative array index -1"));
+        CompiledPath<Root, String> listPath = CompiledPath.compile("$.holder.names[-1]", Root.class, String.class);
+        assertAsmCompiled(listPath);
+        assertEquals("dina", listPath.put(root, "dora"));
+        assertEquals("dora", root.holder.names.get(3));
 
-        JsonException jsonEx = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.values[-1]", Root.class, Object.class));
-        assertTrue(jsonEx.getMessage().contains("negative array index -1"));
+        CompiledPath<Root, Object> jsonPath = CompiledPath.compile("$.holder.values[-1]", Root.class, Object.class);
+        assertAsmCompiled(jsonPath);
+        assertEquals("c", jsonPath.put(root, "cc"));
+        assertEquals("cc", root.holder.values.getNode(2));
+
+        CompiledPath<Root, String> arrayPath = CompiledPath.compile("$.holder.tags[-1]", Root.class, String.class);
+        assertAsmCompiled(arrayPath);
+        assertEquals("z", arrayPath.put(root, "zz"));
+        assertEquals("zz", root.holder.tags[2]);
+    }
+
+    @Test
+    public void testNegativeIndexPutBoundaries() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> firstList = CompiledPath.compile("$.holder.names[-3]", Root.class, String.class);
+        assertAsmCompiled(firstList);
+        assertEquals("ann", firstList.put(root, "amy"));
+        assertEquals("amy", root.holder.names.get(0));
+
+        CompiledPath<Root, String> listOob = CompiledPath.compile("$.holder.names[-4]", Root.class, String.class);
+        assertAsmCompiled(listOob);
+        JsonException listEx = assertThrows(JsonException.class, () -> listOob.put(root, "bad"));
+        assertTrue(listEx.getMessage().contains("cannot set at index -4"));
+
+        CompiledPath<Root, Object> firstJsonArray = CompiledPath.compile("$.holder.values[-3]", Root.class, Object.class);
+        assertAsmCompiled(firstJsonArray);
+        assertEquals("a", firstJsonArray.put(root, "aa"));
+        assertEquals("aa", root.holder.values.getNode(0));
+
+        CompiledPath<Root, Object> jsonArrayOob = CompiledPath.compile("$.holder.values[-4]", Root.class, Object.class);
+        assertAsmCompiled(jsonArrayOob);
+        JsonException jsonEx = assertThrows(JsonException.class, () -> jsonArrayOob.put(root, "bad"));
+        assertTrue(jsonEx.getMessage().contains("cannot set at index -4"));
+
+        CompiledPath<Root, String> firstArray = CompiledPath.compile("$.holder.tags[-3]", Root.class, String.class);
+        assertAsmCompiled(firstArray);
+        assertEquals("x", firstArray.put(root, "xx"));
+        assertEquals("xx", root.holder.tags[0]);
+
+        CompiledPath<Root, String> arrayOob = CompiledPath.compile("$.holder.tags[-4]", Root.class, String.class);
+        assertAsmCompiled(arrayOob);
+        JsonException arrayEx = assertThrows(JsonException.class, () -> arrayOob.put(root, "bad"));
+        assertTrue(arrayEx.getMessage().contains("cannot set at index -4"));
+
+        root.holder.dynamic.put("items", new ArrayList<>(List.of("zero", "one")));
+        CompiledPath<Root, Object> dynamic = CompiledPath.compile("$.holder.dynamic.items[-1]", Root.class, Object.class);
+        assertAsmCompiled(dynamic);
+        assertEquals("one", dynamic.put(root, "uno"));
+        assertEquals("uno", ((List<?>) root.holder.dynamic.getNode("items")).get(1));
     }
 
     @Test
@@ -220,6 +272,14 @@ public class AsmPathCompilerTest {
         JsonException ex = assertThrows(JsonException.class,
                 () -> CompiledPath.compile("$.holder.tags[1]", Root.class, Integer.class));
         assertTrue(ex.getMessage().contains("does not coerce terminal type java.lang.String"));
+    }
+
+    @Test
+    public void testPrimitiveValueTypeFailsFast() {
+        JsonException ex = assertThrows(JsonException.class,
+                () -> CompiledPath.compile("$.holder.leaf.score", Root.class, int.class));
+        assertTrue(ex.getMessage().contains("valueType must be a reference type"));
+        assertTrue(ex.getMessage().contains(Integer.class.getName()));
     }
 
     @Test
@@ -358,7 +418,7 @@ public class AsmPathCompilerTest {
     }
 
     @Test
-    public void testEnsurePutMiddleListIndexNullCreatesAndRejectsNegativeIndex() {
+    public void testEnsurePutMiddleListIndexNullCreatesAndSupportsNegativeIndex() {
         BookStoreRoot root = new BookStoreRoot();
         root.store = new BookStore();
         root.store.book = new ArrayList<>();
@@ -370,9 +430,21 @@ public class AsmPathCompilerTest {
         assertNull(first.ensurePut(root, 10.5d));
         assertEquals(Double.valueOf(10.5d), first.get(root));
 
-        JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.store.book[-1].price", BookStoreRoot.class, Double.class));
-        assertTrue(ex.getMessage().contains("negative array index -1"));
+        CompiledPath<BookStoreRoot, Double> last = CompiledPath.compile("$.store.book[-1].price", BookStoreRoot.class, Double.class);
+        assertAsmCompiled(last);
+        assertNull(last.ensurePut(root, 12.5d));
+        assertEquals(Double.valueOf(12.5d), last.get(root));
+
+        CompiledPath<BookStoreRoot, Double> firstByNegative =
+                CompiledPath.compile("$.store.book[-2].price", BookStoreRoot.class, Double.class);
+        assertAsmCompiled(firstByNegative);
+        assertEquals(Double.valueOf(10.5d), firstByNegative.get(root));
+
+        CompiledPath<BookStoreRoot, Double> oob =
+                CompiledPath.compile("$.store.book[-3].price", BookStoreRoot.class, Double.class);
+        assertAsmCompiled(oob);
+        JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, 1.5d));
+        assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
     }
 
     @Test
@@ -392,6 +464,22 @@ public class AsmPathCompilerTest {
         CompiledPath<Root, String> outOfRange = CompiledPath.compile("$.holder.values[2].name", Root.class, String.class);
         assertAsmCompiled(outOfRange);
         JsonException ex = assertThrows(JsonException.class, () -> outOfRange.ensurePut(root, "bad"));
+        assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
+    }
+
+    @Test
+    public void testEnsurePutMiddleJsonArrayNegativeIndexBoundaries() {
+        Root root = sampleRoot();
+        root.holder.values = JsonArray.of(null, null);
+
+        CompiledPath<Root, String> first = CompiledPath.compile("$.holder.values[-2].name", Root.class, String.class);
+        assertAsmCompiled(first);
+        assertNull(first.ensurePut(root, "first"));
+        assertEquals("first", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
+
+        CompiledPath<Root, String> oob = CompiledPath.compile("$.holder.values[-3].name", Root.class, String.class);
+        assertAsmCompiled(oob);
+        JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, "bad"));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
     }
 
@@ -427,10 +515,47 @@ public class AsmPathCompilerTest {
     }
 
     @Test
-    public void testCompiledPathRejectsNegativeJavaArrayIndex() {
-        JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.books[-1].price", Root.class, Double.class));
-        assertTrue(ex.getMessage().contains("negative array index -1"));
+    public void testCompiledPathSupportsNegativeJavaArrayIndex() {
+        Root root = sampleRoot();
+        Book book = new Book();
+        book.price = 7.5d;
+        root.holder.books = new Book[]{book};
+
+        CompiledPath<Root, Double> path = CompiledPath.compile("$.holder.books[-1].price", Root.class, Double.class);
+        assertAsmCompiled(path);
+        assertEquals(Double.valueOf(7.5d), path.get(root));
+        assertNull(path.ensurePut(root, 8.5d));
+        assertEquals(Double.valueOf(8.5d), book.price);
+
+        CompiledPath<Root, Double> oob = CompiledPath.compile("$.holder.books[-2].price", Root.class, Double.class);
+        assertAsmCompiled(oob);
+        JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, 9.5d));
+        assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
+    }
+
+    @Test
+    public void testComputeNegativeIndex() {
+        Root root = sampleRoot();
+
+        CompiledPath<Root, String> listPath = CompiledPath.compile("$.holder.names[-1]", Root.class, String.class);
+        assertAsmCompiled(listPath);
+        assertEquals(1, listPath.compute(root, (parent, current) -> current + "!"));
+        assertEquals("cara!", root.holder.names.get(2));
+
+        CompiledPath<Root, Object> jsonArrayPath = CompiledPath.compile("$.holder.values[-1]", Root.class, Object.class);
+        assertAsmCompiled(jsonArrayPath);
+        assertEquals(1, jsonArrayPath.compute(root, (parent, current) -> current + "!"));
+        assertEquals("c!", root.holder.values.getNode(2));
+
+        CompiledPath<Root, String> arrayPath = CompiledPath.compile("$.holder.tags[-1]", Root.class, String.class);
+        assertAsmCompiled(arrayPath);
+        assertEquals(1, arrayPath.compute(root, (parent, current) -> current + "!"));
+        assertEquals("z!", root.holder.tags[2]);
+
+        CompiledPath<Root, String> oob = CompiledPath.compile("$.holder.names[-4]", Root.class, String.class);
+        assertAsmCompiled(oob);
+        JsonException ex = assertThrows(JsonException.class, () -> oob.compute(root, (parent, current) -> "bad"));
+        assertTrue(ex.getMessage().contains("cannot set at index -4"));
     }
 
     @Test

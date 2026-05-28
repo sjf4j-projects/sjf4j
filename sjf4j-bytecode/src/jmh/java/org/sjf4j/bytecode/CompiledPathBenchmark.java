@@ -48,7 +48,7 @@ public class CompiledPathBenchmark {
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(new String[]{
-                CompiledPathBenchmark.class.getSimpleName() + ".ensurePutIfAbsent_"
+                CompiledPathBenchmark.class.getSimpleName()
         });
     }
 

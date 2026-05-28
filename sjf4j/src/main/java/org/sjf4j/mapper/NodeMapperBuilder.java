@@ -1,5 +1,6 @@
 package org.sjf4j.mapper;
 
+import org.sjf4j.compiled.CompiledPath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
@@ -151,6 +152,91 @@ public final class NodeMapperBuilder<S, T> {
                 return target;
             }
         };
+    }
+
+    /**
+     * Builds a mapper that uses pre-compiled {@link CompiledAction}
+     * accessors instead of per-call {@link JsonPath} interpretation.
+     *
+     * <p>Actions are compiled at build time into {@link CompiledPath}
+     * instances. When the optional bytecode compiler is present on the
+     * classpath, get/put/ensurePut calls avoid reflection entirely.
+     * Otherwise they fall back to reflective access through a wrapped
+     * {@link JsonPath} — same semantics, no error.
+     */
+    public NodeMapper<S, T> buildCompiled() {
+        final NodeFacade facade = _buildFacade();
+        final CompiledAction<S, T>[] compiled = _toCompiledActions();
+
+        return new NodeMapper<S, T>() {
+            @Override
+            public Class<S> sourceType() {
+                return sourceType;
+            }
+
+            @Override
+            public Class<T> targetType() {
+                return targetType;
+            }
+
+            @Override
+            public T map(S source) {
+                if (source == null) return null;
+                T target = targetType.cast(facade.readNode(source, targetType, true));
+                for (CompiledAction<S, T> a : compiled) {
+                    a.apply(source, target);
+                }
+                return target;
+            }
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private CompiledAction<S, T>[] _toCompiledActions() {
+        CompiledAction<S, T>[] compiled = new CompiledAction[actions.size()];
+        for (int i = 0; i < actions.size(); i++) {
+            compiled[i] = _toCompiledAction(actions.get(i));
+        }
+        return compiled;
+    }
+
+    @SuppressWarnings("unchecked")
+    private CompiledAction<S, T> _toCompiledAction(MappingAction<S, T> action) {
+        if (action instanceof CopyAction) {
+            CopyAction<S, T> a = (CopyAction<S, T>) action;
+            return CompiledAction.copy(
+                    CompiledAction.compilePath(a.sourcePath, sourceType),
+                    CompiledAction.compilePath(a.targetPath, targetType),
+                    a.ensure);
+        }
+        if (action instanceof ValueAction) {
+            ValueAction<S, T> a = (ValueAction<S, T>) action;
+            return CompiledAction.value(
+                    CompiledAction.compilePath(a.targetPath, targetType),
+                    a.value,
+                    a.ensure);
+        }
+        if (action instanceof ComputeAction) {
+            ComputeAction<S, T> a = (ComputeAction<S, T>) action;
+            // Wildcard/multi-path compute cannot use CompiledPath;
+            // fall back to JsonPath.compute() via WILDCARD_COMPUTE.
+            if (!a.targetPath.isSinglePut()) {
+                return CompiledAction.wildcardCompute(a.targetPath, a.computer);
+            }
+            CompiledPath<Object, Object> targetCP =
+                    CompiledAction.compilePath(a.targetPath, targetType);
+            // Resolve the parent container for single-path compute.
+            // parent() returns null when the target is at the root, meaning
+            // the parent IS the root container — apply() handles this by
+            // passing target directly when parentPath is null.
+            CompiledPath<Object, Object> parentCP = null;
+            JsonPointer pp = JsonPointer.parse(a.targetPath.toPointerExpr()).parent();
+            if (pp != null) {
+                parentCP = CompiledAction.compilePath(pp, targetType);
+            }
+            return CompiledAction.compute(targetCP, parentCP, a.computer, a.ensure);
+        }
+        throw new JsonException("unknown MappingAction: " + action.getClass().getName());
     }
 
     private NodeFacade _buildFacade() {

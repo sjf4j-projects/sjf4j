@@ -10,13 +10,10 @@ import org.sjf4j.node.TypeReference;
  * dynamic users can instantiate {@link FallbackCompiledPath} with a parsed
  * {@link org.sjf4j.path.JsonPath} when reflective path access is desired.
  *
- * <p>Bytecode-compiled paths produced by {@code compile(...)} intentionally support only
- * non-negative array indexes. Paths containing negative indexes such as {@code [-1]} are
- * rejected at compile time; use {@link FallbackCompiledPath} or direct
- * {@link org.sjf4j.path.JsonPath} access when negative-index semantics are required.
- * For performance, bytecode-compiled paths also use direct list/array access for indexed
- * segments. Out-of-range intermediate indexes may therefore throw instead of resolving to
- * {@code null}, including for {@link #putIfParentPresent(Object, Object)}; use
+ * <p>Bytecode-compiled paths produced by {@code compile(...)} support negative array indexes
+ * such as {@code [-1]} for tail-relative access. For performance, bytecode-compiled paths use
+ * direct list/array access for indexed segments. Out-of-range intermediate indexes may therefore
+ * throw instead of resolving to {@code null}, including for {@link #putIfParentPresent(Object, Object)}; use
  * {@link FallbackCompiledPath} or direct {@link org.sjf4j.path.JsonPath} access when full
  * missing-index JSON path semantics are required.
  */

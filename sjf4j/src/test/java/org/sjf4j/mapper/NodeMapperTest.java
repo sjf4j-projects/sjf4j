@@ -166,6 +166,121 @@ public class NodeMapperTest {
                 .ensureValue("friends[*].level", "A"));
     }
 
+    // ---- buildCompiled() tests -------------------------------------------
+
+    @Test
+    public void testBuildCompiledCopyValueCompute() {
+        UserSource source = sampleUser();
+
+        UserDtoJojo target = NodeMapper
+                .builder(UserSource.class, UserDtoJojo.class)
+                .copy("displayName", "name")
+                .value("displayName", "fixed")
+                .compute("displayName", root -> root.name + "!")
+                .ensureCopy("$.meta.city", "profile.city")
+                .ensureValue("$.meta.source", "sjf4j")
+                .buildCompiled()
+                .map(source);
+
+        assertEquals("Alice!", target.displayName);
+        assertNotNull(target.meta);
+        assertEquals("Shanghai", target.meta.city);
+        assertEquals("sjf4j", target.getStringByPath("$.meta.source"));
+        // deep-copy still copies profile.city
+        assertEquals("Shanghai", target.profile.city);
+    }
+
+    @Test
+    public void testBuildCompiledActionOrder() {
+        UserSource source = sampleUser();
+
+        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .compute("displayName", root -> root.name + "!")
+                .value("displayName", "fixed")
+                .copy("displayName", "name")
+                .buildCompiled()
+                .map(source);
+
+        // last action (copy) wins
+        assertEquals("Alice", target.displayName);
+    }
+
+    @Test
+    public void testBuildCompiledWildcardCompute() {
+        UserSource source = sampleUser();
+
+        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .compute("friends[*].score", (UserSource root, Object parent, Object current) ->
+                        ((Number) current).intValue() + 1)
+                .compute("friends[*].level", (UserSource root, Object parent, Object current) ->
+                        root.name + ":" + ((JsonObject) parent).getString("name"))
+                .buildCompiled()
+                .map(source);
+
+        assertEquals(96, target.friends.get(0).score);
+        assertEquals(61, target.friends.get(1).score);
+        assertEquals("Alice:Bob", target.friends.get(0).level);
+        assertEquals("Alice:Carol", target.friends.get(1).level);
+    }
+
+    @Test
+    public void testBuildCompiledEnsureCreatesMissingPath() {
+        UserSource source = sampleUser();
+
+        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .ensureCopy("$.meta.city", "profile.city")
+                .ensureValue("$.meta.source", "sjf4j")
+                .ensureCompute("$.meta.label", root -> root.name + ":ok")
+                .buildCompiled()
+                .map(source);
+
+        assertNotNull(target.meta);
+        assertEquals("Shanghai", target.meta.city);
+        assertEquals("sjf4j", target.getStringByPath("$.meta.source"));
+        assertEquals("Alice:ok", target.getStringByPath("$.meta.label"));
+    }
+
+    @Test
+    public void testBuildCompiledNonEnsureThrows() {
+        UserSource source = sampleUser();
+
+        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .copy("$.meta.city", "profile.city")
+                .buildCompiled()
+                .map(source));
+
+        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .value("$.meta.source", "sjf4j")
+                .buildCompiled()
+                .map(source));
+
+        assertThrows(JsonException.class, () -> new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .compute("$.meta.label", root -> root.name + ":x")
+                .buildCompiled()
+                .map(source));
+    }
+
+    @Test
+    public void testBuildCompiledNestedMapper() {
+        UserSource source = sampleUser();
+
+        NodeMapper<OrderSource, OrderDtoJojo> orderConverter = new NodeMapperBuilder<OrderSource, OrderDtoJojo>(OrderSource.class, OrderDtoJojo.class)
+                .compute("label", order -> order.id + ":" + order.total)
+                .buildCompiled();
+
+        UserDtoJojo target = new NodeMapperBuilder<UserSource, UserDtoJojo>(UserSource.class, UserDtoJojo.class)
+                .with(orderConverter)
+                .buildCompiled()
+                .map(source);
+
+        assertEquals(2, target.orders.size());
+        assertEquals("o-1:120", target.orders.get(0).label);
+        assertEquals("o-2:80", target.orders.get(1).label);
+        assertEquals("o-1:120", target.favoriteOrder.label);
+    }
+
+    // ---- inner types ----------------------------------------------------
+
     public static class UserSource {
         public String name;
         public ProfileSource profile;
