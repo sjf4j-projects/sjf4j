@@ -61,6 +61,36 @@ public class CompiledPathBenchmark {
                 }
             };
 
+    private static final int BOOK_INDEX = 1;
+
+    private static int _readListIndex(List<?> list, int index) {
+        int size = list.size();
+        if (index >= 0) {
+            return size <= index ? -1 : index;
+        }
+        int effectiveIndex = size + index;
+        return effectiveIndex < 0 ? -1 : effectiveIndex;
+    }
+
+    private static int _ensureListIndex(List<?> list, int index, String expr) {
+        int size = list.size();
+        if (index >= 0) {
+            if (index < size) {
+                return index;
+            }
+            if (index == size) {
+                return size;
+            }
+        } else {
+            int effectiveIndex = size + index;
+            if (effectiveIndex >= 0) {
+                return effectiveIndex;
+            }
+        }
+        throw new JsonException("cannot ensure path segment at index " + index + " at '" + expr + "': " +
+                "indexed array access requires an existing element; use append path syntax instead");
+    }
+
     private static final String BOOKSTORE_JSON = "{\n" +
             "  \"store\": {\n" +
             "    \"book\": [\n" +
@@ -577,7 +607,11 @@ public class CompiledPathBenchmark {
         if (book == null) {
             return null;
         }
-        Book item = book.get(1);
+        int index = _readListIndex(book, BOOK_INDEX);
+        if (index < 0) {
+            return null;
+        }
+        Book item = book.get(index);
         if (item == null) {
             return null;
         }
@@ -660,7 +694,11 @@ public class CompiledPathBenchmark {
         if (book == null) {
             throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
-        Book item = book.get(1);
+        int index = _readListIndex(book, BOOK_INDEX);
+        if (index < 0) {
+            throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
+        }
+        Book item = book.get(index);
         if (item == null) {
             throw new JsonException("Cannot put value at path '$.store.book[1].price': parent container does not exist");
         }
@@ -709,7 +747,8 @@ public class CompiledPathBenchmark {
         if (bicycle == null) {
             return 0;
         }
-        bicycle.price = (Double) INCREMENT_DOUBLE.apply(bicycle, bicycle.price);
+        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        bicycle.price = (Double) computer.apply(bicycle, bicycle.price);
         s.lastPriceRoot = root;
         return 1;
     }
@@ -751,14 +790,19 @@ public class CompiledPathBenchmark {
             return 0;
         }
         List<Book> book = store.book;
-        if (book == null || book.size() <= 1) {
+        if (book == null) {
             return 0;
         }
-        Book item = book.get(1);
+        int index = _readListIndex(book, BOOK_INDEX);
+        if (index < 0) {
+            return 0;
+        }
+        Book item = book.get(index);
         if (item == null) {
             return 0;
         }
-        item.price = (Double) INCREMENT_DOUBLE.apply(item, item.price);
+        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        item.price = (Double) computer.apply(item, item.price);
         s.lastBookPriceRoot = root;
         return 1;
     }
@@ -796,9 +840,10 @@ public class CompiledPathBenchmark {
     public int compute_missing_price_native(PutIfParentPresentMissingBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.pricePojo, "container");
         Store store = root.store;
+        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
         if (store != null && store.bicycle != null) {
             Bicycle bicycle = store.bicycle;
-            bicycle.price = (Double) INCREMENT_DOUBLE.apply(bicycle, bicycle.price);
+            bicycle.price = (Double) computer.apply(bicycle, bicycle.price);
             s.lastPriceRoot = root;
             return 1;
         }
@@ -834,10 +879,17 @@ public class CompiledPathBenchmark {
     public int compute_missing_bookPrice_native(PutIfParentPresentMissingBenchmarkState s) {
         Root root = java.util.Objects.requireNonNull(s.bookPricePojo, "container");
         Store store = root.store;
-        if (store != null && store.book != null && store.book.size() > 1) {
-            Book item = store.book.get(1);
+        BiFunction<Object, Object, Object> computer = java.util.Objects.requireNonNull(INCREMENT_DOUBLE, "computer");
+        if (store != null && store.book != null) {
+            List<Book> book = store.book;
+            int index = _readListIndex(book, BOOK_INDEX);
+            if (index < 0) {
+                s.lastBookPriceRoot = root;
+                return 0;
+            }
+            Book item = book.get(index);
             if (item != null) {
-                item.price = (Double) INCREMENT_DOUBLE.apply(item, item.price);
+                item.price = (Double) computer.apply(item, item.price);
                 s.lastBookPriceRoot = root;
                 return 1;
             }
@@ -928,10 +980,14 @@ public class CompiledPathBenchmark {
             return root;
         }
         List<Book> book = store.book;
-        if (book == null || book.size() <= 1) {
+        if (book == null) {
             return root;
         }
-        Book item = book.get(1);
+        int index = _readListIndex(book, BOOK_INDEX);
+        if (index < 0) {
+            return root;
+        }
+        Book item = book.get(index);
         if (item == null) {
             return root;
         }
@@ -1013,8 +1069,13 @@ public class CompiledPathBenchmark {
         Store store = root.store;
         if (store != null) {
             List<Book> book = store.book;
-            if (book != null && book.size() > 1) {
-                Book item = book.get(1);
+            if (book != null) {
+                int index = _readListIndex(book, BOOK_INDEX);
+                if (index < 0) {
+                    s.lastBookPriceRoot = root;
+                    return root;
+                }
+                Book item = book.get(index);
                 if (item != null) {
                     item.price = s.nextBookPrice;
                 }
@@ -1113,25 +1174,25 @@ public class CompiledPathBenchmark {
             book = new ArrayList<>();
             store.book = book;
         }
-        if (book.size() > 1) {
-            Book item = book.get(1);
+        int index = _ensureListIndex(book, BOOK_INDEX, "$.store.book[1].price");
+        if (index < book.size()) {
+            Book item = book.get(index);
             if (item == null) {
                 item = new Book();
-                book.set(1, item);
+                book.set(index, item);
             }
             item.price = s.nextBookPrice;
             s.lastBookPriceRoot = root;
             return root;
         }
-        if (book.size() == 1) {
+        if (index == book.size()) {
             Book item = new Book();
             item.price = s.nextBookPrice;
             book.add(item);
             s.lastBookPriceRoot = root;
             return root;
         }
-        throw new JsonException("cannot ensure path segment at index 1 at '$.store.book[1].price': " +
-                "indexed array access requires an existing element; use append path syntax instead");
+        throw new AssertionError("unreachable");
     }
 
     @Benchmark
@@ -1218,10 +1279,18 @@ public class CompiledPathBenchmark {
             book = new ArrayList<>();
             store.book = book;
         }
-        Book item = book.get(1);
+        int index = _ensureListIndex(book, BOOK_INDEX, "$.store.book[1].price");
+        if (index == book.size()) {
+            Book item = new Book();
+            item.price = s.nextBookPrice;
+            book.add(item);
+            s.lastBookPriceRoot = root;
+            return root;
+        }
+        Book item = book.get(index);
         if (item == null) {
             item = new Book();
-            book.set(1, item);
+            book.set(index, item);
         }
         item.price = s.nextBookPrice;
         s.lastBookPriceRoot = root;
@@ -1314,10 +1383,17 @@ public class CompiledPathBenchmark {
             book = new ArrayList<>();
             store.book = book;
         }
-        Book item = book.get(1);
-        if (item == null) {
+        int index = _ensureListIndex(book, BOOK_INDEX, "$.store.book[1].price");
+        Book item;
+        if (index == book.size()) {
             item = new Book();
-            book.set(1, item);
+            book.add(item);
+        } else {
+            item = book.get(index);
+            if (item == null) {
+                item = new Book();
+                book.set(index, item);
+            }
         }
         if (item.price == null) {
             item.price = s.nextBookPrice;
@@ -1412,28 +1488,23 @@ public class CompiledPathBenchmark {
             book = new ArrayList<>();
             store.book = book;
         }
-        if (book.size() > 1) {
-            Book item = book.get(1);
+        int index = _ensureListIndex(book, BOOK_INDEX, "$.store.book[1].price");
+        Book item;
+        if (index == book.size()) {
+            item = new Book();
+            book.add(item);
+        } else {
+            item = book.get(index);
             if (item == null) {
                 item = new Book();
-                book.set(1, item);
+                book.set(index, item);
             }
-            if (item.price == null) {
-                item.price = s.nextBookPrice;
-            }
-            s.lastBookPriceRoot = root;
-            return root;
         }
-        if (book.size() == 1) {
-            Book item = new Book();
-            book.add(item);
-            if (item.price == null) {
-                item.price = s.nextBookPrice;
-            }
-            s.lastBookPriceRoot = root;
-            return root;
+        if (item.price == null) {
+            item.price = s.nextBookPrice;
         }
-        throw new JsonException("cannot ensure-put-if-absent value at indexed path '$.store.book[1].price'");
+        s.lastBookPriceRoot = root;
+        return root;
     }
 
     @Benchmark

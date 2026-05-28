@@ -678,16 +678,8 @@ public class AsmPathCompiler implements PathCompiler {
                 throw new JsonException("unsupported path token '" + ps + "' at '" + expr + "'");
             }
 
-            Class<?> childClazz = Types.rawClazz(childType);
-            if (childClazz != Object.class && !childClazz.isPrimitive()) {
-                // child = (Child) child;
-                mv.visitVarInsn(Opcodes.ALOAD, childLocal);
-                mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(childClazz));
-                mv.visitVarInsn(Opcodes.ASTORE, childLocal);
-            }
-
             currentType = childType;
-            currentClazz = Types.box(childClazz);
+            currentClazz = Types.box(Types.rawClazz(childType));
             currentLocal = childLocal;
         }
         return currentType;
