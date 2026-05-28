@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.JsonException;
+import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPath;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,6 +65,34 @@ public class CompiledPathTest {
             return "x";
         }));
         assertEquals("x", items.get(0));
+    }
+
+    @Test
+    public void testFallbackEnsurePutIfAbsent() {
+        FallbackCompiledPath<JsonObject, Integer> path = new FallbackCompiledPath<>(
+                JsonPath.parse("$.nested.value"), JsonObject.class, Integer.class);
+
+        JsonObject root = JsonObject.of();
+        assertNull(path.ensurePutIfAbsent(root, 1));
+        assertEquals(Integer.valueOf(1), Nodes.getInObject(root.getNode("nested"), "value"));
+
+        assertEquals(Integer.valueOf(1), path.ensurePutIfAbsent(root, 2));
+        assertEquals(Integer.valueOf(1), Nodes.getInObject(root.getNode("nested"), "value"));
+
+        Nodes.putInObject(root.getNode("nested"), "value", null);
+        assertNull(path.ensurePutIfAbsent(root, 3));
+        assertEquals(Integer.valueOf(3), Nodes.getInObject(root.getNode("nested"), "value"));
+
+        FallbackCompiledPath<JsonObject, Object> append = new FallbackCompiledPath<>(
+                JsonPath.parse("$.items[+]"), JsonObject.class, Object.class);
+        JsonArray items = new JsonArray();
+        root.put("items", items);
+        assertNull(append.ensurePutIfAbsent(root, "x"));
+        assertEquals("x", items.get(0));
+
+        FallbackCompiledPath<JsonObject, Object> intermediateAppend = new FallbackCompiledPath<>(
+                JsonPath.parse("$.items[+].value"), JsonObject.class, Object.class);
+        assertThrows(JsonException.class, () -> intermediateAppend.ensurePutIfAbsent(root, "y"));
     }
 
     public static class Root {

@@ -43,6 +43,10 @@ public interface CompiledPath<R, V> {
         throw new UnsupportedOperationException("ensurePut() is not implemented");
     }
 
+    default V ensurePutIfAbsent(R root, V value) {
+        throw new UnsupportedOperationException("ensurePutIfAbsent() is not implemented");
+    }
+
     default int compute(R root, java.util.function.BiFunction<Object, Object, Object> computer) {
         throw new UnsupportedOperationException("compute() is not implemented");
     }

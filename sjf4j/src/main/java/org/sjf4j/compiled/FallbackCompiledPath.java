@@ -51,6 +51,12 @@ public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public V ensurePutIfAbsent(R root, V value) {
+        return (V) path.ensurePutIfAbsent(root, value);
+    }
+
+    @Override
     public int compute(R root, BiFunction<Object, Object, Object> computer) {
         return path.compute(root, computer);
     }

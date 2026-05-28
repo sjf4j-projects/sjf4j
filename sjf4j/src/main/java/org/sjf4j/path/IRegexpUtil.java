@@ -5,6 +5,7 @@ import org.sjf4j.exception.JsonException;
 
 /**
  * Minimal implementation of the JSONPath I-Regexp draft.
+ * See: <a href="https://www.rfc-editor.org/rfc/rfc9485.html">RFC 9485</a>
  *
  * <p>This is a lightweight matcher used by JSONPath functions such as
  * {@code match()} and {@code search()}.

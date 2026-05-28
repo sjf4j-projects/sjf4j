@@ -114,6 +114,49 @@ public class CompiledPathTest {
         assertTrue(arrayCallbackCalled.get());
     }
 
+    @Test
+    public void testEnsurePutIfAbsent() {
+        CompiledPath<RootWithMap, Integer> mapPath = CompiledPath.compile("$.map.a", RootWithMap.class, Integer.class);
+        RootWithMap mapRoot = new RootWithMap();
+        assertNull(mapPath.ensurePutIfAbsent(mapRoot, 1));
+        assertEquals(Integer.valueOf(1), mapRoot.map.get("a"));
+
+        assertEquals(Integer.valueOf(1), mapPath.ensurePutIfAbsent(mapRoot, 2));
+        assertEquals(Integer.valueOf(1), mapRoot.map.get("a"));
+
+        mapRoot.map.put("a", null);
+        assertNull(mapPath.ensurePutIfAbsent(mapRoot, 3));
+        assertEquals(Integer.valueOf(3), mapRoot.map.get("a"));
+
+        CompiledPath<RootWithList, Integer> listPath = CompiledPath.compile("$.items[1]", RootWithList.class, Integer.class);
+        RootWithList listRoot = new RootWithList();
+        listRoot.items = new ArrayList<>();
+        listRoot.items.add(4);
+        assertNull(listPath.ensurePutIfAbsent(listRoot, 5));
+        assertEquals(Integer.valueOf(5), listRoot.items.get(1));
+        assertEquals(Integer.valueOf(5), listPath.ensurePutIfAbsent(listRoot, 6));
+        assertEquals(Integer.valueOf(5), listRoot.items.get(1));
+
+        CompiledPath<RootWithList, Object> appendPath = CompiledPath.compile("$.items[+]", RootWithList.class, Object.class);
+        assertNull(appendPath.ensurePutIfAbsent(listRoot, 7));
+        assertEquals(Integer.valueOf(7), listRoot.items.get(2));
+
+        CompiledPath<RootWithObjectList, Object> intermediateAppend =
+                CompiledPath.compile("$.items[+].value", RootWithObjectList.class, Object.class);
+        RootWithObjectList objectListRoot = new RootWithObjectList();
+        objectListRoot.items = new ArrayList<>();
+        JsonException ex = assertThrows(JsonException.class,
+                () -> intermediateAppend.ensurePutIfAbsent(objectListRoot, 8));
+        assertTrue(ex.getMessage().contains("ensurePutIfAbsent"));
+
+        CompiledPath<RootWithBookList, Integer> defaultLeafPath =
+                CompiledPath.compile("$.items[0].value", RootWithBookList.class, Integer.class);
+        RootWithBookList defaultLeafRoot = new RootWithBookList();
+        defaultLeafRoot.items = new ArrayList<>();
+        assertEquals(Integer.valueOf(11), defaultLeafPath.ensurePutIfAbsent(defaultLeafRoot, 12));
+        assertEquals(Integer.valueOf(11), defaultLeafRoot.items.get(0).value);
+    }
+
     public static class Root {
         public Integer a;
     }
@@ -124,6 +167,18 @@ public class CompiledPathTest {
 
     public static class RootWithList {
         public List<Integer> items;
+    }
+
+    public static class RootWithObjectList {
+        public List<Object> items;
+    }
+
+    public static class RootWithBookList {
+        public List<Book> items;
+    }
+
+    public static class Book {
+        public Integer value = 11;
     }
 
     public static class RootWithArray {
