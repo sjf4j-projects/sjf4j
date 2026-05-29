@@ -2,7 +2,7 @@ package org.sjf4j.jdk17.compiled;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.asm.BytecodePath;
+import org.sjf4j.compiled.BytecodePath;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;

@@ -14,6 +14,8 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.compiled.BytecodePath;
+import org.sjf4j.compiled.FallbackBytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 

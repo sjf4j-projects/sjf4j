@@ -11,17 +11,6 @@ java {
     withSourcesJar()
 }
 
-repositories {
-    maven {
-        name = "Central Portal Snapshots"
-        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
-        mavenContent {
-            snapshotsOnly()
-        }
-    }
-    mavenCentral()
-}
-
 configurations {
     testCompileOnly {
         extendsFrom(configurations.annotationProcessor.get())
@@ -76,39 +65,39 @@ tasks.withType<Javadoc> {
 
 /////////////////////
 /// Publish
-mavenPublishing {
-    publishToMavenCentral()
-    signAllPublications()
-    coordinates(group.toString(), name, version.toString())
-
-    pom {
-        name.set("SJF4J")
-        description.set("SJF4J bytecode acceleration module — ASM-based compiled-path compiler for SJF4J")
-        inceptionYear.set("2026")
-        url.set("https://sjf4j.org")
-        licenses {
-            license {
-                name.set("MIT License")
-                url.set("https://opensource.org/license/mit")
-            }
-        }
-        developers {
-            developer {
-                id.set("hannyu")
-                name.set("Yu Han")
-                url.set("https://github.com/hannyu/")
-            }
-        }
-        scm {
-            url.set("https://github.com/sjf4j-projects/sjf4j/")
-            connection.set("scm:git:git://github.com/sjf4j-projects/sjf4j.git")
-            developerConnection.set("scm:git:ssh://git@github.com/sjf4j-projects/sjf4j.git")
-        }
-    }
-}
-
-// Gradle 9 task validation: ensure metadata generation sees javadoc artifact producer.
-tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
-    .configureEach {
-        dependsOn(tasks.matching { it.name == "plainJavadocJar" })
-    }
+//mavenPublishing {
+//    publishToMavenCentral()
+//    signAllPublications()
+//    coordinates(group.toString(), name, version.toString())
+//
+//    pom {
+//        name.set("SJF4J")
+//        description.set("SJF4J bytecode acceleration module — ASM-based compiled-path compiler for SJF4J")
+//        inceptionYear.set("2026")
+//        url.set("https://sjf4j.org")
+//        licenses {
+//            license {
+//                name.set("MIT License")
+//                url.set("https://opensource.org/license/mit")
+//            }
+//        }
+//        developers {
+//            developer {
+//                id.set("hannyu")
+//                name.set("Yu Han")
+//                url.set("https://github.com/hannyu/")
+//            }
+//        }
+//        scm {
+//            url.set("https://github.com/sjf4j-projects/sjf4j/")
+//            connection.set("scm:git:git://github.com/sjf4j-projects/sjf4j.git")
+//            developerConnection.set("scm:git:ssh://git@github.com/sjf4j-projects/sjf4j.git")
+//        }
+//    }
+//}
+//
+//// Gradle 9 task validation: ensure metadata generation sees javadoc artifact producer.
+//tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
+//    .configureEach {
+//        dependsOn(tasks.matching { it.name == "plainJavadocJar" })
+//    }

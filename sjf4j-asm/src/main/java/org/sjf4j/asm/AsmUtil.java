@@ -4,6 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.compiled.BytecodePath;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Types;
 

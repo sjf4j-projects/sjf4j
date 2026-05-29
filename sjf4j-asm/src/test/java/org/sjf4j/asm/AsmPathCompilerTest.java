@@ -3,6 +3,8 @@ package org.sjf4j.asm;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.compiled.BytecodePath;
+import org.sjf4j.compiled.FallbackBytecodePath;
 import org.sjf4j.exception.JsonException;
 
 import java.util.LinkedHashSet;

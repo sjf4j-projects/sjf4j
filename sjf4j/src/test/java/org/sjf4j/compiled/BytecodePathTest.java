@@ -1,8 +1,10 @@
-package org.sjf4j.asm;
+package org.sjf4j.compiled;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.compiled.BytecodePath;
+import org.sjf4j.compiled.FallbackBytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.path.JsonPath;

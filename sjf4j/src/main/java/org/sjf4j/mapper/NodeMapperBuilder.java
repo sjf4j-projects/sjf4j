@@ -1,6 +1,6 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.asm.BytecodePath;
+import org.sjf4j.compiled.BytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;

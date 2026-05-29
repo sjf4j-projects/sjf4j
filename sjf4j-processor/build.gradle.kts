@@ -18,13 +18,11 @@ configurations {
 }
 
 dependencies {
-    api(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
-    compileOnly("com.ibm.icu:icu4j:77.1")
+    implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
 
     // test
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     testImplementation("org.yaml:snakeyaml:2.5")
-    testImplementation("com.ibm.icu:icu4j:77.1")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
@@ -33,11 +31,12 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    // jmh
+    // JMH
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
+
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf(
@@ -60,42 +59,3 @@ tasks.withType<Javadoc> {
     }
 }
 
-
-/////////////////////
-/// Publish
-mavenPublishing {
-    publishToMavenCentral()
-    signAllPublications()
-    coordinates(group.toString(), name, version.toString())
-
-    pom {
-        name.set("SJF4J")
-        description.set("SJF4J JSON Schema module — schema parsing, evaluation, format validation")
-        inceptionYear.set("2026")
-        url.set("https://sjf4j.org")
-        licenses {
-            license {
-                name.set("MIT License")
-                url.set("https://opensource.org/license/mit")
-            }
-        }
-        developers {
-            developer {
-                id.set("hannyu")
-                name.set("Yu Han")
-                url.set("https://github.com/hannyu/")
-            }
-        }
-        scm {
-            url.set("https://github.com/sjf4j-projects/sjf4j/")
-            connection.set("scm:git:git://github.com/sjf4j-projects/sjf4j.git")
-            developerConnection.set("scm:git:ssh://git@github.com/sjf4j-projects/sjf4j.git")
-        }
-    }
-}
-
-// Gradle 9 task validation: ensure metadata generation sees javadoc artifact producer.
-tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
-    .configureEach {
-        dependsOn(tasks.matching { it.name == "plainJavadocJar" })
-    }

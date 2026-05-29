@@ -1,4 +1,4 @@
-package org.sjf4j.asm;
+package org.sjf4j.compiled;
 
 
 import org.sjf4j.exception.JsonException;

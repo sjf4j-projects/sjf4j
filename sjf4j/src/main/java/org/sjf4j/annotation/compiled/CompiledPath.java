@@ -9,12 +9,16 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface CompiledPath {
     String expr();
-    Method method();
+    MethodKind method();
 
-    enum Method {
+    enum MethodKind {
         GET,
+        GET_AS,
+        CONTAINS,
         PUT,
         PUT_IF_PARENT_PRESENT,
-        ENSURE_PUT
+        ENSURE_PUT,
+        ENSURE_PUT_IF_ABSENT,
     }
+
 }

@@ -11,17 +11,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-repositories {
-    maven {
-        name = "Central Portal Snapshots"
-        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
-        mavenContent {
-            snapshotsOnly()
-        }
-    }
-    mavenCentral()
-}
-
 configurations {
     testCompileOnly {
         extendsFrom(configurations.annotationProcessor.get())
@@ -40,6 +29,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.5")
 
     // test
+    testAnnotationProcessor(project(":sjf4j-processor"))
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
     testImplementation("ch.qos.logback:logback-classic:1.5.25")
