@@ -30,7 +30,7 @@ configurations {
 
 dependencies {
     implementation(project(":sjf4j"))
-    implementation(project(":sjf4j-bytecode"))
+    implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))
 
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
@@ -73,7 +73,7 @@ tasks.test {
     )
 }
 
-val coverageProjects = listOf(":sjf4j", ":sjf4j-bytecode", ":sjf4j-schema")
+val coverageProjects = listOf(":sjf4j", ":sjf4j-asm", ":sjf4j-schema")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
     layout.buildDirectory.file("jacoco/test.exec")

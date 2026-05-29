@@ -20,6 +20,6 @@ dependencyResolutionManagement {
 
 
 include("sjf4j")
-include("sjf4j-bytecode")
+include("sjf4j-asm")
 include("sjf4j-schema")
 include("sjf4j-jdk17-test")
