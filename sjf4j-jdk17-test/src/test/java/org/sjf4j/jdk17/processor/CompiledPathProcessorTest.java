@@ -22,10 +22,11 @@ public class CompiledPathProcessorTest {
     record User(City city) {}
 
     record City(String name) {}
-}
 
-@CompiledNodes
-interface UserNodes {
-    @CompiledPath(expr = "$.city.name", method = CompiledPath.MethodKind.GET)
-    String getCityName(CompiledPathProcessorTest.User user);
+    @CompiledNodes
+    interface UserNodes {
+        @CompiledPath(expr = "$.city.name", method = CompiledPath.MethodKind.GET)
+        String getCityName(CompiledPathProcessorTest.User user);
+    }
+
 }
