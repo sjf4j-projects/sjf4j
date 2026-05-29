@@ -1,18 +1,18 @@
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;
 
 import org.sjf4j.path.JsonPath;
 
 import java.util.function.BiFunction;
 
 
-public class FallbackCompiledPath<R, V> implements CompiledPath<R, V> {
+public class FallbackBytecodePath<R, V> implements BytecodePath<R, V> {
 
     protected final JsonPath path;
     protected final Class<R> rootClazz;
     protected final Class<V> valueClazz;
 
 
-    public FallbackCompiledPath(JsonPath path, Class<R> rootClazz, Class<V> valueClazz) {
+    public FallbackBytecodePath(JsonPath path, Class<R> rootClazz, Class<V> valueClazz) {
         this.path = path;
         this.rootClazz = rootClazz;
         this.valueClazz = valueClazz;

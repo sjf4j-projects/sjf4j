@@ -4,7 +4,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.compiled.CompiledPath;
 import org.sjf4j.node.Nodes;
 import org.sjf4j.node.Types;
 
@@ -14,7 +13,7 @@ public final class AsmUtil {
 
     private static final AtomicInteger COUNTER = new AtomicInteger(1000);
 
-    public static final String INAME_COMPILED_PATH = AsmUtil.toInternalName(CompiledPath.class);
+    public static final String INAME_COMPILED_PATH = AsmUtil.toInternalName(BytecodePath.class);
     public static final String INAME_NODES = AsmUtil.toInternalName(Nodes.class);
     public static final String INAME_JSON_OBJECT = AsmUtil.toInternalName(JsonObject.class);
     public static final String INAME_JSON_ARRAY = AsmUtil.toInternalName(JsonArray.class);

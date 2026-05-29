@@ -3,8 +3,6 @@ package org.sjf4j.bytecode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.compiled.CompiledPath;
-import org.sjf4j.compiled.FallbackCompiledPath;
 import org.sjf4j.exception.JsonException;
 
 import java.util.LinkedHashSet;
@@ -24,7 +22,7 @@ public class AsmPathCompilerTest {
 
     @Test
     public void testPojoFieldAndNullChain() {
-        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
         assertEquals("$.holder.leaf.score", path.expr());
 
@@ -40,15 +38,15 @@ public class AsmPathCompilerTest {
     public void testPrimitiveGetterAndPrimitiveArrayElement() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Boolean> activePath = CompiledPath.compile("$.holder.leaf.active", Root.class, Boolean.class);
+        BytecodePath<Root, Boolean> activePath = BytecodePath.compile("$.holder.leaf.active", Root.class, Boolean.class);
         assertAsmCompiled(activePath);
         assertEquals(Boolean.TRUE, activePath.get(root));
 
-        CompiledPath<Root, Long> idPath = CompiledPath.compile("$.holder.leaf.ids[1]", Root.class, Long.class);
+        BytecodePath<Root, Long> idPath = BytecodePath.compile("$.holder.leaf.ids[1]", Root.class, Long.class);
         assertAsmCompiled(idPath);
         assertEquals(Long.valueOf(9L), idPath.get(root));
 
-        CompiledPath<Root, Long> lastIdPath = CompiledPath.compile("$.holder.leaf.ids[-1]", Root.class, Long.class);
+        BytecodePath<Root, Long> lastIdPath = BytecodePath.compile("$.holder.leaf.ids[-1]", Root.class, Long.class);
         assertAsmCompiled(lastIdPath);
         assertEquals(Long.valueOf(12L), lastIdPath.get(root));
     }
@@ -57,7 +55,7 @@ public class AsmPathCompilerTest {
     public void testPojoFieldPutReturnsOldValue() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
 
         assertNull(path.put(root, 11));
@@ -68,7 +66,7 @@ public class AsmPathCompilerTest {
     public void testPojoSetterPutReturnsOldValue() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Boolean> path = CompiledPath.compile("$.holder.leaf.active", Root.class, Boolean.class);
+        BytecodePath<Root, Boolean> path = BytecodePath.compile("$.holder.leaf.active", Root.class, Boolean.class);
         assertAsmCompiled(path);
 
         assertNull(path.put(root, Boolean.FALSE));
@@ -79,11 +77,11 @@ public class AsmPathCompilerTest {
     public void testMapJsonObjectAndObjectArraySegments() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Integer> mapPath = CompiledPath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
+        BytecodePath<Root, Integer> mapPath = BytecodePath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
         assertAsmCompiled(mapPath);
         assertEquals(Integer.valueOf(3), mapPath.get(root));
 
-        CompiledPath<Root, String> objectArrayPath = CompiledPath.compile("$.holder.tags[1]", Root.class, String.class);
+        BytecodePath<Root, String> objectArrayPath = BytecodePath.compile("$.holder.tags[1]", Root.class, String.class);
         assertAsmCompiled(objectArrayPath);
         assertEquals("y", objectArrayPath.get(root));
 
@@ -93,7 +91,7 @@ public class AsmPathCompilerTest {
     public void testDynamicObjectLeafSegment() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.dynamic.n", Root.class, Object.class);
+        BytecodePath<Root, Object> path = BytecodePath.compile("$.holder.dynamic.n", Root.class, Object.class);
         assertAsmCompiled(path);
         assertEquals("5", path.get(root));
     }
@@ -103,7 +101,7 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.dynamic.put("items", List.of("zero", "one"));
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.dynamic.items[1]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.dynamic.items[1]", Root.class, String.class);
         assertAsmCompiled(path);
         assertEquals("one", path.get(root));
     }
@@ -112,7 +110,7 @@ public class AsmPathCompilerTest {
     public void testMapBackedPutReturnsOldValue() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
+        BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
         assertAsmCompiled(path);
 
         assertEquals(Integer.valueOf(3), path.put(root, 9));
@@ -123,7 +121,7 @@ public class AsmPathCompilerTest {
     public void testJsonArrayIndexSegment() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[1]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.values[1]", Root.class, String.class);
         assertAsmCompiled(path);
         assertEquals("b", path.get(root));
 
@@ -135,7 +133,7 @@ public class AsmPathCompilerTest {
     public void testJsonArrayIndexPutReturnsOldValue() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[1]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.values[1]", Root.class, String.class);
         assertAsmCompiled(path);
 
         assertEquals("b", path.put(root, "bb"));
@@ -146,7 +144,7 @@ public class AsmPathCompilerTest {
     public void testObjectArrayIndexPutReturnsOldValue() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.tags[1]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.tags[1]", Root.class, String.class);
         assertAsmCompiled(path);
 
         assertEquals("y", path.put(root, "yy"));
@@ -157,7 +155,7 @@ public class AsmPathCompilerTest {
     public void testPojoListIndexPutReturnsOldValue() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[1]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.names[1]", Root.class, String.class);
         assertAsmCompiled(path);
 
         assertEquals("bob", path.put(root, "beth"));
@@ -168,7 +166,7 @@ public class AsmPathCompilerTest {
     public void testPojoListAppendReturnsNull() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.names[+]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.names[+]", Root.class, String.class);
         assertAsmCompiled(path);
 
         assertNull(path.put(root, "dina"));
@@ -179,7 +177,7 @@ public class AsmPathCompilerTest {
     public void testAppendPutReturnsNull() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.values[+]", Root.class, Object.class);
+        BytecodePath<Root, Object> path = BytecodePath.compile("$.holder.values[+]", Root.class, Object.class);
         assertAsmCompiled(path);
 
         assertNull(path.put(root, "d"));
@@ -190,12 +188,12 @@ public class AsmPathCompilerTest {
     public void testIndexedPutAppendsAtSizeAndRejectsPastSize() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.values[3]", Root.class, Object.class);
+        BytecodePath<Root, Object> path = BytecodePath.compile("$.holder.values[3]", Root.class, Object.class);
         assertAsmCompiled(path);
         assertNull(path.put(root, "d"));
         assertEquals("d", root.holder.values.getNode(3));
 
-        CompiledPath<Root, Object> pastEnd = CompiledPath.compile("$.holder.values[5]", Root.class, Object.class);
+        BytecodePath<Root, Object> pastEnd = BytecodePath.compile("$.holder.values[5]", Root.class, Object.class);
         assertAsmCompiled(pastEnd);
         JsonException ex = assertThrows(JsonException.class, () -> pastEnd.put(root, "x"));
         assertTrue(ex.getMessage().contains("cannot set at index"));
@@ -205,22 +203,22 @@ public class AsmPathCompilerTest {
     public void testTailIndexPutListAppendAndNegativeIndexes() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> appendPath = CompiledPath.compile("$.holder.names[3]", Root.class, String.class);
+        BytecodePath<Root, String> appendPath = BytecodePath.compile("$.holder.names[3]", Root.class, String.class);
         assertAsmCompiled(appendPath);
         assertNull(appendPath.put(root, "dina"));
         assertEquals("dina", root.holder.names.get(3));
 
-        CompiledPath<Root, String> listPath = CompiledPath.compile("$.holder.names[-1]", Root.class, String.class);
+        BytecodePath<Root, String> listPath = BytecodePath.compile("$.holder.names[-1]", Root.class, String.class);
         assertAsmCompiled(listPath);
         assertEquals("dina", listPath.put(root, "dora"));
         assertEquals("dora", root.holder.names.get(3));
 
-        CompiledPath<Root, Object> jsonPath = CompiledPath.compile("$.holder.values[-1]", Root.class, Object.class);
+        BytecodePath<Root, Object> jsonPath = BytecodePath.compile("$.holder.values[-1]", Root.class, Object.class);
         assertAsmCompiled(jsonPath);
         assertEquals("c", jsonPath.put(root, "cc"));
         assertEquals("cc", root.holder.values.getNode(2));
 
-        CompiledPath<Root, String> arrayPath = CompiledPath.compile("$.holder.tags[-1]", Root.class, String.class);
+        BytecodePath<Root, String> arrayPath = BytecodePath.compile("$.holder.tags[-1]", Root.class, String.class);
         assertAsmCompiled(arrayPath);
         assertEquals("z", arrayPath.put(root, "zz"));
         assertEquals("zz", root.holder.tags[2]);
@@ -230,38 +228,38 @@ public class AsmPathCompilerTest {
     public void testNegativeIndexPutBoundaries() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> firstList = CompiledPath.compile("$.holder.names[-3]", Root.class, String.class);
+        BytecodePath<Root, String> firstList = BytecodePath.compile("$.holder.names[-3]", Root.class, String.class);
         assertAsmCompiled(firstList);
         assertEquals("ann", firstList.put(root, "amy"));
         assertEquals("amy", root.holder.names.get(0));
 
-        CompiledPath<Root, String> listOob = CompiledPath.compile("$.holder.names[-4]", Root.class, String.class);
+        BytecodePath<Root, String> listOob = BytecodePath.compile("$.holder.names[-4]", Root.class, String.class);
         assertAsmCompiled(listOob);
         JsonException listEx = assertThrows(JsonException.class, () -> listOob.put(root, "bad"));
         assertTrue(listEx.getMessage().contains("cannot set at index -4"));
 
-        CompiledPath<Root, Object> firstJsonArray = CompiledPath.compile("$.holder.values[-3]", Root.class, Object.class);
+        BytecodePath<Root, Object> firstJsonArray = BytecodePath.compile("$.holder.values[-3]", Root.class, Object.class);
         assertAsmCompiled(firstJsonArray);
         assertEquals("a", firstJsonArray.put(root, "aa"));
         assertEquals("aa", root.holder.values.getNode(0));
 
-        CompiledPath<Root, Object> jsonArrayOob = CompiledPath.compile("$.holder.values[-4]", Root.class, Object.class);
+        BytecodePath<Root, Object> jsonArrayOob = BytecodePath.compile("$.holder.values[-4]", Root.class, Object.class);
         assertAsmCompiled(jsonArrayOob);
         JsonException jsonEx = assertThrows(JsonException.class, () -> jsonArrayOob.put(root, "bad"));
         assertTrue(jsonEx.getMessage().contains("cannot set at index -4"));
 
-        CompiledPath<Root, String> firstArray = CompiledPath.compile("$.holder.tags[-3]", Root.class, String.class);
+        BytecodePath<Root, String> firstArray = BytecodePath.compile("$.holder.tags[-3]", Root.class, String.class);
         assertAsmCompiled(firstArray);
         assertEquals("x", firstArray.put(root, "xx"));
         assertEquals("xx", root.holder.tags[0]);
 
-        CompiledPath<Root, String> arrayOob = CompiledPath.compile("$.holder.tags[-4]", Root.class, String.class);
+        BytecodePath<Root, String> arrayOob = BytecodePath.compile("$.holder.tags[-4]", Root.class, String.class);
         assertAsmCompiled(arrayOob);
         JsonException arrayEx = assertThrows(JsonException.class, () -> arrayOob.put(root, "bad"));
         assertTrue(arrayEx.getMessage().contains("cannot set at index -4"));
 
         root.holder.dynamic.put("items", new ArrayList<>(List.of("zero", "one")));
-        CompiledPath<Root, Object> dynamic = CompiledPath.compile("$.holder.dynamic.items[-1]", Root.class, Object.class);
+        BytecodePath<Root, Object> dynamic = BytecodePath.compile("$.holder.dynamic.items[-1]", Root.class, Object.class);
         assertAsmCompiled(dynamic);
         assertEquals("one", dynamic.put(root, "uno"));
         assertEquals("uno", ((List<?>) root.holder.dynamic.getNode("items")).get(1));
@@ -270,14 +268,14 @@ public class AsmPathCompilerTest {
     @Test
     public void testStaticValueTypeMismatchFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.tags[1]", Root.class, Integer.class));
+                () -> BytecodePath.compile("$.holder.tags[1]", Root.class, Integer.class));
         assertTrue(ex.getMessage().contains("does not coerce terminal type java.lang.String"));
     }
 
     @Test
     public void testPrimitiveValueTypeFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.leaf.score", Root.class, int.class));
+                () -> BytecodePath.compile("$.holder.leaf.score", Root.class, int.class));
         assertTrue(ex.getMessage().contains("valueType must be a reference type"));
         assertTrue(ex.getMessage().contains(Integer.class.getName()));
     }
@@ -285,14 +283,14 @@ public class AsmPathCompilerTest {
     @Test
     public void testSetIndexFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.keys[0]", Root.class, String.class));
+                () -> BytecodePath.compile("$.holder.keys[0]", Root.class, String.class));
         assertTrue(ex.getMessage().contains("cannot read by index from unordered Set type"));
     }
 
     @Test
     public void testJavaArrayAppendFailsFast() {
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.tags[+]", Root.class, String.class));
+                () -> BytecodePath.compile("$.holder.tags[+]", Root.class, String.class));
         assertTrue(ex.getMessage().contains("cannot append to Java array type"));
     }
 
@@ -300,7 +298,7 @@ public class AsmPathCompilerTest {
     public void testPojoListIndexSegment() {
         BookStoreRoot root = sampleBookStoreRoot();
 
-        CompiledPath<BookStoreRoot, Double> path = CompiledPath.compile("$.store.book[1].price", BookStoreRoot.class, Double.class);
+        BytecodePath<BookStoreRoot, Double> path = BytecodePath.compile("$.store.book[1].price", BookStoreRoot.class, Double.class);
         assertAsmCompiled(path);
         assertEquals(Double.valueOf(12.99d), path.get(root));
 
@@ -310,7 +308,7 @@ public class AsmPathCompilerTest {
 
     @Test
     public void testAppendPathThrowsOnGet() {
-        CompiledPath<Root, Object> path = CompiledPath.compile("$.holder.values[+]", Root.class, Object.class);
+        BytecodePath<Root, Object> path = BytecodePath.compile("$.holder.values[+]", Root.class, Object.class);
         assertAsmCompiled(path);
 
         JsonException ex = assertThrows(JsonException.class, () -> path.get(sampleRoot()));
@@ -319,18 +317,18 @@ public class AsmPathCompilerTest {
 
     @Test
     public void testPointerIndexArrayCompilesAndObjectFailsFast() {
-        CompiledPath<JsonArray, Object> arrayPath = CompiledPath.compile("/0", JsonArray.class, Object.class);
+        BytecodePath<JsonArray, Object> arrayPath = BytecodePath.compile("/0", JsonArray.class, Object.class);
         assertAsmCompiled(arrayPath);
         assertEquals("a", arrayPath.get(JsonArray.of("a", "b")));
 
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("/0", JsonObject.class, Object.class));
+                () -> BytecodePath.compile("/0", JsonObject.class, Object.class));
         assertTrue(ex.getMessage().contains("array-like target"));
     }
 
     @Test
     public void testPutNullRootThrows() {
-        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
 
         assertThrows(NullPointerException.class, () -> path.put(null, 1));
@@ -341,7 +339,7 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.leaf = null;
 
-        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
 
         JsonException ex = assertThrows(JsonException.class, () -> path.put(root, 1));
@@ -352,7 +350,7 @@ public class AsmPathCompilerTest {
     public void testEnsurePutCreatesPojoNullChain() {
         Root root = new Root();
 
-        CompiledPath<Root, Integer> path = CompiledPath.compile("$.holder.leaf.score", Root.class, Integer.class);
+        BytecodePath<Root, Integer> path = BytecodePath.compile("$.holder.leaf.score", Root.class, Integer.class);
         assertAsmCompiled(path);
 
         assertNull(path.ensurePut(root, 41));
@@ -365,14 +363,14 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.buckets = new LinkedHashMap<>();
 
-        CompiledPath<Root, Integer> mapPath = CompiledPath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
+        BytecodePath<Root, Integer> mapPath = BytecodePath.compile("$.holder.buckets.good.count", Root.class, Integer.class);
         assertAsmCompiled(mapPath);
         assertNull(mapPath.ensurePut(root, 3));
         assertEquals(Integer.valueOf(3), mapPath.get(root));
         assertInstanceOf(JsonObject.class, root.holder.buckets.get("good"));
 
         root.holder.dynamic = new JsonObject();
-        CompiledPath<Root, String> jsonPath = CompiledPath.compile("$.holder.dynamic.items[+].name", Root.class, String.class);
+        BytecodePath<Root, String> jsonPath = BytecodePath.compile("$.holder.dynamic.items[+].name", Root.class, String.class);
         assertAsmCompiled(jsonPath);
         assertNull(jsonPath.ensurePut(root, "Alice"));
         assertInstanceOf(ArrayList.class, root.holder.dynamic.getNode("items"));
@@ -386,19 +384,19 @@ public class AsmPathCompilerTest {
         root.holder.customBooks = null;
         root.holder.keys = null;
 
-        CompiledPath<Root, Integer> mapPath = CompiledPath.compile("$.holder.customBuckets.good.count", Root.class, Integer.class);
+        BytecodePath<Root, Integer> mapPath = BytecodePath.compile("$.holder.customBuckets.good.count", Root.class, Integer.class);
         assertAsmCompiled(mapPath);
         assertNull(mapPath.ensurePut(root, 8));
         assertInstanceOf(CustomBuckets.class, root.holder.customBuckets);
         assertEquals(8, root.holder.customBuckets.get("good").getInt("count"));
 
-        CompiledPath<Root, Double> listPath = CompiledPath.compile("$.holder.customBooks[+].price", Root.class, Double.class);
+        BytecodePath<Root, Double> listPath = BytecodePath.compile("$.holder.customBooks[+].price", Root.class, Double.class);
         assertAsmCompiled(listPath);
         assertNull(listPath.ensurePut(root, 19.5d));
         assertInstanceOf(CustomBookList.class, root.holder.customBooks);
         assertEquals(Double.valueOf(19.5d), root.holder.customBooks.get(0).price);
 
-        CompiledPath<Root, String> setPath = CompiledPath.compile("$.holder.keys[+]", Root.class, String.class);
+        BytecodePath<Root, String> setPath = BytecodePath.compile("$.holder.keys[+]", Root.class, String.class);
         assertAsmCompiled(setPath);
         assertNull(setPath.ensurePut(root, "k3"));
         assertInstanceOf(LinkedHashSet.class, root.holder.keys);
@@ -410,7 +408,7 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.values = new JsonArray();
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[+].name", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.values[+].name", Root.class, String.class);
         assertAsmCompiled(path);
 
         assertNull(path.ensurePut(root, "neo"));
@@ -425,23 +423,23 @@ public class AsmPathCompilerTest {
         root.store.book.add(null);
         root.store.book.add(null);
 
-        CompiledPath<BookStoreRoot, Double> first = CompiledPath.compile("$.store.book[0].price", BookStoreRoot.class, Double.class);
+        BytecodePath<BookStoreRoot, Double> first = BytecodePath.compile("$.store.book[0].price", BookStoreRoot.class, Double.class);
         assertAsmCompiled(first);
         assertNull(first.ensurePut(root, 10.5d));
         assertEquals(Double.valueOf(10.5d), first.get(root));
 
-        CompiledPath<BookStoreRoot, Double> last = CompiledPath.compile("$.store.book[-1].price", BookStoreRoot.class, Double.class);
+        BytecodePath<BookStoreRoot, Double> last = BytecodePath.compile("$.store.book[-1].price", BookStoreRoot.class, Double.class);
         assertAsmCompiled(last);
         assertNull(last.ensurePut(root, 12.5d));
         assertEquals(Double.valueOf(12.5d), last.get(root));
 
-        CompiledPath<BookStoreRoot, Double> firstByNegative =
-                CompiledPath.compile("$.store.book[-2].price", BookStoreRoot.class, Double.class);
+        BytecodePath<BookStoreRoot, Double> firstByNegative =
+                BytecodePath.compile("$.store.book[-2].price", BookStoreRoot.class, Double.class);
         assertAsmCompiled(firstByNegative);
         assertEquals(Double.valueOf(10.5d), firstByNegative.get(root));
 
-        CompiledPath<BookStoreRoot, Double> oob =
-                CompiledPath.compile("$.store.book[-3].price", BookStoreRoot.class, Double.class);
+        BytecodePath<BookStoreRoot, Double> oob =
+                BytecodePath.compile("$.store.book[-3].price", BookStoreRoot.class, Double.class);
         assertAsmCompiled(oob);
         JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, 1.5d));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
@@ -452,7 +450,7 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.values = JsonArray.of((Object) null);
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.values[0].name", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.values[0].name", Root.class, String.class);
         assertAsmCompiled(path);
         assertNull(path.ensurePut(root, "zero"));
         assertEquals("zero", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
@@ -461,7 +459,7 @@ public class AsmPathCompilerTest {
         assertNull(path.ensurePut(root, "appended"));
         assertEquals("appended", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
 
-        CompiledPath<Root, String> outOfRange = CompiledPath.compile("$.holder.values[2].name", Root.class, String.class);
+        BytecodePath<Root, String> outOfRange = BytecodePath.compile("$.holder.values[2].name", Root.class, String.class);
         assertAsmCompiled(outOfRange);
         JsonException ex = assertThrows(JsonException.class, () -> outOfRange.ensurePut(root, "bad"));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
@@ -472,12 +470,12 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.values = JsonArray.of(null, null);
 
-        CompiledPath<Root, String> first = CompiledPath.compile("$.holder.values[-2].name", Root.class, String.class);
+        BytecodePath<Root, String> first = BytecodePath.compile("$.holder.values[-2].name", Root.class, String.class);
         assertAsmCompiled(first);
         assertNull(first.ensurePut(root, "first"));
         assertEquals("first", ((Map<?, ?>) root.holder.values.getNode(0)).get("name"));
 
-        CompiledPath<Root, String> oob = CompiledPath.compile("$.holder.values[-3].name", Root.class, String.class);
+        BytecodePath<Root, String> oob = BytecodePath.compile("$.holder.values[-3].name", Root.class, String.class);
         assertAsmCompiled(oob);
         JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, "bad"));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
@@ -487,10 +485,10 @@ public class AsmPathCompilerTest {
     public void testEnsurePutIndexedIntermediateAppendsAtSizeUsingPropertyTypes() {
         CompiledPropertyRoot root = new CompiledPropertyRoot();
 
-        CompiledPath<CompiledPropertyRoot, String> first =
-                CompiledPath.compile("$.a.b[0].c", CompiledPropertyRoot.class, String.class);
-        CompiledPath<CompiledPropertyRoot, String> second =
-                CompiledPath.compile("$.a.b[1].c", CompiledPropertyRoot.class, String.class);
+        BytecodePath<CompiledPropertyRoot, String> first =
+                BytecodePath.compile("$.a.b[0].c", CompiledPropertyRoot.class, String.class);
+        BytecodePath<CompiledPropertyRoot, String> second =
+                BytecodePath.compile("$.a.b[1].c", CompiledPropertyRoot.class, String.class);
         assertAsmCompiled(first);
         assertAsmCompiled(second);
 
@@ -507,7 +505,7 @@ public class AsmPathCompilerTest {
         Root root = sampleRoot();
         root.holder.tags = null;
 
-        CompiledPath<Root, String> path = CompiledPath.compile("$.holder.tags[0]", Root.class, String.class);
+        BytecodePath<Root, String> path = BytecodePath.compile("$.holder.tags[0]", Root.class, String.class);
         assertAsmCompiled(path);
 
         JsonException ex = assertThrows(JsonException.class, () -> path.ensurePut(root, "x"));
@@ -521,13 +519,13 @@ public class AsmPathCompilerTest {
         book.price = 7.5d;
         root.holder.books = new Book[]{book};
 
-        CompiledPath<Root, Double> path = CompiledPath.compile("$.holder.books[-1].price", Root.class, Double.class);
+        BytecodePath<Root, Double> path = BytecodePath.compile("$.holder.books[-1].price", Root.class, Double.class);
         assertAsmCompiled(path);
         assertEquals(Double.valueOf(7.5d), path.get(root));
         assertNull(path.ensurePut(root, 8.5d));
         assertEquals(Double.valueOf(8.5d), book.price);
 
-        CompiledPath<Root, Double> oob = CompiledPath.compile("$.holder.books[-2].price", Root.class, Double.class);
+        BytecodePath<Root, Double> oob = BytecodePath.compile("$.holder.books[-2].price", Root.class, Double.class);
         assertAsmCompiled(oob);
         JsonException ex = assertThrows(JsonException.class, () -> oob.ensurePut(root, 9.5d));
         assertTrue(ex.getMessage().contains("indexed array access requires an existing element"));
@@ -537,22 +535,22 @@ public class AsmPathCompilerTest {
     public void testComputeNegativeIndex() {
         Root root = sampleRoot();
 
-        CompiledPath<Root, String> listPath = CompiledPath.compile("$.holder.names[-1]", Root.class, String.class);
+        BytecodePath<Root, String> listPath = BytecodePath.compile("$.holder.names[-1]", Root.class, String.class);
         assertAsmCompiled(listPath);
         assertEquals(1, listPath.compute(root, (parent, current) -> current + "!"));
         assertEquals("cara!", root.holder.names.get(2));
 
-        CompiledPath<Root, Object> jsonArrayPath = CompiledPath.compile("$.holder.values[-1]", Root.class, Object.class);
+        BytecodePath<Root, Object> jsonArrayPath = BytecodePath.compile("$.holder.values[-1]", Root.class, Object.class);
         assertAsmCompiled(jsonArrayPath);
         assertEquals(1, jsonArrayPath.compute(root, (parent, current) -> current + "!"));
         assertEquals("c!", root.holder.values.getNode(2));
 
-        CompiledPath<Root, String> arrayPath = CompiledPath.compile("$.holder.tags[-1]", Root.class, String.class);
+        BytecodePath<Root, String> arrayPath = BytecodePath.compile("$.holder.tags[-1]", Root.class, String.class);
         assertAsmCompiled(arrayPath);
         assertEquals(1, arrayPath.compute(root, (parent, current) -> current + "!"));
         assertEquals("z!", root.holder.tags[2]);
 
-        CompiledPath<Root, String> oob = CompiledPath.compile("$.holder.names[-4]", Root.class, String.class);
+        BytecodePath<Root, String> oob = BytecodePath.compile("$.holder.names[-4]", Root.class, String.class);
         assertAsmCompiled(oob);
         JsonException ex = assertThrows(JsonException.class, () -> oob.compute(root, (parent, current) -> "bad"));
         assertTrue(ex.getMessage().contains("cannot set at index -4"));
@@ -561,14 +559,14 @@ public class AsmPathCompilerTest {
     @Test
     public void testSetterOnlyMiddlePojoPropertyFailsAtCompileTime() {
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.holder.leaf.score", SetterOnlyRoot.class, Integer.class));
+                () -> BytecodePath.compile("$.holder.leaf.score", SetterOnlyRoot.class, Integer.class));
         assertTrue(ex.getMessage().contains("readable property"));
     }
 
-    private static void assertAsmCompiled(CompiledPath<?, ?> path) {
-        assertFalse(path instanceof FallbackCompiledPath);
-        assertTrue(path.getClass().getName().startsWith("org.sjf4j.bytecode.generated.CompiledPath_"));
-        assertInstanceOf(CompiledPath.class, path);
+    private static void assertAsmCompiled(BytecodePath<?, ?> path) {
+        assertFalse(path instanceof FallbackBytecodePath);
+        assertTrue(path.getClass().getName().startsWith("org.sjf4j.bytecode.generated.BytecodePath_"));
+        assertInstanceOf(BytecodePath.class, path);
     }
 
     private static Root sampleRoot() {

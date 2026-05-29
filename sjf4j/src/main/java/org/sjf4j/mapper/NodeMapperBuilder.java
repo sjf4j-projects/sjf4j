@@ -1,6 +1,6 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.compiled.CompiledPath;
+import org.sjf4j.bytecode.BytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.facade.NodeConverter;
 import org.sjf4j.facade.NodeFacade;
@@ -158,7 +158,7 @@ public final class NodeMapperBuilder<S, T> {
      * Builds a mapper that uses pre-compiled {@link CompiledAction}
      * accessors instead of per-call {@link JsonPath} interpretation.
      *
-     * <p>Actions are compiled at build time into {@link CompiledPath}
+     * <p>Actions are compiled at build time into {@link BytecodePath}
      * instances. When the optional bytecode compiler is present on the
      * classpath, get/put/ensurePut calls avoid reflection entirely.
      * Otherwise they fall back to reflective access through a wrapped
@@ -223,13 +223,13 @@ public final class NodeMapperBuilder<S, T> {
             if (!a.targetPath.isSinglePut()) {
                 return CompiledAction.wildcardCompute(a.targetPath, a.computer);
             }
-            CompiledPath<Object, Object> targetCP =
+            BytecodePath<Object, Object> targetCP =
                     CompiledAction.compilePath(a.targetPath, targetType);
             // Resolve the parent container for single-path compute.
             // parent() returns null when the target is at the root, meaning
             // the parent IS the root container — apply() handles this by
             // passing target directly when parentPath is null.
-            CompiledPath<Object, Object> parentCP = null;
+            BytecodePath<Object, Object> parentCP = null;
             JsonPointer pp = JsonPointer.parse(a.targetPath.toPointerExpr()).parent();
             if (pp != null) {
                 parentCP = CompiledAction.compilePath(pp, targetType);

@@ -1,4 +1,4 @@
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;
 
 
 import org.sjf4j.exception.JsonException;
@@ -23,7 +23,7 @@ final class BytecodeCompilers {
         }
     }
 
-    public static CompiledPath<?, ?> compilePath(String pathExpr, Type rootType, Type valueType, boolean allowFallback) {
+    public static BytecodePath<?, ?> compilePath(String pathExpr, Type rootType, Type valueType, boolean allowFallback) {
         Objects.requireNonNull(pathExpr, "pathExpr");
         Objects.requireNonNull(rootType, "rootType");
         Objects.requireNonNull(valueType, "valueType");
@@ -43,7 +43,7 @@ final class BytecodeCompilers {
         }
 
         if (allowFallback) {
-            return new FallbackCompiledPath<>(path, rootClazz, valueClazz);
+            return new FallbackBytecodePath<>(path, rootClazz, valueClazz);
         }
 
         String message = "CompiledPath requires an optional bytecode compiler for '" + path.toExpr() +

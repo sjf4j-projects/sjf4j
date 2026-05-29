@@ -1,4 +1,4 @@
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
@@ -14,19 +14,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class CompiledPathTest {
+public class BytecodePathTest {
 
 
     @Test
     public void testAsm1() {
         JsonException ex = assertThrows(JsonException.class,
-                () -> CompiledPath.compile("$.a.b", Root.class, Integer.class));
+                () -> BytecodePath.compile("$.a.b", Root.class, Integer.class));
         assertTrue(ex.getMessage().contains("sjf4j-bytecode"));
     }
 
     @Test
     public void testFallbackPutIfParentPresent() {
-        FallbackCompiledPath<JsonObject, Integer> path = new FallbackCompiledPath<>(
+        FallbackBytecodePath<JsonObject, Integer> path = new FallbackBytecodePath<>(
                 JsonPath.parse("$.nested.value"), JsonObject.class, Integer.class);
 
         JsonObject root = JsonObject.of();
@@ -41,7 +41,7 @@ public class CompiledPathTest {
 
     @Test
     public void testFallbackCompute() {
-        FallbackCompiledPath<JsonObject, Integer> path = new FallbackCompiledPath<>(
+        FallbackBytecodePath<JsonObject, Integer> path = new FallbackBytecodePath<>(
                 JsonPath.parse("$.nested.value"), JsonObject.class, Integer.class);
 
         JsonObject root = JsonObject.of("nested", JsonObject.of("value", 1));
@@ -56,7 +56,7 @@ public class CompiledPathTest {
         }));
         assertEquals(false, called.get());
 
-        FallbackCompiledPath<JsonObject, Object> append = new FallbackCompiledPath<>(
+        FallbackBytecodePath<JsonObject, Object> append = new FallbackBytecodePath<>(
                 JsonPath.parse("$.items[+]"), JsonObject.class, Object.class);
         JsonArray items = new JsonArray();
         JsonObject appendRoot = JsonObject.of("items", items);
@@ -69,7 +69,7 @@ public class CompiledPathTest {
 
     @Test
     public void testFallbackEnsurePutIfAbsent() {
-        FallbackCompiledPath<JsonObject, Integer> path = new FallbackCompiledPath<>(
+        FallbackBytecodePath<JsonObject, Integer> path = new FallbackBytecodePath<>(
                 JsonPath.parse("$.nested.value"), JsonObject.class, Integer.class);
 
         JsonObject root = JsonObject.of();
@@ -83,14 +83,14 @@ public class CompiledPathTest {
         assertNull(path.ensurePutIfAbsent(root, 3));
         assertEquals(Integer.valueOf(3), Nodes.getInObject(root.getNode("nested"), "value"));
 
-        FallbackCompiledPath<JsonObject, Object> append = new FallbackCompiledPath<>(
+        FallbackBytecodePath<JsonObject, Object> append = new FallbackBytecodePath<>(
                 JsonPath.parse("$.items[+]"), JsonObject.class, Object.class);
         JsonArray items = new JsonArray();
         root.put("items", items);
         assertNull(append.ensurePutIfAbsent(root, "x"));
         assertEquals("x", items.get(0));
 
-        FallbackCompiledPath<JsonObject, Object> intermediateAppend = new FallbackCompiledPath<>(
+        FallbackBytecodePath<JsonObject, Object> intermediateAppend = new FallbackBytecodePath<>(
                 JsonPath.parse("$.items[+].value"), JsonObject.class, Object.class);
         assertThrows(JsonException.class, () -> intermediateAppend.ensurePutIfAbsent(root, "y"));
     }

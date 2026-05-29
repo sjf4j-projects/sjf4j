@@ -6,8 +6,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.compiled.CompiledPath;
-import org.sjf4j.compiled.PathCompiler;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.Types;
@@ -28,8 +26,8 @@ import java.util.Set;
 
 
 /**
- * Strict ASM-backed {@link PathCompiler} for single-target {@link CompiledPath#get(Object)} reads
- * and {@link CompiledPath#put(Object, Object)} writes.
+ * Strict ASM-backed {@link PathCompiler} for single-target {@link BytecodePath#get(Object)} reads
+ * and {@link BytecodePath#put(Object, Object)} writes.
  *
  * <p>This compiler does not perform fallback-style terminal value coercion. Primitive leaves are
  * boxed when needed (for example {@code int -> Integer}), but incompatible reference-typed leaves
@@ -43,7 +41,7 @@ import java.util.Set;
 public class AsmPathCompiler implements PathCompiler {
 
     @Override
-    public CompiledPath<?, ?> compilePath(JsonPath path, Type rootType, Type valueType) {
+    public BytecodePath<?, ?> compilePath(JsonPath path, Type rootType, Type valueType) {
         Objects.requireNonNull(path, "path");
         Objects.requireNonNull(rootType, "rootType");
         Objects.requireNonNull(valueType, "valueType");
@@ -66,7 +64,7 @@ public class AsmPathCompiler implements PathCompiler {
                     path.toExpr() + "'");
         }
 
-        String compiledClassName = AsmUtil.generateClassName(CompiledPath.class, rootClazz.getSimpleName());
+        String compiledClassName = AsmUtil.generateClassName(BytecodePath.class, rootClazz.getSimpleName());
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         _writeClassHead(cw, compiledClassName, rootClazz, valueClazz);
         _writeMethodExpr(cw, path);
@@ -80,7 +78,7 @@ public class AsmPathCompiler implements PathCompiler {
         AsmClassLoader acl = AsmClassLoader.of(rootClazz.getClassLoader());
         Class<?> compiledClass = acl.defineClazz(compiledClassName, cw.toByteArray());
         try {
-            return (CompiledPath<?, ?>) compiledClass.getConstructor().newInstance();
+            return (BytecodePath<?, ?>) compiledClass.getConstructor().newInstance();
         } catch (Exception e) {
             throw new JsonException("failed to instantiate ASM CompiledPath for '" + path.toExpr() +
                     "' (rootType=" + rootClazz.getName() + ", valueType=" + valueClazz.getName() + ")", e);

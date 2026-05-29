@@ -14,8 +14,6 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.compiled.CompiledPath;
-import org.sjf4j.compiled.FallbackCompiledPath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 
@@ -136,18 +134,18 @@ public class CompiledPathBenchmark {
 
         // $.store.bicycle.color
         public JsonPath colorRaw;
-        public FallbackCompiledPath<Root, String> colorFallback;
-        public CompiledPath<Root, String> colorAsm;
+        public FallbackBytecodePath<Root, String> colorFallback;
+        public BytecodePath<Root, String> colorAsm;
 
         // $.store.bicycle.price
         public JsonPath priceRaw;
-        public FallbackCompiledPath<Root, Double> priceFallback;
-        public CompiledPath<Root, Double> priceAsm;
+        public FallbackBytecodePath<Root, Double> priceFallback;
+        public BytecodePath<Root, Double> priceAsm;
 
         // $.store.book[1].price
         public JsonPath bookPriceRaw;
-        public FallbackCompiledPath<Root, Double> bookPriceFallback;
-        public CompiledPath<Root, Double> bookPriceAsm;
+        public FallbackBytecodePath<Root, Double> bookPriceFallback;
+        public BytecodePath<Root, Double> bookPriceAsm;
 
         public Root emptyRoot;
 
@@ -158,18 +156,18 @@ public class CompiledPathBenchmark {
 
             // $.store.bicycle.color
             colorRaw = JsonPath.parse("$.store.bicycle.color");
-            colorFallback = new FallbackCompiledPath<>(colorRaw, Root.class, String.class);
-            colorAsm = CompiledPath.compile("$.store.bicycle.color", Root.class, String.class);
+            colorFallback = new FallbackBytecodePath<>(colorRaw, Root.class, String.class);
+            colorAsm = BytecodePath.compile("$.store.bicycle.color", Root.class, String.class);
 
             // $.store.bicycle.price
             priceRaw = JsonPath.parse("$.store.bicycle.price");
-            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
-            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+            priceFallback = new FallbackBytecodePath<>(priceRaw, Root.class, Double.class);
+            priceAsm = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
 
             // $.store.book[1].price
             bookPriceRaw = JsonPath.parse("$.store.book[1].price");
-            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
-            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+            bookPriceFallback = new FallbackBytecodePath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
 
             emptyRoot = new Root();
 
@@ -198,12 +196,12 @@ public class CompiledPathBenchmark {
     @State(Scope.Thread)
     public static class PutBenchmarkState {
         public JsonPath priceRaw;
-        public FallbackCompiledPath<Root, Double> priceFallback;
-        public CompiledPath<Root, Double> priceAsm;
+        public FallbackBytecodePath<Root, Double> priceFallback;
+        public BytecodePath<Root, Double> priceAsm;
 
         public JsonPath bookPriceRaw;
-        public FallbackCompiledPath<Root, Double> bookPriceFallback;
-        public CompiledPath<Root, Double> bookPriceAsm;
+        public FallbackBytecodePath<Root, Double> bookPriceFallback;
+        public BytecodePath<Root, Double> bookPriceAsm;
 
         public Root pricePojo;
         public Root bookPricePojo;
@@ -216,12 +214,12 @@ public class CompiledPathBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             priceRaw = JsonPath.parse("$.store.bicycle.price");
-            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
-            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+            priceFallback = new FallbackBytecodePath<>(priceRaw, Root.class, Double.class);
+            priceAsm = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
 
             bookPriceRaw = JsonPath.parse("$.store.book[1].price");
-            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
-            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+            bookPriceFallback = new FallbackBytecodePath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
 
             Root probe = _newRoot();
             Object priceOldAsm = priceAsm.put(probe, 21.95d);
@@ -287,12 +285,12 @@ public class CompiledPathBenchmark {
     @State(Scope.Thread)
     public static class EnsurePutBenchmarkState {
         public JsonPath priceRaw;
-        public FallbackCompiledPath<Root, Double> priceFallback;
-        public CompiledPath<Root, Double> priceAsm;
+        public FallbackBytecodePath<Root, Double> priceFallback;
+        public BytecodePath<Root, Double> priceAsm;
 
         public JsonPath bookPriceRaw;
-        public FallbackCompiledPath<Root, Double> bookPriceFallback;
-        public CompiledPath<Root, Double> bookPriceAsm;
+        public FallbackBytecodePath<Root, Double> bookPriceFallback;
+        public BytecodePath<Root, Double> bookPriceAsm;
 
         public Root pricePojo;
         public Root bookPricePojo;
@@ -305,12 +303,12 @@ public class CompiledPathBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             priceRaw = JsonPath.parse("$.store.bicycle.price");
-            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
-            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+            priceFallback = new FallbackBytecodePath<>(priceRaw, Root.class, Double.class);
+            priceAsm = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
 
             bookPriceRaw = JsonPath.parse("$.store.book[1].price");
-            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
-            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+            bookPriceFallback = new FallbackBytecodePath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
 
             Root probe = new Root();
             Object priceOldAsm = priceAsm.ensurePut(probe, 21.95d);
@@ -430,12 +428,12 @@ public class CompiledPathBenchmark {
     @State(Scope.Thread)
     public static class PutIfParentPresentMissingBenchmarkState {
         public JsonPath priceRaw;
-        public FallbackCompiledPath<Root, Double> priceFallback;
-        public CompiledPath<Root, Double> priceAsm;
+        public FallbackBytecodePath<Root, Double> priceFallback;
+        public BytecodePath<Root, Double> priceAsm;
 
         public JsonPath bookPriceRaw;
-        public FallbackCompiledPath<Root, Double> bookPriceFallback;
-        public CompiledPath<Root, Double> bookPriceAsm;
+        public FallbackBytecodePath<Root, Double> bookPriceFallback;
+        public BytecodePath<Root, Double> bookPriceAsm;
 
         public Root pricePojo;
         public Root bookPricePojo;
@@ -448,12 +446,12 @@ public class CompiledPathBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             priceRaw = JsonPath.parse("$.store.bicycle.price");
-            priceFallback = new FallbackCompiledPath<>(priceRaw, Root.class, Double.class);
-            priceAsm = CompiledPath.compile("$.store.bicycle.price", Root.class, Double.class);
+            priceFallback = new FallbackBytecodePath<>(priceRaw, Root.class, Double.class);
+            priceAsm = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
 
             bookPriceRaw = JsonPath.parse("$.store.book[1].price");
-            bookPriceFallback = new FallbackCompiledPath<>(bookPriceRaw, Root.class, Double.class);
-            bookPriceAsm = CompiledPath.compile("$.store.book[1].price", Root.class, Double.class);
+            bookPriceFallback = new FallbackBytecodePath<>(bookPriceRaw, Root.class, Double.class);
+            bookPriceAsm = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
 
             Root probe = new Root();
             Object priceOldAsm = priceAsm.putIfParentPresent(probe, 21.95d);

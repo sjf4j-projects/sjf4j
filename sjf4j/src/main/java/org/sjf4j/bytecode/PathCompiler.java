@@ -1,4 +1,4 @@
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;
 
 import org.sjf4j.path.JsonPath;
 
@@ -14,5 +14,5 @@ import java.lang.reflect.Type;
  */
 public interface PathCompiler {
 
-    CompiledPath<?, ?> compilePath(JsonPath path, Type rootType, Type valueType);
+    BytecodePath<?, ?> compilePath(JsonPath path, Type rootType, Type valueType);
 }

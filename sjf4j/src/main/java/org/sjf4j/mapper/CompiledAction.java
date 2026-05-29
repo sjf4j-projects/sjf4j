@@ -1,13 +1,13 @@
 package org.sjf4j.mapper;
 
-import org.sjf4j.compiled.CompiledPath;
-import org.sjf4j.compiled.FallbackCompiledPath;
+import org.sjf4j.bytecode.BytecodePath;
+import org.sjf4j.bytecode.FallbackBytecodePath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 
 /**
  * Pre-compiled mapping action that replaces per-call {@link JsonPath} segment
- * interpretation with {@link CompiledPath} accessors.
+ * interpretation with {@link BytecodePath} accessors.
  *
  * <p>All actions share a single type so the action-loop dispatch remains
  * monomorphic. Each instance stores only the fields needed for its kind.
@@ -23,18 +23,18 @@ final class CompiledAction<S, T> {
     static final int WILDCARD_COMPUTE = 3;
 
     final int kind;
-    final CompiledPath<Object, Object> sourcePath; // COPY only
-    final CompiledPath<Object, Object> targetPath; // COPY, VALUE, COMPUTE
-    final CompiledPath<Object, Object> parentPath; // COMPUTE only
+    final BytecodePath<Object, Object> sourcePath; // COPY only
+    final BytecodePath<Object, Object> targetPath; // COPY, VALUE, COMPUTE
+    final BytecodePath<Object, Object> parentPath; // COMPUTE only
     final Object fixedValue;                         // VALUE only
     final NodeMapperBuilder.ComputeFunction<S> computer; // COMPUTE, WILDCARD_COMPUTE
     final boolean ensure;                            // all except WILDCARD_COMPUTE
     final JsonPath wildcardPath;                     // WILDCARD_COMPUTE only
 
     private CompiledAction(int kind,
-                           CompiledPath<Object, Object> sourcePath,
-                           CompiledPath<Object, Object> targetPath,
-                           CompiledPath<Object, Object> parentPath,
+                           BytecodePath<Object, Object> sourcePath,
+                           BytecodePath<Object, Object> targetPath,
+                           BytecodePath<Object, Object> parentPath,
                            Object fixedValue,
                            NodeMapperBuilder.ComputeFunction<S> computer,
                            boolean ensure,
@@ -52,22 +52,22 @@ final class CompiledAction<S, T> {
     // ---- factory methods --------------------------------------------------
 
     static <S, T> CompiledAction<S, T> copy(
-            CompiledPath<Object, Object> sourcePath,
-            CompiledPath<Object, Object> targetPath,
+            BytecodePath<Object, Object> sourcePath,
+            BytecodePath<Object, Object> targetPath,
             boolean ensure) {
         return new CompiledAction<>(COPY, sourcePath, targetPath, null, null, null, ensure, null);
     }
 
     static <S, T> CompiledAction<S, T> value(
-            CompiledPath<Object, Object> targetPath,
+            BytecodePath<Object, Object> targetPath,
             Object fixedValue,
             boolean ensure) {
         return new CompiledAction<>(VALUE, null, targetPath, null, fixedValue, null, ensure, null);
     }
 
     static <S, T> CompiledAction<S, T> compute(
-            CompiledPath<Object, Object> targetPath,
-            CompiledPath<Object, Object> parentPath,
+            BytecodePath<Object, Object> targetPath,
+            BytecodePath<Object, Object> parentPath,
             NodeMapperBuilder.ComputeFunction<S> computer,
             boolean ensure) {
         return new CompiledAction<>(COMPUTE, null, targetPath, parentPath, null, computer, ensure, null);
@@ -113,23 +113,23 @@ final class CompiledAction<S, T> {
     // ---- compilation helper -----------------------------------------------
 
     /**
-     * Converts a parsed {@link JsonPath} into a {@link CompiledPath}.
+     * Converts a parsed {@link JsonPath} into a {@link BytecodePath}.
      *
-     * <p>Attempts bytecode compilation via {@link CompiledPath#compile}
+     * <p>Attempts bytecode compilation via {@link BytecodePath#compile}
      * when an ASM compiler is present on the classpath; falls back to
-     * {@link FallbackCompiledPath} (reflective) otherwise.
+     * {@link FallbackBytecodePath} (reflective) otherwise.
      * Root-only paths (length &lt; 2) skip the ASM attempt directly.
      */
     @SuppressWarnings("unchecked")
-    static CompiledPath<Object, Object> compilePath(JsonPath path, Class<?> rootType) {
+    static BytecodePath<Object, Object> compilePath(JsonPath path, Class<?> rootType) {
         if (path.length() < 2) {
-            return new FallbackCompiledPath<>(path, (Class) rootType, Object.class);
+            return new FallbackBytecodePath<>(path, (Class) rootType, Object.class);
         }
         try {
-            return (CompiledPath<Object, Object>) CompiledPath.compile(
+            return (BytecodePath<Object, Object>) BytecodePath.compile(
                     path.toExpr(), (Class) rootType, Object.class);
         } catch (JsonException e) {
-            return new FallbackCompiledPath<>(path, (Class) rootType, Object.class);
+            return new FallbackBytecodePath<>(path, (Class) rootType, Object.class);
         }
     }
 }

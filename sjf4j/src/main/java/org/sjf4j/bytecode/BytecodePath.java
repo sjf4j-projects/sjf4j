@@ -1,4 +1,4 @@
-package org.sjf4j.compiled;
+package org.sjf4j.bytecode;
 
 import org.sjf4j.node.TypeReference;
 
@@ -7,17 +7,17 @@ import org.sjf4j.node.TypeReference;
  *
  * <p>The static {@code compile(...)} methods require an optional bytecode compiler module,
  * such as {@code sjf4j-bytecode}, to be present on the runtime classpath. Core-only or fully
- * dynamic users can instantiate {@link FallbackCompiledPath} with a parsed
+ * dynamic users can instantiate {@link FallbackBytecodePath} with a parsed
  * {@link org.sjf4j.path.JsonPath} when reflective path access is desired.
  *
  * <p>Bytecode-compiled paths produced by {@code compile(...)} support negative array indexes
  * such as {@code [-1]} for tail-relative access. For performance, bytecode-compiled paths use
  * direct list/array access for indexed segments. Out-of-range intermediate indexes may therefore
  * throw instead of resolving to {@code null}, including for {@link #putIfParentPresent(Object, Object)}; use
- * {@link FallbackCompiledPath} or direct {@link org.sjf4j.path.JsonPath} access when full
+ * {@link FallbackBytecodePath} or direct {@link org.sjf4j.path.JsonPath} access when full
  * missing-index JSON path semantics are required.
  */
-public interface CompiledPath<R, V> {
+public interface BytecodePath<R, V> {
 
     String expr();
 
@@ -52,13 +52,13 @@ public interface CompiledPath<R, V> {
     /// static
 
     @SuppressWarnings("unchecked")
-    static <R, V> CompiledPath<R, V> compile(String pathExpr, Class<R> rootClazz, Class<V> valueClazz) {
-        return (CompiledPath<R, V>) BytecodeCompilers.compilePath(pathExpr, rootClazz, valueClazz, false);
+    static <R, V> BytecodePath<R, V> compile(String pathExpr, Class<R> rootClazz, Class<V> valueClazz) {
+        return (BytecodePath<R, V>) BytecodeCompilers.compilePath(pathExpr, rootClazz, valueClazz, false);
     }
 
     @SuppressWarnings("unchecked")
-    static <R, V> CompiledPath<R, V> compile(String pathExpr, TypeReference<R> rootType, TypeReference<V> valueType) {
-        return (CompiledPath<R, V>) BytecodeCompilers.compilePath(pathExpr, rootType.getType(), valueType.getType(), false);
+    static <R, V> BytecodePath<R, V> compile(String pathExpr, TypeReference<R> rootType, TypeReference<V> valueType) {
+        return (BytecodePath<R, V>) BytecodeCompilers.compilePath(pathExpr, rootType.getType(), valueType.getType(), false);
     }
 
 

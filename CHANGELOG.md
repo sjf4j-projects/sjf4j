@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 - Removed `AccessStrategy` and `@NodeBinding(access=...)` in favor of `@NodeBinding(propertyStrategy=PropertyStrategy...)` for property-family discovery.
 - `@NodeProperty.valueFormat` renamed to `@NodeProperty.codecName`
-- New public APIs: `org.sjf4j.compiled.CompiledPath` and `PathCompiler` SPI; old `org.sjf4j.path.CompiledPath` no longer active.
+- New public APIs: `org.sjf4j.bytecode.BytecodePath` and `PathCompiler` SPI; old `org.sjf4j.path.CompiledPath` no longer active.
 - Indexed array replacement semantics tightened: `Nodes.setInArray(...)` no longer append when `idx == size`; use `Nodes.putInArray(...)` or explicit append-path for replace-or-append.
 - Removed `ValidationOptions`; `SchemaPlan` and `SchemaValidator` now use explicit boolean parameters for fail-fast and strict-format.
 - `SchemaException` moved from `org.sjf4j.exception` to `org.sjf4j.schema`
@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PatternedValueCodec<V,R>` interface and `ValueCodec` for `LocalTime` and `Optional`.
 - `@NodeProperty.codecPattern` for DateTimeFormatter patterns, supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, `ZonedDateTime`.
 - `Nodes.putInArray(node, idx, value)` for explicit replace-or-append.
-- Compiled-path APIs in `org.sjf4j.compiled` with ASM accelerator.
+- Compiled-path APIs in `org.sjf4j.bytecode` with ASM accelerator.
 
 ### Changed
 - POJO/JOJO binding discovers merged property families across fields, bean accessors, and record components; `BEAN_FIELD` is default.

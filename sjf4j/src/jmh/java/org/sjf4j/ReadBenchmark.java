@@ -36,9 +36,11 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.Blackhole;
 import org.sjf4j.facade.StreamingContext;
 import org.sjf4j.facade.StreamingIO;
 import org.sjf4j.facade.StreamingFacade;
+import org.sjf4j.facade.StreamingReader;
 import org.sjf4j.facade.fastjson2.Fastjson2JsonFacade;
 import org.sjf4j.facade.gson.GsonJsonFacade;
 import org.sjf4j.facade.gson.GsonModule;
@@ -47,6 +49,7 @@ import org.sjf4j.facade.jackson2.Jackson2Module;
 import org.sjf4j.facade.jackson2.Jackson2Reader;
 import org.sjf4j.facade.jsonp.JsonpJsonFacade;
 import org.sjf4j.facade.simple.SimpleJsonFacade;
+import org.sjf4j.facade.simple.SimpleJsonReader;
 import org.sjf4j.node.NodeRegistry;
 import org.sjf4j.node.ReflectUtil;
 import org.sjf4j.node.TypeReference;
@@ -66,8 +69,8 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 8, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(value = 2)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
 public class ReadBenchmark {
@@ -196,6 +199,154 @@ public class ReadBenchmark {
             StreamingContext.StreamingMode mode = StreamingContext.StreamingMode.valueOf(streamingMode);
             StreamingContext context = new StreamingContext(mode);
             gsonFacade = new GsonJsonFacade(new GsonBuilder(), context);
+        }
+    }
+
+
+    // ----- Pure parser baselines (no binding, no materialized result) -----
+    @Benchmark
+    public void parse_jackson2_native(Blackhole bh) throws IOException {
+        try (com.fasterxml.jackson.core.JsonParser parser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
+            com.fasterxml.jackson.core.JsonToken token;
+            while ((token = parser.nextToken()) != null) {
+                bh.consume(token);
+                if (token == com.fasterxml.jackson.core.JsonToken.FIELD_NAME || token.isScalarValue()) {
+                    bh.consume(parser.getText());
+                }
+            }
+        }
+    }
+
+    @Benchmark
+    public void parse_gson_native(Blackhole bh) throws IOException {
+        try (com.google.gson.stream.JsonReader reader = GSON.newJsonReader(new StringReader(JSON_DATA2))) {
+            traverseGson(reader, bh);
+        }
+    }
+
+    @Benchmark
+    public void parse_fastjson2_native(Blackhole bh) {
+        try (JSONReader reader = JSONReader.of(JSON_DATA2, FASTJSON2_NATIVE_CONTEXT)) {
+            traverseFastjson2(reader, bh);
+        }
+    }
+
+    @Benchmark
+    public void parse_jsonp_native(Blackhole bh) {
+        try (jakarta.json.stream.JsonParser parser = Json.createParser(new StringReader(JSON_DATA2))) {
+            while (parser.hasNext()) {
+                jakarta.json.stream.JsonParser.Event event = parser.next();
+                bh.consume(event);
+                switch (event) {
+                    case KEY_NAME:
+                    case VALUE_STRING:
+                    case VALUE_NUMBER:
+                        bh.consume(parser.getString());
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+    @Benchmark
+    public void parse_simple_native(Blackhole bh) throws IOException {
+        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader(JSON_DATA2))) {
+            traverseStreamingReader(reader, bh);
+        }
+    }
+
+    private static void traverseGson(com.google.gson.stream.JsonReader reader, Blackhole bh) throws IOException {
+        com.google.gson.stream.JsonToken token = reader.peek();
+        bh.consume(token);
+        switch (token) {
+            case BEGIN_OBJECT:
+                reader.beginObject();
+                while (reader.hasNext()) {
+                    bh.consume(reader.nextName());
+                    traverseGson(reader, bh);
+                }
+                reader.endObject();
+                return;
+            case BEGIN_ARRAY:
+                reader.beginArray();
+                while (reader.hasNext()) {
+                    traverseGson(reader, bh);
+                }
+                reader.endArray();
+                return;
+            case STRING:
+            case NUMBER:
+                bh.consume(reader.nextString());
+                return;
+            case BOOLEAN:
+                bh.consume(reader.nextBoolean());
+                return;
+            case NULL:
+                reader.nextNull();
+                return;
+            default:
+                throw new IOException("Unexpected token: " + token);
+        }
+    }
+
+    private static void traverseFastjson2(JSONReader reader, Blackhole bh) {
+        char ch = reader.current();
+        bh.consume(ch);
+        if (reader.nextIfObjectStart()) {
+            while (!reader.nextIfObjectEnd()) {
+                bh.consume(reader.readFieldName());
+                traverseFastjson2(reader, bh);
+            }
+        } else if (reader.nextIfArrayStart()) {
+            while (!reader.nextIfArrayEnd()) {
+                traverseFastjson2(reader, bh);
+            }
+        } else if (ch == '"') {
+            bh.consume(reader.readString());
+        } else if (ch == 't' || ch == 'f') {
+            bh.consume(reader.readBoolValue());
+        } else if (ch == 'n') {
+            reader.readNull();
+        } else {
+            bh.consume(reader.readNumber());
+        }
+    }
+
+    private static void traverseStreamingReader(StreamingReader reader, Blackhole bh) throws IOException {
+        StreamingReader.Token token = reader.peekToken();
+        bh.consume(token);
+        switch (token) {
+            case START_OBJECT:
+                reader.startObject();
+                while (reader.peekToken() != StreamingReader.Token.END_OBJECT) {
+                    bh.consume(reader.nextName());
+                    traverseStreamingReader(reader, bh);
+                }
+                reader.endObject();
+                return;
+            case START_ARRAY:
+                reader.startArray();
+                while (reader.peekToken() != StreamingReader.Token.END_ARRAY) {
+                    traverseStreamingReader(reader, bh);
+                }
+                reader.endArray();
+                return;
+            case STRING:
+                bh.consume(reader.nextString());
+                return;
+            case NUMBER:
+                bh.consume(reader.nextNumber());
+                return;
+            case BOOLEAN:
+                bh.consume(reader.nextBoolean());
+                return;
+            case NULL:
+                reader.nextNull();
+                return;
+            default:
+                throw new IOException("Unexpected token: " + token);
         }
     }
 
