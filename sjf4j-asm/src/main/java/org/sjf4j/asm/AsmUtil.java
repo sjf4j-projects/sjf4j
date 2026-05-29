@@ -10,6 +10,13 @@ import org.sjf4j.node.Types;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Small ASM helper set used by {@link AsmPathCompiler}.
+ * <p>
+ * The methods intentionally stay close to bytecode operations: internal-name
+ * conversion, generated-class naming, primitive boxing/unboxing, and array
+ * load/store opcode emission.
+ */
 public final class AsmUtil {
 
     private static final AtomicInteger COUNTER = new AtomicInteger(1000);

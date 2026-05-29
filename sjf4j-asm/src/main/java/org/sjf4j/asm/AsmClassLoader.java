@@ -3,6 +3,13 @@ package org.sjf4j.asm;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Class loader for runtime-generated ASM compiled-path classes.
+ * <p>
+ * A loader is cached per parent class loader so generated classes can resolve
+ * the same application types as the root object while keeping generated classes
+ * isolated from SJF4J's own classes.
+ */
 public class AsmClassLoader extends ClassLoader {
 
     private AsmClassLoader(ClassLoader parent) {

@@ -28,8 +28,11 @@ import java.util.Set;
 
 
 /**
- * Strict ASM-backed {@link PathCompiler} for single-target {@link BytecodePath#get(Object)} reads
- * and {@link BytecodePath#put(Object, Object)} writes.
+ * ASM-backed {@link PathCompiler} that emits {@link BytecodePath} classes at runtime.
+ * <p>
+ * The generated path implementation is intended for typed, single-target
+ * {@link BytecodePath#get(Object)} reads and {@link BytecodePath#put(Object, Object)} writes,
+ * avoiding reflective access on supported {@link JsonPath} shapes.
  *
  * <p>This compiler does not perform fallback-style terminal value coercion. Primitive leaves are
  * boxed when needed (for example {@code int -> Integer}), but incompatible reference-typed leaves
