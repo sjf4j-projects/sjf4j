@@ -32,29 +32,39 @@ public final class CompiledPathGenerator {
     }
 
     public void generate(ExecutableElement method, GeneratedClass target) {
-        NodeMethod nodeMethod = resolveMethod(method, method.getAnnotation(CompiledPath.class));
+        CompiledPath anno = method.getAnnotation(CompiledPath.class);
+        if (anno == null) {
+            error(method, target, "@CompiledPath annotation is required");
+            return;
+        }
+        NodeMethod nodeMethod = resolveMethod(method, anno, target);
         if (nodeMethod != null) target.addMethod(out -> emitMethod(out, nodeMethod));
     }
 
-    private NodeMethod resolveMethod(ExecutableElement method, CompiledPath annotation) {
+    private void error(Element element, GeneratedClass target, String message) {
+        ctx.error(element, target.originName() + ": " + message);
+    }
+
+
+    private NodeMethod resolveMethod(ExecutableElement method, CompiledPath annotation, GeneratedClass target) {
         if (annotation.method() != CompiledPath.MethodKind.GET) {
-            ctx.error(method, "Only CompiledPath.MethodKind.GET is supported by the processor for now");
+            error(method, target, "Only CompiledPath.MethodKind.GET is supported by the processor for now");
             return null;
         }
         if (method.getModifiers().contains(Modifier.STATIC)) {
-            ctx.error(method, "@CompiledPath GET method must not be static");
+            error(method, target, "@CompiledPath GET method must not be static");
             return null;
         }
         if (method.getParameters().size() != 1) {
-            ctx.error(method, "@CompiledPath GET method must have exactly one root parameter");
+            error(method, target, "@CompiledPath GET method must have exactly one root parameter");
             return null;
         }
         if (method.getReturnType().getKind() == TypeKind.VOID) {
-            ctx.error(method, "@CompiledPath GET method must return the path value");
+            error(method, target, "@CompiledPath GET method must return the path value");
             return null;
         }
         if (method.getReturnType().getKind().isPrimitive()) {
-            ctx.error(method, "@CompiledPath GET primitive return types are not supported yet; use the boxed type");
+            error(method, target, "@CompiledPath GET primitive return types are not supported yet; use the boxed type");
             return null;
         }
 
@@ -62,20 +72,20 @@ public final class CompiledPathGenerator {
         try {
             path = JsonPath.parse(annotation.expr());
         } catch (JsonException e) {
-            ctx.error(method, "Invalid @CompiledPath expr: " + e.getMessage());
+            error(method, target, "Invalid @CompiledPath expr: " + e.getMessage());
             return null;
         }
         if (path.length() < 2) {
-            ctx.error(method, "@CompiledPath GET requires a non-root path");
+            error(method, target, "@CompiledPath GET requires a non-root path");
             return null;
         }
         if (!path.isSinglePut() || path.hasAppend()) {
-            ctx.error(method, "@CompiledPath GET currently supports only single Name/Index paths");
+            error(method, target, "@CompiledPath GET currently supports only single Name/Index paths");
             return null;
         }
 
         VariableElement root = method.getParameters().get(0);
-        List<Step> steps = resolveSteps(root.asType(), path.segments(), method);
+        List<Step> steps = resolveSteps(root.asType(), path.segments(), method, target);
         if (steps == null) return null;
 
         NodeMethod nodeMethod = new NodeMethod();
@@ -87,18 +97,18 @@ public final class CompiledPathGenerator {
         return nodeMethod;
     }
 
-    private List<Step> resolveSteps(TypeMirror rootType, PathSegment[] segments, Element context) {
+    private List<Step> resolveSteps(TypeMirror rootType, PathSegment[] segments, Element context, GeneratedClass target) {
         List<Step> steps = new ArrayList<>();
         TypeMirror current = rootType;
         for (int i = 1; i < segments.length; i++) {
             PathSegment segment = segments[i];
             Step step;
             if (segment instanceof PathSegment.Name) {
-                step = resolveName(current, ((PathSegment.Name) segment).name, context);
+                step = resolveName(current, ((PathSegment.Name) segment).name, context, target);
             } else if (segment instanceof PathSegment.Index) {
-                step = resolveIndex(current, ((PathSegment.Index) segment).index, context);
+                step = resolveIndex(current, ((PathSegment.Index) segment).index, context, target);
             } else {
-                ctx.error(context, "@CompiledPath GET currently supports only Name and Index path segments");
+                error(context, target, "@CompiledPath GET currently supports only Name and Index path segments");
                 return null;
             }
             if (step == null) return null;
@@ -108,13 +118,13 @@ public final class CompiledPathGenerator {
         return steps;
     }
 
-    private Step resolveName(TypeMirror current, String name, Element context) {
+    private Step resolveName(TypeMirror current, String name, Element context, GeneratedClass target) {
         if (isAssignableErasure(current, ctx.jsonObjectType)) return Step.jsonObject(name, ctx.objectType);
         if (isAssignableErasure(current, ctx.mapType)) return Step.map(name, mapValueType(current));
 
         TypeElement type = asTypeElement(current);
         if (type == null) {
-            ctx.error(context, "Cannot resolve property '" + name + "' on " + current);
+            error(context, target, "Cannot resolve property '" + name + "' on " + current);
             return null;
         }
 
@@ -133,15 +143,15 @@ public final class CompiledPathGenerator {
             return Step.field(name, ft);
         }
 
-        ctx.error(context, "Cannot resolve readable property '" + name + "' on " + current);
+        error(context, target, "Cannot resolve readable property '" + name + "' on " + current);
         return null;
     }
 
-    private Step resolveIndex(TypeMirror current, int index, Element context) {
+    private Step resolveIndex(TypeMirror current, int index, Element context, GeneratedClass target) {
         if (current.getKind() == TypeKind.ARRAY) return Step.array(index, ((ArrayType) current).getComponentType());
         if (isAssignableErasure(current, ctx.jsonArrayType)) return Step.jsonArray(index, ctx.objectType);
         if (isAssignableErasure(current, ctx.listType)) return Step.list(index, listValueType(current));
-        ctx.error(context, "Cannot resolve index [" + index + "] on " + current);
+        error(context, target, "Cannot resolve index [" + index + "] on " + current);
         return null;
     }
 

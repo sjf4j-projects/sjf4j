@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class CompiledNodesProcessorTest {
+public class Sjf4jProcessorTest {
 
     @Test
     public void generateGetAccessor() throws Exception {
@@ -68,7 +68,7 @@ public class CompiledNodesProcessorTest {
         ));
         Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
-                "-processor", CompiledNodesProcessor.class.getName()
+                "-processor", Sjf4jProcessor.class.getName()
         ), null, units).call();
         assertTrue(ok);
         assertTrue(Files.exists(out.resolve("testcase/MyNodes_Impl.class")));
