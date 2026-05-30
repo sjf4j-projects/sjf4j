@@ -11,6 +11,12 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import java.util.Set;
 
+/**
+ * Generates the implementation class for an {@code @CompiledNodes} interface.
+ *
+ * <p>Each abstract annotated method is delegated to the path generator; default
+ * and static interface methods are left on the interface.</p>
+ */
 public final class NodesGenerator {
 
     private static final String COMPILED_NODES_POSTFIX = "_Impl";
@@ -18,11 +24,17 @@ public final class NodesGenerator {
     private final ProcessorContext ctx;
     private final PathGenerator pathGenerator;
 
+    /**
+     * Creates a nodes generator using the shared processor context.
+     */
     public NodesGenerator(ProcessorContext ctx) {
         this.ctx = ctx;
         this.pathGenerator = new PathGenerator(ctx);
     }
 
+    /**
+     * Generates an implementation for one {@code @CompiledNodes} interface.
+     */
     public void generate(TypeElement iface) {
         GeneratedClass target = new GeneratedClass(ctx, iface, COMPILED_NODES_POSTFIX);
 

@@ -168,6 +168,50 @@ public class Sjf4jProcessorTest {
         assertTrue(messages.contains("@CompiledNodes abstract methods must be annotated"), messages);
     }
 
+    @Test
+    public void rejectInvalidGetByPathParameters() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-param-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("BadParamNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.List;\n" +
+                        "import org.sjf4j.JsonObject;\n" +
+                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
+                        "import org.sjf4j.annotation.compiled.GetByPath;\n" +
+                        "@CompiledNodes\n" +
+                        "public interface BadParamNodes {\n" +
+                        "  @GetByPath(\"$[{idx}]\") String missing(List<String> root);\n" +
+                        "  @GetByPath(\"$[0]\") String unused(List<String> root, int idx);\n" +
+                        "  @GetByPath(\"$[{idx}]\") String wrongType(List<String> root, long idx);\n" +
+                        "  @GetByPath(\"$[{name}]\") String concrete(JsonObject root, String name);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("BadParamNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("has no matching method parameter"), messages);
+        assertTrue(messages.contains("is not used by the path"), messages);
+        assertTrue(messages.contains("must be String, int, or Integer"), messages);
+        assertTrue(messages.contains("@GetByPath return type mismatch"), messages);
+    }
+
     private static void write(Path path, String text) throws Exception {
         File file = path.toFile();
         try (FileWriter writer = new FileWriter(file)) {

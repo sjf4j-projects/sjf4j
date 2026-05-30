@@ -15,6 +15,12 @@ import javax.tools.Diagnostic;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Shared processing state and frequently used type mirrors for code generation.
+ *
+ * <p>The generator keeps these handles in one small context to avoid repeated
+ * environment lookups and to keep diagnostic reporting consistent.</p>
+ */
 public final class ProcessorContext {
 
     public final Types types;
@@ -28,6 +34,9 @@ public final class ProcessorContext {
     public final TypeMirror jsonArrayType;
     public final TypeMirror objectType;
 
+    /**
+     * Captures compiler services and resolves common type mirrors once.
+     */
     public ProcessorContext(ProcessingEnvironment env) {
         this.types = env.getTypeUtils();
         this.elements = env.getElementUtils();
@@ -40,6 +49,9 @@ public final class ProcessorContext {
         this.jsonArrayType = elements.getTypeElement(JsonArray.class.getName()).asType();
     }
 
+    /**
+     * Reports a compile error attached to the supplied source element.
+     */
     public void error(Element element, String message) {
         messager.printMessage(Diagnostic.Kind.ERROR, message, element);
     }

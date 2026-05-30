@@ -16,6 +16,12 @@ import javax.lang.model.type.WildcardType;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Utility methods shared by processor source generators.
+ *
+ * <p>Kept package-private and static-only to avoid extra generator layers while
+ * centralizing type resolution, member lookup, and source-safe name handling.</p>
+ */
 final class GeneratorUtil {
     private GeneratorUtil() {}
 

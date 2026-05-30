@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the map-style `JsonObject.putNonNull(...)`, `JsonObject.putIfAbsent(...)`, `JsonObject.replace(key, value)`, and matching builder helpers.
 
 ### Added
+- Added the `sjf4j-processor` annotation processor module for generated `@CompiledNodes` path accessor implementations.
 - `Nodes.Access.present` so read access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
 - `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
 

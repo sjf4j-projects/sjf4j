@@ -60,6 +60,24 @@ public class GetByPathTest {
         assertEquals("tail", nodes.getLastArrayValue(new String[]{"head", "tail"}));
     }
 
+    @Test
+    public void supportsDynamicGetPathParameters() {
+        GetNodes nodes = CompiledNodesRegistry.of(GetNodes.class);
+        Directory directory = new Directory(
+                List.of(new Person("first", 1), new Person("last", 2)),
+                Map.of("hz", new City("Hangzhou", "Binjiang")),
+                JsonObject.of("value", 123));
+
+        assertEquals("first", nodes.getFriendNameByJsonPathIndex(directory, 0));
+        assertEquals("last", nodes.getFriendNameByJsonPathIndex(directory, -1));
+        assertEquals("Hangzhou", nodes.getCityNameByBracketParam(directory, "hz"));
+        assertEquals(123, nodes.getJsonObjectValue(directory, "value"));
+
+        assertNull(nodes.getFriendNameByJsonPathIntegerIndex(directory, null));
+        assertNull(nodes.getFriendNameByJsonPathIntegerIndex(directory, 99));
+        assertThrows(JsonException.class, () -> nodes.getFriendScore(directory, 99));
+    }
+
     private static Account account() {
         Contact first = new Contact("first@example.com", 1);
         Contact last = new Contact("last@example.com", 7);
@@ -84,6 +102,10 @@ public class GetByPathTest {
     record Address(City city) {}
 
     record City(String name, String district) {}
+
+    record Directory(List<Person> friends, Map<String, City> data, JsonObject json) {}
+
+    record Person(String name, int score) {}
 
     record FieldBean(String value) {}
 
@@ -123,5 +145,20 @@ public class GetByPathTest {
 
         @GetByPath("$.name")
         String getTypedMapName(Map<String, String> root);
+
+        @GetByPath("$.friends[{idx}].name")
+        String getFriendNameByJsonPathIndex(Directory root, int idx);
+
+        @GetByPath("$.friends[{idx}].name")
+        String getFriendNameByJsonPathIntegerIndex(Directory root, Integer idx);
+
+        @GetByPath("$.friends[{idx}].score")
+        int getFriendScore(Directory root, Integer idx);
+
+        @GetByPath("$.data[{name}].name")
+        String getCityNameByBracketParam(Directory root, String name);
+
+        @GetByPath("$.json[{name}]")
+        Object getJsonObjectValue(Directory root, String name);
     }
 }

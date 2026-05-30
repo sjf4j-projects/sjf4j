@@ -52,7 +52,7 @@ public abstract class PathSegment {
         return PathSyntax.rootedPathExpr(this);
     }
 
-    /// Subclasses: Root, Name, Index, Wildcard, Slice, Union, Descendant, Function, Filter, Append
+    /// Subclasses: Root, Name, Index, Param, Wildcard, Slice, Union, Descendant, Function, Filter, Append
 
     /**
      * Represents the root token ($) in a JSON path expression.
@@ -132,6 +132,25 @@ public abstract class PathSegment {
         }
         @Override public String toString() {
             return "[" + index + "]";
+        }
+    }
+
+    /**
+     * Represents a dynamic bracket path parameter token, e.g. {@code [{idx}]}.
+     */
+    public static final class Param extends PathSegment {
+        public final String param;
+
+        /**
+         * Creates a dynamic bracket parameter segment.
+         */
+        public Param(PathSegment parent, String param) {
+            super(parent);
+            this.param = param;
+        }
+
+        @Override public String toString() {
+            return "[{" + param + "}]";
         }
     }
 

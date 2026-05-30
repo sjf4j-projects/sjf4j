@@ -13,6 +13,12 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import java.util.Set;
 
+/**
+ * Annotation processor entry point for SJF4J compiled-node interfaces.
+ *
+ * <p>It validates the placement of compiled path annotations and delegates
+ * source generation for each {@code @CompiledNodes} interface.</p>
+ */
 @SupportedAnnotationTypes({
         "org.sjf4j.annotation.compiled.CompiledNodes",
         "org.sjf4j.annotation.compiled.GetByPath",
@@ -25,11 +31,17 @@ public final class Sjf4jProcessor extends AbstractProcessor {
     private ProcessorContext context;
     private NodesGenerator nodesGenerator;
 
+    /**
+     * Uses the newest source level supported by the current compiler.
+     */
     @Override
     public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latestSupported();
     }
 
+    /**
+     * Initializes shared processor state and generators for this compiler run.
+     */
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
@@ -37,6 +49,10 @@ public final class Sjf4jProcessor extends AbstractProcessor {
         this.nodesGenerator = new NodesGenerator(context);
     }
 
+    /**
+     * Validates compiled-path annotations and emits implementations for
+     * discovered {@code @CompiledNodes} interfaces.
+     */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         validateAnnotation(annotations, roundEnv);

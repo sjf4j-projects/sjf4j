@@ -47,6 +47,7 @@ public class JsonPath {
     protected final boolean singlePut;
     protected final boolean singleEval;
     protected final boolean append;
+    protected final int paramCount;
 
     /**
      * Creates a copy of an existing JsonPath instance.
@@ -61,6 +62,7 @@ public class JsonPath {
         this.singlePut = target.singlePut;
         this.singleEval = target.singleEval;
         this.append = target.append;
+        this.paramCount = target.paramCount;
     }
 
     protected JsonPath(String raw, PathSegment[] segments) {
@@ -73,9 +75,14 @@ public class JsonPath {
         boolean isSinglePut = true;
         boolean isSingleEval = len > 1 && segments[len - 1] instanceof PathSegment.Function;
         boolean hasAppend = false;
+        int paramCount = 0;
         for (int i = 0; i < len; i++) {
             PathSegment ps = segments[i];
-            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index)) {
+            if (ps instanceof PathSegment.Param) {
+                paramCount++;
+            }
+            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index ||
+                    ps instanceof PathSegment.Param)) {
                 isSingleGet = false;
                 boolean appendToken = ps instanceof PathSegment.Append;
                 if (appendToken) {
@@ -92,6 +99,7 @@ public class JsonPath {
         this.singlePut = isSinglePut;
         this.singleEval = isSingleEval;
         this.append = hasAppend;
+        this.paramCount = paramCount;
     }
 
     /**
@@ -222,6 +230,10 @@ public class JsonPath {
      */
     public boolean hasAppend() {
         return append;
+    }
+
+    public int getParamCount() {
+        return paramCount;
     }
 
     /// Find
@@ -1097,6 +1109,9 @@ public class JsonPath {
                     throw new JsonException("path '" + this + "' matched " + result.size() +
                             " results, but this method requires a single value");
                 }
+            } else if (pt instanceof PathSegment.Param) {
+                throw new JsonException("path parameter " + pt +
+                        " can only be used in @GetByPath-style annotations");
             } else {
                 throw new JsonException("unsupported path token '" + pt + "'");
             }

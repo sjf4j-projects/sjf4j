@@ -315,6 +315,9 @@ public final class PathSyntax {
                     } else if (contentEnd == contentStart + 1 && expr.charAt(contentStart) == '+') {
                         // [+]
                         segments.addLast(new PathSegment.Append(segments.peekLast()));
+                    } else if (_isParamName(expr, contentStart, contentEnd)) {
+                        segments.addLast(new PathSegment.Param(segments.peekLast(),
+                                expr.substring(contentStart + 1, contentEnd - 1)));
                     } else if (expr.charAt(contentStart) == '\'' || expr.charAt(contentStart) == '"') {
                         // Single quoted name ['name'] or ["name"]
                         String name = _parseQuotedContent(expr, contentStart, contentEnd, null, "name");
@@ -453,6 +456,15 @@ public final class PathSyntax {
             if (expr.charAt(i) == target) return true;
         }
         return false;
+    }
+
+    private static boolean _isParamName(String expr, int start, int end) {
+        if (end <= start + 2 || expr.charAt(start) != '{' || expr.charAt(end - 1) != '}') return false;
+        if (!_isSimpleNameStart(expr.charAt(start + 1))) return false;
+        for (int i = start + 2; i < end - 1; i++) {
+            if (!_isSimpleNamePart(expr.charAt(i))) return false;
+        }
+        return true;
     }
 
 
