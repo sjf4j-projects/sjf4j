@@ -1,7 +1,6 @@
 package org.sjf4j.processor.generate;
 
 import org.sjf4j.processor.ProcessorContext;
-import org.sjf4j.processor.SourceWriter;
 
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;

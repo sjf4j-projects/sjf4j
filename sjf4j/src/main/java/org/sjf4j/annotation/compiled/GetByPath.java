@@ -7,18 +7,6 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.SOURCE)
-public @interface CompiledPath {
-    String expr();
-    MethodKind method();
-
-    enum MethodKind {
-        GET,
-        GET_AS,
-        CONTAINS,
-        PUT,
-        PUT_IF_PARENT_PRESENT,
-        ENSURE_PUT,
-        ENSURE_PUT_IF_ABSENT,
-    }
-
+public @interface GetByPath {
+    String value();
 }

@@ -1,4 +1,6 @@
-package org.sjf4j.processor;
+package org.sjf4j.processor.generate;
+
+import org.sjf4j.processor.ProcessorContext;
 
 import java.io.Closeable;
 import java.io.IOException;

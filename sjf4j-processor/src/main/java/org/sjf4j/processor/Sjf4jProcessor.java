@@ -1,7 +1,7 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.annotation.compiled.CompiledNodes;
-import org.sjf4j.processor.generate.CompiledNodesGenerator;
+import org.sjf4j.processor.generate.NodesGenerator;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -15,14 +15,15 @@ import java.util.Set;
 
 @SupportedAnnotationTypes({
         "org.sjf4j.annotation.compiled.CompiledNodes",
-        "org.sjf4j.annotation.compiled.CompiledPath"
+        "org.sjf4j.annotation.compiled.GetByPath",
+        "org.sjf4j.annotation.compiled.PutByPath"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
     private static final String ANNO_COMPILED_NODES = CompiledNodes.class.getName();
 
     private ProcessorContext context;
-    private CompiledNodesGenerator compiledNodesGenerator;
+    private NodesGenerator nodesGenerator;
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -33,7 +34,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.context = new ProcessorContext(processingEnv);
-        this.compiledNodesGenerator = new CompiledNodesGenerator(context);
+        this.nodesGenerator = new NodesGenerator(context);
     }
 
     @Override
@@ -43,7 +44,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
             if (element.getKind() != ElementKind.INTERFACE) {
                 context.error(element, "@CompiledNodes only supports interfaces");
             } else {
-                compiledNodesGenerator.generate((TypeElement) element);
+                nodesGenerator.generate((TypeElement) element);
             }
         }
         return false;

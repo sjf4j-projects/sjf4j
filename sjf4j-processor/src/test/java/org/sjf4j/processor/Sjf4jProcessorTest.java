@@ -2,7 +2,10 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
@@ -49,10 +52,10 @@ public class Sjf4jProcessorTest {
         write(src.resolve("MyNodes.java"),
                 "package testcase;\n" +
                         "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
-                        "import org.sjf4j.annotation.compiled.CompiledPath;\n" +
+                        "import org.sjf4j.annotation.compiled.GetByPath;\n" +
                         "@CompiledNodes\n" +
                         "public interface MyNodes {\n" +
-                        "  @CompiledPath(expr = \"$.city.name\", method = CompiledPath.MethodKind.GET)\n" +
+                        "  @GetByPath(\"$.city.name\")\n" +
                         "  String getCityName(User user);\n" +
                         "}\n");
 
@@ -88,10 +91,95 @@ public class Sjf4jProcessorTest {
         assertNull(getCityName.invoke(nodes, new Object[]{null}));
     }
 
+    @Test
+    public void rejectGetByPathReturnTypeMismatch() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mismatch-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("BadNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.Map;\n" +
+                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
+                        "import org.sjf4j.annotation.compiled.GetByPath;\n" +
+                        "@CompiledNodes\n" +
+                        "public interface BadNodes {\n" +
+                        "  @GetByPath(\"$.value\")\n" +
+                        "  Long getValue(Map<String, Integer> root);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("BadNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@GetByPath return type mismatch"), messages);
+        assertTrue(messages.contains("java.lang.Integer"), messages);
+        assertTrue(messages.contains("java.lang.Long"), messages);
+    }
+
+    @Test
+    public void rejectUnannotatedAbstractMethod() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-unannotated-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("BadNodes.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
+                        "@CompiledNodes\n" +
+                        "public interface BadNodes {\n" +
+                        "  String missing(String root);\n" +
+                        "  default String defaultMethod(String root) { return root; }\n" +
+                        "  static String staticMethod(String root) { return root; }\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("BadNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@CompiledNodes abstract methods must be annotated"), messages);
+    }
+
     private static void write(Path path, String text) throws Exception {
         File file = path.toFile();
         try (FileWriter writer = new FileWriter(file)) {
             writer.write(text);
         }
+    }
+
+    private static String diagnosticsToString(DiagnosticCollector<JavaFileObject> diagnostics) {
+        StringBuilder sb = new StringBuilder();
+        for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+            sb.append(diagnostic.getMessage(null)).append('\n');
+        }
+        return sb.toString();
     }
 }
