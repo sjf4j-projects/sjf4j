@@ -9,6 +9,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import java.util.Set;
 
 public final class NodesGenerator {
 
@@ -29,12 +30,14 @@ public final class NodesGenerator {
             if (member.getKind() != ElementKind.METHOD) continue;
 
             ExecutableElement method = (ExecutableElement) member;
-            String generatedAnno = null;
+            Set<Modifier> mods = method.getModifiers();
+            if (mods.contains(Modifier.DEFAULT) || mods.contains(Modifier.STATIC)) continue;
 
+            String generatedAnno = null;
             GetByPath get = method.getAnnotation(GetByPath.class);
             if (get != null) {
                 generatedAnno = "@GetByPath";
-                pathGenerator.generateGet(method, target, get.value());
+                pathGenerator.genGet(method, target, get.value());
             }
 
             PutByPath put = method.getAnnotation(PutByPath.class);
@@ -45,15 +48,14 @@ public final class NodesGenerator {
                     return;
                 } else {
                     generatedAnno = "@PutByPath";
-                    pathGenerator.generatePut(method, target, put.value());
+                    pathGenerator.genPut(method, target, put.value());
                 }
             }
 
-            if (generatedAnno == null && !method.getModifiers().contains(Modifier.DEFAULT) &&
-                    !method.getModifiers().contains(Modifier.STATIC)) {
+            if (generatedAnno == null) {
                 ctx.error(method, "@CompiledNodes abstract methods must be annotated, for example @GetByPath");
+                return;
             }
-
         }
 
         target.emit();

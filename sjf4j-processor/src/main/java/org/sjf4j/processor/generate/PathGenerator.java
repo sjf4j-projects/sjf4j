@@ -24,27 +24,80 @@ public final class PathGenerator {
         this.ctx = ctx;
     }
 
-    public void generateGet(ExecutableElement method, GeneratedClass target, String expr) {
-        JsonPath path = _resolveGetMethod(method, expr, target);
-        if (path == null) return;
-        VariableElement root = method.getParameters().get(0);
-        TypeMirror finalType = _resolvePathType(root.asType(), path.segments(), method, target, "GET");
-        if (finalType == null) return;
-        if (!_validateAssignable(method, target, finalType, method.getReturnType(), "@GetByPath return type")) return;
-        target.addMethod(out -> _writeMethodGet(out, method, root, path, finalType));
-    }
+    public void genGet(ExecutableElement method, GeneratedClass target, String expr) {
+        if (method.getParameters().size() != 1) {
+            _error(method, target, "@GetByPath method must have exactly one root parameter");
+            return;
+        }
+        if (method.getReturnType().getKind() == TypeKind.VOID) {
+            _error(method, target, "@GetByPath method must return the path value");
+            return;
+        }
 
-    public void generatePut(ExecutableElement method, GeneratedClass target, String expr) {
-        JsonPath path = _resolvePutMethod(method, expr, target);
+        JsonPath path = _resolvePath(method, target, expr);
         if (path == null) return;
+        if (!path.isSingleGet()) {
+            _error(method, target, "@GetByPath currently supports only Name/Index paths");
+            return;
+        }
+
         VariableElement root = method.getParameters().get(0);
         PathSegment[] segments = path.segments();
-        TypeMirror parentType = _resolvePathType(root.asType(), segments, 1, segments.length - 1, method, target, "PUT");
-        if (parentType == null) return;
-        TypeMirror valueType = _resolvePutValueType(parentType, segments[segments.length - 1], method, target);
+        TypeMirror current = root.asType();
+        for (int i = 1, len = segments.length; i < len; i++) {
+            PathSegment segment = segments[i];
+            if (segment instanceof PathSegment.Name) {
+                current = _resolveNameType(current, ((PathSegment.Name) segment).name, method, target);
+            } else if (segment instanceof PathSegment.Index) {
+                current = _resolveIndexType(current, ((PathSegment.Index) segment).index, method, target);
+            } else {
+                _error(method, target, "@GetByPath currently supports only Name/Index paths");
+                return;
+            }
+            if (current == null) return;
+        }
+        TypeMirror finalType = current;
+
+        if (!_validateAssignable(method, target, finalType, method.getReturnType(), "@GetByPath return type")) return;
+
+        target.addMethod(out -> _emitMethodGet(out, method, root, path, finalType));
+    }
+
+    public void genPut(ExecutableElement method, GeneratedClass target, String expr) {
+        if (method.getParameters().size() != 2) {
+            _error(method, target, "@PutByPath method must have exactly root and value parameters");
+            return;
+        }
+
+        JsonPath path = _resolvePath(method, target, expr);
+        if (path == null) return;
+        if (!path.isSinglePut()) {
+            _error(method, target, "@PutByPath currently supports only Name/Index/Append paths");
+            return;
+        }
+
+        VariableElement root = method.getParameters().get(0);
+        PathSegment[] segments = path.segments();
+        TypeMirror current = root.asType();
+        for (int i = 1, len = segments.length - 1; i < len; i++) {
+            PathSegment segment = segments[i];
+            if (segment instanceof PathSegment.Name) {
+                current = _resolveNameType(current, ((PathSegment.Name) segment).name, method, target);
+            } else if (segment instanceof PathSegment.Index) {
+                current = _resolveIndexType(current, ((PathSegment.Index) segment).index, method, target);
+            } else {
+                _error(method, target, "@PutByPath currently supports only Name/Index intermediate path segments");
+                return;
+            }
+            if (current == null) return;
+        }
+        TypeMirror finalParentType = current;
+
+        TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], method, target);
         if (valueType == null) return;
+
         if (!_validateAssignable(method, target, method.getParameters().get(1).asType(), valueType, "@PutByPath value type")) return;
-        TypeMirror oldType = _resolvePutOldType(parentType, segments[segments.length - 1]);
+        TypeMirror oldType = _resolvePutOldType(finalParentType, segments[segments.length - 1]);
         if (oldType == null && method.getReturnType().getKind().isPrimitive()) {
             _error(method, target, "@PutByPath return type mismatch: append returns null");
             return;
@@ -53,7 +106,9 @@ public final class PathGenerator {
                 !_validateAssignable(method, target, oldType, method.getReturnType(), "@PutByPath return type")) {
             return;
         }
-        target.addMethod(out -> _writeMethodPut(out, method, root, method.getParameters().get(1), path, parentType, valueType));
+
+        target.addMethod(out ->
+                _emitMethodPut(out, method, root, method.getParameters().get(1), path, finalParentType, valueType));
     }
 
     private boolean _validateAssignable(Element element, GeneratedClass target, TypeMirror from, TypeMirror to, String label) {
@@ -66,86 +121,19 @@ public final class PathGenerator {
         ctx.error(element, target.originName() + ": " + message);
     }
 
-    private JsonPath _resolveGetMethod(ExecutableElement method, String expr, GeneratedClass target) {
-        if (method.getModifiers().contains(Modifier.STATIC)) {
-            _error(method, target, "@GetByPath method must not be static");
-            return null;
-        }
-        if (method.getParameters().size() != 1) {
-            _error(method, target, "@GetByPath method must have exactly one root parameter");
-            return null;
-        }
-        if (method.getReturnType().getKind() == TypeKind.VOID) {
-            _error(method, target, "@GetByPath method must return the path value");
-            return null;
-        }
+    private JsonPath _resolvePath(ExecutableElement method, GeneratedClass target, String expr) {
         JsonPath path;
         try {
             path = JsonPath.parse(expr);
         } catch (JsonException e) {
-            _error(method, target, "Invalid @GetByPath value: " + e.getMessage());
+            _error(method, target, "Invalid JSON Path value: " + e.getMessage());
             return null;
         }
         if (path.length() < 2) {
-            _error(method, target, "@GetByPath requires a non-root path");
-            return null;
-        }
-        if (!path.isSinglePut() || path.hasAppend()) {
-            _error(method, target, "@GetByPath currently supports only single Name/Index paths");
-            return null;
-        }
-
-        return path;
-    }
-
-    private JsonPath _resolvePutMethod(ExecutableElement method, String expr, GeneratedClass target) {
-        if (method.getModifiers().contains(Modifier.STATIC)) {
-            _error(method, target, "@PutByPath method must not be static");
-            return null;
-        }
-        if (method.getParameters().size() != 2) {
-            _error(method, target, "@PutByPath method must have exactly root and value parameters");
-            return null;
-        }
-        JsonPath path;
-        try {
-            path = JsonPath.parse(expr);
-        } catch (JsonException e) {
-            _error(method, target, "Invalid @PutByPath value: " + e.getMessage());
-            return null;
-        }
-        if (path.length() < 2) {
-            _error(method, target, "@PutByPath requires a non-root path");
-            return null;
-        }
-        if (!path.isSinglePut()) {
-            _error(method, target, "@PutByPath currently supports only Name/Index/Append paths");
+            _error(method, target, "Invalid JSON Path value: requires a non-root path");
             return null;
         }
         return path;
-    }
-
-    private TypeMirror _resolvePathType(TypeMirror rootType, PathSegment[] segments, Element context, GeneratedClass target, String kind) {
-        return _resolvePathType(rootType, segments, 1, segments.length, context, target, kind);
-    }
-
-    private TypeMirror _resolvePathType(TypeMirror rootType, PathSegment[] segments, int from, int to,
-                                        Element context, GeneratedClass target, String kind) {
-        TypeMirror current = rootType;
-        for (int i = from; i < to; i++) {
-            PathSegment segment = segments[i];
-            if (segment instanceof PathSegment.Name) {
-                current = _resolveNameType(current, ((PathSegment.Name) segment).name, context, target);
-            } else if (segment instanceof PathSegment.Index) {
-                current = _resolveIndexType(current, ((PathSegment.Index) segment).index, context, target);
-            } else {
-                _error(context, target, "@" + ("GET".equals(kind) ? "GetByPath" : "PutByPath") +
-                        " currently supports only Name and Index intermediate path segments");
-                return null;
-            }
-            if (current == null) return null;
-        }
-        return current;
     }
 
     private TypeMirror _resolveNameType(TypeMirror current, String name, Element context, GeneratedClass target) {
@@ -210,7 +198,9 @@ public final class PathGenerator {
         if (segment instanceof PathSegment.Index) {
             return _resolvePutIndexValueType(parent, ((PathSegment.Index) segment).index, context, target);
         }
-        if (segment instanceof PathSegment.Append) return _resolvePutAppendValueType(parent, context, target);
+        if (segment instanceof PathSegment.Append) {
+            return _resolvePutAppendValueType(parent, context, target);
+        }
         _error(context, target, "@PutByPath currently supports only Name/Index/Append paths");
         return null;
     }
@@ -259,8 +249,12 @@ public final class PathGenerator {
         if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
             return ctx.objectType;
         }
-        if (parent.getKind() == TypeKind.ARRAY) return ((ArrayType) parent).getComponentType();
-        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.listType)) return GeneratorUtil.listValueType(ctx, parent);
+        if (parent.getKind() == TypeKind.ARRAY) {
+            return ((ArrayType) parent).getComponentType();
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.listType)) {
+            return GeneratorUtil.listValueType(ctx, parent);
+        }
         _error(context, target, "Cannot append on " + parent);
         return null;
     }
@@ -298,8 +292,10 @@ public final class PathGenerator {
         return GeneratorUtil.listValueType(ctx, parent);
     }
 
-    private void _writeMethodGet(SourceWriter out, ExecutableElement method, VariableElement root,
-                                 JsonPath path, TypeMirror finalType) {
+    /// emit
+
+    private void _emitMethodGet(SourceWriter out, ExecutableElement method, VariableElement root,
+                                JsonPath path, TypeMirror finalType) {
         out.line("");
         out.line("@Override");
         out.line("public " + GeneratorUtil.typeName(method.getReturnType()) + " " + method.getSimpleName() + "(" +
@@ -418,8 +414,8 @@ public final class PathGenerator {
         if (nullReturn != null && !type.getKind().isPrimitive()) out.line("if (" + var + " == null) " + nullReturn);
     }
 
-    private void _writeMethodPut(SourceWriter out, ExecutableElement method, VariableElement root, VariableElement value,
-                                 JsonPath path, TypeMirror parentType, TypeMirror valueType) {
+    private void _emitMethodPut(SourceWriter out, ExecutableElement method, VariableElement root, VariableElement value,
+                                JsonPath path, TypeMirror parentType, TypeMirror valueType) {
         out.line("");
         out.line("@Override");
         out.line("public " + GeneratorUtil.typeName(method.getReturnType()) + " " + method.getSimpleName() + "(" +

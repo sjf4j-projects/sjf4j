@@ -201,6 +201,10 @@ public class JsonPath {
         return segments[segments.length - 1];
     }
 
+    public boolean isSingleGet() {
+        return singleGet;
+    }
+
     /**
      * Returns whether this path addresses at most one concrete location.
      * <p>
