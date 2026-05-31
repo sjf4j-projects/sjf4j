@@ -46,7 +46,7 @@ public class JsonPath {
     protected final boolean singleGet;
     protected final boolean singlePut;
     protected final boolean singleEval;
-    protected final boolean append;
+    protected final int appendCount;
     protected final int paramCount;
 
     /**
@@ -61,7 +61,7 @@ public class JsonPath {
         this.singleGet = target.singleGet;
         this.singlePut = target.singlePut;
         this.singleEval = target.singleEval;
-        this.append = target.append;
+        this.appendCount = target.appendCount;
         this.paramCount = target.paramCount;
     }
 
@@ -74,31 +74,31 @@ public class JsonPath {
         boolean isSingleGet = true;
         boolean isSinglePut = true;
         boolean isSingleEval = len > 1 && segments[len - 1] instanceof PathSegment.Function;
-        boolean hasAppend = false;
+        int appendCount = 0;
         int paramCount = 0;
         for (int i = 0; i < len; i++) {
             PathSegment ps = segments[i];
+            if (ps instanceof PathSegment.Append) {
+                appendCount++;
+            }
             if (ps instanceof PathSegment.Param) {
                 paramCount++;
             }
-            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index ||
-                    ps instanceof PathSegment.Param)) {
+            if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index
+                    || ps instanceof PathSegment.Param)) {
                 isSingleGet = false;
-                boolean appendToken = ps instanceof PathSegment.Append;
-                if (appendToken) {
-                    hasAppend = true;
-                } else {
-                    isSinglePut = false;
-                }
                 if (i < len - 1) {
                     isSingleEval = false;
+                }
+                if (!(ps instanceof PathSegment.Append)) {
+                    isSinglePut = false;
                 }
             }
         }
         this.singleGet = isSingleGet;
         this.singlePut = isSinglePut;
         this.singleEval = isSingleEval;
-        this.append = hasAppend;
+        this.appendCount = appendCount;
         this.paramCount = paramCount;
     }
 
@@ -228,11 +228,11 @@ public class JsonPath {
      * <p>
      * Append segments come from JSONPath {@code [+]} or JSON Pointer {@code /-}.
      */
-    public boolean hasAppend() {
-        return append;
+    public int appendCount() {
+        return appendCount;
     }
 
-    public int getParamCount() {
+    public int paramCount() {
         return paramCount;
     }
 

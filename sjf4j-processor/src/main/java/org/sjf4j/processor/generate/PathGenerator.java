@@ -60,7 +60,7 @@ public final class PathGenerator {
         }
 
         VariableElement root = method.getParameters().get(0);
-        Map<String, VariableElement> pathParams = _resolvePathParams(method, target, path);
+        Map<String, VariableElement> pathParams = _resolvePathParams(method, target, path, 1, method.getParameters().size(), "@GetByPath");
         if (pathParams == null) return;
         PathSegment[] segments = path.segments();
         TypeMirror current = root.asType();
@@ -85,10 +85,11 @@ public final class PathGenerator {
         target.addMethod(out -> _emitMethodGet(out, method, root, pathParams, path, finalType));
     }
 
-    private Map<String, VariableElement> _resolvePathParams(ExecutableElement method, GeneratedClass target, JsonPath path) {
+    private Map<String, VariableElement> _resolvePathParams(ExecutableElement method, GeneratedClass target, JsonPath path,
+                                                            int firstParam, int endParam, String annotation) {
         List<? extends VariableElement> params = method.getParameters();
         Map<String, VariableElement> methodParams = new HashMap<>();
-        for (int i = 1; i < params.size(); i++) {
+        for (int i = firstParam; i < endParam; i++) {
             VariableElement param = params.get(i);
             methodParams.put(param.getSimpleName().toString(), param);
         }
@@ -97,7 +98,7 @@ public final class PathGenerator {
             if (segment instanceof PathSegment.Param) {
                 String name = ((PathSegment.Param) segment).param;
                 if (!methodParams.containsKey(name)) {
-                    _error(method, target, "@GetByPath path parameter '{" + name + "}' has no matching method parameter");
+                    _error(method, target, annotation + " path parameter '{" + name + "}' has no matching method parameter");
                     return null;
                 }
                 used.add(name);
@@ -105,7 +106,7 @@ public final class PathGenerator {
         }
         for (String name : methodParams.keySet()) {
             if (!used.contains(name)) {
-                _error(method, target, "@GetByPath method parameter '" + name + "' is not used by the path");
+                _error(method, target, annotation + " method parameter '" + name + "' is not used by the path");
                 return null;
             }
         }
@@ -116,19 +117,27 @@ public final class PathGenerator {
      * Validates and emits a generated implementation for one {@code @PutByPath} method.
      */
     public void genPut(ExecutableElement method, GeneratedClass target, String expr) {
-        if (method.getParameters().size() != 2) {
-            _error(method, target, "@PutByPath method must have exactly root and value parameters");
+        if (method.getParameters().size() < 2) {
+            _error(method, target, "@PutByPath method must have root and value parameters");
             return;
         }
 
         JsonPath path = _resolvePath(method, target, expr);
         if (path == null) return;
         if (!path.isSinglePut()) {
-            _error(method, target, "@PutByPath currently supports only Name/Index/Append paths");
+            _error(method, target, "@PutByPath currently supports only Name/Index/Param/Append paths");
+            return;
+        }
+        if (path.appendCount() > 1 || (path.appendCount() > 0 && !(path.tail() instanceof PathSegment.Append))) {
+            _error(method, target, "@PutByPath append segment must be the final path segment");
             return;
         }
 
         VariableElement root = method.getParameters().get(0);
+        VariableElement value = method.getParameters().get(method.getParameters().size() - 1);
+        Map<String, VariableElement> pathParams = _resolvePathParams(method, target, path, 1,
+                method.getParameters().size() - 1, "@PutByPath");
+        if (pathParams == null) return;
         PathSegment[] segments = path.segments();
         TypeMirror current = root.asType();
         for (int i = 1, len = segments.length - 1; i < len; i++) {
@@ -137,19 +146,21 @@ public final class PathGenerator {
                 current = _resolveNameType(current, ((PathSegment.Name) segment).name, method, target);
             } else if (segment instanceof PathSegment.Index) {
                 current = _resolveIndexType(current, ((PathSegment.Index) segment).index, method, target);
+            } else if (segment instanceof PathSegment.Param) {
+                current = _resolvePutParamType(current, pathParams.get(((PathSegment.Param) segment).param), method, target);
             } else {
-                _error(method, target, "@PutByPath currently supports only Name/Index intermediate path segments");
+                _error(method, target, "@PutByPath currently supports only Name/Index/Param intermediate path segments");
                 return;
             }
             if (current == null) return;
         }
         TypeMirror finalParentType = current;
 
-        TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], method, target);
+        TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], pathParams, method, target);
         if (valueType == null) return;
 
-        if (!_validateAssignable(method, target, method.getParameters().get(1).asType(), valueType, "@PutByPath value type")) return;
-        TypeMirror oldType = _resolvePutOldType(finalParentType, segments[segments.length - 1]);
+        if (!_validateAssignable(method, target, value.asType(), valueType, "@PutByPath value type")) return;
+        TypeMirror oldType = _resolvePutOldType(finalParentType, segments[segments.length - 1], pathParams);
         if (oldType == null && method.getReturnType().getKind().isPrimitive()) {
             _error(method, target, "@PutByPath return type mismatch: append returns null");
             return;
@@ -160,7 +171,7 @@ public final class PathGenerator {
         }
 
         target.addMethod(out ->
-                _emitMethodPut(out, method, root, method.getParameters().get(1), path, finalParentType, valueType));
+                _emitMethodPut(out, method, root, value, pathParams, path, finalParentType, valueType));
     }
 
     private boolean _validateAssignable(Element element, GeneratedClass target, TypeMirror from, TypeMirror to, String label) {
@@ -235,7 +246,15 @@ public final class PathGenerator {
         TypeMirror paramType = param.asType();
         if (_isString(paramType)) return _resolveParamNameType(current, param.getSimpleName().toString(), context, target);
         if (_isInt(paramType)) return _resolveParamIndexType(current, param.getSimpleName().toString(), context, target);
-        _error(context, target, "@GetByPath path parameter '" + param.getSimpleName() + "' must be String, int, or Integer");
+        _error(context, target, "@GetByPath path parameter '" + param.getSimpleName() + "' must be String or int");
+        return null;
+    }
+
+    private TypeMirror _resolvePutParamType(TypeMirror current, VariableElement param, Element context, GeneratedClass target) {
+        TypeMirror paramType = param.asType();
+        if (_isString(paramType)) return _resolveParamNameType(current, param.getSimpleName().toString(), context, target);
+        if (_isInt(paramType)) return _resolveParamIndexType(current, param.getSimpleName().toString(), context, target);
+        _error(context, target, "@PutByPath path parameter '" + param.getSimpleName() + "' must be String or int");
         return null;
     }
 
@@ -266,9 +285,7 @@ public final class PathGenerator {
     }
 
     private boolean _isInt(TypeMirror type) {
-        return type.getKind() == TypeKind.INT ||
-                ctx.types.isSameType(ctx.types.erasure(type),
-                        ctx.types.erasure(ctx.elements.getTypeElement(Integer.class.getName()).asType()));
+        return type.getKind() == TypeKind.INT;
     }
 
     private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
@@ -283,7 +300,8 @@ public final class PathGenerator {
         return getter;
     }
 
-    private TypeMirror _resolvePutValueType(TypeMirror parent, PathSegment segment, Element context, GeneratedClass target) {
+    private TypeMirror _resolvePutValueType(TypeMirror parent, PathSegment segment, Map<String, VariableElement> pathParams,
+                                            Element context, GeneratedClass target) {
         if (segment instanceof PathSegment.Name) {
             return _resolvePutNameValueType(parent, ((PathSegment.Name) segment).name, context, target);
         }
@@ -293,7 +311,11 @@ public final class PathGenerator {
         if (segment instanceof PathSegment.Append) {
             return _resolvePutAppendValueType(parent, context, target);
         }
-        _error(context, target, "@PutByPath currently supports only Name/Index/Append paths");
+        if (segment instanceof PathSegment.Param) {
+            VariableElement param = pathParams.get(((PathSegment.Param) segment).param);
+            return _resolvePutParamType(parent, param, context, target);
+        }
+        _error(context, target, "@PutByPath currently supports only Name/Index/Param/Append paths");
         return null;
     }
 
@@ -351,10 +373,15 @@ public final class PathGenerator {
         return null;
     }
 
-    private TypeMirror _resolvePutOldType(TypeMirror parent, PathSegment segment) {
+    private TypeMirror _resolvePutOldType(TypeMirror parent, PathSegment segment, Map<String, VariableElement> pathParams) {
         if (segment instanceof PathSegment.Name) return _resolvePutNameOldType(parent, ((PathSegment.Name) segment).name);
         if (segment instanceof PathSegment.Index) return _resolvePutIndexOldType(parent);
         if (segment instanceof PathSegment.Append) return null;
+        if (segment instanceof PathSegment.Param) {
+            VariableElement param = pathParams.get(((PathSegment.Param) segment).param);
+            if (_isString(param.asType())) return _resolvePutNameOldType(parent, param.getSimpleName().toString());
+            return _resolvePutIndexOldType(parent);
+        }
         return null;
     }
 
@@ -543,11 +570,6 @@ public final class PathGenerator {
                                        String nullReturn, boolean checkValueNull) {
         String paramName = param.getSimpleName().toString();
         String indexVar = paramName;
-        if (param.asType().getKind() != TypeKind.INT) {
-            out.line("if (" + paramName + " == null) " + nullReturn);
-            indexVar = nextVar + "p";
-            out.line("int " + indexVar + " = " + paramName + ";");
-        }
         if (GeneratorUtil.isObject(ctx, current)) {
             out.line("Object " + nextVar + " = org.sjf4j.node.Nodes.getInArray(" + currentVar + ", " + indexVar + ");");
             _emitNullCheck(out, nextVar, ctx.objectType, checkValueNull ? nullReturn : null);
@@ -584,13 +606,13 @@ public final class PathGenerator {
         if (nullReturn != null && !type.getKind().isPrimitive()) out.line("if (" + var + " == null) " + nullReturn);
     }
 
-    private void _emitMethodPut(SourceWriter out, ExecutableElement method, VariableElement root, VariableElement value,
+    private void _emitMethodPut(SourceWriter out, ExecutableElement method, VariableElement root,
+                                VariableElement value, Map<String, VariableElement> pathParams,
                                 JsonPath path, TypeMirror parentType, TypeMirror valueType) {
         out.line("");
         out.line("@Override");
         out.line("public " + GeneratorUtil.typeName(method.getReturnType()) + " " + method.getSimpleName() + "(" +
-                GeneratorUtil.typeName(root.asType()) + " " + root.getSimpleName() + ", " +
-                GeneratorUtil.typeName(value.asType()) + " " + value.getSimpleName() + ") {");
+                _methodParams(method) + ") {");
         out.indent();
         PathSegment[] segments = path.segments();
         String missing = _putMissingThrow(method, path);
@@ -603,8 +625,11 @@ public final class PathGenerator {
             PathSegment segment = segments[i];
             if (segment instanceof PathSegment.Name) {
                 currentType = _emitName(out, currentType, ((PathSegment.Name) segment).name, currentVar, nextVar, missing, true);
-            } else {
+            } else if (segment instanceof PathSegment.Index) {
                 currentType = _emitIndex(out, currentType, ((PathSegment.Index) segment).index, currentVar, nextVar, missing, true);
+            } else {
+                VariableElement param = pathParams.get(((PathSegment.Param) segment).param);
+                currentType = _emitParam(out, currentType, param, currentVar, nextVar, missing, true);
             }
             currentVar = nextVar;
         }
@@ -623,6 +648,9 @@ public final class PathGenerator {
             oldType = _emitPutIndex(out, parentType, ((PathSegment.Index) last).index, currentVar, valueExpr, oldVar);
         } else if (last instanceof PathSegment.Append) {
             oldType = _emitPutAppend(out, parentType, currentVar, valueExpr);
+        } else if (last instanceof PathSegment.Param) {
+            VariableElement param = pathParams.get(((PathSegment.Param) last).param);
+            oldType = _emitPutParam(out, parentType, param, currentVar, valueExpr, oldVar, missing);
         } else {
             throw new AssertionError("CompiledPath PUT unsupported segment");
         }
@@ -708,6 +736,54 @@ public final class PathGenerator {
             return null;
         }
         throw new AssertionError("CompiledPath PUT cannot append on " + parent);
+    }
+
+    private TypeMirror _emitPutParam(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
+                                     String valueExpr, String oldVar, String missing) {
+        if (_isString(param.asType())) {
+            return _emitPutParamName(out, parent, param.getSimpleName().toString(), parentVar, valueExpr, oldVar);
+        }
+        return _emitPutParamIndex(out, parent, param, parentVar, valueExpr, oldVar, missing);
+    }
+
+    private TypeMirror _emitPutParamName(SourceWriter out, TypeMirror parent, String paramName, String parentVar,
+                                         String valueExpr, String oldVar) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInObject(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
+            return ctx.objectType;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
+            out.line("Object " + oldVar + " = " + parentVar + ".put(" + paramName + ", " + valueExpr + ");");
+            return ctx.objectType;
+        }
+        if (!GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+            throw new AssertionError("CompiledPath PUT cannot resolve dynamic key on " + parent);
+        }
+        TypeMirror outputType = GeneratorUtil.mapValueType(ctx, parent);
+        out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + " = " + parentVar + ".put(" +
+                paramName + ", " + valueExpr + ");");
+        return outputType;
+    }
+
+    private TypeMirror _emitPutParamIndex(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
+                                          String valueExpr, String oldVar, String missing) {
+        String paramName = param.getSimpleName().toString();
+        String indexVar = paramName;
+        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
+            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + indexVar + ", " + valueExpr + ");");
+            return ctx.objectType;
+        }
+        if (parent.getKind() == TypeKind.ARRAY) {
+            TypeMirror outputType = ((ArrayType) parent).getComponentType();
+            out.line(_readValueTypeName(outputType) + " " + oldVar + " = (" + _readValueTypeName(outputType) +
+                    ") org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + indexVar + ", " + valueExpr + ");");
+            return outputType;
+        }
+        TypeMirror outputType = GeneratorUtil.listValueType(ctx, parent);
+        out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + " = (" +
+                GeneratorUtil.localTypeName(ctx, outputType) + ") org.sjf4j.node.Nodes.putInArray(" +
+                parentVar + ", " + indexVar + ", " + valueExpr + ");");
+        return outputType;
     }
 
     private static String _indexExpr(int index, String sizeExpr) {

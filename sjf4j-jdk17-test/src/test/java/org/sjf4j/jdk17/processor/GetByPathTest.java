@@ -66,15 +66,16 @@ public class GetByPathTest {
         Directory directory = new Directory(
                 List.of(new Person("first", 1), new Person("last", 2)),
                 Map.of("hz", new City("Hangzhou", "Binjiang")),
+                Map.of("east", List.of(new City("Shanghai", "Pudong"), new City("Hangzhou", "Binjiang"))),
                 JsonObject.of("value", 123));
 
         assertEquals("first", nodes.getFriendNameByJsonPathIndex(directory, 0));
         assertEquals("last", nodes.getFriendNameByJsonPathIndex(directory, -1));
         assertEquals("Hangzhou", nodes.getCityNameByBracketParam(directory, "hz"));
+        assertEquals("Binjiang", nodes.getRegionCityDistrict(directory, "east", 1));
         assertEquals(123, nodes.getJsonObjectValue(directory, "value"));
 
-        assertNull(nodes.getFriendNameByJsonPathIntegerIndex(directory, null));
-        assertNull(nodes.getFriendNameByJsonPathIntegerIndex(directory, 99));
+        assertNull(nodes.getFriendNameByJsonPathIndex(directory, 99));
         assertThrows(JsonException.class, () -> nodes.getFriendScore(directory, 99));
     }
 
@@ -103,7 +104,7 @@ public class GetByPathTest {
 
     record City(String name, String district) {}
 
-    record Directory(List<Person> friends, Map<String, City> data, JsonObject json) {}
+    record Directory(List<Person> friends, Map<String, City> data, Map<String, List<City>> regions, JsonObject json) {}
 
     record Person(String name, int score) {}
 
@@ -149,16 +150,17 @@ public class GetByPathTest {
         @GetByPath("$.friends[{idx}].name")
         String getFriendNameByJsonPathIndex(Directory root, int idx);
 
-        @GetByPath("$.friends[{idx}].name")
-        String getFriendNameByJsonPathIntegerIndex(Directory root, Integer idx);
-
         @GetByPath("$.friends[{idx}].score")
-        int getFriendScore(Directory root, Integer idx);
+        int getFriendScore(Directory root, int idx);
 
         @GetByPath("$.data[{name}].name")
         String getCityNameByBracketParam(Directory root, String name);
 
+        @GetByPath("$.regions[{region}][{idx}].district")
+        String getRegionCityDistrict(Directory root, String region, int idx);
+
         @GetByPath("$.json[{name}]")
         Object getJsonObjectValue(Directory root, String name);
+
     }
 }

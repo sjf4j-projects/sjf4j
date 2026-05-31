@@ -131,7 +131,7 @@ public class AsmPathCompiler implements PathCompiler {
                 null, null);
         mv.visitCode();
 
-        if (path.hasAppend()) {
+        if (path.appendCount() > 0) {
             _emitThrow(mv, "cannot execute get() on append path '" + path.toExpr() +
                     "' because append segments ('/-' or '[+]') are write-only");
         } else {
@@ -171,7 +171,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
         mv.visitVarInsn(Opcodes.ASTORE, 1);
 
-        if (path.hasAppend() && !(path.tail() instanceof PathSegment.Append)) {
+        if (path.appendCount() > 0 && !(path.tail() instanceof PathSegment.Append)) {
             _emitThrow(mv, "cannot execute put() on path '" + path.toExpr() +
                     "' because append segments before the leaf require ensurePut()");
         } else {
@@ -222,7 +222,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
         mv.visitVarInsn(Opcodes.ASTORE, 1);
 
-        if (path.hasAppend() && !(path.tail() instanceof PathSegment.Append)) {
+        if (path.appendCount() > 0 && !(path.tail() instanceof PathSegment.Append)) {
             _emitThrow(mv, "cannot execute ensurePutIfAbsent() on path '" + path.toExpr() +
                     "' because append segments before the leaf are not supported");
         } else {
@@ -250,7 +250,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
         mv.visitVarInsn(Opcodes.ASTORE, 1);
 
-        if (path.hasAppend() && !(path.tail() instanceof PathSegment.Append)) {
+        if (path.appendCount() > 0 && !(path.tail() instanceof PathSegment.Append)) {
             _emitThrow(mv, "cannot execute putIfParentPresent() on path '" + path.toExpr() +
                     "' because append segments before the leaf require ensurePut()");
         } else {
@@ -289,7 +289,7 @@ public class AsmPathCompiler implements PathCompiler {
         mv.visitTypeInsn(Opcodes.CHECKCAST, AsmUtil.toInternalName(rootClazz));
         mv.visitVarInsn(Opcodes.ASTORE, 1);
 
-        if (path.hasAppend() && !(path.tail() instanceof PathSegment.Append)) {
+        if (path.appendCount() > 0 && !(path.tail() instanceof PathSegment.Append)) {
             _emitThrow(mv, "cannot execute compute() on path '" + path.toExpr() +
                     "' because append segments before the leaf require ensurePut()");
         } else {

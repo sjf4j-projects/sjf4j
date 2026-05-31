@@ -84,8 +84,41 @@ public class PutByPathTest {
 
         assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(null, "x"));
         assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(new Account(null), "x"));
-        assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(new Account(new Profile(new Organization(new ArrayList<>(), new HashMap<>(), JsonObject.of()))), "x"));
+        assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(new Account(new Profile(new Organization(new ArrayList<>(), new HashMap<>(), JsonObject.of(), new HashMap<>()))), "x"));
         assertThrows(JsonException.class, () -> nodes.putLast(new ArrayList<>(), 1));
+    }
+
+    @Test
+    public void putsDynamicBracketParams() {
+        PutNodes nodes = CompiledNodesRegistry.of(PutNodes.class);
+        Account account = account();
+
+        assertEquals("Old-District", nodes.putRegionDistrict(account, "east", 1, "New-District"));
+        assertEquals("New-District", account.profile.organization.regions.get("east").get(1).district);
+
+        Map<String, String> map = new HashMap<>();
+        map.put("name", "old");
+        assertEquals("old", nodes.putDynamicMapValue(map, "name", "new"));
+        assertEquals("new", map.get("name"));
+
+        List<String> friends = new ArrayList<>(List.of("Ann", "Bob"));
+        assertEquals("Bob", nodes.putDynamicListValue(friends, 1, "Bill"));
+        assertEquals(List.of("Ann", "Bill"), friends);
+        assertEquals("Bill", nodes.putDynamicListValue(friends, -1, "Ben"));
+        assertEquals(List.of("Ann", "Ben"), friends);
+
+        JsonObject json = JsonObject.of("name", "old");
+        assertEquals("old", nodes.putDynamicJsonObjectValue(json, "name", "new"));
+        assertEquals("new", json.getString("name"));
+    }
+
+    @Test
+    public void dynamicIndexMissingParentThrowsJsonException() {
+        PutNodes nodes = CompiledNodesRegistry.of(PutNodes.class);
+        Account account = account();
+
+        assertThrows(JsonException.class, () -> nodes.putRegionDistrict(account, "east", 9, "x"));
+        assertThrows(JsonException.class, () -> nodes.putDynamicListValue(new ArrayList<>(List.of("a")), 9, "x"));
     }
 
     private static Account account() {
@@ -95,7 +128,9 @@ public class PutByPathTest {
         Map<String, Address> addresses = new HashMap<>();
         addresses.put("home", new Address(new City("Hangzhou", "Binjiang")));
         JsonObject metadata = JsonObject.of("owner", JsonObject.of("name", "owner-name"));
-        return new Account(new Profile(new Organization(new ArrayList<>(List.of(team)), addresses, metadata)));
+        Map<String, List<City>> regions = new HashMap<>();
+        regions.put("east", new ArrayList<>(List.of(new City("A", "A-District"), new City("B", "Old-District"))));
+        return new Account(new Profile(new Organization(new ArrayList<>(List.of(team)), addresses, metadata, regions)));
     }
 
     static final class Account {
@@ -108,7 +143,7 @@ public class PutByPathTest {
 
     record Profile(Organization organization) {}
 
-    record Organization(List<Team> teams, Map<String, Address> addresses, JsonObject metadata) {}
+    record Organization(List<Team> teams, Map<String, Address> addresses, JsonObject metadata, Map<String, List<City>> regions) {}
 
     record Team(List<Member> members) {}
     record Member(Contact contact) {}
@@ -190,5 +225,17 @@ public class PutByPathTest {
 
         @PutByPath("$.value")
         int putPrimitiveOld(Map<String, Integer> root, int value);
+
+        @PutByPath("$.profile.organization.regions[{region}][{idx}].district")
+        String putRegionDistrict(Account root, String region, int idx, String value);
+
+        @PutByPath("$[{name}]")
+        String putDynamicMapValue(Map<String, String> root, String name, String value);
+
+        @PutByPath("$[{idx}]")
+        String putDynamicListValue(List<String> root, int idx, String value);
+
+        @PutByPath("$[{name}]")
+        Object putDynamicJsonObjectValue(JsonObject root, String name, String value);
     }
 }
