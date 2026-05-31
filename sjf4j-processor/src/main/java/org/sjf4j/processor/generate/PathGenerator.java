@@ -903,10 +903,12 @@ public final class PathGenerator {
         String valueExpr = value.getSimpleName().toString();
         String oldVar = "old";
         PathSegment last = segments[segments.length - 1];
-        TypeMirror oldType = ifAbsent
-                ? _emitPutIfAbsentLast(out, method, parentType, last, pathParams, currentVar, valueExpr, oldVar)
-                : _emitPutLast(out, parentType, last, pathParams, currentVar, valueExpr, oldVar, "return;");
-        _emitPutReturn(out, method, oldVar, oldType);
+        if (ifAbsent) {
+            _emitPutIfAbsentLast(out, method, parentType, last, pathParams, currentVar, valueExpr, oldVar);
+        } else {
+            _emitPutReturn(out, method, oldVar,
+                    _emitPutLast(out, parentType, last, pathParams, currentVar, valueExpr, oldVar, "return;"));
+        }
         out.dedent();
         out.line("}");
     }
@@ -932,7 +934,28 @@ public final class PathGenerator {
     private void _emitEnsurePutBack(SourceWriter out, TypeMirror parentType, PathSegment segment,
                                     Map<String, VariableElement> pathParams, String parentVar,
                                     String valueVar, int i) {
-        _emitPutLast(out, parentType, segment, pathParams, parentVar, valueVar, "ignored" + i, "return;");
+        _emitPutLastNoOld(out, parentType, segment, pathParams, parentVar, valueVar, "return;");
+    }
+
+    /**
+     * Emits a write when the caller does not need the previous value, avoiding
+     * dead local variables and unnecessary POJO getter calls on ensure put-back
+     * and absent writes.
+     */
+    private void _emitPutLastNoOld(SourceWriter out, TypeMirror parentType, PathSegment last,
+                                   Map<String, VariableElement> pathParams, String parentVar,
+                                   String valueExpr, String missing) {
+        if (last instanceof PathSegment.Name) {
+            _emitPutNameNoOld(out, parentType, ((PathSegment.Name) last).name, parentVar, valueExpr);
+        } else if (last instanceof PathSegment.Index) {
+            _emitPutIndexNoOld(out, parentType, ((PathSegment.Index) last).index, parentVar, valueExpr);
+        } else if (last instanceof PathSegment.Append) {
+            _emitPutAppend(out, parentType, parentVar, valueExpr);
+        } else if (last instanceof PathSegment.Param) {
+            _emitPutParamNoOld(out, parentType, pathParams.get(((PathSegment.Param) last).param), parentVar, valueExpr, missing);
+        } else {
+            throw new AssertionError("CompiledPath PUT unsupported segment");
+        }
     }
 
     /**
@@ -1061,10 +1084,14 @@ public final class PathGenerator {
      * Emits the final put-if-absent operation: read current value, return it when
      * non-null, otherwise perform the normal final put and return null.
      */
-    private TypeMirror _emitPutIfAbsentLast(SourceWriter out, ExecutableElement method, TypeMirror parent, PathSegment last,
-                                            Map<String, VariableElement> pathParams, String parentVar,
-                                            String valueExpr, String oldVar) {
-        if (last instanceof PathSegment.Append) return _emitPutAppend(out, parent, parentVar, valueExpr);
+    private void _emitPutIfAbsentLast(SourceWriter out, ExecutableElement method, TypeMirror parent, PathSegment last,
+                                      Map<String, VariableElement> pathParams, String parentVar,
+                                      String valueExpr, String oldVar) {
+        if (last instanceof PathSegment.Append) {
+            _emitPutAppend(out, parent, parentVar, valueExpr);
+            _emitNullReturn(out, method);
+            return;
+        }
         TypeMirror oldType = _resolvePutOldType(parent, last, pathParams);
         String oldDecl = GeneratorUtil.localTypeName(ctx, oldType);
         if (last instanceof PathSegment.Name) {
@@ -1087,9 +1114,13 @@ public final class PathGenerator {
         if (method.getReturnType().getKind() == TypeKind.VOID) out.line("return;");
         out.dedent();
         out.line("}");
-        _emitPutLast(out, parent, last, pathParams, parentVar, valueExpr, "ignoredOld", "return;");
-        out.line(oldVar + " = null;");
-        return oldType;
+        _emitPutLastNoOld(out, parent, last, pathParams, parentVar, valueExpr, "return;");
+        _emitNullReturn(out, method);
+    }
+
+    private void _emitNullReturn(SourceWriter out, ExecutableElement method) {
+        if (method.getReturnType().getKind() == TypeKind.VOID) out.line("return;");
+        else out.line("return null;");
     }
 
     /**
@@ -1175,6 +1206,33 @@ public final class PathGenerator {
         return oldType == null ? ctx.objectType : oldType;
     }
 
+    private void _emitPutNameNoOld(SourceWriter out, TypeMirror parent, String name, String parentVar, String valueExpr) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("org.sjf4j.node.Nodes.putInObject(" + parentVar + ", \"" +
+                    GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
+            return;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType)) {
+            out.line(parentVar + ".put(\"" + GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
+            return;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+            out.line(parentVar + ".put(\"" + GeneratorUtil.escape(name) + "\", " + valueExpr + ");");
+            return;
+        }
+        TypeElement type = GeneratorUtil.asTypeElement(parent);
+        if (type == null) throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
+        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, parent, "set" + suffix);
+        if (setter != null) {
+            out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
+            return;
+        }
+        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        if (field == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
+        out.line(parentVar + "." + name + " = " + valueExpr + ";");
+    }
+
     /**
      * Emits a final array-index write using shared Nodes semantics for arrays,
      * lists, JsonArray, and Object-typed native nodes.
@@ -1201,6 +1259,10 @@ public final class PathGenerator {
                 GeneratorUtil.localTypeName(ctx, outputType) + ") org.sjf4j.node.Nodes.putInArray(" +
                 parentVar + ", " + index + ", " + valueExpr + ");");
         return outputType;
+    }
+
+    private void _emitPutIndexNoOld(SourceWriter out, TypeMirror parent, int index, String parentVar, String valueExpr) {
+        out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
     }
 
     /**
@@ -1250,6 +1312,29 @@ public final class PathGenerator {
         return outputType;
     }
 
+    private void _emitPutParamNoOld(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
+                                    String valueExpr, String missing) {
+        if (_isString(param.asType())) {
+            _emitPutParamNameNoOld(out, parent, param.getSimpleName().toString(), parentVar, valueExpr);
+        } else {
+            _emitPutParamIndexNoOld(out, parent, param, parentVar, valueExpr, missing);
+        }
+    }
+
+    private void _emitPutParamNameNoOld(SourceWriter out, TypeMirror parent, String paramName, String parentVar,
+                                        String valueExpr) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("org.sjf4j.node.Nodes.putInObject(" + parentVar + ", " + paramName + ", " + valueExpr + ");");
+            return;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
+                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+            out.line(parentVar + ".put(" + paramName + ", " + valueExpr + ");");
+            return;
+        }
+        throw new AssertionError("CompiledPath PUT cannot resolve dynamic key on " + parent);
+    }
+
     private TypeMirror _emitPutParamIndex(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
                                           String valueExpr, String oldVar, String missing) {
         String paramName = param.getSimpleName().toString();
@@ -1269,6 +1354,11 @@ public final class PathGenerator {
                 GeneratorUtil.localTypeName(ctx, outputType) + ") org.sjf4j.node.Nodes.putInArray(" +
                 parentVar + ", " + indexVar + ", " + valueExpr + ");");
         return outputType;
+    }
+
+    private void _emitPutParamIndexNoOld(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
+                                         String valueExpr, String missing) {
+        out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + param.getSimpleName() + ", " + valueExpr + ");");
     }
 
     private static String _indexExpr(int index, String sizeExpr) {

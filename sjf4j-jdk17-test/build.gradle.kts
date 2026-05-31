@@ -40,6 +40,7 @@ dependencies {
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmhAnnotationProcessor(project(":sjf4j-processor"))
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     jmhImplementation("tools.jackson.core:jackson-databind:3.1.1")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
