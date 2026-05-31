@@ -117,26 +117,38 @@ public final class PathGenerator {
      * Validates and emits a generated implementation for one {@code @PutByPath} method.
      */
     public void genPut(ExecutableElement method, GeneratedClass target, String expr) {
+        _genPut(method, target, expr, false);
+    }
+
+    /**
+     * Validates and emits a generated implementation for one {@code @PutIfParentPresentByPath} method.
+     */
+    public void genPutIfParentPresent(ExecutableElement method, GeneratedClass target, String expr) {
+        _genPut(method, target, expr, true);
+    }
+
+    private void _genPut(ExecutableElement method, GeneratedClass target, String expr, boolean ifParentPresent) {
+        String annotation = ifParentPresent ? "@PutIfParentPresentByPath" : "@PutByPath";
         if (method.getParameters().size() < 2) {
-            _error(method, target, "@PutByPath method must have root and value parameters");
+            _error(method, target, annotation + " method must have root and value parameters");
             return;
         }
 
         JsonPath path = _resolvePath(method, target, expr);
         if (path == null) return;
         if (!path.isSinglePut()) {
-            _error(method, target, "@PutByPath currently supports only Name/Index/Param/Append paths");
+            _error(method, target, annotation + " currently supports only Name/Index/Param/Append paths");
             return;
         }
         if (path.appendCount() > 1 || (path.appendCount() > 0 && !(path.tail() instanceof PathSegment.Append))) {
-            _error(method, target, "@PutByPath append segment must be the final path segment");
+            _error(method, target, annotation + " append segment must be the final path segment");
             return;
         }
 
         VariableElement root = method.getParameters().get(0);
         VariableElement value = method.getParameters().get(method.getParameters().size() - 1);
         Map<String, VariableElement> pathParams = _resolvePathParams(method, target, path, 1,
-                method.getParameters().size() - 1, "@PutByPath");
+                method.getParameters().size() - 1, annotation);
         if (pathParams == null) return;
         PathSegment[] segments = path.segments();
         TypeMirror current = root.asType();
@@ -147,31 +159,32 @@ public final class PathGenerator {
             } else if (segment instanceof PathSegment.Index) {
                 current = _resolveIndexType(current, ((PathSegment.Index) segment).index, method, target);
             } else if (segment instanceof PathSegment.Param) {
-                current = _resolvePutParamType(current, pathParams.get(((PathSegment.Param) segment).param), method, target);
+                current = _resolvePutParamType(current, pathParams.get(((PathSegment.Param) segment).param), method, target, annotation);
             } else {
-                _error(method, target, "@PutByPath currently supports only Name/Index/Param intermediate path segments");
+                _error(method, target, annotation + " currently supports only Name/Index/Param intermediate path segments");
                 return;
             }
             if (current == null) return;
         }
         TypeMirror finalParentType = current;
 
-        TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], pathParams, method, target);
+        TypeMirror valueType = _resolvePutValueType(finalParentType, segments[segments.length - 1], pathParams, method, target, annotation);
         if (valueType == null) return;
 
-        if (!_validateAssignable(method, target, value.asType(), valueType, "@PutByPath value type")) return;
+        if (!_validateAssignable(method, target, value.asType(), valueType, annotation + " value type")) return;
         TypeMirror oldType = _resolvePutOldType(finalParentType, segments[segments.length - 1], pathParams);
-        if (oldType == null && method.getReturnType().getKind().isPrimitive()) {
-            _error(method, target, "@PutByPath return type mismatch: append returns null");
+        if (method.getReturnType().getKind().isPrimitive() && (ifParentPresent || oldType == null)) {
+            _error(method, target, annotation + " return type mismatch: " +
+                    (ifParentPresent ? "missing parent returns null" : "append returns null"));
             return;
         }
         if (oldType != null && method.getReturnType().getKind() != TypeKind.VOID &&
-                !_validateAssignable(method, target, oldType, method.getReturnType(), "@PutByPath return type")) {
+                !_validateAssignable(method, target, oldType, method.getReturnType(), annotation + " return type")) {
             return;
         }
 
         target.addMethod(out ->
-                _emitMethodPut(out, method, root, value, pathParams, path, finalParentType, valueType));
+                _emitMethodPut(out, method, root, value, pathParams, path, finalParentType, valueType, ifParentPresent));
     }
 
     private boolean _validateAssignable(Element element, GeneratedClass target, TypeMirror from, TypeMirror to, String label) {
@@ -250,11 +263,11 @@ public final class PathGenerator {
         return null;
     }
 
-    private TypeMirror _resolvePutParamType(TypeMirror current, VariableElement param, Element context, GeneratedClass target) {
+    private TypeMirror _resolvePutParamType(TypeMirror current, VariableElement param, Element context, GeneratedClass target, String annotation) {
         TypeMirror paramType = param.asType();
         if (_isString(paramType)) return _resolveParamNameType(current, param.getSimpleName().toString(), context, target);
         if (_isInt(paramType)) return _resolveParamIndexType(current, param.getSimpleName().toString(), context, target);
-        _error(context, target, "@PutByPath path parameter '" + param.getSimpleName() + "' must be String or int");
+        _error(context, target, annotation + " path parameter '" + param.getSimpleName() + "' must be String or int");
         return null;
     }
 
@@ -301,7 +314,7 @@ public final class PathGenerator {
     }
 
     private TypeMirror _resolvePutValueType(TypeMirror parent, PathSegment segment, Map<String, VariableElement> pathParams,
-                                            Element context, GeneratedClass target) {
+                                            Element context, GeneratedClass target, String annotation) {
         if (segment instanceof PathSegment.Name) {
             return _resolvePutNameValueType(parent, ((PathSegment.Name) segment).name, context, target);
         }
@@ -313,9 +326,9 @@ public final class PathGenerator {
         }
         if (segment instanceof PathSegment.Param) {
             VariableElement param = pathParams.get(((PathSegment.Param) segment).param);
-            return _resolvePutParamType(parent, param, context, target);
+            return _resolvePutParamType(parent, param, context, target, annotation);
         }
-        _error(context, target, "@PutByPath currently supports only Name/Index/Param/Append paths");
+        _error(context, target, annotation + " currently supports only Name/Index/Param/Append paths");
         return null;
     }
 
@@ -607,15 +620,15 @@ public final class PathGenerator {
     }
 
     private void _emitMethodPut(SourceWriter out, ExecutableElement method, VariableElement root,
-                                VariableElement value, Map<String, VariableElement> pathParams,
-                                JsonPath path, TypeMirror parentType, TypeMirror valueType) {
+                                 VariableElement value, Map<String, VariableElement> pathParams,
+                                 JsonPath path, TypeMirror parentType, TypeMirror valueType, boolean ifParentPresent) {
         out.line("");
         out.line("@Override");
         out.line("public " + GeneratorUtil.typeName(method.getReturnType()) + " " + method.getSimpleName() + "(" +
                 _methodParams(method) + ") {");
         out.indent();
         PathSegment[] segments = path.segments();
-        String missing = _putMissingThrow(method, path);
+        String missing = ifParentPresent ? _putMissingReturn(method) : _putMissingThrow(method, path);
         out.line("if (" + root.getSimpleName() + " == null) " + missing);
 
         String currentVar = root.getSimpleName().toString();
@@ -825,6 +838,11 @@ public final class PathGenerator {
         return "throw new org.sjf4j.exception.JsonException(\"@PutByPath missing parent: method " +
                 GeneratorUtil.escape(method.getSimpleName().toString()) + " for path " +
                 GeneratorUtil.escape(path.toExpr()) + "\");";
+    }
+
+    private String _putMissingReturn(ExecutableElement method) {
+        if (method.getReturnType().getKind() == TypeKind.VOID) return "return;";
+        return "return null;";
     }
 
 }

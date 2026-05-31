@@ -2,6 +2,7 @@ package org.sjf4j.processor.generate;
 
 import org.sjf4j.annotation.compiled.GetByPath;
 import org.sjf4j.annotation.compiled.PutByPath;
+import org.sjf4j.annotation.compiled.PutIfParentPresentByPath;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
@@ -61,6 +62,18 @@ public final class NodesGenerator {
                 } else {
                     generatedAnno = "@PutByPath";
                     pathGenerator.genPut(method, target, put.value());
+                }
+            }
+
+            PutIfParentPresentByPath putIfParentPresentByPath = method.getAnnotation(PutIfParentPresentByPath.class);
+            if (putIfParentPresentByPath != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @PutIfParentPresent");
+                    return;
+                } else {
+                    generatedAnno = "@PutIfParentPresent";
+                    pathGenerator.genPutIfParentPresent(method, target, putIfParentPresentByPath.value());
                 }
             }
 

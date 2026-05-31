@@ -22,7 +22,8 @@ import java.util.Set;
 @SupportedAnnotationTypes({
         "org.sjf4j.annotation.compiled.CompiledNodes",
         "org.sjf4j.annotation.compiled.GetByPath",
-        "org.sjf4j.annotation.compiled.PutByPath"
+        "org.sjf4j.annotation.compiled.PutByPath",
+        "org.sjf4j.annotation.compiled.PutIfParentPresentByPath"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 

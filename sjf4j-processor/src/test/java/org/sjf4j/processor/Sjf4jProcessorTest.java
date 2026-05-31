@@ -282,6 +282,51 @@ public class Sjf4jProcessorTest {
     }
 
     @Test
+    public void rejectInvalidPutIfParentPresentMethods() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-put-if-param-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("BadPutIfNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.List;\n" +
+                        "import org.sjf4j.annotation.compiled.*;\n" +
+                        "@CompiledNodes\n" +
+                        "public interface BadPutIfNodes {\n" +
+                        "  @PutIfParentPresentByPath(\"$[{idx}]\") String missing(List<String> root, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$[0]\") String unused(List<String> root, int idx, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$[{idx}]\") String wrongType(List<String> root, long idx, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$[+]\") int primitiveAppend(List<String> root, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$[0]\") int primitiveOld(List<String> root, String value);\n" +
+                        "  @GetByPath(\"$[0]\") @PutIfParentPresentByPath(\"$[0]\") String conflict(List<String> root, String value);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("BadPutIfNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@PutIfParentPresentByPath path parameter '{idx}' has no matching method parameter"), messages);
+        assertTrue(messages.contains("@PutIfParentPresentByPath method parameter 'idx' is not used by the path"), messages);
+        assertTrue(messages.contains("@PutIfParentPresentByPath path parameter 'idx' must be String or int"), messages);
+        assertTrue(messages.contains("@PutIfParentPresentByPath return type mismatch: missing parent returns null"), messages);
+        assertTrue(messages.contains("Path operation annotations cannot be used together"), messages);
+    }
+
+    @Test
     public void rejectInvalidPathMethodShapes() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-shape-test");
         Path src = dir.resolve("src/testcase");
@@ -347,6 +392,7 @@ public class Sjf4jProcessorTest {
                         "    public JsonObject json = JsonObject.of();\n" +
                         "    public JsonArray jsonArray = JsonArray.of();\n" +
                         "    public Bean bean = new Bean(\"oldBean\", \"oldField\");\n" +
+                        "    public Bean optional;\n" +
                         "    public Map<String,List<Bean>> regions = new HashMap<>();\n" +
                         "    public Map<String,String> getMap() { return map; }\n" +
                         "    public List<String> getList() { return list; }\n" +
@@ -354,6 +400,7 @@ public class Sjf4jProcessorTest {
                         "    public JsonObject getJson() { return json; }\n" +
                         "    public JsonArray getJsonArray() { return jsonArray; }\n" +
                         "    public Bean getBean() { return bean; }\n" +
+                        "    public Bean getOptional() { return optional; }\n" +
                         "    public Map<String,List<Bean>> getRegions() { return regions; }\n" +
                         "  }\n" +
                         "  public static final class Bean {\n" +
@@ -397,6 +444,10 @@ public class Sjf4jProcessorTest {
                         "  @PutByPath(\"$.list[{idx}]\") String putDynamicList(Model.Root root, int idx, String value);\n" +
                         "  @PutByPath(\"$.json[{name}]\") Object putDynamicJson(Model.Root root, String name, Object value);\n" +
                         "  @PutByPath(\"$.regions[{region}][{idx}].field\") String putNestedDynamic(Model.Root root, String region, int idx, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$.map.ifPresent\") String putIfStaticMap(Model.Root root, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$.optional.field\") String putIfMissing(Model.Root root, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$.optional.field\") void putIfMissingVoid(Model.Root root, String value);\n" +
+                        "  @PutIfParentPresentByPath(\"$.regions[{region}][{idx}].field\") String putIfNestedDynamic(Model.Root root, String region, int idx, String value);\n" +
                         "}\n");
 
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -480,6 +531,12 @@ public class Sjf4jProcessorTest {
         assertEquals("dyn-json", json.getString("name"));
         assertEquals("old-region", nodesClass.getMethod("putNestedDynamic", rootClass, String.class, int.class, String.class)
                 .invoke(nodes, root, "east", 0, "new-region"));
+        assertNull(nodesClass.getMethod("putIfStaticMap", rootClass, String.class).invoke(nodes, root, "if-present"));
+        assertEquals("if-present", map.get("ifPresent"));
+        assertNull(nodesClass.getMethod("putIfMissing", rootClass, String.class).invoke(nodes, root, "x"));
+        nodesClass.getMethod("putIfMissingVoid", rootClass, String.class).invoke(nodes, root, "x");
+        assertEquals("new-region", nodesClass.getMethod("putIfNestedDynamic", rootClass, String.class, int.class, String.class)
+                .invoke(nodes, root, "east", 0, "new-if-region"));
     }
 
     private static void write(Path path, String text) throws Exception {

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 - Renamed path and node mutation helpers to make their write semantics explicit:
   - `JsonPath.isSingle()` -> `isSinglePut()`.
-  - `JsonPath.putIfPresent(...)` -> `putIfParentPresent(...)`.
+  - `JsonPath.putIfPresent(...)` -> `putIfParentPresentByPath(...)`.
   - `JsonPath.remove(...)` -> `removeIfPresent(...)`.
   - `JsonContainer.putIfPresentByPath(...)` -> `putIfParentPresentByPath(...)`.
   - `JsonContainer.removeByPath(...)` -> `removeIfPresentByPath(...)`.
