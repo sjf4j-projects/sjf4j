@@ -1,6 +1,8 @@
 package org.sjf4j.processor.generate;
 
 import org.sjf4j.annotation.compiled.GetByPath;
+import org.sjf4j.annotation.compiled.EnsurePutByPath;
+import org.sjf4j.annotation.compiled.EnsurePutIfAbsentByPath;
 import org.sjf4j.annotation.compiled.PutByPath;
 import org.sjf4j.annotation.compiled.PutIfParentPresentByPath;
 import org.sjf4j.processor.ProcessorContext;
@@ -69,11 +71,35 @@ public final class NodesGenerator {
             if (putIfParentPresentByPath != null) {
                 if (generatedAnno != null) {
                     ctx.error(method, "Path operation annotations cannot be used together: " +
-                            generatedAnno + " and @PutIfParentPresent");
+                            generatedAnno + " and @PutIfParentPresentByPath");
                     return;
                 } else {
-                    generatedAnno = "@PutIfParentPresent";
+                    generatedAnno = "@PutIfParentPresentByPath";
                     pathGenerator.genPutIfParentPresent(method, target, putIfParentPresentByPath.value());
+                }
+            }
+
+            EnsurePutByPath ensurePut = method.getAnnotation(EnsurePutByPath.class);
+            if (ensurePut != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @EnsurePutByPath");
+                    return;
+                } else {
+                    generatedAnno = "@EnsurePutByPath";
+                    pathGenerator.genEnsurePut(method, target, ensurePut.value());
+                }
+            }
+
+            EnsurePutIfAbsentByPath ensurePutIfAbsent = method.getAnnotation(EnsurePutIfAbsentByPath.class);
+            if (ensurePutIfAbsent != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @EnsurePutIfAbsentByPath");
+                    return;
+                } else {
+                    generatedAnno = "@EnsurePutIfAbsentByPath";
+                    pathGenerator.genEnsurePutIfAbsent(method, target, ensurePutIfAbsent.value());
                 }
             }
 

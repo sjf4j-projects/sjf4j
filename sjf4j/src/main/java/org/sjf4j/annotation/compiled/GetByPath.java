@@ -5,8 +5,29 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Generates a direct single-path read method inside a {@link CompiledNodes}
+ * interface implementation.
+ * <p>
+ * The first method parameter is the root object. Additional parameters may be
+ * referenced from the path as {@code {name}} placeholders: {@code String}
+ * parameters address object keys and {@code int} parameters address array/list
+ * indexes. The method return type must be assignable from the resolved path
+ * value type.
+ *
+ * <pre>{@code
+ * @CompiledNodes
+ * interface Users {
+ *     @GetByPath("$.users[{idx}].name")
+ *     String name(Model root, int idx);
+ * }
+ * }</pre>
+ */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.SOURCE)
 public @interface GetByPath {
+    /**
+     * Single-target JSONPath expression to read.
+     */
     String value();
 }

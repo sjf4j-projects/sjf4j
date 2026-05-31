@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added the `sjf4j-processor` annotation processor module for generated `@CompiledNodes` path accessor implementations.
+- Added compiled path annotations backed by direct `PathGenerator` code generation:
+  - `@GetByPath` for typed single-path reads over object names, array indexes, and dynamic `String` key / `int` index parameters.
+  - `@PutByPath` for single-path writes that require the final parent to exist and return the previous value when available.
+  - `@PutIfParentPresentByPath` for writes that return `null` instead of failing when the final parent is missing.
+  - `@EnsurePutByPath` for writes that auto-create missing intermediate containers with direct generated allocations.
+  - `@EnsurePutIfAbsentByPath` for ensure-style writes that only replace absent or `null` final values and return existing non-null values unchanged.
 - `Nodes.Access.present` so read access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
 - `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
 
@@ -32,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `JsonPath` now tracks single-get, single-put, and single-eval paths separately, enabling direct fast paths for single-target `find(...)`, typed `find(...)`, `eval(...)`, and `compute(...)` calls.
 - `JsonPath` now uses read-specific access metadata for traversal, preserving present-`null` matches without a separate contains lookup on each segment.
 - Path function literal arguments are resolved when the path segment is created instead of on every evaluation.
+- Compiled ensure-path generation now creates intermediate `Map`/`List`/`JsonObject`/`JsonArray`/POJO containers with direct `new` expressions and reports unsupported or no-default-constructor intermediate types at annotation-processing time.
 - `JsonPath.ensurePutIfAbsent(...)` now treats `null` as absent, returns the existing non-null value when no write occurs, fills null array slots, and appends when an indexed target equals the current array size.
 - Typed `JsonPath.getMap(...)`, `getList(...)`, `getArray(...)`, and `getSet(...)` now use strict conversion instead of lenient conversion.
 - Updated `sjf4j-bytecode` and `sjf4j-schema` publishing metadata descriptions for their split module roles.

@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -537,6 +539,167 @@ public class Sjf4jProcessorTest {
         nodesClass.getMethod("putIfMissingVoid", rootClass, String.class).invoke(nodes, root, "x");
         assertEquals("new-region", nodesClass.getMethod("putIfNestedDynamic", rootClass, String.class, int.class, String.class)
                 .invoke(nodes, root, "east", 0, "new-if-region"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void generateAndExecuteEnsurePutPaths() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-ensure-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(generated);
+
+        write(src.resolve("Model.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "public final class Model {\n" +
+                        "  public static final class Root {\n" +
+                        "    public Map<String,Object> map = new HashMap<>();\n" +
+                        "    public HashMap<String,HashMap<String,Object>> hash = new HashMap<>();\n" +
+                        "    public Bean bean = new Bean();\n" +
+                        "    public List<Map<String,Object>> list = new ArrayList<>();\n" +
+                        "    public ArrayList<LinkedList<Object>> concreteList = new ArrayList<>();\n" +
+                        "  }\n" +
+                        "  public static final class Bean {\n" +
+                        "    private Child child;\n" +
+                        "    public Child getChild() { return child; }\n" +
+                        "    public void setChild(Child child) { this.child = child; }\n" +
+                        "  }\n" +
+                        "  public static final class Child { public String name; }\n" +
+                        "}\n");
+        write(src.resolve("EnsureNodes.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.compiled.*;\n" +
+                        "@CompiledNodes\n" +
+                        "public interface EnsureNodes {\n" +
+                        "  @EnsurePutByPath(\"$.map.a.b\") Object ensureMap(Model.Root root, Object value);\n" +
+                        "  @EnsurePutByPath(\"$.hash.a.b\") Object ensureHashMap(Model.Root root, Object value);\n" +
+                        "  @EnsurePutByPath(\"$.bean.child.name\") String ensurePojo(Model.Root root, String value);\n" +
+                        "  @EnsurePutByPath(\"$.list[+].leaf\") Object ensureMiddleAppend(Model.Root root, Object value);\n" +
+                        "  @EnsurePutByPath(\"$.concreteList[0][0]\") Object ensureLinkedList(Model.Root root, Object value);\n" +
+                        "  @EnsurePutByPath(\"$.map[{key}][{idx}]\") Object ensureDynamic(Model.Root root, String key, int idx, Object value);\n" +
+                        "  @EnsurePutIfAbsentByPath(\"$.map.once\") Object ensureIfAbsent(Model.Root root, Object value);\n" +
+                        "  @EnsurePutIfAbsentByPath(\"$.map.voidOnce\") void ensureIfAbsentVoid(Model.Root root, Object value);\n" +
+                        "  @EnsurePutIfAbsentByPath(\"$.map[{key}]\") Object ensureIfAbsentParam(Model.Root root, String key, Object value);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Model.java").toFile(),
+                src.resolve("EnsureNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+        assertTrue(ok, diagnosticsToString(diagnostics));
+        String source = new String(Files.readAllBytes(generated.resolve("testcase/EnsureNodes_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(!source.contains("createObjectContainer"), source);
+        assertTrue(!source.contains("createArrayContainer"), source);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> rootClass = Class.forName("testcase.Model$Root", true, loader);
+        Class<?> childClass = Class.forName("testcase.Model$Child", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.EnsureNodes_Impl", true, loader);
+        Object root = rootClass.getConstructor().newInstance();
+        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Map<String, Object> map = (Map<String, Object>) rootClass.getField("map").get(root);
+        Map<String, Map<String, Object>> hash = (Map<String, Map<String, Object>>) rootClass.getField("hash").get(root);
+        List<Map<String, Object>> list = (List<Map<String, Object>>) rootClass.getField("list").get(root);
+        List<List<Object>> concreteList = (List<List<Object>>) rootClass.getField("concreteList").get(root);
+
+        assertNull(nodesClass.getMethod("ensureMap", rootClass, Object.class).invoke(nodes, root, "v"));
+        assertEquals("v", ((Map<String, Object>) map.get("a")).get("b"));
+        assertEquals("v", nodesClass.getMethod("ensureMap", rootClass, Object.class).invoke(nodes, root, "v2"));
+        assertEquals("v2", ((Map<String, Object>) map.get("a")).get("b"));
+        assertNull(nodesClass.getMethod("ensureHashMap", rootClass, Object.class).invoke(nodes, root, "hv"));
+        assertEquals(HashMap.class, hash.get("a").getClass());
+        assertEquals("hv", hash.get("a").get("b"));
+        assertNull(nodesClass.getMethod("ensurePojo", rootClass, String.class).invoke(nodes, root, "pojo"));
+        Object child = rootClass.getField("bean").get(root).getClass().getMethod("getChild").invoke(rootClass.getField("bean").get(root));
+        assertEquals("pojo", childClass.getField("name").get(child));
+        assertNull(nodesClass.getMethod("ensureMiddleAppend", rootClass, Object.class).invoke(nodes, root, "tail"));
+        assertEquals("tail", list.get(0).get("leaf"));
+        assertNull(nodesClass.getMethod("ensureLinkedList", rootClass, Object.class).invoke(nodes, root, "lv"));
+        assertEquals(LinkedList.class, concreteList.get(0).getClass());
+        assertEquals("lv", concreteList.get(0).get(0));
+        assertNull(nodesClass.getMethod("ensureDynamic", rootClass, String.class, int.class, Object.class).invoke(nodes, root, "dyn", 0, "d"));
+        assertEquals("d", ((List<Object>) map.get("dyn")).get(0));
+        assertNull(nodesClass.getMethod("ensureIfAbsent", rootClass, Object.class).invoke(nodes, root, "first"));
+        assertEquals("first", map.get("once"));
+        assertEquals("first", nodesClass.getMethod("ensureIfAbsent", rootClass, Object.class).invoke(nodes, root, "second"));
+        assertEquals("first", map.get("once"));
+        map.put("once", null);
+        assertNull(nodesClass.getMethod("ensureIfAbsent", rootClass, Object.class).invoke(nodes, root, "third"));
+        assertEquals("third", map.get("once"));
+        nodesClass.getMethod("ensureIfAbsentVoid", rootClass, Object.class).invoke(nodes, root, "void-first");
+        assertEquals("void-first", map.get("voidOnce"));
+        nodesClass.getMethod("ensureIfAbsentVoid", rootClass, Object.class).invoke(nodes, root, "void-second");
+        assertEquals("void-first", map.get("voidOnce"));
+        assertNull(nodesClass.getMethod("ensureIfAbsentParam", rootClass, String.class, Object.class).invoke(nodes, root, "paramOnce", "param-first"));
+        assertEquals("param-first", map.get("paramOnce"));
+        assertEquals("param-first", nodesClass.getMethod("ensureIfAbsentParam", rootClass, String.class, Object.class).invoke(nodes, root, "paramOnce", "param-second"));
+        assertEquals("param-first", map.get("paramOnce"));
+    }
+
+    @Test
+    public void rejectInvalidEnsurePutMethods() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-ensure-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("Model.java"),
+                "package testcase;\n" +
+                        "public final class Model {\n" +
+                        "  public ReadOnly ro = new ReadOnly();\n" +
+                        "  public NoDefault nd;\n" +
+                        "  public static final class ReadOnly { private final Child child = null; public Child getChild() { return child; } }\n" +
+                        "  public static final class Child { public String name; }\n" +
+                        "  public static final class NoDefault { public NoDefault(String value) {} public Child child; }\n" +
+                        "}\n");
+        write(src.resolve("BadEnsureNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "import org.sjf4j.annotation.compiled.*;\n" +
+                        "@CompiledNodes\n" +
+                        "public interface BadEnsureNodes {\n" +
+                        "  @EnsurePutIfAbsentByPath(\"$.x\") int primitiveAbsent(Map<String,String> root, String value);\n" +
+                        "  @EnsurePutByPath(\"$[+]\") int primitiveAppend(List<String> root, String value);\n" +
+                        "  @EnsurePutByPath(\"$.ro.child.name\") String readOnly(Model root, String value);\n" +
+                        "  @EnsurePutByPath(\"$.nd.child.name\") String noDefault(Model root, String value);\n" +
+                        "  @GetByPath(\"$.x\") @EnsurePutByPath(\"$.x\") Object conflict(Map<String,Object> root, Object value);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Model.java").toFile(), src.resolve("BadEnsureNodes.java").toFile()
+        ));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, units).call();
+
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@EnsurePutIfAbsentByPath return type mismatch: absent write returns null"), messages);
+        assertTrue(messages.contains("@EnsurePutByPath return type mismatch: append returns null"), messages);
+        assertTrue(messages.contains("Cannot resolve writable property 'child'"), messages);
+        assertTrue(messages.contains("Ensure intermediate container type testcase.Model.NoDefault must have an accessible no-arg constructor"), messages);
+        assertTrue(messages.contains("Path operation annotations cannot be used together"), messages);
     }
 
     private static void write(Path path, String text) throws Exception {
