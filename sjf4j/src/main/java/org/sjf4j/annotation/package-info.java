@@ -1,4 +1,5 @@
 /**
- * Declarative metadata namespaces for node binding and schema validation.
+ * Declarative metadata namespaces for node binding, schema validation,
+ * compiled path accessors, and compiled mappers.
  */
 package org.sjf4j.annotation;

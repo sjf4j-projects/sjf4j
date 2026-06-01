@@ -109,6 +109,15 @@ public final class GeneratorUtil {
     }
 
     /**
+     * Returns true when boxed/erased {@code from} can be assigned to boxed/erased {@code to}.
+     */
+    public static boolean isAssignableBoxed(ProcessorContext ctx, TypeMirror from, TypeMirror to) {
+        return ctx.types.isAssignable(
+                ctx.types.erasure(boxed(ctx, from)),
+                ctx.types.erasure(boxed(ctx, to)));
+    }
+
+    /**
      * Returns true when the type erases to java.lang.Object.
      */
     public static boolean isObject(ProcessorContext ctx, TypeMirror type) {
@@ -120,6 +129,13 @@ public final class GeneratorUtil {
      */
     public static String escape(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * Decapitalizes a bean property suffix using the framework's simple generator convention.
+     */
+    public static String decap(String value) {
+        return value.length() == 0 ? value : Character.toLowerCase(value.charAt(0)) + value.substring(1);
     }
 
     /**

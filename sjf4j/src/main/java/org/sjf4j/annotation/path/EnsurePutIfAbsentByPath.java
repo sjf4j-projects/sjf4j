@@ -8,12 +8,16 @@ import java.lang.annotation.Target;
 /**
  * Generates a direct single-path write-if-absent method that creates missing
  * intermediate containers before checking the final value.
+ *
  * <p>
  * Method parameters follow {@link PutByPath}. The final value is written only
  * when the current target is absent or {@code null}; an existing non-null value
  * is returned unchanged. Append targets always append and return {@code null}.
  * Because absent writes return {@code null}, primitive method return types are
- * not supported.
+ * not supported.</p>
+ *
+ * <p>Intermediate creation rules are the same as {@link EnsurePutByPath}. The
+ * root parameter is required; only children below the root are created.</p>
  *
  * <pre>{@code
  * @CompiledPath
@@ -27,7 +31,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface EnsurePutIfAbsentByPath {
     /**
-     * Single-target JSONPath expression to ensure and write if absent.
+     * Single-target JSONPath expression to create as needed and write only when absent.
      */
     String value();
 }

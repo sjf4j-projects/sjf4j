@@ -1,0 +1,83 @@
+package org.sjf4j.annotation.mapper;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Customizes one target property in a {@link CompiledMapper} method.
+ *
+ * <p>Without this annotation, mapper methods use same-name auto mapping for all
+ * writable target properties. Add one or more {@code @Mapping} annotations to
+ * override that default for selected targets.</p>
+ *
+ * <p>Supported forms:</p>
+ * <ul>
+ *     <li>{@code @Mapping(target = "to", source = "from")} maps a differently
+ *     named source property.</li>
+ *     <li>{@code @Mapping(target = "to", ignore = true)} skips a writable target
+ *     property. Constructor and record targets cannot ignore required constructor
+ *     arguments.</li>
+ *     <li>{@code @Mapping(target = "to", sources = {...}, compute = "...")}
+ *     computes a target value from one or more simple source properties.</li>
+ * </ul>
+ *
+ * <p>Compute expressions are intentionally simple source-code snippets consumed
+ * by the annotation processor. They may be expression-bodied lambda-like strings,
+ * for example {@code "(a, b) -> a + b"}, or {@code "this::helper"} references to
+ * default or static methods declared on the mapper interface. Blocks, statements,
+ * and {@code return} are not supported.</p>
+ *
+ * <p>All source names are simple property names in V1; nested paths such as
+ * {@code "owner.name"} are not supported.</p>
+ */
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.METHOD)
+@Repeatable(Mappings.class)
+public @interface Mapping {
+    /**
+     * Target property name to customize.
+     *
+     * <p>Required for normal, ignored, and computed mappings. An all-default
+     * annotation is treated as a no-op marker.</p>
+     */
+    String target() default "";
+
+    /**
+     * Source property name for a simple property copy.
+     *
+     * <p>When omitted, the target name is used as the source name. Cannot be
+     * combined with {@link #ignore()} or {@link #compute()}.</p>
+     */
+    String source() default "";
+
+    /**
+     * Source property names passed to a computed mapping.
+     *
+     * <p>When {@link #compute()} is an inline lambda-like expression, these names
+     * are matched to the lambda parameters. When omitted, the lambda parameter
+     * names are used as source property names. For {@code this::helper}, omitted
+     * sources default to the helper method parameter names.</p>
+     */
+    String[] sources() default {};
+
+    /**
+     * Computed value expression for the target property.
+     *
+     * <p>Use an expression-bodied lambda-like string such as
+     * {@code "(first, last) -> first + \" \" + last"}, or a helper reference such
+     * as {@code "this::join"}. The generated mapper emits direct Java code; no
+     * runtime lambda object is created.</p>
+     */
+    String compute() default "";
+
+    /**
+     * Whether to skip assignment of the target property.
+     *
+     * <p>Cannot be combined with {@link #source()}, {@link #sources()}, or
+     * {@link #compute()}.</p>
+     */
+    boolean ignore() default false;
+}

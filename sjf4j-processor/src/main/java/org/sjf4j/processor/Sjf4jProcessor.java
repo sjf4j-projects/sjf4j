@@ -1,7 +1,10 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.annotation.path.CompiledPath;
+import org.sjf4j.annotation.mapper.CompiledMapper;
+import org.sjf4j.exception.JsonException;
 import org.sjf4j.processor.path.PathGenerator;
+import org.sjf4j.processor.mapper.MapperGenerator;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -25,14 +28,20 @@ import java.util.Set;
         "org.sjf4j.annotation.path.PutByPath",
         "org.sjf4j.annotation.path.PutIfParentPresentByPath",
         "org.sjf4j.annotation.path.EnsurePutByPath",
-        "org.sjf4j.annotation.path.EnsurePutIfAbsentByPath"
+        "org.sjf4j.annotation.path.EnsurePutIfAbsentByPath",
+
+        "org.sjf4j.annotation.mapper.CompiledMapper",
+        "org.sjf4j.annotation.mapper.Mapping",
+        "org.sjf4j.annotation.mapper.Mappings"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
-    private static final String ANNO_COMPILED_NODES = CompiledPath.class.getName();
+    private static final String ANNO_COMPILED_PATH = CompiledPath.class.getName();
+    private static final String ANNO_COMPILED_MAPPER = CompiledMapper.class.getName();
 
     private ProcessorContext context;
     private PathGenerator pathGenerator;
+    private MapperGenerator mapperGenerator;
 
     /**
      * Uses the newest source level supported by the current compiler.
@@ -50,6 +59,7 @@ public final class Sjf4jProcessor extends AbstractProcessor {
         super.init(processingEnv);
         this.context = new ProcessorContext(processingEnv);
         this.pathGenerator = new PathGenerator(context);
+        this.mapperGenerator = new MapperGenerator(context);
     }
 
     /**
@@ -66,20 +76,35 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                 pathGenerator.generate((TypeElement) element);
             }
         }
+        for (Element element : roundEnv.getElementsAnnotatedWith(CompiledMapper.class)) {
+            if (element.getKind() != ElementKind.INTERFACE) {
+                context.error(element, "@CompiledMapper only supports interfaces");
+            } else {
+                mapperGenerator.generate((TypeElement) element);
+            }
+        }
         return false;
     }
 
     private void validateAnnotation(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement anno : annotations) {
-            if (ANNO_COMPILED_NODES.equals(anno.getQualifiedName().toString())) continue;
+            String annoName = anno.getQualifiedName().toString();
+            if (ANNO_COMPILED_PATH.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName)) continue;
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
                 if (element.getKind() != ElementKind.METHOD) {
                     context.error(element, "@" + anno.getSimpleName() + " only supports methods");
                 } else {
                     Element owner = element.getEnclosingElement();
-                    if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledPath.class) == null) {
-                        context.error(element,
-                                "@" + anno + " methods must be declared in an @CompiledPath interface");
+                    if (annoName.startsWith("org.sjf4j.annotation.mapper.")) {
+                        if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledMapper.class) == null) {
+                            context.error(element, "@" + anno + " methods must be declared in an @CompiledMapper interface");
+                        }
+                    } else if (annoName.startsWith("org.sjf4j.annotation.path.")) {
+                        if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledPath.class) == null) {
+                            context.error(element, "@" + anno + " methods must be declared in an @CompiledPath interface");
+                        }
+                    } else {
+                        context.error(element, "Unrecognized annotation " + annoName);
                     }
                 }
             }

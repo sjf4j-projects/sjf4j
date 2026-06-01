@@ -623,7 +623,8 @@ public final class PathGenerator {
             return ctx.objectType;
         }
         if (parent.getKind() == TypeKind.ARRAY) {
-            return ((ArrayType) parent).getComponentType();
+            _error(context, target, "Cannot append on Java array " + parent);
+            return null;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.listType)) {
             return GeneratorUtil.listValueType(ctx, parent);
@@ -1020,7 +1021,20 @@ public final class PathGenerator {
     private void _emitEnsurePutBack(SourceWriter out, TypeMirror parentType, PathSegment segment,
                                     Map<String, VariableElement> pathParams, String parentVar,
                                     String valueVar, int i) {
-        _emitPutLastNoOld(out, parentType, segment, pathParams, parentVar, valueVar, "return;");
+        if (segment instanceof PathSegment.Index) {
+            _emitPutIndexNoOld(out, parentType, ((PathSegment.Index) segment).index, parentVar, valueVar,
+                    "v" + (i - 1) + "i");
+        } else if (segment instanceof PathSegment.Param) {
+            VariableElement param = pathParams.get(((PathSegment.Param) segment).param);
+            if (_isInt(param.asType())) {
+                _emitPutParamIndexNoOld(out, parentType, param, parentVar, valueVar, "return;",
+                        "v" + (i - 1) + "i");
+            } else {
+                _emitPutParamNameNoOld(out, parentType, param.getSimpleName().toString(), parentVar, valueVar);
+            }
+        } else {
+            _emitPutLastNoOld(out, parentType, segment, pathParams, parentVar, valueVar, "return;");
+        }
     }
 
     /**
@@ -1179,19 +1193,16 @@ public final class PathGenerator {
             return;
         }
         TypeMirror oldType = _resolvePutOldType(parent, last, pathParams);
-        String oldDecl = GeneratorUtil.localTypeName(ctx, oldType);
         if (last instanceof PathSegment.Name) {
             _emitName(out, parent, ((PathSegment.Name) last).name, parentVar, oldVar, "return;", false);
         } else if (last instanceof PathSegment.Index) {
-            out.line(oldDecl + " " + oldVar + " = (" + oldDecl + ") org.sjf4j.node.Nodes.getInArray(" + parentVar + ", " +
-                    ((PathSegment.Index) last).index + ");");
+            _emitEnsureIndexRead(out, parent, ((PathSegment.Index) last).index, parentVar, oldVar);
         } else {
             VariableElement param = pathParams.get(((PathSegment.Param) last).param);
             if (_isString(param.asType())) {
                 _emitParamName(out, parent, param.getSimpleName().toString(), parentVar, oldVar, "return;", false);
             } else {
-                out.line(oldDecl + " " + oldVar + " = (" + oldDecl + ") org.sjf4j.node.Nodes.getInArray(" + parentVar + ", " +
-                        param.getSimpleName() + ");");
+                _emitEnsureParamIndexRead(out, parent, param, parentVar, oldVar);
             }
         }
         out.line("if (" + oldVar + " != null) {");
@@ -1200,7 +1211,14 @@ public final class PathGenerator {
         if (method.getReturnType().getKind() == TypeKind.VOID) out.line("return;");
         out.dedent();
         out.line("}");
-        _emitPutLastNoOld(out, parent, last, pathParams, parentVar, valueExpr, "return;");
+        if (last instanceof PathSegment.Index) {
+            _emitPutIndexNoOld(out, parent, ((PathSegment.Index) last).index, parentVar, valueExpr, oldVar + "i");
+        } else if (last instanceof PathSegment.Param && _isInt(pathParams.get(((PathSegment.Param) last).param).asType())) {
+            _emitPutParamIndexNoOld(out, parent, pathParams.get(((PathSegment.Param) last).param), parentVar, valueExpr,
+                    "return;", oldVar + "i");
+        } else {
+            _emitPutLastNoOld(out, parent, last, pathParams, parentVar, valueExpr, "return;");
+        }
         _emitNullReturn(out, method);
     }
 
@@ -1210,15 +1228,29 @@ public final class PathGenerator {
     }
 
     /**
-     * Emits index reads used by ensure traversal. These intentionally use
-     * {@code Nodes.getInArray} so an out-of-range/missing value collapses to
-     * {@code null} and can trigger container creation.
+     * Emits index reads used by ensure traversal. Typed arrays/lists keep direct
+     * access so generated code preserves static generic types and avoids helper
+     * casts; missing indexes collapse to {@code null} to trigger creation.
      */
     private TypeMirror _emitEnsureIndexRead(SourceWriter out, TypeMirror current, int index, String currentVar, String nextVar) {
         TypeMirror outputType = _indexValueType(current);
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
-        out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
-                currentVar + ", " + index + ");");
+        if (GeneratorUtil.isObject(ctx, current)) {
+            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
+                    currentVar + ", " + index + ");");
+        } else if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
+            out.line("int " + nextVar + "i = " + _indexExpr(index, currentVar + ".size()") + ";");
+            out.line(declaredType + " " + nextVar + " = " + nextVar + "i < 0 || " + nextVar + "i >= " +
+                    currentVar + ".size() ? null : " + currentVar + ".getNode(" + nextVar + "i);");
+        } else if (current.getKind() == TypeKind.ARRAY) {
+            out.line("int " + nextVar + "i = " + _indexExpr(index, currentVar + ".length") + ";");
+            out.line(declaredType + " " + nextVar + " = " + nextVar + "i < 0 || " + nextVar + "i >= " +
+                    currentVar + ".length ? null : " + currentVar + "[" + nextVar + "i];");
+        } else {
+            out.line("int " + nextVar + "i = " + _indexExpr(index, currentVar + ".size()") + ";");
+            out.line(declaredType + " " + nextVar + " = " + nextVar + "i < 0 || " + nextVar + "i >= " +
+                    currentVar + ".size() ? null : " + currentVar + ".get(" + nextVar + "i);");
+        }
         return outputType;
     }
 
@@ -1229,8 +1261,25 @@ public final class PathGenerator {
                                                 String currentVar, String nextVar) {
         TypeMirror outputType = _indexValueType(current);
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
-        out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
-                currentVar + ", " + param.getSimpleName() + ");");
+        if (GeneratorUtil.isObject(ctx, current)) {
+            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") org.sjf4j.node.Nodes.getInArray(" +
+                    currentVar + ", " + param.getSimpleName() + ");");
+        } else if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
+            out.line("int " + nextVar + "i = " + param.getSimpleName() + " >= 0 ? " + param.getSimpleName() +
+                    " : " + currentVar + ".size() + " + param.getSimpleName() + ";");
+            out.line(declaredType + " " + nextVar + " = " + nextVar + "i < 0 || " + nextVar + "i >= " +
+                    currentVar + ".size() ? null : " + currentVar + ".getNode(" + nextVar + "i);");
+        } else if (current.getKind() == TypeKind.ARRAY) {
+            out.line("int " + nextVar + "i = " + param.getSimpleName() + " >= 0 ? " + param.getSimpleName() +
+                    " : " + currentVar + ".length + " + param.getSimpleName() + ";");
+            out.line(declaredType + " " + nextVar + " = " + nextVar + "i < 0 || " + nextVar + "i >= " +
+                    currentVar + ".length ? null : " + currentVar + "[" + nextVar + "i];");
+        } else {
+            out.line("int " + nextVar + "i = " + param.getSimpleName() + " >= 0 ? " + param.getSimpleName() +
+                    " : " + currentVar + ".size() + " + param.getSimpleName() + ";");
+            out.line(declaredType + " " + nextVar + " = " + nextVar + "i < 0 || " + nextVar + "i >= " +
+                    currentVar + ".size() ? null : " + currentVar + ".get(" + nextVar + "i);");
+        }
         return outputType;
     }
 
@@ -1330,25 +1379,77 @@ public final class PathGenerator {
             return ctx.objectType;
         }
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
-            out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInArray(" +
-                    parentVar + ", " + index + ", " + valueExpr + ");");
+            String indexVar = oldVar + "i";
+            out.line("int " + indexVar + " = " + _indexExpr(index, parentVar + ".size()") + ";");
+            out.line("Object " + oldVar + ";");
+            out.line("if (" + indexVar + " >= 0 && " + indexVar + " < " + parentVar + ".size()) " +
+                    oldVar + " = " + parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
+            out.line("else if (" + indexVar + " == " + parentVar + ".size()) { " + parentVar + ".add(" +
+                    valueExpr + "); " + oldVar + " = null; }");
+            out.line("else throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                    " + \" in JsonArray of size \" + " + parentVar + ".size());");
             return ctx.objectType;
         }
         if (parent.getKind() == TypeKind.ARRAY) {
             TypeMirror outputType = ((ArrayType) parent).getComponentType();
-            out.line(_readValueTypeName(outputType) + " " + oldVar + " = (" + _readValueTypeName(outputType) +
-                    ") org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
+            String indexVar = oldVar + "i";
+            out.line("int " + indexVar + " = " + _indexExpr(index, parentVar + ".length") + ";");
+            out.line("if (" + indexVar + " == " + parentVar + ".length) throw new org.sjf4j.exception.JsonException(\"cannot append to a Java array\");");
+            out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + parentVar + ".length) " +
+                    "throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                    " + \" in Java array of size \" + " + parentVar + ".length);");
+            out.line(_readValueTypeName(outputType) + " " + oldVar + " = " + parentVar + "[" + indexVar + "];");
+            out.line(parentVar + "[" + indexVar + "] = " + valueExpr + ";");
             return outputType;
         }
         TypeMirror outputType = GeneratorUtil.listValueType(ctx, parent);
-        out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + " = (" +
-                GeneratorUtil.localTypeName(ctx, outputType) + ") org.sjf4j.node.Nodes.putInArray(" +
-                parentVar + ", " + index + ", " + valueExpr + ");");
+        String indexVar = oldVar + "i";
+        out.line("int " + indexVar + " = " + _indexExpr(index, parentVar + ".size()") + ";");
+        out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + ";");
+        out.line("if (" + indexVar + " >= 0 && " + indexVar + " < " + parentVar + ".size()) " +
+                oldVar + " = " + parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
+        out.line("else if (" + indexVar + " == " + parentVar + ".size()) { " + parentVar + ".add(" +
+                valueExpr + "); " + oldVar + " = null; }");
+        out.line("else throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                " + \" in List of size \" + " + parentVar + ".size());");
         return outputType;
     }
 
     private void _emitPutIndexNoOld(SourceWriter out, TypeMirror parent, int index, String parentVar, String valueExpr) {
-        out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
+            return;
+        }
+        String indexVar = "oldi";
+        out.line("int " + indexVar + " = " + _indexExpr(index,
+                parent.getKind() == TypeKind.ARRAY ? parentVar + ".length" : parentVar + ".size()") + ";");
+        _emitPutIndexNoOld(out, parent, index, parentVar, valueExpr, indexVar);
+    }
+
+    private void _emitPutIndexNoOld(SourceWriter out, TypeMirror parent, int index, String parentVar,
+                                    String valueExpr, String indexVar) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + index + ", " + valueExpr + ");");
+            return;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
+            out.line("if (" + indexVar + " == " + parentVar + ".size()) " + parentVar + ".add(" + valueExpr + ");");
+            out.line("else " + parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
+            return;
+        }
+        if (parent.getKind() == TypeKind.ARRAY) {
+            out.line("if (" + indexVar + " == " + parentVar + ".length) throw new org.sjf4j.exception.JsonException(\"cannot append to a Java array\");");
+            out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + parentVar + ".length) " +
+                    "throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                    " + \" in Java array of size \" + " + parentVar + ".length);");
+            out.line(parentVar + "[" + indexVar + "] = " + valueExpr + ";");
+            return;
+        }
+        out.line("if (" + indexVar + " == " + parentVar + ".size()) " + parentVar + ".add(" + valueExpr + ");");
+        out.line("else if (" + indexVar + " >= 0 && " + indexVar + " < " + parentVar + ".size()) " +
+                parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
+        out.line("else throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                " + \" in List of size \" + " + parentVar + ".size());");
     }
 
     /**
@@ -1356,7 +1457,7 @@ public final class PathGenerator {
      * {@code null} old type for return validation and emission.
      */
     private TypeMirror _emitPutAppend(SourceWriter out, TypeMirror parent, String parentVar, String valueExpr) {
-        if (GeneratorUtil.isObject(ctx, parent) || parent.getKind() == TypeKind.ARRAY) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             out.line("org.sjf4j.node.Nodes.addInArray(" + parentVar + ", " + valueExpr + ");");
             return null;
         }
@@ -1425,26 +1526,86 @@ public final class PathGenerator {
                                           String valueExpr, String oldVar, String missing) {
         String paramName = param.getSimpleName().toString();
         String indexVar = paramName;
-        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
             out.line("Object " + oldVar + " = org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + indexVar + ", " + valueExpr + ");");
+            return ctx.objectType;
+        }
+        String posVar = oldVar + "i";
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
+            out.line("int " + posVar + " = " + indexVar + " >= 0 ? " + indexVar + " : " + parentVar + ".size() + " + indexVar + ";");
+            out.line("Object " + oldVar + ";");
+            out.line("if (" + posVar + " >= 0 && " + posVar + " < " + parentVar + ".size()) " +
+                    oldVar + " = " + parentVar + ".set(" + posVar + ", " + valueExpr + ");");
+            out.line("else if (" + posVar + " == " + parentVar + ".size()) { " + parentVar + ".add(" +
+                    valueExpr + "); " + oldVar + " = null; }");
+            out.line("else throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + posVar +
+                    " + \" in JsonArray of size \" + " + parentVar + ".size());");
             return ctx.objectType;
         }
         if (parent.getKind() == TypeKind.ARRAY) {
             TypeMirror outputType = ((ArrayType) parent).getComponentType();
-            out.line(_readValueTypeName(outputType) + " " + oldVar + " = (" + _readValueTypeName(outputType) +
-                    ") org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + indexVar + ", " + valueExpr + ");");
+            out.line("int " + posVar + " = " + indexVar + " >= 0 ? " + indexVar + " : " + parentVar + ".length + " + indexVar + ";");
+            out.line("if (" + posVar + " == " + parentVar + ".length) throw new org.sjf4j.exception.JsonException(\"cannot append to a Java array\");");
+            out.line("if (" + posVar + " < 0 || " + posVar + " >= " + parentVar + ".length) " +
+                    "throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + posVar +
+                    " + \" in Java array of size \" + " + parentVar + ".length);");
+            out.line(_readValueTypeName(outputType) + " " + oldVar + " = " + parentVar + "[" + posVar + "];");
+            out.line(parentVar + "[" + posVar + "] = " + valueExpr + ";");
             return outputType;
         }
         TypeMirror outputType = GeneratorUtil.listValueType(ctx, parent);
-        out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + " = (" +
-                GeneratorUtil.localTypeName(ctx, outputType) + ") org.sjf4j.node.Nodes.putInArray(" +
-                parentVar + ", " + indexVar + ", " + valueExpr + ");");
+        out.line("int " + posVar + " = " + indexVar + " >= 0 ? " + indexVar + " : " + parentVar + ".size() + " + indexVar + ";");
+        out.line(GeneratorUtil.localTypeName(ctx, outputType) + " " + oldVar + ";");
+        out.line("if (" + posVar + " >= 0 && " + posVar + " < " + parentVar + ".size()) " +
+                oldVar + " = " + parentVar + ".set(" + posVar + ", " + valueExpr + ");");
+        out.line("else if (" + posVar + " == " + parentVar + ".size()) { " + parentVar + ".add(" +
+                valueExpr + "); " + oldVar + " = null; }");
+        out.line("else throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + posVar +
+                " + \" in List of size \" + " + parentVar + ".size());");
         return outputType;
     }
 
     private void _emitPutParamIndexNoOld(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
                                          String valueExpr, String missing) {
-        out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + param.getSimpleName() + ", " + valueExpr + ");");
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + param.getSimpleName() + ", " + valueExpr + ");");
+            return;
+        }
+        String indexVar = "oldi";
+        if (parent.getKind() == TypeKind.ARRAY) {
+            out.line("int " + indexVar + " = " + param.getSimpleName() + " >= 0 ? " + param.getSimpleName() +
+                    " : " + parentVar + ".length + " + param.getSimpleName() + ";");
+        } else {
+            out.line("int " + indexVar + " = " + param.getSimpleName() + " >= 0 ? " + param.getSimpleName() +
+                    " : " + parentVar + ".size() + " + param.getSimpleName() + ";");
+        }
+        _emitPutParamIndexNoOld(out, parent, param, parentVar, valueExpr, missing, indexVar);
+    }
+
+    private void _emitPutParamIndexNoOld(SourceWriter out, TypeMirror parent, VariableElement param, String parentVar,
+                                         String valueExpr, String missing, String indexVar) {
+        if (GeneratorUtil.isObject(ctx, parent)) {
+            out.line("org.sjf4j.node.Nodes.putInArray(" + parentVar + ", " + param.getSimpleName() + ", " + valueExpr + ");");
+            return;
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) {
+            out.line("if (" + indexVar + " == " + parentVar + ".size()) " + parentVar + ".add(" + valueExpr + ");");
+            out.line("else " + parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
+            return;
+        }
+        if (parent.getKind() == TypeKind.ARRAY) {
+            out.line("if (" + indexVar + " == " + parentVar + ".length) throw new org.sjf4j.exception.JsonException(\"cannot append to a Java array\");");
+            out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + parentVar + ".length) " +
+                    "throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                    " + \" in Java array of size \" + " + parentVar + ".length);");
+            out.line(parentVar + "[" + indexVar + "] = " + valueExpr + ";");
+            return;
+        }
+        out.line("if (" + indexVar + " == " + parentVar + ".size()) " + parentVar + ".add(" + valueExpr + ");");
+        out.line("else if (" + indexVar + " >= 0 && " + indexVar + " < " + parentVar + ".size()) " +
+                parentVar + ".set(" + indexVar + ", " + valueExpr + ");");
+        out.line("else throw new org.sjf4j.exception.JsonException(\"cannot set at index \" + " + indexVar +
+                " + \" in List of size \" + " + parentVar + ".size());");
     }
 
     private static String _indexExpr(int index, String sizeExpr) {
@@ -1477,9 +1638,7 @@ public final class PathGenerator {
     }
 
     private boolean _isAssignableBoxed(TypeMirror from, TypeMirror to) {
-        return ctx.types.isAssignable(
-                ctx.types.erasure(GeneratorUtil.boxed(ctx, from)),
-                ctx.types.erasure(GeneratorUtil.boxed(ctx, to)));
+        return GeneratorUtil.isAssignableBoxed(ctx, from, to);
     }
 
     private String _putMissingThrow(ExecutableElement method, JsonPath path) {

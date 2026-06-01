@@ -1,0 +1,213 @@
+package org.sjf4j.processor.path;
+
+import org.sjf4j.path.JsonPath;
+import org.sjf4j.path.PathSegment;
+import org.sjf4j.processor.GeneratedClass;
+import org.sjf4j.processor.GeneratorUtil;
+import org.sjf4j.processor.ProcessorContext;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Emits direct null-safe read access for mapper source paths. */
+public final class PathAccessEmitter {
+    private final ProcessorContext ctx;
+
+    public PathAccessEmitter(ProcessorContext ctx) {
+        this.ctx = ctx;
+    }
+
+    public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                           String source, String tempPrefix) {
+        if (source.startsWith("$") || source.startsWith("/")) {
+            return _pathRead(context, target, rootType, rootVar, source, tempPrefix);
+        }
+        if (source.indexOf('.') >= 0) {
+            _error(context, target, "@CompiledMapper V1 source must be a property name, JSONPath ($...), or JSON Pointer (/...)");
+            return null;
+        }
+        return _simpleRead(context, target, rootType, rootVar, source);
+    }
+
+    private ReadAccess _simpleRead(Element context, GeneratedClass target, TypeMirror rootType, String rootVar, String name) {
+        Access a = _nameAccess(context, target, rootType, rootVar, name);
+        if (a == null) return null;
+        return new ReadAccess(a.code, a.type, false, new ArrayList<String>());
+    }
+
+    private ReadAccess _pathRead(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                                 String source, String tempPrefix) {
+        JsonPath path;
+        try {
+            path = JsonPath.parse(source);
+        } catch (RuntimeException e) {
+            _error(context, target, "Invalid @CompiledMapper source path '" + source + "': " + e.getMessage());
+            return null;
+        }
+        PathSegment[] segments = path.segments();
+        if (segments.length == 1) {
+            _error(context, target, "@CompiledMapper V1 source paths must select a child value, not root");
+            return null;
+        }
+        for (int i = 1; i < segments.length; i++) {
+            if (!(segments[i] instanceof PathSegment.Name) && !(segments[i] instanceof PathSegment.Index)) {
+                _error(context, target, "@CompiledMapper V1 source paths support only Name/Index segments");
+                return null;
+            }
+        }
+
+        List<String> temps = new ArrayList<String>();
+        TypeMirror currentType = rootType;
+        String currentVar = rootVar;
+        for (int i = 1; i < segments.length; i++) {
+            String nextVar = tempPrefix + i;
+            boolean checkParent = i != 1;
+            PathSegment s = segments[i];
+            Access a;
+            if (s instanceof PathSegment.Name) {
+                a = _nameAccess(context, target, currentType, currentVar, ((PathSegment.Name) s).name);
+                if (a == null) return null;
+                _emitNameTemp(temps, a, currentType, currentVar, nextVar, checkParent);
+            } else {
+                a = _indexAccess(context, target, currentType, currentVar, ((PathSegment.Index) s).index);
+                if (a == null) return null;
+                _emitIndexTemp(temps, a, currentType, currentVar, nextVar, ((PathSegment.Index) s).index, checkParent);
+            }
+            currentType = a.type;
+            currentVar = nextVar;
+        }
+        return new ReadAccess(currentVar, currentType, true, temps);
+    }
+
+    private void _emitNameTemp(List<String> temps, Access a, TypeMirror parentType, String parentVar, String nextVar, boolean checkParent) {
+        String type = GeneratorUtil.localTypeName(ctx, a.type);
+        if (checkParent && !parentType.getKind().isPrimitive()) {
+            temps.add(type + " " + nextVar + " = " + parentVar + " == null ? null : " + a.code + ";");
+        } else {
+            temps.add(type + " " + nextVar + " = " + a.code + ";");
+        }
+    }
+
+    private void _emitIndexTemp(List<String> temps, Access a, TypeMirror parentType, String parentVar, String nextVar,
+                                int index, boolean checkParent) {
+        String type = GeneratorUtil.localTypeName(ctx, a.type);
+        temps.add(type + " " + nextVar + " = null;");
+        String guard = checkParent && !parentType.getKind().isPrimitive() ? parentVar + " != null && " : "";
+        if (GeneratorUtil.isObject(ctx, parentType) || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.jsonArrayType)) {
+            temps.add("if (" + guard + "true) " + nextVar + " = " + a.code + ";");
+            return;
+        }
+        String size = parentType.getKind() == TypeKind.ARRAY ? parentVar + ".length" : parentVar + ".size()";
+        String idx = nextVar + "i";
+        temps.add("if (" + guard + "true) {");
+        temps.add("  int " + idx + " = " + _indexExpr(index, size) + ";");
+        temps.add("  if (" + idx + " >= 0 && " + idx + " < " + size + ") " + nextVar + " = " + a.code.replace("#IDX#", idx) + ";");
+        temps.add("}");
+    }
+
+    private Access _nameAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, String name) {
+        if (GeneratorUtil.isObject(ctx, current)) {
+            return new Access("org.sjf4j.node.Nodes.getInObject(" + currentVar + ", \"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonObjectType)) {
+            return new Access(currentVar + ".getNode(\"" + GeneratorUtil.escape(name) + "\")", ctx.objectType);
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.mapType)) {
+            TypeMirror t = GeneratorUtil.mapValueType(ctx, current);
+            String type = GeneratorUtil.localTypeName(ctx, t);
+            return new Access("(" + type + ") " + currentVar + ".get(\"" + GeneratorUtil.escape(name) + "\")", t);
+        }
+
+        TypeElement type = GeneratorUtil.asTypeElement(current);
+        if (type == null) {
+            _error(context, target, "Cannot resolve property '" + name + "' on " + current);
+            return null;
+        }
+        ExecutableElement getter = _findReadable(type, current, name);
+        if (getter != null) {
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
+            return new Access(currentVar + "." + getter.getSimpleName() + "()", mt.getReturnType());
+        }
+        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        if (field != null) return new Access(currentVar + "." + name, ctx.types.asMemberOf((DeclaredType) current, field));
+
+        _error(context, target, "Cannot read source property '" + name + "'");
+        return null;
+    }
+
+    private Access _indexAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, int index) {
+        if (GeneratorUtil.isObject(ctx, current)) {
+            return new Access("org.sjf4j.node.Nodes.getInArray(" + currentVar + ", " + index + ")", ctx.objectType);
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
+            return new Access(currentVar + ".getNode(" + index + ")", ctx.objectType);
+        }
+        if (current.getKind() == TypeKind.ARRAY) {
+            return new Access(currentVar + "[#IDX#]", ((ArrayType) current).getComponentType());
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.listType)) {
+            TypeMirror t = GeneratorUtil.listValueType(ctx, current);
+            String type = GeneratorUtil.localTypeName(ctx, t);
+            return new Access("(" + type + ") " + currentVar + ".get(#IDX#)", t);
+        }
+        _error(context, target, "Cannot resolve index [" + index + "] on " + current);
+        return null;
+    }
+
+    private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
+        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        ExecutableElement getter = GeneratorUtil.findGetter(ctx, type, owner, "get" + suffix, false);
+        if (getter == null) getter = GeneratorUtil.findGetter(ctx, type, owner, "is" + suffix, true);
+        if (getter == null && _isRecord(type)) getter = GeneratorUtil.findGetter(ctx, type, owner, name, false);
+        return getter;
+    }
+
+    private boolean _isRecord(TypeElement t) {
+        return "RECORD".equals(t.getKind().name());
+    }
+
+    private static String _indexExpr(int index, String sizeExpr) {
+        if (index >= 0) return Integer.toString(index);
+        if (index == Integer.MIN_VALUE) return sizeExpr + " + " + index;
+        return sizeExpr + " - " + (-index);
+    }
+
+    private void _error(Element element, GeneratedClass target, String message) {
+        ctx.error(element, target.originName() + ": " + message);
+    }
+
+    private static final class Access {
+        final String code;
+        final TypeMirror type;
+
+        Access(String c, TypeMirror t) {
+            code = c;
+            type = t;
+        }
+    }
+
+    public static final class ReadAccess {
+        public final String code;
+        public final TypeMirror type;
+        public final boolean path;
+        public final List<String> temps;
+
+        ReadAccess(String c, TypeMirror t, boolean p, List<String> s) {
+            code = c;
+            type = t;
+            path = p;
+            temps = s;
+        }
+    }
+}

@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class Sjf4jProcessorTest {
+public class PathProcessorTest {
 
     @Test
     public void generateGetAccessor() throws Exception {
@@ -252,6 +252,7 @@ public class Sjf4jProcessorTest {
                         "  @PutByPath(\"$[{name}]\") String keyOnList(List<String> root, String name, String value);\n" +
                         "  @PutByPath(\"$[{idx}]\") String indexOnMap(Map<String, String> root, int idx, String value);\n" +
                         "  @PutByPath(\"$[+].name\") Object appendMiddle(List<Object> root, Object value);\n" +
+                        "  @PutByPath(\"$[+]\") String appendArray(String[] root, String value);\n" +
                         "  @PutByPath(\"$[{name}]\") Integer valueMismatch(Map<String, Integer> root, String name, Long value);\n" +
                         "  @PutByPath(\"$[{name}]\") Object concrete(Bean root, String name, Object value);\n" +
                         "}\n");
@@ -279,6 +280,7 @@ public class Sjf4jProcessorTest {
         assertTrue(messages.contains("Cannot resolve dynamic key parameter '{name}' on java.util.List<java.lang.String>"), messages);
         assertTrue(messages.contains("Cannot resolve dynamic index parameter '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
         assertTrue(messages.contains("@PutByPath append segment must be the final path segment"), messages);
+        assertTrue(messages.contains("Cannot append on Java array java.lang.String[]"), messages);
         assertTrue(messages.contains("@PutByPath value type mismatch"), messages);
         assertTrue(messages.contains("Cannot resolve dynamic key parameter '{name}' on testcase.Bean"), messages);
     }
@@ -379,8 +381,10 @@ public class Sjf4jProcessorTest {
         Path dir = Files.createTempDirectory("sjf4j-processor-paths-test");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
+        Path generated = dir.resolve("generated");
         Files.createDirectories(src);
         Files.createDirectories(out);
+        Files.createDirectories(generated);
 
         write(src.resolve("Model.java"),
                 "package testcase;\n" +
@@ -457,6 +461,7 @@ public class Sjf4jProcessorTest {
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
         Iterable<? extends JavaFileObject> units = files.getJavaFileObjectsFromFiles(Arrays.asList(
                 src.resolve("Model.java").toFile(),
                 src.resolve("PathNodes.java").toFile()
@@ -466,6 +471,10 @@ public class Sjf4jProcessorTest {
                 "-processor", Sjf4jProcessor.class.getName()
         ), null, units).call();
         assertTrue(ok, diagnosticsToString(diagnostics));
+        String source = new String(Files.readAllBytes(generated.resolve("testcase/PathNodes_Impl.java")), StandardCharsets.UTF_8);
+        assertTrue(!source.contains("Nodes.putInArray"), source);
+        assertTrue(source.contains("old = v0.set(oldi, value)"), source);
+        assertTrue(source.contains("old = v0[oldi]"), source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> rootClass = Class.forName("testcase.Model$Root", true, loader);
@@ -561,6 +570,7 @@ public class Sjf4jProcessorTest {
                         "    public HashMap<String,HashMap<String,Object>> hash = new HashMap<>();\n" +
                         "    public Bean bean = new Bean();\n" +
                         "    public List<Map<String,Object>> list = new ArrayList<>();\n" +
+                        "    public List<String> strings = new ArrayList<>();\n" +
                         "    public ArrayList<LinkedList<Object>> concreteList = new ArrayList<>();\n" +
                         "  }\n" +
                         "  public static final class Bean {\n" +
@@ -582,6 +592,8 @@ public class Sjf4jProcessorTest {
                         "  @EnsurePutByPath(\"$.concreteList[0][0]\") Object ensureLinkedList(Model.Root root, Object value);\n" +
                         "  @EnsurePutByPath(\"$.map[{key}][{idx}]\") Object ensureDynamic(Model.Root root, String key, int idx, Object value);\n" +
                         "  @EnsurePutIfAbsentByPath(\"$.map.once\") Object ensureIfAbsent(Model.Root root, Object value);\n" +
+                        "  @EnsurePutIfAbsentByPath(\"$.strings[0]\") String ensureStringIfAbsent(Model.Root root, String value);\n" +
+                        "  @EnsurePutIfAbsentByPath(\"$.strings[{idx}]\") String ensureStringDynamicIfAbsent(Model.Root root, int idx, String value);\n" +
                         "  @EnsurePutIfAbsentByPath(\"$.map.voidOnce\") void ensureIfAbsentVoid(Model.Root root, Object value);\n" +
                         "  @EnsurePutIfAbsentByPath(\"$.map[{key}]\") Object ensureIfAbsentParam(Model.Root root, String key, Object value);\n" +
                         "}\n");
@@ -604,6 +616,7 @@ public class Sjf4jProcessorTest {
         String source = new String(Files.readAllBytes(generated.resolve("testcase/EnsureNodes_Impl.java")), StandardCharsets.UTF_8);
         assertTrue(!source.contains("createObjectContainer"), source);
         assertTrue(!source.contains("createArrayContainer"), source);
+        assertTrue(source.contains("old = oldi < 0 || oldi >= v0.size() ? null : v0.get(oldi)"), source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> rootClass = Class.forName("testcase.Model$Root", true, loader);
@@ -614,6 +627,7 @@ public class Sjf4jProcessorTest {
         Map<String, Object> map = (Map<String, Object>) rootClass.getField("map").get(root);
         Map<String, Map<String, Object>> hash = (Map<String, Map<String, Object>>) rootClass.getField("hash").get(root);
         List<Map<String, Object>> list = (List<Map<String, Object>>) rootClass.getField("list").get(root);
+        List<String> strings = (List<String>) rootClass.getField("strings").get(root);
         List<List<Object>> concreteList = (List<List<Object>>) rootClass.getField("concreteList").get(root);
 
         assertNull(nodesClass.getMethod("ensureMap", rootClass, Object.class).invoke(nodes, root, "v"));
@@ -640,6 +654,11 @@ public class Sjf4jProcessorTest {
         map.put("once", null);
         assertNull(nodesClass.getMethod("ensureIfAbsent", rootClass, Object.class).invoke(nodes, root, "third"));
         assertEquals("third", map.get("once"));
+        assertNull(nodesClass.getMethod("ensureStringIfAbsent", rootClass, String.class).invoke(nodes, root, "zero"));
+        assertEquals("zero", strings.get(0));
+        assertEquals("zero", nodesClass.getMethod("ensureStringIfAbsent", rootClass, String.class).invoke(nodes, root, "ignored"));
+        assertNull(nodesClass.getMethod("ensureStringDynamicIfAbsent", rootClass, int.class, String.class).invoke(nodes, root, 1, "one"));
+        assertEquals("one", strings.get(1));
         nodesClass.getMethod("ensureIfAbsentVoid", rootClass, Object.class).invoke(nodes, root, "void-first");
         assertEquals("void-first", map.get("voidOnce"));
         nodesClass.getMethod("ensureIfAbsentVoid", rootClass, Object.class).invoke(nodes, root, "void-second");
