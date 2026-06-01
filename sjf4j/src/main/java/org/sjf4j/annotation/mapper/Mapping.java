@@ -22,6 +22,11 @@ import java.lang.annotation.Target;
  *     arguments.</li>
  *     <li>{@code @Mapping(target = "to", sources = {...}, compute = "...")}
  *     computes a target value from one or more simple source properties.</li>
+ *     <li>For mapper methods with multiple source parameters, source names may
+ *     be qualified with the parameter name and a colon: {@code "customer:name"}
+ *     reads the {@code name} property from the {@code customer} parameter, and
+ *     {@code "customer:$.profile.name"} or {@code "customer:/profile/name"}
+ *     applies an SJF4J path to that parameter root.</li>
  * </ul>
  *
  * <p>Compute expressions are intentionally simple source-code snippets consumed
@@ -30,8 +35,10 @@ import java.lang.annotation.Target;
  * default or static methods declared on the mapper interface. Blocks, statements,
  * and {@code return} are not supported.</p>
  *
- * <p>All source names are simple property names in V1; nested paths such as
- * {@code "owner.name"} are not supported.</p>
+ * <p>With a single source parameter, unqualified source names retain existing
+ * semantics, including dotted map-key compatibility. With multiple source
+ * parameters, unqualified names must resolve to a unique readable source
+ * property, otherwise the parameter-qualified form is required.</p>
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)

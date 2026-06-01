@@ -1,4 +1,4 @@
-package org.sjf4j.processor.path;
+package org.sjf4j.processor.mapper;
 
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
@@ -7,9 +7,7 @@ import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -19,6 +17,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Emits direct null-safe read access for mapper source paths. */
 public final class PathAccessEmitter {
@@ -29,40 +28,62 @@ public final class PathAccessEmitter {
     }
 
     public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
-                           String source, String tempPrefix) {
-        if (source.startsWith("$") || source.startsWith("/")) {
-            return _pathRead(context, target, rootType, rootVar, source, tempPrefix);
-        }
-        if (source.indexOf('.') >= 0) {
-            _error(context, target, "@CompiledMapper V1 source must be a property name, JSONPath ($...), or JSON Pointer (/...)");
-            return null;
-        }
-        return _simpleRead(context, target, rootType, rootVar, source);
+                            String source, String tempPrefix) {
+        return _read(context, target, rootType, rootVar, source, tempPrefix, false, null, "");
     }
 
-    private ReadAccess _simpleRead(Element context, GeneratedClass target, TypeMirror rootType, String rootVar, String name) {
+    public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                           String source, String tempPrefix, Map<String, CachedPath> cache, String cacheRoot) {
+        return _read(context, target, rootType, rootVar, source, tempPrefix, false, cache, cacheRoot);
+    }
+
+    public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                                       String source, String tempPrefix) {
+        return _read(context, target, rootType, rootVar, source, tempPrefix, true, null, "");
+    }
+
+    public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                                       String source, String tempPrefix, Map<String, CachedPath> cache, String cacheRoot) {
+        return _read(context, target, rootType, rootVar, source, tempPrefix, true, cache, cacheRoot);
+    }
+
+    private ReadAccess _read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                             String source, String tempPrefix, boolean nullableRoot,
+                             Map<String, CachedPath> cache, String cacheRoot) {
+        if (source.startsWith("$") || source.startsWith("/")) {
+            return _pathRead(context, target, rootType, rootVar, source, tempPrefix, nullableRoot, cache, cacheRoot);
+        }
+        return _simpleRead(context, target, rootType, rootVar, source, nullableRoot);
+    }
+
+    private ReadAccess _simpleRead(Element context, GeneratedClass target, TypeMirror rootType, String rootVar, String name,
+                                   boolean nullableRoot) {
         Access a = _nameAccess(context, target, rootType, rootVar, name);
         if (a == null) return null;
+        if (nullableRoot) {
+            return new ReadAccess(rootVar + " == null ? null : " + a.code, a.type, false, new ArrayList<String>());
+        }
         return new ReadAccess(a.code, a.type, false, new ArrayList<String>());
     }
 
     private ReadAccess _pathRead(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
-                                 String source, String tempPrefix) {
+                                  String source, String tempPrefix, boolean nullableRoot,
+                                  Map<String, CachedPath> cache, String cacheRoot) {
         JsonPath path;
         try {
             path = JsonPath.parse(source);
         } catch (RuntimeException e) {
-            _error(context, target, "Invalid @CompiledMapper source path '" + source + "': " + e.getMessage());
+            _error(context, target, "Invalid @Mapping.source path '" + source + "': " + e.getMessage());
             return null;
         }
         PathSegment[] segments = path.segments();
         if (segments.length == 1) {
-            _error(context, target, "@CompiledMapper V1 source paths must select a child value, not root");
+            _error(context, target, "@Mapping.source path must select a child value; root path is not supported");
             return null;
         }
         for (int i = 1; i < segments.length; i++) {
             if (!(segments[i] instanceof PathSegment.Name) && !(segments[i] instanceof PathSegment.Index)) {
-                _error(context, target, "@CompiledMapper V1 source paths support only Name/Index segments");
+                _error(context, target, "@Mapping.source path supports only property names and array/list indexes");
                 return null;
             }
         }
@@ -70,9 +91,26 @@ public final class PathAccessEmitter {
         List<String> temps = new ArrayList<String>();
         TypeMirror currentType = rootType;
         String currentVar = rootVar;
-        for (int i = 1; i < segments.length; i++) {
+        int start = 1;
+        if (cache != null) {
+            String root = cacheRoot == null ? "" : cacheRoot;
+            for (int i = segments.length - 1; i >= 1; i--) {
+                CachedPath cached = cache.get(root + _cacheKey(segments, i));
+                if (cached != null) {
+                    currentType = cached.type;
+                    currentVar = cached.code;
+                    start = i + 1;
+                    break;
+                }
+            }
+            if (start == segments.length) {
+                return new ReadAccess(currentVar, currentType, true, temps);
+            }
+        }
+
+        for (int i = start; i < segments.length; i++) {
             String nextVar = tempPrefix + i;
-            boolean checkParent = i != 1;
+            boolean checkParent = i != 1 || nullableRoot;
             PathSegment s = segments[i];
             Access a;
             if (s instanceof PathSegment.Name) {
@@ -86,8 +124,25 @@ public final class PathAccessEmitter {
             }
             currentType = a.type;
             currentVar = nextVar;
+            if (cache != null) {
+                cache.put((cacheRoot == null ? "" : cacheRoot) + _cacheKey(segments, i), new CachedPath(currentVar, currentType));
+            }
         }
         return new ReadAccess(currentVar, currentType, true, temps);
+    }
+
+    private String _cacheKey(PathSegment[] segments, int end) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 1; i <= end; i++) {
+            PathSegment s = segments[i];
+            if (s instanceof PathSegment.Name) {
+                String name = ((PathSegment.Name) s).name;
+                b.append('n').append(name.length()).append(':').append(name).append(';');
+            } else {
+                b.append('i').append(((PathSegment.Index) s).index).append(';');
+            }
+        }
+        return b.toString();
     }
 
     private void _emitNameTemp(List<String> temps, Access a, TypeMirror parentType, String parentVar, String nextVar, boolean checkParent) {
@@ -103,17 +158,26 @@ public final class PathAccessEmitter {
                                 int index, boolean checkParent) {
         String type = GeneratorUtil.localTypeName(ctx, a.type);
         temps.add(type + " " + nextVar + " = null;");
-        String guard = checkParent && !parentType.getKind().isPrimitive() ? parentVar + " != null && " : "";
+        String guard = checkParent && !parentType.getKind().isPrimitive() ? parentVar + " != null" : null;
         if (GeneratorUtil.isObject(ctx, parentType) || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.jsonArrayType)) {
-            temps.add("if (" + guard + "true) " + nextVar + " = " + a.code + ";");
+            if (guard == null) {
+                temps.add(nextVar + " = " + a.code + ";");
+            } else {
+                temps.add("if (" + guard + ") " + nextVar + " = " + a.code + ";");
+            }
             return;
         }
         String size = parentType.getKind() == TypeKind.ARRAY ? parentVar + ".length" : parentVar + ".size()";
         String idx = nextVar + "i";
-        temps.add("if (" + guard + "true) {");
-        temps.add("  int " + idx + " = " + _indexExpr(index, size) + ";");
-        temps.add("  if (" + idx + " >= 0 && " + idx + " < " + size + ") " + nextVar + " = " + a.code.replace("#IDX#", idx) + ";");
-        temps.add("}");
+        String indent = guard == null ? "" : "  ";
+        if (guard != null) {
+            temps.add("if (" + guard + ") {");
+        }
+        temps.add(indent + "int " + idx + " = " + _indexExpr(index, size) + ";");
+        temps.add(indent + "if (" + idx + " >= 0 && " + idx + " < " + size + ") " + nextVar + " = " + a.code.replace("#IDX#", idx) + ";");
+        if (guard != null) {
+            temps.add("}");
+        }
     }
 
     private Access _nameAccess(Element context, GeneratedClass target, TypeMirror current, String currentVar, String name) {
@@ -125,13 +189,12 @@ public final class PathAccessEmitter {
         }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.mapType)) {
             TypeMirror t = GeneratorUtil.mapValueType(ctx, current);
-            String type = GeneratorUtil.localTypeName(ctx, t);
-            return new Access("(" + type + ") " + currentVar + ".get(\"" + GeneratorUtil.escape(name) + "\")", t);
+            return new Access(currentVar + ".get(\"" + GeneratorUtil.escape(name) + "\")", t);
         }
 
         TypeElement type = GeneratorUtil.asTypeElement(current);
         if (type == null) {
-            _error(context, target, "Cannot resolve property '" + name + "' on " + current);
+            _error(context, target, "Cannot resolve source property '" + name + "' on " + current);
             return null;
         }
         ExecutableElement getter = _findReadable(type, current, name);
@@ -142,7 +205,7 @@ public final class PathAccessEmitter {
         VariableElement field = GeneratorUtil.findField(ctx, type, name);
         if (field != null) return new Access(currentVar + "." + name, ctx.types.asMemberOf((DeclaredType) current, field));
 
-        _error(context, target, "Cannot read source property '" + name + "'");
+        _error(context, target, "Cannot read source property '" + name + "' on " + current);
         return null;
     }
 
@@ -158,14 +221,14 @@ public final class PathAccessEmitter {
         }
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.listType)) {
             TypeMirror t = GeneratorUtil.listValueType(ctx, current);
-            String type = GeneratorUtil.localTypeName(ctx, t);
-            return new Access("(" + type + ") " + currentVar + ".get(#IDX#)", t);
+            return new Access(currentVar + ".get(#IDX#)", t);
         }
-        _error(context, target, "Cannot resolve index [" + index + "] on " + current);
+        _error(context, target, "Cannot apply index [" + index + "] to " + current);
         return null;
     }
 
     private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
+        if (name.length() == 0) return null;
         String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
         ExecutableElement getter = GeneratorUtil.findGetter(ctx, type, owner, "get" + suffix, false);
         if (getter == null) getter = GeneratorUtil.findGetter(ctx, type, owner, "is" + suffix, true);
@@ -208,6 +271,16 @@ public final class PathAccessEmitter {
             type = t;
             path = p;
             temps = s;
+        }
+    }
+
+    public static final class CachedPath {
+        final String code;
+        final TypeMirror type;
+
+        CachedPath(String c, TypeMirror t) {
+            code = c;
+            type = t;
         }
     }
 }

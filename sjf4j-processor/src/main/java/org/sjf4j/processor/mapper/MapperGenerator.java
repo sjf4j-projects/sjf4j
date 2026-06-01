@@ -5,7 +5,6 @@ import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.SourceWriter;
-import org.sjf4j.processor.path.PathAccessEmitter;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -58,29 +57,42 @@ public final class MapperGenerator {
      */
     private void _genMap(TypeElement iface, ExecutableElement method, GeneratedClass target) {
         if (method.getReturnType().getKind() == TypeKind.VOID) {
-            _error(method, target, "@CompiledMapper methods must return a target type");
+            _error(method, target, "@CompiledMapper method must return a target type");
             return;
         }
-        if (method.getParameters().size() != 1) {
-            _error(method, target, "@CompiledMapper V1 methods must have exactly one source parameter");
+        if (method.getParameters().isEmpty()) {
+            _error(method, target, "@CompiledMapper method must have at least one source parameter");
             return;
         }
 
-        VariableElement source = method.getParameters().get(0);
-        TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
         TypeElement targetType = GeneratorUtil.asTypeElement(method.getReturnType());
-        if (sourceType == null || targetType == null) {
-            _error(method, target, "@CompiledMapper V1 supports declared source and target types only");
+        if (targetType == null) {
+            _error(method, target, "@CompiledMapper supports only declared source and target types");
             return;
         }
 
-        Map<String, Read> reads = _reads(sourceType, source.asType());
+        List<SourceParam> sources = new ArrayList<SourceParam>();
+        for (VariableElement source : method.getParameters()) {
+            TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
+            if (sourceType == null) {
+                _error(method, target, "@CompiledMapper supports only declared source and target types");
+                return;
+            }
+            sources.add(new SourceParam(source, _reads(sourceType, source.asType())));
+        }
+        boolean multi = sources.size() > 1;
+
         Map<String, Write> writes = _writes(targetType, method.getReturnType());
         Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
+        if (multi && plan.ctor != null) {
+            _error(method, target, "Multi-source @CompiledMapper methods do not support constructor or record targets");
+            return;
+        }
 
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         Map<String, Expr> explicit = new HashMap<String, Expr>();
+        Set<String> explicitTargets = new HashSet<String>();
         Set<String> ignored = new HashSet<String>();
 
         for (Mapping m : anns) {
@@ -92,16 +104,24 @@ public final class MapperGenerator {
                 ignored.add(t);
                 continue;
             }
+            explicitTargets.add(t);
+        }
+
+        MethodState state = new MethodState(_readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
+
+        for (Mapping m : anns) {
+            String t = m.target();
+            if (_isAutoMarker(m) || m.ignore()) continue;
             if (t.length() == 0) {
-                _error(method, target, "@Mapping target is required");
+                _error(method, target, "@Mapping requires a non-empty target");
                 return;
             }
 
             Expr e;
             if (m.compute().length() != 0) {
-                e = _compute(iface, method, target, source, reads, m);
+                e = _compute(iface, method, target, sources, multi, state, m);
             } else {
-                e = _readExpr(method, target, source, reads, m.source().length() == 0 ? t : m.source(), t);
+                e = _readExpr(method, target, sources, multi, state, m.source().length() == 0 ? t : m.source(), t, null);
             }
             if (e == null) return;
             explicit.put(t, e);
@@ -115,29 +135,27 @@ public final class MapperGenerator {
             if (ignored.contains(name)) continue;
 
             Expr e = explicit.get(name);
-            if (e == null && reads.containsKey(name)) e = _readExpr(method, target, source, reads, name, name);
+            if (e == null && _hasAutoSource(sources, multi, name)) {
+                e = _readExpr(method, target, sources, multi, state, name, name, null);
+            }
             if (e == null) {
-                _error(method, target, "Cannot assign target property '" + name + "'");
+                _error(method, target, "Cannot map target property '" + name + "': no source property, @Mapping, or compute expression was found");
                 return;
             }
 
             TypeMirror need = plan.writes.get(name).type;
-            if (e.path && need.getKind().isPrimitive()) {
-                _error(method, target, "@CompiledMapper V1 path source cannot target primitive property '" + name + "'");
-                return;
-            }
             if (!_assignable(e.type, need)) {
-                _error(method, target, "@Mapping type mismatch for target '" + name + "': " + e.type + " -> " + need);
+                _error(method, target, "Cannot assign source expression to target property '" + name + "': " + e.type + " is not assignable to " + need);
                 return;
             }
             values.put(name, e);
         }
         if (plan.ctor != null && values.size() != plan.names.size()) {
-            _error(method, target, "Constructor target properties cannot be ignored in V1");
+            _error(method, target, "Constructor and record target properties cannot be ignored");
             return;
         }
 
-        target.addMethod(out -> _emit(out, method, source, plan, values));
+        target.addMethod(out -> _emit(out, method, sources, multi, state, plan, values));
     }
 
     private boolean _isAutoMarker(Mapping m) {
@@ -150,28 +168,81 @@ public final class MapperGenerator {
 
     private boolean _validateMapping(ExecutableElement method, GeneratedClass target, Mapping m) {
         if (m.sources().length > 0 && m.compute().length() == 0) {
-            _error(method, target, "@Mapping sources is supported only with compute in V1");
+            _error(method, target, "@Mapping.sources may be used only with @Mapping.compute");
             return false;
         }
         if (m.ignore() && (m.source().length() != 0 || m.compute().length() != 0 || m.sources().length != 0)) {
-            _error(method, target, "@Mapping ignore cannot be combined with source/sources/compute");
+            _error(method, target, "@Mapping.ignore cannot be combined with source, sources, or compute");
             return false;
         }
         if (m.ignore() && m.target().length() == 0) {
-            _error(method, target, "@Mapping ignore requires target");
+            _error(method, target, "@Mapping.ignore requires a non-empty target");
             return false;
         }
         return true;
     }
 
-    private void _emit(SourceWriter out, ExecutableElement method, VariableElement source, Plan plan, Map<String, Expr> values) {
+    private Map<String, Integer> _readCounts(TypeElement iface, Mapping[] anns, Plan plan, Set<String> ignored,
+                                             Set<String> explicitTargets, List<SourceParam> sources, boolean multi) {
+        Map<String, Integer> counts = new HashMap<String, Integer>();
+        for (Mapping m : anns) {
+            if (_isAutoMarker(m) || m.ignore() || m.target().length() == 0) continue;
+
+            if (m.compute().length() != 0) {
+                String[] paths = _computeSourcePaths(iface, m);
+                for (int i = 0; i < paths.length; i++) _count(counts, paths[i]);
+            } else {
+                _count(counts, m.source().length() == 0 ? m.target() : m.source());
+            }
+        }
+        for (String name : plan.names) {
+            if (!ignored.contains(name) && !explicitTargets.contains(name) && _hasAutoSource(sources, multi, name)) {
+                _count(counts, name);
+            }
+        }
+        return counts;
+    }
+
+    private boolean _hasAutoSource(List<SourceParam> sources, boolean multi, String name) {
+        if (!multi) return sources.get(0).reads.containsKey(name);
+        // Multi-source unqualified names are allowed only when at least one
+        // source exposes the property; _resolveSource performs the uniqueness
+        // check and reports ambiguity if more than one source matches.
+        int count = 0;
+        for (SourceParam s : sources) if (s.reads.containsKey(name)) count++;
+        return count > 0;
+    }
+
+    private void _count(Map<String, Integer> counts, String source) {
+        Integer n = counts.get(source);
+        counts.put(source, n == null ? 1 : n + 1);
+    }
+
+    private void _emit(SourceWriter out, ExecutableElement method, List<SourceParam> sources, boolean multi, MethodState state,
+                       Plan plan, Map<String, Expr> values) {
         out.line("");
         out.line("@Override");
-        out.line("public " + method.getReturnType() + " " + method.getSimpleName() +
-                "(" + source.asType() + " " + source.getSimpleName() + ") {");
+        StringBuilder sig = new StringBuilder();
+        for (int i = 0; i < sources.size(); i++) {
+            if (i != 0) sig.append(", ");
+            sig.append(sources.get(i).element.asType()).append(" ").append(sources.get(i).name);
+        }
+        out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + sig + ") {");
         out.indent();
-        out.line("if (" + source.getSimpleName() + " == null) return null;");
+        if (multi) {
+            StringBuilder guard = new StringBuilder("if (");
+            for (int i = 0; i < sources.size(); i++) {
+                if (i != 0) guard.append(" && ");
+                guard.append(sources.get(i).name).append(" == null");
+            }
+            out.line(guard.append(") return null;").toString());
+        } else {
+            out.line("if (" + sources.get(0).name + " == null) return null;");
+        }
 
+        for (String temp : state.readTemps) {
+            out.line(temp);
+        }
         for (Expr e : values.values()) {
             _emitTemps(out, e);
         }
@@ -287,7 +358,7 @@ public final class MapperGenerator {
             List<ExecutableElement> ctors = _publicConstructors(type);
             ExecutableElement ctor = ctors.isEmpty() ? null : ctors.get(0);
             if (ctor == null) {
-                _error(method, target, "Record target has no public canonical constructor");
+                _error(method, target, "Record target type has no public canonical constructor");
                 return null;
             }
             return _ctorPlan(ctor, mirror);
@@ -300,7 +371,7 @@ public final class MapperGenerator {
             }
         }
         if (ctors.size() != 1) {
-            _error(method, target, "Target type must have a no-args constructor, record constructor, or unique public constructor");
+            _error(method, target, "Target type must provide a public no-args constructor, be a record, or have exactly one public constructor");
             return null;
         }
         return _ctorPlan(ctors.get(0), mirror);
@@ -326,14 +397,87 @@ public final class MapperGenerator {
         return r;
     }
 
-    private Expr _readExpr(ExecutableElement method, GeneratedClass target, VariableElement source, Map<String, Read> reads,
-                           String path, String targetName) {
-        PathAccessEmitter.ReadAccess r = pathAccess.read(method, target, source.asType(), source.getSimpleName().toString(),
-                path, _tempName(targetName, "path", 0) + "_");
+    private Expr _readExpr(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi, MethodState state,
+                           String path, String targetName, String preferredTemp) {
+        ResolvedSource resolved = _resolveSource(method, target, sources, multi, path);
+        if (resolved == null) return null;
+
+        String key = resolved.param.name + ":" + resolved.path + ":" + resolved.nullableRoot;
+        CachedRead cached = state.cache.get(key);
+        if (cached != null) return new Expr(cached.code, cached.type, cached.path, cached.nullableRoot, true);
+
+        PathAccessEmitter.ReadAccess r = resolved.nullableRoot
+                ? pathAccess.readNullableRoot(method, target, resolved.param.element.asType(), resolved.param.name,
+                resolved.path, _tempName(targetName, "path", 0) + "_", state.pathCache, _pathCacheRoot(resolved))
+                : pathAccess.read(method, target, resolved.param.element.asType(), resolved.param.name,
+                resolved.path, _tempName(targetName, "path", 0) + "_", state.pathCache, _pathCacheRoot(resolved));
         if (r == null) return null;
-        Expr e = new Expr(r.code, r.type, r.path);
-        e.temps.addAll(r.temps);
+        Expr e = new Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
+        if (r.path) {
+            state.readTemps.addAll(r.temps);
+            e.local = true;
+            state.cache.put(key, new CachedRead(r.code, r.type, true, resolved.nullableRoot));
+        } else if (_readCount(state, path) > 1) {
+            String temp = preferredTemp == null ? _tempName(targetName, "read", 0) : preferredTemp;
+            state.readTemps.add(_localTypeName(r.type, resolved.nullableRoot) + " " + temp + " = " + r.code + ";");
+            e.code = temp;
+            e.local = true;
+            state.cache.put(key, new CachedRead(temp, r.type, false, resolved.nullableRoot));
+        } else {
+            e.temps.addAll(r.temps);
+        }
         return e;
+    }
+
+    private ResolvedSource _resolveSource(ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
+                                          boolean multi, String source) {
+        if (!multi) return new ResolvedSource(sources.get(0), source, false);
+
+        int colon = source.indexOf(':');
+        if (colon > 0) {
+            String left = source.substring(0, colon);
+            String right = source.substring(colon + 1);
+            SourceParam p = _sourceByName(sources, left);
+            if (p != null && right.length() != 0) {
+                return new ResolvedSource(p, right, true);
+            }
+            if (p != null) {
+                _error(method, target, "Invalid multi-source mapping '" + source + "': expected a property, JSONPath, or JSON Pointer after ':'");
+                return null;
+            }
+        }
+
+        SourceParam found = null;
+        // Unqualified multi-source names bind by unique readable property name
+        // across all source parameters.  They never default to the first source.
+        for (SourceParam p : sources) {
+            if (p.reads.containsKey(source)) {
+                if (found != null) {
+                    _error(method, target, "Ambiguous source property '" + source + "'; qualify it with a source parameter name");
+                    return null;
+                }
+                found = p;
+            }
+        }
+        if (found == null) {
+            _error(method, target, "Cannot resolve source '" + source + "' on any source parameter");
+            return null;
+        }
+        return new ResolvedSource(found, source, true);
+    }
+
+    private SourceParam _sourceByName(List<SourceParam> sources, String name) {
+        for (SourceParam p : sources) if (p.name.equals(name)) return p;
+        return null;
+    }
+
+    private int _readCount(MethodState state, String path) {
+        Integer n = state.readCounts.get(path);
+        return n == null ? 0 : n;
+    }
+
+    private String _pathCacheRoot(ResolvedSource resolved) {
+        return resolved.param.name + ':' + resolved.nullableRoot + ':';
     }
 
     /**
@@ -341,19 +485,20 @@ public final class MapperGenerator {
      * {@code this::helper} method. Inline bodies are emitted as Java expressions,
      * not as runtime lambda objects.
      */
-    private Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, VariableElement source, Map<String, Read> reads, Mapping m) {
+    private Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
+                          boolean multi, MethodState state, Mapping m) {
         String c = m.compute().trim();
         if (c.indexOf('{') >= 0 || c.indexOf('}') >= 0 || c.indexOf(';') >= 0 || c.contains("return")) {
-            _error(method, target, "@Mapping compute supports expression bodies only");
+            _error(method, target, "@Mapping.compute supports only expression bodies");
             return null;
         }
         if (c.startsWith("this::")) {
-            return _helper(iface, method, target, source, reads, m, c.substring(6));
+            return _helper(iface, method, target, sources, multi, state, m, c.substring(6));
         }
 
         int arrow = c.indexOf("->");
         if (arrow < 0) {
-            _error(method, target, "@Mapping compute must be a lambda expression or this::helper");
+            _error(method, target, "@Mapping.compute must be a lambda expression or this::helper");
             return null;
         }
 
@@ -362,25 +507,29 @@ public final class MapperGenerator {
         String[] params = left.length() == 0 ? new String[0] : left.split("\\s*,\\s*");
         String[] paths = m.sources().length == 0 ? params : m.sources();
         if (params.length != paths.length) {
-            _error(method, target, "@Mapping compute sources must match lambda parameters");
+            _error(method, target, "@Mapping.sources must match the lambda parameters in @Mapping.compute");
             return null;
         }
 
         String body = c.substring(arrow + 2).trim();
         Expr e = new Expr(body, null);
         for (int i = 0; i < params.length; i++) {
-            Expr v = _readExpr(method, target, source, reads, paths[i], m.target() + i);
+            String temp = _tempName(m.target(), params[i], i);
+            Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target() + i, temp);
             if (v == null) return null;
 
-            String temp = _tempName(m.target(), params[i], i);
-            e.code = e.code.replaceAll("\\b" + Pattern.quote(params[i]) + "\\b", temp);
             e.temps.addAll(v.temps);
-            e.temps.add(GeneratorUtil.localTypeName(ctx, v.type) + " " + temp + " = " + v.code + ";");
+            if (!v.local) {
+                e.temps.add(_localTypeName(v.type, v.nullableRoot) + " " + temp + " = " + v.code + ";");
+                v.code = temp;
+            }
+            e.code = e.code.replaceAll("\\b" + Pattern.quote(params[i]) + "\\b", v.code);
         }
         return e;
     }
 
-    private Expr _helper(TypeElement iface, ExecutableElement method, GeneratedClass target, VariableElement source, Map<String, Read> reads, Mapping m, String name) {
+    private Expr _helper(TypeElement iface, ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
+                         boolean multi, MethodState state, Mapping m, String name) {
         for (Element e : iface.getEnclosedElements()) {
             if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
 
@@ -396,28 +545,66 @@ public final class MapperGenerator {
                 }
             }
             if (paths.length != h.getParameters().size()) {
-                _error(method, target, "@Mapping compute sources must match helper parameters");
+                _error(method, target, "@Mapping.sources must match the helper method parameters in @Mapping.compute");
                 return null;
             }
 
+            Expr result = new Expr(null, ht.getReturnType());
             StringBuilder call = new StringBuilder(h.getModifiers().contains(Modifier.STATIC)
                     ? iface.getQualifiedName() + "." + name + "("
                     : name + "(");
             for (int i = 0; i < paths.length; i++) {
                 if (i != 0) call.append(", ");
 
-                Expr v = _readExpr(method, target, source, reads, paths[i], m.target() + i);
+                String preferred = _tempName(m.target(), h.getParameters().get(i).getSimpleName().toString(), i);
+                Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target() + i, preferred);
                 if (v == null) return null;
                 if (!_assignable(v.type, ht.getParameterTypes().get(i))) {
-                    _error(method, target, "@Mapping helper parameter type mismatch");
+                    _error(method, target, "@Mapping.compute helper parameter type mismatch");
                     return null;
                 }
+                result.temps.addAll(v.temps);
                 call.append(v.code);
             }
-            return new Expr(call.append(")").toString(), ht.getReturnType());
+            result.code = call.append(")").toString();
+            return result;
         }
-        _error(method, target, "Cannot resolve @Mapping compute helper '" + name + "'");
+        _error(method, target, "Cannot resolve @Mapping.compute helper '" + name + "'");
         return null;
+    }
+
+    private String[] _computeSourcePaths(TypeElement iface, Mapping m) {
+        String c = m.compute().trim();
+        if (c.startsWith("this::")) {
+            String name = c.substring(6);
+            for (Element e : iface.getEnclosedElements()) {
+                if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
+                ExecutableElement h = (ExecutableElement) e;
+                if (!h.getModifiers().contains(Modifier.DEFAULT) && !h.getModifiers().contains(Modifier.STATIC)) continue;
+                if (m.sources().length != 0) return m.sources();
+
+                String[] paths = new String[h.getParameters().size()];
+                for (int i = 0; i < paths.length; i++) {
+                    paths[i] = h.getParameters().get(i).getSimpleName().toString();
+                }
+                return paths;
+            }
+            return new String[0];
+        }
+
+        int arrow = c.indexOf("->");
+        if (arrow < 0) return new String[0];
+
+        String left = c.substring(0, arrow).trim();
+        if (left.startsWith("(") && left.endsWith(")")) left = left.substring(1, left.length() - 1).trim();
+        String[] params = left.length() == 0 ? new String[0] : left.split("\\s*,\\s*");
+        return m.sources().length == 0 ? params : m.sources();
+    }
+
+    private String _localTypeName(TypeMirror type, boolean boxPrimitive) {
+        if (boxPrimitive) return GeneratorUtil.localTypeName(ctx, type);
+        if (type.getKind().isPrimitive()) return type.toString();
+        return GeneratorUtil.typeName(GeneratorUtil.concrete(ctx, type));
     }
 
     private boolean _assignable(TypeMirror from, TypeMirror to) {
@@ -460,6 +647,30 @@ public final class MapperGenerator {
         }
     }
 
+    private static final class SourceParam {
+        final VariableElement element;
+        final String name;
+        final Map<String, Read> reads;
+
+        SourceParam(VariableElement e, Map<String, Read> r) {
+            element = e;
+            name = e.getSimpleName().toString();
+            reads = r;
+        }
+    }
+
+    private static final class ResolvedSource {
+        final SourceParam param;
+        final String path;
+        final boolean nullableRoot;
+
+        ResolvedSource(SourceParam p, String s, boolean n) {
+            param = p;
+            path = s;
+            nullableRoot = n;
+        }
+    }
+
     private static final class Write {
         final ExecutableElement setter;
         final TypeMirror type;
@@ -474,6 +685,8 @@ public final class MapperGenerator {
         String code;
         final TypeMirror type;
         final boolean path;
+        final boolean nullableRoot;
+        boolean local;
         final List<String> temps = new ArrayList<String>();
 
         Expr(String c, TypeMirror t) {
@@ -481,9 +694,40 @@ public final class MapperGenerator {
         }
 
         Expr(String c, TypeMirror t, boolean p) {
+            this(c, t, p, false, false);
+        }
+
+        Expr(String c, TypeMirror t, boolean p, boolean n, boolean l) {
             code = c;
             type = t;
             path = p;
+            nullableRoot = n;
+            local = l;
+        }
+    }
+
+    private static final class CachedRead {
+        final String code;
+        final TypeMirror type;
+        final boolean path;
+        final boolean nullableRoot;
+
+        CachedRead(String c, TypeMirror t, boolean p, boolean n) {
+            code = c;
+            type = t;
+            path = p;
+            nullableRoot = n;
+        }
+    }
+
+    private static final class MethodState {
+        final Map<String, Integer> readCounts;
+        final List<String> readTemps = new ArrayList<String>();
+        final Map<String, CachedRead> cache = new HashMap<String, CachedRead>();
+        final Map<String, PathAccessEmitter.CachedPath> pathCache = new HashMap<String, PathAccessEmitter.CachedPath>();
+
+        MethodState(Map<String, Integer> counts) {
+            readCounts = counts;
         }
     }
 

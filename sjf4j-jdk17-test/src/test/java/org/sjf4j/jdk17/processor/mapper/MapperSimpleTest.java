@@ -91,6 +91,49 @@ public class MapperSimpleTest {
         assertEquals("null:null", missing.combined());
     }
 
+    @Test
+    public void treatsDottedMapKeyAsPlainPropertyName() {
+        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+
+        NameOnly dto = mapper.dottedKey(Map.of("profile.name", "literal-key"));
+
+        assertEquals("literal-key", dto.name());
+    }
+
+    @Test
+    public void allowsNullablePathSourceToPrimitiveTarget() {
+        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+
+        AgeDto dto = mapper.age(new AgeSource(new AgeBox(42)));
+
+        assertEquals(42, dto.age);
+    }
+
+    @Test
+    public void mapsFromMultipleSourceParameters() {
+        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        Customer customer = new Customer("Ada", new Profile("Countess"));
+        Address address = new Address("London", "NW1");
+
+        MultiDto dto = mapper.toDto(customer, address);
+
+        assertEquals("Ada", dto.name);
+        assertEquals("London", dto.city);
+        assertEquals("NW1", dto.zip);
+        assertEquals("Countess", dto.profileName);
+        assertEquals("Countess", dto.pointerName);
+        assertEquals("Ada@London", dto.label);
+        assertEquals("Countess#London", dto.pathLabel);
+
+        MultiDto partial = mapper.toDto(null, address);
+        assertNull(partial.name);
+        assertEquals("London", partial.city);
+        assertEquals("NW1", partial.zip);
+        assertNull(partial.profileName);
+        assertEquals("null#London", partial.pathLabel);
+        assertNull(mapper.toDto(null, null));
+    }
+
     public record Person(String first, String last, int age) {}
 
     public record NameRecord(String first, String surname) {}
@@ -99,11 +142,27 @@ public class MapperSimpleTest {
 
     public record Profile(String name) {}
 
+    public record Customer(String name, Profile profile) {}
+
+    public record Address(String city, String zip) {}
+
     public record Tag(String label) {}
 
     public record NestedSource(Profile profile, List<Tag> tags, String[] aliases, Map<String, String> names, JsonObject node) {}
 
     public record NestedDto(String name, String firstTag, String arrayTag, String nick, Object nodeName, String combined) {}
+
+    public record NameOnly(String name) {}
+
+    public record AgeBox(Integer age) {}
+
+    public record AgeSource(AgeBox box) {}
+
+    public static final class AgeDto {
+        public int age;
+
+        public AgeDto() {}
+    }
 
     public static final class NameCtor {
         private final String first;
@@ -136,6 +195,16 @@ public class MapperSimpleTest {
         public void setFullName(String fullName) { this.fullName = fullName; }
     }
 
+    public static final class MultiDto {
+        public String name;
+        public String city;
+        public String zip;
+        public String profileName;
+        public String pointerName;
+        public String label;
+        public String pathLabel;
+    }
+
     @CompiledMapper
     public interface UserMapper {
         @Mapping(target = "surname", source = "last")
@@ -164,8 +233,25 @@ public class MapperSimpleTest {
         @Mapping(target = "combined", sources = {"$.profile.name", "/names/nick"}, compute = "(a, b) -> a + \":\" + b")
         NestedDto nested(NestedSource source);
 
+        @Mapping(target = "name", source = "profile.name")
+        NameOnly dottedKey(Map<String, String> source);
+
+        @Mapping(target = "age", source = "$.box.age")
+        AgeDto age(AgeSource source);
+
         default String join(String first, String last) {
             return first + "/" + last;
         }
+    }
+
+    @CompiledMapper
+    public interface MultiMapper {
+        @Mapping(target = "name", source = "customer:name")
+        @Mapping(target = "city", source = "address:city")
+        @Mapping(target = "profileName", source = "customer:$.profile.name")
+        @Mapping(target = "pointerName", source = "customer:/profile/name")
+        @Mapping(target = "label", sources = {"customer:name", "address:city"}, compute = "(name, city) -> name + \"@\" + city")
+        @Mapping(target = "pathLabel", sources = {"customer:$.profile.name", "address:city"}, compute = "(profile, city) -> profile + \"#\" + city")
+        MultiDto toDto(Customer customer, Address address);
     }
 }

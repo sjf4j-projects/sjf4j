@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `@PutIfParentPresentByPath` for writes that return `null` instead of failing when the final parent is missing.
   - `@EnsurePutByPath` for writes that auto-create missing intermediate containers with direct generated allocations.
   - `@EnsurePutIfAbsentByPath` for ensure-style writes that only replace absent or `null` final values and return existing non-null values unchanged.
+- Added direct `@CompiledMapper` code generation for bean, field, record, and constructor targets, including rename, ignore, inline compute, helper compute, JSONPath/JSON Pointer source paths, dotted map-key sources, and multi-source bean mapping.
 - `Nodes.Access.present` so read access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
 - `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
 
@@ -39,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `JsonPath` now uses read-specific access metadata for traversal, preserving present-`null` matches without a separate contains lookup on each segment.
 - Path function literal arguments are resolved when the path segment is created instead of on every evaluation.
 - Compiled ensure-path generation now creates intermediate `Map`/`List`/`JsonObject`/`JsonArray`/POJO containers with direct `new` expressions and reports unsupported or no-default-constructor intermediate types at annotation-processing time.
+- `@CompiledMapper` generated code now reuses direct source reads and common path prefixes within each mapping method, avoids unnecessary Map/List casts and primitive boxing in local temps, and emits cleaner null/index guards without fallback helpers.
+- `@CompiledMapper` diagnostics now use clearer action-oriented messages for invalid mapping targets, type mismatches, multi-source qualification, compute helpers, and source-path errors.
 - `JsonPath.ensurePutIfAbsent(...)` now treats `null` as absent, returns the existing non-null value when no write occurs, fills null array slots, and appends when an indexed target equals the current array size.
 - Typed `JsonPath.getMap(...)`, `getList(...)`, `getArray(...)`, and `getSet(...)` now use strict conversion instead of lenient conversion.
 - Updated `sjf4j-bytecode` and `sjf4j-schema` publishing metadata descriptions for their split module roles.
@@ -46,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Preserved present-`null` JSONPath matches while still omitting truly missing locations from `find(...)` results.
 - Fixed JSONPath root `contains(...)` handling and parent-missing checks for put/add/replace/remove-style writes.
+- Fixed `@CompiledMapper` nullable/path sources targeting primitive properties so generated Java code is allowed to compile and uses normal runtime unboxing semantics.
 
 
 ## [1.3.0] - 2026.05.22

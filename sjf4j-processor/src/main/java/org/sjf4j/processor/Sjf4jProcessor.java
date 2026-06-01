@@ -71,14 +71,14 @@ public final class Sjf4jProcessor extends AbstractProcessor {
         validateAnnotation(annotations, roundEnv);
         for (Element element : roundEnv.getElementsAnnotatedWith(CompiledPath.class)) {
             if (element.getKind() != ElementKind.INTERFACE) {
-                context.error(element, "@CompiledPath only supports interfaces");
+                context.error(element, "@CompiledPath can be applied only to interfaces");
             } else {
                 pathGenerator.generate((TypeElement) element);
             }
         }
         for (Element element : roundEnv.getElementsAnnotatedWith(CompiledMapper.class)) {
             if (element.getKind() != ElementKind.INTERFACE) {
-                context.error(element, "@CompiledMapper only supports interfaces");
+                context.error(element, "@CompiledMapper can be applied only to interfaces");
             } else {
                 mapperGenerator.generate((TypeElement) element);
             }
@@ -92,16 +92,16 @@ public final class Sjf4jProcessor extends AbstractProcessor {
             if (ANNO_COMPILED_PATH.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName)) continue;
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
                 if (element.getKind() != ElementKind.METHOD) {
-                    context.error(element, "@" + anno.getSimpleName() + " only supports methods");
+                    context.error(element, "@" + anno.getSimpleName() + " can be applied only to methods");
                 } else {
                     Element owner = element.getEnclosingElement();
                     if (annoName.startsWith("org.sjf4j.annotation.mapper.")) {
                         if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledMapper.class) == null) {
-                            context.error(element, "@" + anno + " methods must be declared in an @CompiledMapper interface");
+                            context.error(element, "@" + anno + " method must be declared in an @CompiledMapper interface");
                         }
                     } else if (annoName.startsWith("org.sjf4j.annotation.path.")) {
                         if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledPath.class) == null) {
-                            context.error(element, "@" + anno + " methods must be declared in an @CompiledPath interface");
+                            context.error(element, "@" + anno + " method must be declared in an @CompiledPath interface");
                         }
                     } else {
                         context.error(element, "Unrecognized annotation " + annoName);

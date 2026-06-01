@@ -150,14 +150,77 @@ public class MapperProcessorTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadMapper.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@Mapping type mismatch") || messages.contains("type mismatch"), messages);
-        assertTrue(messages.contains("exactly one source parameter"), messages);
+        assertTrue(messages.contains("Cannot assign source expression to target property"), messages);
         assertTrue(messages.contains("must return a target type"), messages);
-        assertTrue(messages.contains("Cannot assign target property 'class'"), messages);
+        assertTrue(messages.contains("Cannot map target property 'class'"), messages);
     }
 
     @Test
-    public void rejectUnsupportedCompiledMapperSourcePaths() throws Exception {
+    public void rejectAmbiguousCompiledMapperMultiSourceProperty() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-ambiguous-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("AmbiguousMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class A { public String name; } class B { public String name; }\n" +
+                        "class Target { public String name; public Target() {} }\n" +
+                        "@CompiledMapper interface AmbiguousMapper { Target map(A a, B b); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AmbiguousMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Ambiguous source property 'name'"), messages);
+    }
+
+    @Test
+    public void rejectUnsupportedCompiledMapperMultiSourceForms() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-multi-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadMultiMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class A { public String name; public int age; } class B { public String city; }\n" +
+                        "class BeanTarget { public int age; public String name; public BeanTarget() {} }\n" +
+                        "record RecordTarget(String name, String city) {}\n" +
+                        "class CtorTarget { public final String name; public final String city; public CtorTarget(String name, String city) { this.name = name; this.city = city; } }\n" +
+                        "@CompiledMapper interface BadMultiMapper {\n" +
+                        "  @Mapping(target=\"age\", source=\"a:age\") BeanTarget primitiveTarget(A a, B b);\n" +
+                        "  @Mapping(target=\"name\", source=\"a:name\") @Mapping(target=\"city\", source=\"b:city\") RecordTarget recordTarget(A a, B b);\n" +
+                        "  @Mapping(target=\"name\", source=\"a:name\") @Mapping(target=\"city\", source=\"b:city\") CtorTarget ctorTarget(A a, B b);\n" +
+                        "  @Mapping(target=\"name\", source=\"a.name\") BeanTarget badDot(A a, B b);\n" +
+                        "  @Mapping(target=\"name\", source=\"a:\") BeanTarget badColon(A a, B b);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadMultiMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("do not support constructor or record targets"), messages);
+        assertTrue(messages.contains("Cannot resolve source 'a.name' on any source parameter"), messages);
+        assertTrue(messages.contains("expected a property, JSONPath, or JSON Pointer after ':'"), messages);
+    }
+
+    @Test
+    public void rejectUnsupportedCompiledMapperJsonPaths() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-mapper-bad-path-test");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
@@ -171,7 +234,6 @@ public class MapperProcessorTest {
                         "class Profile { public String name; }\n" +
                         "class Target { public Target() {} public void setName(String name) {} }\n" +
                         "@CompiledMapper interface BadPathMapper {\n" +
-                        "  @Mapping(target=\"name\", source=\"profile.name\") Target ambiguous(Source s);\n" +
                         "  @Mapping(target=\"name\", source=\"$.tags[*]\") Target wildcard(Source s);\n" +
                         "}\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -185,8 +247,33 @@ public class MapperProcessorTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadPathMapper.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("property name, JSONPath ($...), or JSON Pointer (/...)"), messages);
-        assertTrue(messages.contains("support only Name/Index segments"), messages);
+        assertTrue(messages.contains("supports only property names and array/list indexes"), messages);
+    }
+
+    @Test
+    public void allowDottedMapKeyAsPlainPropertyName() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-dotted-key-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("DottedKeyMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import java.util.*;\n" +
+                        "class Target { private String name; public Target() {} public String getName() { return name; } public void setName(String name) { this.name = name; } }\n" +
+                        "@CompiledMapper interface DottedKeyMapper {\n" +
+                        "  @Mapping(target=\"name\", source=\"profile.name\") Target map(Map<String, String> s);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("DottedKeyMapper.java").toFile()))).call();
+        assertTrue(ok);
     }
 
     private static void write(Path path, String text) throws Exception {
