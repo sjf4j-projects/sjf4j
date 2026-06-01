@@ -1,4 +1,4 @@
-package org.sjf4j.jdk17.processor;
+package org.sjf4j.jdk17.processor.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
@@ -49,6 +49,7 @@ public class PutByPathTest {
         Integer[] array = {1, 2, 3};
         assertEquals(Integer.valueOf(3), nodes.putLastArray(array, 7));
         assertEquals(Integer.valueOf(7), array[2]);
+        assertThrows(JsonException.class, () -> nodes.putArrayAtSize(array, 8));
 
         JsonArray jsonArray = JsonArray.of("old");
         assertEquals("old", nodes.putJsonArrayValue(jsonArray, "new"));
@@ -106,6 +107,8 @@ public class PutByPathTest {
         assertEquals(List.of("Ann", "Bill"), friends);
         assertEquals("Bill", nodes.putDynamicListValue(friends, -1, "Ben"));
         assertEquals(List.of("Ann", "Ben"), friends);
+        assertNull(nodes.putDynamicListValue(friends, 2, "Cara"));
+        assertEquals(List.of("Ann", "Ben", "Cara"), friends);
 
         JsonObject json = JsonObject.of("name", "old");
         assertEquals("old", nodes.putDynamicJsonObjectValue(json, "name", "new"));
@@ -207,6 +210,9 @@ public class PutByPathTest {
 
         @PutByPath("$[-1]")
         Integer putLastArray(Integer[] root, Integer value);
+
+        @PutByPath("$[3]")
+        Integer putArrayAtSize(Integer[] root, Integer value);
 
         @PutByPath("$[0]")
         Object putJsonArrayValue(JsonArray root, String value);

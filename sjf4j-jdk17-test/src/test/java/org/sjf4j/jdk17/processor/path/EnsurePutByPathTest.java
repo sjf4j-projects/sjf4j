@@ -1,4 +1,4 @@
-package org.sjf4j.jdk17.processor;
+package org.sjf4j.jdk17.processor.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
