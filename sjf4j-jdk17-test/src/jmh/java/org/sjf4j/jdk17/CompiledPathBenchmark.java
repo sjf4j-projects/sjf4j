@@ -14,13 +14,13 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.annotation.compiled.CompiledNodes;
-import org.sjf4j.annotation.compiled.EnsurePutByPath;
-import org.sjf4j.annotation.compiled.EnsurePutIfAbsentByPath;
-import org.sjf4j.annotation.compiled.GetByPath;
-import org.sjf4j.annotation.compiled.PutByPath;
+import org.sjf4j.annotation.path.CompiledPath;
+import org.sjf4j.annotation.path.EnsurePutByPath;
+import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
+import org.sjf4j.annotation.path.GetByPath;
+import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.compiled.BytecodePath;
-import org.sjf4j.compiled.CompiledNodesRegistry;
+import org.sjf4j.compiled.CompiledRegistry;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 
@@ -99,7 +99,7 @@ public class CompiledPathBenchmark {
         public Integer expensive;
     }
 
-    @CompiledNodes
+    @CompiledPath
     public interface CompiledPaths {
         @GetByPath("$.store.bicycle.color")
         String getColor(Root root);
@@ -149,7 +149,7 @@ public class CompiledPathBenchmark {
             colorBytecode = BytecodePath.compile("$.store.bicycle.color", Root.class, String.class);
             priceBytecode = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
             bookPriceBytecode = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
-            compiled = CompiledNodesRegistry.of(CompiledPaths.class);
+            compiled = CompiledRegistry.of(CompiledPaths.class);
 
             if (!"red".equals(compiled.getColor(pojo)) || !compiled.getColor(pojo).equals(colorBytecode.get(pojo)) ||
                     Math.abs(compiled.getPrice(pojo) - 19.95d) > 0.001d ||
@@ -177,7 +177,7 @@ public class CompiledPathBenchmark {
             bookPriceJsonPath = JsonPath.parse("$.store.book[1].price");
             priceBytecode = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
             bookPriceBytecode = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
-            compiled = CompiledNodesRegistry.of(CompiledPaths.class);
+            compiled = CompiledRegistry.of(CompiledPaths.class);
         }
 
         @Setup(Level.Invocation)

@@ -1,4 +1,4 @@
-package org.sjf4j.annotation.compiled;
+package org.sjf4j.annotation.path;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Generates a direct single-path read method inside a {@link CompiledNodes}
+ * Generates a direct single-path read method inside a {@link CompiledPath}
  * interface implementation.
  * <p>
  * The first method parameter is the root object. Additional parameters may be
@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * value type.
  *
  * <pre>{@code
- * @CompiledNodes
+ * @CompiledPath
  * interface Users {
  *     @GetByPath("$.users[{idx}].name")
  *     String name(Model root, int idx);

@@ -1,4 +1,4 @@
-package org.sjf4j.annotation.compiled;
+package org.sjf4j.annotation.path;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * not supported.
  *
  * <pre>{@code
- * @CompiledNodes
+ * @CompiledPath
  * interface Users {
  *     @EnsurePutIfAbsentByPath("$.settings.theme")
  *     String defaultTheme(User root, String value);

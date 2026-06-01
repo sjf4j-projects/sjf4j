@@ -1,6 +1,4 @@
-package org.sjf4j.processor.generate;
-
-import org.sjf4j.processor.ProcessorContext;
+package org.sjf4j.processor;
 
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;

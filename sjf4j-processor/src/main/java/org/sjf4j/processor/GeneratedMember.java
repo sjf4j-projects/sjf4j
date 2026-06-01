@@ -1,4 +1,4 @@
-package org.sjf4j.processor.generate;
+package org.sjf4j.processor;
 
 /**
  * Small callback used to emit one generated source member into a class body.

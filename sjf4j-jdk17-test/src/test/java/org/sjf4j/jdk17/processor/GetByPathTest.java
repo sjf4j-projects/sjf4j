@@ -3,9 +3,9 @@ package org.sjf4j.jdk17.processor;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.annotation.compiled.CompiledNodes;
-import org.sjf4j.annotation.compiled.GetByPath;
-import org.sjf4j.compiled.CompiledNodesRegistry;
+import org.sjf4j.annotation.path.CompiledPath;
+import org.sjf4j.annotation.path.GetByPath;
+import org.sjf4j.compiled.CompiledRegistry;
 import org.sjf4j.exception.JsonException;
 
 import java.util.List;
@@ -19,7 +19,7 @@ public class GetByPathTest {
 
     @Test
     public void getsDeepRecordListMapAndJsonPaths() {
-        GetNodes nodes = CompiledNodesRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
         Account account = account();
 
         assertEquals("last@example.com", nodes.getLastMemberEmail(account));
@@ -30,7 +30,7 @@ public class GetByPathTest {
 
     @Test
     public void missingReferencePathReturnsNull() {
-        GetNodes nodes = CompiledNodesRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
 
         assertNull(nodes.getLastMemberEmail(null));
         assertNull(nodes.getLastMemberEmail(new Account(null)));
@@ -43,7 +43,7 @@ public class GetByPathTest {
 
     @Test
     public void primitiveMissingPathThrowsJsonException() {
-        GetNodes nodes = CompiledNodesRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
 
         assertEquals(7, nodes.getMemberScore(account()));
         assertThrows(JsonException.class, () -> nodes.getMemberScore(null));
@@ -52,7 +52,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsPublicFieldBooleanGetterAndTypedContainers() {
-        GetNodes nodes = CompiledNodesRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
 
         assertEquals("field-value", nodes.getPublicField(new FieldBean("field-value")));
         assertEquals(Boolean.TRUE, nodes.isActive(new FlagBean(true)));
@@ -62,7 +62,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsDynamicGetPathParameters() {
-        GetNodes nodes = CompiledNodesRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
         Directory directory = new Directory(
                 List.of(new Person("first", 1), new Person("last", 2)),
                 Map.of("hz", new City("Hangzhou", "Binjiang")),
@@ -118,7 +118,7 @@ public class GetByPathTest {
         public boolean isActive() { return active; }
     }
 
-    @CompiledNodes
+    @CompiledPath
     interface GetNodes {
         @GetByPath("$.profile.organization.teams[0].members[-1].contact.email")
         String getLastMemberEmail(Account account);

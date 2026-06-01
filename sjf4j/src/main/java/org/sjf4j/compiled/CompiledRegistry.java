@@ -1,11 +1,8 @@
 package org.sjf4j.compiled;
 
-import org.sjf4j.annotation.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;
 
-import java.lang.reflect.InvocationTargetException;
-
-public class CompiledNodesRegistry {
+public class CompiledRegistry {
 
     private static final ClassValue<Object> NODES_CACHE = new ClassValue<Object>() {
         @Override
@@ -27,9 +24,9 @@ public class CompiledNodesRegistry {
             implClass = Class.forName(implName, true, type.getClassLoader());
         } catch (Exception e) {
             if (!type.isInterface()) {
-                throw new JsonException("@CompiledNodes target must be an interface: " + type.getName());
+                throw new JsonException("@CompiledPath target must be an interface: " + type.getName());
             }
-            throw new JsonException("Cannot load generated @CompiledNodes implementation " + implName
+            throw new JsonException("Cannot load generated @CompiledPath implementation " + implName
                     + " for interface " + type.getName()
                     + "; ensure annotation processing is enabled and generated sources are compiled", e);
         }
@@ -37,7 +34,7 @@ public class CompiledNodesRegistry {
         try {
             return implClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-            throw new JsonException("Cannot load generated @CompiledNodes implementation " + implName
+            throw new JsonException("Cannot load generated @CompiledPath implementation " + implName
                     + " for interface " + type.getName(), e);
         }
     }

@@ -1,9 +1,17 @@
-package org.sjf4j.processor.generate;
+package org.sjf4j.processor.path;
 
+import org.sjf4j.annotation.path.EnsurePutByPath;
+import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
+import org.sjf4j.annotation.path.GetByPath;
+import org.sjf4j.annotation.path.PutByPath;
+import org.sjf4j.annotation.path.PutIfParentPresentByPath;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.processor.GeneratedClass;
+import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.SourceWriter;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -40,6 +48,84 @@ public final class PathGenerator {
     public PathGenerator(ProcessorContext ctx) {
         this.ctx = ctx;
     }
+
+
+    /**
+     * Generates an implementation for one {@code @CompiledPath} interface.
+     */
+    public void generate(TypeElement iface) {
+        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
+
+        for (Element member : iface.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+
+            ExecutableElement method = (ExecutableElement) member;
+            Set<Modifier> mods = method.getModifiers();
+            if (mods.contains(Modifier.DEFAULT) || mods.contains(Modifier.STATIC)) continue;
+
+            String generatedAnno = null;
+            GetByPath get = method.getAnnotation(GetByPath.class);
+            if (get != null) {
+                generatedAnno = "@GetByPath";
+                genGet(method, target, get.value());
+            }
+
+            PutByPath put = method.getAnnotation(PutByPath.class);
+            if (put != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @PutByPath");
+                    return;
+                } else {
+                    generatedAnno = "@PutByPath";
+                    genPut(method, target, put.value());
+                }
+            }
+
+            PutIfParentPresentByPath putIfParentPresentByPath = method.getAnnotation(PutIfParentPresentByPath.class);
+            if (putIfParentPresentByPath != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @PutIfParentPresentByPath");
+                    return;
+                } else {
+                    generatedAnno = "@PutIfParentPresentByPath";
+                    genPutIfParentPresent(method, target, putIfParentPresentByPath.value());
+                }
+            }
+
+            EnsurePutByPath ensurePut = method.getAnnotation(EnsurePutByPath.class);
+            if (ensurePut != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @EnsurePutByPath");
+                    return;
+                } else {
+                    generatedAnno = "@EnsurePutByPath";
+                    genEnsurePut(method, target, ensurePut.value());
+                }
+            }
+
+            EnsurePutIfAbsentByPath ensurePutIfAbsent = method.getAnnotation(EnsurePutIfAbsentByPath.class);
+            if (ensurePutIfAbsent != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @EnsurePutIfAbsentByPath");
+                    return;
+                } else {
+                    generatedAnno = "@EnsurePutIfAbsentByPath";
+                    genEnsurePutIfAbsent(method, target, ensurePutIfAbsent.value());
+                }
+            }
+
+            if (generatedAnno == null) {
+                ctx.error(method, "@CompiledPath abstract methods must be annotated, for example @GetByPath");
+                return;
+            }
+        }
+        target.emit();
+    }
+
 
     /**
      * Validates and emits a generated implementation for one {@code @GetByPath} method.

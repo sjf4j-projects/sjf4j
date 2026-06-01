@@ -1,4 +1,4 @@
-package org.sjf4j.annotation.compiled;
+package org.sjf4j.annotation.path;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
  * {@code null}.
  *
  * <pre>{@code
- * @CompiledNodes
+ * @CompiledPath
  * interface Users {
  *     @EnsurePutByPath("$.profile.contacts[0].email")
  *     String email(User root, String value);

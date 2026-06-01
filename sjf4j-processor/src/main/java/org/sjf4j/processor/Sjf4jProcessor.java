@@ -1,7 +1,7 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.annotation.compiled.CompiledNodes;
-import org.sjf4j.processor.generate.NodesGenerator;
+import org.sjf4j.annotation.path.CompiledPath;
+import org.sjf4j.processor.path.PathGenerator;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -17,20 +17,22 @@ import java.util.Set;
  * Annotation processor entry point for SJF4J compiled-node interfaces.
  *
  * <p>It validates the placement of compiled path annotations and delegates
- * source generation for each {@code @CompiledNodes} interface.</p>
+ * source generation for each {@code @CompiledPath} interface.</p>
  */
 @SupportedAnnotationTypes({
-        "org.sjf4j.annotation.compiled.CompiledNodes",
-        "org.sjf4j.annotation.compiled.GetByPath",
-        "org.sjf4j.annotation.compiled.PutByPath",
-        "org.sjf4j.annotation.compiled.PutIfParentPresentByPath"
+        "org.sjf4j.annotation.path.CompiledPath",
+        "org.sjf4j.annotation.path.GetByPath",
+        "org.sjf4j.annotation.path.PutByPath",
+        "org.sjf4j.annotation.path.PutIfParentPresentByPath",
+        "org.sjf4j.annotation.path.EnsurePutByPath",
+        "org.sjf4j.annotation.path.EnsurePutIfAbsentByPath"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
-    private static final String ANNO_COMPILED_NODES = CompiledNodes.class.getName();
+    private static final String ANNO_COMPILED_NODES = CompiledPath.class.getName();
 
     private ProcessorContext context;
-    private NodesGenerator nodesGenerator;
+    private PathGenerator pathGenerator;
 
     /**
      * Uses the newest source level supported by the current compiler.
@@ -47,21 +49,21 @@ public final class Sjf4jProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.context = new ProcessorContext(processingEnv);
-        this.nodesGenerator = new NodesGenerator(context);
+        this.pathGenerator = new PathGenerator(context);
     }
 
     /**
      * Validates compiled-path annotations and emits implementations for
-     * discovered {@code @CompiledNodes} interfaces.
+     * discovered {@code @CompiledPath} interfaces.
      */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         validateAnnotation(annotations, roundEnv);
-        for (Element element : roundEnv.getElementsAnnotatedWith(CompiledNodes.class)) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(CompiledPath.class)) {
             if (element.getKind() != ElementKind.INTERFACE) {
-                context.error(element, "@CompiledNodes only supports interfaces");
+                context.error(element, "@CompiledPath only supports interfaces");
             } else {
-                nodesGenerator.generate((TypeElement) element);
+                pathGenerator.generate((TypeElement) element);
             }
         }
         return false;
@@ -75,9 +77,9 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                     context.error(element, "@" + anno.getSimpleName() + " only supports methods");
                 } else {
                     Element owner = element.getEnclosingElement();
-                    if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledNodes.class) == null) {
+                    if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledPath.class) == null) {
                         context.error(element,
-                                "@" + anno + " methods must be declared in an @CompiledNodes interface");
+                                "@" + anno + " methods must be declared in an @CompiledPath interface");
                     }
                 }
             }

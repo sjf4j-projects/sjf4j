@@ -59,9 +59,9 @@ public class Sjf4jProcessorTest {
                         "}\n");
         write(src.resolve("MyNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
-                        "import org.sjf4j.annotation.compiled.GetByPath;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.CompiledPath;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
+                        "@CompiledPath\n" +
                         "public interface MyNodes {\n" +
                         "  @GetByPath(\"$.city.name\")\n" +
                         "  String getCityName(User user);\n" +
@@ -110,9 +110,9 @@ public class Sjf4jProcessorTest {
         write(src.resolve("BadNodes.java"),
                 "package testcase;\n" +
                         "import java.util.Map;\n" +
-                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
-                        "import org.sjf4j.annotation.compiled.GetByPath;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.CompiledPath;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadNodes {\n" +
                         "  @GetByPath(\"$.value\")\n" +
                         "  Long getValue(Map<String, Integer> root);\n" +
@@ -149,8 +149,8 @@ public class Sjf4jProcessorTest {
 
         write(src.resolve("BadNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.CompiledPath;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadNodes {\n" +
                         "  String missing(String root);\n" +
                         "  default String defaultMethod(String root) { return root; }\n" +
@@ -173,7 +173,7 @@ public class Sjf4jProcessorTest {
 
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("@CompiledNodes abstract methods must be annotated"), messages);
+        assertTrue(messages.contains("@CompiledPath abstract methods must be annotated"), messages);
     }
 
     @Test
@@ -189,9 +189,9 @@ public class Sjf4jProcessorTest {
                         "import java.util.List;\n" +
                         "import java.util.Map;\n" +
                         "import org.sjf4j.JsonObject;\n" +
-                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
-                        "import org.sjf4j.annotation.compiled.GetByPath;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.CompiledPath;\n" +
+                        "import org.sjf4j.annotation.path.GetByPath;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadParamNodes {\n" +
                         "  @GetByPath(\"$[{idx}]\") String missing(List<String> root);\n" +
                         "  @GetByPath(\"$[0]\") String unused(List<String> root, int idx);\n" +
@@ -241,9 +241,9 @@ public class Sjf4jProcessorTest {
                 "package testcase;\n" +
                         "import java.util.List;\n" +
                         "import java.util.Map;\n" +
-                        "import org.sjf4j.annotation.compiled.CompiledNodes;\n" +
-                        "import org.sjf4j.annotation.compiled.PutByPath;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.CompiledPath;\n" +
+                        "import org.sjf4j.annotation.path.PutByPath;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadPutParamNodes {\n" +
                         "  @PutByPath(\"$[{idx}]\") String missing(List<String> root, String value);\n" +
                         "  @PutByPath(\"$[0]\") String unused(List<String> root, int idx, String value);\n" +
@@ -294,8 +294,8 @@ public class Sjf4jProcessorTest {
         write(src.resolve("BadPutIfNodes.java"),
                 "package testcase;\n" +
                         "import java.util.List;\n" +
-                        "import org.sjf4j.annotation.compiled.*;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadPutIfNodes {\n" +
                         "  @PutIfParentPresentByPath(\"$[{idx}]\") String missing(List<String> root, String value);\n" +
                         "  @PutIfParentPresentByPath(\"$[0]\") String unused(List<String> root, int idx, String value);\n" +
@@ -339,8 +339,8 @@ public class Sjf4jProcessorTest {
         write(src.resolve("BadShapeNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.compiled.*;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadShapeNodes {\n" +
                         "  @GetByPath(\"$.x\") String noRoot();\n" +
                         "  @GetByPath(\"$.x\") void voidGet(Map<String,String> root);\n" +
@@ -418,8 +418,8 @@ public class Sjf4jProcessorTest {
                         "}\n");
         write(src.resolve("PathNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.compiled.*;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
                         "public interface PathNodes {\n" +
                         "  @GetByPath(\"$.map.name\") String getStaticMap(Model.Root root);\n" +
                         "  @GetByPath(\"$.list[1]\") String getListIndex(Model.Root root);\n" +
@@ -572,8 +572,8 @@ public class Sjf4jProcessorTest {
                         "}\n");
         write(src.resolve("EnsureNodes.java"),
                 "package testcase;\n" +
-                        "import org.sjf4j.annotation.compiled.*;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
                         "public interface EnsureNodes {\n" +
                         "  @EnsurePutByPath(\"$.map.a.b\") Object ensureMap(Model.Root root, Object value);\n" +
                         "  @EnsurePutByPath(\"$.hash.a.b\") Object ensureHashMap(Model.Root root, Object value);\n" +
@@ -670,8 +670,8 @@ public class Sjf4jProcessorTest {
         write(src.resolve("BadEnsureNodes.java"),
                 "package testcase;\n" +
                         "import java.util.*;\n" +
-                        "import org.sjf4j.annotation.compiled.*;\n" +
-                        "@CompiledNodes\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
                         "public interface BadEnsureNodes {\n" +
                         "  @EnsurePutIfAbsentByPath(\"$.x\") int primitiveAbsent(Map<String,String> root, String value);\n" +
                         "  @EnsurePutByPath(\"$[+]\") int primitiveAppend(List<String> root, String value);\n" +

@@ -1,4 +1,4 @@
-package org.sjf4j.annotation.compiled;
+package org.sjf4j.annotation.path;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Generates a direct single-path write method inside a {@link CompiledNodes}
+ * Generates a direct single-path write method inside a {@link CompiledPath}
  * interface implementation.
  * <p>
  * The first method parameter is the root object and the last parameter is the
@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * {@code null}.
  *
  * <pre>{@code
- * @CompiledNodes
+ * @CompiledPath
  * interface Users {
  *     @PutByPath("$.users[{idx}].name")
  *     String name(Model root, int idx, String value);

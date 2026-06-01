@@ -1,6 +1,4 @@
-package org.sjf4j.processor.generate;
-
-import org.sjf4j.processor.ProcessorContext;
+package org.sjf4j.processor;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -22,20 +20,22 @@ import java.util.Set;
  * <p>Kept package-private and static-only to avoid extra generator layers while
  * centralizing type resolution, member lookup, and source-safe name handling.</p>
  */
-final class GeneratorUtil {
+public final class GeneratorUtil {
     private GeneratorUtil() {}
+
+    public static final String COMPILED_IMPL_POSTFIX = "_Impl";
 
     /**
      * Returns true when {@code type}'s erasure can be assigned to {@code target}'s erasure.
      */
-    static boolean isAssignableErasure(ProcessorContext ctx, TypeMirror type, TypeMirror target) {
+    public static boolean isAssignableErasure(ProcessorContext ctx, TypeMirror type, TypeMirror target) {
         return type != null && target != null && ctx.types.isAssignable(ctx.types.erasure(type), ctx.types.erasure(target));
     }
 
     /**
      * Returns the type element represented by a declared type mirror, or null for non-declared types.
      */
-    static TypeElement asTypeElement(TypeMirror type) {
+    public static TypeElement asTypeElement(TypeMirror type) {
         if (type.getKind() != TypeKind.DECLARED) {
             return null;
         }
@@ -46,7 +46,7 @@ final class GeneratorUtil {
     /**
      * Resolves a map value type, falling back to Object when the type argument is unavailable.
      */
-    static TypeMirror mapValueType(ProcessorContext ctx, TypeMirror type) {
+    public static TypeMirror mapValueType(ProcessorContext ctx, TypeMirror type) {
         if (type.getKind() == TypeKind.DECLARED) {
             List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
             if (args.size() == 2) return concrete(ctx, args.get(1));
@@ -57,7 +57,7 @@ final class GeneratorUtil {
     /**
      * Resolves a list element type, falling back to Object when the type argument is unavailable.
      */
-    static TypeMirror listValueType(ProcessorContext ctx, TypeMirror type) {
+    public static TypeMirror listValueType(ProcessorContext ctx, TypeMirror type) {
         if (type.getKind() == TypeKind.DECLARED) {
             List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
             if (args.size() == 1) return concrete(ctx, args.get(0));
@@ -68,7 +68,7 @@ final class GeneratorUtil {
     /**
      * Converts wildcard types to their extends bound, or Object for unbounded/super wildcards.
      */
-    static TypeMirror concrete(ProcessorContext ctx, TypeMirror type) {
+    public static TypeMirror concrete(ProcessorContext ctx, TypeMirror type) {
         if (type instanceof WildcardType) {
             WildcardType wildcard = (WildcardType) type;
             return wildcard.getExtendsBound() == null ? ctx.objectType : wildcard.getExtendsBound();
@@ -79,12 +79,12 @@ final class GeneratorUtil {
     /**
      * Returns the generated-source type name for a mirror.
      */
-    static String typeName(TypeMirror type) { return type.toString(); }
+    public static String typeName(TypeMirror type) { return type.toString(); }
 
     /**
      * Returns a local variable type name, boxing primitives and resolving wildcards.
      */
-    static String localTypeName(ProcessorContext ctx, TypeMirror type) {
+    public static String localTypeName(ProcessorContext ctx, TypeMirror type) {
         if (type.getKind().isPrimitive()) {
             return ctx.types.boxedClass((javax.lang.model.type.PrimitiveType) type).getQualifiedName().toString();
         }
@@ -94,14 +94,14 @@ final class GeneratorUtil {
     /**
      * Returns a class literal using the type erasure.
      */
-    static String classLiteral(ProcessorContext ctx, TypeMirror type) {
+    public static String classLiteral(ProcessorContext ctx, TypeMirror type) {
         return ctx.types.erasure(type).toString() + ".class";
     }
 
     /**
      * Boxes primitive types and resolves wildcard types for generated code use.
      */
-    static TypeMirror boxed(ProcessorContext ctx, TypeMirror type) {
+    public static TypeMirror boxed(ProcessorContext ctx, TypeMirror type) {
         if (type.getKind().isPrimitive()) {
             return ctx.types.boxedClass((javax.lang.model.type.PrimitiveType) type).asType();
         }
@@ -111,14 +111,14 @@ final class GeneratorUtil {
     /**
      * Returns true when the type erases to java.lang.Object.
      */
-    static boolean isObject(ProcessorContext ctx, TypeMirror type) {
+    public static boolean isObject(ProcessorContext ctx, TypeMirror type) {
         return type != null && ctx.types.isSameType(ctx.types.erasure(type), ctx.types.erasure(ctx.objectType));
     }
 
     /**
      * Escapes a string for insertion into generated Java string literals.
      */
-    static String escape(String value) {
+    public static String escape(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
@@ -126,7 +126,8 @@ final class GeneratorUtil {
      * Finds a public, non-static, zero-argument readable method with the exact supplied method name.
      * Getter-name composition such as getX/isX is handled by callers before invoking this method.
      */
-    static ExecutableElement findGetter(ProcessorContext ctx, TypeElement type, TypeMirror owner, String name, boolean booleanOnly) {
+    public static ExecutableElement findGetter(ProcessorContext ctx, TypeElement type, TypeMirror owner,
+                                               String name, boolean booleanOnly) {
         for (Element member : ctx.elements.getAllMembers(type)) {
             if (member.getKind() != ElementKind.METHOD) continue;
             if (!member.getSimpleName().contentEquals(name)) continue;
@@ -149,7 +150,7 @@ final class GeneratorUtil {
     /**
      * Finds a public, non-static, single-argument void method with the exact supplied setter name.
      */
-    static ExecutableElement findSetter(ProcessorContext ctx, TypeElement type, TypeMirror owner, String name) {
+    public static ExecutableElement findSetter(ProcessorContext ctx, TypeElement type, TypeMirror owner, String name) {
         for (Element member : ctx.elements.getAllMembers(type)) {
             if (member.getKind() != ElementKind.METHOD) continue;
             if (!member.getSimpleName().contentEquals(name)) continue;
@@ -167,7 +168,7 @@ final class GeneratorUtil {
     /**
      * Finds a public, non-static field with the exact supplied field name.
      */
-    static VariableElement findField(ProcessorContext ctx, TypeElement type, String name) {
+    public static VariableElement findField(ProcessorContext ctx, TypeElement type, String name) {
         for (Element member : ctx.elements.getAllMembers(type)) {
             if (member.getKind() != ElementKind.FIELD) continue;
             if (!member.getSimpleName().contentEquals(name)) continue;

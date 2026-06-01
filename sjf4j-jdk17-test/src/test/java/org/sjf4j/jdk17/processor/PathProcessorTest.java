@@ -1,9 +1,9 @@
 package org.sjf4j.jdk17.processor;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.compiled.CompiledNodes;
-import org.sjf4j.annotation.compiled.GetByPath;
-import org.sjf4j.compiled.CompiledNodesRegistry;
+import org.sjf4j.annotation.path.CompiledPath;
+import org.sjf4j.annotation.path.GetByPath;
+import org.sjf4j.compiled.CompiledRegistry;
 import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,7 +14,7 @@ public class PathProcessorTest {
 
     @Test
     public void registryCreatesCompiledNodesInterface() {
-        BasicNodes nodes = CompiledNodesRegistry.of(BasicNodes.class);
+        BasicNodes nodes = CompiledRegistry.of(BasicNodes.class);
 
         assertEquals("Hangzhou", nodes.getCityName(new User(new City("Hangzhou"))));
         assertNull(nodes.getCityName(new User(null)));
@@ -23,8 +23,8 @@ public class PathProcessorTest {
 
     @Test
     public void registryRejectsInvalidTargets() {
-        assertThrows(JsonException.class, () -> CompiledNodesRegistry.of(NotInterface.class));
-        assertThrows(JsonException.class, () -> CompiledNodesRegistry.of(NotCompiled.class));
+        assertThrows(JsonException.class, () -> CompiledRegistry.of(NotInterface.class));
+        assertThrows(JsonException.class, () -> CompiledRegistry.of(NotCompiled.class));
     }
 
     record User(City city) {}
@@ -35,7 +35,7 @@ public class PathProcessorTest {
 
     interface NotCompiled {}
 
-    @CompiledNodes
+    @CompiledPath
     interface BasicNodes {
         @GetByPath("$.city.name")
         String getCityName(User user);
