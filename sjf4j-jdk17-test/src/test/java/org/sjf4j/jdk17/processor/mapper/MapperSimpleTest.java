@@ -312,6 +312,7 @@ public class MapperSimpleTest {
     public interface MultiMapper {
         @Mapping(target = "name", source = "customer:name")
         @Mapping(target = "city", source = "address:city")
+        @Mapping(target = "zip", source = "address:zip")
         @Mapping(target = "profileName", source = "customer:$.profile.name")
         @Mapping(target = "pointerName", source = "customer:/profile/name")
         @Mapping(target = "label", sources = {"customer:name", "address:city"}, compute = "(name, city) -> name + \"@\" + city")

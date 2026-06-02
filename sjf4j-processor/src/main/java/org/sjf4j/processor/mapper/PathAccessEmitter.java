@@ -7,7 +7,9 @@ import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -18,6 +20,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Emits direct null-safe read access for mapper source paths. */
 public final class PathAccessEmitter {
@@ -202,8 +205,8 @@ public final class PathAccessEmitter {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
             return new Access(currentVar + "." + getter.getSimpleName() + "()", mt.getReturnType());
         }
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
-        if (field != null) return new Access(currentVar + "." + name, ctx.types.asMemberOf((DeclaredType) current, field));
+        VariableElement field = _findReadableField(type, name);
+        if (field != null) return new Access(currentVar + "." + field.getSimpleName(), ctx.types.asMemberOf((DeclaredType) current, field));
 
         _error(context, target, "Cannot read source property '" + name + "' on " + current);
         return null;
@@ -229,11 +232,35 @@ public final class PathAccessEmitter {
 
     private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
         if (name.length() == 0) return null;
-        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        ExecutableElement getter = GeneratorUtil.findGetter(ctx, type, owner, "get" + suffix, false);
-        if (getter == null) getter = GeneratorUtil.findGetter(ctx, type, owner, "is" + suffix, true);
-        if (getter == null && _isRecord(type)) getter = GeneratorUtil.findGetter(ctx, type, owner, name, false);
-        return getter;
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            Set<Modifier> m = member.getModifiers();
+            if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC) || member.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement e = (ExecutableElement) member;
+            if (!e.getParameters().isEmpty()) continue;
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, e);
+            if (mt.getReturnType().getKind() == TypeKind.VOID) continue;
+            String n = e.getSimpleName().toString();
+            String base = null;
+            if (n.equals("getClass")) continue;
+            if (n.startsWith("get") && n.length() > 3) base = GeneratorUtil.decap(n.substring(3));
+            else if (n.startsWith("is") && n.length() > 2) base = GeneratorUtil.decap(n.substring(2));
+            else if (_isRecord(type)) base = n;
+            if (base != null && _nodeName(e, base).equals(name)) return e;
+        }
+        return null;
+    }
+
+    private VariableElement _findReadableField(TypeElement type, String name) {
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            Set<Modifier> m = member.getModifiers();
+            if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC) || member.getKind() != ElementKind.FIELD) continue;
+            if (_nodeName(member, member.getSimpleName().toString()).equals(name)) return (VariableElement) member;
+        }
+        return null;
+    }
+
+    private String _nodeName(Element e, String fallback) {
+        return GeneratorUtil.nodePropertyName(e, fallback);
     }
 
     private boolean _isRecord(TypeElement t) {

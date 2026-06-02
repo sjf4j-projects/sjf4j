@@ -1,5 +1,7 @@
 package org.sjf4j.processor;
 
+import org.sjf4j.annotation.node.NodeProperty;
+
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -96,6 +98,16 @@ public final class GeneratorUtil {
      */
     public static String classLiteral(ProcessorContext ctx, TypeMirror type) {
         return ctx.types.erasure(type).toString() + ".class";
+    }
+
+    /**
+     * Returns the OBNT-facing property name declared by {@code @NodeProperty},
+     * or the Java/member fallback when no explicit name is present.
+     */
+    public static String nodePropertyName(Element element, String fallback) {
+        NodeProperty property = element.getAnnotation(NodeProperty.class);
+        if (property != null && property.value().length() != 0) return property.value();
+        return fallback;
     }
 
     /**

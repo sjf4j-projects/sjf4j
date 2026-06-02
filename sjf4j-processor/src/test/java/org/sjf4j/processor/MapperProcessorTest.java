@@ -387,30 +387,27 @@ public class MapperProcessorTest {
     }
 
     @Test
-    public void rejectAmbiguousCompiledMapperMultiSourceProperty() throws Exception {
-        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-ambiguous-test");
+    public void multiSourceAutoMappingDefaultsToFirstSource() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-first-source-test");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
         Files.createDirectories(src);
         Files.createDirectories(out);
-        write(src.resolve("AmbiguousMapper.java"),
+        write(src.resolve("FirstSourceMapper.java"),
                 "package testcase;\n" +
                         "import org.sjf4j.annotation.mapper.*;\n" +
                         "class A { public String name; } class B { public String name; }\n" +
                         "class Target { public String name; public Target() {} }\n" +
-                        "@CompiledMapper interface AmbiguousMapper { Target map(A a, B b); }\n");
+                        "@CompiledMapper interface FirstSourceMapper { Target map(A a, B b); }\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler is required");
-        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
-        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
                 "-processor", Sjf4jProcessor.class.getName()
-        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AmbiguousMapper.java").toFile()))).call();
-        assertTrue(!ok);
-        String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("Ambiguous source property 'name'"), messages);
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("FirstSourceMapper.java").toFile()))).call();
+        assertTrue(ok);
     }
 
     @Test
@@ -447,7 +444,7 @@ public class MapperProcessorTest {
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("nullable source or path expression cannot be assigned to primitive target type int"), messages);
-        assertTrue(messages.contains("Cannot resolve source 'a.name' on any source parameter"), messages);
+        assertTrue(messages.contains("Cannot resolve source 'a.name' on first source parameter 'a'"), messages);
         assertTrue(messages.contains("expected a property, JSONPath, or JSON Pointer after ':'"), messages);
     }
 
@@ -516,6 +513,84 @@ public class MapperProcessorTest {
         java.lang.reflect.Method getName = target.getClass().getDeclaredMethod("getName");
         getName.setAccessible(true);
         assertEquals("literal-key", getName.invoke(target));
+    }
+
+    @Test
+    public void nodePropertyNamesDriveMapperKeys() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-node-property-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("NodePropertyMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.node.*;\n" +
+                        "import java.util.*;\n" +
+                        "class Target { @NodeProperty(\"@type\") public String type; public Target() {} }\n" +
+                        "class Holder { @NodeProperty(\"@type\") public Target type = new Target(); public Holder() {} }\n" +
+                        "@CompiledMapper interface NodePropertyMapper { Target map(Map<String, String> s); @Mapping(target=\"$.@type.@type\", source=\"@type\") Holder path(Map<String, String> s); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("NodePropertyMapper.java").toFile()))).call();
+        assertTrue(ok);
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.NodePropertyMapper_Impl", true, loader);
+        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        HashMap<String, String> input = new HashMap<>();
+        input.put("@type", "kind");
+        Object target = mapperClass.getMethod("map", java.util.Map.class).invoke(mapper, input);
+        assertEquals("kind", field(target, "type"));
+        Object holder = mapperClass.getMethod("path", java.util.Map.class).invoke(mapper, input);
+        assertEquals("kind", field(field(holder, "type"), "type"));
+    }
+
+    @Test
+    public void nodeValueFallbackConvertsThroughCodec() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-node-value-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("Id.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.node.*;\n" +
+                        "@NodeValue public class Id { public final String value; public Id(String v) { value = v; } @RawToValue public static Id of(String v) { return new Id(v); } @ValueToRaw public String raw() { return value; } }\n");
+        write(src.resolve("NodeValueMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source { public Id id = new Id(\"a\"); }\n" +
+                        "class Target { public String id; public Target() {} }\n" +
+                        "class RawSource { public String id = \"b\"; }\n" +
+                        "class ValueTarget { public Id id; public ValueTarget() {} }\n" +
+                        "@CompiledMapper interface NodeValueMapper { Target encode(Source s); ValueTarget decode(RawSource s); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("Id.java").toFile(), src.resolve("NodeValueMapper.java").toFile()))).call();
+        assertTrue(ok);
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.NodeValueMapper_Impl", true, loader);
+        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Constructor<?> sourceCtor = Class.forName("testcase.Source", true, loader).getDeclaredConstructor();
+        sourceCtor.setAccessible(true);
+        Object source = sourceCtor.newInstance();
+        Object target = mapperClass.getMethod("encode", source.getClass()).invoke(mapper, source);
+        assertEquals("a", field(target, "id"));
+        Constructor<?> rawSourceCtor = Class.forName("testcase.RawSource", true, loader).getDeclaredConstructor();
+        rawSourceCtor.setAccessible(true);
+        Object rawSource = rawSourceCtor.newInstance();
+        Object valueTarget = mapperClass.getMethod("decode", rawSource.getClass()).invoke(mapper, rawSource);
+        assertEquals("b", field(field(valueTarget, "id"), "value"));
     }
 
     private static void write(Path path, String text) throws Exception {
