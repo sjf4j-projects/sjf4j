@@ -24,8 +24,9 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,7 @@ public final class SchemaValidatorGenerator {
             return;
         }
 
+        state.strictFormat = strictFormat;
         PlanResult plan = _compilePlans(method, target, state, sourceType, param.asType(), schemas);
         if (!plan.supported && !fallback) {
             _error(method, target, "@CompiledSchemaValidator method requires runtime fallback: " + plan.reason);
@@ -254,14 +256,19 @@ public final class SchemaValidatorGenerator {
             if (SchemaPlanIntrospector.booleanSchema(plan)) {
                 return SchemaPlanIntrospector.booleanValue(plan) ? CompileResult.OK : CompileResult.unsupported("boolean false schema");
             }
-            Object[] evaluators = SchemaPlanIntrospector.evaluators(plan);
-            for (Object e : evaluators) {
-                CompileResult cr = _emitEvaluator(state, out, var, type, e, nonNull);
-                if (!cr.supported) return cr;
-                if (_terminalReturn(out)) return CompileResult.OK;
-                if (_provesNonNull(e)) nonNull = true;
+            if (!state.inProgress.add(plan)) return CompileResult.unsupported("recursive/cyclic $ref requires runtime fallback");
+            try {
+                Object[] evaluators = SchemaPlanIntrospector.evaluators(plan);
+                for (Object e : evaluators) {
+                    CompileResult cr = _emitEvaluator(state, out, var, type, e, nonNull);
+                    if (!cr.supported) return cr;
+                    if (_terminalReturn(out)) return CompileResult.OK;
+                    if (_provesNonNull(e)) nonNull = true;
+                }
+                return CompileResult.OK;
+            } finally {
+                state.inProgress.remove(plan);
             }
-            return CompileResult.OK;
         } catch (RuntimeException e) {
             return CompileResult.unsupported(e.getMessage());
         }
@@ -279,6 +286,11 @@ public final class SchemaValidatorGenerator {
             else if ((var + " == null").equals(check)) out.add("if (" + var + " != null) return false;");
             else if (!"true".equals(check)) out.add("if (!(" + check + ")) return false;");
             return CompileResult.OK;
+        }
+        if ("RefEvaluator".equals(n)) {
+            SchemaPlan p = (SchemaPlan) SchemaPlanIntrospector.field(e, "plan");
+            if (p == null) return CompileResult.unsupported("$ref requires runtime fallback");
+            return _emitPlan(state, out, var, type, p, nonNull);
         }
         if ("RequiredEvaluator".equals(n)) {
             String[] required = (String[]) SchemaPlanIntrospector.field(e, "required");
@@ -457,6 +469,20 @@ public final class SchemaValidatorGenerator {
             } else if (kind == CompileJsonKind.STRING) {
                 String prefix = nonNull ? "" : var + " != null && ";
                 out.add("if (" + prefix + "!" + field + ".matcher(" + _stringValueExpr(var, type) + ").find()) return false;");
+            }
+            return CompileResult.OK;
+        }
+        if ("FormatEvaluator".equals(n)) {
+            boolean assertion = ((Boolean) SchemaPlanIntrospector.field(e, "assertion")).booleanValue();
+            if (!assertion && !state.strictFormat) return CompileResult.OK;
+            String format = (String) SchemaPlanIntrospector.field(e, "format");
+            String field = _formatField(state, format);
+            CompileJsonKind kind = _knownJsonKind(type);
+            if (kind == CompileJsonKind.UNKNOWN) {
+                out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.STRING && !" + field + ".validate(org.sjf4j.node.Nodes.toString(" + var + "))) return false;");
+            } else if (kind == CompileJsonKind.STRING) {
+                String prefix = nonNull ? "" : var + " != null && ";
+                out.add("if (" + prefix + "!" + field + ".validate(" + _stringValueExpr(var, type) + ")) return false;");
             }
             return CompileResult.OK;
         }
@@ -660,6 +686,16 @@ public final class SchemaValidatorGenerator {
         return false;
     }
 
+    private String _formatField(State state, String format) {
+        String field = state.formatFields.get(format);
+        if (field != null) return field;
+        field = "_FORMAT" + state.nextField++;
+        state.formatFields.put(format, field);
+        String f = field;
+        state.target.addField(out -> out.line("private static final org.sjf4j.schema.FormatValidator " + f + " = org.sjf4j.schema.FormatValidator.of(\"" + GeneratorUtil.escape(format) + "\");"));
+        return field;
+    }
+
     private String _literal(Object value) {
         if (value == null) return "null";
         if (value instanceof String) return "\"" + GeneratorUtil.escape((String) value) + "\"";
@@ -750,6 +786,9 @@ public final class SchemaValidatorGenerator {
         int nextLocal;
         int nextField;
         String unsupportedReason;
+        final Set<SchemaPlan> inProgress = Collections.newSetFromMap(new IdentityHashMap<SchemaPlan, Boolean>());
+        final Map<String, String> formatFields = new LinkedHashMap<String, String>();
+        boolean strictFormat;
         boolean strictValidatorField;
         boolean lenientValidatorField;
         State(GeneratedClass t) { target = t; }

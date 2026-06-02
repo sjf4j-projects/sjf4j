@@ -285,6 +285,135 @@ public class SchemaValidatorProcessorTest {
         assertFalse((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator, userClass.getConstructor(String.class).newInstance("A")));
     }
 
+    @Test
+    public void fastPathValidatesArraysEnumsCharsAndNestedObjects() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-schema-composite-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("Composite.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.schema.*;\n" +
+                        "enum Status { ACTIVE, PAUSED, DISABLED }\n" +
+                        "class Address { public String city; Address(String city) { this.city = city; } }\n" +
+                        "@ValidJsonSchema(value=\"{\\\"type\\\":\\\"object\\\",\\\"required\\\":[\\\"status\\\",\\\"initial\\\",\\\"tags\\\",\\\"address\\\"],\\\"properties\\\":{\\\"status\\\":{\\\"enum\\\":[\\\"ACTIVE\\\",\\\"PAUSED\\\"]},\\\"initial\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":1,\\\"maxLength\\\":1},\\\"tags\\\":{\\\"type\\\":\\\"array\\\",\\\"minItems\\\":1,\\\"items\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":2}},\\\"address\\\":{\\\"type\\\":\\\"object\\\",\\\"required\\\":[\\\"city\\\"],\\\"properties\\\":{\\\"city\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":2}},\\\"additionalProperties\\\":false}},\\\"additionalProperties\\\":false}\")\n" +
+                        "class User { public Status status; public char initial; public String[] tags; public Address address; User(Status status, char initial, String[] tags, Address address) { this.status = status; this.initial = initial; this.tags = tags; this.address = address; } }\n" +
+                        "@CompiledSchemaValidator interface UserValidator { @ValidatorOptions(fallback=false) boolean ok(User u); }\n");
+
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        assertTrue(compile(out, diagnostics, src.resolve("Composite.java")), diagnosticsToString(diagnostics));
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> statusClass = Class.forName("testcase.Status", true, loader);
+        Class<?> addressClass = Class.forName("testcase.Address", true, loader);
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Class<?> validatorClass = Class.forName("testcase.UserValidator_Impl", true, loader);
+        Object validator = validatorClass.getField("INSTANCE").get(null);
+        java.lang.reflect.Constructor<?> addressCtor = addressClass.getDeclaredConstructor(String.class);
+        java.lang.reflect.Constructor<?> userCtor = userClass.getDeclaredConstructor(statusClass, char.class, String[].class, addressClass);
+        addressCtor.setAccessible(true);
+        userCtor.setAccessible(true);
+        java.lang.reflect.Field activeField = statusClass.getField("ACTIVE");
+        java.lang.reflect.Field disabledField = statusClass.getField("DISABLED");
+        activeField.setAccessible(true);
+        disabledField.setAccessible(true);
+        Object active = activeField.get(null);
+        Object disabled = disabledField.get(null);
+
+        assertTrue((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator,
+                userCtor.newInstance(active, 'A', new String[]{"ok"}, addressCtor.newInstance("Paris"))));
+        assertFalse((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator,
+                userCtor.newInstance(disabled, 'A', new String[]{"ok"}, addressCtor.newInstance("Paris"))));
+        assertFalse((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator,
+                userCtor.newInstance(active, 'A', new String[]{"x"}, addressCtor.newInstance("Paris"))));
+        assertFalse((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator,
+                userCtor.newInstance(active, 'A', new String[]{"ok"}, addressCtor.newInstance("X"))));
+    }
+
+    @Test
+    public void fastPathCompilesLocalRefsInOneOfArrayItems() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-schema-ref-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("Envelope.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "import org.sjf4j.annotation.schema.ValidJsonSchema;\n" +
+                        "@ValidJsonSchema(value=\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"items\\\":{\\\"type\\\":\\\"array\\\",\\\"items\\\":{\\\"oneOf\\\":[{\\\"$ref\\\":\\\"#/definitions/a\\\"},{\\\"$ref\\\":\\\"#/definitions/b\\\"}]}}},\\\"definitions\\\":{\\\"a\\\":{\\\"type\\\":\\\"object\\\",\\\"required\\\":[\\\"kind\\\",\\\"value\\\"],\\\"properties\\\":{\\\"kind\\\":{\\\"const\\\":\\\"A\\\"},\\\"value\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":2}}},\\\"b\\\":{\\\"type\\\":\\\"object\\\",\\\"required\\\":[\\\"kind\\\",\\\"value\\\"],\\\"properties\\\":{\\\"kind\\\":{\\\"const\\\":\\\"B\\\"},\\\"value\\\":{\\\"type\\\":\\\"number\\\",\\\"minimum\\\":1}}}}}\")\n" +
+                        "public class Envelope { public java.util.List<Entry> items; public Envelope(java.util.List<Entry> items) { this.items = items; } }\n" +
+                        "class Entry { public String kind; public Object value; Entry(String kind, Object value) { this.kind = kind; this.value = value; } }\n");
+        write(src.resolve("EnvelopeValidator.java"),
+                "package testcase; import org.sjf4j.annotation.schema.*; @CompiledSchemaValidator interface EnvelopeValidator { @ValidatorOptions(fallback=false) boolean ok(Envelope e); }\n");
+
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        assertTrue(compile(out, diagnostics, src.resolve("Envelope.java"), src.resolve("EnvelopeValidator.java")), diagnosticsToString(diagnostics));
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> envelopeClass = Class.forName("testcase.Envelope", true, loader);
+        Class<?> entryClass = Class.forName("testcase.Entry", true, loader);
+        Class<?> validatorClass = Class.forName("testcase.EnvelopeValidator_Impl", true, loader);
+        Object validator = validatorClass.getField("INSTANCE").get(null);
+        java.lang.reflect.Constructor<?> envelopeCtor = envelopeClass.getConstructor(java.util.List.class);
+        java.lang.reflect.Constructor<?> entryCtor = entryClass.getDeclaredConstructor(String.class, Object.class);
+        entryCtor.setAccessible(true);
+
+        assertTrue((Boolean) validatorClass.getMethod("ok", envelopeClass).invoke(validator,
+                envelopeCtor.newInstance(java.util.Arrays.asList(entryCtor.newInstance("A", "ok"), entryCtor.newInstance("B", Integer.valueOf(2))))));
+        assertFalse((Boolean) validatorClass.getMethod("ok", envelopeClass).invoke(validator,
+                envelopeCtor.newInstance(java.util.Arrays.asList(entryCtor.newInstance("C", "ok")))));
+        assertFalse((Boolean) validatorClass.getMethod("ok", envelopeClass).invoke(validator,
+                envelopeCtor.newInstance(java.util.Arrays.asList(entryCtor.newInstance("A", "x")))));
+    }
+
+    @Test
+    public void rejectRecursiveRefWithFallbackFalse() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-schema-recursive-ref-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("Bad.java"),
+                "package testcase; import org.sjf4j.annotation.schema.*; @ValidJsonSchema(value=\"{\\\"$ref\\\":\\\"#\\\"}\") class User {} @CompiledSchemaValidator interface Bad { @ValidatorOptions(fallback=false) boolean ok(User u); }\n");
+
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        assertFalse(compile(out, diagnostics, src.resolve("Bad.java")));
+        String text = diagnosticsToString(diagnostics);
+        assertTrue(text.contains("recursive/cyclic $ref") || text.contains("requires runtime fallback"), text);
+    }
+
+    @Test
+    public void fastPathCompilesFormatWithStrictOption() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-schema-format-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("User.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.schema.ValidJsonSchema;\n" +
+                        "@ValidJsonSchema(value=\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"id\\\":{\\\"type\\\":\\\"string\\\",\\\"format\\\":\\\"uuid\\\"}}}\")\n" +
+                        "public class User { public String id; public User(String id) { this.id = id; } }\n");
+        write(src.resolve("UserValidator.java"),
+                "package testcase; import org.sjf4j.annotation.schema.*; @CompiledSchemaValidator interface UserValidator { @ValidatorOptions(fallback=false) boolean strict(User u); @ValidatorOptions(fallback=false, strictFormat=false) boolean lenient(User u); }\n");
+
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        assertTrue(compile(out, diagnostics, src.resolve("User.java"), src.resolve("UserValidator.java")), diagnosticsToString(diagnostics));
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Class<?> validatorClass = Class.forName("testcase.UserValidator_Impl", true, loader);
+        Object validator = validatorClass.getField("INSTANCE").get(null);
+        Object good = userClass.getConstructor(String.class).newInstance("123e4567-e89b-12d3-a456-426614174000");
+        Object bad = userClass.getConstructor(String.class).newInstance("not-a-uuid");
+
+        assertTrue((Boolean) validatorClass.getMethod("strict", userClass).invoke(validator, good));
+        assertFalse((Boolean) validatorClass.getMethod("strict", userClass).invoke(validator, bad));
+        assertTrue((Boolean) validatorClass.getMethod("lenient", userClass).invoke(validator, bad));
+    }
+
     private static boolean compile(Path out, DiagnosticCollector<JavaFileObject> diagnostics, Path... sources) throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler is required");

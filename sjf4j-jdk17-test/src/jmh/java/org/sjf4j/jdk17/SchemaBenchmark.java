@@ -40,6 +40,10 @@ import java.util.concurrent.TimeUnit;
 @Threads(1)
 public class SchemaBenchmark {
 
+    public static void main(String[] args) throws Exception {
+        org.openjdk.jmh.Main.main(new String[]{SchemaBenchmark.class.getSimpleName()});
+    }
+
     private static final String ORDER_SCHEMA_JSON = """
             {
               "type":"object",
@@ -82,10 +86,6 @@ public class SchemaBenchmark {
               "additionalProperties":false
             }
             """;
-
-    public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.Main.main(new String[]{SchemaBenchmark.class.getSimpleName()});
-    }
 
     @ValidJsonSchema(ORDER_SCHEMA_JSON)
     public static final class Order {

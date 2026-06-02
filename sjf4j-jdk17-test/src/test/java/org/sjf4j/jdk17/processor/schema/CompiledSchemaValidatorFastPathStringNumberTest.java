@@ -32,6 +32,31 @@ public class CompiledSchemaValidatorFastPathStringNumberTest {
         assertFalse(validator.isValid(new Sample("AB12", 1, 1.5, List.of("x"))));
     }
 
+    @Test
+    public void validatesEnumCharJavaArrayAndNestedRecordInFastPath() {
+        CompositeValidator validator = CompiledRegistry.of(CompositeValidator.class);
+
+        assertTrue(validator.isValid(new Composite(State.ACTIVE, 'A', new String[]{"ok"}, new Address("Paris"))));
+        assertTrue(validator.isValid(new Composite(State.PAUSED, 'Z', new String[]{"ok", "yo"}, new Address("Rome"))));
+
+        assertFalse(validator.isValid(new Composite(State.DISABLED, 'A', new String[]{"ok"}, new Address("Paris"))));
+        assertFalse(validator.isValid(new Composite(State.ACTIVE, 'A', new String[]{}, new Address("Paris"))));
+        assertFalse(validator.isValid(new Composite(State.ACTIVE, 'A', new String[]{"x"}, new Address("Paris"))));
+        assertFalse(validator.isValid(new Composite(State.ACTIVE, 'A', new String[]{"ok"}, new Address("X"))));
+        assertFalse(validator.isValid(new Composite(State.ACTIVE, 'A', new String[]{"ok"}, null)));
+    }
+
+    @Test
+    public void validatesFormatInFastPathWhenStrict() {
+        UuidValidator validator = CompiledRegistry.of(UuidValidator.class);
+        UuidSample good = new UuidSample("123e4567-e89b-12d3-a456-426614174000");
+        UuidSample bad = new UuidSample("not-a-uuid");
+
+        assertTrue(validator.strict(good));
+        assertFalse(validator.strict(bad));
+        assertTrue(validator.lenient(bad));
+    }
+
     @ValidJsonSchema("""
         {
           "type":"object",
@@ -49,5 +74,52 @@ public class CompiledSchemaValidatorFastPathStringNumberTest {
     public interface Validator {
         @ValidatorOptions(fallback = false)
         boolean isValid(Sample sample);
+    }
+
+    public enum State { ACTIVE, PAUSED, DISABLED }
+
+    @ValidJsonSchema("""
+        {
+          "type":"object",
+          "required":["state","initial","tags","address"],
+          "properties":{
+            "state":{"enum":["ACTIVE","PAUSED"]},
+            "initial":{"type":"string","minLength":1,"maxLength":1},
+            "tags":{"type":"array","minItems":1,"items":{"type":"string","minLength":2}},
+            "address":{
+              "type":"object",
+              "required":["city"],
+              "properties":{"city":{"type":"string","minLength":2}},
+              "additionalProperties":false
+            }
+          },
+          "additionalProperties":false
+        }
+        """)
+    public record Composite(State state, char initial, String[] tags, Address address) {}
+
+    public record Address(String city) {}
+
+    @CompiledSchemaValidator
+    public interface CompositeValidator {
+        @ValidatorOptions(fallback = false)
+        boolean isValid(Composite sample);
+    }
+
+    @ValidJsonSchema("""
+        {
+          "type":"object",
+          "properties":{"id":{"type":"string","format":"uuid"}}
+        }
+        """)
+    public record UuidSample(String id) {}
+
+    @CompiledSchemaValidator
+    public interface UuidValidator {
+        @ValidatorOptions(fallback = false)
+        boolean strict(UuidSample sample);
+
+        @ValidatorOptions(fallback = false, strictFormat = false)
+        boolean lenient(UuidSample sample);
     }
 }
