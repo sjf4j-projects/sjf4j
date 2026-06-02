@@ -59,3 +59,43 @@ tasks.withType<Javadoc> {
         addStringOption("Xdoclint:none", "-quiet")
     }
 }
+
+
+/////////////////////
+/// Publish
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    coordinates(group.toString(), name, version.toString())
+
+    pom {
+        name.set("SJF4J")
+        description.set("SJF4J annotation processor module — compile-time generators for paths, mappers, and schema validators")
+        inceptionYear.set("2026")
+        url.set("https://sjf4j.org")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/license/mit")
+            }
+        }
+        developers {
+            developer {
+                id.set("hannyu")
+                name.set("Yu Han")
+                url.set("https://github.com/hannyu/")
+            }
+        }
+        scm {
+            url.set("https://github.com/sjf4j-projects/sjf4j/")
+            connection.set("scm:git:git://github.com/sjf4j-projects/sjf4j.git")
+            developerConnection.set("scm:git:ssh://git@github.com/sjf4j-projects/sjf4j.git")
+        }
+    }
+}
+
+// Gradle 9 task validation: ensure metadata generation sees javadoc artifact producer.
+tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
+    .configureEach {
+        dependsOn(tasks.matching { it.name == "plainJavadocJar" })
+    }

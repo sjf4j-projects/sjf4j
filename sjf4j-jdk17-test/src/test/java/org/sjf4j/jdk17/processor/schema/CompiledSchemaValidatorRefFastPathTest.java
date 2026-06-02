@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.schema.CompiledSchemaValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatorOptions;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ public class CompiledSchemaValidatorRefFastPathTest {
 
     @Test
     public void validatesLocalRefsInOneOfFastPath() {
-        Validator validator = CompiledRegistry.of(Validator.class);
+        Validator validator = CompiledNodes.of(Validator.class);
 
         assertTrue(validator.isValid(new Envelope(List.of(new Entry("A", "ok"), new Entry("B", 2)))));
         assertFalse(validator.isValid(new Envelope(List.of(new Entry("C", "ok")))));

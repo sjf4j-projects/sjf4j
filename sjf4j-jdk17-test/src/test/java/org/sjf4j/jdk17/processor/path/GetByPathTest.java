@@ -3,9 +3,10 @@ package org.sjf4j.jdk17.processor.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.path.GetByPath;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public class GetByPathTest {
 
     @Test
     public void getsDeepRecordListMapAndJsonPaths() {
-        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
         Account account = account();
 
         assertEquals("last@example.com", nodes.getLastMemberEmail(account));
@@ -30,7 +31,7 @@ public class GetByPathTest {
 
     @Test
     public void missingReferencePathReturnsNull() {
-        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
 
         assertNull(nodes.getLastMemberEmail(null));
         assertNull(nodes.getLastMemberEmail(new Account(null)));
@@ -43,7 +44,7 @@ public class GetByPathTest {
 
     @Test
     public void primitiveMissingPathThrowsJsonException() {
-        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
 
         assertEquals(7, nodes.getMemberScore(account()));
         assertThrows(JsonException.class, () -> nodes.getMemberScore(null));
@@ -52,7 +53,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsPublicFieldBooleanGetterAndTypedContainers() {
-        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
 
         assertEquals("field-value", nodes.getPublicField(new FieldBean("field-value")));
         assertEquals(Boolean.TRUE, nodes.isActive(new FlagBean(true)));
@@ -62,7 +63,7 @@ public class GetByPathTest {
 
     @Test
     public void supportsDynamicGetPathParameters() {
-        GetNodes nodes = CompiledRegistry.of(GetNodes.class);
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
         Directory directory = new Directory(
                 List.of(new Person("first", 1), new Person("last", 2)),
                 Map.of("hz", new City("Hangzhou", "Binjiang")),
@@ -77,6 +78,20 @@ public class GetByPathTest {
 
         assertNull(nodes.getFriendNameByJsonPathIndex(directory, 99));
         assertThrows(JsonException.class, () -> nodes.getFriendScore(directory, 99));
+    }
+
+    @Test
+    public void supportsNodePropertyNamesOnPojoGetPath() {
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        RenamedRoot root = new RenamedRoot(
+                new RenamedProfile("alice"),
+                new RenamedGetterBean("display"),
+                new RenamedFieldBean("field"));
+
+        assertEquals("alice", nodes.getRenamedRecordName(root));
+        assertEquals("alice", nodes.getRenamedRecordNameByJavaName(root));
+        assertEquals("display", nodes.getRenamedGetterValue(root));
+        assertEquals("field", nodes.getRenamedFieldValue(root));
     }
 
     private static Account account() {
@@ -107,6 +122,28 @@ public class GetByPathTest {
     record Directory(List<Person> friends, Map<String, City> data, Map<String, List<City>> regions, JsonObject json) {}
 
     record Person(String name, int score) {}
+
+    record RenamedRoot(@NodeProperty("profile_data") RenamedProfile profileData,
+                       RenamedGetterBean getterBean,
+                       RenamedFieldBean fieldBean) {}
+
+    record RenamedProfile(@NodeProperty("user_name") String userName) {}
+
+    static final class RenamedGetterBean {
+        private final String value;
+
+        RenamedGetterBean(String value) { this.value = value; }
+
+        @NodeProperty("display_name")
+        public String getName() { return value; }
+    }
+
+    static final class RenamedFieldBean {
+        @NodeProperty("external_id")
+        public String id;
+
+        RenamedFieldBean(String id) { this.id = id; }
+    }
 
     record FieldBean(String value) {}
 
@@ -161,6 +198,18 @@ public class GetByPathTest {
 
         @GetByPath("$.json[{name}]")
         Object getJsonObjectValue(Directory root, String name);
+
+        @GetByPath("$.profile_data.user_name")
+        String getRenamedRecordName(RenamedRoot root);
+
+        @GetByPath("$.profileData.userName")
+        String getRenamedRecordNameByJavaName(RenamedRoot root);
+
+        @GetByPath("$.getterBean.display_name")
+        String getRenamedGetterValue(RenamedRoot root);
+
+        @GetByPath("$.fieldBean.external_id")
+        String getRenamedFieldValue(RenamedRoot root);
 
     }
 }

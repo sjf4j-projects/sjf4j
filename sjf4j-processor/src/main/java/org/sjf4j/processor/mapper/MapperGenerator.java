@@ -52,7 +52,7 @@ public final class MapperGenerator {
      * Generates an implementation for one {@code @CompiledMapper} interface.
      */
     public void generate(TypeElement iface) {
-        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
+        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX, MapperGenerator.class);
         generation = new GenerationState();
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;

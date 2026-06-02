@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.schema.CompiledSchemaValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatorOptions;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,7 +13,7 @@ public class CompiledSchemaValidatorCombinatorTest {
 
     @Test
     public void validatesAnyOfNotAndConditionalInFastPath() {
-        Validator validator = CompiledRegistry.of(Validator.class);
+        Validator validator = CompiledNodes.of(Validator.class);
 
         assertTrue(validator.isValid(new Rule(5, "A", "adult")));
         assertTrue(validator.isValid(new Rule(15, "B", "teen")));

@@ -7,7 +7,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,7 +22,7 @@ public class MapperTargetPathContainerTest {
 
     @Test
     public void strictTargetPathWritesContainersAndNodes() {
-        ContainerMapper mapper = CompiledRegistry.of(ContainerMapper.class);
+        ContainerMapper mapper = CompiledNodes.of(ContainerMapper.class);
 
         ContainerTarget created = mapper.strictCreate(new Source("Ada"));
         assertEquals("Ada", created.map.get("name"));
@@ -42,7 +42,7 @@ public class MapperTargetPathContainerTest {
 
     @Test
     public void ifParentPresentSkipsMissingContainerParents() {
-        ContainerMapper mapper = CompiledRegistry.of(ContainerMapper.class);
+        ContainerMapper mapper = CompiledNodes.of(ContainerMapper.class);
         OptionalParents target = new OptionalParents();
 
         mapper.ifParentPresentMap(target, new Source("Ada"));
@@ -65,7 +65,7 @@ public class MapperTargetPathContainerTest {
 
     @Test
     public void ensureMappingCreatesContainerParents() {
-        ContainerMapper mapper = CompiledRegistry.of(ContainerMapper.class);
+        ContainerMapper mapper = CompiledNodes.of(ContainerMapper.class);
 
         OptionalParents created = mapper.ensureCreate(new Source("Ada"));
         assertEquals("Ada", created.map.get("name"));

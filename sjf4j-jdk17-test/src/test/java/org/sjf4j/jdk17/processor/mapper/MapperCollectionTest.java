@@ -7,7 +7,7 @@ import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.*;
 
@@ -15,24 +15,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MapperCollectionTest {
     @Test public void rootListDirectAndMapped() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         assertEquals(List.of("a", "b"), m.strings(List.of("a", "b")));
-        assertEquals(List.of(new UserDto("a"), new UserDto("b")), CompiledRegistry.of(UniqueMapper.class).users(List.of(new User("a"), new User("b"))));
+        assertEquals(List.of(new UserDto("a"), new UserDto("b")), CompiledNodes.of(UniqueMapper.class).users(List.of(new User("a"), new User("b"))));
         assertNull(m.strings(null));
     }
 
     @Test public void withSelectsConverterAndSetKeepsOrder() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         assertEquals(List.of(new UserDto("x!")), m.usersWith(List.of(new User("x"))));
         Set<String> out = m.set(new LinkedHashSet<>(List.of("b", "a")));
         assertEquals(List.of("b", "a"), new ArrayList<>(out));
     }
 
     @Test public void rootMapCreateAndUpdates() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         Map<String, User> in = new LinkedHashMap<>();
         in.put("a", new User("A"));
-        assertEquals(new UserDto("A"), CompiledRegistry.of(UniqueMapper.class).map(in).get("a"));
+        assertEquals(new UserDto("A"), CompiledNodes.of(UniqueMapper.class).map(in).get("a"));
 
         List<String> list = new ArrayList<>(List.of("old"));
         m.replace(list, List.of("n"));
@@ -52,7 +52,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void beanCreateAndUpdateContainers() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         UserBox box = new UserBox();
         box.users = List.of(new User("a"));
         box.map = Map.of("b", new User("b"));
@@ -71,7 +71,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void beanAppendField() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         DtoBox target = new DtoBox();
         target.users = new ArrayList<>(List.of(new UserDto("old")));
         UserBox source = new UserBox();
@@ -81,7 +81,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void beanMapObjectPolicies() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         UserBox source = new UserBox();
         source.map = new LinkedHashMap<>();
         source.map.put("old", new User("new-old"));
@@ -111,7 +111,7 @@ public class MapperCollectionTest {
 
     @Test public void putIfAbsentMapSkipsConverterForExistingValue() {
         PutIfAbsentMapper.calls[0] = 0;
-        PutIfAbsentMapper m = CompiledRegistry.of(PutIfAbsentMapper.class);
+        PutIfAbsentMapper m = CompiledNodes.of(PutIfAbsentMapper.class);
         Map<String, String> target = new LinkedHashMap<>();
         target.put("keep", "old");
         target.put("fill", null);
@@ -129,7 +129,7 @@ public class MapperCollectionTest {
     }
 
     @Test public void mapsObntStructuralKinds() {
-        CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
+        CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         ObntSource source = new ObntSource();
         source.text = "text";
         source.integer = 7;

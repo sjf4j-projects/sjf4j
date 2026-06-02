@@ -5,7 +5,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MappingIfParentPresent;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,7 +16,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void strictTargetPathWritesWhenParentExists() {
-        TargetPathMapper mapper = CompiledRegistry.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledNodes.of(TargetPathMapper.class);
 
         InitializedTarget jsonPath = mapper.strictCreate(new Source("Ada", "X"));
         InitializedTarget pointer = mapper.pointerCreate(new Source("Grace", "Y"));
@@ -27,7 +27,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void strictTargetPathFailsWhenParentMissing() {
-        TargetPathMapper mapper = CompiledRegistry.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledNodes.of(TargetPathMapper.class);
         MissingTarget target = new MissingTarget();
 
         assertThrows(JsonException.class, () -> mapper.strictUpdate(target, new Source("Ada", "X")));
@@ -40,7 +40,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void ensureTargetPathCreatesParentsForCreateAndUpdate() {
-        TargetPathMapper mapper = CompiledRegistry.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledNodes.of(TargetPathMapper.class);
 
         MissingTarget created = mapper.ensureCreate(new Source("Ada", "X"));
         assertEquals("Ada", created.profile.name);
@@ -52,7 +52,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void ifParentPresentSkipsOrWrites() {
-        TargetPathMapper mapper = CompiledRegistry.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledNodes.of(TargetPathMapper.class);
         MissingTarget target = new MissingTarget();
 
         mapper.ifParentPresent(target, new Source("Ada", "X"));
@@ -65,7 +65,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void ensureTargetPathCreatesDeepBeanPath() {
-        TargetPathMapper mapper = CompiledRegistry.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledNodes.of(TargetPathMapper.class);
 
         DeepTarget target = mapper.ensureDeep(new Source("Ada", "X"));
 
@@ -74,7 +74,7 @@ public class MapperTargetPathTest {
 
     @Test
     public void targetPathSupportsComputeValues() {
-        TargetPathMapper mapper = CompiledRegistry.of(TargetPathMapper.class);
+        TargetPathMapper mapper = CompiledNodes.of(TargetPathMapper.class);
 
         InitializedTarget target = mapper.compute(new Source("Ada", "X"));
 

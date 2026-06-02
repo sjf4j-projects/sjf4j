@@ -54,7 +54,7 @@ public final class PathGenerator {
      * Generates an implementation for one {@code @CompiledPath} interface.
      */
     public void generate(TypeElement iface) {
-        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
+        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX, PathGenerator.class);
 
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;
@@ -428,7 +428,7 @@ public final class PathGenerator {
             return mt.getReturnType();
         }
 
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findReadableField(type, name);
         if (field != null) {
             return ctx.types.asMemberOf((DeclaredType) current, field);
         }
@@ -509,6 +509,7 @@ public final class PathGenerator {
      * JavaBean getters and fluent getters.
      */
     private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
+        if (name.length() == 0) return null;
         String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
         ExecutableElement getter = GeneratorUtil.findGetter(ctx, type, owner, "get" + suffix, false);
         if (getter == null) {
@@ -517,7 +518,51 @@ public final class PathGenerator {
         if (getter == null) {
             getter = GeneratorUtil.findGetter(ctx, type, owner, name, false);
         }
-        return getter;
+        if (getter != null) return getter;
+
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (method.getParameters().size() != 0) continue;
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
+            TypeMirror returnType = mt.getReturnType();
+            if (returnType.getKind() == TypeKind.VOID) continue;
+            String base = _readablePropertyBase(method);
+            if (base != null && GeneratorUtil.nodePropertyName(method, base).equals(name)) return method;
+        }
+        return null;
+    }
+
+    /**
+     * Finds a public readable field by Java name first, then by {@code @NodeProperty}
+     * JSON-facing name. The Java-name fast path preserves existing path behavior.
+     */
+    private VariableElement _findReadableField(TypeElement type, String name) {
+        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        if (field != null) return field;
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.FIELD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
+            if (GeneratorUtil.nodePropertyName(member, member.getSimpleName().toString()).equals(name)) {
+                return (VariableElement) member;
+            }
+        }
+        return null;
+    }
+
+    private String _readablePropertyBase(ExecutableElement method) {
+        String methodName = method.getSimpleName().toString();
+        if (methodName.equals("getClass")) return null;
+        if (methodName.startsWith("get") && methodName.length() > 3) {
+            return GeneratorUtil.decap(methodName.substring(3));
+        }
+        if (methodName.startsWith("is") && methodName.length() > 2) {
+            return GeneratorUtil.decap(methodName.substring(2));
+        }
+        return methodName;
     }
 
     /**
@@ -599,7 +644,7 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
-        if (_findReadable(type, parent, name) != null || GeneratorUtil.findField(ctx, type, name) != null) return true;
+        if (_findReadable(type, parent, name) != null || _findReadableField(type, name) != null) return true;
         _error(context, target, "Cannot resolve readable property '" + name + "' on " + parent);
         return false;
     }
@@ -662,7 +707,7 @@ public final class PathGenerator {
         if (getter != null) {
             return ((ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, getter)).getReturnType();
         }
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findReadableField(type, name);
         if (field != null) return ctx.types.asMemberOf((DeclaredType) parent, field);
         return ctx.objectType;
     }
@@ -770,13 +815,13 @@ public final class PathGenerator {
             return outputType;
         }
 
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findReadableField(type, name);
         if (field == null) {
             throw new AssertionError("CompiledPath emitName cannot resolve validated field '" +
                     name + "' on " + current);
         }
         TypeMirror outputType = ctx.types.asMemberOf((DeclaredType) current, field);
-        out.line(_readValueTypeName(outputType) + " " + nextVar + " = " + currentVar + "." + name + ";");
+        out.line(_readValueTypeName(outputType) + " " + nextVar + " = " + currentVar + "." + field.getSimpleName() + ";");
         _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
         return outputType;
     }
@@ -1322,7 +1367,7 @@ public final class PathGenerator {
         String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
         ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, parent, "set" + suffix);
         ExecutableElement getter = _findReadable(type, parent, name);
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findReadableField(type, name);
         TypeMirror oldType = null;
         if (getter != null) {
             oldType = ((ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, getter)).getReturnType();
@@ -1331,7 +1376,7 @@ public final class PathGenerator {
         }
         out.line((oldType == null ? "Object" : GeneratorUtil.localTypeName(ctx, oldType)) + " " + oldVar + " = " +
                 (getter != null ? parentVar + "." + getter.getSimpleName() + "()"
-                        : field != null ? parentVar + "." + name : "null") + ";");
+                        : field != null ? parentVar + "." + field.getSimpleName() : "null") + ";");
         if (setter != null) {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
         } else {

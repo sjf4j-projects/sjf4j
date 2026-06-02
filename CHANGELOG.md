@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the map-style `JsonObject.putNonNull(...)`, `JsonObject.putIfAbsent(...)`, `JsonObject.replace(key, value)`, and matching builder helpers.
 
 ### Added
-- Added the `sjf4j-processor` annotation processor module for generated `@CompiledNodes` path accessor implementations.
+- Added the `sjf4j-processor` annotation processor module.
 - Added compiled path annotations backed by direct `PathGenerator` code generation:
   - `@GetByPath` for typed single-path reads over object names, array indexes, and dynamic `String` key / `int` index parameters.
   - `@PutByPath` for single-path writes that require the final parent to exist and return the previous value when available.

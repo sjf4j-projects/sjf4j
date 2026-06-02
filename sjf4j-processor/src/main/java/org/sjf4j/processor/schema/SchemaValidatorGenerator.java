@@ -42,7 +42,7 @@ public final class SchemaValidatorGenerator {
 
     /** Generates an implementation for one validator interface. */
     public void generate(TypeElement iface) {
-        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
+        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX, SchemaValidatorGenerator.class);
 
         State state = new State(target);
         for (Element member : iface.getEnclosedElements()) {

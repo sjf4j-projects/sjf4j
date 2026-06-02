@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,7 +20,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void writesAbsentAndNullButKeepsExistingValues() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureMapValue(root, "first"));
@@ -35,7 +35,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void createsMissingParentsBeforeIfAbsentFinalWrite() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureNestedMap(root, "nested"));
@@ -49,7 +49,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void supportsIndexAndDynamicParamTargets() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureListIndex(root, "zero"));
@@ -68,7 +68,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void voidReturnDoesNotOverwriteExistingValue() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
         Root root = new Root();
 
         nodes.ensureVoid(root, "first");
@@ -79,7 +79,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void appendAlwaysAppendsAndReturnsNull() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
         Root root = new Root();
 
         assertNull(nodes.append(root, "a"));
@@ -89,7 +89,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void supportsJsonObjectAndJsonArrayTargets() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureJsonObject(root, "json-object"));
@@ -103,7 +103,7 @@ public class EnsurePutIfAbsentByPathTest {
 
     @Test
     public void nullRootThrowsNullPointerException() {
-        EnsurePutIfAbsentNodes nodes = CompiledRegistry.of(EnsurePutIfAbsentNodes.class);
+        EnsurePutIfAbsentNodes nodes = CompiledNodes.of(EnsurePutIfAbsentNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.ensureMapValue(null, "x"));
     }

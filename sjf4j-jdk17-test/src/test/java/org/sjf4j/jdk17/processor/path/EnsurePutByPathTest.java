@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.path.EnsurePutByPath;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,7 +23,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void createsMissingMapListAndPojoParents() {
-        EnsurePutNodes nodes = CompiledRegistry.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureDefaultMap(root, "map-value"));
@@ -42,7 +42,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void preservesConcreteContainerTypesWhenCreatingParents() {
-        EnsurePutNodes nodes = CompiledRegistry.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureHashMap(root, "hash-value"));
@@ -56,7 +56,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void createsJsonObjectAndJsonArrayParents() {
-        EnsurePutNodes nodes = CompiledRegistry.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureJsonObject(root, "json-object"));
@@ -68,7 +68,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void supportsDynamicKeysIndexesAndMiddleAppend() {
-        EnsurePutNodes nodes = CompiledRegistry.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
         Root root = new Root();
 
         assertNull(nodes.ensureDynamic(root, "region", 0, "dynamic-value"));
@@ -82,7 +82,7 @@ public class EnsurePutByPathTest {
 
     @Test
     public void nullRootThrowsNullPointerException() {
-        EnsurePutNodes nodes = CompiledRegistry.of(EnsurePutNodes.class);
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.ensureDefaultMap(null, "x"));
     }

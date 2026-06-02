@@ -13,7 +13,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +70,7 @@ public class MapperBenchmark {
             sjf4jUpdateTarget = new FlatTarget();
             mapStructUpdateTarget = new FlatTarget();
             handUpdateTarget = new FlatTarget();
-            sjf4jMapper = CompiledRegistry.of(Sjf4jMapper.class);
+            sjf4jMapper = CompiledNodes.of(Sjf4jMapper.class);
             mapStructMapper = Mappers.getMapper(MapStructMapper.class);
             handMapper = new HandMapper();
 

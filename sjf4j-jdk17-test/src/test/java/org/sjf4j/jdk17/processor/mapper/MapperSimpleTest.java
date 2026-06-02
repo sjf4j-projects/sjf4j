@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.JsonObject;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.List;
 import java.util.Map;
@@ -16,7 +16,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToNoArgsBeanWithRenameIgnoreAndInlineCompute() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         UserDto dto = mapper.toDto(person);
@@ -30,7 +30,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsToRecordAndConstructorTargets() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
         Person person = new Person("Ada", "Lovelace", 36);
 
         NameRecord record = mapper.toRecord(person);
@@ -44,7 +44,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsWithLocalHelperCompute() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
 
         UserDto dto = mapper.withHelper(new Person("Ada", "Lovelace", 36));
 
@@ -53,7 +53,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsSameNamePropertiesWithoutMappingAnnotations() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
 
         SameDto dto = mapper.sameNames(new Person("Ada", "Lovelace", 36));
 
@@ -64,7 +64,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsJsonPathAndJsonPointerSources() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
         JsonObject object = new JsonObject();
         object.put("name", "JsonObjectName");
 
@@ -93,7 +93,7 @@ public class MapperSimpleTest {
 
     @Test
     public void treatsDottedMapKeyAsPlainPropertyName() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
 
         NameOnly dto = mapper.dottedKey(Map.of("profile.name", "literal-key"));
 
@@ -102,7 +102,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsNullablePathSourceToReferenceTarget() {
-        UserMapper mapper = CompiledRegistry.of(UserMapper.class);
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
 
         AgeDto dto = mapper.age(new AgeSource(new AgeBox(42)));
 
@@ -111,7 +111,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParameters() {
-        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -136,7 +136,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToRecordTarget() {
-        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
         Address address = new Address("London", "NW1");
 
@@ -155,7 +155,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsFromMultipleSourceParametersToConstructorTarget() {
-        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         MultiCtor ctor = mapper.toCtor(null, address);
@@ -168,7 +168,7 @@ public class MapperSimpleTest {
 
     @Test
     public void mapsPrimitiveConstructorValueOnlyThroughExplicitCompute() {
-        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
         Address address = new Address("London", "NW1");
 
         assertEquals(7, mapper.toAgeRecord(new Score(7), address).age());

@@ -20,7 +20,7 @@ import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
 import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.compiled.BytecodePath;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;
 import org.sjf4j.path.JsonPath;
 
@@ -149,7 +149,7 @@ public class CompiledPathBenchmark {
             colorBytecode = BytecodePath.compile("$.store.bicycle.color", Root.class, String.class);
             priceBytecode = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
             bookPriceBytecode = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
-            compiled = CompiledRegistry.of(CompiledPaths.class);
+            compiled = CompiledNodes.of(CompiledPaths.class);
 
             if (!"red".equals(compiled.getColor(pojo)) || !compiled.getColor(pojo).equals(colorBytecode.get(pojo)) ||
                     Math.abs(compiled.getPrice(pojo) - 19.95d) > 0.001d ||
@@ -177,7 +177,7 @@ public class CompiledPathBenchmark {
             bookPriceJsonPath = JsonPath.parse("$.store.book[1].price");
             priceBytecode = BytecodePath.compile("$.store.bicycle.price", Root.class, Double.class);
             bookPriceBytecode = BytecodePath.compile("$.store.book[1].price", Root.class, Double.class);
-            compiled = CompiledRegistry.of(CompiledPaths.class);
+            compiled = CompiledNodes.of(CompiledPaths.class);
         }
 
         @Setup(Level.Invocation)

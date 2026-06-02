@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.schema.CompiledSchemaValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatorOptions;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ public class CompiledSchemaValidatorFallbackOptionsTest {
 
     @Test
     public void fallbackTrueUsesRuntimeValidationForUnsupportedSchema() {
-        ContainsValidator validator = CompiledRegistry.of(ContainsValidator.class);
+        ContainsValidator validator = CompiledNodes.of(ContainsValidator.class);
 
         assertTrue(validator.isValid(new TagBox(List.of("required"))));
         assertFalse(validator.isValid(new TagBox(List.of("other"))));
@@ -23,7 +23,7 @@ public class CompiledSchemaValidatorFallbackOptionsTest {
 
     @Test
     public void strictFormatControlsRuntimeFallbackFormatAssertions() {
-        FormatValidator validator = CompiledRegistry.of(FormatValidator.class);
+        FormatValidator validator = CompiledNodes.of(FormatValidator.class);
         Contact invalid = new Contact("not-an-email");
 
         assertFalse(validator.strict(invalid));

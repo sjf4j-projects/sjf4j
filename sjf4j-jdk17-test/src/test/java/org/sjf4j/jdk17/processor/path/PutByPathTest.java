@@ -5,7 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.path.PutByPath;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;
@@ -21,7 +21,7 @@ public class PutByPathTest {
 
     @Test
     public void putsDeepPojoMapListAndJsonPaths() {
-        PutNodes nodes = CompiledRegistry.of(PutNodes.class);
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
         Account account = account();
 
         assertEquals("last@example.com", nodes.putLastMemberEmail(account, "new@example.com"));
@@ -36,7 +36,7 @@ public class PutByPathTest {
 
     @Test
     public void putsListArrayAppendAndJsonArrayBoundaries() {
-        PutNodes nodes = CompiledRegistry.of(PutNodes.class);
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
 
         List<Integer> values = new ArrayList<>(List.of(1, 2, 3));
         assertEquals(Integer.valueOf(3), nodes.putLast(values, 9));
@@ -60,7 +60,7 @@ public class PutByPathTest {
 
     @Test
     public void putReturnsOldValueForMapSetterFieldAndPrimitive() {
-        PutNodes nodes = CompiledRegistry.of(PutNodes.class);
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
 
         Map<String, String> map = new HashMap<>();
         map.put("name", "old");
@@ -81,7 +81,7 @@ public class PutByPathTest {
 
     @Test
     public void missingPutParentThrowsJsonException() {
-        PutNodes nodes = CompiledRegistry.of(PutNodes.class);
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
 
         assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(null, "x"));
         assertThrows(JsonException.class, () -> nodes.putLastMemberEmail(new Account(null), "x"));
@@ -91,7 +91,7 @@ public class PutByPathTest {
 
     @Test
     public void putsDynamicBracketParams() {
-        PutNodes nodes = CompiledRegistry.of(PutNodes.class);
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
         Account account = account();
 
         assertEquals("Old-District", nodes.putRegionDistrict(account, "east", 1, "New-District"));
@@ -117,7 +117,7 @@ public class PutByPathTest {
 
     @Test
     public void dynamicIndexMissingParentThrowsJsonException() {
-        PutNodes nodes = CompiledRegistry.of(PutNodes.class);
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
         Account account = account();
 
         assertThrows(JsonException.class, () -> nodes.putRegionDistrict(account, "east", 9, "x"));

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.schema.CompiledSchemaValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatorOptions;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.schema.SchemaException;
 import org.sjf4j.schema.ValidationResult;
 
@@ -18,7 +18,7 @@ public class CompiledSchemaValidatorUsageTest {
 
     @Test
     public void validatesRecordFastPathAndFallbackResult() {
-        ProductValidator validator = CompiledRegistry.of(ProductValidator.class);
+        ProductValidator validator = CompiledNodes.of(ProductValidator.class);
 
         Product ok = new Product("book", List.of("new", "hot"));
         Product badName = new Product("x", List.of("new"));
@@ -37,7 +37,7 @@ public class CompiledSchemaValidatorUsageTest {
 
     @Test
     public void supportsCombinatorsInFastPath() {
-        MetricValidator validator = CompiledRegistry.of(MetricValidator.class);
+        MetricValidator validator = CompiledNodes.of(MetricValidator.class);
 
         assertTrue(validator.isValid(new Metric(10)));
         assertTrue(validator.isValid(new Metric(null)));

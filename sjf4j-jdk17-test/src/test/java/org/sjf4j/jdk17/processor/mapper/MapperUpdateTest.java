@@ -5,7 +5,7 @@ import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
 import org.sjf4j.annotation.mapper.MapperOptions;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
-import org.sjf4j.compiled.CompiledRegistry;
+import org.sjf4j.compiled.CompiledNodes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -14,7 +14,7 @@ public class MapperUpdateTest {
 
     @Test
     public void updatesSameNamePropertiesInPlace() {
-        UpdateMapper mapper = CompiledRegistry.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledNodes.of(UpdateMapper.class);
         Target target = new Target();
 
         mapper.update(target, new Source("Ada", "Lovelace", 36));
@@ -26,7 +26,7 @@ public class MapperUpdateTest {
 
     @Test
     public void supportsRenameAndIgnore() {
-        UpdateMapper mapper = CompiledRegistry.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledNodes.of(UpdateMapper.class);
         Target target = new Target();
         target.age = 99;
 
@@ -38,7 +38,7 @@ public class MapperUpdateTest {
 
     @Test
     public void nullPolicyIgnoreSkipsNullValues() {
-        UpdateMapper mapper = CompiledRegistry.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledNodes.of(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
         target.age = 7;
@@ -51,7 +51,7 @@ public class MapperUpdateTest {
 
     @Test
     public void defaultNullPolicySetsNullValues() {
-        UpdateMapper mapper = CompiledRegistry.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledNodes.of(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
 
@@ -63,7 +63,7 @@ public class MapperUpdateTest {
 
     @Test
     public void updatesFromMultipleSourcesAndReturnsWhenAllSourcesNull() {
-        UpdateMapper mapper = CompiledRegistry.of(UpdateMapper.class);
+        UpdateMapper mapper = CompiledNodes.of(UpdateMapper.class);
         Target target = new Target();
         target.name = "old";
         target.city = "old-city";
