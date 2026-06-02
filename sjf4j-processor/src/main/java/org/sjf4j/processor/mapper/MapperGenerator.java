@@ -917,6 +917,7 @@ public final class MapperGenerator {
             int idx = ((PathSegment.Index) tail).index;
             if (GeneratorUtil.isObject(ctx, parent)) out.line("org.sjf4j.node.Nodes.putInArray(" + var + ", " + idx + ", " + value + ");");
             else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonArrayType)) out.line(var + ".set(" + idx + ", " + value + ");");
+            else if (parent.getKind() == TypeKind.ARRAY) out.line(var + "[" + idx + "] = " + value + ";");
             else out.line(var + ".set(" + idx + ", " + value + ");");
         }
     }
