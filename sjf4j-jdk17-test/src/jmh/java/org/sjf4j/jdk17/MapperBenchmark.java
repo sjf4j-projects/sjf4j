@@ -15,6 +15,8 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.compiled.CompiledRegistry;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +46,10 @@ public class MapperBenchmark {
         public NestedSource nestedSource;
         public Profile profile;
         public Account account;
+        public List<FlatSource> flatSources;
+        public FlatTarget sjf4jUpdateTarget;
+        public FlatTarget mapStructUpdateTarget;
+        public FlatTarget handUpdateTarget;
         public Sjf4jMapper sjf4jMapper;
         public MapStructMapper mapStructMapper;
         public HandMapper handMapper;
@@ -57,6 +63,13 @@ public class MapperBenchmark {
                     "ignored");
             profile = nestedSource.profile;
             account = nestedSource.account;
+            flatSources = new ArrayList<>();
+            for (int i = 0; i < 32; i++) {
+                flatSources.add(new FlatSource("Ada" + i, "Lovelace" + i, 36 + i, "drop-me"));
+            }
+            sjf4jUpdateTarget = new FlatTarget();
+            mapStructUpdateTarget = new FlatTarget();
+            handUpdateTarget = new FlatTarget();
             sjf4jMapper = CompiledRegistry.of(Sjf4jMapper.class);
             mapStructMapper = Mappers.getMapper(MapStructMapper.class);
             handMapper = new HandMapper();
@@ -68,6 +81,17 @@ public class MapperBenchmark {
             assertNestedEqual(handMapper.multi(profile, account), sjf4jMapper.multi(profile, account), "sjf4j multi");
             assertNestedEqual(handMapper.multi(profile, account), mapStructMapper.multi(profile, account), "mapstruct multi");
 
+            FlatTarget expectedUpdate = new FlatTarget();
+            FlatTarget sjf4jUpdate = new FlatTarget();
+            FlatTarget mapStructUpdate = new FlatTarget();
+            handMapper.update(expectedUpdate, flatSource);
+            sjf4jMapper.update(sjf4jUpdate, flatSource);
+            mapStructMapper.update(flatSource, mapStructUpdate);
+            assertFlatEqual(expectedUpdate, sjf4jUpdate, "sjf4j update");
+            assertFlatEqual(expectedUpdate, mapStructUpdate, "mapstruct update");
+            assertFlatListEqual(handMapper.flatList(flatSources), sjf4jMapper.flatList(flatSources), "sjf4j flat list");
+            assertFlatListEqual(handMapper.flatList(flatSources), mapStructMapper.flatList(flatSources), "mapstruct flat list");
+
             assertNull(sjf4jMapper.flat(null), "sjf4j flat null");
             assertNull(mapStructMapper.flat(null), "mapstruct flat null");
             assertNull(handMapper.flat(null), "hand flat null");
@@ -77,6 +101,9 @@ public class MapperBenchmark {
             assertNull(sjf4jMapper.multi(null, null), "sjf4j multi null");
             assertNull(mapStructMapper.multi(null, null), "mapstruct multi null");
             assertNull(handMapper.multi(null, null), "hand multi null");
+            assertNull(sjf4jMapper.flatList(null), "sjf4j flat list null");
+            assertNull(mapStructMapper.flatList(null), "mapstruct flat list null");
+            assertNull(handMapper.flatList(null), "hand flat list null");
         }
     }
 
@@ -123,6 +150,39 @@ public class MapperBenchmark {
     @Benchmark
     public NestedTarget multi_hand(BenchmarkState state) {
         return state.handMapper.multi(state.profile, state.account);
+    }
+
+    @Benchmark
+    public FlatTarget update_sjf4j(BenchmarkState state) {
+        state.sjf4jMapper.update(state.sjf4jUpdateTarget, state.flatSource);
+        return state.sjf4jUpdateTarget;
+    }
+
+    @Benchmark
+    public FlatTarget update_mapstruct(BenchmarkState state) {
+        state.mapStructMapper.update(state.flatSource, state.mapStructUpdateTarget);
+        return state.mapStructUpdateTarget;
+    }
+
+    @Benchmark
+    public FlatTarget update_hand(BenchmarkState state) {
+        state.handMapper.update(state.handUpdateTarget, state.flatSource);
+        return state.handUpdateTarget;
+    }
+
+    @Benchmark
+    public List<FlatTarget> list_flat_sjf4j(BenchmarkState state) {
+        return state.sjf4jMapper.flatList(state.flatSources);
+    }
+
+    @Benchmark
+    public List<FlatTarget> list_flat_mapstruct(BenchmarkState state) {
+        return state.mapStructMapper.flatList(state.flatSources);
+    }
+
+    @Benchmark
+    public List<FlatTarget> list_flat_hand(BenchmarkState state) {
+        return state.handMapper.flatList(state.flatSources);
     }
 
     public static final class FlatSource {
@@ -205,6 +265,14 @@ public class MapperBenchmark {
         @org.sjf4j.annotation.mapper.Mapping(target = "ignored", ignore = true)
         FlatTarget flat(FlatSource source);
 
+        @org.sjf4j.annotation.mapper.Mapping(target = "surname", source = "lastName")
+        @org.sjf4j.annotation.mapper.Mapping(target = "fullName", sources = {"firstName", "lastName"}, compute = "(first, last) -> first + \" \" + last")
+        @org.sjf4j.annotation.mapper.Mapping(target = "age", ignore = true)
+        @org.sjf4j.annotation.mapper.Mapping(target = "ignored", ignore = true)
+        void update(FlatTarget target, FlatSource source);
+
+        List<FlatTarget> flatList(List<FlatSource> source);
+
         @org.sjf4j.annotation.mapper.Mapping(target = "firstName", source = "$.profile.firstName")
         @org.sjf4j.annotation.mapper.Mapping(target = "lastName", source = "$.profile.lastName")
         @org.sjf4j.annotation.mapper.Mapping(target = "age", sources = {"$.profile.age"}, compute = "(age) -> age == null ? 0 : age")
@@ -228,6 +296,14 @@ public class MapperBenchmark {
         @org.mapstruct.Mapping(target = "ignored", ignore = true)
         FlatTarget flat(FlatSource source);
 
+        @org.mapstruct.Mapping(target = "surname", source = "lastName")
+        @org.mapstruct.Mapping(target = "fullName", expression = "java(source.firstName + \" \" + source.lastName)")
+        @org.mapstruct.Mapping(target = "age", ignore = true)
+        @org.mapstruct.Mapping(target = "ignored", ignore = true)
+        void update(FlatSource source, @org.mapstruct.MappingTarget FlatTarget target);
+
+        List<FlatTarget> flatList(List<FlatSource> source);
+
         @org.mapstruct.Mapping(target = "firstName", source = "profile.firstName")
         @org.mapstruct.Mapping(target = "lastName", source = "profile.lastName")
         @org.mapstruct.Mapping(target = "age", source = "profile.age")
@@ -250,6 +326,22 @@ public class MapperBenchmark {
             target.firstName = source.firstName;
             target.surname = source.lastName;
             target.fullName = source.firstName + " " + source.lastName;
+            return target;
+        }
+
+        public void update(FlatTarget target, FlatSource source) {
+            if (source == null) return;
+            target.firstName = source.firstName;
+            target.surname = source.lastName;
+            target.fullName = source.firstName + " " + source.lastName;
+        }
+
+        public List<FlatTarget> flatList(List<FlatSource> source) {
+            if (source == null) return null;
+            ArrayList<FlatTarget> target = new ArrayList<>(source.size());
+            for (FlatSource value : source) {
+                target.add(flat(value));
+            }
             return target;
         }
 
@@ -281,6 +373,15 @@ public class MapperBenchmark {
                 || expected.age != actual.age
                 || !Objects.equals(expected.ignored, actual.ignored)) {
             throw new AssertionError(label + " mismatch");
+        }
+    }
+
+    private static void assertFlatListEqual(List<FlatTarget> expected, List<FlatTarget> actual, String label) {
+        if (expected.size() != actual.size()) {
+            throw new AssertionError(label + " size mismatch");
+        }
+        for (int i = 0; i < expected.size(); i++) {
+            assertFlatEqual(expected.get(i), actual.get(i), label + "[" + i + "]");
         }
     }
 

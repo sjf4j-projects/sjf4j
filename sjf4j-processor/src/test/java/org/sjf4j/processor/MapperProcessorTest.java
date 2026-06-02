@@ -13,10 +13,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -131,17 +133,20 @@ public class MapperProcessorTest {
                         "class Source { public String name; } class Target { public Target() {} public void setName(int name) {} }\n" +
                         "class HelperTarget { public HelperTarget() {} public void setName(String name) {} }\n" +
                         "class ClassTarget { public ClassTarget() {} public void setClass(Class<?> value) {} }\n" +
+                        "class PathTarget { public java.util.List<HelperTarget> items; public PathTarget() {} }\n" +
                         "@CompiledMapper interface BadMapper {\n" +
                         "  Target badType(Source s);\n" +
                         "  Target multi(Source a, Source b);\n" +
                         "  void voidMap(Source s);\n" +
-                        "  @MappingConfig(nulls=NullValuePolicy.IGNORE) Target configOnCreate(Source s);\n" +
                         "  @Mapping(target=\"name\", compute=\"this::badHelper\") HelperTarget badHelperMap(Source s);\n" +
                         "  @Mapping(target=\"name\", compute=\"this::display\") HelperTarget overloadedHelperMap(Source s);\n" +
-                        "  default int badHelper(String name) { return 1; }\n" +
+                        "  @Mapping(target=\"$.name\", source=\"name\") NameRecord pathRecord(Source s);\n" +
+                        "  @EnsureMapping(target=\"$.items[0].name\", source=\"name\") PathTarget ensureIndex(Source s);\n" +
+                        "  default long badHelper(String name) { return 1; }\n" +
                         "  default String display(String name) { return name; }\n" +
                         "  default String display(Object name) { return String.valueOf(name); }\n" +
                         "  ClassTarget noGetClass(Source s);\n" +
+                        "  record NameRecord(String name) {}\n" +
                         "}\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler is required");
@@ -156,9 +161,191 @@ public class MapperProcessorTest {
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("Cannot assign source expression to target property"), messages);
         assertTrue(messages.contains("update method must have a target parameter"), messages);
-        assertTrue(messages.contains("@MappingConfig is supported only on void update mapper methods"), messages);
         assertTrue(messages.contains("Ambiguous @Mapping.compute helper 'display'; overloaded helper methods are not supported"), messages);
         assertTrue(messages.contains("Cannot map target property 'class'"), messages);
+        assertTrue(messages.contains("Target paths are supported only for mutable no-args create targets and update targets"), messages);
+        assertTrue(messages.contains("@EnsureMapping does not support index-based target path segments"), messages);
+    }
+
+    @Test
+    public void rejectInvalidCollectionMappings() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-collection-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadCollectionMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "class User {} class Dto {}\n" +
+                        "class Source { public List<User> users; }\n" +
+                        "class SetterOnly { public void setUsers(List<Dto> users) {} }\n" +
+                        "@CompiledMapper interface BadCollectionMapper {\n" +
+                        "  List<Dto> ambiguous(List<User> users);\n" +
+                        "  @Mapping(nestedMapper=\"Other::conv\") List<Dto> badNested(List<User> users);\n" +
+                        "  @Mapping(nestedMapper=\"this::one\") List<Dto> badNestedThis(List<User> users);\n" +
+                        "  @Mapping(nestedMapper=\"conv\") List<Dto> ambiguousNested(List<User> users);\n" +
+                        "  Map<Integer, Dto> badKey(Map<String, User> users);\n" +
+                        "  List<Dto> raw(List users);\n" +
+                        "  @Mapping(target=\"users\", array=ArrayPolicy.ADD, nestedMapper=\"one\") void setterOnly(SetterOnly t, Source s);\n" +
+                        "  default Dto one(User u) { return new Dto(); } default Dto two(User u) { return new Dto(); }\n" +
+                        "  default Dto conv(User u) { return new Dto(); } default Dto conv(String s) { return new Dto(); }\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadCollectionMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Ambiguous element/value converter"), messages);
+        assertTrue(messages.contains("Ambiguous converter 'conv'; overloaded converter methods are not supported"), messages);
+        assertTrue(messages.contains("@Mapping.nestedMapper expects a mapper method name"), messages);
+        assertTrue(messages.contains("Map key type mismatch"), messages);
+        assertTrue(messages.contains("Raw or non-parameterized collection/map types are unsupported"), messages);
+        assertTrue(messages.contains("setter-only target has no readable collection/map"), messages);
+    }
+
+    @Test
+    public void rejectEnumMappingWhenTargetConstantMissing() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-enum-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadEnumMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "enum SourceKind { A, B } enum TargetKind { A }\n" +
+                        "class Source { public SourceKind kind; } class Target { public TargetKind kind; public Target() {} }\n" +
+                        "@CompiledMapper interface BadEnumMapper { Target map(Source s); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadEnumMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("target enum is missing constant 'B'; provide a mapper or compute expression"), messages);
+    }
+
+    @Test
+    public void rejectAmbiguousAutoNestedBeanMapper() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-auto-ambiguous-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("AmbiguousAutoMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Child { public String name; }\n" +
+                        "class ChildDto { public String name; public ChildDto() {} }\n" +
+                        "class Source { public Child child; }\n" +
+                        "class Target { public ChildDto child; public Target() {} }\n" +
+                        "@CompiledMapper interface AmbiguousAutoMapper {\n" +
+                        "  Target map(Source s);\n" +
+                        "  default ChildDto one(Child c) { return new ChildDto(); }\n" +
+                        "  default ChildDto two(Child c) { return new ChildDto(); }\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AmbiguousAutoMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("Ambiguous element/value converter; specify @Mapping.nestedMapper"), messages);
+    }
+
+    @Test
+    public void targetPathAnnotationsCompile() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-path-annotations-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("AnnotationUse.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class AnnotationUse {\n" +
+                        "  @MappingIfParentPresent(target=\"/a/b\", source=\"name\", nestedMapper=\"x\") void one() {}\n" +
+                        "  @EnsureMapping(target=\"$.a.b\", sources={\"a\"}, compute=\"a -> a\", array=ArrayPolicy.SET, object=ObjectPolicy.PUT) void two() {}\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path")
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AnnotationUse.java").toFile()))).call();
+        assertTrue(ok);
+    }
+
+    @Test
+    public void targetPathMappingsWriteBeans() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-target-path-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("PathMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source { public String name; public String value; public Source(String n, String v) { name = n; value = v; } }\n" +
+                        "class Profile { public String name; public Profile() {} }\n" +
+                        "class Target { public Profile profile = new Profile(); public Target() {} }\n" +
+                        "class MissingTarget { public Profile profile; public MissingTarget() {} }\n" +
+                        "@CompiledMapper interface PathMapper {\n" +
+                        "  @Mapping(target=\"$.profile.name\", source=\"name\") Target createStrict(Source s);\n" +
+                        "  @EnsureMapping(target=\"$.profile.name\", source=\"name\") MissingTarget createEnsure(Source s);\n" +
+                        "  @EnsureMapping(target=\"/profile/name\", source=\"name\") void updateEnsure(MissingTarget t, Source s);\n" +
+                        "  @MappingIfParentPresent(target=\"$.profile.name\", source=\"name\") void updateIfParent(MissingTarget t, Source s);\n" +
+                        "  @Mapping(target=\"$.profile.name\", sources={\"name\",\"value\"}, compute=\"(a, b) -> a + b\") Target compute(Source s);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("PathMapper.java").toFile()))).call();
+        assertTrue(ok);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> sourceClass = Class.forName("testcase.Source", true, loader);
+        Class<?> missingTargetClass = Class.forName("testcase.MissingTarget", true, loader);
+        Class<?> mapperClass = Class.forName("testcase.PathMapper_Impl", true, loader);
+        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Constructor<?> sourceCtor = sourceClass.getDeclaredConstructor(String.class, String.class);
+        sourceCtor.setAccessible(true);
+        Object source = sourceCtor.newInstance("Ada", "X");
+        Object strict = mapperClass.getMethod("createStrict", sourceClass).invoke(mapper, source);
+        assertEquals("Ada", field(field(strict, "profile"), "name"));
+        Object ensured = mapperClass.getMethod("createEnsure", sourceClass).invoke(mapper, source);
+        assertEquals("Ada", field(field(ensured, "profile"), "name"));
+        Constructor<?> targetCtor = missingTargetClass.getDeclaredConstructor();
+        targetCtor.setAccessible(true);
+        Object update = targetCtor.newInstance();
+        mapperClass.getMethod("updateIfParent", missingTargetClass, sourceClass).invoke(mapper, update, source);
+        assertNull(field(update, "profile"));
+        mapperClass.getMethod("updateEnsure", missingTargetClass, sourceClass).invoke(mapper, update, source);
+        assertEquals("Ada", field(field(update, "profile"), "name"));
+        Object computed = mapperClass.getMethod("compute", sourceClass).invoke(mapper, source);
+        assertEquals("AdaX", field(field(computed, "profile"), "name"));
     }
 
     @Test
@@ -179,7 +366,7 @@ public class MapperProcessorTest {
                         "  void recordTarget(NameRecord target, Source s);\n" +
                         "  void ctorOnly(CtorOnly target, Source s);\n" +
                         "  @Mapping(target=\"name\", source=\"name\") void readOnly(ReadOnly target, Source s);\n" +
-                        "  @MappingConfig(nulls=NullValuePolicy.IGNORE) @Mapping(target=\"age\", sources={\"name\"}, compute=\"(name) -> 1\") void primitiveCompute(Target target, Source s);\n" +
+                        "  @MapperOptions(nulls=NullValuePolicy.IGNORE) @Mapping(target=\"age\", sources={\"name\"}, compute=\"(name) -> 1\") void primitiveCompute(Target target, Source s);\n" +
                         "  record NameRecord(String name) {}\n" +
                         "}\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -319,6 +506,16 @@ public class MapperProcessorTest {
                 "-processor", Sjf4jProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("DottedKeyMapper.java").toFile()))).call();
         assertTrue(ok);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.DottedKeyMapper_Impl", true, loader);
+        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        HashMap<String, String> input = new HashMap<>();
+        input.put("profile.name", "literal-key");
+        Object target = mapperClass.getMethod("map", java.util.Map.class).invoke(mapper, input);
+        java.lang.reflect.Method getName = target.getClass().getDeclaredMethod("getName");
+        getName.setAccessible(true);
+        assertEquals("literal-key", getName.invoke(target));
     }
 
     private static void write(Path path, String text) throws Exception {
@@ -326,6 +523,12 @@ public class MapperProcessorTest {
         try (FileWriter writer = new FileWriter(file)) {
             writer.write(text);
         }
+    }
+
+    private static Object field(Object target, String name) throws Exception {
+        java.lang.reflect.Field f = target.getClass().getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(target);
     }
 
     private static String diagnosticsToString(DiagnosticCollector<JavaFileObject> diagnostics) {

@@ -45,10 +45,20 @@ import java.lang.annotation.Target;
 @Repeatable(Mappings.class)
 public @interface Mapping {
     /**
-     * Target property name to customize.
+     * Target property name or path to customize.
      *
      * <p>Required for normal, ignored, and computed mappings. An all-default
-     * annotation is treated as a no-op marker.</p>
+     * annotation is treated as a no-op marker. Target paths use strict
+     * PutByPath-like semantics: the root target exists, but create mapping does
+     * not create missing nested parents except the root. Intermediate parents
+     * must already exist. {@link MappingIfParentPresent} and
+     * {@link EnsureMapping} expose skip-if-missing-parent and
+     * ensure-parent variants.</p>
+     *
+     * <p>Target values support the same three forms as source paths: plain
+     * property/key name, JSONPath beginning with {@code $}, or JSON Pointer
+     * beginning with {@code /}. Plain dotted names are literal property/key
+     * names, not nested target paths.</p>
      */
     String target() default "";
 
@@ -79,6 +89,20 @@ public @interface Mapping {
      * runtime lambda object is created.</p>
      */
     String compute() default "";
+
+    /**
+     * Mapper method used for nested object, collection element, or map value conversion.
+     *
+     * <p>Use a simple mapper method name declared on the current mapper interface,
+     * for example {@code "toDto"}.</p>
+     */
+    String nestedMapper() default "";
+
+    /** Array-like update behavior for this target property. */
+    ArrayPolicy array() default ArrayPolicy.SET;
+
+    /** Object-like update behavior for this target property. */
+    ObjectPolicy object() default ObjectPolicy.PUT;
 
     /**
      * Whether to skip assignment of the target property.

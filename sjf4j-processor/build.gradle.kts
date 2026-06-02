@@ -19,6 +19,7 @@ configurations {
 
 dependencies {
     implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
+    implementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
 
     // test
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
@@ -58,4 +59,3 @@ tasks.withType<Javadoc> {
         addStringOption("Xdoclint:none", "-quiet")
     }
 }
-
