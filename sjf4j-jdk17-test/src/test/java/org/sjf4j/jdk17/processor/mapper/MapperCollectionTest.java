@@ -109,6 +109,25 @@ public class MapperCollectionTest {
         assertEquals(new UserDto("filled"), target.map.get("empty"));
     }
 
+    @Test public void putIfAbsentMapSkipsConverterForExistingValue() {
+        PutIfAbsentMapper.calls[0] = 0;
+        PutIfAbsentMapper m = CompiledRegistry.of(PutIfAbsentMapper.class);
+        Map<String, String> target = new LinkedHashMap<>();
+        target.put("keep", "old");
+        target.put("fill", null);
+        Map<String, String> source = new LinkedHashMap<>();
+        source.put("keep", "boom");
+        source.put("fill", "filled");
+        source.put("add", "added");
+
+        m.update(target, source);
+
+        assertEquals("old", target.get("keep"));
+        assertEquals("FILLED", target.get("fill"));
+        assertEquals("ADDED", target.get("add"));
+        assertEquals(2, PutIfAbsentMapper.calls[0]);
+    }
+
     @Test public void mapsObntStructuralKinds() {
         CollectionMapper m = CompiledRegistry.of(CollectionMapper.class);
         ObntSource source = new ObntSource();
@@ -248,5 +267,20 @@ public class MapperCollectionTest {
         List<UserDto> users(List<User> in);
         Map<String, UserDto> map(Map<String, User> in);
         UserDto toDto(User u);
+    }
+
+    @CompiledMapper
+    public interface PutIfAbsentMapper {
+        int[] calls = new int[1];
+
+        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT)
+        @Mapping(nestedMapper = "convert")
+        void update(Map<String, String> target, Map<String, String> source);
+
+        default String convert(String value) {
+            calls[0]++;
+            if ("boom".equals(value)) throw new IllegalStateException("converter should have been skipped");
+            return value == null ? null : value.toUpperCase(Locale.ROOT);
+        }
     }
 }

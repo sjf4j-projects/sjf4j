@@ -1400,20 +1400,25 @@ public final class MapperGenerator {
         String impl = _implType(method, target, to);
         if (impl == null) return null;
         String temp = _tempName(name, "container", 0);
+        String source = e.code;
         Expr r = new Expr(temp, need);
         r.local = true;
         r.temps.addAll(e.temps);
+        if (!e.local) {
+            source = _tempName(name, "source", 0);
+            r.temps.add(e.type + " " + source + " = " + e.code + ";");
+        }
         r.temps.add(need + " " + temp + ";");
-        r.temps.add("if (" + e.code + " == null) {");
+        r.temps.add("if (" + source + " == null) {");
         r.temps.add("    " + temp + " = null;");
         r.temps.add("} else {");
-        r.temps.add("    " + temp + " = " + _newContainer(impl, to, e.code + ".size()") + ";");
+        r.temps.add("    " + temp + " = " + _newContainer(impl, to, source + ".size()") + ";");
         if (to.map) {
-            r.temps.add("    for (" + GeneratorUtil.localTypeName(ctx, from.key) + " _key : " + e.code + ".keySet()) {");
-            r.temps.add("        " + temp + ".put(_key, " + _convertValue(conv, e.code + ".get(_key)") + ");");
+            r.temps.add("    for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> _entry : " + source + ".entrySet()) {");
+            r.temps.add("        " + temp + ".put(_entry.getKey(), " + _convertValue(conv, "_entry.getValue()") + ");");
             r.temps.add("    }");
         } else {
-            r.temps.add("    for (" + GeneratorUtil.localTypeName(ctx, from.value) + " _value : " + e.code + ") {");
+            r.temps.add("    for (" + GeneratorUtil.localTypeName(ctx, from.value) + " _value : " + source + ") {");
             r.temps.add("        " + temp + ".add(" + _convertValue(conv, "_value") + ");");
             r.temps.add("    }");
         }
@@ -1662,13 +1667,18 @@ public final class MapperGenerator {
 
     private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, ObjectPolicy objectPolicy) {
         if (to.map) {
-            out.line("for (" + GeneratorUtil.localTypeName(ctx, from.key) + " _key : " + source + ".keySet()) {");
+            out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> _entry : " + source + ".entrySet()) {");
             out.indent();
-            out.line(GeneratorUtil.localTypeName(ctx, to.value) + " _value = " + _convertValue(conv, source + ".get(_key)") + ";");
             if (objectPolicy == ObjectPolicy.PUT_IF_ABSENT) {
-                out.line("if (!" + target + ".containsKey(_key) || " + target + ".get(_key) == null) " + target + ".put(_key, _value);");
+                out.line("if (!" + target + ".containsKey(_entry.getKey()) || " + target + ".get(_entry.getKey()) == null) {");
+                out.indent();
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " _value = " + _convertValue(conv, "_entry.getValue()") + ";");
+                out.line(target + ".put(_entry.getKey(), _value);");
+                out.dedent();
+                out.line("}");
             } else {
-                out.line(target + ".put(_key, _value);");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " _value = " + _convertValue(conv, "_entry.getValue()") + ";");
+                out.line(target + ".put(_entry.getKey(), _value);");
             }
             out.dedent();
             out.line("}");
@@ -1696,15 +1706,20 @@ public final class MapperGenerator {
         Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         String access = read == null ? targetName + "." + name : (read.method == null ? targetName + "." + name : targetName + "." + read.method.getSimpleName() + "()");
-        out.line("if (" + e.code + " != null) {");
+        String source = e.code;
+        if (!e.local) {
+            source = _tempName(name, "source", 0);
+            out.line(e.type + " " + source + " = " + e.code + ";");
+        }
+        out.line("if (" + source + " != null) {");
         out.indent();
         if (read != null && w.setter != null) {
-            out.line("if (" + access + " == null) " + targetName + "." + w.setter.getSimpleName() + "(" + _newContainer(_implType(method, target, to), to, e.code + ".size()") + ");");
+            out.line("if (" + access + " == null) " + targetName + "." + w.setter.getSimpleName() + "(" + _newContainer(_implType(method, target, to), to, source + ".size()") + ");");
         } else if (read != null && read.method == null) {
-            out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, e.code + ".size()") + ";");
+            out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, source + ".size()") + ";");
         }
         if (policy == ArrayPolicy.CLEAR_ADD) out.line(access + ".clear();");
-        _emitContainerCopy(out, from, to, conv, access, e.code);
+        _emitContainerCopy(out, from, to, conv, access, source);
         out.dedent();
         out.line("}");
     }
@@ -1720,15 +1735,20 @@ public final class MapperGenerator {
         Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         String access = read == null ? targetName + "." + name : (read.method == null ? targetName + "." + name : targetName + "." + read.method.getSimpleName() + "()");
-        out.line("if (" + e.code + " != null) {");
+        String source = e.code;
+        if (!e.local) {
+            source = _tempName(name, "source", 0);
+            out.line(e.type + " " + source + " = " + e.code + ";");
+        }
+        out.line("if (" + source + " != null) {");
         out.indent();
         if (read != null && w.setter != null) {
-            out.line("if (" + access + " == null) " + targetName + "." + w.setter.getSimpleName() + "(" + _newContainer(_implType(method, target, to), to, e.code + ".size()") + ");");
+            out.line("if (" + access + " == null) " + targetName + "." + w.setter.getSimpleName() + "(" + _newContainer(_implType(method, target, to), to, source + ".size()") + ");");
         } else if (read != null && read.method == null) {
-            out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, e.code + ".size()") + ";");
+            out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, source + ".size()") + ";");
         }
         if (policy == ObjectPolicy.CLEAR_PUT) out.line(access + ".clear();");
-        _emitContainerCopy(out, from, to, conv, access, e.code, policy);
+        _emitContainerCopy(out, from, to, conv, access, source, policy);
         out.dedent();
         out.line("}");
     }
