@@ -101,7 +101,7 @@ public class MapperSimpleTest {
     }
 
     @Test
-    public void allowsNullablePathSourceToPrimitiveTarget() {
+    public void mapsNullablePathSourceToReferenceTarget() {
         UserMapper mapper = CompiledRegistry.of(UserMapper.class);
 
         AgeDto dto = mapper.age(new AgeSource(new AgeBox(42)));
@@ -134,6 +134,48 @@ public class MapperSimpleTest {
         assertNull(mapper.toDto(null, null));
     }
 
+    @Test
+    public void mapsFromMultipleSourceParametersToRecordTarget() {
+        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        Customer customer = new Customer("Ada", new Profile("Countess"));
+        Address address = new Address("London", "NW1");
+
+        MultiRecord record = mapper.toRecord(customer, address);
+
+        assertEquals("Ada", record.name());
+        assertEquals("London", record.city());
+        assertEquals("Countess", record.profileName());
+
+        MultiRecord partial = mapper.toRecord(null, address);
+        assertNull(partial.name());
+        assertEquals("London", partial.city());
+        assertNull(partial.profileName());
+        assertNull(mapper.toRecord(null, null));
+    }
+
+    @Test
+    public void mapsFromMultipleSourceParametersToConstructorTarget() {
+        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        Address address = new Address("London", "NW1");
+
+        MultiCtor ctor = mapper.toCtor(null, address);
+
+        assertNull(ctor.name());
+        assertEquals("London", ctor.city());
+        assertNull(ctor.profileName());
+        assertNull(mapper.toCtor(null, null));
+    }
+
+    @Test
+    public void mapsPrimitiveConstructorValueOnlyThroughExplicitCompute() {
+        MultiMapper mapper = CompiledRegistry.of(MultiMapper.class);
+        Address address = new Address("London", "NW1");
+
+        assertEquals(7, mapper.toAgeRecord(new Score(7), address).age());
+        assertEquals(0, mapper.toAgeRecord(null, address).age());
+        assertNull(mapper.toAgeRecord(null, null));
+    }
+
     public record Person(String first, String last, int age) {}
 
     public record NameRecord(String first, String surname) {}
@@ -154,14 +196,36 @@ public class MapperSimpleTest {
 
     public record NameOnly(String name) {}
 
+    public record MultiRecord(String name, String city, String profileName) {}
+
+    public record MultiAgeRecord(int age) {}
+
+    public record Score(Integer age) {}
+
     public record AgeBox(Integer age) {}
 
     public record AgeSource(AgeBox box) {}
 
     public static final class AgeDto {
-        public int age;
+        public Integer age;
 
         public AgeDto() {}
+    }
+
+    public static final class MultiCtor {
+        private final String name;
+        private final String city;
+        private final String profileName;
+
+        public MultiCtor(String name, String city, String profileName) {
+            this.name = name;
+            this.city = city;
+            this.profileName = profileName;
+        }
+
+        public String name() { return name; }
+        public String city() { return city; }
+        public String profileName() { return profileName; }
     }
 
     public static final class NameCtor {
@@ -253,5 +317,18 @@ public class MapperSimpleTest {
         @Mapping(target = "label", sources = {"customer:name", "address:city"}, compute = "(name, city) -> name + \"@\" + city")
         @Mapping(target = "pathLabel", sources = {"customer:$.profile.name", "address:city"}, compute = "(profile, city) -> profile + \"#\" + city")
         MultiDto toDto(Customer customer, Address address);
+
+        @Mapping(target = "name", source = "customer:name")
+        @Mapping(target = "city", source = "address:city")
+        @Mapping(target = "profileName", source = "customer:$.profile.name")
+        MultiRecord toRecord(Customer customer, Address address);
+
+        @Mapping(target = "name", source = "customer:name")
+        @Mapping(target = "city", source = "address:city")
+        @Mapping(target = "profileName", source = "customer:$.profile.name")
+        MultiCtor toCtor(Customer customer, Address address);
+
+        @Mapping(target = "age", sources = {"score:age"}, compute = "(age) -> age == null ? 0 : age")
+        MultiAgeRecord toAgeRecord(Score score, Address address);
     }
 }

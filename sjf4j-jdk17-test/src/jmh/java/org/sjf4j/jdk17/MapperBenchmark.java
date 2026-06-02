@@ -207,14 +207,14 @@ public class MapperBenchmark {
 
         @org.sjf4j.annotation.mapper.Mapping(target = "firstName", source = "$.profile.firstName")
         @org.sjf4j.annotation.mapper.Mapping(target = "lastName", source = "$.profile.lastName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "age", source = "$.profile.age")
+        @org.sjf4j.annotation.mapper.Mapping(target = "age", sources = {"$.profile.age"}, compute = "(age) -> age == null ? 0 : age")
         @org.sjf4j.annotation.mapper.Mapping(target = "accountType", source = "$.account.type")
         @org.sjf4j.annotation.mapper.Mapping(target = "active", source = "$.account.active")
         NestedTarget nested(NestedSource source);
 
         @org.sjf4j.annotation.mapper.Mapping(target = "firstName", source = "profile:firstName")
         @org.sjf4j.annotation.mapper.Mapping(target = "lastName", source = "profile:$.lastName")
-        @org.sjf4j.annotation.mapper.Mapping(target = "age", source = "profile:age")
+        @org.sjf4j.annotation.mapper.Mapping(target = "age", sources = {"profile:age"}, compute = "(age) -> age == null ? 0 : age")
         @org.sjf4j.annotation.mapper.Mapping(target = "accountType", source = "account:type")
         @org.sjf4j.annotation.mapper.Mapping(target = "active", source = "account:active")
         NestedTarget multi(Profile profile, Account account);

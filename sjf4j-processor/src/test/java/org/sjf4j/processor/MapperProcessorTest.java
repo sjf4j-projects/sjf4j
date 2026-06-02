@@ -135,8 +135,12 @@ public class MapperProcessorTest {
                         "  Target badType(Source s);\n" +
                         "  Target multi(Source a, Source b);\n" +
                         "  void voidMap(Source s);\n" +
+                        "  @MappingConfig(nulls=NullValuePolicy.IGNORE) Target configOnCreate(Source s);\n" +
                         "  @Mapping(target=\"name\", compute=\"this::badHelper\") HelperTarget badHelperMap(Source s);\n" +
+                        "  @Mapping(target=\"name\", compute=\"this::display\") HelperTarget overloadedHelperMap(Source s);\n" +
                         "  default int badHelper(String name) { return 1; }\n" +
+                        "  default String display(String name) { return name; }\n" +
+                        "  default String display(Object name) { return String.valueOf(name); }\n" +
                         "  ClassTarget noGetClass(Source s);\n" +
                         "}\n");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -151,8 +155,48 @@ public class MapperProcessorTest {
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("Cannot assign source expression to target property"), messages);
-        assertTrue(messages.contains("must return a target type"), messages);
+        assertTrue(messages.contains("update method must have a target parameter"), messages);
+        assertTrue(messages.contains("@MappingConfig is supported only on void update mapper methods"), messages);
+        assertTrue(messages.contains("Ambiguous @Mapping.compute helper 'display'; overloaded helper methods are not supported"), messages);
         assertTrue(messages.contains("Cannot map target property 'class'"), messages);
+    }
+
+    @Test
+    public void rejectInvalidCompiledMapperUpdateMethods() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-update-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadUpdateMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source { public String name; }\n" +
+                        "class Target { public Target() {} public void setName(String name) {} public void setAge(int age) {} }\n" +
+                        "class ReadOnly { public String getName() { return \"x\"; } public void setOther(String other) {} }\n" +
+                        "class CtorOnly { public CtorOnly(String name) {} }\n" +
+                        "@CompiledMapper interface BadUpdateMapper {\n" +
+                        "  void recordTarget(NameRecord target, Source s);\n" +
+                        "  void ctorOnly(CtorOnly target, Source s);\n" +
+                        "  @Mapping(target=\"name\", source=\"name\") void readOnly(ReadOnly target, Source s);\n" +
+                        "  @MappingConfig(nulls=NullValuePolicy.IGNORE) @Mapping(target=\"age\", sources={\"name\"}, compute=\"(name) -> 1\") void primitiveCompute(Target target, Source s);\n" +
+                        "  record NameRecord(String name) {}\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadUpdateMapper.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("records and constructor-only targets are unsupported"), messages);
+        assertTrue(messages.contains("must expose writable public setters or non-final fields"), messages);
+        assertTrue(messages.contains("target is not writable"), messages);
+        assertTrue(messages.contains("NullValuePolicy.IGNORE cannot guard computed expression for primitive target type int"), messages);
     }
 
     @Test
@@ -194,12 +238,13 @@ public class MapperProcessorTest {
                         "import org.sjf4j.annotation.mapper.*;\n" +
                         "class A { public String name; public int age; } class B { public String city; }\n" +
                         "class BeanTarget { public int age; public String name; public BeanTarget() {} }\n" +
-                        "record RecordTarget(String name, String city) {}\n" +
-                        "class CtorTarget { public final String name; public final String city; public CtorTarget(String name, String city) { this.name = name; this.city = city; } }\n" +
+                        "class CtorPrimitive { public CtorPrimitive(int age) {} }\n" +
                         "@CompiledMapper interface BadMultiMapper {\n" +
+                        "  record RecordPrimitive(int age) {}\n" +
                         "  @Mapping(target=\"age\", source=\"a:age\") BeanTarget primitiveTarget(A a, B b);\n" +
-                        "  @Mapping(target=\"name\", source=\"a:name\") @Mapping(target=\"city\", source=\"b:city\") RecordTarget recordTarget(A a, B b);\n" +
-                        "  @Mapping(target=\"name\", source=\"a:name\") @Mapping(target=\"city\", source=\"b:city\") CtorTarget ctorTarget(A a, B b);\n" +
+                        "  @Mapping(target=\"age\", source=\"a:$.age\") BeanTarget primitivePath(A a, B b);\n" +
+                        "  @Mapping(target=\"age\", source=\"a:age\") RecordPrimitive recordPrimitive(A a, B b);\n" +
+                        "  @Mapping(target=\"age\", source=\"a:age\") CtorPrimitive ctorPrimitive(A a, B b);\n" +
                         "  @Mapping(target=\"name\", source=\"a.name\") BeanTarget badDot(A a, B b);\n" +
                         "  @Mapping(target=\"name\", source=\"a:\") BeanTarget badColon(A a, B b);\n" +
                         "}\n");
@@ -214,7 +259,7 @@ public class MapperProcessorTest {
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadMultiMapper.java").toFile()))).call();
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("do not support constructor or record targets"), messages);
+        assertTrue(messages.contains("nullable source or path expression cannot be assigned to primitive target type int"), messages);
         assertTrue(messages.contains("Cannot resolve source 'a.name' on any source parameter"), messages);
         assertTrue(messages.contains("expected a property, JSONPath, or JSON Pointer after ':'"), messages);
     }

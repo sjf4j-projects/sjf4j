@@ -1,6 +1,8 @@
 package org.sjf4j.processor.mapper;
 
 import org.sjf4j.annotation.mapper.Mapping;
+import org.sjf4j.annotation.mapper.MappingConfig;
+import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.ProcessorContext;
@@ -57,7 +59,11 @@ public final class MapperGenerator {
      */
     private void _genMap(TypeElement iface, ExecutableElement method, GeneratedClass target) {
         if (method.getReturnType().getKind() == TypeKind.VOID) {
-            _error(method, target, "@CompiledMapper method must return a target type");
+            _genUpdate(iface, method, target);
+            return;
+        }
+        if (method.getAnnotation(MappingConfig.class) != null) {
+            _error(method, target, "@MappingConfig is supported only on void update mapper methods");
             return;
         }
         if (method.getParameters().isEmpty()) {
@@ -85,10 +91,6 @@ public final class MapperGenerator {
         Map<String, Write> writes = _writes(targetType, method.getReturnType());
         Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
-        if (multi && plan.ctor != null) {
-            _error(method, target, "Multi-source @CompiledMapper methods do not support constructor or record targets");
-            return;
-        }
 
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         Map<String, Expr> explicit = new HashMap<String, Expr>();
@@ -148,6 +150,10 @@ public final class MapperGenerator {
                 _error(method, target, "Cannot assign source expression to target property '" + name + "': " + e.type + " is not assignable to " + need);
                 return;
             }
+            if (need.getKind().isPrimitive() && (e.nullableRoot || e.path)) {
+                _error(method, target, "Cannot map target property '" + name + "': nullable source or path expression cannot be assigned to primitive target type " + need);
+                return;
+            }
             values.put(name, e);
         }
         if (plan.ctor != null && values.size() != plan.names.size()) {
@@ -156,6 +162,114 @@ public final class MapperGenerator {
         }
 
         target.addMethod(out -> _emit(out, method, sources, multi, state, plan, values));
+    }
+
+    private void _genUpdate(TypeElement iface, ExecutableElement method, GeneratedClass target) {
+        List<? extends VariableElement> params = method.getParameters();
+        if (params.size() < 2) {
+            _error(method, target, "@CompiledMapper update method must have a target parameter and at least one source parameter");
+            return;
+        }
+
+        TypeElement targetType = GeneratorUtil.asTypeElement(params.get(0).asType());
+        if (targetType == null) {
+            _error(method, target, "@CompiledMapper supports only declared source and target types");
+            return;
+        }
+        if (_isRecord(targetType)) {
+            _error(method, target, "Update target type must be mutable; records and constructor-only targets are unsupported");
+            return;
+        }
+
+        List<SourceParam> sources = new ArrayList<SourceParam>();
+        for (int i = 1; i < params.size(); i++) {
+            VariableElement source = params.get(i);
+            TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
+            if (sourceType == null) {
+                _error(method, target, "@CompiledMapper supports only declared source and target types");
+                return;
+            }
+            sources.add(new SourceParam(source, _reads(sourceType, source.asType())));
+        }
+        boolean multi = sources.size() > 1;
+        Map<String, Write> writes = _writes(targetType, params.get(0).asType());
+        if (writes.isEmpty()) {
+            _error(method, target, "Update target type must expose writable public setters or non-final fields");
+            return;
+        }
+
+        Mapping[] anns = method.getAnnotationsByType(Mapping.class);
+        Map<String, Expr> explicit = new HashMap<String, Expr>();
+        Set<String> explicitTargets = new HashSet<String>();
+        Set<String> ignored = new HashSet<String>();
+
+        for (Mapping m : anns) {
+            if (!_validateMapping(method, target, m)) return;
+
+            String t = m.target();
+            if (_isAutoMarker(m)) continue;
+            if (t.length() == 0) {
+                _error(method, target, "@Mapping requires a non-empty target");
+                return;
+            }
+            if (!writes.containsKey(t)) {
+                _error(method, target, "Cannot map target property '" + t + "': target is not writable");
+                return;
+            }
+            if (m.ignore()) {
+                ignored.add(t);
+                continue;
+            }
+            explicitTargets.add(t);
+        }
+
+        Plan plan = new Plan(null, new ArrayList<String>(writes.keySet()), writes);
+        MethodState state = new MethodState(_readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
+
+        for (Mapping m : anns) {
+            String t = m.target();
+            if (_isAutoMarker(m) || m.ignore()) continue;
+
+            Expr e;
+            if (m.compute().length() != 0) {
+                e = _compute(iface, method, target, sources, multi, state, m);
+            } else {
+                e = _readExpr(method, target, sources, multi, state, m.source().length() == 0 ? t : m.source(), t, null);
+            }
+            if (e == null) return;
+            explicit.put(t, e);
+        }
+
+        MappingConfig cfg = method.getAnnotation(MappingConfig.class);
+        NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
+        Map<String, Expr> values = new LinkedHashMap<String, Expr>();
+        for (String name : plan.names) {
+            if (ignored.contains(name)) continue;
+
+            Expr e = explicit.get(name);
+            if (e == null && !explicitTargets.contains(name) && _hasAutoSource(sources, multi, name)) {
+                e = _readExpr(method, target, sources, multi, state, name, name, null);
+            }
+            if (e == null) continue;
+
+            TypeMirror need = plan.writes.get(name).type;
+            if (!_assignable(e.type, need)) {
+                _error(method, target, "Cannot assign source expression to target property '" + name + "': " + e.type + " is not assignable to " + need);
+                return;
+            }
+            if (nulls == NullValuePolicy.IGNORE && need.getKind().isPrimitive() && e.type == null) {
+                _error(method, target, "Cannot map target property '" + name + "': NullValuePolicy.IGNORE cannot guard computed expression for primitive target type " + need);
+                return;
+            }
+            if (need.getKind().isPrimitive() && (e.nullableRoot || e.path)
+                    && !(nulls == NullValuePolicy.IGNORE && e.type != null && !e.type.getKind().isPrimitive())) {
+                _error(method, target, "Cannot map target property '" + name + "': nullable source or path expression cannot be assigned to primitive target type " + need);
+                return;
+            }
+            values.put(name, e);
+        }
+
+        target.addMethod(out -> _emitUpdate(out, method, params.get(0), sources, multi, state, plan, values, nulls));
     }
 
     private boolean _isAutoMarker(Mapping m) {
@@ -277,6 +391,61 @@ public final class MapperGenerator {
         for (String t : e.temps) {
             out.line(t);
         }
+    }
+
+    private void _emitUpdate(SourceWriter out, ExecutableElement method, VariableElement targetParam, List<SourceParam> sources,
+                             boolean multi, MethodState state, Plan plan, Map<String, Expr> values, NullValuePolicy nulls) {
+        out.line("");
+        out.line("@Override");
+        StringBuilder sig = new StringBuilder();
+        sig.append(targetParam.asType()).append(" ").append(targetParam.getSimpleName());
+        for (int i = 0; i < sources.size(); i++) {
+            sig.append(", ").append(sources.get(i).element.asType()).append(" ").append(sources.get(i).name);
+        }
+        out.line("public void " + method.getSimpleName() + "(" + sig + ") {");
+        out.indent();
+        if (multi) {
+            StringBuilder guard = new StringBuilder("if (");
+            for (int i = 0; i < sources.size(); i++) {
+                if (i != 0) guard.append(" && ");
+                guard.append(sources.get(i).name).append(" == null");
+            }
+            out.line(guard.append(") return;").toString());
+        } else {
+            out.line("if (" + sources.get(0).name + " == null) return;");
+        }
+
+        for (String temp : state.readTemps) out.line(temp);
+        for (Expr e : values.values()) _emitTemps(out, e);
+
+        String targetName = targetParam.getSimpleName().toString();
+        for (String name : plan.names) {
+            Expr e = values.get(name);
+            if (e == null) continue;
+
+            Write w = plan.writes.get(name);
+            String assign = w.setter != null
+                    ? targetName + "." + w.setter.getSimpleName() + "(" + e.code + ");"
+                    : targetName + "." + name + " = " + e.code + ";";
+            if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
+                if (e.local) {
+                    out.line("if (" + e.code + " != null) " + assign);
+                } else if (e.type == null) {
+                    out.line("if (" + e.code + " != null) " + assign);
+                } else {
+                    String temp = _tempName(name, "value", 0);
+                    out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
+                    String tempAssign = w.setter != null
+                            ? targetName + "." + w.setter.getSimpleName() + "(" + temp + ");"
+                            : targetName + "." + name + " = " + temp + ";";
+                    out.line("if (" + temp + " != null) " + tempAssign);
+                }
+            } else {
+                out.line(assign);
+            }
+        }
+        out.dedent();
+        out.line("}");
     }
 
     /**
@@ -530,6 +699,17 @@ public final class MapperGenerator {
 
     private Expr _helper(TypeElement iface, ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
                          boolean multi, MethodState state, Mapping m, String name) {
+        int matches = 0;
+        for (Element e : iface.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
+            if (!e.getModifiers().contains(Modifier.DEFAULT) && !e.getModifiers().contains(Modifier.STATIC)) continue;
+            matches++;
+        }
+        if (matches > 1) {
+            _error(method, target, "Ambiguous @Mapping.compute helper '" + name + "'; overloaded helper methods are not supported");
+            return null;
+        }
+
         for (Element e : iface.getEnclosedElements()) {
             if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
 
