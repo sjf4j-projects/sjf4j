@@ -54,7 +54,7 @@ public final class PathGenerator {
      * Generates an implementation for one {@code @CompiledPath} interface.
      */
     public void generate(TypeElement iface) {
-        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX, PathGenerator.class);
+        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
 
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;

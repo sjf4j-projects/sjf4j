@@ -52,7 +52,7 @@ public final class MapperGenerator {
      * Generates an implementation for one {@code @CompiledMapper} interface.
      */
     public void generate(TypeElement iface) {
-        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX, MapperGenerator.class);
+        GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
         generation = new GenerationState();
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;
@@ -585,17 +585,13 @@ public final class MapperGenerator {
             out.line("if (" + sources.get(0).name + " == null) return null;");
         }
 
-        for (String temp : state.readTemps) {
-            out.line(temp);
-        }
-        for (Expr e : values.values()) {
-            _emitTemps(out, e);
-        }
-        for (Expr e : pathValues.values()) {
-            _emitTemps(out, e);
-        }
-
         if (plan.ctor != null) {
+            for (String temp : state.readTemps) {
+                out.line(temp);
+            }
+            for (Expr e : values.values()) {
+                _emitTemps(out, e);
+            }
             StringBuilder b = new StringBuilder("return new ").append(method.getReturnType()).append("(");
             for (int i = 0; i < plan.names.size(); i++) {
                 if (i != 0) b.append(", ");
@@ -604,10 +600,14 @@ public final class MapperGenerator {
             out.line(b.append(");").toString());
         } else {
             out.line(method.getReturnType() + " _target = new " + method.getReturnType() + "();");
+            for (String temp : state.readTemps) {
+                out.line(temp);
+            }
             for (String name : plan.names) {
                 Expr e = values.get(name);
                 if (e == null) continue;
 
+                _emitTemps(out, e);
                 Write w = plan.writes.get(name);
                 if (w.setter != null) {
                     out.line("_target." + w.setter.getSimpleName() + "(" + e.code + ");");
@@ -616,6 +616,7 @@ public final class MapperGenerator {
                 }
             }
             for (Map.Entry<TargetPathWrite, Expr> entry : pathValues.entrySet()) {
+                _emitTemps(out, entry.getValue());
                 _emitTargetPath(out, method, "_target", method.getReturnType(), entry.getKey(), entry.getValue(), NullValuePolicy.SET);
             }
             out.line("return _target;");
