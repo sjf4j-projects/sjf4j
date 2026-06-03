@@ -2,6 +2,8 @@ package org.sjf4j.processor;
 
 import org.sjf4j.annotation.node.NodeProperty;
 
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -14,6 +16,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -101,13 +104,36 @@ public final class GeneratorUtil {
     }
 
     /**
-     * Returns the OBNT-facing property name declared by {@code @NodeProperty},
-     * or the Java/member fallback when no explicit name is present.
+     * Returns the OBNT-facing property name declared by SJF4J/Jackson/Fastjson2
+     * property naming annotations, or the Java/member fallback when no explicit
+     * name is present. Third-party annotations are read through mirrors to avoid
+     * compile-time dependencies.
      */
     public static String nodePropertyName(Element element, String fallback) {
         NodeProperty property = element.getAnnotation(NodeProperty.class);
         if (property != null && property.value().length() != 0) return property.value();
+        String name = annotationString(element, "tools.jackson.annotation.JsonProperty", "value");
+        if (name != null && name.length() != 0) return name;
+        name = annotationString(element, "com.fasterxml.jackson.annotation.JsonProperty", "value");
+        if (name != null && name.length() != 0) return name;
+        name = annotationString(element, "com.alibaba.fastjson2.annotation.JSONField", "name");
+        if (name != null && name.length() != 0) return name;
         return fallback;
+    }
+
+    private static String annotationString(Element element, String annotationName, String memberName) {
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            Element annotation = mirror.getAnnotationType().asElement();
+            if (!(annotation instanceof TypeElement)) continue;
+            if (!((TypeElement) annotation).getQualifiedName().contentEquals(annotationName)) continue;
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : mirror.getElementValues().entrySet()) {
+                if (!e.getKey().getSimpleName().contentEquals(memberName)) continue;
+                Object value = e.getValue().getValue();
+                return value instanceof String ? (String) value : null;
+            }
+            return null;
+        }
+        return null;
     }
 
     /**

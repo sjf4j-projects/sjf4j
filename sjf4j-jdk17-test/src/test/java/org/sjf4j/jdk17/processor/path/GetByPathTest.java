@@ -94,6 +94,19 @@ public class GetByPathTest {
         assertEquals("field", nodes.getRenamedFieldValue(root));
     }
 
+    @Test
+    public void supportsThirdPartyPropertyNamesOnPojoGetPath() {
+        GetNodes nodes = CompiledNodes.of(GetNodes.class);
+        ThirdPartyRoot root = new ThirdPartyRoot(
+                new ThirdPartyProfile("alice"),
+                new ThirdPartyGetterBean("display"),
+                new ThirdPartyFieldBean("field"));
+
+        assertEquals("alice", nodes.getThirdPartyRecordName(root));
+        assertEquals("display", nodes.getThirdPartyGetterValue(root));
+        assertEquals("field", nodes.getThirdPartyFieldValue(root));
+    }
+
     private static Account account() {
         Contact first = new Contact("first@example.com", 1);
         Contact last = new Contact("last@example.com", 7);
@@ -143,6 +156,28 @@ public class GetByPathTest {
         public String id;
 
         RenamedFieldBean(String id) { this.id = id; }
+    }
+
+    record ThirdPartyRoot(@com.fasterxml.jackson.annotation.JsonProperty("profile_data") ThirdPartyProfile profileData,
+                          ThirdPartyGetterBean getterBean,
+                          ThirdPartyFieldBean fieldBean) {}
+
+    record ThirdPartyProfile(@com.alibaba.fastjson2.annotation.JSONField(name = "user_name") String userName) {}
+
+    static final class ThirdPartyGetterBean {
+        private final String value;
+
+        ThirdPartyGetterBean(String value) { this.value = value; }
+
+        @com.fasterxml.jackson.annotation.JsonProperty("display_name")
+        public String getName() { return value; }
+    }
+
+    static final class ThirdPartyFieldBean {
+        @com.alibaba.fastjson2.annotation.JSONField(name = "external_id")
+        public String id;
+
+        ThirdPartyFieldBean(String id) { this.id = id; }
     }
 
     record FieldBean(String value) {}
@@ -210,6 +245,15 @@ public class GetByPathTest {
 
         @GetByPath("$.fieldBean.external_id")
         String getRenamedFieldValue(RenamedRoot root);
+
+        @GetByPath("$.profile_data.user_name")
+        String getThirdPartyRecordName(ThirdPartyRoot root);
+
+        @GetByPath("$.getterBean.display_name")
+        String getThirdPartyGetterValue(ThirdPartyRoot root);
+
+        @GetByPath("$.fieldBean.external_id")
+        String getThirdPartyFieldValue(ThirdPartyRoot root);
 
     }
 }

@@ -80,6 +80,17 @@ public class PutByPathTest {
     }
 
     @Test
+    public void thirdPartyPropertyNamesDrivePojoPutPath() {
+        PutNodes nodes = CompiledNodes.of(PutNodes.class);
+        ThirdPartyMutableBean bean = new ThirdPartyMutableBean("first-old", "last-old");
+
+        assertEquals("first-old", nodes.putThirdPartyFirstName(bean, "first-new"));
+        assertEquals("first-new", bean.getFirstName());
+        assertEquals("last-old", nodes.putThirdPartyLastName(bean, "last-new"));
+        assertEquals("last-new", bean.lastName);
+    }
+
+    @Test
     public void missingPutParentThrowsJsonException() {
         PutNodes nodes = CompiledNodes.of(PutNodes.class);
 
@@ -188,6 +199,24 @@ public class PutByPathTest {
         public void setValue(String value) { this.value = value; }
     }
 
+    static final class ThirdPartyMutableBean {
+        private String firstName;
+
+        @com.alibaba.fastjson2.annotation.JSONField(name = "last_name")
+        public String lastName;
+
+        ThirdPartyMutableBean(String firstName, String lastName) {
+            this.firstName = firstName;
+            this.lastName = lastName;
+        }
+
+        @com.fasterxml.jackson.annotation.JsonProperty("first_name")
+        public String getFirstName() { return firstName; }
+
+        @com.fasterxml.jackson.annotation.JsonProperty("first_name")
+        public void setFirstName(String firstName) { this.firstName = firstName; }
+    }
+
     @CompiledPath
     interface PutNodes {
         @PutByPath("$.profile.organization.teams[0].members[-1].contact.email")
@@ -231,6 +260,12 @@ public class PutByPathTest {
 
         @PutByPath("$.value")
         int putPrimitiveOld(Map<String, Integer> root, int value);
+
+        @PutByPath("$.first_name")
+        String putThirdPartyFirstName(ThirdPartyMutableBean root, String value);
+
+        @PutByPath("$.last_name")
+        String putThirdPartyLastName(ThirdPartyMutableBean root, String value);
 
         @PutByPath("$.profile.organization.regions[{region}][{idx}].district")
         String putRegionDistrict(Account root, String region, int idx, String value);

@@ -141,6 +141,7 @@ public class MapperProcessorTest {
                         "  @Mapping(target=\"name\", compute=\"this::badHelper\") HelperTarget badHelperMap(Source s);\n" +
                         "  @Mapping(target=\"name\", compute=\"this::display\") HelperTarget overloadedHelperMap(Source s);\n" +
                         "  @Mapping(target=\"$.name\", source=\"name\") NameRecord pathRecord(Source s);\n" +
+                        "  @MapperOptions(nulls=NullValuePolicy.IGNORE) NameRecord ignoreCtor(Source s);\n" +
                         "  @EnsureMapping(target=\"$.items[0].name\", source=\"name\") PathTarget ensureIndex(Source s);\n" +
                         "  default long badHelper(String name) { return 1; }\n" +
                         "  default String display(String name) { return name; }\n" +
@@ -164,6 +165,7 @@ public class MapperProcessorTest {
         assertTrue(messages.contains("Ambiguous @Mapping.compute helper 'display'; overloaded helper methods are not supported"), messages);
         assertTrue(messages.contains("Cannot map target property 'class'"), messages);
         assertTrue(messages.contains("Target paths are supported only for mutable no-args create targets and update targets"), messages);
+        assertTrue(messages.contains("NullValuePolicy.IGNORE is supported only for mutable no-args create targets and update targets"), messages);
         assertTrue(messages.contains("@EnsureMapping does not support index-based target path segments"), messages);
     }
 
@@ -591,6 +593,52 @@ public class MapperProcessorTest {
         Object rawSource = rawSourceCtor.newInstance();
         Object valueTarget = mapperClass.getMethod("decode", rawSource.getClass()).invoke(mapper, rawSource);
         assertEquals("b", field(field(valueTarget, "id"), "value"));
+    }
+
+    @Test
+    public void thirdPartyPropertyNamesDriveMapperKeys() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-third-party-name-test");
+        Path src = dir.resolve("src");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src.resolve("testcase"));
+        Files.createDirectories(src.resolve("com/fasterxml/jackson/annotation"));
+        Files.createDirectories(src.resolve("com/alibaba/fastjson2/annotation"));
+        Files.createDirectories(out);
+        write(src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java"),
+                "package com.fasterxml.jackson.annotation; public @interface JsonProperty { String value() default \"\"; String[] alias() default {}; }\n");
+        write(src.resolve("com/alibaba/fastjson2/annotation/JSONField.java"),
+                "package com.alibaba.fastjson2.annotation; public @interface JSONField { String name() default \"\"; String[] alternateNames() default {}; }\n");
+        write(src.resolve("testcase/ThirdPartyMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import com.fasterxml.jackson.annotation.JsonProperty;\n" +
+                        "import com.alibaba.fastjson2.annotation.JSONField;\n" +
+                        "import java.util.*;\n" +
+                        "class JacksonTarget { @JsonProperty(\"first_name\") public String firstName; public JacksonTarget() {} }\n" +
+                        "class FastjsonTarget { @JSONField(name=\"last_name\") public String lastName; public FastjsonTarget() {} }\n" +
+                        "@CompiledMapper interface ThirdPartyMapper { JacksonTarget jackson(Map<String, String> s); FastjsonTarget fastjson(Map<String, String> s); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java").toFile(),
+                src.resolve("com/alibaba/fastjson2/annotation/JSONField.java").toFile(),
+                src.resolve("testcase/ThirdPartyMapper.java").toFile()))).call();
+        assertTrue(ok);
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> mapperClass = Class.forName("testcase.ThirdPartyMapper_Impl", true, loader);
+        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        HashMap<String, String> input = new HashMap<>();
+        input.put("first_name", "Ada");
+        input.put("last_name", "Lovelace");
+        Object jackson = mapperClass.getMethod("jackson", java.util.Map.class).invoke(mapper, input);
+        Object fastjson = mapperClass.getMethod("fastjson", java.util.Map.class).invoke(mapper, input);
+        assertEquals("Ada", field(jackson, "firstName"));
+        assertEquals("Lovelace", field(fastjson, "lastName"));
     }
 
     private static void write(Path path, String text) throws Exception {

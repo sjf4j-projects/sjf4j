@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
  * automatically. Use repeatable {@link Mapping} annotations to rename a source
  * property, ignore a target property, compute a value from one or more source
  * properties, or write to an SJF4J target path. Use {@link MapperOptions} for
- * update null handling and collection/map update policies.</p>
+ * null handling and collection/map update policies.</p>
  *
  * <p>Supported source reads are public fields, JavaBean getters, boolean
  * {@code isXxx} getters, and record accessors. Supported target writes are

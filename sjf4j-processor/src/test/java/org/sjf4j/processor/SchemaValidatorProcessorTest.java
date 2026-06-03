@@ -414,6 +414,39 @@ public class SchemaValidatorProcessorTest {
         assertTrue((Boolean) validatorClass.getMethod("lenient", userClass).invoke(validator, bad));
     }
 
+    @Test
+    public void thirdPartyPropertyNamesDrivePojoSchemaValidation() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-schema-third-party-name-test");
+        Path src = dir.resolve("src");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src.resolve("testcase"));
+        Files.createDirectories(src.resolve("com/fasterxml/jackson/annotation"));
+        Files.createDirectories(out);
+        write(src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java"),
+                "package com.fasterxml.jackson.annotation; public @interface JsonProperty { String value() default \"\"; String[] alias() default {}; }\n");
+        write(src.resolve("testcase/User.java"),
+                "package testcase;\n" +
+                        "import com.fasterxml.jackson.annotation.JsonProperty;\n" +
+                        "import org.sjf4j.annotation.schema.ValidJsonSchema;\n" +
+                        "@ValidJsonSchema(value=\"{\\\"type\\\":\\\"object\\\",\\\"required\\\":[\\\"first_name\\\"],\\\"properties\\\":{\\\"first_name\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":2}}}\")\n" +
+                        "public class User { @JsonProperty(\"first_name\") public String firstName; public User(String firstName) { this.firstName = firstName; } }\n");
+        write(src.resolve("testcase/UserValidator.java"),
+                "package testcase; import org.sjf4j.annotation.schema.*; @CompiledSchemaValidator interface UserValidator { @ValidatorOptions(fallback=false) boolean ok(User u); }\n");
+
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        assertTrue(compile(out, diagnostics,
+                src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java"),
+                src.resolve("testcase/User.java"),
+                src.resolve("testcase/UserValidator.java")), diagnosticsToString(diagnostics));
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> userClass = Class.forName("testcase.User", true, loader);
+        Class<?> validatorClass = Class.forName("testcase.UserValidator_Impl", true, loader);
+        Object validator = validatorClass.getField("INSTANCE").get(null);
+        assertTrue((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator, userClass.getConstructor(String.class).newInstance("Ada")));
+        assertFalse((Boolean) validatorClass.getMethod("ok", userClass).invoke(validator, userClass.getConstructor(String.class).newInstance("A")));
+    }
+
     private static boolean compile(Path out, DiagnosticCollector<JavaFileObject> diagnostics, Path... sources) throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler is required");

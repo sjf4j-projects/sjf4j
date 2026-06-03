@@ -552,6 +552,64 @@ public class PathProcessorTest {
     }
 
     @Test
+    public void thirdPartyPropertyNamesDriveCompiledPathPojoReadAndWrite() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-path-third-party-name-test");
+        Path src = dir.resolve("src");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src.resolve("testcase"));
+        Files.createDirectories(src.resolve("com/fasterxml/jackson/annotation"));
+        Files.createDirectories(src.resolve("com/alibaba/fastjson2/annotation"));
+        Files.createDirectories(out);
+        write(src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java"),
+                "package com.fasterxml.jackson.annotation; public @interface JsonProperty { String value() default \"\"; String[] alias() default {}; }\n");
+        write(src.resolve("com/alibaba/fastjson2/annotation/JSONField.java"),
+                "package com.alibaba.fastjson2.annotation; public @interface JSONField { String name() default \"\"; String[] alternateNames() default {}; }\n");
+        write(src.resolve("testcase/Bean.java"),
+                "package testcase;\n" +
+                        "import com.fasterxml.jackson.annotation.JsonProperty;\n" +
+                        "import com.alibaba.fastjson2.annotation.JSONField;\n" +
+                        "public class Bean {\n" +
+                        "  private String firstName = \"old-first\";\n" +
+                        "  @JSONField(name=\"last_name\") public String lastName = \"old-last\";\n" +
+                        "  @JsonProperty(\"first_name\") public String getFirstName() { return firstName; }\n" +
+                        "  @JsonProperty(\"first_name\") public void setFirstName(String v) { firstName = v; }\n" +
+                        "}\n");
+        write(src.resolve("testcase/PathNodes.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath public interface PathNodes {\n" +
+                        "  @GetByPath(\"$.first_name\") String getFirst(Bean b);\n" +
+                        "  @PutByPath(\"$.first_name\") String putFirst(Bean b, String v);\n" +
+                        "  @GetByPath(\"$.last_name\") String getLast(Bean b);\n" +
+                        "  @PutByPath(\"$.last_name\") String putLast(Bean b, String v);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("com/fasterxml/jackson/annotation/JsonProperty.java").toFile(),
+                src.resolve("com/alibaba/fastjson2/annotation/JSONField.java").toFile(),
+                src.resolve("testcase/Bean.java").toFile(),
+                src.resolve("testcase/PathNodes.java").toFile()))).call();
+        assertTrue(ok);
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> beanClass = Class.forName("testcase.Bean", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.PathNodes_Impl", true, loader);
+        Object bean = beanClass.getConstructor().newInstance();
+        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        assertEquals("old-first", nodesClass.getMethod("getFirst", beanClass).invoke(nodes, bean));
+        assertEquals("old-first", nodesClass.getMethod("putFirst", beanClass, String.class).invoke(nodes, bean, "new-first"));
+        assertEquals("new-first", nodesClass.getMethod("getFirst", beanClass).invoke(nodes, bean));
+        assertEquals("old-last", nodesClass.getMethod("getLast", beanClass).invoke(nodes, bean));
+        assertEquals("old-last", nodesClass.getMethod("putLast", beanClass, String.class).invoke(nodes, bean, "new-last"));
+        assertEquals("new-last", nodesClass.getMethod("getLast", beanClass).invoke(nodes, bean));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void generateAndExecuteEnsurePutPaths() throws Exception {
         Path dir = Files.createTempDirectory("sjf4j-processor-ensure-test");

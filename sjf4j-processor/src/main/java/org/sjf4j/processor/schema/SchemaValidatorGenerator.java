@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -297,8 +298,8 @@ public final class SchemaValidatorGenerator {
             Object dependentRequired = SchemaPlanIntrospector.field(e, "dependentRequired");
             if (dependentRequired != null) return CompileResult.unsupported("dependentRequired");
             if (required != null) {
-                Map<String, Read> reads = _reads(type);
-                for (String key : required) if (!reads.containsKey(key)) out.add("return false;");
+                ReadsResult rr = _reads(type);
+                for (String key : required) if (!rr.reads.containsKey(key)) out.add("return false;");
             }
             return CompileResult.OK;
         }
@@ -307,7 +308,8 @@ public final class SchemaValidatorGenerator {
             Object patterns = SchemaPlanIntrospector.field(e, "patterns");
             SchemaPlan additional = (SchemaPlan) SchemaPlanIntrospector.field(e, "additionalPropertiesPlan");
             if (patterns != null) return CompileResult.unsupported("patternProperties");
-            Map<String, Read> reads = _reads(type);
+            ReadsResult rr = _reads(type);
+            Map<String, Read> reads = rr.reads;
             if (properties != null) {
                 for (Map.Entry<String, SchemaPlan> entry : properties.entrySet()) {
                     Read read = reads.get(entry.getKey());
@@ -324,7 +326,10 @@ public final class SchemaValidatorGenerator {
             }
             if (additional != null && _isBooleanFalse(additional)) {
                 Set<String> allowed = properties == null ? new HashSet<String>() : properties.keySet();
-                for (String key : reads.keySet()) if (!allowed.contains(key)) out.add("return false;");
+                for (String javaName : rr.javaNames) {
+                    String jsonName = rr.javaToJsonName.get(javaName);
+                    if (jsonName != null && !allowed.contains(jsonName)) out.add("return false;");
+                }
             } else if (additional != null && !_isBooleanTrue(additional)) {
                 return CompileResult.unsupported("additionalProperties schema");
             }
@@ -715,19 +720,28 @@ public final class SchemaValidatorGenerator {
         return SchemaPlanIntrospector.booleanSchema(plan) && SchemaPlanIntrospector.booleanValue(plan);
     }
 
-    private Map<String, Read> _reads(TypeMirror owner) {
+    private ReadsResult _reads(TypeMirror owner) {
         TypeElement type = GeneratorUtil.asTypeElement(owner);
         Map<String, Read> r = new LinkedHashMap<String, Read>();
-        if (type == null) return r;
+        Set<String> javaNames = new LinkedHashSet<String>();
+        Map<String, String> javaToJsonName = new LinkedHashMap<String, String>();
+        if (type == null) return new ReadsResult(r, javaNames, javaToJsonName);
         if ("RECORD".equals(type.getKind().name())) {
-            Map<String, Read> recordReads = _recordReads(type);
-            if (recordReads != null) return recordReads;
+            ReadsResult recordResult = _recordReads(type);
+            if (recordResult != null) {
+                // Enrich with @NodeProperty from accessor methods (record component
+                // elements may not expose annotations directly in all JDK versions).
+                _enrichNodeProperty(type, recordResult.reads, recordResult.javaNames, recordResult.javaToJsonName);
+                return recordResult;
+            }
         }
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
             if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC)) continue;
             if (member.getKind() == ElementKind.FIELD) {
-                r.put(member.getSimpleName().toString(), new Read(null, member.getSimpleName().toString(), ctx.types.asMemberOf((DeclaredType) owner, member)));
+                String javaName = member.getSimpleName().toString();
+                _addRead(r, javaNames, javaToJsonName, javaName,
+                    new Read(null, javaName, ctx.types.asMemberOf((DeclaredType) owner, member)), member);
             } else if (member.getKind() == ElementKind.METHOD) {
                 ExecutableElement e = (ExecutableElement) member;
                 if (!e.getParameters().isEmpty()) continue;
@@ -735,28 +749,79 @@ public final class SchemaValidatorGenerator {
                 if (mt.getReturnType().getKind() == TypeKind.VOID) continue;
                 String n = e.getSimpleName().toString();
                 if (n.equals("getClass")) continue;
-                if (n.startsWith("get") && n.length() > 3) r.put(GeneratorUtil.decap(n.substring(3)), new Read(e, null, mt.getReturnType()));
-                else if (n.startsWith("is") && n.length() > 2) r.put(GeneratorUtil.decap(n.substring(2)), new Read(e, null, mt.getReturnType()));
+                if (n.startsWith("get") && n.length() > 3) {
+                    String javaName = GeneratorUtil.decap(n.substring(3));
+                    _addRead(r, javaNames, javaToJsonName, javaName, new Read(e, null, mt.getReturnType()), member);
+                } else if (n.startsWith("is") && n.length() > 2) {
+                    String javaName = GeneratorUtil.decap(n.substring(2));
+                    _addRead(r, javaNames, javaToJsonName, javaName, new Read(e, null, mt.getReturnType()), member);
+                }
             }
         }
-        return r;
+        return new ReadsResult(r, javaNames, javaToJsonName);
+    }
+
+    /**
+     * Enriches a {@code ReadsResult} built from record components with
+     * {@code @NodeProperty} names found on record accessor methods.
+     * Record component elements may not expose annotations directly
+     * in all JDK versions, but accessor methods do.
+     */
+    private void _enrichNodeProperty(TypeElement type, Map<String, Read> reads,
+                                     Set<String> javaNames, Map<String, String> javaToJsonName) {
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement e = (ExecutableElement) member;
+            if (!e.getParameters().isEmpty()) continue;
+            String javaName = e.getSimpleName().toString();
+            if (!reads.containsKey(javaName)) continue; // Not a record component accessor
+            String npName = GeneratorUtil.nodePropertyName(e, null);
+            if (npName != null && !npName.equals(javaName)) {
+                reads.put(npName, reads.get(javaName));
+                javaToJsonName.put(javaName, npName);
+            } else if (javaToJsonName.get(javaName) == null) {
+                javaToJsonName.put(javaName, javaName);
+            }
+        }
+        // Fill remaining javaToJsonName entries with Java names
+        for (String javaName : javaNames) {
+            if (!javaToJsonName.containsKey(javaName)) {
+                javaToJsonName.put(javaName, javaName);
+            }
+        }
+    }
+
+    private static void _addRead(Map<String, Read> r, Set<String> javaNames, Map<String, String> javaToJsonName,
+                                  String javaName, Read read, Element element) {
+        r.put(javaName, read);
+        javaNames.add(javaName);
+        String npName = GeneratorUtil.nodePropertyName(element, null);
+        if (npName != null && !npName.equals(javaName)) {
+            r.put(npName, read);
+            javaToJsonName.put(javaName, npName);
+        } else {
+            javaToJsonName.put(javaName, javaName);
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Read> _recordReads(TypeElement type) {
+    private ReadsResult _recordReads(TypeElement type) {
         try {
             Method method = TypeElement.class.getMethod("getRecordComponents");
             Object value = method.invoke(type);
             if (!(value instanceof List)) return null;
 
             Map<String, Read> r = new LinkedHashMap<String, Read>();
+            Set<String> javaNames = new LinkedHashSet<String>();
+            Map<String, String> javaToJsonName = new LinkedHashMap<String, String>();
             for (Object component : (List<Object>) value) {
                 if (!(component instanceof Element)) return null;
                 Element e = (Element) component;
                 String name = e.getSimpleName().toString();
                 r.put(name, new Read(name, e.asType()));
+                javaNames.add(name);
             }
-            return r;
+            return new ReadsResult(r, javaNames, javaToJsonName);
         } catch (Exception ignored) {
             return null;
         }
@@ -805,6 +870,17 @@ public final class SchemaValidatorGenerator {
             if (method != null) return root + "." + method.getSimpleName() + "()";
             if (methodName != null) return root + "." + methodName + "()";
             return root + "." + field;
+        }
+    }
+
+    private static final class ReadsResult {
+        final Map<String, Read> reads;
+        final Set<String> javaNames;
+        final Map<String, String> javaToJsonName;
+        ReadsResult(Map<String, Read> reads, Set<String> javaNames, Map<String, String> javaToJsonName) {
+            this.reads = reads;
+            this.javaNames = javaNames;
+            this.javaToJsonName = javaToJsonName;
         }
     }
 

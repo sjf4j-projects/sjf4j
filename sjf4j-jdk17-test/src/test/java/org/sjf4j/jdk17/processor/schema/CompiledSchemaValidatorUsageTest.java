@@ -1,6 +1,7 @@
 package org.sjf4j.jdk17.processor.schema;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledSchemaValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.annotation.schema.ValidatorOptions;
@@ -85,6 +86,125 @@ public class CompiledSchemaValidatorUsageTest {
         }
         """)
     public record Metric(Integer value) {}
+
+    @Test
+    public void supportsNodePropertyRenameOnRecord() {
+        RenamedPersonValidator validator = CompiledNodes.of(RenamedPersonValidator.class);
+
+        // Schema uses JSON-facing name "first_name";
+        // record component uses @NodeProperty("first_name") on Java name "firstName"
+        assertTrue(validator.isValid(new RenamedPerson("John")));
+        assertFalse(validator.isValid(new RenamedPerson("x"))); // minLength: 2
+        assertFalse(validator.isValid(new RenamedPerson(null))); // required
+    }
+
+    @Test
+    public void supportsNodePropertyWithAdditionalPropertiesFalse() {
+        StrictPersonValidator validator = CompiledNodes.of(StrictPersonValidator.class);
+
+        assertTrue(validator.isValid(new StrictPerson("Alice", 30)));
+        // additionalProperties: false ensures no extra properties beyond those in schema
+    }
+
+    @Test
+    public void supportsNodePropertyRenameOnPojoClass() {
+        AnnotatedPojoValidator validator = CompiledNodes.of(AnnotatedPojoValidator.class);
+
+        assertTrue(validator.isValid(new AnnotatedPojo()));
+        AnnotatedPojo bad = new AnnotatedPojo();
+        bad.firstName = "x";
+        assertFalse(validator.isValid(bad)); // minLength: 2
+    }
+
+    @Test
+    public void supportsThirdPartyPropertyRenameOnRecord() {
+        ThirdPartyPersonValidator validator = CompiledNodes.of(ThirdPartyPersonValidator.class);
+
+        assertTrue(validator.isValid(new ThirdPartyPerson("Ada", "Lovelace")));
+        assertFalse(validator.isValid(new ThirdPartyPerson("A", "Lovelace")));
+        assertFalse(validator.isValid(new ThirdPartyPerson("Ada", null)));
+    }
+
+    @ValidJsonSchema("""
+        {
+          "type":"object",
+          "required":["first_name"],
+          "properties":{
+            "first_name":{"type":"string","minLength":2}
+          }
+        }
+        """)
+    static class AnnotatedPojo {
+        @NodeProperty("first_name") public String firstName = "hello";
+    }
+
+    @CompiledSchemaValidator
+    interface AnnotatedPojoValidator {
+        @ValidatorOptions(fallback = false)
+        boolean isValid(AnnotatedPojo pojo);
+    }
+
+    @ValidJsonSchema("""
+        {
+          "type":"object",
+          "required":["first_name"],
+          "properties":{
+            "first_name":{"type":"string","minLength":2}
+          },
+          "additionalProperties":false
+        }
+        """)
+    record RenamedPerson(@NodeProperty("first_name") String firstName) {}
+
+    @CompiledSchemaValidator
+    interface RenamedPersonValidator {
+        @ValidatorOptions(fallback = false)
+        boolean isValid(RenamedPerson person);
+    }
+
+    @ValidJsonSchema("""
+        {
+          "type":"object",
+          "required":["name","user_age"],
+          "properties":{
+            "name":{"type":"string","minLength":2},
+            "user_age":{"type":"integer","minimum":0}
+          },
+          "additionalProperties":false
+        }
+        """)
+    static class StrictPerson {
+        @NodeProperty("name") public String name;
+        @NodeProperty("user_age") public int age;
+        StrictPerson() {}
+        StrictPerson(String name, int age) { this.name = name; this.age = age; }
+    }
+
+    @CompiledSchemaValidator
+    interface StrictPersonValidator {
+        @ValidatorOptions(fallback = false)
+        boolean isValid(StrictPerson person);
+    }
+
+    @ValidJsonSchema("""
+        {
+          "type":"object",
+          "required":["first_name","last_name"],
+          "properties":{
+            "first_name":{"type":"string","minLength":2},
+            "last_name":{"type":"string","minLength":2}
+          },
+          "additionalProperties":false
+        }
+        """)
+    record ThirdPartyPerson(@com.fasterxml.jackson.annotation.JsonProperty("first_name") String firstName,
+                            @com.alibaba.fastjson2.annotation.JSONField(name = "last_name") String lastName) {}
+
+    @CompiledSchemaValidator
+    interface ThirdPartyPersonValidator {
+        @ValidatorOptions(fallback = false)
+        boolean isValid(ThirdPartyPerson person);
+    }
 
     @CompiledSchemaValidator
     public interface MetricValidator {

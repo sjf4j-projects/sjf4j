@@ -599,13 +599,12 @@ public final class PathGenerator {
             _error(context, target, "Cannot resolve writable property '" + name + "' on " + parent);
             return null;
         }
-        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, parent, "set" + suffix);
+        ExecutableElement setter = _findWritableSetter(type, parent, name);
         if (setter != null) {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, setter);
             return mt.getParameterTypes().get(0);
         }
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findWritableField(type, name);
         if (field != null && !field.getModifiers().contains(Modifier.FINAL)) {
             return ctx.types.asMemberOf((DeclaredType) parent, field);
         }
@@ -624,13 +623,52 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
-        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, parent, "set" + suffix);
+        ExecutableElement setter = _findWritableSetter(type, parent, name);
         if (setter != null) return true;
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findWritableField(type, name);
         if (field != null && !field.getModifiers().contains(Modifier.FINAL)) return true;
         _error(context, target, "Cannot resolve writable property '" + name + "' on " + parent);
         return false;
+    }
+
+    private ExecutableElement _findWritableSetter(TypeElement type, TypeMirror owner, String name) {
+        if (name.length() != 0) {
+            String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+            ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, owner, "set" + suffix);
+            if (setter != null) return setter;
+        }
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (method.getParameters().size() != 1) continue;
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
+            if (mt.getReturnType().getKind() != TypeKind.VOID) continue;
+            String base = _writablePropertyBase(method);
+            if (base != null && GeneratorUtil.nodePropertyName(method, base).equals(name)) return method;
+        }
+        return null;
+    }
+
+    private VariableElement _findWritableField(TypeElement type, String name) {
+        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        if (field != null && !field.getModifiers().contains(Modifier.FINAL)) return field;
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.FIELD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || modifiers.contains(Modifier.FINAL)) continue;
+            if (GeneratorUtil.nodePropertyName(member, member.getSimpleName().toString()).equals(name)) {
+                return (VariableElement) member;
+            }
+        }
+        return null;
+    }
+
+    private String _writablePropertyBase(ExecutableElement method) {
+        String methodName = method.getSimpleName().toString();
+        if (methodName.startsWith("set") && methodName.length() > 3) return GeneratorUtil.decap(methodName.substring(3));
+        return null;
     }
 
     /**
@@ -1364,8 +1402,7 @@ public final class PathGenerator {
         if (type == null) {
             throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
         }
-        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, parent, "set" + suffix);
+        ExecutableElement setter = _findWritableSetter(type, parent, name);
         ExecutableElement getter = _findReadable(type, parent, name);
         VariableElement field = _findReadableField(type, name);
         TypeMirror oldType = null;
@@ -1381,7 +1418,7 @@ public final class PathGenerator {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
         } else {
             if (field == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
-            out.line(parentVar + "." + name + " = " + valueExpr + ";");
+            out.line(parentVar + "." + field.getSimpleName() + " = " + valueExpr + ";");
         }
         return oldType == null ? ctx.objectType : oldType;
     }
@@ -1402,15 +1439,14 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
-        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, parent, "set" + suffix);
+        ExecutableElement setter = _findWritableSetter(type, parent, name);
         if (setter != null) {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
             return;
         }
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
+        VariableElement field = _findWritableField(type, name);
         if (field == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
-        out.line(parentVar + "." + name + " = " + valueExpr + ";");
+        out.line(parentVar + "." + field.getSimpleName() + " = " + valueExpr + ";");
     }
 
     /**

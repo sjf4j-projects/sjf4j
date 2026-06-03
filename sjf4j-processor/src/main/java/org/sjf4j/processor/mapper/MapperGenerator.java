@@ -107,6 +107,12 @@ public final class MapperGenerator {
         Map<String, Write> writes = _writes(targetType, method.getReturnType());
         Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
+        MapperOptions cfg = method.getAnnotation(MapperOptions.class);
+        NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
+        if (plan.ctor != null && nulls == NullValuePolicy.IGNORE) {
+            _error(method, target, "NullValuePolicy.IGNORE is supported only for mutable no-args create targets and update targets");
+            return;
+        }
 
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         MappingIfParentPresent[] ifParentAnns = method.getAnnotationsByType(MappingIfParentPresent.class);
@@ -175,7 +181,7 @@ public final class MapperGenerator {
             explicit.put(t, e);
         }
 
-        Map<TargetPathWrite, Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, method.getReturnType(), false, NullValuePolicy.SET);
+        Map<TargetPathWrite, Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, method.getReturnType(), false, nulls);
         if (pathValues == null) return;
 
         // Every writable/constructor target property must be assigned, either
@@ -201,7 +207,12 @@ public final class MapperGenerator {
                 _error(method, target, "Cannot assign source expression to target property '" + name + "': " + e.type + " is not assignable to " + need);
                 return;
             }
-            if (need.getKind().isPrimitive() && (e.nullableRoot || e.path)) {
+            if (nulls == NullValuePolicy.IGNORE && need.getKind().isPrimitive() && e.type == null) {
+                _error(method, target, "Cannot map target property '" + name + "': NullValuePolicy.IGNORE cannot guard computed expression for primitive target type " + need);
+                return;
+            }
+            if (need.getKind().isPrimitive() && (e.nullableRoot || e.path)
+                    && !(nulls == NullValuePolicy.IGNORE && e.type != null && !e.type.getKind().isPrimitive())) {
                 _error(method, target, "Cannot map target property '" + name + "': nullable source or path expression cannot be assigned to primitive target type " + need);
                 return;
             }
@@ -212,7 +223,7 @@ public final class MapperGenerator {
             return;
         }
 
-        target.addMethod(out -> _emit(out, method, sources, multi, state, plan, values, pathValues));
+        target.addMethod(out -> _emit(out, method, sources, multi, state, plan, values, pathValues, nulls));
     }
 
     private void _genUpdate(TypeElement iface, ExecutableElement method, GeneratedClass target) {
@@ -401,7 +412,7 @@ public final class MapperGenerator {
             out.indent();
             String s = source.getSimpleName().toString();
             out.line("if (" + s + " == null) return null;");
-            out.line(method.getReturnType() + " _target = " + _newContainer(impl, to, s + ".size()") + ";");
+            out.line(_containerLocalType(impl, to, method.getReturnType()) + " _target = " + _newContainer(impl, to, s + ".size()") + ";");
             _emitContainerCopy(out, from, to, conv, "_target", s);
             out.line("return _target;");
             out.dedent();
@@ -564,7 +575,7 @@ public final class MapperGenerator {
     }
 
     private void _emit(SourceWriter out, ExecutableElement method, List<SourceParam> sources, boolean multi, MethodState state,
-                       Plan plan, Map<String, Expr> values, Map<TargetPathWrite, Expr> pathValues) {
+                       Plan plan, Map<String, Expr> values, Map<TargetPathWrite, Expr> pathValues, NullValuePolicy nulls) {
         out.line("");
         out.line("@Override");
         StringBuilder sig = new StringBuilder();
@@ -608,21 +619,36 @@ public final class MapperGenerator {
                 if (e == null) continue;
 
                 _emitTemps(out, e);
-                Write w = plan.writes.get(name);
-                if (w.setter != null) {
-                    out.line("_target." + w.setter.getSimpleName() + "(" + e.code + ");");
-                } else {
-                    out.line("_target." + w.javaName + " = " + e.code + ";");
-                }
+                _emitCreateAssign(out, name, plan.writes.get(name), e, nulls);
             }
             for (Map.Entry<TargetPathWrite, Expr> entry : pathValues.entrySet()) {
                 _emitTemps(out, entry.getValue());
-                _emitTargetPath(out, method, "_target", method.getReturnType(), entry.getKey(), entry.getValue(), NullValuePolicy.SET);
+                _emitTargetPath(out, method, "_target", method.getReturnType(), entry.getKey(), entry.getValue(), nulls);
             }
             out.line("return _target;");
         }
         out.dedent();
         out.line("}");
+    }
+
+    private void _emitCreateAssign(SourceWriter out, String name, Write w, Expr e, NullValuePolicy nulls) {
+        String assign = w.setter != null
+                ? "_target." + w.setter.getSimpleName() + "(" + e.code + ");"
+                : "_target." + w.javaName + " = " + e.code + ";";
+        if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
+            if (e.local || e.type == null) {
+                out.line("if (" + e.code + " != null) " + assign);
+            } else {
+                String temp = _tempName(name, "value", 0);
+                out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
+                String tempAssign = w.setter != null
+                        ? "_target." + w.setter.getSimpleName() + "(" + temp + ");"
+                        : "_target." + w.javaName + " = " + temp + ";";
+                out.line("if (" + temp + " != null) " + tempAssign);
+            }
+        } else {
+            out.line(assign);
+        }
     }
 
     private void _emitTemps(SourceWriter out, Expr e) {
@@ -740,8 +766,12 @@ public final class MapperGenerator {
                 _error(method, target, "Cannot assign source expression to target path '" + w.path + "': " + e.type + " is not assignable to " + need);
                 return null;
             }
+            if (nulls == NullValuePolicy.IGNORE && need.getKind().isPrimitive() && e.type == null) {
+                _error(method, target, "Cannot map target path '" + w.path + "': NullValuePolicy.IGNORE cannot guard computed expression for primitive target type " + need);
+                return null;
+            }
             if (need.getKind().isPrimitive() && (e.nullableRoot || e.path)
-                    && !(update && nulls == NullValuePolicy.IGNORE && e.type != null && !e.type.getKind().isPrimitive())) {
+                    && !(nulls == NullValuePolicy.IGNORE && e.type != null && !e.type.getKind().isPrimitive())) {
                 _error(method, target, "Cannot map target path '" + w.path + "': nullable source or path expression cannot be assigned to primitive target type " + need);
                 return null;
             }
@@ -814,7 +844,7 @@ public final class MapperGenerator {
         String value = e.code;
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
             String temp = _tempName(w.path, "value", 0);
-            if (!e.local) {
+            if (!e.local && e.type != null) {
                 out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
                 value = temp;
             }
@@ -1143,8 +1173,16 @@ public final class MapperGenerator {
         if (r == null) return null;
         Expr e = new Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
         if (r.path) {
-            state.readTemps.addAll(r.temps);
-            e.local = true;
+            if (r.leafExpr != null && _readCount(state, path) <= 1) {
+                // inline leaf expression, suppress the leaf temp declaration
+                for (int i = 0, n = r.temps.size() - 1; i < n; i++) {
+                    state.readTemps.add(r.temps.get(i));
+                }
+                e.code = r.leafExpr;
+            } else {
+                state.readTemps.addAll(r.temps);
+                e.local = true;
+            }
             state.cache.put(key, new CachedRead(r.code, r.type, true, resolved.nullableRoot));
         } else if (_readCount(state, path) > 1) {
             String temp = preferredTemp == null ? _tempName(targetName, "read", 0) : preferredTemp;
@@ -1411,7 +1449,7 @@ public final class MapperGenerator {
             source = _tempName(name, "source", 0);
             r.temps.add(e.type + " " + source + " = " + e.code + ";");
         }
-        r.temps.add(need + " " + temp + ";");
+        r.temps.add(_containerLocalType(impl, to, need) + " " + temp + ";");
         r.temps.add("if (" + source + " == null) {");
         r.temps.add("    " + temp + " = null;");
         r.temps.add("} else {");
@@ -1723,6 +1761,19 @@ public final class MapperGenerator {
             return "new " + impl + "<>(" + size + ")";
         }
         return "new " + impl + "()";
+    }
+
+    private String _containerLocalType(String impl, ContainerType to, TypeMirror fallback) {
+        if (impl.equals("java.util.ArrayList")) {
+            return "java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, to.value) + ">";
+        }
+        if (impl.equals("java.util.LinkedHashSet")) {
+            return "java.util.LinkedHashSet<" + GeneratorUtil.localTypeName(ctx, to.value) + ">";
+        }
+        if (impl.equals("java.util.LinkedHashMap")) {
+            return "java.util.LinkedHashMap<" + GeneratorUtil.localTypeName(ctx, to.key) + ", " + GeneratorUtil.localTypeName(ctx, to.value) + ">";
+        }
+        return fallback.toString();
     }
 
     private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source) {

@@ -116,10 +116,14 @@ public final class PathAccessEmitter {
             boolean checkParent = i != 1 || nullableRoot;
             PathSegment s = segments[i];
             Access a;
+            String leafExpr = null;
             if (s instanceof PathSegment.Name) {
                 a = _nameAccess(context, target, currentType, currentVar, ((PathSegment.Name) s).name);
                 if (a == null) return null;
                 _emitNameTemp(temps, a, currentType, currentVar, nextVar, checkParent);
+                if (i == segments.length - 1) {
+                    leafExpr = _nameLeafExpr(a, currentType, checkParent, currentVar);
+                }
             } else {
                 a = _indexAccess(context, target, currentType, currentVar, ((PathSegment.Index) s).index);
                 if (a == null) return null;
@@ -129,6 +133,9 @@ public final class PathAccessEmitter {
             currentVar = nextVar;
             if (cache != null) {
                 cache.put((cacheRoot == null ? "" : cacheRoot) + _cacheKey(segments, i), new CachedPath(currentVar, currentType));
+            }
+            if (leafExpr != null) {
+                return new ReadAccess(currentVar, currentType, true, temps, leafExpr);
             }
         }
         return new ReadAccess(currentVar, currentType, true, temps);
@@ -155,6 +162,13 @@ public final class PathAccessEmitter {
         } else {
             temps.add(type + " " + nextVar + " = " + a.code + ";");
         }
+    }
+
+    private String _nameLeafExpr(Access a, TypeMirror parentType, boolean checkParent, String parentVar) {
+        if (checkParent && !parentType.getKind().isPrimitive()) {
+            return parentVar + " == null ? null : " + a.code;
+        }
+        return a.code;
     }
 
     private void _emitIndexTemp(List<String> temps, Access a, TypeMirror parentType, String parentVar, String nextVar,
@@ -292,12 +306,22 @@ public final class PathAccessEmitter {
         public final TypeMirror type;
         public final boolean path;
         public final List<String> temps;
+        public final String leafExpr;
 
         ReadAccess(String c, TypeMirror t, boolean p, List<String> s) {
             code = c;
             type = t;
             path = p;
             temps = s;
+            leafExpr = null;
+        }
+
+        ReadAccess(String c, TypeMirror t, boolean p, List<String> s, String leaf) {
+            code = c;
+            type = t;
+            path = p;
+            temps = s;
+            leafExpr = leaf;
         }
     }
 

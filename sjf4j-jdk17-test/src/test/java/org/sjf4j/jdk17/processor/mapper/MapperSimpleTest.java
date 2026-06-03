@@ -176,6 +176,18 @@ public class MapperSimpleTest {
         assertNull(mapper.toAgeRecord(null, null));
     }
 
+    @Test
+    public void thirdPartyPropertyNamesDriveRecordTargetAutoMapping() {
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+
+        ThirdPartyRecord record = mapper.thirdPartyNames(Map.of(
+                "first_name", "Ada",
+                "last_name", "Lovelace"));
+
+        assertEquals("Ada", record.firstName());
+        assertEquals("Lovelace", record.lastName());
+    }
+
     public record Person(String first, String last, int age) {}
 
     public record NameRecord(String first, String surname) {}
@@ -206,6 +218,8 @@ public class MapperSimpleTest {
 
     public record AgeSource(AgeBox box) {}
 
+    public record ThirdPartyRecord(@com.fasterxml.jackson.annotation.JsonProperty("first_name") String firstName,
+                                   @com.alibaba.fastjson2.annotation.JSONField(name = "last_name") String lastName) {}
     public static final class AgeDto {
         public Integer age;
 
@@ -302,6 +316,8 @@ public class MapperSimpleTest {
 
         @Mapping(target = "age", source = "$.box.age")
         AgeDto age(AgeSource source);
+
+        ThirdPartyRecord thirdPartyNames(Map<String, String> source);
 
         default String join(String first, String last) {
             return first + "/" + last;
