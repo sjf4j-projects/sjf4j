@@ -160,7 +160,7 @@ public final class MapperGenerator {
             if (rootName != null) ignored.add(rootName);
         }
 
-        MethodState state = new MethodState(_readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
+        MethodState state = new MethodState(_readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi), _groupParentCounts(anns));
 
         for (Mapping m : anns) {
             String t = m.target();
@@ -175,7 +175,8 @@ public final class MapperGenerator {
             if (m.compute().length() != 0) {
                 e = _compute(iface, method, target, sources, multi, state, m);
             } else {
-                e = _readExpr(method, target, sources, multi, state, m.source().length() == 0 ? t : m.source(), t, null);
+                e = _readExprOrGrouped(method, target, sources, multi, state, m.source().length() == 0 ? t : m.source(), t,
+                        plan.writes.get(t).type, nestedMappers.get(t) == null ? "" : nestedMappers.get(t), nulls);
             }
             if (e == null) return;
             explicit.put(t, e);
@@ -574,6 +575,35 @@ public final class MapperGenerator {
         counts.put(source, n == null ? 1 : n + 1);
     }
 
+    private Map<String, Integer> _groupParentCounts(Mapping[] anns) {
+        Map<String, Integer> counts = new HashMap<String, Integer>();
+        for (Mapping m : anns) {
+            if (_isAutoMarker(m) || m.ignore() || m.compute().length() != 0 || _isTargetPath(m.target())) continue;
+            String source = m.source().length() == 0 ? m.target() : m.source();
+            if (!source.startsWith("$") && !source.startsWith("/")) continue;
+            JsonPath path;
+            try {
+                path = JsonPath.parse(source);
+            } catch (RuntimeException e) {
+                continue;
+            }
+            PathSegment[] segments = path.segments();
+            if (segments.length < 3) continue;
+            boolean namesOnly = true;
+            for (int i = 1; i < segments.length; i++) {
+                if (!(segments[i] instanceof PathSegment.Name)) {
+                    namesOnly = false;
+                    break;
+                }
+            }
+            if (!namesOnly) continue;
+            for (int end = 1; end < segments.length - 1; end++) {
+                _count(counts, _groupParentKey(segments, end));
+            }
+        }
+        return counts;
+    }
+
     private void _emit(SourceWriter out, ExecutableElement method, List<SourceParam> sources, boolean multi, MethodState state,
                        Plan plan, Map<String, Expr> values, Map<TargetPathWrite, Expr> pathValues, NullValuePolicy nulls) {
         out.line("");
@@ -611,12 +641,12 @@ public final class MapperGenerator {
             out.line(b.append(");").toString());
         } else {
             out.line(method.getReturnType() + " _target = new " + method.getReturnType() + "();");
-            for (String temp : state.readTemps) {
-                out.line(temp);
-            }
+            for (String temp : state.readTemps) out.line(temp);
+            _emitGroupedAssigns(out, state, plan, nulls);
             for (String name : plan.names) {
                 Expr e = values.get(name);
                 if (e == null) continue;
+                if (state.groupTargets.contains(name)) continue;
 
                 _emitTemps(out, e);
                 _emitCreateAssign(out, name, plan.writes.get(name), e, nulls);
@@ -632,23 +662,25 @@ public final class MapperGenerator {
     }
 
     private void _emitCreateAssign(SourceWriter out, String name, Write w, Expr e, NullValuePolicy nulls) {
-        String assign = w.setter != null
-                ? "_target." + w.setter.getSimpleName() + "(" + e.code + ");"
-                : "_target." + w.javaName + " = " + e.code + ";";
+        String assign = _targetAssign("_target", w, e.code);
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
             if (e.local || e.type == null) {
                 out.line("if (" + e.code + " != null) " + assign);
             } else {
                 String temp = _tempName(name, "value", 0);
                 out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
-                String tempAssign = w.setter != null
-                        ? "_target." + w.setter.getSimpleName() + "(" + temp + ");"
-                        : "_target." + w.javaName + " = " + temp + ";";
+                String tempAssign = _targetAssign("_target", w, temp);
                 out.line("if (" + temp + " != null) " + tempAssign);
             }
         } else {
             out.line(assign);
         }
+    }
+
+    private String _targetAssign(String target, Write w, String value) {
+        return w.setter != null
+                ? target + "." + w.setter.getSimpleName() + "(" + value + ");"
+                : target + "." + w.javaName + " = " + value + ";";
     }
 
     private void _emitTemps(SourceWriter out, Expr e) {
@@ -1156,6 +1188,230 @@ public final class MapperGenerator {
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
     }
 
+    private Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi,
+                                    MethodState state, String path, String targetName, TypeMirror targetType, String nestedMapper,
+                                    NullValuePolicy nulls) {
+        if (nulls == NullValuePolicy.SET) {
+            Expr helper = _tryPathHelperExpr(method, target, sources, multi, path, targetName, targetType, nestedMapper);
+            if (helper != null) return helper;
+        }
+        Expr grouped = nulls == NullValuePolicy.IGNORE ? _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper) : null;
+        return grouped == null ? _readExpr(method, target, sources, multi, state, path, targetName, null) : grouped;
+    }
+
+    private Expr _tryPathHelperExpr(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi,
+                                    String source, String targetName, TypeMirror targetType, String nestedMapper) {
+        if (multi || sources.size() != 1 || (!source.startsWith("$") && !source.startsWith("/"))) return null;
+        if (nestedMapper != null && nestedMapper.length() != 0) return null;
+        SourceParam param = sources.get(0);
+        if (param.dynamic) return null;
+
+        JsonPath path;
+        try {
+            path = JsonPath.parse(source);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        PathSegment[] segments = path.segments();
+        if (segments.length < 3) return null;
+        for (int i = 1; i < segments.length; i++) {
+            if (!(segments[i] instanceof PathSegment.Name)) return null;
+        }
+
+        TypeMirror[] types = new TypeMirror[segments.length];
+        String currentVar = param.name;
+        TypeMirror currentType = param.element.asType();
+        types[0] = currentType;
+        for (int i = 1; i < segments.length; i++) {
+            String name = ((PathSegment.Name) segments[i]).name;
+            GroupAccess access = _groupNameAccess(currentType, currentVar, name);
+            if (access == null) return null;
+            types[i] = access.type;
+            currentType = access.type;
+            currentVar = _tempName(targetName, "path" + i, i);
+        }
+
+        TypeMirror leafType = types[segments.length - 1];
+        if (_container(leafType) != null || _container(targetType) != null || !_assignable(leafType, targetType)) return null;
+        String key = "pathhelper:" + param.element.asType() + ":" + source + ":" + leafType;
+        String helper = generation.helpers.get(key);
+        if (helper == null) {
+            helper = "_sjf4j_path_" + generation.nextHelper++;
+            generation.helpers.put(key, helper);
+            String helperName = helper;
+            target.addHelper(out -> _emitPathHelper(out, helperName, param, segments, types));
+        }
+        return new Expr(helper + "(" + param.name + ")", leafType, true, false, false);
+    }
+
+    private void _emitPathHelper(SourceWriter out, String helper, SourceParam param, PathSegment[] segments,
+                                 TypeMirror[] types) {
+        TypeMirror leafType = types[segments.length - 1];
+        out.line("");
+        out.line("private " + _localTypeName(leafType, true) + " " + helper + "(" + param.element.asType() + " " + param.name + ") {");
+        out.indent();
+        String currentVar = param.name;
+        TypeMirror currentType = param.element.asType();
+        for (int i = 1; i < segments.length - 1; i++) {
+            String name = ((PathSegment.Name) segments[i]).name;
+            GroupAccess access = _groupNameAccess(currentType, currentVar, name);
+            String temp = _tempName(name, "path", i);
+            out.line(_localTypeName(access.type, true) + " " + temp + " = " + access.code + ";");
+            if (!access.type.getKind().isPrimitive()) out.line("if (" + temp + " == null) return null;");
+            currentType = access.type;
+            currentVar = temp;
+        }
+        GroupAccess leaf = _groupNameAccess(currentType, currentVar, ((PathSegment.Name) segments[segments.length - 1]).name);
+        out.line("return " + leaf.code + ";");
+        out.dedent();
+        out.line("}");
+    }
+
+    private Expr _tryGroupedReadExpr(List<SourceParam> sources, boolean multi, MethodState state, String source, String targetName,
+                                     TypeMirror targetType, String nestedMapper) {
+        if (multi || sources.size() != 1 || (!source.startsWith("$") && !source.startsWith("/"))) return null;
+        if (nestedMapper != null && nestedMapper.length() != 0) return null;
+        SourceParam param = sources.get(0);
+        if (param.dynamic) return null;
+
+        JsonPath path;
+        try {
+            path = JsonPath.parse(source);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        PathSegment[] segments = path.segments();
+        if (segments.length < 3) return null;
+        for (int i = 1; i < segments.length; i++) {
+            if (!(segments[i] instanceof PathSegment.Name)) return null;
+        }
+        if (!_hasSharedGroupParent(state, segments)) return null;
+
+        int count = segments.length - 1;
+        String[] names = new String[count];
+        GroupAccess[] accesses = new GroupAccess[count];
+        TypeMirror currentType = param.element.asType();
+        String currentTemp = param.name;
+        for (int i = 1; i < segments.length; i++) {
+            String name = ((PathSegment.Name) segments[i]).name;
+            GroupAccess access = _groupNameAccess(currentType, currentTemp, name);
+            if (access == null) return null;
+            names[i - 1] = name;
+            accesses[i - 1] = access;
+            currentType = access.type;
+            currentTemp = _groupTemp(currentTemp, name);
+        }
+
+        GroupNode root = state.groupRoot;
+        if (root == null) {
+            root = new GroupNode(param.name, param.element.asType(), param.name, null);
+            state.groupRoot = root;
+        }
+
+        GroupNode parent = root;
+        for (int i = 0; i < count - 1; i++) {
+            String name = names[i];
+            GroupAccess access = accesses[i];
+            GroupNode child = parent.children.get(name);
+            if (child == null) {
+                child = new GroupNode(name, access.type, _groupTemp(parent.temp, name), access.code);
+                parent.children.put(name, child);
+            }
+            parent = child;
+        }
+
+        GroupAccess leaf = accesses[count - 1];
+        if (_container(leaf.type) != null || _container(targetType) != null || !_assignable(leaf.type, targetType)) return null;
+        String temp = _tempName(targetName, "group", 0);
+        parent.leaves.add(new GroupLeaf(targetName, temp, leaf.type, leaf.code));
+        state.groupTargets.add(targetName);
+        Expr e = new Expr(temp, leaf.type, true, true, true);
+        return e;
+    }
+
+    private GroupAccess _groupNameAccess(TypeMirror parentType, String parentVar, String name) {
+        if (_dynamicSource(parentType) || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.listType)
+                || parentType.getKind() == TypeKind.ARRAY) return null;
+        TypeElement type = GeneratorUtil.asTypeElement(parentType);
+        if (type == null) return null;
+        Read read = _reads(type, parentType).get(name);
+        if (read == null) return null;
+        String code = read.method == null ? parentVar + "." + read.javaName : parentVar + "." + read.method.getSimpleName() + "()";
+        return new GroupAccess(code, read.type);
+    }
+
+    private String _groupTemp(String parent, String name) {
+        String p = _javaId(parent);
+        while (p.startsWith("_")) p = p.substring(1);
+        if (p.startsWith("grp_")) p = p.substring(4);
+        return "_grp_" + p + "_" + _javaId(name);
+    }
+
+    private boolean _hasSharedGroupParent(MethodState state, PathSegment[] segments) {
+        for (int end = 1; end < segments.length - 1; end++) {
+            Integer count = state.groupParentCounts.get(_groupParentKey(segments, end));
+            if (count != null && count > 1) return true;
+        }
+        return false;
+    }
+
+    private String _groupParentKey(PathSegment[] segments, int end) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 1; i <= end; i++) {
+            String name = ((PathSegment.Name) segments[i]).name;
+            b.append(name.length()).append(':').append(name).append(';');
+        }
+        return b.toString();
+    }
+
+    private void _emitGroupedAssigns(SourceWriter out, MethodState state, Plan plan, NullValuePolicy nulls) {
+        if (state.groupRoot == null) return;
+        _emitGroupedChildren(out, state.groupRoot, plan, nulls);
+    }
+
+    private void _emitGroupedChildren(SourceWriter out, GroupNode node, Plan plan, NullValuePolicy nulls) {
+        for (GroupLeaf leaf : node.leaves) {
+            Write w = plan.writes.get(leaf.target);
+            if (nulls == NullValuePolicy.IGNORE && (leaf.type == null || !leaf.type.getKind().isPrimitive())) {
+                out.line(_localTypeName(leaf.type, true) + " " + leaf.temp + " = " + leaf.code + ";");
+                out.line("if (" + leaf.temp + " != null) " + _targetAssign("_target", w, leaf.temp));
+            } else {
+                out.line(_targetAssign("_target", w, leaf.code));
+            }
+        }
+        for (GroupNode child : node.children.values()) {
+            out.line(_localTypeName(child.type, true) + " " + child.temp + " = " + child.code + ";");
+            if (child.type.getKind().isPrimitive()) {
+                _emitGroupedChildren(out, child, plan, nulls);
+            } else if (nulls == NullValuePolicy.IGNORE) {
+                out.line("if (" + child.temp + " != null) {");
+                out.indent();
+                _emitGroupedChildren(out, child, plan, nulls);
+                out.dedent();
+                out.line("}");
+            } else {
+                out.line("if (" + child.temp + " == null) {");
+                out.indent();
+                _emitGroupedNulls(out, child, plan);
+                out.dedent();
+                out.line("} else {");
+                out.indent();
+                _emitGroupedChildren(out, child, plan, nulls);
+                out.dedent();
+                out.line("}");
+            }
+        }
+    }
+
+    private void _emitGroupedNulls(SourceWriter out, GroupNode node, Plan plan) {
+        for (GroupLeaf leaf : node.leaves) {
+            out.line(_targetAssign("_target", plan.writes.get(leaf.target), "null"));
+        }
+        for (GroupNode child : node.children.values()) {
+            _emitGroupedNulls(out, child, plan);
+        }
+    }
+
     private Expr _readExpr(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi, MethodState state,
                            String path, String targetName, String preferredTemp) {
         ResolvedSource resolved = _resolveSource(method, target, sources, multi, path);
@@ -1440,31 +1696,43 @@ public final class MapperGenerator {
         if (conv == null) return null;
         String impl = _implType(method, target, to);
         if (impl == null) return null;
-        String temp = _tempName(name, "container", 0);
-        String source = e.code;
-        Expr r = new Expr(temp, need);
-        r.local = true;
+        String helper = _ensureContainerHelper(target, from, to, conv, impl, need);
+        Expr r = new Expr(helper + "(" + e.code + ")", need, e.path, e.nullableRoot, false);
         r.temps.addAll(e.temps);
-        if (!e.local) {
-            source = _tempName(name, "source", 0);
-            r.temps.add(e.type + " " + source + " = " + e.code + ";");
-        }
-        r.temps.add(_containerLocalType(impl, to, need) + " " + temp + ";");
-        r.temps.add("if (" + source + " == null) {");
-        r.temps.add("    " + temp + " = null;");
-        r.temps.add("} else {");
-        r.temps.add("    " + temp + " = " + _newContainer(impl, to, source + ".size()") + ";");
-        if (to.map) {
-            r.temps.add("    for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> _entry : " + source + ".entrySet()) {");
-            r.temps.add("        " + temp + ".put(_entry.getKey(), " + _convertValue(conv, "_entry.getValue()") + ");");
-            r.temps.add("    }");
-        } else {
-            r.temps.add("    for (" + GeneratorUtil.localTypeName(ctx, from.value) + " _value : " + source + ") {");
-            r.temps.add("        " + temp + ".add(" + _convertValue(conv, "_value") + ");");
-            r.temps.add("    }");
-        }
-        r.temps.add("}");
         return r;
+    }
+
+    private String _ensureContainerHelper(GeneratedClass target, ContainerType from, ContainerType to, Converter conv,
+                                          String impl, TypeMirror resultType) {
+        String key = "container:" + from.mirror + "->" + to.mirror + ":" + impl + ":" + (conv.method == null ? "" : conv.method);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = "_sjf4j_container_" + generation.nextHelper++;
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            out.line("");
+            out.line("private " + resultType + " " + helper + "(" + from.mirror + " source) {");
+            out.indent();
+            out.line("if (source == null) return null;");
+            out.line(_containerLocalType(impl, to, resultType) + " target = " + _newContainer(impl, to, "source.size()") + ";");
+        if (to.map) {
+                out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> entry : source.entrySet()) {");
+                out.indent();
+                out.line("target.put(entry.getKey(), " + _convertValue(conv, "entry.getValue()") + ");");
+                out.dedent();
+                out.line("}");
+        } else {
+                out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " value : source) {");
+                out.indent();
+                out.line("target.add(" + _convertValue(conv, "value") + ");");
+                out.dedent();
+                out.line("}");
+        }
+            out.line("return target;");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
     }
 
     private Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper) {
@@ -2019,12 +2287,60 @@ public final class MapperGenerator {
 
     private static final class MethodState {
         final Map<String, Integer> readCounts;
+        final Map<String, Integer> groupParentCounts;
         final List<String> readTemps = new ArrayList<String>();
         final Map<String, CachedRead> cache = new HashMap<String, CachedRead>();
         final Map<String, PathAccessEmitter.CachedPath> pathCache = new HashMap<String, PathAccessEmitter.CachedPath>();
+        final Set<String> groupTargets = new HashSet<String>();
+        GroupNode groupRoot;
 
         MethodState(Map<String, Integer> counts) {
+            this(counts, Collections.<String, Integer>emptyMap());
+        }
+
+        MethodState(Map<String, Integer> counts, Map<String, Integer> groupCounts) {
             readCounts = counts;
+            groupParentCounts = groupCounts;
+        }
+    }
+
+    private static final class GroupAccess {
+        final String code;
+        final TypeMirror type;
+
+        GroupAccess(String c, TypeMirror t) {
+            code = c;
+            type = t;
+        }
+    }
+
+    private static final class GroupNode {
+        final String name;
+        final TypeMirror type;
+        final String temp;
+        final String code;
+        final List<GroupLeaf> leaves = new ArrayList<GroupLeaf>();
+        final Map<String, GroupNode> children = new LinkedHashMap<String, GroupNode>();
+
+        GroupNode(String n, TypeMirror t, String tmp, String c) {
+            name = n;
+            type = t;
+            temp = tmp;
+            code = c;
+        }
+    }
+
+    private static final class GroupLeaf {
+        final String target;
+        final String temp;
+        final TypeMirror type;
+        final String code;
+
+        GroupLeaf(String targetName, String tmp, TypeMirror t, String c) {
+            target = targetName;
+            temp = tmp;
+            type = t;
+            code = c;
         }
     }
 

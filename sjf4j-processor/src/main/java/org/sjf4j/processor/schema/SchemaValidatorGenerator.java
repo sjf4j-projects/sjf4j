@@ -180,10 +180,11 @@ public final class SchemaValidatorGenerator {
             SchemaPlan plan;
             try {
                 JsonSchema jsonSchema = JsonSchema.fromJson(inline);
-                if (jsonSchema instanceof ObjectSchema) {
-                    ((ObjectSchema) jsonSchema).setRetrievalUri(java.net.URI.create("sjf4j:/" + method.getEnclosingElement() + "/" + method.getSimpleName() + "/"));
-                }
+                String rootUri = "sjf4j:/" + method.getEnclosingElement() + "/" + method.getSimpleName() + "/";
+                if (jsonSchema instanceof ObjectSchema) ((ObjectSchema) jsonSchema).setRetrievalUri(java.net.URI.create(rootUri));
                 plan = new SchemaRegistry().register(jsonSchema);
+                state.currentRootJson = inline;
+                state.currentRootUri = rootUri;
             } catch (RuntimeException e) {
                 reason = "cannot compile inline schema: " + e.getMessage();
                 break;
@@ -232,8 +233,13 @@ public final class SchemaValidatorGenerator {
         List<String> lines = new ArrayList<String>();
         CompileResult cr = _emitPlan(state, lines, "_v", mirror, plan, mirror.getKind().isPrimitive());
         if (!cr.supported) {
-            state.unsupportedReason = cr.reason;
-            return null;
+            String field = _localPlanField(state, plan);
+            if (field == null) {
+                state.unsupportedReason = cr.reason;
+                return null;
+            }
+            lines.clear();
+            lines.add("return " + field + ".isValid(_v, " + state.strictFormat + ");");
         }
         state.target.addHelper(out -> {
             out.line("");
@@ -255,13 +261,15 @@ public final class SchemaValidatorGenerator {
     private CompileResult _emitPlan(State state, List<String> out, String var, TypeMirror type, SchemaPlan plan, boolean nonNull) {
         try {
             if (SchemaPlanIntrospector.booleanSchema(plan)) {
-                return SchemaPlanIntrospector.booleanValue(plan) ? CompileResult.OK : CompileResult.unsupported("boolean false schema");
+                if (SchemaPlanIntrospector.booleanValue(plan)) return CompileResult.OK;
+                out.add("return false;");
+                return CompileResult.OK;
             }
             if (!state.inProgress.add(plan)) return CompileResult.unsupported("recursive/cyclic $ref requires runtime fallback");
             try {
                 Object[] evaluators = SchemaPlanIntrospector.evaluators(plan);
                 for (Object e : evaluators) {
-                    CompileResult cr = _emitEvaluator(state, out, var, type, e, nonNull);
+                    CompileResult cr = _emitEvaluator(state, out, var, type, e, nonNull, plan);
                     if (!cr.supported) return cr;
                     if (_terminalReturn(out)) return CompileResult.OK;
                     if (_provesNonNull(e)) nonNull = true;
@@ -276,7 +284,7 @@ public final class SchemaValidatorGenerator {
     }
 
     @SuppressWarnings("unchecked")
-    private CompileResult _emitEvaluator(State state, List<String> out, String var, TypeMirror type, Object e, boolean nonNull) {
+    private CompileResult _emitEvaluator(State state, List<String> out, String var, TypeMirror type, Object e, boolean nonNull, SchemaPlan currentPlan) {
         String n = e.getClass().getSimpleName();
         if ("TypeEvaluator".equals(n)) {
             String single = (String) SchemaPlanIntrospector.field(e, "type");
@@ -295,29 +303,106 @@ public final class SchemaValidatorGenerator {
         }
         if ("RequiredEvaluator".equals(n)) {
             String[] required = (String[]) SchemaPlanIntrospector.field(e, "required");
-            Object dependentRequired = SchemaPlanIntrospector.field(e, "dependentRequired");
-            if (dependentRequired != null) return CompileResult.unsupported("dependentRequired");
-            if (required != null) {
-                ReadsResult rr = _reads(type);
-                for (String key : required) if (!rr.reads.containsKey(key)) out.add("return false;");
+            Map<String, String[]> dependentRequired = (Map<String, String[]>) SchemaPlanIntrospector.field(e, "dependentRequired");
+            ReadsResult rr = null;
+            if (dependentRequired != null) {
+                rr = _reads(type);
+                if (_runtimeReadableObject(type)) {
+                    out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.OBJECT) {");
+                    for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
+                        out.add("  if (org.sjf4j.node.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(entry.getKey()) + "\")) {");
+                        for (String key : entry.getValue()) {
+                            out.add("    if (!org.sjf4j.node.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(key) + "\")) return false;");
+                        }
+                        out.add("  }");
+                    }
+                    out.add("}");
+                } else {
+                    boolean failed = false;
+                    for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
+                        if (!rr.reads.containsKey(entry.getKey())) continue;
+                        for (String key : entry.getValue()) {
+                            if (!rr.reads.containsKey(key)) {
+                                failed = true;
+                                break;
+                            }
+                        }
+                        if (failed) break;
+                    }
+                    if (failed) {
+                        out.add("return false;");
+                        return CompileResult.OK;
+                    }
+                }
             }
+            if (required != null) {
+                if (rr == null) rr = _reads(type);
+                boolean missing = false;
+                for (String key : required) {
+                    if (!rr.reads.containsKey(key)) {
+                        missing = true;
+                        break;
+                    }
+                }
+                if (missing) {
+                    if (_runtimeReadableObject(type)) {
+                        out.add("if (org.sjf4j.JsonType.of(" + var + ") == org.sjf4j.JsonType.OBJECT) {");
+                        for (String key : required) {
+                            out.add("  if (!org.sjf4j.node.Nodes.containsInObject(" + var + ", \"" + GeneratorUtil.escape(key) + "\")) return false;");
+                        }
+                        out.add("}");
+                    } else {
+                        out.add("return false;");
+                    }
+                }
+            }
+            return CompileResult.OK;
+        }
+        if ("ObjectEvaluator".equals(n)) {
+            int min = ((Integer) SchemaPlanIntrospector.field(e, "minProperties")).intValue();
+            int max = ((Integer) SchemaPlanIntrospector.field(e, "maxProperties")).intValue();
+            CompileJsonKind kind = _knownJsonKind(type);
+            if (kind != CompileJsonKind.UNKNOWN && kind != CompileJsonKind.OBJECT) return CompileResult.OK;
+            if (!_runtimeReadableObject(type) && kind == CompileJsonKind.OBJECT) {
+                int size = _reads(type).javaNames.size();
+                if ((min >= 0 && size < min) || (max >= 0 && size > max)) out.add("return false;");
+                return CompileResult.OK;
+            }
+            String guard = _knownValueGuard(kind, CompileJsonKind.OBJECT, var, nonNull, "org.sjf4j.JsonType.OBJECT");
+            if (guard != null) out.add(guard + " {");
+            String indent = guard != null ? "  " : "";
+            if (min >= 0 || max >= 0) {
+                String size = "_os" + state.nextLocal++;
+                out.add(indent + "int " + size + " = org.sjf4j.node.Nodes.sizeInObject(" + var + ");");
+                if (min >= 0) out.add(indent + "if (" + size + " < " + min + ") return false;");
+                if (max >= 0) out.add(indent + "if (" + size + " > " + max + ") return false;");
+            }
+            if (guard != null) out.add("}");
             return CompileResult.OK;
         }
         if ("PropertiesEvaluator".equals(n)) {
             Map<String, SchemaPlan> properties = (Map<String, SchemaPlan>) SchemaPlanIntrospector.field(e, "properties");
             Object patterns = SchemaPlanIntrospector.field(e, "patterns");
             SchemaPlan additional = (SchemaPlan) SchemaPlanIntrospector.field(e, "additionalPropertiesPlan");
-            if (patterns != null) return CompileResult.unsupported("patternProperties");
+            if (patterns != null) return _emitLocalPlanReturn(state, out, var, currentPlan, "patternProperties");
             ReadsResult rr = _reads(type);
             Map<String, Read> reads = rr.reads;
             if (properties != null) {
                 for (Map.Entry<String, SchemaPlan> entry : properties.entrySet()) {
                     Read read = reads.get(entry.getKey());
-                    if (read == null) continue;
+                    if (read == null) {
+                        if (_runtimeReadableObject(type)) return _emitLocalPlanReturn(state, out, var, currentPlan, "properties on runtime object type");
+                        continue;
+                    }
                     String temp = "_p" + state.nextLocal++;
                     List<String> subLines = new ArrayList<String>();
                     CompileResult cr = _emitPlan(state, subLines, temp, read.type, entry.getValue(), read.type.getKind().isPrimitive());
-                    if (!cr.supported) return cr;
+                    if (!cr.supported) {
+                        String field = _localPlanField(state, entry.getValue());
+                        if (field == null) return cr;
+                        subLines.clear();
+                        subLines.add("if (!" + field + ".isValid(" + temp + ", " + state.strictFormat + ")) return false;");
+                    }
                     if (!subLines.isEmpty()) {
                         out.add(_paramType(read.type) + " " + temp + " = " + read.code(var) + ";");
                         out.addAll(subLines);
@@ -326,12 +411,14 @@ public final class SchemaValidatorGenerator {
             }
             if (additional != null && _isBooleanFalse(additional)) {
                 Set<String> allowed = properties == null ? new HashSet<String>() : properties.keySet();
-                for (String javaName : rr.javaNames) {
-                    String jsonName = rr.javaToJsonName.get(javaName);
-                    if (jsonName != null && !allowed.contains(jsonName)) out.add("return false;");
+                if (!_runtimeReadableObject(type)) {
+                    for (String javaName : rr.javaNames) {
+                        String jsonName = rr.javaToJsonName.get(javaName);
+                        if (jsonName != null && !allowed.contains(jsonName)) out.add("return false;");
+                    }
                 }
             } else if (additional != null && !_isBooleanTrue(additional)) {
-                return CompileResult.unsupported("additionalProperties schema");
+                return _emitLocalPlanReturn(state, out, var, currentPlan, "additionalProperties schema");
             }
             return CompileResult.OK;
         }
@@ -385,7 +472,6 @@ public final class SchemaValidatorGenerator {
             int min = ((Integer) SchemaPlanIntrospector.field(e, "minItems")).intValue();
             int max = ((Integer) SchemaPlanIntrospector.field(e, "maxItems")).intValue();
             boolean unique = ((Boolean) SchemaPlanIntrospector.field(e, "uniqueItems")).booleanValue();
-            if (unique) return CompileResult.unsupported("uniqueItems");
             CompileJsonKind kind = _knownJsonKind(type);
             if (kind != CompileJsonKind.UNKNOWN && kind != CompileJsonKind.ARRAY) return CompileResult.OK;
             String guard = _knownValueGuard(kind, CompileJsonKind.ARRAY, var, nonNull, "org.sjf4j.JsonType.ARRAY");
@@ -397,16 +483,28 @@ public final class SchemaValidatorGenerator {
                 if (min >= 0) out.add(indent + "if (" + size + " < " + min + ") return false;");
                 if (max >= 0) out.add(indent + "if (" + size + " > " + max + ") return false;");
             }
+            if (unique) {
+                String seen = "_u" + state.nextLocal++;
+                String it = "_it" + state.nextLocal++;
+                String item = "_uitem" + state.nextLocal++;
+                String old = "_uold" + state.nextLocal++;
+                out.add(indent + "java.util.ArrayList<Object> " + seen + " = new java.util.ArrayList<Object>();");
+                out.add(indent + "for (java.util.Iterator<Object> " + it + " = org.sjf4j.node.Nodes.iteratorInArray(" + var + "); " + it + ".hasNext(); ) {");
+                out.add(indent + "  Object " + item + " = " + it + ".next();");
+                out.add(indent + "  for (Object " + old + " : " + seen + ") if (org.sjf4j.node.Nodes.equals(" + old + ", " + item + ")) return false;");
+                out.add(indent + "  " + seen + ".add(" + item + ");");
+                out.add(indent + "}");
+            }
             if (guard != null) out.add("}");
             return CompileResult.OK;
         }
         if ("ItemsEvaluator".equals(n)) {
             SchemaPlan items = (SchemaPlan) SchemaPlanIntrospector.field(e, "itemsPlan");
             Object prefix = SchemaPlanIntrospector.field(e, "prefixItemsPlans");
-            if (prefix != null) return CompileResult.unsupported("prefixItems");
+            if (prefix != null) return _emitLocalPlanReturn(state, out, var, currentPlan, "prefixItems");
             if (items == null) return CompileResult.OK;
             TypeMirror elem = _elementType(type);
-            if (elem == null) return CompileResult.unsupported("items on non-list type");
+            if (elem == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "items on non-list type");
             String helper = _compileSubHelper(state, elem, items);
             if (helper == null) return CompileResult.unsupported(state.unsupportedReason);
             String item = "_i" + state.nextLocal++;
@@ -417,6 +515,32 @@ public final class SchemaValidatorGenerator {
             out.add((guard != null ? "  " : "") + "for (" + _paramType(elem) + " " + item + " : " + var + ") { if (!" + helper + "(" + item + ")) return false; }");
             if (guard != null) out.add("}");
             return CompileResult.OK;
+        }
+        if ("ContainsEvaluator".equals(n)) {
+            SchemaPlan contains = (SchemaPlan) SchemaPlanIntrospector.field(e, "containsPlan");
+            if (contains == null) return CompileResult.OK;
+            TypeMirror elem = _elementType(type);
+            if (elem == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "contains on non-list type");
+            String helper = _compileSubHelper(state, elem, contains);
+            if (helper == null) return CompileResult.unsupported(state.unsupportedReason);
+            int min = ((Integer) SchemaPlanIntrospector.field(e, "minContains")).intValue();
+            int max = ((Integer) SchemaPlanIntrospector.field(e, "maxContains")).intValue();
+            CompileJsonKind kind = _knownJsonKind(type);
+            if (kind != CompileJsonKind.UNKNOWN && kind != CompileJsonKind.ARRAY) return CompileResult.OK;
+            String guard = _knownValueGuard(kind, CompileJsonKind.ARRAY, var, nonNull, "org.sjf4j.JsonType.ARRAY");
+            if (guard != null) out.add(guard + " {");
+            String indent = guard != null ? "  " : "";
+            String matches = "_c" + state.nextLocal++;
+            String item = "_ci" + state.nextLocal++;
+            out.add(indent + "int " + matches + " = 0;");
+            out.add(indent + "for (" + _paramType(elem) + " " + item + " : " + var + ") { if (" + helper + "(" + item + ")) " + matches + "++; }");
+            out.add(indent + "if (" + matches + " < " + min + ") return false;");
+            if (max >= 0) out.add(indent + "if (" + matches + " > " + max + ") return false;");
+            if (guard != null) out.add("}");
+            return CompileResult.OK;
+        }
+        if ("PropertyNamesEvaluator".equals(n)) {
+            return _emitLocalPlanReturn(state, out, var, currentPlan, "propertyNames");
         }
         if ("AllOfEvaluator".equals(n) || "AnyOfEvaluator".equals(n) || "OneOfEvaluator".equals(n)) {
             String field = "AllOfEvaluator".equals(n) ? "allOfPlans" : ("AnyOfEvaluator".equals(n) ? "anyOfPlans" : "oneOfPlans");
@@ -491,9 +615,18 @@ public final class SchemaValidatorGenerator {
             }
             return CompileResult.OK;
         }
+        if ("ContentEvaluator".equals(n)) {
+            return _emitLocalPlanReturn(state, out, var, currentPlan, "contentEncoding/contentMediaType");
+        }
+        if ("DependenciesEvaluator".equals(n)) {
+            return _emitLocalPlanReturn(state, out, var, currentPlan, "dependencies");
+        }
+        if ("DependentSchemasEvaluator".equals(n)) {
+            return _emitLocalPlanReturn(state, out, var, currentPlan, "dependentSchemas");
+        }
         if ("ConstEvaluator".equals(n)) {
             String literal = _literal(SchemaPlanIntrospector.field(e, "constValue"));
-            if (literal == null) return CompileResult.unsupported("const value");
+            if (literal == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "const value");
             out.add("if (!org.sjf4j.node.Nodes.equals(" + literal + ", " + var + ")) return false;");
             return CompileResult.OK;
         }
@@ -503,14 +636,17 @@ public final class SchemaValidatorGenerator {
             out.add("boolean " + matched + " = false;");
             for (Object value : values) {
                 String literal = _literal(value);
-                if (literal == null) return CompileResult.unsupported("enum value");
+                if (literal == null) return _emitLocalPlanReturn(state, out, var, currentPlan, "enum value");
                 out.add("if (org.sjf4j.node.Nodes.equals(" + literal + ", " + var + ")) " + matched + " = true;");
             }
             out.add("if (!" + matched + ") return false;");
             return CompileResult.OK;
         }
         if ("MultipleOfEvaluator".equals(n)) {
-            return CompileResult.unsupported(n);
+            return _emitLocalPlanReturn(state, out, var, currentPlan, "multipleOf");
+        }
+        if ("UnevaluatedEvaluator".equals(n)) {
+            return _emitLocalPlanReturn(state, out, var, currentPlan, "unevaluatedProperties/unevaluatedItems");
         }
         return CompileResult.unsupported(n);
     }
@@ -645,6 +781,58 @@ public final class SchemaValidatorGenerator {
         return !(name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jakarta.") ||
                 name.startsWith("jdk.") || name.startsWith("com.fasterxml.jackson.") ||
                 name.startsWith("tools.jackson.") || name.startsWith("com.google.gson."));
+    }
+
+    private String _localPlanField(State state, SchemaPlan plan) {
+        if (state.currentRootJson == null || state.currentRootUri == null) return null;
+        String pointer = SchemaPlanIntrospector.pointer(plan);
+        String key = state.currentRootUri + "\n" + state.currentRootJson + "#" + pointer;
+        String field = state.localPlanFields.get(key);
+        if (field != null) return field;
+
+        int id = state.nextField++;
+        field = "_PLAN" + id;
+        String helper = "_schemaPlan" + id;
+        state.localPlanFields.put(key, field);
+        final String f = field;
+        final String h = helper;
+        final String rootJson = state.currentRootJson;
+        final String rootUri = state.currentRootUri;
+        final String fragment = pointer;
+        state.target.addField(out -> out.line("private static final org.sjf4j.schema.SchemaPlan " + f + " = " + h + "();"));
+        state.target.addHelper(out -> {
+            out.line("");
+            out.line("private static org.sjf4j.schema.SchemaPlan " + h + "() {");
+            out.indent();
+            out.line("org.sjf4j.schema.JsonSchema _schema = org.sjf4j.schema.JsonSchema.fromJson(\"" + GeneratorUtil.escape(rootJson) + "\");");
+            out.line("if (_schema instanceof org.sjf4j.schema.ObjectSchema) ((org.sjf4j.schema.ObjectSchema) _schema).setRetrievalUri(java.net.URI.create(\"" + GeneratorUtil.escape(rootUri) + "\"));");
+            out.line("org.sjf4j.schema.SchemaRegistry _registry = new org.sjf4j.schema.SchemaRegistry();");
+            out.line("_registry.register(_schema);");
+            out.line("return _registry.resolve(java.net.URI.create(\"" + GeneratorUtil.escape(rootUri + "#" + fragment) + "\"));");
+            out.dedent();
+            out.line("}");
+        });
+        return field;
+    }
+
+    private CompileResult _emitLocalPlanReturn(State state, List<String> out, String var, SchemaPlan plan, String reason) {
+        String field = _localPlanField(state, plan);
+        if (field == null) return CompileResult.unsupported(reason);
+        out.add("if (!" + field + ".isValid(" + var + ", " + state.strictFormat + ")) return false;");
+        return CompileResult.OK;
+    }
+
+    private boolean _runtimeReadableObject(TypeMirror type) {
+        if (type == null || type.getKind() != TypeKind.DECLARED) return false;
+        TypeMirror boxed = GeneratorUtil.boxed(ctx, type);
+        String qn = ctx.types.erasure(boxed).toString();
+        if ("java.lang.Object".equals(qn)) return true;
+        if (GeneratorUtil.isAssignableErasure(ctx, boxed, ctx.mapType) ||
+                GeneratorUtil.isAssignableErasure(ctx, boxed, ctx.jsonObjectType)) return true;
+        TypeElement element = GeneratorUtil.asTypeElement(boxed);
+        return element != null && (element.getKind() == ElementKind.INTERFACE ||
+                element.getModifiers().contains(Modifier.ABSTRACT) ||
+                _hasAnnotation(element, "org.sjf4j.annotation.node.OneOf"));
     }
 
     private String _stringValueExpr(String var, TypeMirror type) {
@@ -853,6 +1041,9 @@ public final class SchemaValidatorGenerator {
         String unsupportedReason;
         final Set<SchemaPlan> inProgress = Collections.newSetFromMap(new IdentityHashMap<SchemaPlan, Boolean>());
         final Map<String, String> formatFields = new LinkedHashMap<String, String>();
+        final Map<String, String> localPlanFields = new LinkedHashMap<String, String>();
+        String currentRootJson;
+        String currentRootUri;
         boolean strictFormat;
         boolean strictValidatorField;
         boolean lenientValidatorField;

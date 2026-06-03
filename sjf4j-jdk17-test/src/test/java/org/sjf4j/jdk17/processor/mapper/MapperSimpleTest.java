@@ -110,6 +110,17 @@ public class MapperSimpleTest {
     }
 
     @Test
+    public void createMapperSetsNullPathValuesByDefault() {
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+
+        ReferenceDefaultsDto dto = mapper.setNulls(new DefaultsSource(null, null, null));
+
+        assertNull(dto.name);
+        assertNull(dto.tags);
+        assertNull(dto.nestedAge);
+    }
+
+    @Test
     public void mapsFromMultipleSourceParameters() {
         MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
@@ -218,12 +229,26 @@ public class MapperSimpleTest {
 
     public record AgeSource(AgeBox box) {}
 
+    public record DefaultsSource(String name, List<String> tags, AgeBox box) {}
+
     public record ThirdPartyRecord(@com.fasterxml.jackson.annotation.JsonProperty("first_name") String firstName,
                                    @com.alibaba.fastjson2.annotation.JSONField(name = "last_name") String lastName) {}
     public static final class AgeDto {
         public Integer age;
 
         public AgeDto() {}
+    }
+
+    public static final class ReferenceDefaultsDto {
+        public String name = "default-name";
+        public List<String> tags = List.of("default-tag");
+        public Integer nestedAge = 9;
+
+        public ReferenceDefaultsDto() {}
+
+        public void setName(String name) { this.name = name; }
+        public void setTags(List<String> tags) { this.tags = tags; }
+        public void setNestedAge(Integer nestedAge) { this.nestedAge = nestedAge; }
     }
 
     public static final class MultiCtor {
@@ -316,6 +341,9 @@ public class MapperSimpleTest {
 
         @Mapping(target = "age", source = "$.box.age")
         AgeDto age(AgeSource source);
+
+        @Mapping(target = "nestedAge", source = "$.box.age")
+        ReferenceDefaultsDto setNulls(DefaultsSource source);
 
         ThirdPartyRecord thirdPartyNames(Map<String, String> source);
 

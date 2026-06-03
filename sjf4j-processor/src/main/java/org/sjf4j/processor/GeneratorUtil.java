@@ -166,7 +166,11 @@ public final class GeneratorUtil {
      * Escapes a string for insertion into generated Java string literals.
      */
     public static String escape(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+        return value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     /**

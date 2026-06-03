@@ -2,6 +2,7 @@ package org.sjf4j.processor.schema;
 
 import org.sjf4j.schema.Evaluator;
 import org.sjf4j.schema.SchemaPlan;
+import org.sjf4j.path.PathSegment;
 
 import java.lang.reflect.Field;
 
@@ -19,6 +20,11 @@ final class SchemaPlanIntrospector {
 
     static boolean booleanValue(SchemaPlan plan) {
         return ((Boolean) field(plan, "booleanValue")).booleanValue();
+    }
+
+    static String pointer(SchemaPlan plan) {
+        PathSegment ps = (PathSegment) field(plan, "keywordPs");
+        return ps == null ? "" : ps.rootedPointerExpr();
     }
 
     static Object field(Object owner, String name) {
