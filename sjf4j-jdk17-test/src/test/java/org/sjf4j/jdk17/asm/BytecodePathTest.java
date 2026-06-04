@@ -1,4 +1,4 @@
-package org.sjf4j.jdk17.compiled;
+package org.sjf4j.jdk17.asm;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

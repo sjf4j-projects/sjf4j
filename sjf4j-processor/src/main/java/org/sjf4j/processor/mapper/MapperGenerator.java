@@ -11,6 +11,7 @@ import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
+import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.SourceWriter;
 
@@ -53,7 +54,7 @@ public final class MapperGenerator {
      */
     public void generate(TypeElement iface) {
         GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
-        generation = new GenerationState();
+        generation = new GenerationState(iface);
         for (Element member : iface.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD) continue;
 
@@ -160,7 +161,8 @@ public final class MapperGenerator {
             if (rootName != null) ignored.add(rootName);
         }
 
-        MethodState state = new MethodState(_readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi), _groupParentCounts(anns));
+        MethodState state = new MethodState(sources,
+                _readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi), _groupParentCounts(anns));
 
         for (Mapping m : anns) {
             String t = m.target();
@@ -319,7 +321,8 @@ public final class MapperGenerator {
         if (!_collectExtraPathWrites(method, target, ifParentAnns, ensureAnns, pathWrites, nestedMappers, explicitTargets)) return;
 
         Plan plan = new Plan(null, new ArrayList<String>(writes.keySet()), writes);
-        MethodState state = new MethodState(_readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
+        MethodState state = new MethodState(params.get(0).getSimpleName().toString(), sources,
+                _readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
 
         for (Mapping m : anns) {
             String t = m.target();
@@ -407,15 +410,18 @@ public final class MapperGenerator {
         String impl = _implType(method, target, to);
         if (impl == null) return;
         target.addMethod(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve(source.getSimpleName().toString());
+            String targetName = names.local("target");
             out.line("");
             out.line("@Override");
             out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.asType() + " " + source.getSimpleName() + ") {");
             out.indent();
             String s = source.getSimpleName().toString();
             out.line("if (" + s + " == null) return null;");
-            out.line(_containerLocalType(impl, to, method.getReturnType()) + " _target = " + _newContainer(impl, to, s + ".size()") + ";");
-            _emitContainerCopy(out, from, to, conv, "_target", s);
-            out.line("return _target;");
+            out.line(_containerLocalType(impl, to, method.getReturnType()) + " " + targetName + " = " + _newContainer(impl, to, s + ".size()") + ";");
+            _emitContainerCopy(out, from, to, conv, targetName, s, names);
+            out.line("return " + targetName + ";");
             out.dedent();
             out.line("}");
         });
@@ -445,6 +451,9 @@ public final class MapperGenerator {
             return;
         }
         target.addMethod(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve(params.get(0).getSimpleName().toString());
+            names.reserve(source.getSimpleName().toString());
             out.line("");
             out.line("@Override");
             out.line("public void " + method.getSimpleName() + "(" + params.get(0).asType() + " " + params.get(0).getSimpleName() + ", " + source.asType() + " " + source.getSimpleName() + ") {");
@@ -454,10 +463,10 @@ public final class MapperGenerator {
             out.line("if (" + s + " == null) return;");
             if (to.map) {
                 if (objectPolicy == ObjectPolicy.CLEAR_PUT) out.line(t + ".clear();");
-                _emitContainerCopy(out, from, to, conv, t, s, objectPolicy);
+                _emitContainerCopy(out, from, to, conv, t, s, objectPolicy, names);
             } else {
                 if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line(t + ".clear();");
-                _emitContainerCopy(out, from, to, conv, t, s);
+                _emitContainerCopy(out, from, to, conv, t, s, names);
             }
             out.dedent();
             out.line("}");
@@ -640,36 +649,37 @@ public final class MapperGenerator {
             }
             out.line(b.append(");").toString());
         } else {
-            out.line(method.getReturnType() + " _target = new " + method.getReturnType() + "();");
+            String targetVar = state.targetRoot;
+            out.line(method.getReturnType() + " " + targetVar + " = new " + method.getReturnType() + "();");
             for (String temp : state.readTemps) out.line(temp);
-            _emitGroupedAssigns(out, state, plan, nulls);
+            _emitGroupedAssigns(out, state, plan, nulls, targetVar);
             for (String name : plan.names) {
                 Expr e = values.get(name);
                 if (e == null) continue;
                 if (state.groupTargets.contains(name)) continue;
 
                 _emitTemps(out, e);
-                _emitCreateAssign(out, name, plan.writes.get(name), e, nulls);
+                _emitCreateAssign(out, state, targetVar, name, plan.writes.get(name), e, nulls);
             }
             for (Map.Entry<TargetPathWrite, Expr> entry : pathValues.entrySet()) {
                 _emitTemps(out, entry.getValue());
-                _emitTargetPath(out, method, "_target", method.getReturnType(), entry.getKey(), entry.getValue(), nulls);
+                _emitTargetPath(out, method, state, targetVar, method.getReturnType(), entry.getKey(), entry.getValue(), nulls);
             }
-            out.line("return _target;");
+            out.line("return " + targetVar + ";");
         }
         out.dedent();
         out.line("}");
     }
 
-    private void _emitCreateAssign(SourceWriter out, String name, Write w, Expr e, NullValuePolicy nulls) {
-        String assign = _targetAssign("_target", w, e.code);
+    private void _emitCreateAssign(SourceWriter out, MethodState state, String targetVar, String name, Write w, Expr e, NullValuePolicy nulls) {
+        String assign = _targetAssign(targetVar, w, e.code);
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
             if (e.local || e.type == null) {
                 out.line("if (" + e.code + " != null) " + assign);
             } else {
-                String temp = _tempName(name, "value", 0);
+                String temp = state.names.prefixed("s", name);
                 out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
-                String tempAssign = _targetAssign("_target", w, temp);
+                String tempAssign = _targetAssign(targetVar, w, temp);
                 out.line("if (" + temp + " != null) " + tempAssign);
             }
         } else {
@@ -872,10 +882,10 @@ public final class MapperGenerator {
         return null;
     }
 
-    private void _emitTargetPath(SourceWriter out, ExecutableElement method, String rootVar, TypeMirror rootType, TargetPathWrite w, Expr e, NullValuePolicy nulls) {
+    private void _emitTargetPath(SourceWriter out, ExecutableElement method, MethodState state, String rootVar, TypeMirror rootType, TargetPathWrite w, Expr e, NullValuePolicy nulls) {
         String value = e.code;
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
-            String temp = _tempName(w.path, "value", 0);
+            String temp = state.names.prefixed("s", "value");
             if (!e.local && e.type != null) {
                 out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
                 value = temp;
@@ -888,7 +898,7 @@ public final class MapperGenerator {
         boolean openSkip = false;
         for (int i = 1; i < w.segments.length - 1; i++) {
             PathSegment s = w.segments[i];
-            String nextVar = _tempName(w.path, "parent" + i, i);
+            String nextVar = state.names.prefixed("t", s instanceof PathSegment.Name ? ((PathSegment.Name) s).name : "parent");
             TypeMirror nextType;
             if (s instanceof PathSegment.Name) {
                 String name = ((PathSegment.Name) s).name;
@@ -1019,12 +1029,12 @@ public final class MapperGenerator {
             Write w = plan.writes.get(name);
             ContainerType to = _container(w.type);
             if (to != null && to.map) {
-                _emitObjectField(out, iface, method, genTarget, targetName, name, w, targetReads.get(name), e,
+                _emitObjectField(out, iface, method, genTarget, state, targetName, name, w, targetReads.get(name), e,
                         nestedMappers.get(name) == null ? "" : nestedMappers.get(name), objectPolicies.get(name) == null ? ObjectPolicy.PUT : objectPolicies.get(name));
                 continue;
             }
             if (arrayPolicies.containsKey(name)) {
-                _emitArrayField(out, iface, method, genTarget, targetName, name, w, targetReads.get(name), e,
+                _emitArrayField(out, iface, method, genTarget, state, targetName, name, w, targetReads.get(name), e,
                         nestedMappers.get(name) == null ? "" : nestedMappers.get(name), arrayPolicies.get(name));
                 continue;
             }
@@ -1037,7 +1047,7 @@ public final class MapperGenerator {
                 } else if (e.type == null) {
                     out.line("if (" + e.code + " != null) " + assign);
                 } else {
-                    String temp = _tempName(name, "value", 0);
+                    String temp = state.names.prefixed("s", name);
                     out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
                     String tempAssign = w.setter != null
                             ? targetName + "." + w.setter.getSimpleName() + "(" + temp + ");"
@@ -1049,7 +1059,7 @@ public final class MapperGenerator {
             }
         }
         for (Map.Entry<TargetPathWrite, Expr> entry : pathValues.entrySet()) {
-            _emitTargetPath(out, method, targetName, targetParam.asType(), entry.getKey(), entry.getValue(), nulls);
+            _emitTargetPath(out, method, state, targetName, targetParam.asType(), entry.getKey(), entry.getValue(), nulls);
         }
         out.dedent();
         out.line("}");
@@ -1231,7 +1241,7 @@ public final class MapperGenerator {
             if (access == null) return null;
             types[i] = access.type;
             currentType = access.type;
-            currentVar = _tempName(targetName, "path" + i, i);
+            currentVar = "s_" + _javaId(name);
         }
 
         TypeMirror leafType = types[segments.length - 1];
@@ -1239,7 +1249,7 @@ public final class MapperGenerator {
         String key = "pathhelper:" + param.element.asType() + ":" + source + ":" + leafType;
         String helper = generation.helpers.get(key);
         if (helper == null) {
-            helper = "_sjf4j_path_" + generation.nextHelper++;
+            helper = generation.helperName("Path");
             generation.helpers.put(key, helper);
             String helperName = helper;
             target.addHelper(out -> _emitPathHelper(out, helperName, param, segments, types));
@@ -1253,12 +1263,14 @@ public final class MapperGenerator {
         out.line("");
         out.line("private " + _localTypeName(leafType, true) + " " + helper + "(" + param.element.asType() + " " + param.name + ") {");
         out.indent();
+        NameAllocator names = new NameAllocator();
+        names.reserve(param.name);
         String currentVar = param.name;
         TypeMirror currentType = param.element.asType();
         for (int i = 1; i < segments.length - 1; i++) {
             String name = ((PathSegment.Name) segments[i]).name;
             GroupAccess access = _groupNameAccess(currentType, currentVar, name);
-            String temp = _tempName(name, "path", i);
+            String temp = names.prefixed("s", name);
             out.line(_localTypeName(access.type, true) + " " + temp + " = " + access.code + ";");
             if (!access.type.getKind().isPrimitive()) out.line("if (" + temp + " == null) return null;");
             currentType = access.type;
@@ -1292,6 +1304,7 @@ public final class MapperGenerator {
 
         int count = segments.length - 1;
         String[] names = new String[count];
+        String[] temps = new String[count];
         GroupAccess[] accesses = new GroupAccess[count];
         TypeMirror currentType = param.element.asType();
         String currentTemp = param.name;
@@ -1300,9 +1313,10 @@ public final class MapperGenerator {
             GroupAccess access = _groupNameAccess(currentType, currentTemp, name);
             if (access == null) return null;
             names[i - 1] = name;
+            temps[i - 1] = state.names.prefixed("s", name);
             accesses[i - 1] = access;
             currentType = access.type;
-            currentTemp = _groupTemp(currentTemp, name);
+            currentTemp = temps[i - 1];
         }
 
         GroupNode root = state.groupRoot;
@@ -1317,7 +1331,9 @@ public final class MapperGenerator {
             GroupAccess access = accesses[i];
             GroupNode child = parent.children.get(name);
             if (child == null) {
-                child = new GroupNode(name, access.type, _groupTemp(parent.temp, name), access.code);
+                GroupAccess actual = _groupNameAccess(parent.type, parent.temp, name);
+                if (actual == null) return null;
+                child = new GroupNode(name, access.type, temps[i], actual.code);
                 parent.children.put(name, child);
             }
             parent = child;
@@ -1325,7 +1341,9 @@ public final class MapperGenerator {
 
         GroupAccess leaf = accesses[count - 1];
         if (_container(leaf.type) != null || _container(targetType) != null || !_assignable(leaf.type, targetType)) return null;
-        String temp = _tempName(targetName, "group", 0);
+        leaf = _groupNameAccess(parent.type, parent.temp, names[count - 1]);
+        if (leaf == null) return null;
+        String temp = state.names.prefixed("s", targetName);
         parent.leaves.add(new GroupLeaf(targetName, temp, leaf.type, leaf.code));
         state.groupTargets.add(targetName);
         Expr e = new Expr(temp, leaf.type, true, true, true);
@@ -1367,51 +1385,51 @@ public final class MapperGenerator {
         return b.toString();
     }
 
-    private void _emitGroupedAssigns(SourceWriter out, MethodState state, Plan plan, NullValuePolicy nulls) {
+    private void _emitGroupedAssigns(SourceWriter out, MethodState state, Plan plan, NullValuePolicy nulls, String targetVar) {
         if (state.groupRoot == null) return;
-        _emitGroupedChildren(out, state.groupRoot, plan, nulls);
+        _emitGroupedChildren(out, state.groupRoot, plan, nulls, targetVar);
     }
 
-    private void _emitGroupedChildren(SourceWriter out, GroupNode node, Plan plan, NullValuePolicy nulls) {
+    private void _emitGroupedChildren(SourceWriter out, GroupNode node, Plan plan, NullValuePolicy nulls, String targetVar) {
         for (GroupLeaf leaf : node.leaves) {
             Write w = plan.writes.get(leaf.target);
             if (nulls == NullValuePolicy.IGNORE && (leaf.type == null || !leaf.type.getKind().isPrimitive())) {
                 out.line(_localTypeName(leaf.type, true) + " " + leaf.temp + " = " + leaf.code + ";");
-                out.line("if (" + leaf.temp + " != null) " + _targetAssign("_target", w, leaf.temp));
+                out.line("if (" + leaf.temp + " != null) " + _targetAssign(targetVar, w, leaf.temp));
             } else {
-                out.line(_targetAssign("_target", w, leaf.code));
+                out.line(_targetAssign(targetVar, w, leaf.code));
             }
         }
         for (GroupNode child : node.children.values()) {
             out.line(_localTypeName(child.type, true) + " " + child.temp + " = " + child.code + ";");
             if (child.type.getKind().isPrimitive()) {
-                _emitGroupedChildren(out, child, plan, nulls);
+                _emitGroupedChildren(out, child, plan, nulls, targetVar);
             } else if (nulls == NullValuePolicy.IGNORE) {
                 out.line("if (" + child.temp + " != null) {");
                 out.indent();
-                _emitGroupedChildren(out, child, plan, nulls);
+                _emitGroupedChildren(out, child, plan, nulls, targetVar);
                 out.dedent();
                 out.line("}");
             } else {
                 out.line("if (" + child.temp + " == null) {");
                 out.indent();
-                _emitGroupedNulls(out, child, plan);
+                _emitGroupedNulls(out, child, plan, targetVar);
                 out.dedent();
                 out.line("} else {");
                 out.indent();
-                _emitGroupedChildren(out, child, plan, nulls);
+                _emitGroupedChildren(out, child, plan, nulls, targetVar);
                 out.dedent();
                 out.line("}");
             }
         }
     }
 
-    private void _emitGroupedNulls(SourceWriter out, GroupNode node, Plan plan) {
+    private void _emitGroupedNulls(SourceWriter out, GroupNode node, Plan plan, String targetVar) {
         for (GroupLeaf leaf : node.leaves) {
-            out.line(_targetAssign("_target", plan.writes.get(leaf.target), "null"));
+            out.line(_targetAssign(targetVar, plan.writes.get(leaf.target), "null"));
         }
         for (GroupNode child : node.children.values()) {
-            _emitGroupedNulls(out, child, plan);
+            _emitGroupedNulls(out, child, plan, targetVar);
         }
     }
 
@@ -1426,9 +1444,9 @@ public final class MapperGenerator {
 
         PathAccessEmitter.ReadAccess r = resolved.nullableRoot
                 ? pathAccess.readNullableRoot(method, target, resolved.param.element.asType(), resolved.param.name,
-                resolved.path, _tempName(targetName, "path", 0) + "_", state.pathCache, _pathCacheRoot(resolved))
+                resolved.path, state.names.prefixed("s", targetName + "Path") + "_", state.pathCache, _pathCacheRoot(resolved))
                 : pathAccess.read(method, target, resolved.param.element.asType(), resolved.param.name,
-                resolved.path, _tempName(targetName, "path", 0) + "_", state.pathCache, _pathCacheRoot(resolved));
+                resolved.path, state.names.prefixed("s", targetName + "Path") + "_", state.pathCache, _pathCacheRoot(resolved));
         if (r == null) return null;
         Expr e = new Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
         if (r.path) {
@@ -1444,7 +1462,7 @@ public final class MapperGenerator {
             }
             state.cache.put(key, new CachedRead(r.code, r.type, true, resolved.nullableRoot));
         } else if (_readCount(state, path) > 1) {
-            String temp = preferredTemp == null ? _tempName(targetName, "read", 0) : preferredTemp;
+            String temp = preferredTemp == null ? state.names.prefixed("s", targetName) : preferredTemp;
             state.readTemps.add(_localTypeName(r.type, resolved.nullableRoot) + " " + temp + " = " + r.code + ";");
             e.code = temp;
             e.local = true;
@@ -1535,7 +1553,7 @@ public final class MapperGenerator {
         String body = c.substring(arrow + 2).trim();
         Expr e = new Expr(body, null);
         for (int i = 0; i < params.length; i++) {
-            String temp = _tempName(m.target, params[i], i);
+            String temp = state.names.prefixed("s", params[i]);
             Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target + i, temp);
             if (v == null) return null;
 
@@ -1588,7 +1606,7 @@ public final class MapperGenerator {
             for (int i = 0; i < paths.length; i++) {
                 if (i != 0) call.append(", ");
 
-                String preferred = _tempName(m.target, h.getParameters().get(i).getSimpleName().toString(), i);
+                String preferred = state.names.prefixed("s", h.getParameters().get(i).getSimpleName().toString());
                 Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target + i, preferred);
                 if (v == null) return null;
                 if (!_assignable(v.type, ht.getParameterTypes().get(i))) {
@@ -1710,28 +1728,33 @@ public final class MapperGenerator {
         String key = "container:" + from.mirror + "->" + to.mirror + ":" + impl + ":" + (conv.method == null ? "" : conv.method);
         String existing = generation.helpers.get(key);
         if (existing != null) return existing;
-        String helper = "_sjf4j_container_" + generation.nextHelper++;
+        String helper = generation.helperName("Container");
         generation.helpers.put(key, helper);
         target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String targetVar = names.local("target");
             out.line("");
             out.line("private " + resultType + " " + helper + "(" + from.mirror + " source) {");
             out.indent();
             out.line("if (source == null) return null;");
-            out.line(_containerLocalType(impl, to, resultType) + " target = " + _newContainer(impl, to, "source.size()") + ";");
+            out.line(_containerLocalType(impl, to, resultType) + " " + targetVar + " = " + _newContainer(impl, to, "source.size()") + ";");
         if (to.map) {
-                out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> entry : source.entrySet()) {");
+                String entry = names.prefixed("s", "entry");
+                out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> " + entry + " : source.entrySet()) {");
                 out.indent();
-                out.line("target.put(entry.getKey(), " + _convertValue(conv, "entry.getValue()") + ");");
+                out.line(targetVar + ".put(" + entry + ".getKey(), " + _convertValue(conv, entry + ".getValue()") + ");");
                 out.dedent();
                 out.line("}");
         } else {
-                out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " value : source) {");
+                String value = names.prefixed("s", "value");
+                out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " " + value + " : source) {");
                 out.indent();
-                out.line("target.add(" + _convertValue(conv, "value") + ");");
+                out.line(targetVar + ".add(" + _convertValue(conv, value) + ");");
                 out.dedent();
                 out.line("}");
         }
-            out.line("return target;");
+            out.line("return " + targetVar + ";");
             out.dedent();
             out.line("}");
         });
@@ -1851,20 +1874,23 @@ public final class MapperGenerator {
         if (existing != null) return existing;
         String fromCodec = _isNodeValue(from) ? _ensureCodecField(target, from) : null;
         String toCodec = _isNodeValue(to) ? _ensureCodecField(target, to) : null;
-        String name = "_sjf4j_" + kind + "_" + generation.nextHelper++;
+        String name = generation.helperName(_upperCamel(kind));
         generation.helpers.put(key, name);
         target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("source");
+            String raw = names.prefixed("s", "raw");
             out.line("");
-            out.line("private " + to + " " + name + "(" + from + " value) {");
+            out.line("private " + to + " " + name + "(" + from + " source) {");
             out.indent();
-            if (!from.getKind().isPrimitive() && !to.getKind().isPrimitive()) out.line("if (value == null) return null;");
+            if (!from.getKind().isPrimitive() && !to.getKind().isPrimitive()) out.line("if (source == null) return null;");
             if ("value_raw".equals(kind)) {
-                out.line("return (" + GeneratorUtil.localTypeName(ctx, to) + ") " + fromCodec + ".valueToRaw(value);");
+                out.line("return (" + GeneratorUtil.localTypeName(ctx, to) + ") " + fromCodec + ".valueToRaw(source);");
             } else if ("raw_value".equals(kind)) {
-                out.line("return (" + GeneratorUtil.localTypeName(ctx, to) + ") " + toCodec + ".rawToValue(value);");
+                out.line("return (" + GeneratorUtil.localTypeName(ctx, to) + ") " + toCodec + ".rawToValue(source);");
             } else {
-                out.line("Object _raw = " + fromCodec + ".valueToRaw(value);");
-                out.line("return (" + GeneratorUtil.localTypeName(ctx, to) + ") " + toCodec + ".rawToValue(_raw);");
+                out.line("Object " + raw + " = " + fromCodec + ".valueToRaw(source);");
+                out.line("return (" + GeneratorUtil.localTypeName(ctx, to) + ") " + toCodec + ".rawToValue(" + raw + ");");
             }
             out.dedent();
             out.line("}");
@@ -1887,17 +1913,17 @@ public final class MapperGenerator {
         String key = "enum:" + from + "->" + to;
         String existing = generation.helpers.get(key);
         if (existing != null) return existing;
-        String name = "_sjf4j_" + kind + "_" + generation.nextHelper++;
+        String name = generation.helperName("string".equals(kind) ? "String" : "Enum");
         generation.helpers.put(key, name);
         target.addHelper(out -> {
             out.line("");
-            out.line("private " + to + " " + name + "(" + from + " value) {");
+            out.line("private " + to + " " + name + "(" + from + " source) {");
             out.indent();
-            out.line("if (value == null) return null;");
+            out.line("if (source == null) return null;");
             if ("string".equals(kind)) {
-                out.line("return " + to + ".valueOf(value);");
+                out.line("return " + to + ".valueOf(source);");
             } else {
-                out.line("return " + to + ".valueOf(value.name());");
+                out.line("return " + to + ".valueOf(source.name());");
             }
             out.dedent();
             out.line("}");
@@ -1938,7 +1964,7 @@ public final class MapperGenerator {
                 _error(method, target, "Cannot auto-map nested target property '" + name + "' from " + from + " to " + to + ": no same-name source property was found");
                 return null;
             }
-            String access = r.method == null ? "value." + r.javaName : "value." + r.method.getSimpleName() + "()";
+            String access = r.method == null ? "source." + r.javaName : "source." + r.method.getSimpleName() + "()";
             Expr e = new Expr(access, r.type);
             e = _maybeNestedExpr(iface, method, target, e, plan.writes.get(name).type, "", name);
             if (e == null) {
@@ -1954,17 +1980,20 @@ public final class MapperGenerator {
         }
         generation.inProgress.remove(key);
 
-        String name = "_sjf4j_map_" + generation.nextHelper++;
+        String name = generation.helperName("Auto");
         generation.helpers.put(key, name);
         target.addHelper(out -> _emitAutoHelper(out, name, from, to, plan, values));
         return name;
     }
 
     private void _emitAutoHelper(SourceWriter out, String helper, TypeMirror from, TypeMirror to, Plan plan, Map<String, Expr> values) {
+        NameAllocator names = new NameAllocator();
+        names.reserve("source");
+        String targetVar = names.local("target");
         out.line("");
-        out.line("private " + to + " " + helper + "(" + from + " value) {");
+        out.line("private " + to + " " + helper + "(" + from + " source) {");
         out.indent();
-        out.line("if (value == null) return null;");
+        out.line("if (source == null) return null;");
         for (Expr e : values.values()) _emitTemps(out, e);
         if (plan.ctor != null) {
             StringBuilder b = new StringBuilder("return new ").append(to).append("(");
@@ -1974,14 +2003,14 @@ public final class MapperGenerator {
             }
             out.line(b.append(");").toString());
         } else {
-            out.line(to + " _target = new " + to + "();");
+            out.line(to + " " + targetVar + " = new " + to + "();");
             for (String n : plan.names) {
                 Expr e = values.get(n);
                 Write w = plan.writes.get(n);
-                if (w.setter != null) out.line("_target." + w.setter.getSimpleName() + "(" + e.code + ");");
-                else out.line("_target." + w.javaName + " = " + e.code + ";");
+                if (w.setter != null) out.line(targetVar + "." + w.setter.getSimpleName() + "(" + e.code + ");");
+                else out.line(targetVar + "." + w.javaName + " = " + e.code + ";");
             }
-            out.line("return _target;");
+            out.line("return " + targetVar + ";");
         }
         out.dedent();
         out.line("}");
@@ -2048,30 +2077,48 @@ public final class MapperGenerator {
     }
 
     private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source) {
-        _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT);
+        NameAllocator names = new NameAllocator();
+        names.reserve(target);
+        names.reserve(source);
+        _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT, names);
+    }
+
+    private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, NameAllocator names) {
+        _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT, names);
     }
 
     private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, ObjectPolicy objectPolicy) {
+        NameAllocator names = new NameAllocator();
+        names.reserve(target);
+        names.reserve(source);
+        _emitContainerCopy(out, from, to, conv, target, source, objectPolicy, names);
+    }
+
+    private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, ObjectPolicy objectPolicy, NameAllocator names) {
         if (to.map) {
-            out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> _entry : " + source + ".entrySet()) {");
+            String entry = names.prefixed("s", "entry");
+            out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> " + entry + " : " + source + ".entrySet()) {");
             out.indent();
             if (objectPolicy == ObjectPolicy.PUT_IF_ABSENT) {
-                out.line("if (!" + target + ".containsKey(_entry.getKey()) || " + target + ".get(_entry.getKey()) == null) {");
+                out.line("if (!" + target + ".containsKey(" + entry + ".getKey()) || " + target + ".get(" + entry + ".getKey()) == null) {");
                 out.indent();
-                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " _value = " + _convertValue(conv, "_entry.getValue()") + ";");
-                out.line(target + ".put(_entry.getKey(), _value);");
+                String value = names.prefixed("s", "value");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                out.line(target + ".put(" + entry + ".getKey(), " + value + ");");
                 out.dedent();
                 out.line("}");
             } else {
-                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " _value = " + _convertValue(conv, "_entry.getValue()") + ";");
-                out.line(target + ".put(_entry.getKey(), _value);");
+                String value = names.prefixed("s", "value");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                out.line(target + ".put(" + entry + ".getKey(), " + value + ");");
             }
             out.dedent();
             out.line("}");
         } else {
-            out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " _value : " + source + ") {");
+            String value = names.prefixed("s", "value");
+            out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " " + value + " : " + source + ") {");
             out.indent();
-            out.line(target + ".add(" + _convertValue(conv, "_value") + ");");
+            out.line(target + ".add(" + _convertValue(conv, value) + ");");
             out.dedent();
             out.line("}");
         }
@@ -2082,7 +2129,7 @@ public final class MapperGenerator {
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                  String targetName, String name, Write w, Read read, Expr e, String nestedMapper, ArrayPolicy policy) {
+                                  MethodState state, String targetName, String name, Write w, Read read, Expr e, String nestedMapper, ArrayPolicy policy) {
         ContainerType from = _container(e.type);
         ContainerType to = _container(w.type);
         if (from == null || to == null || from.map || to.map) {
@@ -2094,7 +2141,7 @@ public final class MapperGenerator {
         String access = read == null ? targetName + "." + w.javaName : (read.method == null ? targetName + "." + read.javaName : targetName + "." + read.method.getSimpleName() + "()");
         String source = e.code;
         if (!e.local) {
-            source = _tempName(name, "source", 0);
+            source = state.names.prefixed("s", name);
             out.line(e.type + " " + source + " = " + e.code + ";");
         }
         out.line("if (" + source + " != null) {");
@@ -2105,13 +2152,13 @@ public final class MapperGenerator {
             out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, source + ".size()") + ";");
         }
         if (policy == ArrayPolicy.CLEAR_ADD) out.line(access + ".clear();");
-        _emitContainerCopy(out, from, to, conv, access, source);
+        _emitContainerCopy(out, from, to, conv, access, source, state.names);
         out.dedent();
         out.line("}");
     }
 
     private void _emitObjectField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                   String targetName, String name, Write w, Read read, Expr e, String nestedMapper, ObjectPolicy policy) {
+                                   MethodState state, String targetName, String name, Write w, Read read, Expr e, String nestedMapper, ObjectPolicy policy) {
         ContainerType from = _container(e.type);
         ContainerType to = _container(w.type);
         if (from == null || to == null || !from.map || !to.map) {
@@ -2123,7 +2170,7 @@ public final class MapperGenerator {
         String access = read == null ? targetName + "." + w.javaName : (read.method == null ? targetName + "." + read.javaName : targetName + "." + read.method.getSimpleName() + "()");
         String source = e.code;
         if (!e.local) {
-            source = _tempName(name, "source", 0);
+            source = state.names.prefixed("s", name);
             out.line(e.type + " " + source + " = " + e.code + ";");
         }
         out.line("if (" + source + " != null) {");
@@ -2134,7 +2181,7 @@ public final class MapperGenerator {
             out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, source + ".size()") + ";");
         }
         if (policy == ObjectPolicy.CLEAR_PUT) out.line(access + ".clear();");
-        _emitContainerCopy(out, from, to, conv, access, source, policy);
+        _emitContainerCopy(out, from, to, conv, access, source, policy, state.names);
         out.dedent();
         out.line("}");
     }
@@ -2169,6 +2216,23 @@ public final class MapperGenerator {
             }
         }
         return b.toString();
+    }
+
+    private String _upperCamel(String s) {
+        String id = _javaId(s);
+        if (id.length() == 0) return "Value";
+        StringBuilder b = new StringBuilder(id.length());
+        boolean upper = true;
+        for (int i = 0; i < id.length(); i++) {
+            char c = id.charAt(i);
+            if (c == '_') {
+                upper = true;
+                continue;
+            }
+            b.append(upper ? Character.toUpperCase(c) : c);
+            upper = false;
+        }
+        return b.length() == 0 ? "Value" : b.toString();
     }
 
     private void _error(Element element, GeneratedClass target, String message) {
@@ -2291,17 +2355,31 @@ public final class MapperGenerator {
     private static final class MethodState {
         final Map<String, Integer> readCounts;
         final Map<String, Integer> groupParentCounts;
+        final NameAllocator names;
+        final String targetRoot;
         final List<String> readTemps = new ArrayList<String>();
         final Map<String, CachedRead> cache = new HashMap<String, CachedRead>();
         final Map<String, PathAccessEmitter.CachedPath> pathCache = new HashMap<String, PathAccessEmitter.CachedPath>();
         final Set<String> groupTargets = new HashSet<String>();
         GroupNode groupRoot;
 
-        MethodState(Map<String, Integer> counts) {
-            this(counts, Collections.<String, Integer>emptyMap());
+        MethodState(List<SourceParam> sources, Map<String, Integer> counts) {
+            this(null, sources, counts, Collections.<String, Integer>emptyMap());
         }
 
-        MethodState(Map<String, Integer> counts, Map<String, Integer> groupCounts) {
+        MethodState(List<SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
+            this(null, sources, counts, groupCounts);
+        }
+
+        MethodState(String targetParam, List<SourceParam> sources, Map<String, Integer> counts) {
+            this(targetParam, sources, counts, Collections.<String, Integer>emptyMap());
+        }
+
+        MethodState(String targetParam, List<SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
+            names = new NameAllocator();
+            if (targetParam != null) names.reserve(targetParam);
+            for (SourceParam source : sources) names.reserve(source.name);
+            targetRoot = names.local("target");
             readCounts = counts;
             groupParentCounts = groupCounts;
         }
@@ -2378,10 +2456,20 @@ public final class MapperGenerator {
     }
 
     private static final class GenerationState {
-        int nextHelper;
         int nextCodec;
         final Map<String, String> helpers = new HashMap<String, String>();
         final Set<String> inProgress = new HashSet<String>();
+        final NameAllocator helperNames = new NameAllocator();
+
+        GenerationState(TypeElement iface) {
+            for (Element e : iface.getEnclosedElements()) {
+                if (e.getKind() == ElementKind.METHOD) helperNames.reserve(e.getSimpleName().toString());
+            }
+        }
+
+        String helperName(String hint) {
+            return helperNames.helper(hint);
+        }
     }
 
     private static final class Plan {

@@ -112,16 +112,16 @@ public final class GeneratorUtil {
     public static String nodePropertyName(Element element, String fallback) {
         NodeProperty property = element.getAnnotation(NodeProperty.class);
         if (property != null && property.value().length() != 0) return property.value();
-        String name = annotationString(element, "tools.jackson.annotation.JsonProperty", "value");
+        String name = _annotationString(element, "tools.jackson.annotation.JsonProperty", "value");
         if (name != null && name.length() != 0) return name;
-        name = annotationString(element, "com.fasterxml.jackson.annotation.JsonProperty", "value");
+        name = _annotationString(element, "com.fasterxml.jackson.annotation.JsonProperty", "value");
         if (name != null && name.length() != 0) return name;
-        name = annotationString(element, "com.alibaba.fastjson2.annotation.JSONField", "name");
+        name = _annotationString(element, "com.alibaba.fastjson2.annotation.JSONField", "name");
         if (name != null && name.length() != 0) return name;
         return fallback;
     }
 
-    private static String annotationString(Element element, String annotationName, String memberName) {
+    private static String _annotationString(Element element, String annotationName, String memberName) {
         for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
             Element annotation = mirror.getAnnotationType().asElement();
             if (!(annotation instanceof TypeElement)) continue;
