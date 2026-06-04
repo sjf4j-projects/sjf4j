@@ -3,6 +3,8 @@ package org.sjf4j.jdk17.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapper.CompiledMapper;
 import org.sjf4j.annotation.mapper.Mapping;
+import org.sjf4j.annotation.mapper.MapperOptions;
+import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.JsonObject;
 import org.sjf4j.compiled.CompiledNodes;
 
@@ -121,6 +123,32 @@ public class MapperSimpleTest {
     }
 
     @Test
+    public void groupedSetPathSourcesAssignNullsForMissingParents() {
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+
+        GroupedDefaultsDto dto = mapper.groupedSet(new GroupedSource(null));
+        assertNull(dto.first);
+        assertNull(dto.last);
+
+        GroupedDefaultsDto nestedMissing = mapper.groupedSet(new GroupedSource(new GroupedProfile(null)));
+        assertNull(nestedMissing.first);
+        assertNull(nestedMissing.last);
+    }
+
+    @Test
+    public void groupedIgnorePathSourcesSkipMissingParentsAndNullLeaves() {
+        UserMapper mapper = CompiledNodes.of(UserMapper.class);
+
+        GroupedDefaultsDto missingParent = mapper.groupedIgnore(new GroupedSource(null));
+        assertEquals("default-first", missingParent.first);
+        assertEquals("default-last", missingParent.last);
+
+        GroupedDefaultsDto nullLeaf = mapper.groupedIgnore(new GroupedSource(new GroupedProfile(new GroupedName(null, "Lovelace"))));
+        assertEquals("default-first", nullLeaf.first);
+        assertEquals("Lovelace", nullLeaf.last);
+    }
+
+    @Test
     public void mapsFromMultipleSourceParameters() {
         MultiMapper mapper = CompiledNodes.of(MultiMapper.class);
         Customer customer = new Customer("Ada", new Profile("Countess"));
@@ -231,6 +259,12 @@ public class MapperSimpleTest {
 
     public record DefaultsSource(String name, List<String> tags, AgeBox box) {}
 
+    public record GroupedSource(GroupedProfile profile) {}
+
+    public record GroupedProfile(GroupedName name) {}
+
+    public record GroupedName(String first, String last) {}
+
     public record ThirdPartyRecord(@com.fasterxml.jackson.annotation.JsonProperty("first_name") String firstName,
                                    @com.alibaba.fastjson2.annotation.JSONField(name = "last_name") String lastName) {}
     public static final class AgeDto {
@@ -249,6 +283,13 @@ public class MapperSimpleTest {
         public void setName(String name) { this.name = name; }
         public void setTags(List<String> tags) { this.tags = tags; }
         public void setNestedAge(Integer nestedAge) { this.nestedAge = nestedAge; }
+    }
+
+    public static final class GroupedDefaultsDto {
+        public String first = "default-first";
+        public String last = "default-last";
+
+        public GroupedDefaultsDto() {}
     }
 
     public static final class MultiCtor {
@@ -344,6 +385,15 @@ public class MapperSimpleTest {
 
         @Mapping(target = "nestedAge", source = "$.box.age")
         ReferenceDefaultsDto setNulls(DefaultsSource source);
+
+        @Mapping(target = "first", source = "$.profile.name.first")
+        @Mapping(target = "last", source = "/profile/name/last")
+        GroupedDefaultsDto groupedSet(GroupedSource source);
+
+        @MapperOptions(nulls = NullValuePolicy.IGNORE)
+        @Mapping(target = "first", source = "$.profile.name.first")
+        @Mapping(target = "last", source = "/profile/name/last")
+        GroupedDefaultsDto groupedIgnore(GroupedSource source);
 
         ThirdPartyRecord thirdPartyNames(Map<String, String> source);
 

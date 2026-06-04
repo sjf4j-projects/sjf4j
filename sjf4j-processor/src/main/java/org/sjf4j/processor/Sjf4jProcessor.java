@@ -2,11 +2,8 @@ package org.sjf4j.processor;
 
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.mapper.CompiledMapper;
-import org.sjf4j.annotation.schema.CompiledSchemaValidator;
-import org.sjf4j.exception.JsonException;
 import org.sjf4j.processor.path.PathGenerator;
 import org.sjf4j.processor.mapper.MapperGenerator;
-import org.sjf4j.processor.schema.SchemaValidatorGenerator;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -34,21 +31,16 @@ import java.util.Set;
 
         "org.sjf4j.annotation.mapper.CompiledMapper",
         "org.sjf4j.annotation.mapper.Mapping",
-        "org.sjf4j.annotation.mapper.Mappings",
-
-        "org.sjf4j.annotation.schema.CompiledSchemaValidator",
-        "org.sjf4j.annotation.schema.ValidatorOptions"
+        "org.sjf4j.annotation.mapper.Mappings"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
     private static final String ANNO_COMPILED_PATH = CompiledPath.class.getName();
     private static final String ANNO_COMPILED_MAPPER = CompiledMapper.class.getName();
-    private static final String ANNO_COMPILED_SCHEMA_VALIDATOR = CompiledSchemaValidator.class.getName();
 
     private ProcessorContext context;
     private PathGenerator pathGenerator;
     private MapperGenerator mapperGenerator;
-    private SchemaValidatorGenerator schemaValidatorGenerator;
 
     /**
      * Uses the newest source level supported by the current compiler.
@@ -67,7 +59,6 @@ public final class Sjf4jProcessor extends AbstractProcessor {
         this.context = new ProcessorContext(processingEnv);
         this.pathGenerator = new PathGenerator(context);
         this.mapperGenerator = new MapperGenerator(context);
-        this.schemaValidatorGenerator = new SchemaValidatorGenerator(context);
     }
 
     /**
@@ -91,21 +82,13 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                 mapperGenerator.generate((TypeElement) element);
             }
         }
-        for (Element element : roundEnv.getElementsAnnotatedWith(CompiledSchemaValidator.class)) {
-            if (element.getKind() != ElementKind.INTERFACE) {
-                context.error(element, "@CompiledSchemaValidator can be applied only to interfaces");
-            } else {
-                schemaValidatorGenerator.generate((TypeElement) element);
-            }
-        }
         return false;
     }
 
     private void validateAnnotation(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement anno : annotations) {
             String annoName = anno.getQualifiedName().toString();
-            if (ANNO_COMPILED_PATH.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName)
-                    || ANNO_COMPILED_SCHEMA_VALIDATOR.equals(annoName)) continue;
+            if (ANNO_COMPILED_PATH.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName)) continue;
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
                 if (element.getKind() != ElementKind.METHOD) {
                     context.error(element, "@" + anno.getSimpleName() + " can be applied only to methods");
@@ -118,10 +101,6 @@ public final class Sjf4jProcessor extends AbstractProcessor {
                     } else if (annoName.startsWith("org.sjf4j.annotation.path.")) {
                         if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledPath.class) == null) {
                             context.error(element, "@" + anno + " method must be declared in an @CompiledPath interface");
-                        }
-                    } else if (annoName.startsWith("org.sjf4j.annotation.schema.")) {
-                        if (owner.getKind() != ElementKind.INTERFACE || owner.getAnnotation(CompiledSchemaValidator.class) == null) {
-                            context.error(element, "@" + anno + " method must be declared in an @CompiledSchemaValidator interface");
                         }
                     } else {
                         context.error(element, "Unrecognized annotation " + annoName);

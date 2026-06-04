@@ -176,7 +176,7 @@ public final class MapperGenerator {
                 e = _compute(iface, method, target, sources, multi, state, m);
             } else {
                 e = _readExprOrGrouped(method, target, sources, multi, state, m.source().length() == 0 ? t : m.source(), t,
-                        plan.writes.get(t).type, nestedMappers.get(t) == null ? "" : nestedMappers.get(t), nulls);
+                        plan.writes.get(t).type, nestedMappers.get(t) == null ? "" : nestedMappers.get(t), nulls, plan.ctor == null);
             }
             if (e == null) return;
             explicit.put(t, e);
@@ -1190,13 +1190,16 @@ public final class MapperGenerator {
 
     private Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi,
                                     MethodState state, String path, String targetName, TypeMirror targetType, String nestedMapper,
-                                    NullValuePolicy nulls) {
+                                    NullValuePolicy nulls, boolean allowGrouped) {
+        if (allowGrouped) {
+            Expr grouped = _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper);
+            if (grouped != null) return grouped;
+        }
         if (nulls == NullValuePolicy.SET) {
             Expr helper = _tryPathHelperExpr(method, target, sources, multi, path, targetName, targetType, nestedMapper);
             if (helper != null) return helper;
         }
-        Expr grouped = nulls == NullValuePolicy.IGNORE ? _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper) : null;
-        return grouped == null ? _readExpr(method, target, sources, multi, state, path, targetName, null) : grouped;
+        return _readExpr(method, target, sources, multi, state, path, targetName, null);
     }
 
     private Expr _tryPathHelperExpr(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi,

@@ -33,7 +33,7 @@ public class PathProcessorTest {
 
         JsonException notCompiled = assertThrows(JsonException.class, () -> CompiledNodes.of(NotCompiled.class));
         assertTrue(notCompiled.getMessage().contains("Cannot find generated SJF4J implementation"), notCompiled.getMessage());
-        assertTrue(notCompiled.getMessage().contains("@CompiledPath, @CompiledMapper, or @CompiledSchemaValidator"), notCompiled.getMessage());
+        assertTrue(notCompiled.getMessage().contains("@CompiledPath or @CompiledMapper"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains(NotCompiled.class.getName() + "_Impl"), notCompiled.getMessage());
     }
 

@@ -5,9 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Method-level options for {@link CompiledSchemaValidator} methods.
- */
+
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)
 public @interface ValidatorOptions {

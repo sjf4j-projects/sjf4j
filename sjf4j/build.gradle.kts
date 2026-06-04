@@ -113,3 +113,21 @@ tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
     .configureEach {
         dependsOn(tasks.matching { it.name == "plainJavadocJar" })
     }
+
+
+
+/////////////////////
+/// Incubator
+val incubator by sourceSets.creating {
+    java.srcDir("src/incubator/java")
+    resources.srcDir("src/incubator/resources")
+
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += output + compileClasspath
+}
+configurations.named(incubator.implementationConfigurationName) {
+    extendsFrom(configurations.implementation.get())
+}
+configurations.named(incubator.compileOnlyConfigurationName) {
+    extendsFrom(configurations.compileOnly.get())
+}

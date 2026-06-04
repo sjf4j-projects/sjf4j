@@ -19,9 +19,9 @@ configurations {
 
 dependencies {
     implementation(project.findProject(":sjf4j")?.let { project(":sjf4j") } ?: "org.sjf4j:sjf4j:$version")
-    implementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
 
     // test
+    testImplementation(project.findProject(":sjf4j-schema")?.let { project(":sjf4j-schema") } ?: "org.sjf4j:sjf4j-schema:$version")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
     testImplementation("org.yaml:snakeyaml:2.5")
 
@@ -70,7 +70,7 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J")
-        description.set("SJF4J annotation processor module — compile-time generators for paths, mappers, and schema validators")
+        description.set("SJF4J annotation processor module — compile-time generators for paths and mappers")
         inceptionYear.set("2026")
         url.set("https://sjf4j.org")
         licenses {
@@ -99,3 +99,36 @@ tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
     .configureEach {
         dependsOn(tasks.matching { it.name == "plainJavadocJar" })
     }
+
+
+/////////////////////
+/// Incubator
+evaluationDependsOn(":sjf4j")
+val sjf4jIncubator = project(":sjf4j")
+    .extensions
+    .getByType<SourceSetContainer>()
+    .getByName("incubator")
+
+val incubator by sourceSets.creating {
+    java.srcDir("src/incubator/java")
+    resources.srcDir("src/incubator/resources")
+
+    compileClasspath += sourceSets.main.get().output
+    compileClasspath += sjf4jIncubator.output
+    runtimeClasspath += output + compileClasspath
+}
+configurations.named(incubator.implementationConfigurationName) {
+    extendsFrom(configurations.implementation.get())
+}
+configurations.named(incubator.compileOnlyConfigurationName) {
+    extendsFrom(configurations.compileOnly.get())
+}
+configurations.named(incubator.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.testRuntimeOnly.get())
+}
+dependencies {
+    add(incubator.implementationConfigurationName, project(":sjf4j-schema"))
+    add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
+    add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
+    add(incubator.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
+}

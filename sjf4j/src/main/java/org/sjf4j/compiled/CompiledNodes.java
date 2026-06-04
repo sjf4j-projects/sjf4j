@@ -9,7 +9,7 @@ public final class CompiledNodes {
 
     private static final String IMPL_SUFFIX = "_Impl";
     private static final String COMPILED_ANNOTATIONS =
-            "@CompiledPath, @CompiledMapper, or @CompiledSchemaValidator";
+            "@CompiledPath or @CompiledMapper";
 
     private static final ClassValue<Object> NODES_CACHE = new ClassValue<Object>() {
         @Override

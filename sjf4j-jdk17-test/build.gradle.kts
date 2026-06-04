@@ -118,4 +118,45 @@ gradle.projectsEvaluated {
 }
 
 
+
 /////////////////////
+/// Incubator
+evaluationDependsOn(":sjf4j")
+val sjf4jIncubator = project(":sjf4j")
+    .extensions
+    .getByType<SourceSetContainer>()
+    .getByName("incubator")
+
+evaluationDependsOn(":sjf4j-processor")
+val processorIncubator = project(":sjf4j-processor")
+    .extensions
+    .getByType<SourceSetContainer>()
+    .getByName("incubator")
+
+val incubator by sourceSets.creating {
+    java.srcDir("src/incubator/java")
+    resources.srcDir("src/incubator/resources")
+
+    compileClasspath += sourceSets.test.get().compileClasspath
+    compileClasspath += sourceSets.test.get().output
+    compileClasspath += sjf4jIncubator.output
+    compileClasspath += processorIncubator.output
+
+    runtimeClasspath += output + compileClasspath
+}
+configurations.named(incubator.implementationConfigurationName) {
+    extendsFrom(configurations.implementation.get())
+}
+configurations.named(incubator.compileOnlyConfigurationName) {
+    extendsFrom(configurations.compileOnly.get())
+}
+configurations.named(incubator.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.testRuntimeOnly.get())
+}
+dependencies {
+    add(incubator.implementationConfigurationName, project(":sjf4j"))
+    add(incubator.implementationConfigurationName, project(":sjf4j-schema"))
+    add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
+    add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
+    add(incubator.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
+}
