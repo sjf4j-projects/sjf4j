@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -210,6 +211,45 @@ public class MapperProcessorTest {
         assertTrue(messages.contains("Map key type mismatch"), messages);
         assertTrue(messages.contains("Raw or non-parameterized collection/map types are unsupported"), messages);
         assertTrue(messages.contains("setter-only target has no readable collection/map"), messages);
+    }
+
+    @Test
+    public void ignoreNullsGuardsContainerSourceBeforeGeneratedHelper() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-ignore-container-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path gen = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(gen);
+
+        write(src.resolve("IgnoreContainerMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*; import java.util.*;\n" +
+                        "class SourceItem { public String name; SourceItem(String n) { name = n; } }\n" +
+                        "class TargetItem { public String name; public TargetItem() {} }\n" +
+                        "class Source { private List<SourceItem> items; Source(List<SourceItem> i) { items = i; } public List<SourceItem> getItems() { return items; } }\n" +
+                        "class Target { private List<TargetItem> items = new ArrayList<>(); public Target() {} public List<TargetItem> getItems() { return items; } public void setItems(List<TargetItem> i) { items = i; } }\n" +
+                        "@CompiledMapper interface IgnoreContainerMapper { @MapperOptions(nulls=NullValuePolicy.IGNORE) Target map(Source source); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(gen.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("IgnoreContainerMapper.java").toFile()))).call();
+        assertTrue(ok, diagnosticsToString(diagnostics));
+
+        String source = Files.readString(gen.resolve("testcase/IgnoreContainerMapper_Impl.java"));
+        String temp = "List<SourceItem> s_items = source.getItems();";
+        String guardedAssign = "if (s_items != null) target.setItems(_mapContainer(s_items));";
+        assertTrue(source.contains(temp), source);
+        assertTrue(source.contains(guardedAssign), source);
+        assertFalse(source.contains("_mapContainer(source.getItems())"), source);
+        assertTrue(source.indexOf(temp) < source.indexOf(guardedAssign), source);
     }
 
     @Test

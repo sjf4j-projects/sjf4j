@@ -1,4 +1,4 @@
-package org.sjf4j.jdk17;
+package org.sjf4j.jdk17.processor.schema;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;

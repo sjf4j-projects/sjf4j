@@ -81,7 +81,7 @@ public final class MapperGenerator {
             return;
         }
 
-        ContainerType rootContainer = _container(method.getReturnType());
+        MapperModel.ContainerType rootContainer = _container(method.getReturnType());
         if (rootContainer != null) {
             _genContainerCreate(iface, method, target, rootContainer);
             return;
@@ -93,7 +93,7 @@ public final class MapperGenerator {
             return;
         }
 
-        List<SourceParam> sources = new ArrayList<SourceParam>();
+        List<MapperModel.SourceParam> sources = new ArrayList<MapperModel.SourceParam>();
         for (VariableElement source : method.getParameters()) {
             TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
             if (sourceType == null) {
@@ -101,12 +101,12 @@ public final class MapperGenerator {
                 return;
             }
             boolean dynamic = _dynamicSource(source.asType());
-            sources.add(new SourceParam(source, dynamic ? Collections.<String, Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
+            sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.<String, MapperModel.Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
         }
         boolean multi = sources.size() > 1;
 
-        Map<String, Write> writes = _writes(targetType, method.getReturnType());
-        Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
+        Map<String, MapperModel.Write> writes = _writes(targetType, method.getReturnType());
+        MapperModel.Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
@@ -118,9 +118,9 @@ public final class MapperGenerator {
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         MappingIfParentPresent[] ifParentAnns = method.getAnnotationsByType(MappingIfParentPresent.class);
         EnsureMapping[] ensureAnns = method.getAnnotationsByType(EnsureMapping.class);
-        Map<String, Expr> explicit = new HashMap<String, Expr>();
+        Map<String, MapperModel.Expr> explicit = new HashMap<String, MapperModel.Expr>();
         Map<String, String> nestedMappers = new HashMap<String, String>();
-        List<TargetPathWrite> pathWrites = new ArrayList<TargetPathWrite>();
+        List<MapperModel.TargetPathWrite> pathWrites = new ArrayList<MapperModel.TargetPathWrite>();
         Set<String> explicitTargets = new HashSet<String>();
         Set<String> ignored = new HashSet<String>();
 
@@ -142,7 +142,7 @@ public final class MapperGenerator {
                     _error(method, target, "@Mapping.ignore does not support target paths");
                     return;
                 }
-                if (!_addPathWrite(method, target, pathWrites, t, PathWriteMode.STRICT)) return;
+                if (!_addPathWrite(method, target, pathWrites, t, MapperModel.PathWriteMode.STRICT)) return;
                 explicitTargets.add(t);
                 if (m.nestedMapper().length() != 0) nestedMappers.put(t, m.nestedMapper().trim());
                 continue;
@@ -156,7 +156,7 @@ public final class MapperGenerator {
         }
 
         if (!_collectExtraPathWrites(method, target, ifParentAnns, ensureAnns, pathWrites, nestedMappers, explicitTargets)) return;
-        for (TargetPathWrite w : pathWrites) {
+        for (MapperModel.TargetPathWrite w : pathWrites) {
             String rootName = _firstPathName(w);
             if (rootName != null) ignored.add(rootName);
         }
@@ -173,7 +173,7 @@ public final class MapperGenerator {
                 return;
             }
 
-            Expr e;
+            MapperModel.Expr e;
             if (m.compute().length() != 0) {
                 e = _compute(iface, method, target, sources, multi, state, m);
             } else {
@@ -184,17 +184,17 @@ public final class MapperGenerator {
             explicit.put(t, e);
         }
 
-        Map<TargetPathWrite, Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, method.getReturnType(), false, nulls);
+        Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, method.getReturnType(), false, nulls);
         if (pathValues == null) return;
 
         // Every writable/constructor target property must be assigned, either
         // explicitly or by same-name auto mapping.  Abstract methods with no
         // @Mapping annotations therefore still generate useful mappers.
-        Map<String, Expr> values = new LinkedHashMap<String, Expr>();
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
         for (String name : plan.names) {
             if (ignored.contains(name)) continue;
 
-            Expr e = explicit.get(name);
+            MapperModel.Expr e = explicit.get(name);
             if (e == null && _hasAutoSource(sources, name)) {
                 e = _readExpr(method, target, sources, multi, state, name, name, null);
             }
@@ -236,7 +236,7 @@ public final class MapperGenerator {
             return;
         }
 
-        ContainerType rootContainer = _container(params.get(0).asType());
+        MapperModel.ContainerType rootContainer = _container(params.get(0).asType());
         if (rootContainer != null) {
             _genContainerUpdate(iface, method, target, rootContainer);
             return;
@@ -252,7 +252,7 @@ public final class MapperGenerator {
             return;
         }
 
-        List<SourceParam> sources = new ArrayList<SourceParam>();
+        List<MapperModel.SourceParam> sources = new ArrayList<MapperModel.SourceParam>();
         for (int i = 1; i < params.size(); i++) {
             VariableElement source = params.get(i);
             TypeElement sourceType = GeneratorUtil.asTypeElement(source.asType());
@@ -261,10 +261,10 @@ public final class MapperGenerator {
                 return;
             }
             boolean dynamic = _dynamicSource(source.asType());
-            sources.add(new SourceParam(source, dynamic ? Collections.<String, Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
+            sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.<String, MapperModel.Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
         }
         boolean multi = sources.size() > 1;
-        Map<String, Write> writes = _writes(targetType, params.get(0).asType());
+        Map<String, MapperModel.Write> writes = _writes(targetType, params.get(0).asType());
         if (writes.isEmpty()) {
             _error(method, target, "Update target type must expose writable public setters or non-final fields");
             return;
@@ -273,11 +273,11 @@ public final class MapperGenerator {
         Mapping[] anns = method.getAnnotationsByType(Mapping.class);
         MappingIfParentPresent[] ifParentAnns = method.getAnnotationsByType(MappingIfParentPresent.class);
         EnsureMapping[] ensureAnns = method.getAnnotationsByType(EnsureMapping.class);
-        Map<String, Expr> explicit = new HashMap<String, Expr>();
+        Map<String, MapperModel.Expr> explicit = new HashMap<String, MapperModel.Expr>();
         Map<String, String> nestedMappers = new HashMap<String, String>();
         Map<String, ArrayPolicy> arrayPolicies = new HashMap<String, ArrayPolicy>();
         Map<String, ObjectPolicy> objectPolicies = new HashMap<String, ObjectPolicy>();
-        List<TargetPathWrite> pathWrites = new ArrayList<TargetPathWrite>();
+        List<MapperModel.TargetPathWrite> pathWrites = new ArrayList<MapperModel.TargetPathWrite>();
         Set<String> explicitTargets = new HashSet<String>();
         Set<String> ignored = new HashSet<String>();
 
@@ -300,7 +300,7 @@ public final class MapperGenerator {
                         _error(method, target, "@Mapping.ignore does not support target paths");
                         return;
                     }
-                    if (!_addPathWrite(method, target, pathWrites, t, PathWriteMode.STRICT)) return;
+                    if (!_addPathWrite(method, target, pathWrites, t, MapperModel.PathWriteMode.STRICT)) return;
                     explicitTargets.add(t);
                     if (m.nestedMapper().length() != 0) nestedMappers.put(t, m.nestedMapper().trim());
                     continue;
@@ -320,7 +320,7 @@ public final class MapperGenerator {
 
         if (!_collectExtraPathWrites(method, target, ifParentAnns, ensureAnns, pathWrites, nestedMappers, explicitTargets)) return;
 
-        Plan plan = new Plan(null, new ArrayList<String>(writes.keySet()), writes);
+        MapperModel.Plan plan = new MapperModel.Plan(null, new ArrayList<String>(writes.keySet()), writes);
         MethodState state = new MethodState(params.get(0).getSimpleName().toString(), sources,
                 _readCounts(iface, anns, plan, ignored, explicitTargets, sources, multi));
 
@@ -329,7 +329,7 @@ public final class MapperGenerator {
             if (_isAutoMarker(m) || m.ignore()) continue;
             if (_isTargetPath(t)) continue;
 
-            Expr e;
+            MapperModel.Expr e;
             if (m.compute().length() != 0) {
                 e = _compute(iface, method, target, sources, multi, state, m);
             } else {
@@ -341,13 +341,13 @@ public final class MapperGenerator {
 
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
-        Map<TargetPathWrite, Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, params.get(0).asType(), true, nulls);
+        Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, params.get(0).asType(), true, nulls);
         if (pathValues == null) return;
-        Map<String, Expr> values = new LinkedHashMap<String, Expr>();
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
         for (String name : plan.names) {
             if (ignored.contains(name)) continue;
 
-            Expr e = explicit.get(name);
+            MapperModel.Expr e = explicit.get(name);
             if (e == null && !explicitTargets.contains(name) && _hasAutoSource(sources, name)) {
                 e = _readExpr(method, target, sources, multi, state, name, name, null);
             }
@@ -378,11 +378,11 @@ public final class MapperGenerator {
             values.put(name, e);
         }
 
-        Map<String, Read> targetReads = _reads(targetType, params.get(0).asType());
+        Map<String, MapperModel.Read> targetReads = _reads(targetType, params.get(0).asType());
         for (String name : plan.names) {
-            Expr e = values.get(name);
+            MapperModel.Expr e = values.get(name);
             if (e == null) continue;
-            ContainerType to = _container(plan.writes.get(name).type);
+            MapperModel.ContainerType to = _container(plan.writes.get(name).type);
             if (to == null) continue;
             if ((to.map || arrayPolicies.containsKey(name)) && !targetReads.containsKey(name) && plan.writes.get(name).setter != null) {
                 _error(method, target, "Cannot update target property '" + name + "' in place: setter-only target has no readable collection/map");
@@ -392,20 +392,20 @@ public final class MapperGenerator {
         target.addMethod(out -> _emitUpdate(out, method, params.get(0), sources, multi, state, plan, values, pathValues, nulls, arrayPolicies, objectPolicies, targetReads, nestedMappers, iface, target));
     }
 
-    private void _genContainerCreate(TypeElement iface, ExecutableElement method, GeneratedClass target, ContainerType to) {
+    private void _genContainerCreate(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.ContainerType to) {
         if (method.getParameters().size() != 1) {
             _error(method, target, "Root collection/map create methods support exactly one source parameter");
             return;
         }
         VariableElement source = method.getParameters().get(0);
-        ContainerType from = _container(source.asType());
+        MapperModel.ContainerType from = _container(source.asType());
         if (from == null || from.map != to.map) {
             _error(method, target, "Root collection/map create requires matching source and target container types");
             return;
         }
         String nestedMapper = _methodNestedMapper(method, target);
         if (nestedMapper == null) return;
-        Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         String impl = _implType(method, target, to);
         if (impl == null) return;
@@ -427,21 +427,21 @@ public final class MapperGenerator {
         });
     }
 
-    private void _genContainerUpdate(TypeElement iface, ExecutableElement method, GeneratedClass target, ContainerType to) {
+    private void _genContainerUpdate(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.ContainerType to) {
         List<? extends VariableElement> params = method.getParameters();
         if (params.size() != 2) {
             _error(method, target, "Root collection/map update methods support exactly target and source parameters");
             return;
         }
         VariableElement source = params.get(1);
-        ContainerType from = _container(source.asType());
+        MapperModel.ContainerType from = _container(source.asType());
         if (from == null || from.map != to.map) {
             _error(method, target, "Root collection/map update requires matching source and target container types");
             return;
         }
         String nestedMapper = _methodNestedMapper(method, target);
         if (nestedMapper == null) return;
-        Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         ArrayPolicy arrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
@@ -553,8 +553,8 @@ public final class MapperGenerator {
         return true;
     }
 
-    private Map<String, Integer> _readCounts(TypeElement iface, Mapping[] anns, Plan plan, Set<String> ignored,
-                                             Set<String> explicitTargets, List<SourceParam> sources, boolean multi) {
+    private Map<String, Integer> _readCounts(TypeElement iface, Mapping[] anns, MapperModel.Plan plan, Set<String> ignored,
+                                             Set<String> explicitTargets, List<MapperModel.SourceParam> sources, boolean multi) {
         Map<String, Integer> counts = new HashMap<String, Integer>();
         for (Mapping m : anns) {
             if (_isAutoMarker(m) || m.ignore() || m.target().length() == 0) continue;
@@ -574,8 +574,8 @@ public final class MapperGenerator {
         return counts;
     }
 
-    private boolean _hasAutoSource(List<SourceParam> sources, String name) {
-        SourceParam first = sources.get(0);
+    private boolean _hasAutoSource(List<MapperModel.SourceParam> sources, String name) {
+        MapperModel.SourceParam first = sources.get(0);
         return first.dynamic || first.reads.containsKey(name);
     }
 
@@ -613,8 +613,8 @@ public final class MapperGenerator {
         return counts;
     }
 
-    private void _emit(SourceWriter out, ExecutableElement method, List<SourceParam> sources, boolean multi, MethodState state,
-                       Plan plan, Map<String, Expr> values, Map<TargetPathWrite, Expr> pathValues, NullValuePolicy nulls) {
+    private void _emit(SourceWriter out, ExecutableElement method, List<MapperModel.SourceParam> sources, boolean multi, MethodState state,
+                       MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls) {
         out.line("");
         out.line("@Override");
         StringBuilder sig = new StringBuilder();
@@ -639,7 +639,7 @@ public final class MapperGenerator {
             for (String temp : state.readTemps) {
                 out.line(temp);
             }
-            for (Expr e : values.values()) {
+            for (MapperModel.Expr e : values.values()) {
                 _emitTemps(out, e);
             }
             StringBuilder b = new StringBuilder("return new ").append(method.getReturnType()).append("(");
@@ -654,14 +654,14 @@ public final class MapperGenerator {
             for (String temp : state.readTemps) out.line(temp);
             _emitGroupedAssigns(out, state, plan, nulls, targetVar);
             for (String name : plan.names) {
-                Expr e = values.get(name);
+                MapperModel.Expr e = values.get(name);
                 if (e == null) continue;
                 if (state.groupTargets.contains(name)) continue;
 
                 _emitTemps(out, e);
                 _emitCreateAssign(out, state, targetVar, name, plan.writes.get(name), e, nulls);
             }
-            for (Map.Entry<TargetPathWrite, Expr> entry : pathValues.entrySet()) {
+            for (Map.Entry<MapperModel.TargetPathWrite, MapperModel.Expr> entry : pathValues.entrySet()) {
                 _emitTemps(out, entry.getValue());
                 _emitTargetPath(out, method, state, targetVar, method.getReturnType(), entry.getKey(), entry.getValue(), nulls);
             }
@@ -671,10 +671,17 @@ public final class MapperGenerator {
         out.line("}");
     }
 
-    private void _emitCreateAssign(SourceWriter out, MethodState state, String targetVar, String name, Write w, Expr e, NullValuePolicy nulls) {
+    private void _emitCreateAssign(SourceWriter out, MethodState state, String targetVar, String name, MapperModel.Write w, MapperModel.Expr e, NullValuePolicy nulls) {
         String assign = _targetAssign(targetVar, w, e.code);
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
-            if (e.local || e.type == null) {
+            if (e.nullGuardSource != null) {
+                String source = e.nullGuardSource;
+                if (!e.nullGuardLocal) {
+                    source = state.names.prefixed("s", name);
+                    out.line(_localTypeName(e.nullGuardType, true) + " " + source + " = " + e.nullGuardSource + ";");
+                }
+                out.line("if (" + source + " != null) " + _targetAssign(targetVar, w, _nullGuardCode(e, source)));
+            } else if (e.local || e.type == null) {
                 out.line("if (" + e.code + " != null) " + assign);
             } else {
                 String temp = state.names.prefixed("s", name);
@@ -687,13 +694,13 @@ public final class MapperGenerator {
         }
     }
 
-    private String _targetAssign(String target, Write w, String value) {
+    private String _targetAssign(String target, MapperModel.Write w, String value) {
         return w.setter != null
                 ? target + "." + w.setter.getSimpleName() + "(" + value + ");"
                 : target + "." + w.javaName + " = " + value + ";";
     }
 
-    private void _emitTemps(SourceWriter out, Expr e) {
+    private void _emitTemps(SourceWriter out, MapperModel.Expr e) {
         for (String t : e.temps) {
             out.line(t);
         }
@@ -701,17 +708,17 @@ public final class MapperGenerator {
 
     private boolean _collectExtraPathWrites(ExecutableElement method, GeneratedClass target,
                                             MappingIfParentPresent[] ifParentAnns, EnsureMapping[] ensureAnns,
-                                            List<TargetPathWrite> pathWrites, Map<String, String> nestedMappers,
+                                            List<MapperModel.TargetPathWrite> pathWrites, Map<String, String> nestedMappers,
                                             Set<String> explicitTargets) {
         for (MappingIfParentPresent m : ifParentAnns) {
             if (!_validatePathMapping(method, target, "@MappingIfParentPresent", m.target(), m.sources(), m.compute(), m.nestedMapper(), m.array(), m.object())) return false;
-            if (!_addPathWrite(method, target, pathWrites, m.target(), PathWriteMode.IF_PARENT_PRESENT)) return false;
+            if (!_addPathWrite(method, target, pathWrites, m.target(), MapperModel.PathWriteMode.IF_PARENT_PRESENT)) return false;
             explicitTargets.add(m.target());
             if (m.nestedMapper().length() != 0) nestedMappers.put(m.target(), m.nestedMapper().trim());
         }
         for (EnsureMapping m : ensureAnns) {
             if (!_validatePathMapping(method, target, "@EnsureMapping", m.target(), m.sources(), m.compute(), m.nestedMapper(), m.array(), m.object())) return false;
-            if (!_addPathWrite(method, target, pathWrites, m.target(), PathWriteMode.ENSURE)) return false;
+            if (!_addPathWrite(method, target, pathWrites, m.target(), MapperModel.PathWriteMode.ENSURE)) return false;
             explicitTargets.add(m.target());
             if (m.nestedMapper().length() != 0) nestedMappers.put(m.target(), m.nestedMapper().trim());
         }
@@ -751,8 +758,8 @@ public final class MapperGenerator {
         return t.startsWith("$") || t.startsWith("/");
     }
 
-    private boolean _addPathWrite(ExecutableElement method, GeneratedClass target, List<TargetPathWrite> writes, String expr, PathWriteMode mode) {
-        for (TargetPathWrite w : writes) {
+    private boolean _addPathWrite(ExecutableElement method, GeneratedClass target, List<MapperModel.TargetPathWrite> writes, String expr, MapperModel.PathWriteMode mode) {
+        for (MapperModel.TargetPathWrite w : writes) {
             if (w.path.equals(expr)) {
                 _error(method, target, "Duplicate target path '" + expr + "'");
                 return false;
@@ -775,31 +782,31 @@ public final class MapperGenerator {
                 _error(method, target, "Target paths support only property names and array/list indexes");
                 return false;
             }
-            if (mode == PathWriteMode.ENSURE && s instanceof PathSegment.Index) {
+            if (mode == MapperModel.PathWriteMode.ENSURE && s instanceof PathSegment.Index) {
                 _error(method, target, "@EnsureMapping does not support index-based target path segments");
                 return false;
             }
         }
-        writes.add(new TargetPathWrite(expr, path.segments(), mode));
+        writes.add(new MapperModel.TargetPathWrite(expr, path.segments(), mode));
         return true;
     }
 
-    private Map<TargetPathWrite, Expr> _pathValues(TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                                   List<SourceParam> sources, boolean multi, MethodState state,
-                                                   List<TargetPathWrite> pathWrites, Map<String, String> nestedMappers,
+    private Map<MapperModel.TargetPathWrite, MapperModel.Expr> _pathValues(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                                   List<MapperModel.SourceParam> sources, boolean multi, MethodState state,
+                                                   List<MapperModel.TargetPathWrite> pathWrites, Map<String, String> nestedMappers,
                                                    TypeMirror rootType, boolean update, NullValuePolicy nulls) {
-        Map<TargetPathWrite, Expr> values = new LinkedHashMap<TargetPathWrite, Expr>();
-        for (TargetPathWrite w : pathWrites) {
+        Map<MapperModel.TargetPathWrite, MapperModel.Expr> values = new LinkedHashMap<MapperModel.TargetPathWrite, MapperModel.Expr>();
+        for (MapperModel.TargetPathWrite w : pathWrites) {
             TypeMirror need = _targetPathValueType(method, target, rootType, w);
             if (need == null) return null;
-            Expr e;
-            MappingSpec spec = _mappingSpec(method, w.path);
+            MapperModel.Expr e;
+            MapperModel.MappingSpec spec = _mappingSpec(method, w.path);
             if (spec == null) return null;
             if (spec.compute.length() != 0) {
                 e = _compute(iface, method, target, sources, multi, state, spec);
             } else {
                 String src = spec.source.length() == 0 ? _tailName(w) : spec.source;
-                e = _readExpr(method, target, sources, multi, state, src, w.path, null);
+                e = _readExpr(method, target, sources, multi, state, src, _pathValueTempName(w), null);
             }
             if (e == null) return null;
             e = _maybeNestedExpr(iface, method, target, e, need, nestedMappers.get(w.path) == null ? "" : nestedMappers.get(w.path), w.path);
@@ -822,23 +829,32 @@ public final class MapperGenerator {
         return values;
     }
 
-    private MappingSpec _mappingSpec(ExecutableElement method, String target) {
-        for (Mapping m : method.getAnnotationsByType(Mapping.class)) if (m.target().equals(target)) return new MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
-        for (MappingIfParentPresent m : method.getAnnotationsByType(MappingIfParentPresent.class)) if (m.target().equals(target)) return new MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
-        for (EnsureMapping m : method.getAnnotationsByType(EnsureMapping.class)) if (m.target().equals(target)) return new MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
+    private MapperModel.MappingSpec _mappingSpec(ExecutableElement method, String target) {
+        for (Mapping m : method.getAnnotationsByType(Mapping.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
+        for (MappingIfParentPresent m : method.getAnnotationsByType(MappingIfParentPresent.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
+        for (EnsureMapping m : method.getAnnotationsByType(EnsureMapping.class)) if (m.target().equals(target)) return new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper());
         return null;
     }
 
-    private String _tailName(TargetPathWrite w) {
+    private String _tailName(MapperModel.TargetPathWrite w) {
         PathSegment s = w.segments[w.segments.length - 1];
         return s instanceof PathSegment.Name ? ((PathSegment.Name) s).name : w.path;
     }
 
-    private String _firstPathName(TargetPathWrite w) {
+    private String _pathValueTempName(MapperModel.TargetPathWrite w) {
+        PathSegment tail = w.segments[w.segments.length - 1];
+        if (tail instanceof PathSegment.Name) return ((PathSegment.Name) tail).name;
+        if (w.segments.length > 2 && w.segments[w.segments.length - 2] instanceof PathSegment.Name) {
+            return ((PathSegment.Name) w.segments[w.segments.length - 2]).name + "Value";
+        }
+        return "value";
+    }
+
+    private String _firstPathName(MapperModel.TargetPathWrite w) {
         return w.segments.length > 1 && w.segments[1] instanceof PathSegment.Name ? ((PathSegment.Name) w.segments[1]).name : null;
     }
 
-    private TypeMirror _targetPathValueType(ExecutableElement method, GeneratedClass target, TypeMirror rootType, TargetPathWrite w) {
+    private TypeMirror _targetPathValueType(ExecutableElement method, GeneratedClass target, TypeMirror rootType, MapperModel.TargetPathWrite w) {
         TypeMirror current = rootType;
         for (int i = 1; i < w.segments.length - 1; i++) {
             PathSegment s = w.segments[i];
@@ -857,7 +873,7 @@ public final class MapperGenerator {
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return GeneratorUtil.mapValueType(ctx, parent);
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) { _error(method, target, "Cannot resolve target path property '" + name + "' on " + parent); return null; }
-        Read r = _reads(type, parent).get(name);
+        MapperModel.Read r = _reads(type, parent).get(name);
         if (r != null) return r.type;
         _error(method, target, "Cannot resolve readable target path property '" + name + "' on " + parent);
         return null;
@@ -868,7 +884,7 @@ public final class MapperGenerator {
         if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) return GeneratorUtil.mapValueType(ctx, parent);
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) { _error(method, target, "Cannot resolve writable target path property '" + name + "' on " + parent); return null; }
-        Write w = _writes(type, parent).get(name);
+        MapperModel.Write w = _writes(type, parent).get(name);
         if (w != null) return w.type;
         _error(method, target, "Cannot resolve writable target path property '" + name + "' on " + parent);
         return null;
@@ -882,16 +898,23 @@ public final class MapperGenerator {
         return null;
     }
 
-    private void _emitTargetPath(SourceWriter out, ExecutableElement method, MethodState state, String rootVar, TypeMirror rootType, TargetPathWrite w, Expr e, NullValuePolicy nulls) {
+    private void _emitTargetPath(SourceWriter out, ExecutableElement method, MethodState state, String rootVar, TypeMirror rootType, MapperModel.TargetPathWrite w, MapperModel.Expr e, NullValuePolicy nulls) {
         String value = e.code;
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
             String temp = state.names.prefixed("s", "value");
-            if (!e.local && e.type != null) {
+            if (e.nullGuardSource != null) {
+                value = e.nullGuardSource;
+                if (!e.nullGuardLocal) {
+                    value = temp;
+                    out.line(_localTypeName(e.nullGuardType, true) + " " + value + " = " + e.nullGuardSource + ";");
+                }
+            } else if (!e.local && e.type != null) {
                 out.line(_localTypeName(e.type, true) + " " + temp + " = " + e.code + ";");
                 value = temp;
             }
             out.line("if (" + value + " != null) {");
             out.indent();
+            if (e.nullGuardSource != null) value = _nullGuardCode(e, value);
         }
         String currentVar = rootVar;
         TypeMirror currentType = rootType;
@@ -904,17 +927,17 @@ public final class MapperGenerator {
                 String name = ((PathSegment.Name) s).name;
                 nextType = _readNameType(method, null, currentType, name);
                 _emitReadName(out, currentType, currentVar, name, nextVar, nextType);
-                if (w.mode == PathWriteMode.ENSURE) _emitEnsure(out, currentType, currentVar, name, nextVar, nextType, w.segments[i + 1]);
+                if (w.mode == MapperModel.PathWriteMode.ENSURE) _emitEnsure(out, currentType, currentVar, name, nextVar, nextType, w.segments[i + 1]);
             } else {
                 int idx = ((PathSegment.Index) s).index;
                 nextType = _indexType(method, null, currentType, idx);
                 _emitReadIndex(out, currentType, currentVar, idx, nextVar, nextType);
             }
-            if (w.mode == PathWriteMode.IF_PARENT_PRESENT) {
+            if (w.mode == MapperModel.PathWriteMode.IF_PARENT_PRESENT) {
                 out.line("if (" + nextVar + " != null) {");
                 out.indent();
                 openSkip = true;
-            } else if (w.mode == PathWriteMode.STRICT) {
+            } else if (w.mode == MapperModel.PathWriteMode.STRICT) {
                 out.line("if (" + nextVar + " == null) throw new org.sjf4j.exception.JsonException(\"Missing target path parent: " + GeneratorUtil.escape(w.path) + "\");");
             }
             currentVar = nextVar;
@@ -923,7 +946,7 @@ public final class MapperGenerator {
         _emitFinalWrite(out, currentType, currentVar, w.segments[w.segments.length - 1], value);
         if (openSkip) {
             for (int i = 1; i < w.segments.length - 1; i++) {
-                if (w.mode == PathWriteMode.IF_PARENT_PRESENT) { out.dedent(); out.line("}"); }
+                if (w.mode == MapperModel.PathWriteMode.IF_PARENT_PRESENT) { out.dedent(); out.line("}"); }
             }
         }
         if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
@@ -938,7 +961,7 @@ public final class MapperGenerator {
         else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) out.line(_localTypeName(type, true) + " " + next + " = (" + _localTypeName(type, true) + ") " + var + ".get(\"" + GeneratorUtil.escape(name) + "\");");
         else {
             TypeElement te = GeneratorUtil.asTypeElement(parent);
-            Read r = _reads(te, parent).get(name);
+            MapperModel.Read r = _reads(te, parent).get(name);
             out.line(_localTypeName(type, true) + " " + next + " = " + (r.method != null ? var + "." + r.method.getSimpleName() + "()" : var + "." + r.javaName) + ";");
         }
     }
@@ -981,7 +1004,7 @@ public final class MapperGenerator {
             else if (GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) out.line(var + ".put(\"" + GeneratorUtil.escape(name) + "\", " + value + ");");
             else {
                 TypeElement te = GeneratorUtil.asTypeElement(parent);
-                Write w = _writes(te, parent).get(name);
+                MapperModel.Write w = _writes(te, parent).get(name);
                 out.line(w.setter != null ? var + "." + w.setter.getSimpleName() + "(" + value + ");" : var + "." + w.javaName + " = " + value + ";");
             }
         } else {
@@ -993,9 +1016,9 @@ public final class MapperGenerator {
         }
     }
 
-    private void _emitUpdate(SourceWriter out, ExecutableElement method, VariableElement targetParam, List<SourceParam> sources,
-                             boolean multi, MethodState state, Plan plan, Map<String, Expr> values, Map<TargetPathWrite, Expr> pathValues, NullValuePolicy nulls,
-                             Map<String, ArrayPolicy> arrayPolicies, Map<String, ObjectPolicy> objectPolicies, Map<String, Read> targetReads,
+    private void _emitUpdate(SourceWriter out, ExecutableElement method, VariableElement targetParam, List<MapperModel.SourceParam> sources,
+                             boolean multi, MethodState state, MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls,
+                             Map<String, ArrayPolicy> arrayPolicies, Map<String, ObjectPolicy> objectPolicies, Map<String, MapperModel.Read> targetReads,
                               Map<String, String> nestedMappers, TypeElement iface, GeneratedClass genTarget) {
         out.line("");
         out.line("@Override");
@@ -1018,16 +1041,16 @@ public final class MapperGenerator {
         }
 
         for (String temp : state.readTemps) out.line(temp);
-        for (Expr e : values.values()) _emitTemps(out, e);
-        for (Expr e : pathValues.values()) _emitTemps(out, e);
+        for (MapperModel.Expr e : values.values()) _emitTemps(out, e);
+        for (MapperModel.Expr e : pathValues.values()) _emitTemps(out, e);
 
         String targetName = targetParam.getSimpleName().toString();
         for (String name : plan.names) {
-            Expr e = values.get(name);
+            MapperModel.Expr e = values.get(name);
             if (e == null) continue;
 
-            Write w = plan.writes.get(name);
-            ContainerType to = _container(w.type);
+            MapperModel.Write w = plan.writes.get(name);
+            MapperModel.ContainerType to = _container(w.type);
             if (to != null && to.map) {
                 _emitObjectField(out, iface, method, genTarget, state, targetName, name, w, targetReads.get(name), e,
                         nestedMappers.get(name) == null ? "" : nestedMappers.get(name), objectPolicies.get(name) == null ? ObjectPolicy.PUT : objectPolicies.get(name));
@@ -1042,7 +1065,17 @@ public final class MapperGenerator {
                     ? targetName + "." + w.setter.getSimpleName() + "(" + e.code + ");"
                     : targetName + "." + w.javaName + " = " + e.code + ";";
             if (nulls == NullValuePolicy.IGNORE && (e.type == null || !e.type.getKind().isPrimitive())) {
-                if (e.local) {
+                if (e.nullGuardSource != null) {
+                    String source = e.nullGuardSource;
+                    if (!e.nullGuardLocal) {
+                        source = state.names.prefixed("s", name);
+                        out.line(_localTypeName(e.nullGuardType, true) + " " + source + " = " + e.nullGuardSource + ";");
+                    }
+                    String tempAssign = w.setter != null
+                            ? targetName + "." + w.setter.getSimpleName() + "(" + _nullGuardCode(e, source) + ");"
+                            : targetName + "." + w.javaName + " = " + _nullGuardCode(e, source) + ";";
+                    out.line("if (" + source + " != null) " + tempAssign);
+                } else if (e.local) {
                     out.line("if (" + e.code + " != null) " + assign);
                 } else if (e.type == null) {
                     out.line("if (" + e.code + " != null) " + assign);
@@ -1058,7 +1091,7 @@ public final class MapperGenerator {
                 out.line(assign);
             }
         }
-        for (Map.Entry<TargetPathWrite, Expr> entry : pathValues.entrySet()) {
+        for (Map.Entry<MapperModel.TargetPathWrite, MapperModel.Expr> entry : pathValues.entrySet()) {
             _emitTargetPath(out, method, state, targetName, targetParam.asType(), entry.getKey(), entry.getValue(), nulls);
         }
         out.dedent();
@@ -1069,8 +1102,8 @@ public final class MapperGenerator {
      * Collects simple source read properties. V1 deliberately stays on public
      * getters, public fields, and record accessors.
      */
-    private Map<String, Read> _reads(TypeElement type, TypeMirror owner) {
-        Map<String, Read> r = new HashMap<String, Read>();
+    private Map<String, MapperModel.Read> _reads(TypeElement type, TypeMirror owner) {
+        Map<String, MapperModel.Read> r = new HashMap<String, MapperModel.Read>();
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
             if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC)) continue;
@@ -1078,7 +1111,7 @@ public final class MapperGenerator {
             if (member.getKind() == ElementKind.FIELD) {
                 TypeMirror fieldType = ctx.types.asMemberOf((DeclaredType) owner, member);
                 String n = member.getSimpleName().toString();
-                r.put(_nodeName(member, n), new Read(null, n, fieldType));
+                r.put(_nodeName(member, n), new MapperModel.Read(null, n, fieldType));
                 continue;
             }
 
@@ -1093,12 +1126,12 @@ public final class MapperGenerator {
                 if (n.equals("getClass")) continue;
                 if (n.startsWith("get") && n.length() > 3) {
                     String base = GeneratorUtil.decap(n.substring(3));
-                    r.put(_nodeName(e, base), new Read(e, base, mt.getReturnType()));
+                    r.put(_nodeName(e, base), new MapperModel.Read(e, base, mt.getReturnType()));
                 } else if (n.startsWith("is") && n.length() > 2) {
                     String base = GeneratorUtil.decap(n.substring(2));
-                    r.put(_nodeName(e, base), new Read(e, base, mt.getReturnType()));
+                    r.put(_nodeName(e, base), new MapperModel.Read(e, base, mt.getReturnType()));
                 } else if (_isRecord(type)) {
-                    r.put(_nodeName(e, n), new Read(e, n, mt.getReturnType()));
+                    r.put(_nodeName(e, n), new MapperModel.Read(e, n, mt.getReturnType()));
                 }
             }
         }
@@ -1109,8 +1142,8 @@ public final class MapperGenerator {
      * Collects target write properties. Setters intentionally override public
      * fields so user validation or normalization in setters is preserved.
      */
-    private Map<String, Write> _writes(TypeElement type, TypeMirror owner) {
-        Map<String, Write> w = new LinkedHashMap<String, Write>();
+    private Map<String, MapperModel.Write> _writes(TypeElement type, TypeMirror owner) {
+        Map<String, MapperModel.Write> w = new LinkedHashMap<String, MapperModel.Write>();
         for (Element member : ctx.elements.getAllMembers(type)) {
             Set<Modifier> m = member.getModifiers();
             if (!m.contains(Modifier.PUBLIC) || m.contains(Modifier.STATIC)) continue;
@@ -1119,7 +1152,7 @@ public final class MapperGenerator {
                 String n = member.getSimpleName().toString();
                 String nodeName = _nodeName(member, n);
                 if (!w.containsKey(nodeName)) {
-                    w.put(nodeName, new Write(null, n, ctx.types.asMemberOf((DeclaredType) owner, member)));
+                    w.put(nodeName, new MapperModel.Write(null, n, ctx.types.asMemberOf((DeclaredType) owner, member)));
                 }
                 continue;
             }
@@ -1131,7 +1164,7 @@ public final class MapperGenerator {
                 ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, e);
                 if (mt.getReturnType().getKind() == TypeKind.VOID) {
                     String name = GeneratorUtil.decap(e.getSimpleName().toString().substring(3));
-                    w.put(_nodeName(e, name), new Write(e, name, mt.getParameterTypes().get(0)));
+                    w.put(_nodeName(e, name), new MapperModel.Write(e, name, mt.getParameterTypes().get(0)));
                 }
             }
         }
@@ -1143,7 +1176,7 @@ public final class MapperGenerator {
      * construction; records and unique public constructors are assigned through
      * constructor arguments.
      */
-    private Plan _creation(ExecutableElement method, GeneratedClass target, TypeElement type, TypeMirror mirror, Map<String, Write> writes) {
+    private MapperModel.Plan _creation(ExecutableElement method, GeneratedClass target, TypeElement type, TypeMirror mirror, Map<String, MapperModel.Write> writes) {
         if (_isRecord(type)) {
             List<ExecutableElement> ctors = _publicConstructors(type);
             ExecutableElement ctor = ctors.isEmpty() ? null : ctors.get(0);
@@ -1157,7 +1190,7 @@ public final class MapperGenerator {
         List<ExecutableElement> ctors = _publicConstructors(type);
         for (ExecutableElement c : ctors) {
             if (c.getParameters().isEmpty()) {
-                return new Plan(null, new ArrayList<String>(writes.keySet()), writes);
+                return new MapperModel.Plan(null, new ArrayList<String>(writes.keySet()), writes);
             }
         }
         if (ctors.size() != 1) {
@@ -1167,15 +1200,15 @@ public final class MapperGenerator {
         return _ctorPlan(ctors.get(0), mirror);
     }
 
-    private Plan _ctorPlan(ExecutableElement ctor, TypeMirror owner) {
-        Map<String, Write> w = new LinkedHashMap<String, Write>();
+    private MapperModel.Plan _ctorPlan(ExecutableElement ctor, TypeMirror owner) {
+        Map<String, MapperModel.Write> w = new LinkedHashMap<String, MapperModel.Write>();
         ExecutableType ct = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, ctor);
         for (int i = 0; i < ctor.getParameters().size(); i++) {
             VariableElement p = ctor.getParameters().get(i);
             String n = p.getSimpleName().toString();
-            w.put(_nodeName(p, n), new Write(null, n, ct.getParameterTypes().get(i)));
+            w.put(_nodeName(p, n), new MapperModel.Write(null, n, ct.getParameterTypes().get(i)));
         }
-        return new Plan(ctor, new ArrayList<String>(w.keySet()), w);
+        return new MapperModel.Plan(ctor, new ArrayList<String>(w.keySet()), w);
     }
 
     private List<ExecutableElement> _publicConstructors(TypeElement t) {
@@ -1198,25 +1231,25 @@ public final class MapperGenerator {
                 || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType);
     }
 
-    private Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi,
+    private MapperModel.Expr _readExprOrGrouped(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi,
                                     MethodState state, String path, String targetName, TypeMirror targetType, String nestedMapper,
                                     NullValuePolicy nulls, boolean allowGrouped) {
         if (allowGrouped) {
-            Expr grouped = _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper);
+            MapperModel.Expr grouped = _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper);
             if (grouped != null) return grouped;
         }
         if (nulls == NullValuePolicy.SET) {
-            Expr helper = _tryPathHelperExpr(method, target, sources, multi, path, targetName, targetType, nestedMapper);
+            MapperModel.Expr helper = _tryPathHelperExpr(method, target, sources, multi, path, targetName, targetType, nestedMapper);
             if (helper != null) return helper;
         }
         return _readExpr(method, target, sources, multi, state, path, targetName, null);
     }
 
-    private Expr _tryPathHelperExpr(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi,
+    private MapperModel.Expr _tryPathHelperExpr(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi,
                                     String source, String targetName, TypeMirror targetType, String nestedMapper) {
         if (multi || sources.size() != 1 || (!source.startsWith("$") && !source.startsWith("/"))) return null;
         if (nestedMapper != null && nestedMapper.length() != 0) return null;
-        SourceParam param = sources.get(0);
+        MapperModel.SourceParam param = sources.get(0);
         if (param.dynamic) return null;
 
         JsonPath path;
@@ -1237,7 +1270,7 @@ public final class MapperGenerator {
         types[0] = currentType;
         for (int i = 1; i < segments.length; i++) {
             String name = ((PathSegment.Name) segments[i]).name;
-            GroupAccess access = _groupNameAccess(currentType, currentVar, name);
+            MapperModel.GroupAccess access = _groupNameAccess(currentType, currentVar, name);
             if (access == null) return null;
             types[i] = access.type;
             currentType = access.type;
@@ -1254,10 +1287,10 @@ public final class MapperGenerator {
             String helperName = helper;
             target.addHelper(out -> _emitPathHelper(out, helperName, param, segments, types));
         }
-        return new Expr(helper + "(" + param.name + ")", leafType, true, false, false);
+        return new MapperModel.Expr(helper + "(" + param.name + ")", leafType, true, false, false);
     }
 
-    private void _emitPathHelper(SourceWriter out, String helper, SourceParam param, PathSegment[] segments,
+    private void _emitPathHelper(SourceWriter out, String helper, MapperModel.SourceParam param, PathSegment[] segments,
                                  TypeMirror[] types) {
         TypeMirror leafType = types[segments.length - 1];
         out.line("");
@@ -1269,24 +1302,24 @@ public final class MapperGenerator {
         TypeMirror currentType = param.element.asType();
         for (int i = 1; i < segments.length - 1; i++) {
             String name = ((PathSegment.Name) segments[i]).name;
-            GroupAccess access = _groupNameAccess(currentType, currentVar, name);
+            MapperModel.GroupAccess access = _groupNameAccess(currentType, currentVar, name);
             String temp = names.prefixed("s", name);
             out.line(_localTypeName(access.type, true) + " " + temp + " = " + access.code + ";");
             if (!access.type.getKind().isPrimitive()) out.line("if (" + temp + " == null) return null;");
             currentType = access.type;
             currentVar = temp;
         }
-        GroupAccess leaf = _groupNameAccess(currentType, currentVar, ((PathSegment.Name) segments[segments.length - 1]).name);
+        MapperModel.GroupAccess leaf = _groupNameAccess(currentType, currentVar, ((PathSegment.Name) segments[segments.length - 1]).name);
         out.line("return " + leaf.code + ";");
         out.dedent();
         out.line("}");
     }
 
-    private Expr _tryGroupedReadExpr(List<SourceParam> sources, boolean multi, MethodState state, String source, String targetName,
+    private MapperModel.Expr _tryGroupedReadExpr(List<MapperModel.SourceParam> sources, boolean multi, MethodState state, String source, String targetName,
                                      TypeMirror targetType, String nestedMapper) {
         if (multi || sources.size() != 1 || (!source.startsWith("$") && !source.startsWith("/"))) return null;
         if (nestedMapper != null && nestedMapper.length() != 0) return null;
-        SourceParam param = sources.get(0);
+        MapperModel.SourceParam param = sources.get(0);
         if (param.dynamic) return null;
 
         JsonPath path;
@@ -1305,12 +1338,12 @@ public final class MapperGenerator {
         int count = segments.length - 1;
         String[] names = new String[count];
         String[] temps = new String[count];
-        GroupAccess[] accesses = new GroupAccess[count];
+        MapperModel.GroupAccess[] accesses = new MapperModel.GroupAccess[count];
         TypeMirror currentType = param.element.asType();
         String currentTemp = param.name;
         for (int i = 1; i < segments.length; i++) {
             String name = ((PathSegment.Name) segments[i]).name;
-            GroupAccess access = _groupNameAccess(currentType, currentTemp, name);
+            MapperModel.GroupAccess access = _groupNameAccess(currentType, currentTemp, name);
             if (access == null) return null;
             names[i - 1] = name;
             temps[i - 1] = state.names.prefixed("s", name);
@@ -1319,53 +1352,46 @@ public final class MapperGenerator {
             currentTemp = temps[i - 1];
         }
 
-        GroupNode root = state.groupRoot;
+        MapperModel.GroupNode root = state.groupRoot;
         if (root == null) {
-            root = new GroupNode(param.name, param.element.asType(), param.name, null);
+            root = new MapperModel.GroupNode(param.name, param.element.asType(), param.name, null);
             state.groupRoot = root;
         }
 
-        GroupNode parent = root;
+        MapperModel.GroupNode parent = root;
         for (int i = 0; i < count - 1; i++) {
             String name = names[i];
-            GroupAccess access = accesses[i];
-            GroupNode child = parent.children.get(name);
+            MapperModel.GroupAccess access = accesses[i];
+            MapperModel.GroupNode child = parent.children.get(name);
             if (child == null) {
-                GroupAccess actual = _groupNameAccess(parent.type, parent.temp, name);
+                MapperModel.GroupAccess actual = _groupNameAccess(parent.type, parent.temp, name);
                 if (actual == null) return null;
-                child = new GroupNode(name, access.type, temps[i], actual.code);
+                child = new MapperModel.GroupNode(name, access.type, temps[i], actual.code);
                 parent.children.put(name, child);
             }
             parent = child;
         }
 
-        GroupAccess leaf = accesses[count - 1];
+        MapperModel.GroupAccess leaf = accesses[count - 1];
         if (_container(leaf.type) != null || _container(targetType) != null || !_assignable(leaf.type, targetType)) return null;
         leaf = _groupNameAccess(parent.type, parent.temp, names[count - 1]);
         if (leaf == null) return null;
         String temp = state.names.prefixed("s", targetName);
-        parent.leaves.add(new GroupLeaf(targetName, temp, leaf.type, leaf.code));
+        parent.leaves.add(new MapperModel.GroupLeaf(targetName, temp, leaf.type, leaf.code));
         state.groupTargets.add(targetName);
-        Expr e = new Expr(temp, leaf.type, true, true, true);
+        MapperModel.Expr e = new MapperModel.Expr(temp, leaf.type, true, true, true);
         return e;
     }
 
-    private GroupAccess _groupNameAccess(TypeMirror parentType, String parentVar, String name) {
+    private MapperModel.GroupAccess _groupNameAccess(TypeMirror parentType, String parentVar, String name) {
         if (_dynamicSource(parentType) || GeneratorUtil.isAssignableErasure(ctx, parentType, ctx.listType)
                 || parentType.getKind() == TypeKind.ARRAY) return null;
         TypeElement type = GeneratorUtil.asTypeElement(parentType);
         if (type == null) return null;
-        Read read = _reads(type, parentType).get(name);
+        MapperModel.Read read = _reads(type, parentType).get(name);
         if (read == null) return null;
         String code = read.method == null ? parentVar + "." + read.javaName : parentVar + "." + read.method.getSimpleName() + "()";
-        return new GroupAccess(code, read.type);
-    }
-
-    private String _groupTemp(String parent, String name) {
-        String p = _javaId(parent);
-        while (p.startsWith("_")) p = p.substring(1);
-        if (p.startsWith("grp_")) p = p.substring(4);
-        return "_grp_" + p + "_" + _javaId(name);
+        return new MapperModel.GroupAccess(code, read.type);
     }
 
     private boolean _hasSharedGroupParent(MethodState state, PathSegment[] segments) {
@@ -1385,14 +1411,14 @@ public final class MapperGenerator {
         return b.toString();
     }
 
-    private void _emitGroupedAssigns(SourceWriter out, MethodState state, Plan plan, NullValuePolicy nulls, String targetVar) {
+    private void _emitGroupedAssigns(SourceWriter out, MethodState state, MapperModel.Plan plan, NullValuePolicy nulls, String targetVar) {
         if (state.groupRoot == null) return;
         _emitGroupedChildren(out, state.groupRoot, plan, nulls, targetVar);
     }
 
-    private void _emitGroupedChildren(SourceWriter out, GroupNode node, Plan plan, NullValuePolicy nulls, String targetVar) {
-        for (GroupLeaf leaf : node.leaves) {
-            Write w = plan.writes.get(leaf.target);
+    private void _emitGroupedChildren(SourceWriter out, MapperModel.GroupNode node, MapperModel.Plan plan, NullValuePolicy nulls, String targetVar) {
+        for (MapperModel.GroupLeaf leaf : node.leaves) {
+            MapperModel.Write w = plan.writes.get(leaf.target);
             if (nulls == NullValuePolicy.IGNORE && (leaf.type == null || !leaf.type.getKind().isPrimitive())) {
                 out.line(_localTypeName(leaf.type, true) + " " + leaf.temp + " = " + leaf.code + ";");
                 out.line("if (" + leaf.temp + " != null) " + _targetAssign(targetVar, w, leaf.temp));
@@ -1400,7 +1426,7 @@ public final class MapperGenerator {
                 out.line(_targetAssign(targetVar, w, leaf.code));
             }
         }
-        for (GroupNode child : node.children.values()) {
+        for (MapperModel.GroupNode child : node.children.values()) {
             out.line(_localTypeName(child.type, true) + " " + child.temp + " = " + child.code + ";");
             if (child.type.getKind().isPrimitive()) {
                 _emitGroupedChildren(out, child, plan, nulls, targetVar);
@@ -1424,31 +1450,31 @@ public final class MapperGenerator {
         }
     }
 
-    private void _emitGroupedNulls(SourceWriter out, GroupNode node, Plan plan, String targetVar) {
-        for (GroupLeaf leaf : node.leaves) {
+    private void _emitGroupedNulls(SourceWriter out, MapperModel.GroupNode node, MapperModel.Plan plan, String targetVar) {
+        for (MapperModel.GroupLeaf leaf : node.leaves) {
             out.line(_targetAssign(targetVar, plan.writes.get(leaf.target), "null"));
         }
-        for (GroupNode child : node.children.values()) {
+        for (MapperModel.GroupNode child : node.children.values()) {
             _emitGroupedNulls(out, child, plan, targetVar);
         }
     }
 
-    private Expr _readExpr(ExecutableElement method, GeneratedClass target, List<SourceParam> sources, boolean multi, MethodState state,
+    private MapperModel.Expr _readExpr(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources, boolean multi, MethodState state,
                            String path, String targetName, String preferredTemp) {
-        ResolvedSource resolved = _resolveSource(method, target, sources, multi, path);
+        MapperModel.ResolvedSource resolved = _resolveSource(method, target, sources, multi, path);
         if (resolved == null) return null;
 
         String key = resolved.param.name + ":" + resolved.path + ":" + resolved.nullableRoot;
-        CachedRead cached = state.cache.get(key);
-        if (cached != null) return new Expr(cached.code, cached.type, cached.path, cached.nullableRoot, true);
+        MapperModel.CachedRead cached = state.cache.get(key);
+        if (cached != null) return new MapperModel.Expr(cached.code, cached.type, cached.path, cached.nullableRoot, true);
 
         PathAccessEmitter.ReadAccess r = resolved.nullableRoot
                 ? pathAccess.readNullableRoot(method, target, resolved.param.element.asType(), resolved.param.name,
-                resolved.path, state.names.prefixed("s", targetName + "Path") + "_", state.pathCache, _pathCacheRoot(resolved))
+                resolved.path, state.names, state.pathCache, _pathCacheRoot(resolved))
                 : pathAccess.read(method, target, resolved.param.element.asType(), resolved.param.name,
-                resolved.path, state.names.prefixed("s", targetName + "Path") + "_", state.pathCache, _pathCacheRoot(resolved));
+                resolved.path, state.names, state.pathCache, _pathCacheRoot(resolved));
         if (r == null) return null;
-        Expr e = new Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
+        MapperModel.Expr e = new MapperModel.Expr(r.code, r.type, r.path, resolved.nullableRoot, false);
         if (r.path) {
             if (r.leafExpr != null && _readCount(state, path) <= 1) {
                 // inline leaf expression, suppress the leaf temp declaration
@@ -1460,30 +1486,30 @@ public final class MapperGenerator {
                 state.readTemps.addAll(r.temps);
                 e.local = true;
             }
-            state.cache.put(key, new CachedRead(r.code, r.type, true, resolved.nullableRoot));
+            state.cache.put(key, new MapperModel.CachedRead(r.code, r.type, true, resolved.nullableRoot));
         } else if (_readCount(state, path) > 1) {
             String temp = preferredTemp == null ? state.names.prefixed("s", targetName) : preferredTemp;
             state.readTemps.add(_localTypeName(r.type, resolved.nullableRoot) + " " + temp + " = " + r.code + ";");
             e.code = temp;
             e.local = true;
-            state.cache.put(key, new CachedRead(temp, r.type, false, resolved.nullableRoot));
+            state.cache.put(key, new MapperModel.CachedRead(temp, r.type, false, resolved.nullableRoot));
         } else {
             e.temps.addAll(r.temps);
         }
         return e;
     }
 
-    private ResolvedSource _resolveSource(ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
+    private MapperModel.ResolvedSource _resolveSource(ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
                                           boolean multi, String source) {
-        if (!multi) return new ResolvedSource(sources.get(0), source, false);
+        if (!multi) return new MapperModel.ResolvedSource(sources.get(0), source, false);
 
         int colon = source.indexOf(':');
         if (colon > 0) {
             String left = source.substring(0, colon);
             String right = source.substring(colon + 1);
-            SourceParam p = _sourceByName(sources, left);
+            MapperModel.SourceParam p = _sourceByName(sources, left);
             if (p != null && right.length() != 0) {
-                return new ResolvedSource(p, right, true);
+                return new MapperModel.ResolvedSource(p, right, true);
             }
             if (p != null) {
                 _error(method, target, "Invalid multi-source mapping '" + source + "': expected a property, JSONPath, or JSON Pointer after ':'");
@@ -1491,16 +1517,16 @@ public final class MapperGenerator {
             }
         }
 
-        SourceParam first = sources.get(0);
+        MapperModel.SourceParam first = sources.get(0);
         if (!first.dynamic && !first.reads.containsKey(source) && !source.startsWith("$") && !source.startsWith("/")) {
             _error(method, target, "Cannot resolve source '" + source + "' on first source parameter '" + first.name + "'");
             return null;
         }
-        return new ResolvedSource(first, source, true);
+        return new MapperModel.ResolvedSource(first, source, true);
     }
 
-    private SourceParam _sourceByName(List<SourceParam> sources, String name) {
-        for (SourceParam p : sources) if (p.name.equals(name)) return p;
+    private MapperModel.SourceParam _sourceByName(List<MapperModel.SourceParam> sources, String name) {
+        for (MapperModel.SourceParam p : sources) if (p.name.equals(name)) return p;
         return null;
     }
 
@@ -1509,7 +1535,7 @@ public final class MapperGenerator {
         return n == null ? 0 : n;
     }
 
-    private String _pathCacheRoot(ResolvedSource resolved) {
+    private String _pathCacheRoot(MapperModel.ResolvedSource resolved) {
         return resolved.param.name + ':' + resolved.nullableRoot + ':';
     }
 
@@ -1518,14 +1544,14 @@ public final class MapperGenerator {
      * {@code this::helper} method. Inline bodies are emitted as Java expressions,
      * not as runtime lambda objects.
      */
-    private Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
+    private MapperModel.Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
                           boolean multi, MethodState state, Mapping m) {
         return _compute(iface, method, target, sources, multi, state,
-                new MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper()));
+                new MapperModel.MappingSpec(m.target(), m.source(), m.sources(), m.compute(), m.nestedMapper()));
     }
 
-    private Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
-                          boolean multi, MethodState state, MappingSpec m) {
+    private MapperModel.Expr _compute(TypeElement iface, ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
+                          boolean multi, MethodState state, MapperModel.MappingSpec m) {
         String c = m.compute.trim();
         if (c.indexOf('{') >= 0 || c.indexOf('}') >= 0 || c.indexOf(';') >= 0 || c.contains("return")) {
             _error(method, target, "@Mapping.compute supports only expression bodies");
@@ -1551,10 +1577,10 @@ public final class MapperGenerator {
         }
 
         String body = c.substring(arrow + 2).trim();
-        Expr e = new Expr(body, null);
+        MapperModel.Expr e = new MapperModel.Expr(body, null);
         for (int i = 0; i < params.length; i++) {
             String temp = state.names.prefixed("s", params[i]);
-            Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target + i, temp);
+            MapperModel.Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target + i, temp);
             if (v == null) return null;
 
             e.temps.addAll(v.temps);
@@ -1567,8 +1593,8 @@ public final class MapperGenerator {
         return e;
     }
 
-    private Expr _helper(TypeElement iface, ExecutableElement method, GeneratedClass target, List<SourceParam> sources,
-                         boolean multi, MethodState state, MappingSpec m, String name) {
+    private MapperModel.Expr _helper(TypeElement iface, ExecutableElement method, GeneratedClass target, List<MapperModel.SourceParam> sources,
+                         boolean multi, MethodState state, MapperModel.MappingSpec m, String name) {
         int matches = 0;
         for (Element e : iface.getEnclosedElements()) {
             if (e.getKind() != ElementKind.METHOD || !e.getSimpleName().contentEquals(name)) continue;
@@ -1599,7 +1625,7 @@ public final class MapperGenerator {
                 return null;
             }
 
-            Expr result = new Expr(null, ht.getReturnType());
+            MapperModel.Expr result = new MapperModel.Expr(null, ht.getReturnType());
             StringBuilder call = new StringBuilder(h.getModifiers().contains(Modifier.STATIC)
                     ? iface.getQualifiedName() + "." + name + "("
                     : name + "(");
@@ -1607,7 +1633,7 @@ public final class MapperGenerator {
                 if (i != 0) call.append(", ");
 
                 String preferred = state.names.prefixed("s", h.getParameters().get(i).getSimpleName().toString());
-                Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target + i, preferred);
+                MapperModel.Expr v = _readExpr(method, target, sources, multi, state, paths[i], m.target + i, preferred);
                 if (v == null) return null;
                 if (!_assignable(v.type, ht.getParameterTypes().get(i))) {
                     _error(method, target, "@Mapping.compute helper parameter type mismatch");
@@ -1651,7 +1677,7 @@ public final class MapperGenerator {
         return m.sources().length == 0 ? params : m.sources();
     }
 
-    private ContainerType _container(TypeMirror type) {
+    private MapperModel.ContainerType _container(TypeMirror type) {
         if (!(type instanceof DeclaredType)) return null;
         TypeElement e = GeneratorUtil.asTypeElement(type);
         if (e == null) return null;
@@ -1660,21 +1686,21 @@ public final class MapperGenerator {
         TypeMirror map = ctx.elements.getTypeElement("java.util.Map").asType();
         if (ctx.types.isAssignable(erased, ctx.types.erasure(map))) {
             List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
-            if (args.size() != 2) return new ContainerType(true, null, null, type);
-            return new ContainerType(true, args.get(0), args.get(1), type);
+            if (args.size() != 2) return new MapperModel.ContainerType(true, null, null, type);
+            return new MapperModel.ContainerType(true, args.get(0), args.get(1), type);
         }
         if (ctx.types.isAssignable(erased, ctx.types.erasure(coll))) {
             List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
-            if (args.size() != 1) return new ContainerType(false, null, null, type);
-            return new ContainerType(false, null, args.get(0), type);
+            if (args.size() != 1) return new MapperModel.ContainerType(false, null, null, type);
+            return new MapperModel.ContainerType(false, null, args.get(0), type);
         }
         return null;
     }
 
     private boolean _inPlaceContainer(ExecutableElement method, GeneratedClass target, TypeMirror fromType, TypeMirror toType,
                                       ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy, String nestedMapper) {
-        ContainerType from = _container(fromType);
-        ContainerType to = _container(toType);
+        MapperModel.ContainerType from = _container(fromType);
+        MapperModel.ContainerType to = _container(toType);
         if (from == null || to == null || from.map != to.map) return false;
         if (to.map) return true;
         return arrayPolicy != null && arrayPolicy != ArrayPolicy.SET;
@@ -1682,13 +1708,13 @@ public final class MapperGenerator {
 
     private boolean _validateContainerMapping(TypeElement iface, ExecutableElement method, GeneratedClass target,
                                               TypeMirror fromType, TypeMirror toType, String nestedMapper) {
-        ContainerType from = _container(fromType);
-        ContainerType to = _container(toType);
+        MapperModel.ContainerType from = _container(fromType);
+        MapperModel.ContainerType to = _container(toType);
         if (from == null || to == null || from.map != to.map) return false;
         return _containerConverter(iface, method, target, from, to, nestedMapper) != null;
     }
 
-    private Converter _containerConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, ContainerType from, ContainerType to, String nestedMapper) {
+    private MapperModel.Converter _containerConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.ContainerType from, MapperModel.ContainerType to, String nestedMapper) {
         if (from.value == null || to.value == null || (from.map && (from.key == null || to.key == null))) {
             _error(method, target, "Raw or non-parameterized collection/map types are unsupported");
             return null;
@@ -1697,33 +1723,41 @@ public final class MapperGenerator {
             _error(method, target, "Map key type mismatch: " + from.key + " is not assignable to " + to.key);
             return null;
         }
-        if ((nestedMapper == null || nestedMapper.length() == 0) && _assignable(from.value, to.value)) return new Converter(null, to.value);
+        if ((nestedMapper == null || nestedMapper.length() == 0) && _assignable(from.value, to.value)) return new MapperModel.Converter(null, to.value);
         return _resolveConverter(iface, method, target, from.value, to.value, nestedMapper);
     }
 
-    private Expr _maybeNestedExpr(TypeElement iface, ExecutableElement method, GeneratedClass target, Expr e, TypeMirror need, String nestedMapper, String name) {
-        ContainerType from = _container(e.type);
-        ContainerType to = _container(need);
+    private MapperModel.Expr _maybeNestedExpr(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.Expr e, TypeMirror need, String nestedMapper, String name) {
+        MapperModel.ContainerType from = _container(e.type);
+        MapperModel.ContainerType to = _container(need);
         if (from == null || to == null || from.map != to.map) {
             boolean named = nestedMapper != null && nestedMapper.length() != 0;
             if (!named && _assignable(e.type, need)) return e;
-            Converter conv = _resolveConverter(iface, method, target, e.type, need, nestedMapper, named);
+            MapperModel.Converter conv = _resolveConverter(iface, method, target, e.type, need, nestedMapper, named);
             if (conv == null) return named ? null : e;
-            Expr r = new Expr(_convertValue(conv, e.code), conv.type, e.path, e.nullableRoot, false);
+            MapperModel.Expr r = new MapperModel.Expr(_convertValue(conv, e.code), conv.type, e.path, e.nullableRoot, false);
             r.temps.addAll(e.temps);
             return r;
         }
-        Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return null;
         String impl = _implType(method, target, to);
         if (impl == null) return null;
         String helper = _ensureContainerHelper(target, from, to, conv, impl, need);
-        Expr r = new Expr(helper + "(" + e.code + ")", need, e.path, e.nullableRoot, false);
+        MapperModel.Expr r = new MapperModel.Expr(helper + "(" + e.code + ")", need, e.path, e.nullableRoot, false);
         r.temps.addAll(e.temps);
+        r.nullGuardSource = e.code;
+        r.nullGuardType = e.type;
+        r.nullGuardLocal = e.local;
+        r.nullGuardCodeTemplate = helper + "($source)";
         return r;
     }
 
-    private String _ensureContainerHelper(GeneratedClass target, ContainerType from, ContainerType to, Converter conv,
+    private String _nullGuardCode(MapperModel.Expr e, String source) {
+        return e.nullGuardCodeTemplate.replace("$source", source);
+    }
+
+    private String _ensureContainerHelper(GeneratedClass target, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv,
                                           String impl, TypeMirror resultType) {
         String key = "container:" + from.mirror + "->" + to.mirror + ":" + impl + ":" + (conv.method == null ? "" : conv.method);
         String existing = generation.helpers.get(key);
@@ -1761,11 +1795,11 @@ public final class MapperGenerator {
         return helper;
     }
 
-    private Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper) {
+    private MapperModel.Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper) {
         return _resolveConverter(iface, method, target, from, to, nestedMapper, true);
     }
 
-    private Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper, boolean errorIfMissing) {
+    private MapperModel.Converter _resolveConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to, String nestedMapper, boolean errorIfMissing) {
         if (nestedMapper != null && nestedMapper.length() != 0) {
             String name = nestedMapper;
             int named = 0;
@@ -1803,7 +1837,7 @@ public final class MapperGenerator {
             }
         }
         if (found == null) {
-            Converter fallback = _enumConverter(method, target, from, to);
+            MapperModel.Converter fallback = _enumConverter(method, target, from, to);
             if (fallback != null) return fallback;
             fallback = _nodeValueConverter(method, target, from, to);
             if (fallback != null) return fallback;
@@ -1815,7 +1849,7 @@ public final class MapperGenerator {
         return _converterFromMethod(iface, method, target, found, from, to);
     }
 
-    private Converter _enumConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+    private MapperModel.Converter _enumConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
         TypeElement targetType = GeneratorUtil.asTypeElement(to);
         if (targetType == null || targetType.getKind() != ElementKind.ENUM) return null;
         TypeElement sourceType = GeneratorUtil.asTypeElement(from);
@@ -1823,7 +1857,7 @@ public final class MapperGenerator {
         String sourceName = sourceType.getQualifiedName().toString();
         if ("java.lang.String".equals(sourceName)) {
             String helper = _ensureEnumHelper(method, target, from, to, "string");
-            return helper == null ? null : new Converter(helper, to);
+            return helper == null ? null : new MapperModel.Converter(helper, to);
         }
         if (sourceType.getKind() == ElementKind.ENUM) {
             Set<String> targetConstants = _enumConstants(targetType);
@@ -1834,7 +1868,7 @@ public final class MapperGenerator {
                 }
             }
             String helper = _ensureEnumHelper(method, target, from, to, "enum");
-            return helper == null ? null : new Converter(helper, to);
+            return helper == null ? null : new MapperModel.Converter(helper, to);
         }
         return null;
     }
@@ -1847,20 +1881,20 @@ public final class MapperGenerator {
         return r;
     }
 
-    private Converter _nodeValueConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+    private MapperModel.Converter _nodeValueConverter(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
         boolean fromValue = _isNodeValue(from);
         boolean toValue = _isNodeValue(to);
         if (!fromValue && !toValue) return null;
         if (fromValue && toValue) {
             String helper = _ensureNodeValueHelper(method, target, from, to, "value_value");
-            return helper == null ? null : new Converter(helper, to);
+            return helper == null ? null : new MapperModel.Converter(helper, to);
         }
         if (fromValue) {
             String helper = _ensureNodeValueHelper(method, target, from, to, "value_raw");
-            return helper == null ? null : new Converter(helper, to);
+            return helper == null ? null : new MapperModel.Converter(helper, to);
         }
         String helper = _ensureNodeValueHelper(method, target, from, to, "raw_value");
-        return helper == null ? null : new Converter(helper, to);
+        return helper == null ? null : new MapperModel.Converter(helper, to);
     }
 
     private boolean _isNodeValue(TypeMirror type) {
@@ -1931,14 +1965,14 @@ public final class MapperGenerator {
         return name;
     }
 
-    private Converter _autoHelperConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
-        if (_assignable(from, to)) return new Converter(null, to);
+    private MapperModel.Converter _autoHelperConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        if (_assignable(from, to)) return new MapperModel.Converter(null, to);
         TypeElement sourceType = GeneratorUtil.asTypeElement(from);
         TypeElement targetType = GeneratorUtil.asTypeElement(to);
         if (sourceType == null || targetType == null) return null;
         if (sourceType.getKind() == ElementKind.ENUM || targetType.getKind() == ElementKind.ENUM) return null;
         String helper = _ensureAutoHelper(iface, method, target, from, to, sourceType, targetType);
-        return helper == null ? null : new Converter(helper, to);
+        return helper == null ? null : new MapperModel.Converter(helper, to);
     }
 
     private String _ensureAutoHelper(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to,
@@ -1950,22 +1984,22 @@ public final class MapperGenerator {
             _error(method, target, "Recursive automatic nested mapper from " + from + " to " + to + " is unsupported; provide an explicit mapper");
             return null;
         }
-        Map<String, Read> reads = _reads(sourceType, from);
-        Map<String, Write> writes = _writes(targetType, to);
-        Plan plan = _creation(method, target, targetType, to, writes);
+        Map<String, MapperModel.Read> reads = _reads(sourceType, from);
+        Map<String, MapperModel.Write> writes = _writes(targetType, to);
+        MapperModel.Plan plan = _creation(method, target, targetType, to, writes);
         if (plan == null) return null;
 
         generation.inProgress.add(key);
-        Map<String, Expr> values = new LinkedHashMap<String, Expr>();
+        Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
         for (String name : plan.names) {
-            Read r = reads.get(name);
+            MapperModel.Read r = reads.get(name);
             if (r == null) {
                 generation.inProgress.remove(key);
                 _error(method, target, "Cannot auto-map nested target property '" + name + "' from " + from + " to " + to + ": no same-name source property was found");
                 return null;
             }
             String access = r.method == null ? "source." + r.javaName : "source." + r.method.getSimpleName() + "()";
-            Expr e = new Expr(access, r.type);
+            MapperModel.Expr e = new MapperModel.Expr(access, r.type);
             e = _maybeNestedExpr(iface, method, target, e, plan.writes.get(name).type, "", name);
             if (e == null) {
                 generation.inProgress.remove(key);
@@ -1986,7 +2020,7 @@ public final class MapperGenerator {
         return name;
     }
 
-    private void _emitAutoHelper(SourceWriter out, String helper, TypeMirror from, TypeMirror to, Plan plan, Map<String, Expr> values) {
+    private void _emitAutoHelper(SourceWriter out, String helper, TypeMirror from, TypeMirror to, MapperModel.Plan plan, Map<String, MapperModel.Expr> values) {
         NameAllocator names = new NameAllocator();
         names.reserve("source");
         String targetVar = names.local("target");
@@ -1994,7 +2028,7 @@ public final class MapperGenerator {
         out.line("private " + to + " " + helper + "(" + from + " source) {");
         out.indent();
         out.line("if (source == null) return null;");
-        for (Expr e : values.values()) _emitTemps(out, e);
+        for (MapperModel.Expr e : values.values()) _emitTemps(out, e);
         if (plan.ctor != null) {
             StringBuilder b = new StringBuilder("return new ").append(to).append("(");
             for (int i = 0; i < plan.names.size(); i++) {
@@ -2005,8 +2039,8 @@ public final class MapperGenerator {
         } else {
             out.line(to + " " + targetVar + " = new " + to + "();");
             for (String n : plan.names) {
-                Expr e = values.get(n);
-                Write w = plan.writes.get(n);
+                MapperModel.Expr e = values.get(n);
+                MapperModel.Write w = plan.writes.get(n);
                 if (w.setter != null) out.line(targetVar + "." + w.setter.getSimpleName() + "(" + e.code + ");");
                 else out.line(targetVar + "." + w.javaName + " = " + e.code + ";");
             }
@@ -2016,7 +2050,7 @@ public final class MapperGenerator {
         out.line("}");
     }
 
-    private Converter _converterFromMethod(TypeElement iface, ExecutableElement method, GeneratedClass target, ExecutableElement h, TypeMirror from, TypeMirror to) {
+    private MapperModel.Converter _converterFromMethod(TypeElement iface, ExecutableElement method, GeneratedClass target, ExecutableElement h, TypeMirror from, TypeMirror to) {
         if (h.getParameters().size() != 1 || h.getReturnType().getKind() == TypeKind.VOID) {
             _error(method, target, "Converter must have one parameter and a non-void return type");
             return null;
@@ -2027,10 +2061,10 @@ public final class MapperGenerator {
             return null;
         }
         String prefix = h.getModifiers().contains(Modifier.STATIC) ? iface.getQualifiedName() + "." : "";
-        return new Converter(prefix + h.getSimpleName(), ht.getReturnType());
+        return new MapperModel.Converter(prefix + h.getSimpleName(), ht.getReturnType());
     }
 
-    private String _implType(ExecutableElement method, GeneratedClass target, ContainerType to) {
+    private String _implType(ExecutableElement method, GeneratedClass target, MapperModel.ContainerType to) {
         TypeElement declared = GeneratorUtil.asTypeElement(to.mirror);
         if (declared != null && !declared.getModifiers().contains(Modifier.ABSTRACT) && declared.getKind().isClass()) {
             for (ExecutableElement c : ElementFilter.constructorsIn(declared.getEnclosedElements())) {
@@ -2056,14 +2090,14 @@ public final class MapperGenerator {
         return def;
     }
 
-    private String _newContainer(String impl, ContainerType to, String size) {
+    private String _newContainer(String impl, MapperModel.ContainerType to, String size) {
         if (impl.equals("java.util.ArrayList") || impl.equals("java.util.LinkedHashSet") || impl.equals("java.util.LinkedHashMap")) {
             return "new " + impl + "<>(" + size + ")";
         }
         return "new " + impl + "()";
     }
 
-    private String _containerLocalType(String impl, ContainerType to, TypeMirror fallback) {
+    private String _containerLocalType(String impl, MapperModel.ContainerType to, TypeMirror fallback) {
         if (impl.equals("java.util.ArrayList")) {
             return "java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, to.value) + ">";
         }
@@ -2076,25 +2110,25 @@ public final class MapperGenerator {
         return fallback.toString();
     }
 
-    private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source) {
+    private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source) {
         NameAllocator names = new NameAllocator();
         names.reserve(target);
         names.reserve(source);
         _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT, names);
     }
 
-    private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, NameAllocator names) {
+    private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source, NameAllocator names) {
         _emitContainerCopy(out, from, to, conv, target, source, ObjectPolicy.PUT, names);
     }
 
-    private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, ObjectPolicy objectPolicy) {
+    private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source, ObjectPolicy objectPolicy) {
         NameAllocator names = new NameAllocator();
         names.reserve(target);
         names.reserve(source);
         _emitContainerCopy(out, from, to, conv, target, source, objectPolicy, names);
     }
 
-    private void _emitContainerCopy(SourceWriter out, ContainerType from, ContainerType to, Converter conv, String target, String source, ObjectPolicy objectPolicy, NameAllocator names) {
+    private void _emitContainerCopy(SourceWriter out, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv, String target, String source, ObjectPolicy objectPolicy, NameAllocator names) {
         if (to.map) {
             String entry = names.prefixed("s", "entry");
             out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> " + entry + " : " + source + ".entrySet()) {");
@@ -2124,19 +2158,19 @@ public final class MapperGenerator {
         }
     }
 
-    private String _convertValue(Converter conv, String value) {
+    private String _convertValue(MapperModel.Converter conv, String value) {
         return conv.method == null ? value : conv.method + "(" + value + ")";
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                  MethodState state, String targetName, String name, Write w, Read read, Expr e, String nestedMapper, ArrayPolicy policy) {
-        ContainerType from = _container(e.type);
-        ContainerType to = _container(w.type);
+                                  MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper, ArrayPolicy policy) {
+        MapperModel.ContainerType from = _container(e.type);
+        MapperModel.ContainerType to = _container(w.type);
         if (from == null || to == null || from.map || to.map) {
             out.line("// unsupported array mapping; processor validation should have rejected this");
             return;
         }
-        Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         String access = read == null ? targetName + "." + w.javaName : (read.method == null ? targetName + "." + read.javaName : targetName + "." + read.method.getSimpleName() + "()");
         String source = e.code;
@@ -2158,14 +2192,14 @@ public final class MapperGenerator {
     }
 
     private void _emitObjectField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                   MethodState state, String targetName, String name, Write w, Read read, Expr e, String nestedMapper, ObjectPolicy policy) {
-        ContainerType from = _container(e.type);
-        ContainerType to = _container(w.type);
+                                   MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper, ObjectPolicy policy) {
+        MapperModel.ContainerType from = _container(e.type);
+        MapperModel.ContainerType to = _container(w.type);
         if (from == null || to == null || !from.map || !to.map) {
             out.line("// unsupported object mapping; processor validation should have rejected this");
             return;
         }
-        Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
         if (conv == null) return;
         String access = read == null ? targetName + "." + w.javaName : (read.method == null ? targetName + "." + read.javaName : targetName + "." + read.method.getSimpleName() + "()");
         String source = e.code;
@@ -2201,12 +2235,6 @@ public final class MapperGenerator {
         return "RECORD".equals(t.getKind().name());
     }
 
-    private String _tempName(String target, String param, int index) {
-        String t = _javaId(target);
-        String p = _javaId(param);
-        return "_" + (t.length() == 0 ? "compute" : t) + "_" + (p.length() == 0 ? String.valueOf(index) : p);
-    }
-
     private String _javaId(String s) {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
@@ -2239,219 +2267,36 @@ public final class MapperGenerator {
         ctx.error(element, target.originName() + ": " + message);
     }
 
-    private static final class Read {
-        final ExecutableElement method;
-        final String javaName;
-        final TypeMirror type;
-
-        Read(ExecutableElement m, String n, TypeMirror t) {
-            method = m;
-            javaName = n;
-            type = t;
-        }
-    }
-
-    private static final class SourceParam {
-        final VariableElement element;
-        final String name;
-        final Map<String, Read> reads;
-        final boolean dynamic;
-
-        SourceParam(VariableElement e, Map<String, Read> r, boolean d) {
-            element = e;
-            name = e.getSimpleName().toString();
-            reads = r;
-            dynamic = d;
-        }
-    }
-
-    private static final class ResolvedSource {
-        final SourceParam param;
-        final String path;
-        final boolean nullableRoot;
-
-        ResolvedSource(SourceParam p, String s, boolean n) {
-            param = p;
-            path = s;
-            nullableRoot = n;
-        }
-    }
-
-    private static final class Write {
-        final ExecutableElement setter;
-        final String javaName;
-        final TypeMirror type;
-
-        Write(ExecutableElement s, String n, TypeMirror t) {
-            setter = s;
-            javaName = n;
-            type = t;
-        }
-    }
-
-    private static final class Expr {
-        String code;
-        final TypeMirror type;
-        final boolean path;
-        final boolean nullableRoot;
-        boolean local;
-        final List<String> temps = new ArrayList<String>();
-
-        Expr(String c, TypeMirror t) {
-            this(c, t, false);
-        }
-
-        Expr(String c, TypeMirror t, boolean p) {
-            this(c, t, p, false, false);
-        }
-
-        Expr(String c, TypeMirror t, boolean p, boolean n, boolean l) {
-            code = c;
-            type = t;
-            path = p;
-            nullableRoot = n;
-            local = l;
-        }
-    }
-
-    private static final class ContainerType {
-        final boolean map;
-        final TypeMirror key;
-        final TypeMirror value;
-        final TypeMirror mirror;
-
-        ContainerType(boolean m, TypeMirror k, TypeMirror v, TypeMirror type) {
-            map = m;
-            key = k;
-            value = v;
-            mirror = type;
-        }
-    }
-
-    private static final class Converter {
-        final String method;
-        final TypeMirror type;
-
-        Converter(String m, TypeMirror t) {
-            method = m;
-            type = t;
-        }
-    }
-
-    private static final class CachedRead {
-        final String code;
-        final TypeMirror type;
-        final boolean path;
-        final boolean nullableRoot;
-
-        CachedRead(String c, TypeMirror t, boolean p, boolean n) {
-            code = c;
-            type = t;
-            path = p;
-            nullableRoot = n;
-        }
-    }
-
     private static final class MethodState {
         final Map<String, Integer> readCounts;
         final Map<String, Integer> groupParentCounts;
         final NameAllocator names;
         final String targetRoot;
         final List<String> readTemps = new ArrayList<String>();
-        final Map<String, CachedRead> cache = new HashMap<String, CachedRead>();
+        final Map<String, MapperModel.CachedRead> cache = new HashMap<String, MapperModel.CachedRead>();
         final Map<String, PathAccessEmitter.CachedPath> pathCache = new HashMap<String, PathAccessEmitter.CachedPath>();
         final Set<String> groupTargets = new HashSet<String>();
-        GroupNode groupRoot;
+        MapperModel.GroupNode groupRoot;
 
-        MethodState(List<SourceParam> sources, Map<String, Integer> counts) {
+        MethodState(List<MapperModel.SourceParam> sources, Map<String, Integer> counts) {
             this(null, sources, counts, Collections.<String, Integer>emptyMap());
         }
 
-        MethodState(List<SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
+        MethodState(List<MapperModel.SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
             this(null, sources, counts, groupCounts);
         }
 
-        MethodState(String targetParam, List<SourceParam> sources, Map<String, Integer> counts) {
+        MethodState(String targetParam, List<MapperModel.SourceParam> sources, Map<String, Integer> counts) {
             this(targetParam, sources, counts, Collections.<String, Integer>emptyMap());
         }
 
-        MethodState(String targetParam, List<SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
+        MethodState(String targetParam, List<MapperModel.SourceParam> sources, Map<String, Integer> counts, Map<String, Integer> groupCounts) {
             names = new NameAllocator();
             if (targetParam != null) names.reserve(targetParam);
-            for (SourceParam source : sources) names.reserve(source.name);
+            for (MapperModel.SourceParam source : sources) names.reserve(source.name);
             targetRoot = names.local("target");
             readCounts = counts;
             groupParentCounts = groupCounts;
-        }
-    }
-
-    private static final class GroupAccess {
-        final String code;
-        final TypeMirror type;
-
-        GroupAccess(String c, TypeMirror t) {
-            code = c;
-            type = t;
-        }
-    }
-
-    private static final class GroupNode {
-        final String name;
-        final TypeMirror type;
-        final String temp;
-        final String code;
-        final List<GroupLeaf> leaves = new ArrayList<GroupLeaf>();
-        final Map<String, GroupNode> children = new LinkedHashMap<String, GroupNode>();
-
-        GroupNode(String n, TypeMirror t, String tmp, String c) {
-            name = n;
-            type = t;
-            temp = tmp;
-            code = c;
-        }
-    }
-
-    private static final class GroupLeaf {
-        final String target;
-        final String temp;
-        final TypeMirror type;
-        final String code;
-
-        GroupLeaf(String targetName, String tmp, TypeMirror t, String c) {
-            target = targetName;
-            temp = tmp;
-            type = t;
-            code = c;
-        }
-    }
-
-    private enum PathWriteMode { STRICT, IF_PARENT_PRESENT, ENSURE }
-
-    private static final class TargetPathWrite {
-        final String path;
-        final PathSegment[] segments;
-        final PathWriteMode mode;
-
-        TargetPathWrite(String p, PathSegment[] s, PathWriteMode m) {
-            path = p;
-            segments = s;
-            mode = m;
-        }
-    }
-
-    private static final class MappingSpec {
-        final String target;
-        final String source;
-        final String[] sources;
-        final String compute;
-        final String nestedMapper;
-
-        MappingSpec(String t, String s, String[] ss, String c, String n) {
-            target = t;
-            source = s;
-            sources = ss;
-            compute = c;
-            nestedMapper = n;
         }
     }
 
@@ -2472,15 +2317,4 @@ public final class MapperGenerator {
         }
     }
 
-    private static final class Plan {
-        final ExecutableElement ctor;
-        final List<String> names;
-        final Map<String, Write> writes;
-
-        Plan(ExecutableElement c, List<String> n, Map<String, Write> w) {
-            ctor = c;
-            names = n;
-            writes = w;
-        }
-    }
 }

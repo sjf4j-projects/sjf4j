@@ -2,6 +2,7 @@ package org.sjf4j.processor.path;
 
 import org.sjf4j.annotation.path.EnsurePutByPath;
 import org.sjf4j.annotation.path.EnsurePutIfAbsentByPath;
+import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.annotation.path.PutByPath;
 import org.sjf4j.annotation.path.PutIfParentPresentByPath;
@@ -42,12 +43,14 @@ import java.util.Set;
 public final class PathGenerator {
 
     private final ProcessorContext ctx;
+    private final FindGenerator findGenerator;
 
     /**
      * Creates a path generator using the shared processor context.
      */
     public PathGenerator(ProcessorContext ctx) {
         this.ctx = ctx;
+        this.findGenerator = new FindGenerator(ctx);
     }
 
 
@@ -116,6 +119,18 @@ public final class PathGenerator {
                 } else {
                     generatedAnno = "@EnsurePutIfAbsentByPath";
                     genEnsurePutIfAbsent(method, target, ensurePutIfAbsent.value());
+                }
+            }
+
+            FindByPath find = method.getAnnotation(FindByPath.class);
+            if (find != null) {
+                if (generatedAnno != null) {
+                    ctx.error(method, "Path operation annotations cannot be used together: " +
+                            generatedAnno + " and @FindByPath");
+                    return;
+                } else {
+                    generatedAnno = "@FindByPath";
+                    findGenerator.genFind(method, target, find.value());
                 }
             }
 
@@ -410,49 +425,22 @@ public final class PathGenerator {
      * current type.
      */
     private TypeMirror _resolveNameType(TypeMirror current, String name, Element context, GeneratedClass target) {
-        if (GeneratorUtil.isObject(ctx, current) || GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonObjectType)) {
-            return ctx.objectType;
+        TypeMirror result = GeneratorUtil.resolveNameType(ctx, current, name);
+        if (result == null) {
+            _error(context, target, "Cannot resolve readable property '" + name + "' on " + current);
         }
-        if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.mapType)) {
-            return GeneratorUtil.mapValueType(ctx, current);
-        }
-
-        TypeElement type = GeneratorUtil.asTypeElement(current);
-        if (type == null) {
-            _error(context, target, "Cannot resolve property '" + name + "' on " + current);
-            return null;
-        }
-
-        ExecutableElement getter = _findReadable(type, current, name);
-        if (getter != null) {
-            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
-            return mt.getReturnType();
-        }
-
-        VariableElement field = _findReadableField(type, name);
-        if (field != null) {
-            return ctx.types.asMemberOf((DeclaredType) current, field);
-        }
-
-        _error(context, target, "Cannot resolve readable property '" + name + "' on " + current);
-        return null;
+        return result;
     }
 
     /**
      * Resolves the static element type reached by reading an array-index segment.
      */
     private TypeMirror _resolveIndexType(TypeMirror current, int index, Element context, GeneratedClass target) {
-        if (GeneratorUtil.isObject(ctx, current) || GeneratorUtil.isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
-            return ctx.objectType;
+        TypeMirror result = GeneratorUtil.resolveIndexType(ctx, current, index);
+        if (result == null) {
+            _error(context, target, "Cannot resolve index [" + index + "] on " + current);
         }
-        if (current.getKind() == TypeKind.ARRAY) {
-            return ((ArrayType) current).getComponentType();
-        }
-        if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.listType)) {
-            return GeneratorUtil.listValueType(ctx, current);
-        }
-        _error(context, target, "Cannot resolve index [" + index + "] on " + current);
-        return null;
+        return result;
     }
 
     private TypeMirror _resolveParamType(TypeMirror current, VariableElement param, Element context, GeneratedClass target) {
@@ -506,67 +494,6 @@ public final class PathGenerator {
     }
 
     /**
-     * Finds the generated-code readable accessor for a POJO property, accepting
-     * JavaBean getters and fluent getters.
-     */
-    private ExecutableElement _findReadable(TypeElement type, TypeMirror owner, String name) {
-        if (name.length() == 0) return null;
-        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        ExecutableElement getter = GeneratorUtil.findGetter(ctx, type, owner, "get" + suffix, false);
-        if (getter == null) {
-            getter = GeneratorUtil.findGetter(ctx, type, owner, "is" + suffix, true);
-        }
-        if (getter == null) {
-            getter = GeneratorUtil.findGetter(ctx, type, owner, name, false);
-        }
-        if (getter != null) return getter;
-
-        for (Element member : ctx.elements.getAllMembers(type)) {
-            if (member.getKind() != ElementKind.METHOD) continue;
-            Set<Modifier> modifiers = member.getModifiers();
-            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
-            ExecutableElement method = (ExecutableElement) member;
-            if (method.getParameters().size() != 0) continue;
-            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
-            TypeMirror returnType = mt.getReturnType();
-            if (returnType.getKind() == TypeKind.VOID) continue;
-            String base = _readablePropertyBase(method);
-            if (base != null && GeneratorUtil.nodePropertyName(method, base).equals(name)) return method;
-        }
-        return null;
-    }
-
-    /**
-     * Finds a public readable field by Java name first, then by {@code @NodeProperty}
-     * JSON-facing name. The Java-name fast path preserves existing path behavior.
-     */
-    private VariableElement _findReadableField(TypeElement type, String name) {
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
-        if (field != null) return field;
-        for (Element member : ctx.elements.getAllMembers(type)) {
-            if (member.getKind() != ElementKind.FIELD) continue;
-            Set<Modifier> modifiers = member.getModifiers();
-            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
-            if (GeneratorUtil.nodePropertyName(member, member.getSimpleName().toString()).equals(name)) {
-                return (VariableElement) member;
-            }
-        }
-        return null;
-    }
-
-    private String _readablePropertyBase(ExecutableElement method) {
-        String methodName = method.getSimpleName().toString();
-        if (methodName.equals("getClass")) return null;
-        if (methodName.startsWith("get") && methodName.length() > 3) {
-            return GeneratorUtil.decap(methodName.substring(3));
-        }
-        if (methodName.startsWith("is") && methodName.length() > 2) {
-            return GeneratorUtil.decap(methodName.substring(2));
-        }
-        return methodName;
-    }
-
-    /**
      * Resolves the value type accepted by the final put segment.
      */
     private TypeMirror _resolvePutValueType(TypeMirror parent, PathSegment segment, Map<String, VariableElement> pathParams,
@@ -600,12 +527,12 @@ public final class PathGenerator {
             _error(context, target, "Cannot resolve writable property '" + name + "' on " + parent);
             return null;
         }
-        ExecutableElement setter = _findWritableSetter(type, parent, name);
+        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
         if (setter != null) {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, setter);
             return mt.getParameterTypes().get(0);
         }
-        VariableElement field = _findWritableField(type, name);
+        VariableElement field = GeneratorUtil.findWritableField(ctx, type, name);
         if (field != null && !field.getModifiers().contains(Modifier.FINAL)) {
             return ctx.types.asMemberOf((DeclaredType) parent, field);
         }
@@ -624,52 +551,12 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
-        ExecutableElement setter = _findWritableSetter(type, parent, name);
+        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
         if (setter != null) return true;
-        VariableElement field = _findWritableField(type, name);
+        VariableElement field = GeneratorUtil.findWritableField(ctx, type, name);
         if (field != null && !field.getModifiers().contains(Modifier.FINAL)) return true;
         _error(context, target, "Cannot resolve writable property '" + name + "' on " + parent);
         return false;
-    }
-
-    private ExecutableElement _findWritableSetter(TypeElement type, TypeMirror owner, String name) {
-        if (name.length() != 0) {
-            String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-            ExecutableElement setter = GeneratorUtil.findSetter(ctx, type, owner, "set" + suffix);
-            if (setter != null) return setter;
-        }
-        for (Element member : ctx.elements.getAllMembers(type)) {
-            if (member.getKind() != ElementKind.METHOD) continue;
-            Set<Modifier> modifiers = member.getModifiers();
-            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
-            ExecutableElement method = (ExecutableElement) member;
-            if (method.getParameters().size() != 1) continue;
-            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
-            if (mt.getReturnType().getKind() != TypeKind.VOID) continue;
-            String base = _writablePropertyBase(method);
-            if (base != null && GeneratorUtil.nodePropertyName(method, base).equals(name)) return method;
-        }
-        return null;
-    }
-
-    private VariableElement _findWritableField(TypeElement type, String name) {
-        VariableElement field = GeneratorUtil.findField(ctx, type, name);
-        if (field != null && !field.getModifiers().contains(Modifier.FINAL)) return field;
-        for (Element member : ctx.elements.getAllMembers(type)) {
-            if (member.getKind() != ElementKind.FIELD) continue;
-            Set<Modifier> modifiers = member.getModifiers();
-            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || modifiers.contains(Modifier.FINAL)) continue;
-            if (GeneratorUtil.nodePropertyName(member, member.getSimpleName().toString()).equals(name)) {
-                return (VariableElement) member;
-            }
-        }
-        return null;
-    }
-
-    private String _writablePropertyBase(ExecutableElement method) {
-        String methodName = method.getSimpleName().toString();
-        if (methodName.startsWith("set") && methodName.length() > 3) return GeneratorUtil.decap(methodName.substring(3));
-        return null;
     }
 
     /**
@@ -683,7 +570,7 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return true;
-        if (_findReadable(type, parent, name) != null || _findReadableField(type, name) != null) return true;
+        if (GeneratorUtil.findReadable(ctx, type, parent, name) != null || GeneratorUtil.findReadableField(ctx, type, name) != null) return true;
         _error(context, target, "Cannot resolve readable property '" + name + "' on " + parent);
         return false;
     }
@@ -742,11 +629,11 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) return null;
-        ExecutableElement getter = _findReadable(type, parent, name);
+        ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, parent, name);
         if (getter != null) {
             return ((ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, getter)).getReturnType();
         }
-        VariableElement field = _findReadableField(type, name);
+        VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
         if (field != null) return ctx.types.asMemberOf((DeclaredType) parent, field);
         return ctx.objectType;
     }
@@ -857,9 +744,9 @@ public final class PathGenerator {
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.mapType)) return GeneratorUtil.mapValueType(ctx, current);
         TypeElement type = GeneratorUtil.asTypeElement(current);
         if (type != null && name != null) {
-            ExecutableElement getter = _findReadable(type, current, name);
+            ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, current, name);
             if (getter != null) return ((ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter)).getReturnType();
-            VariableElement field = _findReadableField(type, name);
+            VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
             if (field != null) return ctx.types.asMemberOf((DeclaredType) current, field);
         }
         return ctx.objectType;
@@ -932,7 +819,7 @@ public final class PathGenerator {
         if (type == null) {
             throw new AssertionError("CompiledPath emitName cannot resolve type element for " + current);
         }
-        ExecutableElement getter = _findReadable(type, current, name);
+        ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, current, name);
         if (getter != null) {
             ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
             TypeMirror outputType = mt.getReturnType();
@@ -942,7 +829,7 @@ public final class PathGenerator {
             return outputType;
         }
 
-        VariableElement field = _findReadableField(type, name);
+        VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
         if (field == null) {
             throw new AssertionError("CompiledPath emitName cannot resolve validated field '" +
                     name + "' on " + current);
@@ -1508,9 +1395,9 @@ public final class PathGenerator {
         if (type == null) {
             throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
         }
-        ExecutableElement setter = _findWritableSetter(type, parent, name);
-        ExecutableElement getter = _findReadable(type, parent, name);
-        VariableElement field = _findReadableField(type, name);
+        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
+        ExecutableElement getter = GeneratorUtil.findReadable(ctx, type, parent, name);
+        VariableElement field = GeneratorUtil.findReadableField(ctx, type, name);
         TypeMirror oldType = null;
         if (getter != null) {
             oldType = ((ExecutableType) ctx.types.asMemberOf((DeclaredType) parent, getter)).getReturnType();
@@ -1545,12 +1432,12 @@ public final class PathGenerator {
         }
         TypeElement type = GeneratorUtil.asTypeElement(parent);
         if (type == null) throw new AssertionError("CompiledPath PUT cannot resolve type element for " + parent);
-        ExecutableElement setter = _findWritableSetter(type, parent, name);
+        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
         if (setter != null) {
             out.line(parentVar + "." + setter.getSimpleName() + "(" + valueExpr + ");");
             return;
         }
-        VariableElement field = _findWritableField(type, name);
+        VariableElement field = GeneratorUtil.findWritableField(ctx, type, name);
         if (field == null) throw new AssertionError("CompiledPath PUT cannot resolve writable field '" + name + "'");
         out.line(parentVar + "." + field.getSimpleName() + " = " + valueExpr + ";");
     }

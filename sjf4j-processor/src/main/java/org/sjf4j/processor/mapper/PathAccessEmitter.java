@@ -4,6 +4,7 @@ import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
+import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
@@ -32,29 +33,39 @@ public final class PathAccessEmitter {
 
     public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                             String source, String tempPrefix) {
-        return _read(context, target, rootType, rootVar, source, tempPrefix, false, null, "");
+        return _read(context, target, rootType, rootVar, source, tempPrefix, null, false, null, "");
     }
 
     public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                            String source, String tempPrefix, Map<String, CachedPath> cache, String cacheRoot) {
-        return _read(context, target, rootType, rootVar, source, tempPrefix, false, cache, cacheRoot);
+        return _read(context, target, rootType, rootVar, source, tempPrefix, null, false, cache, cacheRoot);
+    }
+
+    public ReadAccess read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                           String source, NameAllocator names, Map<String, CachedPath> cache, String cacheRoot) {
+        return _read(context, target, rootType, rootVar, source, null, names, false, cache, cacheRoot);
     }
 
     public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                                        String source, String tempPrefix) {
-        return _read(context, target, rootType, rootVar, source, tempPrefix, true, null, "");
+        return _read(context, target, rootType, rootVar, source, tempPrefix, null, true, null, "");
     }
 
     public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
                                        String source, String tempPrefix, Map<String, CachedPath> cache, String cacheRoot) {
-        return _read(context, target, rootType, rootVar, source, tempPrefix, true, cache, cacheRoot);
+        return _read(context, target, rootType, rootVar, source, tempPrefix, null, true, cache, cacheRoot);
+    }
+
+    public ReadAccess readNullableRoot(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
+                                       String source, NameAllocator names, Map<String, CachedPath> cache, String cacheRoot) {
+        return _read(context, target, rootType, rootVar, source, null, names, true, cache, cacheRoot);
     }
 
     private ReadAccess _read(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
-                             String source, String tempPrefix, boolean nullableRoot,
+                             String source, String tempPrefix, NameAllocator names, boolean nullableRoot,
                              Map<String, CachedPath> cache, String cacheRoot) {
         if (source.startsWith("$") || source.startsWith("/")) {
-            return _pathRead(context, target, rootType, rootVar, source, tempPrefix, nullableRoot, cache, cacheRoot);
+            return _pathRead(context, target, rootType, rootVar, source, tempPrefix, names, nullableRoot, cache, cacheRoot);
         }
         return _simpleRead(context, target, rootType, rootVar, source, nullableRoot);
     }
@@ -70,7 +81,7 @@ public final class PathAccessEmitter {
     }
 
     private ReadAccess _pathRead(Element context, GeneratedClass target, TypeMirror rootType, String rootVar,
-                                  String source, String tempPrefix, boolean nullableRoot,
+                                  String source, String tempPrefix, NameAllocator names, boolean nullableRoot,
                                   Map<String, CachedPath> cache, String cacheRoot) {
         JsonPath path;
         try {
@@ -112,7 +123,7 @@ public final class PathAccessEmitter {
         }
 
         for (int i = start; i < segments.length; i++) {
-            String nextVar = tempPrefix + i;
+            String nextVar = names == null ? tempPrefix + i : _pathTemp(names, segments, i);
             boolean checkParent = i != 1 || nullableRoot;
             PathSegment s = segments[i];
             Access a;
@@ -139,6 +150,19 @@ public final class PathAccessEmitter {
             }
         }
         return new ReadAccess(currentVar, currentType, true, temps);
+    }
+
+    private String _pathTemp(NameAllocator names, PathSegment[] segments, int index) {
+        PathSegment s = segments[index];
+        if (s instanceof PathSegment.Name) {
+            return names.prefixed("s", ((PathSegment.Name) s).name);
+        }
+        String parent = "value";
+        if (index > 1 && segments[index - 1] instanceof PathSegment.Name) {
+            parent = ((PathSegment.Name) segments[index - 1]).name;
+        }
+        int i = ((PathSegment.Index) s).index;
+        return names.prefixed("s", parent + (i < 0 ? "N" + (-i) : String.valueOf(i)));
     }
 
     private String _cacheKey(PathSegment[] segments, int end) {

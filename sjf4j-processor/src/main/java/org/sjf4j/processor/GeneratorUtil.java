@@ -10,6 +10,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
@@ -234,5 +235,163 @@ public final class GeneratorUtil {
             if (modifiers.contains(Modifier.PUBLIC) && !modifiers.contains(Modifier.STATIC)) return (VariableElement) member;
         }
         return null;
+    }
+
+    /**
+     * Resolves the static type reached by reading an object-name segment.
+     * Returns null when the property cannot be resolved.
+     */
+    public static TypeMirror resolveNameType(ProcessorContext ctx, TypeMirror current, String name) {
+        if (isObject(ctx, current) || isAssignableErasure(ctx, current, ctx.jsonObjectType)) {
+            return ctx.objectType;
+        }
+        if (isAssignableErasure(ctx, current, ctx.mapType)) {
+            return mapValueType(ctx, current);
+        }
+        TypeElement type = asTypeElement(current);
+        if (type == null) return null;
+
+        ExecutableElement getter = findReadable(ctx, type, current, name);
+        if (getter != null) {
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) current, getter);
+            return mt.getReturnType();
+        }
+        VariableElement field = findReadableField(ctx, type, name);
+        if (field != null) {
+            return ctx.types.asMemberOf((DeclaredType) current, field);
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the static element type reached by reading an array-index segment.
+     * Returns null when the index cannot be resolved.
+     */
+    public static TypeMirror resolveIndexType(ProcessorContext ctx, TypeMirror current, int index) {
+        if (isObject(ctx, current) || isAssignableErasure(ctx, current, ctx.jsonArrayType)) {
+            return ctx.objectType;
+        }
+        if (current.getKind() == TypeKind.ARRAY) {
+            return ((ArrayType) current).getComponentType();
+        }
+        if (isAssignableErasure(ctx, current, ctx.listType)) {
+            return listValueType(ctx, current);
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the element type of a container (List, array, Set, JsonArray).
+     * Returns Object when the container type cannot be resolved.
+     */
+    public static TypeMirror resolveElementType(ProcessorContext ctx, TypeMirror containerType) {
+        if (isObject(ctx, containerType) || isAssignableErasure(ctx, containerType, ctx.jsonArrayType)) {
+            return ctx.objectType;
+        }
+        if (containerType.getKind() == TypeKind.ARRAY) {
+            return ((ArrayType) containerType).getComponentType();
+        }
+        if (isAssignableErasure(ctx, containerType, ctx.listType)) {
+            return listValueType(ctx, containerType);
+        }
+        return ctx.objectType;
+    }
+
+    /**
+     * Finds the readable accessor for a POJO property, accepting JavaBean getters,
+     * fluent getters, and @NodeProperty-annotated methods.
+     */
+    public static ExecutableElement findReadable(ProcessorContext ctx, TypeElement type, TypeMirror owner, String name) {
+        if (name.length() == 0) return null;
+        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        ExecutableElement getter = findGetter(ctx, type, owner, "get" + suffix, false);
+        if (getter == null) getter = findGetter(ctx, type, owner, "is" + suffix, true);
+        if (getter == null) getter = findGetter(ctx, type, owner, name, false);
+        if (getter != null) return getter;
+
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (method.getParameters().size() != 0) continue;
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
+            TypeMirror returnType = mt.getReturnType();
+            if (returnType.getKind() == TypeKind.VOID) continue;
+            String base = _readablePropertyBase(method);
+            if (base != null && nodePropertyName(method, base).equals(name)) return method;
+        }
+        return null;
+    }
+
+    /**
+     * Finds a public readable field by Java name first, then by @NodeProperty name.
+     */
+    public static VariableElement findReadableField(ProcessorContext ctx, TypeElement type, String name) {
+        VariableElement field = findField(ctx, type, name);
+        if (field != null) return field;
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.FIELD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
+            if (nodePropertyName(member, member.getSimpleName().toString()).equals(name)) {
+                return (VariableElement) member;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds a public writable accessor (setter) for a POJO property.
+     */
+    public static ExecutableElement findWritable(ProcessorContext ctx, TypeElement type, TypeMirror owner, String name) {
+        if (name.length() == 0) return null;
+        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        ExecutableElement setter = findSetter(ctx, type, owner, "set" + suffix);
+        if (setter != null) return setter;
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC)) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (method.getParameters().size() != 1) continue;
+            ExecutableType mt = (ExecutableType) ctx.types.asMemberOf((DeclaredType) owner, method);
+            if (mt.getReturnType().getKind() != TypeKind.VOID) continue;
+            String methodName = method.getSimpleName().toString();
+            if (methodName.startsWith("set") && methodName.length() > 3) {
+                String base = decap(methodName.substring(3));
+                if (nodePropertyName(method, base).equals(name)) return method;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds a public writable field (non-final) by Java name first, then by @NodeProperty name.
+     */
+    public static VariableElement findWritableField(ProcessorContext ctx, TypeElement type, String name) {
+        VariableElement field = findField(ctx, type, name);
+        if (field != null && !field.getModifiers().contains(Modifier.FINAL)) return field;
+        for (Element member : ctx.elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.FIELD) continue;
+            Set<Modifier> modifiers = member.getModifiers();
+            if (!modifiers.contains(Modifier.PUBLIC) || modifiers.contains(Modifier.STATIC) || modifiers.contains(Modifier.FINAL)) continue;
+            if (nodePropertyName(member, member.getSimpleName().toString()).equals(name)) {
+                return (VariableElement) member;
+            }
+        }
+        return null;
+    }
+
+    private static String _readablePropertyBase(ExecutableElement method) {
+        String methodName = method.getSimpleName().toString();
+        if (methodName.equals("getClass")) return null;
+        if (methodName.startsWith("get") && methodName.length() > 3) {
+            return decap(methodName.substring(3));
+        }
+        if (methodName.startsWith("is") && methodName.length() > 2) {
+            return decap(methodName.substring(2));
+        }
+        return methodName;
     }
 }

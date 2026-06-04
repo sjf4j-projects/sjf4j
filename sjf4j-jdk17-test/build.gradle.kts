@@ -159,4 +159,5 @@ dependencies {
     add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
     add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
     add(incubator.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
+    add(incubator.implementationConfigurationName, "org.openjdk.jmh:jmh-core:1.37")
 }

@@ -28,6 +28,7 @@ import java.util.Set;
         "org.sjf4j.annotation.path.PutIfParentPresentByPath",
         "org.sjf4j.annotation.path.EnsurePutByPath",
         "org.sjf4j.annotation.path.EnsurePutIfAbsentByPath",
+        "org.sjf4j.annotation.path.FindByPath",
 
         "org.sjf4j.annotation.mapper.CompiledMapper",
         "org.sjf4j.annotation.mapper.Mapping",
