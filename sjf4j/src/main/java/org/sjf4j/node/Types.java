@@ -84,6 +84,37 @@ public final class Types {
         return box(rawClazz(type));
     }
 
+    /**
+     * Returns true when a type carries generic structure beyond a plain raw class.
+     * <p>
+     * Binding callers use this to avoid returning raw-compatible values too early:
+     * parameterized containers/POJOs need traversal so their declared element or
+     * member types are honored. Unbounded type variables and wildcards are treated
+     * like {@code Object} and do not force traversal by themselves.
+     */
+    public static boolean hasGenericStructure(Type type) {
+        if (type == null || type == Object.class || type instanceof Class<?>) {
+            return false;
+        }
+        if (type instanceof ParameterizedType || type instanceof GenericArrayType) {
+            return true;
+        }
+        if (type instanceof TypeVariable<?>) {
+            Type[] bounds = ((TypeVariable<?>) type).getBounds();
+            return bounds.length != 0 && (bounds.length != 1 || bounds[0] != Object.class);
+        }
+        if (type instanceof WildcardType) {
+            WildcardType wildcardType = (WildcardType) type;
+            Type[] lowerBounds = wildcardType.getLowerBounds();
+            if (lowerBounds.length != 0) {
+                return true;
+            }
+            Type[] upperBounds = wildcardType.getUpperBounds();
+            return upperBounds.length != 0 && (upperBounds.length != 1 || upperBounds[0] != Object.class);
+        }
+        return false;
+    }
+
     // Cache for resolveTypeArgument results (only used for the recursive slow path)
     private static final ConcurrentHashMap<TypeArgKey, Type> TYPE_ARG_CACHE = new ConcurrentHashMap<>();
 

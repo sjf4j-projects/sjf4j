@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,7 +63,9 @@ public class JojoTest {
         Person p2 = JsonObject.fromJson(json1).bindNode(Person.class);
         log.info("p1={}", p1.inspect());
         log.info("p2={}", p2.inspect());
-        assertNotEquals(p1, p2);
+        // Shallow binding still honors declared generic fields such as List<Baby>;
+        // only untyped branches may keep source aliases.
+        assertEquals(p1, p2);
 
         Person p3 = Sjf4j.global().fromNode(JsonObject.fromJson(json1), Person.class);
         log.info("p3={}", p3.inspect());

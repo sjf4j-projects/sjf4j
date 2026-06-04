@@ -415,6 +415,124 @@ public class NodesTest {
         }
     }
 
+    public static class GenericUser {
+        public String name;
+        public Object meta;
+    }
+
+    public static class Box<T> {
+        public T value;
+    }
+
+    @Test
+    void testNodesToTypeReferenceBindsGenericList() {
+        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
+        rawUser.put("name", "A");
+        rawUser.put("meta", JsonObject.of("role", "admin"));
+        List<Map<String, Object>> source = new ArrayList<>();
+        source.add(rawUser);
+
+        List<GenericUser> users = Nodes.to(source, new TypeReference<List<GenericUser>>() {});
+
+        assertNotSame(source, users);
+        assertEquals(1, users.size());
+        assertInstanceOf(GenericUser.class, users.get(0));
+        assertEquals("A", users.get(0).name);
+    }
+
+    @Test
+    void testNodesToTypeReferenceShallowlyPreservesUntypedBranches() {
+        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
+        meta.put("active", true);
+        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
+        rawUser.put("name", "A");
+        rawUser.put("meta", meta);
+        List<Object> rawUsers = new ArrayList<>();
+        rawUsers.add(rawUser);
+        LinkedHashMap<String, Object> source = new LinkedHashMap<>();
+        source.put("users", rawUsers);
+
+        Map<String, List<GenericUser>> bound = Nodes.to(source, new TypeReference<Map<String, List<GenericUser>>>() {});
+
+        assertNotSame(source, bound);
+        assertNotSame(rawUsers, bound.get("users"));
+        assertInstanceOf(GenericUser.class, bound.get("users").get(0));
+        assertSame(meta, bound.get("users").get(0).meta);
+    }
+
+    @Test
+    void testNodesToTypeReferenceBindsNestedGenericLists() {
+        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
+        rawUser.put("name", "A");
+        List<Object> inner = new ArrayList<>();
+        inner.add(rawUser);
+        List<Object> source = new ArrayList<>();
+        source.add(inner);
+
+        List<List<GenericUser>> bound = Nodes.to(source, new TypeReference<List<List<GenericUser>>>() {});
+
+        assertNotSame(source, bound);
+        assertNotSame(inner, bound.get(0));
+        assertInstanceOf(GenericUser.class, bound.get(0).get(0));
+        assertEquals("A", bound.get(0).get(0).name);
+    }
+
+    @Test
+    void testFromNodeTypeReferenceDeepCopiesGenericPojoMembers() {
+        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
+        meta.put("active", true);
+        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
+        rawUser.put("name", "A");
+        rawUser.put("meta", meta);
+        Box<Map<String, Object>> source = new Box<>();
+        source.value = rawUser;
+
+        Box<GenericUser> bound = Sjf4j.global().fromNode(source, new TypeReference<Box<GenericUser>>() {});
+
+        assertNotSame(source, bound);
+        assertInstanceOf(GenericUser.class, bound.value);
+        assertEquals("A", bound.value.name);
+        assertInstanceOf(Map.class, bound.value.meta);
+        assertNotSame(meta, bound.value.meta);
+    }
+
+    @Test
+    void testNodesToTypeReferenceShallowBindsGenericPojoMembers() {
+        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
+        meta.put("active", true);
+        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
+        rawUser.put("name", "A");
+        rawUser.put("meta", meta);
+        Box<Map<String, Object>> source = new Box<>();
+        source.value = rawUser;
+
+        Box<GenericUser> bound = Nodes.to(source, new TypeReference<Box<GenericUser>>() {});
+
+        assertNotSame(source, bound);
+        assertInstanceOf(GenericUser.class, bound.value);
+        assertEquals("A", bound.value.name);
+        assertSame(meta, bound.value.meta);
+    }
+
+    @Test
+    void testTypeReferenceTypedContainerAliasBoundary() {
+        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
+        meta.put("active", true);
+        LinkedHashMap<String, Object> rawUser = new LinkedHashMap<>();
+        rawUser.put("name", "A");
+        rawUser.put("meta", meta);
+        List<Map<String, Object>> source = new ArrayList<>();
+        source.add(rawUser);
+
+        List<GenericUser> deepCopied = Sjf4j.global().fromNode(source, new TypeReference<List<GenericUser>>() {});
+        List<GenericUser> shallowBound = Nodes.to(source, new TypeReference<List<GenericUser>>() {});
+
+        assertNotSame(source, deepCopied);
+        assertNotSame(meta, deepCopied.get(0).meta);
+        assertNotSame(source, shallowBound);
+        assertSame(meta, shallowBound.get(0).meta);
+    }
+
     @Test
     public void testEquals() {
         JsonObject jo = JsonObject.of(

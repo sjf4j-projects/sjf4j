@@ -115,7 +115,13 @@ public class SimpleNodeFacade implements NodeFacade {
                 return _readOneOf(node, rawClazz, anyOfInfo, deepCopy, ps);
             }
 
-            if (rawClazz == Object.class || rawClazz.isInstance(node)) {
+            if (rawClazz == Object.class) {
+                return deepCopy ? _deepNode(node, type, ps) : node;
+            }
+            // Raw-compatible values can only be returned as-is when the target has no
+            // generic structure to honor. Parameterized containers/POJOs still need a
+            // shallow/deep traversal so their declared element/member types are bound.
+            if (rawClazz.isInstance(node) && !Types.hasGenericStructure(type)) {
                 return deepCopy ? _deepNode(node, type, ps) : node;
             }
 
@@ -321,8 +327,20 @@ public class SimpleNodeFacade implements NodeFacade {
                     int argIdx = ci.getArgIndexOrAlias(key);
                     if (argIdx >= 0) {
                         PathSegment cps = new PathSegment.Name(ps, key);
-                        Object vv = _deepNode(entry.getValue(), ci.argTypes[argIdx], cps);
+                        Type argType = Types.resolveMemberType(type, targetRaw, ci.argTypes[argIdx]);
+                        Object vv = _deepNode(entry.getValue(), argType, cps);
                         session.acceptCtorArg(argIdx, vv);
+                        continue;
+                    }
+
+                    NodeRegistry.PropertyInfo fi = pojoInfo.aliasProperties != null
+                            ? pojoInfo.aliasProperties.get(key)
+                            : pojoInfo.properties.get(key);
+                    if (fi != null) {
+                        PathSegment cps = new PathSegment.Name(ps, key);
+                        Type fieldType = Types.resolveMemberType(type, targetRaw, fi.type);
+                        Object vv = _deepNode(entry.getValue(), fieldType, cps);
+                        session.acceptProperty(fi, vv);
                         continue;
                     }
 
@@ -380,13 +398,15 @@ public class SimpleNodeFacade implements NodeFacade {
                     if (argIdx >= 0) {
                         Object v = fi.invokeGetter(node);
                         PathSegment cps = new PathSegment.Name(ps, key);
-                        session.acceptCtorArg(argIdx, _deepNode(v, ci.argTypes[argIdx], cps));
+                        Type argType = Types.resolveMemberType(type, targetRaw, ci.argTypes[argIdx]);
+                        session.acceptCtorArg(argIdx, _deepNode(v, argType, cps));
                         continue;
                     }
 
                     Object v = fi.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, key);
-                    Object vv = _deepNode(v, fi.type, cps);
+                    Type fieldType = Types.resolveMemberType(type, targetRaw, fi.type);
+                    Object vv = _deepNode(v, fieldType, cps);
                     session.acceptProperty(fi, vv);
                 }
                 return session.finish();

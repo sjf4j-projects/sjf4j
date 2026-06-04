@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Preserved present-`null` JSONPath matches while still omitting truly missing locations from `find(...)` results.
 - Fixed JSONPath root `contains(...)` handling and parent-missing checks for put/add/replace/remove-style writes.
+- Fixed `Nodes.to(..., TypeReference)` shallow generic binding and `Sjf4j.fromNode(..., TypeReference)` deep generic binding when source values already match the target raw type.
 - Fixed `@CompiledMapper` nullable/path sources targeting primitive properties so generated Java code is allowed to compile and uses normal runtime unboxing semantics.
 
 

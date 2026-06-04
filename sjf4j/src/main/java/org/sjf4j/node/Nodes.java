@@ -684,9 +684,15 @@ public final class Nodes {
         return (T) _to(node, clazz, false);
     }
 
+    /**
+     * Converts a node to target generic type using strict shallow binding.
+     * <p>
+     * Generic members are bound eagerly, but branches declared as {@code Object}
+     * or otherwise left untyped may still alias the source graph.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, TypeReference<T> type) {
-        return (T) _to(node, type.getType(), false);
+        return (T) Sjf4j.global().nodeFacade().readNode(node, type.getType(), false);
     }
 
     /**
