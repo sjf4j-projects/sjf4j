@@ -319,6 +319,8 @@ public class FindProcessorTest {
         assertFalse(source.contains(".find("),
                 "Should not contain .find( fallback for simple wildcard; " +
                 "current source:\n" + source);
+        assertEquals(1, count(source, "if (v == null) return out;"),
+                "Wildcard container null check should be emitted once; source:\n" + source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> rootClass = Class.forName("testcase.Root", true, loader);
@@ -462,7 +464,7 @@ public class FindProcessorTest {
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
                 "@CompiledPath\n" +
                 "public interface FindUnionIndex {\n" +
-                "  @FindByPath(\"$.items[0,2].name\")\n" +
+                "  @FindByPath(\"$.items[2,0].name\")\n" +
                 "  List<String> names(Root root);\n" +
                 "}\n");
 
@@ -518,7 +520,12 @@ public class FindProcessorTest {
         Method names = nodesClass.getMethod("names", rootClass);
         @SuppressWarnings("unchecked")
         List<String> result = (List<String>) names.invoke(nodes, root);
-        assertEquals(Arrays.asList("alpha", "gamma"), result);
+        assertEquals(Arrays.asList("gamma", "alpha"), result);
+
+        items.remove(2);
+        @SuppressWarnings("unchecked")
+        List<String> shortResult = (List<String>) names.invoke(nodes, root);
+        assertEquals(Arrays.asList("alpha"), shortResult);
     }
 
     @Test
@@ -547,7 +554,7 @@ public class FindProcessorTest {
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
                 "@CompiledPath\n" +
                 "public interface FindUnionName {\n" +
-                "  @FindByPath(\"$.metadata['version','author']\")\n" +
+                "  @FindByPath(\"$.metadata['version','missing','author','nullable']\")\n" +
                 "  List<Object> fields(Root root);\n" +
                 "}\n");
 
@@ -575,6 +582,10 @@ public class FindProcessorTest {
                 "Union path should not fall back to JsonPath.parse; source:\n" + source);
         assertFalse(source.contains(".find("),
                 "Union path should not fall back to .find(; source:\n" + source);
+        assertFalse(source.contains("entrySet"),
+                "Name union should use direct containsKey/get, not entrySet; source:\n" + source);
+        assertFalse(source.contains("Map.Entry"),
+                "Name union should not emit Map.Entry; source:\n" + source);
 
         // ---- behavioral assertion ----
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
@@ -582,9 +593,10 @@ public class FindProcessorTest {
         Class<?> nodesClass = Class.forName("testcase.FindUnionName_Impl", true, loader);
 
         LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
-        meta.put("version", "1.0");
         meta.put("author", "test");
+        meta.put("nullable", null);
         meta.put("redundant", "ignored");
+        meta.put("version", "1.0");
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setMetadata", LinkedHashMap.class).invoke(root, meta);
 
@@ -592,9 +604,10 @@ public class FindProcessorTest {
         Method fields = nodesClass.getMethod("fields", rootClass);
         @SuppressWarnings("unchecked")
         List<Object> result = (List<Object>) fields.invoke(nodes, root);
-        assertEquals(2, result.size());
+        assertEquals(3, result.size());
         assertEquals("1.0", result.get(0));
         assertEquals("test", result.get(1));
+        assertEquals(null, result.get(2));
     }
 
     // -- variable name conflict: root param named "out" --
@@ -849,18 +862,38 @@ public class FindProcessorTest {
         assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
     }
 
-    // -- unsupported: double wildcard --
+    // -- nested wildcard --
     @Test
-    public void rejectDoubleWildcardPath() throws Exception {
-        Path dir = Files.createTempDirectory("sjf4j-find-reject-double-wildcard");
+    public void generateFindNestedWildcardPath() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-nested-wildcard");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
         Files.createDirectories(src);
         Files.createDirectories(out);
 
+        write(src.resolve("Child.java"),
+                "package testcase;\n" +
+                "public class Child {\n" +
+                "  private String name;\n" +
+                "  public String getName() { return name; }\n" +
+                "  public void setName(String name) { this.name = name; }\n" +
+                "}\n");
+        write(src.resolve("Item.java"),
+                "package testcase;\n" +
+                "import java.util.List;\n" +
+                "public class Item {\n" +
+                "  private List<Child> children;\n" +
+                "  public List<Child> getChildren() { return children; }\n" +
+                "  public void setChildren(List<Child> children) { this.children = children; }\n" +
+                "}\n");
         write(src.resolve("Root.java"),
                 "package testcase;\n" +
-                "public class Root {}\n");
+                "import java.util.List;\n" +
+                "public class Root {\n" +
+                "  private List<Item> items;\n" +
+                "  public List<Item> getItems() { return items; }\n" +
+                "  public void setItems(List<Item> items) { this.items = items; }\n" +
+                "}\n");
         write(src.resolve("FindDoubleWildcard.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
@@ -869,6 +902,8 @@ public class FindProcessorTest {
                 "@CompiledPath\n" +
                 "public interface FindDoubleWildcard {\n" +
                 "  @FindByPath(\"$.items[*].children[*]\")\n" +
+                "  List<Child> children(Root root);\n" +
+                "  @FindByPath(\"$.items[*].children[*].name\")\n" +
                 "  List<String> names(Root root);\n" +
                 "}\n");
 
@@ -882,12 +917,43 @@ public class FindProcessorTest {
                 "-classpath", System.getProperty("java.class.path"),
                 "-processor", Sjf4jProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Child.java").toFile(),
+                src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
                 src.resolve("FindDoubleWildcard.java").toFile()
         ))).call();
-        assertFalse(ok, "double wildcard path should fail compilation");
-        String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(ok, "Compilation should succeed: " + diagnosticsToString(diagnostics));
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> childClass = Class.forName("testcase.Child", true, loader);
+        Class<?> itemClass = Class.forName("testcase.Item", true, loader);
+        Class<?> rootClass = Class.forName("testcase.Root", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.FindDoubleWildcard_Impl", true, loader);
+
+        Object a = childClass.getConstructor().newInstance();
+        childClass.getMethod("setName", String.class).invoke(a, "a");
+        Object b = childClass.getConstructor().newInstance();
+        childClass.getMethod("setName", String.class).invoke(b, "b");
+        Object c = childClass.getConstructor().newInstance();
+        childClass.getMethod("setName", String.class).invoke(c, "c");
+        Object item1 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setChildren", List.class).invoke(item1, Arrays.asList(a, b));
+        Object item2 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setChildren", List.class).invoke(item2, Arrays.asList(c));
+        Object item3 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setChildren", List.class).invoke(item3, (Object) null);
+        Object root = rootClass.getConstructor().newInstance();
+        rootClass.getMethod("setItems", List.class).invoke(root, Arrays.asList(item1, item2, item3));
+
+        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Method children = nodesClass.getMethod("children", rootClass);
+        Method names = nodesClass.getMethod("names", rootClass);
+        @SuppressWarnings("unchecked")
+        List<Object> childResult = (List<Object>) children.invoke(nodes, root);
+        assertEquals(Arrays.asList(a, b, c), childResult);
+        @SuppressWarnings("unchecked")
+        List<String> nameResult = (List<String>) names.invoke(nodes, root);
+        assertEquals(Arrays.asList("a", "b", "c"), nameResult);
     }
 
     // -- unsupported: mixed union (index + name) --

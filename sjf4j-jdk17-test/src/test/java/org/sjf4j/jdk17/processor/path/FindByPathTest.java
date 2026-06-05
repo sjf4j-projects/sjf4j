@@ -25,7 +25,9 @@ public class FindByPathTest {
 
     record Item(String name, int age) {}
 
-    record Container(List<Item> items, Map<String, Object> metadata) {}
+    record Family(String name, List<Item> children) {}
+
+    record Container(List<Item> items, List<Family> families, Map<String, Object> metadata) {}
 
     // ---- Compiled interfaces -----------------------------------------------
 
@@ -34,8 +36,17 @@ public class FindByPathTest {
         @FindByPath("$.items[*].name")
         List<String> itemNames(Container root);
 
-        @FindByPath("$.metadata['version','author']")
+        @FindByPath("$.metadata['version','missing','author','nullable']")
         List<Object> metadataFields(Container root);
+
+        @FindByPath("$.items[2,0].name")
+        List<String> itemNamesByIndexUnion(Container root);
+
+        @FindByPath("$.families[*].children[*]")
+        List<Item> allChildren(Container root);
+
+        @FindByPath("$.families[*].children[*].name")
+        List<String> childNames(Container root);
 
         @FindByPath("$.items[*]")
         List<Object> allItems(Container root);
@@ -61,8 +72,27 @@ public class FindByPathTest {
         Container root = container();
 
         List<Object> fields = nodes.metadataFields(root);
-        // metadata has version=1.0 and author=test in LinkedHashMap insertion order
-        assertEquals(List.of("1.0", "test"), fields);
+        assertEquals(3, fields.size());
+        assertEquals("1.0", fields.get(0));
+        assertEquals("test", fields.get(1));
+        assertEquals(null, fields.get(2));
+    }
+
+    @Test
+    public void indexUnionReturnsPathOrder() {
+        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        Container root = container();
+
+        assertEquals(List.of("Charlie", "Alice"), nodes.itemNamesByIndexUnion(root));
+    }
+
+    @Test
+    public void nestedWildcardReturnsValuesInNestedOrder() {
+        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        Container root = container();
+
+        assertEquals(List.of(root.items().get(0), root.items().get(1), root.items().get(2)), nodes.allChildren(root));
+        assertEquals(List.of("Alice", "Bob", "Charlie"), nodes.childNames(root));
     }
 
     @Test
@@ -94,13 +124,16 @@ public class FindByPathTest {
     @Test
     public void emptyResultsReturnEmptyList() {
         FindNodes nodes = CompiledNodes.of(FindNodes.class);
-        Container empty = new Container(List.of(), Map.of());
+        Container empty = new Container(List.of(), List.of(), Map.of());
 
         List<String> names = nodes.itemNames(empty);
         assertTrue(names.isEmpty());
 
         List<Object> items = nodes.allItems(empty);
         assertTrue(items.isEmpty());
+
+        List<Object> metadata = nodes.metadataFields(empty);
+        assertTrue(metadata.isEmpty());
     }
 
     @Test
@@ -119,10 +152,16 @@ public class FindByPathTest {
                 new Item("Charlie", 30)
         );
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("version", "1.0");
         metadata.put("author", "test");
+        metadata.put("nullable", null);
         metadata.put("redundant", "ignored");
-        return new Container(items, metadata);
+        metadata.put("version", "1.0");
+        List<Family> families = List.of(
+                new Family("one", List.of(items.get(0), items.get(1))),
+                new Family("empty", List.of()),
+                new Family("two", List.of(items.get(2)))
+        );
+        return new Container(items, families, metadata);
     }
 
 

@@ -687,8 +687,10 @@ public final class Nodes {
     /**
      * Converts a node to target generic type using strict shallow binding.
      * <p>
-     * Generic members are bound eagerly, but branches declared as {@code Object}
-     * or otherwise left untyped may still alias the source graph.
+     * When the captured type has no generic structure, semantics match
+     * {@link #to(Object, Class)}. For parameterized containers/POJOs, generic
+     * members are bound eagerly, but branches declared as {@code Object} or
+     * otherwise left untyped may still alias the source graph.
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Object node, TypeReference<T> type) {
@@ -1349,6 +1351,10 @@ public final class Nodes {
 
     /**
      * Returns the readable key set for an object-like node.
+     * <p>
+     * Map and {@link JsonObject} inputs return their live key views. POJO inputs
+     * return the structural readable-property key view; callers must treat it as
+     * read-only metadata.
      */
     @SuppressWarnings("unchecked")
     public static Set<String> keySetInObject(Object node) {
@@ -1371,6 +1377,10 @@ public final class Nodes {
 
     /**
      * Returns the readable entry set for an object-like node.
+     * <p>
+     * Map and {@link JsonObject} inputs return live entry views. POJO inputs
+     * return a read-only projection of readable properties; modifying returned
+     * entries does not write back to the POJO.
      */
     @SuppressWarnings("unchecked")
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {

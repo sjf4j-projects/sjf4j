@@ -14,7 +14,9 @@ import java.lang.annotation.Target;
  * referenced from the path as {@code {name}} placeholders: {@code String}
  * parameters address object keys and {@code int} parameters address array/list
  * indexes. The method return type must be assignable from the resolved path
- * value type.</p>
+ * value type. When the resolved value type is {@code Object}, generated code
+ * may use strict {@code Nodes.toXxx}, {@code Nodes.to(..., Class)}, or a cached
+ * {@code TypeReference} conversion to satisfy the declared return type.</p>
  *
  * <p>Missing object/array parents return {@code null} for reference return
  * types. Primitive return types cannot represent missing values, so generated

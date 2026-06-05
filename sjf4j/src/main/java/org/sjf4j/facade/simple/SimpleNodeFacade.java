@@ -449,6 +449,9 @@ public class SimpleNodeFacade implements NodeFacade {
 
     // Map -> Map/JsonObject/JOJO/POJO
     private Object _readFromMap(Map<String, Object> oldMap, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        if (!deepCopy && rawClazz == JsonObject.class) {
+            return new JsonObject(oldMap);
+        }
         return _readFromObjectEntries(new EntrySource() {
             @Override
             public int size() {
@@ -618,6 +621,9 @@ public class SimpleNodeFacade implements NodeFacade {
 
     // List -> List/JsonArray/JAJO/Array/Set
     private Object _readFromList(List<?> oldList, Class<?> rawClazz, Type type, boolean deepCopy, PathSegment ps) {
+        if (!deepCopy && rawClazz == JsonArray.class) {
+            return new JsonArray(oldList);
+        }
         return _readFromIndexedSource(new IndexedSource() {
             @Override
             public int size() {

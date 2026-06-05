@@ -7,6 +7,7 @@ import org.sjf4j.processor.GeneratedClass;
 import org.sjf4j.processor.GeneratorUtil;
 import org.sjf4j.processor.NameAllocator;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.SourceWriter;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -71,14 +72,14 @@ public final class FindGenerator {
         if (tryEmitRootFind(method, target, path, returnType, elementType, root)) {
             return;
         }
-        if (tryEmitSimpleWildcardFind(method, target, path, returnType, elementType, root)) {
+        if (tryEmitWildcardFind(method, target, path, returnType, elementType, root)) {
             return;
         }
         if (tryEmitUnionFind(method, target, path, returnType, elementType, root)) {
             return;
         }
 
-        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, one simple wildcard, or one name/index union with static name/index segments is supported");
+        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, wildcard, or one name/index union with static name/index segments is supported");
     }
 
     private boolean tryEmitRootFind(ExecutableElement method, GeneratedClass target, JsonPath path,
@@ -99,97 +100,45 @@ public final class FindGenerator {
         return true;
     }
 
-    private boolean tryEmitSimpleWildcardFind(ExecutableElement method, GeneratedClass target, JsonPath path,
-                                             TypeMirror returnType, TypeMirror elementType, VariableElement root) {
+    private boolean tryEmitWildcardFind(ExecutableElement method, GeneratedClass target, JsonPath path,
+                                        TypeMirror returnType, TypeMirror elementType, VariableElement root) {
         PathSegment[] segments = path.segments();
-        int wildcard = -1;
+        boolean hasWildcard = false;
         for (int i = 1; i < segments.length; i++) {
             PathSegment segment = segments[i];
             if (segment instanceof PathSegment.Wildcard) {
-                if (wildcard >= 0) return false;
-                wildcard = i;
+                hasWildcard = true;
             } else if (!(segment instanceof PathSegment.Name || segment instanceof PathSegment.Index)) {
                 return false;
             }
         }
-        if (wildcard < 0) return false;
+        if (!hasWildcard) return false;
 
         TypeMirror current = root.asType();
-        for (int i = 1; i < wildcard; i++) {
-            current = resolveDirectType(current, segments[i]);
-            if (current == null) return false;
-        }
-        if (!isList(current) && current.getKind() != TypeKind.ARRAY) return false;
-
-        TypeMirror itemType = current.getKind() == TypeKind.ARRAY
-                ? ((ArrayType) current).getComponentType()
-                : GeneratorUtil.listValueType(ctx, current);
-        current = itemType;
-        for (int i = wildcard + 1; i < segments.length; i++) {
-            current = resolveDirectType(current, segments[i]);
-            if (current == null) return false;
+        for (int i = 1; i < segments.length; i++) {
+            if (segments[i] instanceof PathSegment.Wildcard) {
+                if (!isList(current) && current.getKind() != TypeKind.ARRAY) return false;
+                current = current.getKind() == TypeKind.ARRAY
+                        ? ((ArrayType) current).getComponentType()
+                        : GeneratorUtil.listValueType(ctx, current);
+            } else {
+                current = resolveDirectType(current, segments[i]);
+                if (current == null) return false;
+            }
         }
         if (!canAddToResult(current, elementType)) return false;
 
-        if (!canEmitAccesses(root.asType(), segments, 1, wildcard)) return false;
-        if (!canEmitAccesses(itemType, segments, wildcard + 1, segments.length)) return false;
-
-        TypeMirror wildcardContainerType = resolvePrefixContainerType(root.asType(), segments, wildcard);
-        int wildcardIndex = wildcard;
         target.addMethod(out -> {
             NameAllocator names = names(root);
             String outVar = names.local("out");
-            String indexVar = names.local("i");
-            String sizeVar = names.local("n");
-            String itemVar = names.local("item");
             out.line("");
             out.line("@Override");
             out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
                     "(" + GeneratorUtil.typeName(root.asType()) + " " + root.getSimpleName() + ") {");
             out.indent();
             out.line("java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, elementType) + "> " + outVar + " = new java.util.ArrayList<>();");
-
-            String expr = root.getSimpleName().toString();
-            TypeMirror exprType = root.asType();
-            for (int i = 1; i < wildcardIndex; i++) {
-                Access access = access(exprType, expr, segments[i]);
-                if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) return " + outVar + ";");
-                if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) return " + outVar + ";");
-                String name = names.local("v");
-                out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
-                out.line("if (" + name + " == null) return " + outVar + ";");
-                expr = name;
-                exprType = access.type;
-            }
-
-            String itemTypeName = GeneratorUtil.localTypeName(ctx, itemType);
-            if (wildcardContainerType.getKind() == TypeKind.ARRAY) {
-                out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + expr + ".length; " + indexVar + "++) {");
-                out.indent();
-                out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
-            } else {
-                out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".size(); " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
-                out.indent();
-                out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
-            }
-
-            expr = itemVar;
-            exprType = itemType;
-            for (int i = wildcardIndex + 1; i < segments.length; i++) {
-                Access access = access(exprType, expr, segments[i]);
-                boolean last = i == segments.length - 1;
-                if (access.needsReceiverNonNull) out.line("if (" + expr + " == null) continue;");
-                if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) continue;");
-                if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) continue;");
-                String name = names.local("v");
-                out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
-                if (!last) out.line("if (" + name + " == null) continue;");
-                expr = name;
-                exprType = access.type;
-            }
-            out.line(outVar + ".add(" + expr + ");");
-            out.dedent();
-            out.line("}");
+            if (!root.asType().getKind().isPrimitive()) out.line(root.getSimpleName() + ".getClass();");
+            emitWildcardSegments(out, names, outVar, segments, 1, root.getSimpleName().toString(), root.asType(), true, true);
             out.line("return " + outVar + ";");
             out.dedent();
             out.line("}");
@@ -258,17 +207,14 @@ public final class FindGenerator {
         target.addMethod(out -> {
             NameAllocator names = names(root);
             String outVar = names.local("out");
-            String indexVar = names.local("i");
-            String sizeVar = names.local("n");
             String itemVar = names.local("item");
-            String entryVar = names.local("e");
-            String keyVar = names.local("k");
             out.line("");
             out.line("@Override");
             out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
                     "(" + GeneratorUtil.typeName(root.asType()) + " " + root.getSimpleName() + ") {");
             out.indent();
             out.line("java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, elementType) + "> " + outVar + " = new java.util.ArrayList<>();");
+            if (!root.asType().getKind().isPrimitive()) out.line(root.getSimpleName() + ".getClass();");
 
             String expr = root.getSimpleName().toString();
             TypeMirror exprType = root.asType();
@@ -282,45 +228,39 @@ public final class FindGenerator {
                 expr = name;
                 exprType = access.type;
             }
-            if (u == 1 && !exprType.getKind().isPrimitive()) out.line("if (" + expr + " == null) return " + outVar + ";");
-
             if (byIndex) {
-                int max = maxIndex(union.union);
-                if (containerType.getKind() == TypeKind.ARRAY) {
-                    out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".length; " + indexVar + " < " + sizeVar + " && " + indexVar + " <= " + max + "; " + indexVar + "++) {");
-                } else {
-                    out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".size(); " + indexVar + " < " + sizeVar + " && " + indexVar + " <= " + max + "; " + indexVar + "++) {");
-                }
-                out.indent();
-                out.line("if (!(" + indexMatchExpr(indexVar, union.union) + ")) continue;");
                 String itemTypeName = GeneratorUtil.localTypeName(ctx, valueType);
-                if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
-                else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
+                for (PathSegment token : union.union) {
+                    int index = ((PathSegment.Index) token).index;
+                    String limit = containerType.getKind() == TypeKind.ARRAY ? expr + ".length" : expr + ".size()";
+                    out.line("if (" + index + " < " + limit + ") {");
+                    out.indent();
+                    out.line("do {");
+                    out.indent();
+                    if (containerType.getKind() == TypeKind.ARRAY) out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + index + "];");
+                    else out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + index + ");");
+                    emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
+                    out.dedent();
+                    out.line("} while (false);");
+                    out.dedent();
+                    out.line("}");
+                }
             } else {
-                out.line("for (java.util.Map.Entry<String, " + GeneratorUtil.localTypeName(ctx, valueType) + "> " + entryVar + " : " + expr + ".entrySet()) {");
-                out.indent();
-                out.line("String " + keyVar + " = " + entryVar + ".getKey();");
-                out.line("if (!(" + nameMatchExpr(keyVar, union.union) + ")) continue;");
-                out.line(GeneratorUtil.localTypeName(ctx, valueType) + " " + itemVar + " = " + entryVar + ".getValue();");
+                String itemTypeName = GeneratorUtil.localTypeName(ctx, valueType);
+                for (PathSegment token : union.union) {
+                    String key = GeneratorUtil.escape(((PathSegment.Name) token).name);
+                    out.line("if (" + expr + ".containsKey(\"" + key + "\")) {");
+                    out.indent();
+                    out.line("do {");
+                    out.indent();
+                    out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(\"" + key + "\");");
+                    emitStaticSuffix(out, names, outVar, segments, u + 1, itemVar, valueType, "break", false);
+                    out.dedent();
+                    out.line("} while (false);");
+                    out.dedent();
+                    out.line("}");
+                }
             }
-
-            expr = itemVar;
-            exprType = valueType;
-            for (int i = u + 1; i < segments.length; i++) {
-                Access access = access(exprType, expr, segments[i]);
-                boolean last = i == segments.length - 1;
-                if (access.needsReceiverNonNull) out.line("if (" + expr + " == null) continue;");
-                if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) continue;");
-                if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) continue;");
-                String name = names.local("v");
-                out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
-                if (!last) out.line("if (" + name + " == null) continue;");
-                expr = name;
-                exprType = access.type;
-            }
-            out.line(outVar + ".add(" + expr + ");");
-            out.dedent();
-            out.line("}");
             out.line("return " + outVar + ";");
             out.dedent();
             out.line("}");
@@ -328,10 +268,70 @@ public final class FindGenerator {
         return true;
     }
 
-    private TypeMirror resolvePrefixContainerType(TypeMirror root, PathSegment[] segments, int wildcard) {
-        TypeMirror current = root;
-        for (int i = 1; i < wildcard; i++) current = resolveDirectType(current, segments[i]);
-        return current;
+    private void emitWildcardSegments(SourceWriter out, NameAllocator names, String outVar,
+                                      PathSegment[] segments, int index, String expr,
+                                      TypeMirror exprType, boolean topLevel, boolean exprKnownNonNull) {
+        if (index == segments.length) {
+            out.line(outVar + ".add(" + expr + ");");
+            return;
+        }
+
+        PathSegment segment = segments[index];
+        if (segment instanceof PathSegment.Wildcard) {
+            if (!exprKnownNonNull && !exprType.getKind().isPrimitive()) {
+                out.line("if (" + expr + " == null) " + (topLevel ? "return " + outVar : "continue") + ";");
+            }
+            TypeMirror itemType = exprType.getKind() == TypeKind.ARRAY
+                    ? ((ArrayType) exprType).getComponentType()
+                    : GeneratorUtil.listValueType(ctx, exprType);
+            String indexVar = names.local("i");
+            String itemVar = names.local("item");
+            String itemTypeName = GeneratorUtil.localTypeName(ctx, itemType);
+            if (exprType.getKind() == TypeKind.ARRAY) {
+                out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + expr + ".length; " + indexVar + "++) {");
+                out.indent();
+                out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
+            } else {
+                String sizeVar = names.local("n");
+                out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".size(); " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
+                out.indent();
+                out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
+            }
+            emitWildcardSegments(out, names, outVar, segments, index + 1, itemVar, itemType, false, false);
+            out.dedent();
+            out.line("}");
+            return;
+        }
+
+        Access access = access(exprType, expr, segment);
+        boolean last = index == segments.length - 1;
+        String miss = topLevel ? "return " + outVar : "continue";
+        if (!exprKnownNonNull && access.needsReceiverNonNull) out.line("if (" + expr + " == null) " + miss + ";");
+        if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) " + miss + ";");
+        if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) " + miss + ";");
+        String name = names.local("v");
+        out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
+        if (!last) out.line("if (" + name + " == null) " + miss + ";");
+        emitWildcardSegments(out, names, outVar, segments, index + 1, name, access.type, topLevel, !last);
+    }
+
+    private void emitStaticSuffix(SourceWriter out, NameAllocator names, String outVar,
+                                  PathSegment[] segments, int index, String expr, TypeMirror exprType,
+                                  String miss, boolean exprKnownNonNull) {
+        for (int i = index; i < segments.length; i++) {
+            Access access = access(exprType, expr, segments[i]);
+            boolean last = i == segments.length - 1;
+            if (!exprKnownNonNull && access.needsReceiverNonNull) out.line("if (" + expr + " == null) " + miss + ";");
+            if (access.boundsCheck != null) out.line("if (!(" + access.boundsCheck + ")) " + miss + ";");
+            if (access.presentCheck != null) out.line("if (!(" + access.presentCheck + ")) " + miss + ";");
+            String name = names.local("v");
+            out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
+            if (!last) out.line("if (" + name + " == null) " + miss + ";");
+            expr = name;
+            exprType = access.type;
+            exprKnownNonNull = !last;
+        }
+        out.line(outVar + ".add(" + expr + ");");
     }
 
     private TypeMirror resolveDirectType(TypeMirror current, PathSegment segment) {
@@ -400,33 +400,6 @@ public final class FindGenerator {
         if (args.size() != 2) return false;
         TypeMirror stringType = ctx.elements.getTypeElement(String.class.getName()).asType();
         return ctx.types.isSameType(ctx.types.erasure(args.get(0)), ctx.types.erasure(stringType));
-    }
-
-    private int maxIndex(PathSegment[] union) {
-        int max = 0;
-        for (PathSegment token : union) {
-            int index = ((PathSegment.Index) token).index;
-            if (index > max) max = index;
-        }
-        return max;
-    }
-
-    private String indexMatchExpr(String var, PathSegment[] union) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < union.length; i++) {
-            if (i > 0) sb.append(" || ");
-            sb.append(var).append(" == ").append(((PathSegment.Index) union[i]).index);
-        }
-        return sb.toString();
-    }
-
-    private String nameMatchExpr(String var, PathSegment[] union) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < union.length; i++) {
-            if (i > 0) sb.append(" || ");
-            sb.append("\"").append(GeneratorUtil.escape(((PathSegment.Name) union[i]).name)).append("\".equals(").append(var).append(")");
-        }
-        return sb.toString();
     }
 
     private boolean isList(TypeMirror type) {

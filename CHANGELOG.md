@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Breaking Changes
+- Renamed the optional bytecode accelerator artifact from `sjf4j-bytecode` to `sjf4j-asm`; compiled-path runtime API types now live under `org.sjf4j.compiled`, while the ASM provider remains under `org.sjf4j.asm`.
 - Renamed path and node mutation helpers to make their write semantics explicit:
   - `JsonPath.isSingle()` -> `isSinglePut()`.
   - `JsonPath.putIfPresent(...)` -> `putIfParentPresentByPath(...)`.
@@ -22,16 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Nodes.accessInObject(...)` / `accessInArray(...)` -> `getAccessInObject(...)` / `getAccessInArray(...)` for read paths and `putAccessInObject(...)` / `putAccessInArray(...)` for write/auto-create paths.
   - Matching `FacadeNodes`, Jackson 2, Jackson 3, and Gson facade helpers use the same `getAccess*` / `putAccess*` naming.
 - Removed the map-style `JsonObject.putNonNull(...)`, `JsonObject.putIfAbsent(...)`, `JsonObject.replace(key, value)`, and matching builder helpers.
+- Kept the generated schema-validator prototype incubator-only: `@CompiledSchemaValidator` and `@ValidatorOptions` are no longer part of the main published source set.
 
 ### Added
-- Added the `sjf4j-processor` annotation processor module.
-- Added compiled path annotations backed by direct `PathGenerator` code generation:
+- Added the `sjf4j-processor` annotation processor module for compile-time path and mapper generators, plus `org.sjf4j.compiled.CompiledNodes.of(...)` for loading generated implementations.
+- Added `@CompiledPath` interfaces with compiled path annotations backed by direct generated Java code:
   - `@GetByPath` for typed single-path reads over object names, array indexes, and dynamic `String` key / `int` index parameters.
+  - `@FindByPath` for supported multi-target reads over root, one wildcard, or one static name/index union, returning `List<T>` without runtime path evaluation.
   - `@PutByPath` for single-path writes that require the final parent to exist and return the previous value when available.
   - `@PutIfParentPresentByPath` for writes that return `null` instead of failing when the final parent is missing.
   - `@EnsurePutByPath` for writes that auto-create missing intermediate containers with direct generated allocations.
   - `@EnsurePutIfAbsentByPath` for ensure-style writes that only replace absent or `null` final values and return existing non-null values unchanged.
-- Added direct `@CompiledMapper` code generation for bean, field, record, and constructor targets, including rename, ignore, inline compute, helper compute, JSONPath/JSON Pointer source paths, dotted map-key sources, and multi-source bean mapping.
+- Added direct `@CompiledMapper` code generation for bean, field, record, constructor, and in-place update targets, including rename, ignore, inline compute, helper compute, JSONPath/JSON Pointer source paths, dotted map-key sources, and multi-source mapping.
+- Added mapper target-path support with strict `@Mapping`, skip-if-parent-missing `@MappingIfParentPresent`, and ensure-parent `@EnsureMapping` variants, including nested mapper conversion for object, collection, and map targets.
+- Added mapper collection/map update controls through `MapperOptions`, `ArrayPolicy`, `ObjectPolicy`, and per-mapping overrides.
+- Added incubator-only compiled schema-validator generation for `@ValidJsonSchema` POJOs, including boolean/void/result return modes, local-plan fallback, selected keyword fast paths, `$ref` handling, and strict-format options.
 - `Nodes.Access.present` so read access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
 - `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
 
@@ -39,18 +45,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `JsonPath` now tracks single-get, single-put, and single-eval paths separately, enabling direct fast paths for single-target `find(...)`, typed `find(...)`, `eval(...)`, and `compute(...)` calls.
 - `JsonPath` now uses read-specific access metadata for traversal, preserving present-`null` matches without a separate contains lookup on each segment.
 - Path function literal arguments are resolved when the path segment is created instead of on every evaluation.
-- Compiled ensure-path generation now creates intermediate `Map`/`List`/`JsonObject`/`JsonArray`/POJO containers with direct `new` expressions and reports unsupported or no-default-constructor intermediate types at annotation-processing time.
-- `@CompiledMapper` generated code now reuses direct source reads and common path prefixes within each mapping method, avoids unnecessary Map/List casts and primitive boxing in local temps, and emits cleaner null/index guards without fallback helpers.
+- Compiled path generation now creates intermediate `Map`/`List`/`JsonObject`/`JsonArray`/POJO containers with direct `new` expressions and reports unsupported or no-default-constructor intermediate types at annotation-processing time.
+- Generated path and mapper source now uses centralized import collection and name allocation for cleaner, more collision-resistant `_Impl` classes.
+- `@CompiledMapper` generated code now reuses direct source reads and common path prefixes within each mapping method, avoids unnecessary Map/List casts and primitive boxing in local temps, emits cleaner null/index guards without fallback helpers, and groups path reads for both `SET` and `IGNORE` null policies.
+- `@CompiledMapper` now honors SJF4J `@NodeProperty`, Jackson 2/3 `@JsonProperty`, and Fastjson2 `@JSONField` names during generated auto-mapping without adding runtime dependencies.
+- `NullValuePolicy.IGNORE` now skips missing/null source path leaves while still allowing create/update methods to produce targets and nested target containers when non-null data is available.
 - `@CompiledMapper` diagnostics now use clearer action-oriented messages for invalid mapping targets, type mismatches, multi-source qualification, compute helpers, and source-path errors.
 - `JsonPath.ensurePutIfAbsent(...)` now treats `null` as absent, returns the existing non-null value when no write occurs, fills null array slots, and appends when an indexed target equals the current array size.
 - Typed `JsonPath.getMap(...)`, `getList(...)`, `getArray(...)`, and `getSet(...)` now use strict conversion instead of lenient conversion.
-- Updated `sjf4j-bytecode` and `sjf4j-schema` publishing metadata descriptions for their split module roles.
+- Updated processor, ASM, and schema module metadata/descriptions for their split module roles.
 
 ### Fixed
 - Preserved present-`null` JSONPath matches while still omitting truly missing locations from `find(...)` results.
 - Fixed JSONPath root `contains(...)` handling and parent-missing checks for put/add/replace/remove-style writes.
 - Fixed `Nodes.to(..., TypeReference)` shallow generic binding and `Sjf4j.fromNode(..., TypeReference)` deep generic binding when source values already match the target raw type.
 - Fixed `@CompiledMapper` nullable/path sources targeting primitive properties so generated Java code is allowed to compile and uses normal runtime unboxing semantics.
+- Fixed generated mapper handling for mixed structural sources (`Map`, `JsonObject`, `JsonArray`, arrays/lists/sets, and JOJO dynamic entries) and nested mapper conversions across collection and map values.
 
 
 ## [1.3.0] - 2026.05.22

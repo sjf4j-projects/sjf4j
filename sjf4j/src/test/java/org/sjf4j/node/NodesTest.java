@@ -205,6 +205,52 @@ public class NodesTest {
     }
 
     @Test
+    public void testNonGenericTypeReferenceMatchesClassConversion() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("key", "value");
+        JsonObject byClass = Nodes.to(map, JsonObject.class);
+        JsonObject byTypeReference = Nodes.to(map, new TypeReference<JsonObject>() {});
+        map.put("later", 2);
+
+        assertEquals("value", byClass.getString("key"));
+        assertEquals("value", byTypeReference.getString("key"));
+        assertEquals(2, byClass.getInt("later"));
+        assertEquals(2, byTypeReference.getInt("later"));
+
+        List<Object> list = new ArrayList<>();
+        list.add(1);
+        JsonArray arrayByClass = Nodes.to(list, JsonArray.class);
+        JsonArray arrayByTypeReference = Nodes.to(list, new TypeReference<JsonArray>() {});
+        list.add(2);
+
+        assertEquals(2, arrayByClass.size());
+        assertEquals(2, arrayByTypeReference.size());
+        assertEquals(2, arrayByClass.getInt(1));
+        assertEquals(2, arrayByTypeReference.getInt(1));
+    }
+
+    @Test
+    public void testBindNodeWrapsJsonContainersButFromNodeDetaches() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("key", "value");
+        JsonObject shallowObject = Sjf4j.global().bindNode(map, JsonObject.class);
+        JsonObject deepObject = Sjf4j.global().fromNode(map, JsonObject.class);
+        map.put("later", 2);
+
+        assertEquals(2, shallowObject.getInt("later"));
+        assertFalse(deepObject.containsKey("later"));
+
+        List<Object> list = new ArrayList<>();
+        list.add(1);
+        JsonArray shallowArray = Sjf4j.global().bindNode(list, JsonArray.class);
+        JsonArray deepArray = Sjf4j.global().fromNode(list, JsonArray.class);
+        list.add(2);
+
+        assertEquals(2, shallowArray.size());
+        assertEquals(1, deepArray.size());
+    }
+
+    @Test
     public void testToArray1() {
         String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
