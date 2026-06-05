@@ -78,8 +78,6 @@ public final class GeneratedClass {
             out.line("");
             out.line("public final class " + simpleName + " implements " + originName + " {");
             out.indent();
-            out.line("public static final " + originName + " INSTANCE = new " + simpleName + "();");
-            out.line("");
 
             for (GeneratedMember field : fields) field.emit(out);
             if (!fields.isEmpty()) out.line("");

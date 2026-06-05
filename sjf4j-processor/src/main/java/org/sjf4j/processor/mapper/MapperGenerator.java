@@ -341,6 +341,8 @@ public final class MapperGenerator {
 
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
+        ArrayPolicy defaultArrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
+        ObjectPolicy defaultObjectPolicy = cfg == null ? ObjectPolicy.PUT : cfg.objects();
         Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, params.get(0).asType(), true, nulls);
         if (pathValues == null) return;
         Map<String, MapperModel.Expr> values = new LinkedHashMap<String, MapperModel.Expr>();
@@ -355,7 +357,9 @@ public final class MapperGenerator {
 
             TypeMirror need = plan.writes.get(name).type;
             String nestedMapper = nestedMappers.get(name) == null ? "" : nestedMappers.get(name);
-            boolean inPlace = _inPlaceContainer(method, target, e.type, need, arrayPolicies.get(name), objectPolicies.get(name), nestedMapper);
+            ArrayPolicy arrayPolicy = arrayPolicies.get(name) == null ? defaultArrayPolicy : arrayPolicies.get(name);
+            ObjectPolicy objectPolicy = objectPolicies.get(name) == null ? defaultObjectPolicy : objectPolicies.get(name);
+            boolean inPlace = _inPlaceContainer(method, target, e.type, need, arrayPolicy, objectPolicy, nestedMapper);
             if (inPlace) {
                 if (!_validateContainerMapping(iface, method, target, e.type, need, nestedMapper)) return;
             } else {
@@ -384,12 +388,14 @@ public final class MapperGenerator {
             if (e == null) continue;
             MapperModel.ContainerType to = _container(plan.writes.get(name).type);
             if (to == null) continue;
-            if ((to.map || arrayPolicies.containsKey(name)) && !targetReads.containsKey(name) && plan.writes.get(name).setter != null) {
+            boolean needsReadable = to.map || (!to.map && (arrayPolicies.containsKey(name) || defaultArrayPolicy != ArrayPolicy.SET));
+            if (needsReadable && !targetReads.containsKey(name) && plan.writes.get(name).setter != null) {
                 _error(method, target, "Cannot update target property '" + name + "' in place: setter-only target has no readable collection/map");
                 return;
             }
         }
-        target.addMethod(out -> _emitUpdate(out, method, params.get(0), sources, multi, state, plan, values, pathValues, nulls, arrayPolicies, objectPolicies, targetReads, nestedMappers, iface, target));
+        target.addMethod(out -> _emitUpdate(out, method, params.get(0), sources, multi, state, plan, values, pathValues, nulls,
+                defaultArrayPolicy, defaultObjectPolicy, arrayPolicies, objectPolicies, targetReads, nestedMappers, iface, target));
     }
 
     private void _genContainerCreate(TypeElement iface, ExecutableElement method, GeneratedClass target, MapperModel.ContainerType to) {
@@ -462,8 +468,7 @@ public final class MapperGenerator {
             String s = source.getSimpleName().toString();
             out.line("if (" + s + " == null) return;");
             if (to.map) {
-                if (objectPolicy == ObjectPolicy.CLEAR_PUT) out.line(t + ".clear();");
-                _emitContainerCopy(out, from, to, conv, t, s, objectPolicy, names);
+                _emitContainerUpdate(out, iface, method, target, from, to, nestedMapper, t, s, arrayPolicy, objectPolicy, names);
             } else {
                 if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line(t + ".clear();");
                 _emitContainerCopy(out, from, to, conv, t, s, names);
@@ -1018,6 +1023,7 @@ public final class MapperGenerator {
 
     private void _emitUpdate(SourceWriter out, ExecutableElement method, VariableElement targetParam, List<MapperModel.SourceParam> sources,
                              boolean multi, MethodState state, MapperModel.Plan plan, Map<String, MapperModel.Expr> values, Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues, NullValuePolicy nulls,
+                             ArrayPolicy defaultArrayPolicy, ObjectPolicy defaultObjectPolicy,
                              Map<String, ArrayPolicy> arrayPolicies, Map<String, ObjectPolicy> objectPolicies, Map<String, MapperModel.Read> targetReads,
                               Map<String, String> nestedMappers, TypeElement iface, GeneratedClass genTarget) {
         out.line("");
@@ -1052,13 +1058,16 @@ public final class MapperGenerator {
             MapperModel.Write w = plan.writes.get(name);
             MapperModel.ContainerType to = _container(w.type);
             if (to != null && to.map) {
+                ArrayPolicy arrayPolicy = arrayPolicies.get(name) == null ? defaultArrayPolicy : arrayPolicies.get(name);
+                ObjectPolicy objectPolicy = objectPolicies.get(name) == null ? defaultObjectPolicy : objectPolicies.get(name);
                 _emitObjectField(out, iface, method, genTarget, state, targetName, name, w, targetReads.get(name), e,
-                        nestedMappers.get(name) == null ? "" : nestedMappers.get(name), objectPolicies.get(name) == null ? ObjectPolicy.PUT : objectPolicies.get(name));
+                        nestedMappers.get(name) == null ? "" : nestedMappers.get(name), arrayPolicy, objectPolicy, nulls);
                 continue;
             }
-            if (arrayPolicies.containsKey(name)) {
+            if (to != null && !to.map && (arrayPolicies.containsKey(name) || defaultArrayPolicy != ArrayPolicy.SET)) {
+                ArrayPolicy arrayPolicy = arrayPolicies.get(name) == null ? defaultArrayPolicy : arrayPolicies.get(name);
                 _emitArrayField(out, iface, method, genTarget, state, targetName, name, w, targetReads.get(name), e,
-                        nestedMappers.get(name) == null ? "" : nestedMappers.get(name), arrayPolicies.get(name));
+                        nestedMappers.get(name) == null ? "" : nestedMappers.get(name), arrayPolicy, nulls);
                 continue;
             }
             String assign = w.setter != null
@@ -1724,6 +1733,16 @@ public final class MapperGenerator {
             return null;
         }
         if ((nestedMapper == null || nestedMapper.length() == 0) && _assignable(from.value, to.value)) return new MapperModel.Converter(null, to.value);
+        MapperModel.ContainerType nestedFrom = _container(from.value);
+        MapperModel.ContainerType nestedTo = _container(to.value);
+        if (nestedFrom != null && nestedTo != null && nestedFrom.map == nestedTo.map) {
+            MapperModel.Converter nestedConv = _containerConverter(iface, method, target, nestedFrom, nestedTo, nestedMapper);
+            if (nestedConv == null) return null;
+            String impl = _implType(method, target, nestedTo);
+            if (impl == null) return null;
+            String helper = _ensureContainerHelper(target, nestedFrom, nestedTo, nestedConv, impl, to.value);
+            return new MapperModel.Converter(helper, to.value);
+        }
         return _resolveConverter(iface, method, target, from.value, to.value, nestedMapper);
     }
 
@@ -1789,6 +1808,87 @@ public final class MapperGenerator {
                 out.line("}");
         }
             out.line("return " + targetVar + ";");
+            out.dedent();
+            out.line("}");
+        });
+        return helper;
+    }
+
+    private String _containerUpdateHelper(TypeElement iface, ExecutableElement method, GeneratedClass target,
+                                          TypeMirror fromType, TypeMirror toType, String nestedMapper,
+                                          ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy) {
+        MapperModel.ContainerType from = _container(fromType);
+        MapperModel.ContainerType to = _container(toType);
+        if (from == null || to == null || from.map != to.map) return null;
+        if (!to.map && arrayPolicy == ArrayPolicy.SET) return null;
+        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
+        if (conv == null) return null;
+        String nestedUpdate = null;
+        if (to.map && objectPolicy == ObjectPolicy.PUT) {
+            nestedUpdate = _containerUpdateHelper(iface, method, target, from.value, to.value, nestedMapper, arrayPolicy, objectPolicy);
+        }
+        return _ensureContainerUpdateHelper(target, from, to, conv, nestedUpdate, arrayPolicy, objectPolicy);
+    }
+
+    private String _ensureContainerUpdateHelper(GeneratedClass target, MapperModel.ContainerType from, MapperModel.ContainerType to, MapperModel.Converter conv,
+                                                String nestedUpdateHelper, ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy) {
+        String key = "containerUpdate:" + from.mirror + "->" + to.mirror + ":" + arrayPolicy + ":" + objectPolicy + ":"
+                + (conv.method == null ? "" : conv.method) + ":" + (nestedUpdateHelper == null ? "" : nestedUpdateHelper);
+        String existing = generation.helpers.get(key);
+        if (existing != null) return existing;
+        String helper = generation.helperName("ContainerUpdate");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> {
+            NameAllocator names = new NameAllocator();
+            names.reserve("target");
+            names.reserve("source");
+            out.line("");
+            out.line("private void " + helper + "(" + to.mirror + " target, " + from.mirror + " source) {");
+            out.indent();
+            out.line("if (source == null) return;");
+            if (to.map) {
+                if (objectPolicy == ObjectPolicy.CLEAR_PUT) out.line("target.clear();");
+                String entry = names.prefixed("s", "entry");
+                out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> " + entry + " : source.entrySet()) {");
+                out.indent();
+                if (objectPolicy == ObjectPolicy.PUT_IF_ABSENT) {
+                    out.line("if (!target.containsKey(" + entry + ".getKey()) || target.get(" + entry + ".getKey()) == null) {");
+                    out.indent();
+                    String value = names.prefixed("s", "value");
+                    out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                    out.line("target.put(" + entry + ".getKey(), " + value + ");");
+                    out.dedent();
+                    out.line("}");
+                } else if (nestedUpdateHelper != null) {
+                    String existingValue = names.prefixed("t", "value");
+                    out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + existingValue + " = target.get(" + entry + ".getKey());");
+                    out.line("if (" + existingValue + " != null && " + entry + ".getValue() != null) {");
+                    out.indent();
+                    out.line(nestedUpdateHelper + "(" + existingValue + ", " + entry + ".getValue());");
+                    out.dedent();
+                    out.line("} else {");
+                    out.indent();
+                    String value = names.prefixed("s", "value");
+                    out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                    out.line("target.put(" + entry + ".getKey(), " + value + ");");
+                    out.dedent();
+                    out.line("}");
+                } else {
+                    String value = names.prefixed("s", "value");
+                    out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                    out.line("target.put(" + entry + ".getKey(), " + value + ");");
+                }
+                out.dedent();
+                out.line("}");
+            } else {
+                if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line("target.clear();");
+                String value = names.prefixed("s", "value");
+                out.line("for (" + GeneratorUtil.localTypeName(ctx, from.value) + " " + value + " : source) {");
+                out.indent();
+                out.line("target.add(" + _convertValue(conv, value) + ");");
+                out.dedent();
+                out.line("}");
+            }
             out.dedent();
             out.line("}");
         });
@@ -2158,12 +2258,62 @@ public final class MapperGenerator {
         }
     }
 
+    private void _emitContainerUpdate(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass targetClass,
+                                      MapperModel.ContainerType from, MapperModel.ContainerType to, String nestedMapper,
+                                      String target, String source, ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy, NameAllocator names) {
+        MapperModel.Converter conv = _containerConverter(iface, method, targetClass, from, to, nestedMapper);
+        if (conv == null) return;
+        String updateHelper = null;
+        if (to.map && objectPolicy == ObjectPolicy.PUT) {
+            updateHelper = _containerUpdateHelper(iface, method, targetClass, from.value, to.value, nestedMapper, arrayPolicy, objectPolicy);
+        }
+        if (to.map) {
+            if (objectPolicy == ObjectPolicy.CLEAR_PUT) out.line(target + ".clear();");
+            String entry = names.prefixed("s", "entry");
+            out.line("for (java.util.Map.Entry<" + GeneratorUtil.localTypeName(ctx, from.key) + ", " + GeneratorUtil.localTypeName(ctx, from.value) + "> " + entry + " : " + source + ".entrySet()) {");
+            out.indent();
+            if (objectPolicy == ObjectPolicy.PUT_IF_ABSENT) {
+                out.line("if (!" + target + ".containsKey(" + entry + ".getKey()) || " + target + ".get(" + entry + ".getKey()) == null) {");
+                out.indent();
+                String value = names.prefixed("s", "value");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                out.line(target + ".put(" + entry + ".getKey(), " + value + ");");
+                out.dedent();
+                out.line("}");
+            } else if (updateHelper != null) {
+                String existing = names.prefixed("t", "value");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + existing + " = " + target + ".get(" + entry + ".getKey());");
+                out.line("if (" + existing + " != null && " + entry + ".getValue() != null) {");
+                out.indent();
+                out.line(updateHelper + "(" + existing + ", " + entry + ".getValue());");
+                out.dedent();
+                out.line("} else {");
+                out.indent();
+                String value = names.prefixed("s", "value");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                out.line(target + ".put(" + entry + ".getKey(), " + value + ");");
+                out.dedent();
+                out.line("}");
+            } else {
+                String value = names.prefixed("s", "value");
+                out.line(GeneratorUtil.localTypeName(ctx, to.value) + " " + value + " = " + _convertValue(conv, entry + ".getValue()") + ";");
+                out.line(target + ".put(" + entry + ".getKey(), " + value + ");");
+            }
+            out.dedent();
+            out.line("}");
+            return;
+        }
+        if (arrayPolicy == ArrayPolicy.CLEAR_ADD) out.line(target + ".clear();");
+        _emitContainerCopy(out, from, to, conv, target, source, names);
+    }
+
     private String _convertValue(MapperModel.Converter conv, String value) {
         return conv.method == null ? value : conv.method + "(" + value + ")";
     }
 
     private void _emitArrayField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                  MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper, ArrayPolicy policy) {
+                                  MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper,
+                                  ArrayPolicy policy, NullValuePolicy nulls) {
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(w.type);
         if (from == null || to == null || from.map || to.map) {
@@ -2188,19 +2338,26 @@ public final class MapperGenerator {
         if (policy == ArrayPolicy.CLEAR_ADD) out.line(access + ".clear();");
         _emitContainerCopy(out, from, to, conv, access, source, state.names);
         out.dedent();
+        if (nulls == NullValuePolicy.SET) {
+            out.line("} else {");
+            out.indent();
+            out.line(w.setter != null
+                    ? targetName + "." + w.setter.getSimpleName() + "(null);"
+                    : targetName + "." + w.javaName + " = null;");
+            out.dedent();
+        }
         out.line("}");
     }
 
     private void _emitObjectField(SourceWriter out, TypeElement iface, ExecutableElement method, GeneratedClass target,
-                                   MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper, ObjectPolicy policy) {
+                                    MethodState state, String targetName, String name, MapperModel.Write w, MapperModel.Read read, MapperModel.Expr e, String nestedMapper,
+                                    ArrayPolicy arrayPolicy, ObjectPolicy policy, NullValuePolicy nulls) {
         MapperModel.ContainerType from = _container(e.type);
         MapperModel.ContainerType to = _container(w.type);
         if (from == null || to == null || !from.map || !to.map) {
             out.line("// unsupported object mapping; processor validation should have rejected this");
             return;
         }
-        MapperModel.Converter conv = _containerConverter(iface, method, target, from, to, nestedMapper);
-        if (conv == null) return;
         String access = read == null ? targetName + "." + w.javaName : (read.method == null ? targetName + "." + read.javaName : targetName + "." + read.method.getSimpleName() + "()");
         String source = e.code;
         if (!e.local) {
@@ -2214,9 +2371,16 @@ public final class MapperGenerator {
         } else if (read != null && read.method == null) {
             out.line("if (" + access + " == null) " + access + " = " + _newContainer(_implType(method, target, to), to, source + ".size()") + ";");
         }
-        if (policy == ObjectPolicy.CLEAR_PUT) out.line(access + ".clear();");
-        _emitContainerCopy(out, from, to, conv, access, source, policy, state.names);
+        _emitContainerUpdate(out, iface, method, target, from, to, nestedMapper, access, source, arrayPolicy, policy, state.names);
         out.dedent();
+        if (nulls == NullValuePolicy.SET) {
+            out.line("} else {");
+            out.indent();
+            out.line(w.setter != null
+                    ? targetName + "." + w.setter.getSimpleName() + "(null);"
+                    : targetName + "." + w.javaName + " = null;");
+            out.dedent();
+        }
         out.line("}");
     }
 
@@ -2228,7 +2392,7 @@ public final class MapperGenerator {
 
     private boolean _assignable(TypeMirror from, TypeMirror to) {
         if (from == null) return true;
-        return GeneratorUtil.isAssignableBoxed(ctx, from, to);
+        return GeneratorUtil.isAssignableBoxedGeneric(ctx, from, to);
     }
 
     private boolean _isRecord(TypeElement t) {

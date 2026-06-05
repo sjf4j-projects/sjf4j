@@ -58,6 +58,11 @@ public final class PathGenerator {
      * Generates an implementation for one {@code @CompiledPath} interface.
      */
     public void generate(TypeElement iface) {
+        if (!iface.getTypeParameters().isEmpty()) {
+            ctx.error(iface, "@CompiledPath interfaces cannot declare type parameters");
+            return;
+        }
+
         GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
 
         for (Element member : iface.getEnclosedElements()) {
@@ -66,6 +71,10 @@ public final class PathGenerator {
             ExecutableElement method = (ExecutableElement) member;
             Set<Modifier> mods = method.getModifiers();
             if (mods.contains(Modifier.DEFAULT) || mods.contains(Modifier.STATIC)) continue;
+            if (!method.getTypeParameters().isEmpty()) {
+                ctx.error(method, "@CompiledPath methods cannot declare type parameters");
+                return;
+            }
 
             String generatedAnno = null;
             GetByPath get = method.getAnnotation(GetByPath.class);
@@ -184,10 +193,9 @@ public final class PathGenerator {
         }
         TypeMirror finalType = current;
 
-        GetReturnConversion returnConversion = _resolveGetReturnConversion(method, target, finalType, method.getReturnType());
-        if (returnConversion == null) return;
+        if (!_validateGetReturnAssignable(method, target, finalType, method.getReturnType())) return;
 
-        target.addMethod(out -> _emitMethodGet(out, method, root, pathParams, path, finalType, returnConversion));
+        target.addMethod(out -> _emitMethodGet(out, method, root, pathParams, path));
     }
 
     /**
@@ -398,14 +406,10 @@ public final class PathGenerator {
         return false;
     }
 
-    private GetReturnConversion _resolveGetReturnConversion(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
-        if (_isAssignableBoxed(from, to)) return GetReturnConversion.DIRECT;
-        if (GeneratorUtil.isObject(ctx, from)) {
-            GetReturnConversion conversion = _getObjectReturnConversion(method, target, to);
-            if (conversion != null) return conversion;
-        }
+    private boolean _validateGetReturnAssignable(ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        if (_isAssignableBoxed(from, to)) return true;
         _error(method, target, "@GetByPath return type mismatch: cannot assign " + from + " to " + to);
-        return null;
+        return false;
     }
 
     private void _error(Element element, GeneratedClass target, String message) {
@@ -665,7 +669,7 @@ public final class PathGenerator {
      */
     private void _emitMethodGet(SourceWriter out, ExecutableElement method, VariableElement root,
                                  Map<String, VariableElement> pathParams,
-                                 JsonPath path, TypeMirror finalType, GetReturnConversion returnConversion) {
+                                 JsonPath path) {
         PathNameScope scope = _pathNameScope(method, root, null, pathParams);
         out.line("");
         out.line("@Override");
@@ -695,162 +699,13 @@ public final class PathGenerator {
             currentVar = nextVar;
         }
 
-        _emitGetReturn(out, method, path, finalType, currentVar, returnConversion);
+        _emitGetReturn(out, currentVar);
         out.dedent();
         out.line("}");
     }
 
-    private void _emitGetReturn(SourceWriter out, ExecutableElement method, JsonPath path, TypeMirror finalType,
-                                String currentVar, GetReturnConversion conversion) {
-        TypeMirror returnType = method.getReturnType();
-        if (conversion.direct) {
-            out.line("return " + currentVar + ";");
-            return;
-        }
-        if (returnType.getKind().isPrimitive()) {
-            out.line("if (" + currentVar + " == null) " + _nullReturn(method, path));
-        }
-        out.line("return " + conversion.expr(currentVar) + ";");
-    }
-
-    private GetReturnConversion _getObjectReturnConversion(ExecutableElement method, GeneratedClass target, TypeMirror type) {
-        switch (type.getKind()) {
-            case BOOLEAN:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toBoolean(");
-            case BYTE:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toByte(");
-            case SHORT:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toShort(");
-            case INT:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toInt(");
-            case LONG:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toLong(");
-            case CHAR:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toChar(");
-            case FLOAT:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toFloat(");
-            case DOUBLE:
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toDouble(");
-            case ARRAY:
-                return GetReturnConversion.toClass(GeneratorUtil.classLiteral(ctx, type));
-            default:
-                break;
-        }
-
-        if (type.getKind() != TypeKind.DECLARED) return null;
-
-        String erasure = ctx.types.erasure(type).toString();
-        switch (erasure) {
-            case "java.lang.String":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toString(");
-            case "java.lang.Character":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toChar(");
-            case "java.lang.Boolean":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toBoolean(");
-            case "java.lang.Byte":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toByte(");
-            case "java.lang.Short":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toShort(");
-            case "java.lang.Integer":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toInt(");
-            case "java.lang.Long":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toLong(");
-            case "java.lang.Float":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toFloat(");
-            case "java.lang.Double":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toDouble(");
-            case "java.lang.Number":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toNumber(");
-            case "java.math.BigInteger":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toBigInteger(");
-            case "java.math.BigDecimal":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toBigDecimal(");
-            case "org.sjf4j.JsonObject":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toJsonObject(");
-            case "org.sjf4j.JsonArray":
-                return GetReturnConversion.of("org.sjf4j.node.Nodes.toJsonArray(");
-            default:
-                break;
-        }
-
-        TypeElement element = GeneratorUtil.asTypeElement(type);
-        if (element == null) return null;
-        if (element.getKind() == ElementKind.ENUM) {
-            return GetReturnConversion.toEnum(GeneratorUtil.classLiteral(ctx, type));
-        }
-        DeclaredType declared = (DeclaredType) type;
-        if (declared.getTypeArguments().isEmpty()) {
-            return GetReturnConversion.toClass(GeneratorUtil.classLiteral(ctx, type));
-        }
-        if (_supportsTypeReference(declared)) {
-            String fieldName = _typeRefFieldName(method, type);
-            target.addField(out -> out.line("private static final org.sjf4j.node.TypeReference<" +
-                    GeneratorUtil.typeName(type) + "> " + fieldName +
-                    " = new org.sjf4j.node.TypeReference<" + GeneratorUtil.typeName(type) + ">() {};"));
-            return GetReturnConversion.toTypeReference(fieldName);
-        }
-        return null;
-    }
-
-    private boolean _supportsTypeReference(DeclaredType type) {
-        String erasure = ctx.types.erasure(type).toString();
-        if (erasure.equals("java.util.List") || erasure.equals("java.util.Set")) {
-            List<? extends TypeMirror> args = type.getTypeArguments();
-            return args.size() == 1 && _isSimpleTypeReferenceArgument(args.get(0));
-        }
-        if (erasure.equals("java.util.Map")) {
-            List<? extends TypeMirror> args = type.getTypeArguments();
-            return args.size() == 2 && _isStringType(args.get(0)) && _isSimpleTypeReferenceArgument(args.get(1));
-        }
-        return false;
-    }
-
-    private boolean _isSimpleTypeReferenceArgument(TypeMirror type) {
-        if (type.getKind() == TypeKind.ARRAY) return true;
-        if (type.getKind() != TypeKind.DECLARED) return false;
-        return ((DeclaredType) type).getTypeArguments().isEmpty();
-    }
-
-    private boolean _isStringType(TypeMirror type) {
-        return type.getKind() == TypeKind.DECLARED && ctx.types.erasure(type).toString().equals("java.lang.String");
-    }
-
-    private static String _typeRefFieldName(ExecutableElement method, TypeMirror type) {
-        return "TYPE_" + method.getSimpleName() + "_" + Integer.toHexString((method.toString() + ":" + type).hashCode());
-    }
-
-    private static final class GetReturnConversion {
-        static final GetReturnConversion DIRECT = new GetReturnConversion(true, null, null);
-
-        final boolean direct;
-        final String prefix;
-        final String suffix;
-
-        private GetReturnConversion(boolean direct, String prefix, String suffix) {
-            this.direct = direct;
-            this.prefix = prefix;
-            this.suffix = suffix;
-        }
-
-        static GetReturnConversion of(String prefix) {
-            return new GetReturnConversion(false, prefix, ")");
-        }
-
-        static GetReturnConversion toClass(String classLiteral) {
-            return new GetReturnConversion(false, "org.sjf4j.node.Nodes.to(", ", " + classLiteral + ")");
-        }
-
-        static GetReturnConversion toEnum(String classLiteral) {
-            return new GetReturnConversion(false, "org.sjf4j.node.Nodes.toEnum(", ", " + classLiteral + ")");
-        }
-
-        static GetReturnConversion toTypeReference(String fieldName) {
-            return new GetReturnConversion(false, "org.sjf4j.node.Nodes.to(", ", " + fieldName + ")");
-        }
-
-        String expr(String var) {
-            return prefix + var + suffix;
-        }
+    private void _emitGetReturn(SourceWriter out, String currentVar) {
+        out.line("return " + currentVar + ";");
     }
 
     private String _methodParams(ExecutableElement method, PathNameScope scope) {
@@ -971,7 +826,7 @@ public final class PathGenerator {
         if (GeneratorUtil.isAssignableErasure(ctx, current, ctx.mapType)) {
             TypeMirror outputType = GeneratorUtil.mapValueType(ctx, current);
             String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
-            out.line(declaredType + " " + nextVar + " = (" + declaredType + ") " + currentVar + ".get(\"" +
+            out.line(declaredType + " " + nextVar + " = " + currentVar + ".get(\"" +
                     GeneratorUtil.escape(name) + "\");");
             _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
             return outputType;
@@ -1030,7 +885,7 @@ public final class PathGenerator {
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
         out.line("int " + indexVar + " = " + _indexExpr(index, currentVar + ".size()") + ";");
         out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + currentVar + ".size()) " + nullReturn);
-        out.line(declaredType + " " + nextVar + " = (" + declaredType + ") " + currentVar + ".get(" + indexVar + ");");
+        out.line(declaredType + " " + nextVar + " = " + currentVar + ".get(" + indexVar + ");");
         _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
         return outputType;
     }
@@ -1058,7 +913,7 @@ public final class PathGenerator {
         }
         TypeMirror outputType = GeneratorUtil.mapValueType(ctx, current);
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
-        out.line(declaredType + " " + nextVar + " = (" + declaredType + ") " + currentVar + ".get(" + paramName + ");");
+        out.line(declaredType + " " + nextVar + " = " + currentVar + ".get(" + paramName + ");");
         _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
         return outputType;
     }
@@ -1087,7 +942,7 @@ public final class PathGenerator {
         String declaredType = GeneratorUtil.localTypeName(ctx, outputType);
         out.line("int " + indexVar + " = " + paramName + " >= 0 ? " + paramName + " : " + currentVar + ".size() + " + paramName + ";");
         out.line("if (" + indexVar + " < 0 || " + indexVar + " >= " + currentVar + ".size()) " + nullReturn);
-        out.line(declaredType + " " + nextVar + " = (" + declaredType + ") " + currentVar + ".get(" + indexVar + ");");
+        out.line(declaredType + " " + nextVar + " = " + currentVar + ".get(" + indexVar + ");");
         _emitNullCheck(out, nextVar, outputType, checkValueNull ? nullReturn : null);
         return outputType;
     }
@@ -1841,7 +1696,7 @@ public final class PathGenerator {
     }
 
     private boolean _isAssignableBoxed(TypeMirror from, TypeMirror to) {
-        return GeneratorUtil.isAssignableBoxed(ctx, from, to);
+        return ctx.types.isAssignable(GeneratorUtil.boxed(ctx, from), GeneratorUtil.boxed(ctx, to));
     }
 
     private String _putMissingThrow(ExecutableElement method, JsonPath path) {

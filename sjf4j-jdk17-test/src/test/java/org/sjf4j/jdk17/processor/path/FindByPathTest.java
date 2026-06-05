@@ -53,6 +53,18 @@ public class FindByPathTest {
 
         @FindByPath("$.items[*].name")
         List<Object> itemNamesAsObject(Container root);
+
+        @FindByPath("$.items[0:2].name")
+        List<String> firstTwoItemNames(Container root);
+
+        @FindByPath("$.items[::2].name")
+        List<String> everyOtherItemName(Container root);
+
+        @FindByPath("$.items[-2:].name")
+        List<String> lastTwoItemNames(Container root);
+
+        @FindByPath("$.items[:-1].name")
+        List<String> allButLastItemNames(Container root);
     }
 
     // ---- Tests -------------------------------------------------------------
@@ -119,6 +131,17 @@ public class FindByPathTest {
 
         List<Object> names = nodes.itemNamesAsObject(root);
         assertEquals(List.of("Alice", "Bob", "Charlie"), names);
+    }
+
+    @Test
+    public void sliceReturnsMatchingValuesInArrayOrder() {
+        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        Container root = container();
+
+        assertEquals(List.of("Alice", "Bob"), nodes.firstTwoItemNames(root));
+        assertEquals(List.of("Alice", "Charlie"), nodes.everyOtherItemName(root));
+        assertEquals(List.of("Bob", "Charlie"), nodes.lastTwoItemNames(root));
+        assertEquals(List.of("Alice", "Bob"), nodes.allButLastItemNames(root));
     }
 
     @Test

@@ -9,11 +9,9 @@ import org.sjf4j.annotation.path.GetByPath;
 import org.sjf4j.compiled.CompiledNodes;
 import org.sjf4j.exception.JsonException;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -83,35 +81,6 @@ public class GetByPathTest {
     }
 
     @Test
-    public void convertsObjectPathValueToDeclaredReturnType() {
-        GetNodes nodes = CompiledNodes.of(GetNodes.class);
-        JsonObject root = JsonObject.of("profile", JsonObject.of(
-                "score", 42,
-                "name", "alice",
-                "active", true,
-                "birthday", "2026-06-04",
-                "tags", JsonArray.of("dev", "ops"),
-                "people", JsonArray.of(
-                        JsonObject.of("name", "bob", "score", 3),
-                        JsonObject.of("name", "cat", "score", 5))));
-
-        assertEquals(42, nodes.getJsonScore(root));
-        assertEquals(Integer.valueOf(42), nodes.getJsonScoreBoxed(root));
-        assertEquals("alice", nodes.getJsonNameAsString(root));
-        assertEquals(Boolean.TRUE, nodes.getJsonActive(root));
-        assertEquals(LocalDate.of(2026, 6, 4), nodes.getJsonBirthday(root));
-        assertArrayEquals(new String[]{"dev", "ops"}, nodes.getJsonTags(root));
-        assertEquals(List.of("dev", "ops"), nodes.getJsonTagList(root));
-        assertEquals(new JsonProfile(42, "alice"), nodes.getJsonProfile(root));
-        assertEquals(List.of(new Person("bob", 3), new Person("cat", 5)), nodes.getJsonPeople(root));
-        assertNull(nodes.getMissingJsonScoreBoxed(root));
-
-        assertThrows(JsonException.class, () -> nodes.getMissingJsonScore(root));
-        assertThrows(JsonException.class, () -> nodes.getJsonScore(JsonObject.of("profile", JsonObject.of("score", "42"))));
-        assertThrows(JsonException.class, () -> nodes.getJsonThread(root));
-    }
-
-    @Test
     public void supportsNodePropertyNamesOnPojoGetPath() {
         GetNodes nodes = CompiledNodes.of(GetNodes.class);
         RenamedRoot root = new RenamedRoot(
@@ -166,8 +135,6 @@ public class GetByPathTest {
     record Directory(List<Person> friends, Map<String, City> data, Map<String, List<City>> regions, JsonObject json) {}
 
     record Person(String name, int score) {}
-
-    record JsonProfile(int score, String name) {}
 
     record RenamedRoot(@NodeProperty("profile_data") RenamedProfile profileData,
                        RenamedGetterBean getterBean,
@@ -266,42 +233,6 @@ public class GetByPathTest {
 
         @GetByPath("$.json[{name}]")
         Object getJsonObjectValue(Directory root, String name);
-
-        @GetByPath("$.profile.score")
-        int getJsonScore(JsonObject root);
-
-        @GetByPath("$.profile.score")
-        Integer getJsonScoreBoxed(JsonObject root);
-
-        @GetByPath("$.profile.missing")
-        int getMissingJsonScore(JsonObject root);
-
-        @GetByPath("$.profile.missing")
-        Integer getMissingJsonScoreBoxed(JsonObject root);
-
-        @GetByPath("$.profile.name")
-        String getJsonNameAsString(JsonObject root);
-
-        @GetByPath("$.profile.active")
-        Boolean getJsonActive(JsonObject root);
-
-        @GetByPath("$.profile.birthday")
-        LocalDate getJsonBirthday(JsonObject root);
-
-        @GetByPath("$.profile.tags")
-        String[] getJsonTags(JsonObject root);
-
-        @GetByPath("$.profile.tags")
-        List<String> getJsonTagList(JsonObject root);
-
-        @GetByPath("$.profile")
-        JsonProfile getJsonProfile(JsonObject root);
-
-        @GetByPath("$.profile.people")
-        List<Person> getJsonPeople(JsonObject root);
-
-        @GetByPath("$.profile.name")
-        Thread getJsonThread(JsonObject root);
 
         @GetByPath("$.profile_data.user_name")
         String getRenamedRecordName(RenamedRoot root);

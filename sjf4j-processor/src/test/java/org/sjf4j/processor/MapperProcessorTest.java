@@ -100,7 +100,7 @@ public class MapperProcessorTest {
         Class<?> personClass = Class.forName("testcase.Person", true, loader);
         Class<?> mapperClass = Class.forName("testcase.MyMapper_Impl", true, loader);
         Object person = personClass.getConstructor(String.class, String.class, int.class).newInstance("Ada", "Lovelace", 36);
-        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Object mapper = mapperClass.getConstructor().newInstance();
         Object dto = mapperClass.getMethod("toDto", personClass).invoke(mapper, person);
         assertEquals("Ada", dto.getClass().getMethod("getFirst").invoke(dto));
         assertEquals("set:Lovelace", dto.getClass().getField("surname").get(dto));
@@ -190,6 +190,9 @@ public class MapperProcessorTest {
                         "  @Mapping(nestedMapper=\"conv\") List<Dto> ambiguousNested(List<User> users);\n" +
                         "  Map<Integer, Dto> badKey(Map<String, User> users);\n" +
                         "  List<Dto> raw(List users);\n" +
+                        "  Map<String, List<Dto>> badNestedKey(Map<Integer, List<User>> users);\n" +
+                        "  Map<String, Map<String, Dto>> rawNested(Map<String, Map> users);\n" +
+                        "  List<List<Dto>> nested(List<List<Integer>> users);\n" +
                         "  @Mapping(target=\"users\", array=ArrayPolicy.ADD, nestedMapper=\"one\") void setterOnly(SetterOnly t, Source s);\n" +
                         "  default Dto one(User u) { return new Dto(); } default Dto two(User u) { return new Dto(); }\n" +
                         "  default Dto conv(User u) { return new Dto(); } default Dto conv(String s) { return new Dto(); }\n" +
@@ -210,7 +213,10 @@ public class MapperProcessorTest {
         assertTrue(messages.contains("@Mapping.nestedMapper expects a mapper method name"), messages);
         assertTrue(messages.contains("Map key type mismatch"), messages);
         assertTrue(messages.contains("Raw or non-parameterized collection/map types are unsupported"), messages);
+        assertTrue(messages.contains("Cannot find element/value converter from java.lang.Integer to testcase.Dto"), messages);
         assertTrue(messages.contains("setter-only target has no readable collection/map"), messages);
+        assertTrue(countOccurrences(messages, "Map key type mismatch") >= 2, messages);
+        assertTrue(countOccurrences(messages, "Ambiguous element/value converter; specify @Mapping.nestedMapper") >= 1, messages);
     }
 
     @Test
@@ -371,7 +377,7 @@ public class MapperProcessorTest {
         Class<?> sourceClass = Class.forName("testcase.Source", true, loader);
         Class<?> missingTargetClass = Class.forName("testcase.MissingTarget", true, loader);
         Class<?> mapperClass = Class.forName("testcase.PathMapper_Impl", true, loader);
-        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Object mapper = mapperClass.getConstructor().newInstance();
         Constructor<?> sourceCtor = sourceClass.getDeclaredConstructor(String.class, String.class);
         sourceCtor.setAccessible(true);
         Object source = sourceCtor.newInstance("Ada", "X");
@@ -548,7 +554,7 @@ public class MapperProcessorTest {
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> mapperClass = Class.forName("testcase.DottedKeyMapper_Impl", true, loader);
-        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Object mapper = mapperClass.getConstructor().newInstance();
         HashMap<String, String> input = new HashMap<>();
         input.put("profile.name", "literal-key");
         Object target = mapperClass.getMethod("map", java.util.Map.class).invoke(mapper, input);
@@ -583,7 +589,7 @@ public class MapperProcessorTest {
         assertTrue(ok);
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> mapperClass = Class.forName("testcase.NodePropertyMapper_Impl", true, loader);
-        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Object mapper = mapperClass.getConstructor().newInstance();
         HashMap<String, String> input = new HashMap<>();
         input.put("@type", "kind");
         Object target = mapperClass.getMethod("map", java.util.Map.class).invoke(mapper, input);
@@ -622,7 +628,7 @@ public class MapperProcessorTest {
         assertTrue(ok);
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> mapperClass = Class.forName("testcase.NodeValueMapper_Impl", true, loader);
-        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Object mapper = mapperClass.getConstructor().newInstance();
         Constructor<?> sourceCtor = Class.forName("testcase.Source", true, loader).getDeclaredConstructor();
         sourceCtor.setAccessible(true);
         Object source = sourceCtor.newInstance();
@@ -671,7 +677,7 @@ public class MapperProcessorTest {
         assertTrue(ok);
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> mapperClass = Class.forName("testcase.ThirdPartyMapper_Impl", true, loader);
-        Object mapper = mapperClass.getField("INSTANCE").get(null);
+        Object mapper = mapperClass.getConstructor().newInstance();
         HashMap<String, String> input = new HashMap<>();
         input.put("first_name", "Ada");
         input.put("last_name", "Lovelace");
@@ -700,5 +706,15 @@ public class MapperProcessorTest {
             sb.append(diagnostic.getMessage(null)).append('\n');
         }
         return sb.toString();
+    }
+
+    private static int countOccurrences(String text, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 }

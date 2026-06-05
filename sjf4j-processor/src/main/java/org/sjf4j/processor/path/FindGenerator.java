@@ -79,7 +79,7 @@ public final class FindGenerator {
             return;
         }
 
-        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, wildcard, or one name/index union with static name/index segments is supported");
+        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, wildcard/slice, or one name/index union with static name/index segments is supported");
     }
 
     private boolean tryEmitRootFind(ExecutableElement method, GeneratedClass target, JsonPath path,
@@ -103,20 +103,20 @@ public final class FindGenerator {
     private boolean tryEmitWildcardFind(ExecutableElement method, GeneratedClass target, JsonPath path,
                                         TypeMirror returnType, TypeMirror elementType, VariableElement root) {
         PathSegment[] segments = path.segments();
-        boolean hasWildcard = false;
+        boolean hasMulti = false;
         for (int i = 1; i < segments.length; i++) {
             PathSegment segment = segments[i];
-            if (segment instanceof PathSegment.Wildcard) {
-                hasWildcard = true;
+            if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice) {
+                hasMulti = true;
             } else if (!(segment instanceof PathSegment.Name || segment instanceof PathSegment.Index)) {
                 return false;
             }
         }
-        if (!hasWildcard) return false;
+        if (!hasMulti) return false;
 
         TypeMirror current = root.asType();
         for (int i = 1; i < segments.length; i++) {
-            if (segments[i] instanceof PathSegment.Wildcard) {
+            if (segments[i] instanceof PathSegment.Wildcard || segments[i] instanceof PathSegment.Slice) {
                 if (!isList(current) && current.getKind() != TypeKind.ARRAY) return false;
                 current = current.getKind() == TypeKind.ARRAY
                         ? ((ArrayType) current).getComponentType()
@@ -277,7 +277,7 @@ public final class FindGenerator {
         }
 
         PathSegment segment = segments[index];
-        if (segment instanceof PathSegment.Wildcard) {
+        if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice) {
             if (!exprKnownNonNull && !exprType.getKind().isPrimitive()) {
                 out.line("if (" + expr + " == null) " + (topLevel ? "return " + outVar : "continue") + ";");
             }
@@ -288,13 +288,16 @@ public final class FindGenerator {
             String itemVar = names.local("item");
             String itemTypeName = GeneratorUtil.localTypeName(ctx, itemType);
             if (exprType.getKind() == TypeKind.ARRAY) {
-                out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + expr + ".length; " + indexVar + "++) {");
+                String sizeExpr = expr + ".length";
+                out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeExpr + "; " + indexVar + "++) {");
                 out.indent();
+                emitSliceCheck(out, segment, indexVar, sizeExpr);
                 out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
             } else {
                 String sizeVar = names.local("n");
                 out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".size(); " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
                 out.indent();
+                emitSliceCheck(out, segment, indexVar, sizeVar);
                 out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
             }
             emitWildcardSegments(out, names, outVar, segments, index + 1, itemVar, itemType, false, false);
@@ -313,6 +316,23 @@ public final class FindGenerator {
         out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
         if (!last) out.line("if (" + name + " == null) " + miss + ";");
         emitWildcardSegments(out, names, outVar, segments, index + 1, name, access.type, topLevel, !last);
+    }
+
+    private void emitSliceCheck(SourceWriter out, PathSegment segment, String indexVar, String sizeExpr) {
+        if (!(segment instanceof PathSegment.Slice)) return;
+        PathSegment.Slice slice = (PathSegment.Slice) segment;
+        if (slice.start != null) {
+            String pstart = slice.start < 0 ? "(" + sizeExpr + " + " + slice.start + ")" : String.valueOf(slice.start);
+            out.line("if (" + indexVar + " < " + pstart + ") continue;");
+        }
+        if (slice.end != null) {
+            String pend = slice.end < 0 ? "(" + sizeExpr + " + " + slice.end + ")" : String.valueOf(slice.end);
+            out.line("if (" + indexVar + " >= " + pend + ") continue;");
+        }
+        if (slice.step != null) {
+            int mod = slice.start == null ? 0 : slice.start;
+            out.line("if (((" + indexVar + " - " + mod + ") % " + slice.step + ") != 0) continue;");
+        }
     }
 
     private void emitStaticSuffix(SourceWriter out, NameAllocator names, String outVar,

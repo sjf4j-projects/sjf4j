@@ -2,8 +2,7 @@ package org.sjf4j.compiled;
 
 import org.sjf4j.exception.JsonException;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.InvocationTargetException;
 
 public final class CompiledNodes {
 
@@ -54,24 +53,16 @@ public final class CompiledNodes {
         }
 
         try {
-            Field instance = implClass.getField("INSTANCE");
-            int modifiers = instance.getModifiers();
-            if (!Modifier.isStatic(modifiers)) {
-                throw new JsonException("Generated SJF4J implementation " + implName
-                        + " must expose public static INSTANCE");
-            }
-            Object value = instance.get(null);
-            if (value == null) {
-                throw new JsonException("Generated SJF4J implementation " + implName
-                        + " has null INSTANCE");
-            }
-            return type.cast(value);
-        } catch (NoSuchFieldException e) {
+            return type.cast(implClass.getConstructor().newInstance());
+        } catch (NoSuchMethodException e) {
             throw new JsonException("Generated SJF4J implementation " + implName
-                    + " must expose public static INSTANCE", e);
-        } catch (IllegalAccessException e) {
-            throw new JsonException("Cannot access generated SJF4J implementation " + implName
-                    + " INSTANCE for interface " + type.getName(), e);
+                    + " must expose a public no-arg constructor", e);
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new JsonException("Cannot instantiate generated SJF4J implementation " + implName
+                    + " for interface " + type.getName(), e);
+        } catch (InvocationTargetException e) {
+            throw new JsonException("Generated SJF4J implementation " + implName
+                    + " constructor failed for interface " + type.getName(), e.getCause());
         }
     }
 

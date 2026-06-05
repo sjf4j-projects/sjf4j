@@ -157,6 +157,13 @@ public final class GeneratorUtil {
     }
 
     /**
+     * Returns true when boxed {@code from} can be assigned to boxed {@code to}, preserving generics.
+     */
+    public static boolean isAssignableBoxedGeneric(ProcessorContext ctx, TypeMirror from, TypeMirror to) {
+        return ctx.types.isAssignable(boxed(ctx, from), boxed(ctx, to));
+    }
+
+    /**
      * Returns true when the type erases to java.lang.Object.
      */
     public static boolean isObject(ProcessorContext ctx, TypeMirror type) {

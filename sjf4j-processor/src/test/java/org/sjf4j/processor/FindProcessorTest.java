@@ -98,7 +98,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, items);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method itemNames = nodesClass.getMethod("itemNames", rootClass);
 
         @SuppressWarnings("unchecked")
@@ -172,7 +172,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, items);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method allItems = nodesClass.getMethod("allItems", rootClass);
 
         @SuppressWarnings("unchecked")
@@ -339,7 +339,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, items);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method names = nodesClass.getMethod("names", rootClass);
         @SuppressWarnings("unchecked")
         List<String> result = (List<String>) names.invoke(nodes, root);
@@ -516,7 +516,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, items);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method names = nodesClass.getMethod("names", rootClass);
         @SuppressWarnings("unchecked")
         List<String> result = (List<String>) names.invoke(nodes, root);
@@ -600,7 +600,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setMetadata", LinkedHashMap.class).invoke(root, meta);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method fields = nodesClass.getMethod("fields", rootClass);
         @SuppressWarnings("unchecked")
         List<Object> result = (List<Object>) fields.invoke(nodes, root);
@@ -678,7 +678,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, items);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method names = nodesClass.getMethod("names", rootClass);
 
         @SuppressWarnings("unchecked")
@@ -754,7 +754,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, items);
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method names = nodesClass.getMethod("names", rootClass);
 
         @SuppressWarnings("unchecked")
@@ -812,7 +812,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setValue", String.class).invoke(root, "hello");
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method rootMethod = nodesClass.getMethod("root", rootClass);
 
         @SuppressWarnings("unchecked")
@@ -821,18 +821,32 @@ public class FindProcessorTest {
         assertSame(root, result.get(0));
     }
 
-    // -- unsupported: slice --
+    // -- slice --
     @Test
-    public void rejectSlicePath() throws Exception {
-        Path dir = Files.createTempDirectory("sjf4j-find-reject-slice");
+    public void generateFindSlicePath() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-slice");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
+        Path gen = dir.resolve("generated");
         Files.createDirectories(src);
         Files.createDirectories(out);
+        Files.createDirectories(gen);
 
+        write(src.resolve("Item.java"),
+                "package testcase;\n" +
+                "public class Item {\n" +
+                "  private String name;\n" +
+                "  public String getName() { return name; }\n" +
+                "  public void setName(String name) { this.name = name; }\n" +
+                "}\n");
         write(src.resolve("Root.java"),
                 "package testcase;\n" +
-                "public class Root {}\n");
+                "import java.util.List;\n" +
+                "public class Root {\n" +
+                "  private List<Item> items;\n" +
+                "  public List<Item> getItems() { return items; }\n" +
+                "  public void setItems(List<Item> items) { this.items = items; }\n" +
+                "}\n");
         write(src.resolve("FindSlice.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
@@ -840,8 +854,12 @@ public class FindProcessorTest {
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
                 "@CompiledPath\n" +
                 "public interface FindSlice {\n" +
-                "  @FindByPath(\"$.items[0:2]\")\n" +
-                "  List<String> names(Root root);\n" +
+                "  @FindByPath(\"$.items[0:2].name\")\n" +
+                "  List<String> firstTwoNames(Root root);\n" +
+                "  @FindByPath(\"$.items[1:3:1].name\")\n" +
+                "  List<String> middleNames(Root root);\n" +
+                "  @FindByPath(\"$.items[:-1].name\")\n" +
+                "  List<String> allButLastNames(Root root);\n" +
                 "}\n");
 
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -849,17 +867,56 @@ public class FindProcessorTest {
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(gen.toFile()));
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
                 "-processor", Sjf4jProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Item.java").toFile(),
                 src.resolve("Root.java").toFile(),
                 src.resolve("FindSlice.java").toFile()
         ))).call();
-        assertFalse(ok, "slice path should fail compilation");
-        String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(ok, "Compilation with slice should succeed: " + diagnosticsToString(diagnostics));
+        assertTrue(Files.exists(out.resolve("testcase/FindSlice_Impl.class")));
+        String generated = Files.readString(gen.resolve("testcase/FindSlice_Impl.java"));
+        assertFalse(generated.contains("JsonPath.parse"), generated);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> itemClass = Class.forName("testcase.Item", true, loader);
+        Class<?> rootClass = Class.forName("testcase.Root", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.FindSlice_Impl", true, loader);
+
+        Object item1 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setName", String.class).invoke(item1, "alpha");
+        Object item2 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setName", String.class).invoke(item2, "beta");
+        Object item3 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setName", String.class).invoke(item3, "gamma");
+        @SuppressWarnings("unchecked")
+        List<Object> items = new ArrayList<>();
+        items.add(item1);
+        items.add(item2);
+        items.add(item3);
+        Object root = rootClass.getConstructor().newInstance();
+        rootClass.getMethod("setItems", List.class).invoke(root, items);
+
+        Object nodes = nodesClass.getConstructor().newInstance();
+        Method firstTwoNames = nodesClass.getMethod("firstTwoNames", rootClass);
+        Method middleNames = nodesClass.getMethod("middleNames", rootClass);
+        Method allButLastNames = nodesClass.getMethod("allButLastNames", rootClass);
+
+        @SuppressWarnings("unchecked")
+        List<String> firstTwo = (List<String>) firstTwoNames.invoke(nodes, root);
+        assertEquals(Arrays.asList("alpha", "beta"), firstTwo);
+
+        @SuppressWarnings("unchecked")
+        List<String> middle = (List<String>) middleNames.invoke(nodes, root);
+        assertEquals(Arrays.asList("beta", "gamma"), middle);
+
+        @SuppressWarnings("unchecked")
+        List<String> allButLast = (List<String>) allButLastNames.invoke(nodes, root);
+        assertEquals(Arrays.asList("alpha", "beta"), allButLast);
     }
 
     // -- nested wildcard --
@@ -945,7 +1002,7 @@ public class FindProcessorTest {
         Object root = rootClass.getConstructor().newInstance();
         rootClass.getMethod("setItems", List.class).invoke(root, Arrays.asList(item1, item2, item3));
 
-        Object nodes = nodesClass.getField("INSTANCE").get(null);
+        Object nodes = nodesClass.getConstructor().newInstance();
         Method children = nodesClass.getMethod("children", rootClass);
         Method names = nodesClass.getMethod("names", rootClass);
         @SuppressWarnings("unchecked")
@@ -995,6 +1052,123 @@ public class FindProcessorTest {
         assertFalse(ok, "mixed union path should fail compilation");
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void supportsConcreteGenericFindPathTypes() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-concrete-generic-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("Model.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "public final class Model {\n" +
+                        "  public static final class Box<T> {\n" +
+                        "    private T value;\n" +
+                        "    public Box(T value) { this.value = value; }\n" +
+                        "    public T getValue() { return value; }\n" +
+                        "  }\n" +
+                        "  public static final class Bean {\n" +
+                        "    public String name;\n" +
+                        "    public Bean(String name) { this.name = name; }\n" +
+                        "  }\n" +
+                        "  public Box<List<Bean>> boxed = new Box<>(new ArrayList<>());\n" +
+                        "  public Map<String,List<Bean>> regions = new LinkedHashMap<>();\n" +
+                        "  public Box<List<Bean>> getBoxed() { return boxed; }\n" +
+                        "  public Map<String,List<Bean>> getRegions() { return regions; }\n" +
+                        "}\n");
+        write(src.resolve("FindGenericNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
+                        "public interface FindGenericNodes {\n" +
+                        "  @FindByPath(\"$.boxed.value[*].name\") List<String> boxedNames(Model root);\n" +
+                        "  @FindByPath(\"$.regions['east','west'][0].name\") List<String> firstRegionNames(Model root);\n" +
+                        "  @FindByPath(\"$.regions.east[*]\") List<Model.Bean> eastBeans(Model root);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Model.java").toFile(),
+                src.resolve("FindGenericNodes.java").toFile()
+        ))).call();
+        assertTrue(ok, "Compilation should succeed: " + diagnosticsToString(diagnostics));
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> rootClass = Class.forName("testcase.Model", true, loader);
+        Class<?> beanClass = Class.forName("testcase.Model$Bean", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.FindGenericNodes_Impl", true, loader);
+        Object root = rootClass.getConstructor().newInstance();
+        Object a = beanClass.getConstructor(String.class).newInstance("a");
+        Object b = beanClass.getConstructor(String.class).newInstance("b");
+        Object east = beanClass.getConstructor(String.class).newInstance("east");
+        Object west = beanClass.getConstructor(String.class).newInstance("west");
+        Object boxed = rootClass.getField("boxed").get(root);
+        List<Object> boxedValue = (List<Object>) boxed.getClass().getMethod("getValue").invoke(boxed);
+        boxedValue.add(a);
+        boxedValue.add(b);
+        Map<String, List<Object>> regions = (Map<String, List<Object>>) rootClass.getField("regions").get(root);
+        regions.put("east", List.of(east));
+        regions.put("west", List.of(west));
+
+        Object nodes = nodesClass.getConstructor().newInstance();
+        assertEquals(List.of("a", "b"), nodesClass.getMethod("boxedNames", rootClass).invoke(nodes, root));
+        assertEquals(List.of("east", "west"), nodesClass.getMethod("firstRegionNames", rootClass).invoke(nodes, root));
+        assertEquals(List.of(east), nodesClass.getMethod("eastBeans", rootClass).invoke(nodes, root));
+    }
+
+    @Test
+    public void rejectGenericFindResultTypeMismatch() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-generic-mismatch-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+
+        write(src.resolve("Root.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "public class Root { public List<String> names = new ArrayList<>(); }\n");
+        write(src.resolve("BadFindGenericNodes.java"),
+                "package testcase;\n" +
+                        "import java.util.*;\n" +
+                        "import org.sjf4j.annotation.path.*;\n" +
+                        "@CompiledPath\n" +
+                        "public interface BadFindGenericNodes {\n" +
+                        "  @FindByPath(\"$.names[*]\") List<Integer> names(Root root);\n" +
+                        "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Root.java").toFile(),
+                src.resolve("BadFindGenericNodes.java").toFile()
+        ))).call();
+
+        assertFalse(ok, "generic find result mismatch should fail compilation");
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(messages.contains("$.names[*]"), messages);
     }
 
     private static String diagnosticsToString(DiagnosticCollector<JavaFileObject> diagnostics) {

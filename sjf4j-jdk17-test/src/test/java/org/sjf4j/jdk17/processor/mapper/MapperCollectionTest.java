@@ -34,6 +34,26 @@ public class MapperCollectionTest {
         in.put("a", new User("A"));
         assertEquals(new UserDto("A"), CompiledNodes.of(UniqueMapper.class).map(in).get("a"));
 
+        List<List<User>> nested = new ArrayList<>();
+        nested.add(Arrays.asList(new User("A"), null));
+        nested.add(null);
+        nested.add(List.of(new User("B")));
+        assertEquals(Arrays.asList(Arrays.asList(new UserDto("A"), null), null, Arrays.asList(new UserDto("B"))), m.nestedUsers(nested));
+
+        Map<String, List<User>> grouped = new LinkedHashMap<>();
+        grouped.put("a", Arrays.asList(new User("A"), null));
+        grouped.put("b", null);
+        Map<String, List<UserDto>> groupedDto = m.groupedUsers(grouped);
+        assertEquals(Arrays.asList(new UserDto("A"), null), groupedDto.get("a"));
+        assertNull(groupedDto.get("b"));
+
+        Map<String, Map<String, User>> nestedMap = new LinkedHashMap<>();
+        nestedMap.put("outer", Map.of("inner", new User("C")));
+        assertEquals(new UserDto("C"), m.nestedMapUsers(nestedMap).get("outer").get("inner"));
+
+        List<Map<String, User>> mapList = List.of(Map.of("x", new User("X")));
+        assertEquals(new UserDto("X"), m.userMaps(mapList).get(0).get("x"));
+
         List<String> list = new ArrayList<>(List.of("old"));
         m.replace(list, List.of("n"));
         assertEquals(List.of("n"), list);
@@ -51,23 +71,72 @@ public class MapperCollectionTest {
         assertEquals("5", target.get("y"));
     }
 
+    @Test public void autoNestedRecursivelyUsesUniqueLeafConverter() {
+        AutoNestedMapper m = CompiledNodes.of(AutoNestedMapper.class);
+
+        List<List<User>> nested = new ArrayList<>();
+        nested.add(Arrays.asList(new User("A"), null));
+        nested.add(null);
+        nested.add(List.of(new User("B")));
+        assertEquals(Arrays.asList(Arrays.asList(new UserDto("A"), null), null, Arrays.asList(new UserDto("B"))), m.nestedUsers(nested));
+
+        Map<String, List<User>> grouped = new LinkedHashMap<>();
+        grouped.put("a", Arrays.asList(new User("A"), null));
+        grouped.put("b", null);
+        Map<String, List<UserDto>> groupedDto = m.groupedUsers(grouped);
+        assertEquals(Arrays.asList(new UserDto("A"), null), groupedDto.get("a"));
+        assertNull(groupedDto.get("b"));
+
+        Map<String, Map<String, User>> nestedMap = new LinkedHashMap<>();
+        nestedMap.put("outer", Map.of("inner", new User("C")));
+        assertEquals(new UserDto("C"), m.nestedMapUsers(nestedMap).get("outer").get("inner"));
+    }
+
     @Test public void beanCreateAndUpdateContainers() {
         CollectionMapper m = CompiledNodes.of(CollectionMapper.class);
         UserBox box = new UserBox();
         box.users = List.of(new User("a"));
         box.map = Map.of("b", new User("b"));
+        box.nestedUsers = new ArrayList<>();
+        box.nestedUsers.add(Arrays.asList(new User("n1"), null));
+        box.nestedUsers.add(null);
+        box.groupedUsers = new LinkedHashMap<>();
+        box.groupedUsers.put("g1", Arrays.asList(new User("g1"), null));
+        box.groupedUsers.put("g2", null);
         DtoBox dto = m.box(box);
         assertEquals(new UserDto("a"), dto.users.get(0));
         assertEquals(new UserDto("b"), dto.map.get("b"));
+        assertEquals(Arrays.asList(new UserDto("n1"), null), dto.nestedUsers.get(0));
+        assertNull(dto.nestedUsers.get(1));
+        assertEquals(Arrays.asList(new UserDto("g1"), null), dto.groupedUsers.get("g1"));
+        assertNull(dto.groupedUsers.get("g2"));
 
         DtoBox target = new DtoBox();
         target.users = new ArrayList<>(List.of(new UserDto("old")));
+        target.map = new LinkedHashMap<>();
+        target.map.put("keep", new UserDto("keep"));
+        target.nestedUsers = new ArrayList<>(List.of(List.of(new UserDto("old"))));
+        target.groupedUsers = new LinkedHashMap<>();
+        target.groupedUsers.put("old", List.of(new UserDto("old")));
         m.updateBox(target, box);
         assertEquals(List.of(new UserDto("a")), target.users);
+        assertEquals(Map.of("keep", new UserDto("keep")), target.map);
+        assertEquals(Arrays.asList(new UserDto("n1"), null), target.nestedUsers.get(0));
+        assertNull(target.nestedUsers.get(1));
+        assertEquals(Arrays.asList(new UserDto("g1"), null), target.groupedUsers.get("g1"));
+        assertNull(target.groupedUsers.get("g2"));
         m.ignoreNullBox(target, new UserBox());
         assertEquals(List.of(new UserDto("a")), target.users);
+        assertEquals(Map.of("keep", new UserDto("keep")), target.map);
+        assertEquals(Arrays.asList(new UserDto("n1"), null), target.nestedUsers.get(0));
+        assertNull(target.nestedUsers.get(1));
+        assertEquals(Arrays.asList(new UserDto("g1"), null), target.groupedUsers.get("g1"));
+        assertNull(target.groupedUsers.get("g2"));
         m.setNullBox(target, new UserBox());
         assertNull(target.users);
+        assertNull(target.nestedUsers);
+        assertNull(target.groupedUsers);
+        assertEquals(Map.of("keep", new UserDto("keep")), target.map);
     }
 
     @Test public void beanAppendField() {
@@ -107,6 +176,12 @@ public class MapperCollectionTest {
         assertEquals(new UserDto("existing"), target.map.get("old"));
         assertEquals(new UserDto("b"), target.map.get("b"));
         assertEquals(new UserDto("filled"), target.map.get("empty"));
+
+        DtoBox nullTarget = new DtoBox();
+        nullTarget.map = new LinkedHashMap<>();
+        nullTarget.map.put("keep", new UserDto("keep"));
+        m.setNullMapBox(nullTarget, new UserBox());
+        assertNull(nullTarget.map);
     }
 
     @Test public void putIfAbsentMapSkipsConverterForExistingValue() {
@@ -126,6 +201,87 @@ public class MapperCollectionTest {
         assertEquals("FILLED", target.get("fill"));
         assertEquals("ADDED", target.get("add"));
         assertEquals(2, PutIfAbsentMapper.calls[0]);
+    }
+
+    @Test public void recursiveUpdatePoliciesApplyToNestedContainers() {
+        RecursiveUpdateMapper m = CompiledNodes.of(RecursiveUpdateMapper.class);
+
+        Map<String, List<UserDto>> listTarget = new LinkedHashMap<>();
+        List<UserDto> existingList = new ArrayList<>(List.of(new UserDto("old")));
+        listTarget.put("keep", existingList);
+        Map<String, List<User>> listSource = new LinkedHashMap<>();
+        listSource.put("keep", List.of(new User("a"), new User("b")));
+        listSource.put("add", List.of(new User("c")));
+        m.putClearAddLists(listTarget, listSource);
+        assertSame(existingList, listTarget.get("keep"));
+        assertEquals(List.of(new UserDto("a"), new UserDto("b")), listTarget.get("keep"));
+        assertEquals(List.of(new UserDto("c")), listTarget.get("add"));
+
+        Map<String, List<UserDto>> absentTarget = new LinkedHashMap<>();
+        List<UserDto> absentExisting = new ArrayList<>(List.of(new UserDto("keep")));
+        absentTarget.put("keep", absentExisting);
+        absentTarget.put("null", null);
+        Map<String, List<User>> absentSource = new LinkedHashMap<>();
+        absentSource.put("keep", List.of(new User("ignored")));
+        absentSource.put("null", List.of(new User("filled")));
+        absentSource.put("add", List.of(new User("new")));
+        m.putIfAbsentLists(absentTarget, absentSource);
+        assertSame(absentExisting, absentTarget.get("keep"));
+        assertEquals(List.of(new UserDto("keep")), absentTarget.get("keep"));
+        assertEquals(List.of(new UserDto("filled")), absentTarget.get("null"));
+        assertEquals(List.of(new UserDto("new")), absentTarget.get("add"));
+
+        Map<String, List<UserDto>> appendTarget = new LinkedHashMap<>();
+        List<UserDto> appendExisting = new ArrayList<>(List.of(new UserDto("old")));
+        appendTarget.put("keep", appendExisting);
+        Map<String, List<User>> appendSource = new LinkedHashMap<>();
+        appendSource.put("keep", List.of(new User("x"), new User("y")));
+        m.putAddLists(appendTarget, appendSource);
+        assertSame(appendExisting, appendTarget.get("keep"));
+        assertEquals(List.of(new UserDto("old"), new UserDto("x"), new UserDto("y")), appendTarget.get("keep"));
+
+        Map<String, Map<String, UserDto>> mapTarget = new LinkedHashMap<>();
+        Map<String, UserDto> existingInner = new LinkedHashMap<>();
+        existingInner.put("keep", new UserDto("keep"));
+        existingInner.put("old", new UserDto("old"));
+        mapTarget.put("outer", existingInner);
+        Map<String, Map<String, User>> mapSource = new LinkedHashMap<>();
+        Map<String, User> sourceInner = new LinkedHashMap<>();
+        sourceInner.put("old", new User("new-old"));
+        sourceInner.put("add", new User("add"));
+        mapSource.put("outer", sourceInner);
+        m.putMaps(mapTarget, mapSource);
+        assertSame(existingInner, mapTarget.get("outer"));
+        assertEquals(new UserDto("keep"), mapTarget.get("outer").get("keep"));
+        assertEquals(new UserDto("new-old"), mapTarget.get("outer").get("old"));
+        assertEquals(new UserDto("add"), mapTarget.get("outer").get("add"));
+
+        Map<String, Map<String, List<UserDto>>> deepTarget = new LinkedHashMap<>();
+        Map<String, List<UserDto>> deepInner = new LinkedHashMap<>();
+        List<UserDto> deepList = new ArrayList<>(List.of(new UserDto("old")));
+        deepInner.put("list", deepList);
+        deepTarget.put("outer", deepInner);
+        Map<String, Map<String, List<User>>> deepSource = new LinkedHashMap<>();
+        Map<String, List<User>> deepSourceInner = new LinkedHashMap<>();
+        deepSourceInner.put("list", List.of(new User("new")));
+        deepSourceInner.put("add", List.of(new User("added")));
+        deepSource.put("outer", deepSourceInner);
+        m.putDeep(deepTarget, deepSource);
+        assertSame(deepInner, deepTarget.get("outer"));
+        assertSame(deepList, deepTarget.get("outer").get("list"));
+        assertEquals(List.of(new UserDto("old"), new UserDto("new")), deepTarget.get("outer").get("list"));
+        assertEquals(List.of(new UserDto("added")), deepTarget.get("outer").get("add"));
+
+        Map<String, Map<String, UserDto>> clearTarget = new LinkedHashMap<>();
+        Map<String, UserDto> oldInner = new LinkedHashMap<>();
+        oldInner.put("gone", new UserDto("gone"));
+        clearTarget.put("old", oldInner);
+        Map<String, Map<String, User>> clearSource = new LinkedHashMap<>();
+        clearSource.put("outer", Map.of("new", new User("new")));
+        m.clearPutMaps(clearTarget, clearSource);
+        assertEquals(Set.of("outer"), clearTarget.keySet());
+        assertNotSame(oldInner, clearTarget.get("outer"));
+        assertEquals(new UserDto("new"), clearTarget.get("outer").get("new"));
     }
 
     @Test public void mapsObntStructuralKinds() {
@@ -183,8 +339,8 @@ public class MapperCollectionTest {
     public record UserDto(String name) {}
     public record Child(String name) {}
     public record ChildDto(String name) {}
-    public static class UserBox { public List<User> users; public Map<String, User> map; }
-    public static class DtoBox { public List<UserDto> users; public Map<String, UserDto> map; }
+    public static class UserBox { public List<User> users; public Map<String, User> map; public List<List<User>> nestedUsers; public Map<String, List<User>> groupedUsers; }
+    public static class DtoBox { public List<UserDto> users; public Map<String, UserDto> map; public List<List<UserDto>> nestedUsers; public Map<String, List<UserDto>> groupedUsers; }
     public static class ObntSource {
         public String text;
         public Integer integer;
@@ -219,6 +375,10 @@ public class MapperCollectionTest {
         @Mapping(nestedMapper = "special") List<UserDto> usersWith(List<User> in);
         Set<String> set(Set<String> in);
         @Mapping(nestedMapper = "toDto") Map<String, UserDto> map(Map<String, User> in);
+        @Mapping(nestedMapper = "toDto") List<List<UserDto>> nestedUsers(List<List<User>> in);
+        @Mapping(nestedMapper = "toDto") Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
+        @Mapping(nestedMapper = "toDto") Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
+        @Mapping(nestedMapper = "toDto") List<Map<String, UserDto>> userMaps(List<Map<String, User>> in);
         UserDto toDto(User u);
         default UserDto special(User u) { return u == null ? null : new UserDto(u.name + "!"); }
 
@@ -230,23 +390,36 @@ public class MapperCollectionTest {
 
         @Mapping(target = "users", nestedMapper = "toDto")
         @Mapping(target = "map", nestedMapper = "toDto")
+        @Mapping(target = "nestedUsers", nestedMapper = "toDto")
+        @Mapping(target = "groupedUsers", nestedMapper = "toDto")
         DtoBox box(UserBox box);
         @Mapping(target = "users", nestedMapper = "toDto")
         @Mapping(target = "map", ignore = true)
+        @Mapping(target = "nestedUsers", nestedMapper = "toDto")
+        @Mapping(target = "groupedUsers", nestedMapper = "toDto")
         void updateBox(DtoBox target, UserBox box);
-        @MapperOptions(nulls = NullValuePolicy.IGNORE) @Mapping(target = "users", nestedMapper = "toDto") @Mapping(target = "map", ignore = true) void ignoreNullBox(DtoBox target, UserBox box);
-        @Mapping(target = "users", nestedMapper = "toDto") @Mapping(target = "map", ignore = true) void setNullBox(DtoBox target, UserBox box);
+        @MapperOptions(nulls = NullValuePolicy.IGNORE) @Mapping(target = "users", nestedMapper = "toDto") @Mapping(target = "map", ignore = true) @Mapping(target = "nestedUsers", nestedMapper = "toDto") @Mapping(target = "groupedUsers", nestedMapper = "toDto") void ignoreNullBox(DtoBox target, UserBox box);
+        @Mapping(target = "users", nestedMapper = "toDto") @Mapping(target = "map", ignore = true) @Mapping(target = "nestedUsers", nestedMapper = "toDto") @Mapping(target = "groupedUsers", nestedMapper = "toDto") void setNullBox(DtoBox target, UserBox box);
+        @Mapping(target = "users", ignore = true) @Mapping(target = "map", nestedMapper = "toDto") @Mapping(target = "nestedUsers", ignore = true) @Mapping(target = "groupedUsers", ignore = true) void setNullMapBox(DtoBox target, UserBox box);
         @Mapping(target = "users", array = ArrayPolicy.ADD, nestedMapper = "toDto")
         @Mapping(target = "map", ignore = true)
+        @Mapping(target = "nestedUsers", ignore = true)
+        @Mapping(target = "groupedUsers", ignore = true)
         void appendBox(DtoBox target, UserBox box);
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", nestedMapper = "toDto")
+        @Mapping(target = "nestedUsers", ignore = true)
+        @Mapping(target = "groupedUsers", ignore = true)
         void putBox(DtoBox target, UserBox box);
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", object = ObjectPolicy.CLEAR_PUT, nestedMapper = "toDto")
+        @Mapping(target = "nestedUsers", ignore = true)
+        @Mapping(target = "groupedUsers", ignore = true)
         void clearPutBox(DtoBox target, UserBox box);
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", object = ObjectPolicy.PUT_IF_ABSENT, nestedMapper = "toDto")
+        @Mapping(target = "nestedUsers", ignore = true)
+        @Mapping(target = "groupedUsers", ignore = true)
         void putIfAbsentBox(DtoBox target, UserBox box);
 
         @Mapping(target = "users", nestedMapper = "toDto")
@@ -270,6 +443,14 @@ public class MapperCollectionTest {
     }
 
     @CompiledMapper
+    public interface AutoNestedMapper {
+        List<List<UserDto>> nestedUsers(List<List<User>> in);
+        Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
+        Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
+        UserDto toDto(User u);
+    }
+
+    @CompiledMapper
     public interface PutIfAbsentMapper {
         int[] calls = new int[1];
 
@@ -282,5 +463,34 @@ public class MapperCollectionTest {
             if ("boom".equals(value)) throw new IllegalStateException("converter should have been skipped");
             return value == null ? null : value.toUpperCase(Locale.ROOT);
         }
+    }
+
+    @CompiledMapper
+    public interface RecursiveUpdateMapper {
+        @MapperOptions(arrays = ArrayPolicy.CLEAR_ADD, objects = ObjectPolicy.PUT)
+        @Mapping(nestedMapper = "toDto")
+        void putClearAddLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
+
+        @MapperOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT)
+        @Mapping(nestedMapper = "toDto")
+        void putAddLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
+
+        @MapperOptions(objects = ObjectPolicy.PUT_IF_ABSENT)
+        @Mapping(nestedMapper = "toDto")
+        void putIfAbsentLists(Map<String, List<UserDto>> target, Map<String, List<User>> source);
+
+        @MapperOptions(objects = ObjectPolicy.PUT)
+        @Mapping(nestedMapper = "toDto")
+        void putMaps(Map<String, Map<String, UserDto>> target, Map<String, Map<String, User>> source);
+
+        @MapperOptions(arrays = ArrayPolicy.ADD, objects = ObjectPolicy.PUT)
+        @Mapping(nestedMapper = "toDto")
+        void putDeep(Map<String, Map<String, List<UserDto>>> target, Map<String, Map<String, List<User>>> source);
+
+        @MapperOptions(objects = ObjectPolicy.CLEAR_PUT)
+        @Mapping(nestedMapper = "toDto")
+        void clearPutMaps(Map<String, Map<String, UserDto>> target, Map<String, Map<String, User>> source);
+
+        UserDto toDto(User u);
     }
 }

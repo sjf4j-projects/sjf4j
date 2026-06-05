@@ -16,8 +16,8 @@ import java.lang.annotation.Target;
  * not generated.</p>
  *
  * <p>The generated class is named after the interface with the {@code _Impl}
- * suffix and exposes a public {@code INSTANCE} field. Runtime lookup is normally
- * done through {@code org.sjf4j.compiled.CompiledRegistry}.</p>
+ * suffix. Runtime lookup is normally done through
+ * {@code org.sjf4j.compiled.CompiledNodes}.</p>
  *
  * <pre>{@code
  * @CompiledPath
