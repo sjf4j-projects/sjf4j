@@ -6,6 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.path.CompiledPath;
 import org.sjf4j.annotation.path.EnsurePutByPath;
 import org.sjf4j.compiled.CompiledNodes;
+import org.sjf4j.exception.JsonException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -87,6 +88,29 @@ public class EnsurePutByPathTest {
         assertThrows(NullPointerException.class, () -> nodes.ensureDefaultMap(null, "x"));
     }
 
+    @Test
+    public void traversesExistingRecordComponentAndFailsAtRuntimeWhenMissing() {
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+
+        Map<String, Object> map = new HashMap<>();
+        assertNull(nodes.ensureRecordMap(new RecordRoot(map), "record-value"));
+        assertEquals("record-value", map.get("name"));
+
+        assertThrows(JsonException.class, () -> nodes.ensureRecordMap(new RecordRoot(null), "missing"));
+    }
+
+    @Test
+    public void testMapChild() {
+        EnsurePutNodes nodes = CompiledNodes.of(EnsurePutNodes.class);
+
+        RecordRoot root = new RecordRoot(new HashMap<>());
+        assertNull(nodes.ensureRecordMapChild(root, 5566L));
+        assertInstanceOf(LinkedHashMap.class, root.map.get("attrs"));
+        Map<?, ?> attrs = (Map<?, ?>) root.map.get("attrs");
+        assertEquals(5566L, attrs.get("vivo"));
+    }
+
+
     static final class Root {
         public Map<String, Object> map = new HashMap<>();
         public HashMap<String, HashMap<String, String>> hashMap = new HashMap<>();
@@ -111,6 +135,8 @@ public class EnsurePutByPathTest {
     static final class AppendBean {
         public String leaf;
     }
+
+    record RecordRoot(Map<String, Object> map) {}
 
     @CompiledPath
     interface EnsurePutNodes {
@@ -140,5 +166,11 @@ public class EnsurePutByPathTest {
 
         @EnsurePutByPath("$.appendList[+].leaf")
         String ensureMiddleAppend(Root root, String value);
+
+        @EnsurePutByPath("$.map.name")
+        Object ensureRecordMap(RecordRoot root, Object value);
+
+        @EnsurePutByPath("$.map.attrs.vivo")
+        Object ensureRecordMapChild(RecordRoot root, Long value);
     }
 }

@@ -29,6 +29,8 @@ import java.util.List;
 public final class FindGenerator {
 
     private final ProcessorContext ctx;
+    private int filterSeq;
+    private int fallbackSeq;
 
     public FindGenerator(ProcessorContext ctx) {
         this.ctx = ctx;
@@ -37,14 +39,14 @@ public final class FindGenerator {
     /**
      * Validates and emits a generated implementation for one {@code @FindByPath} method.
      */
-    public void genFind(ExecutableElement method, GeneratedClass target, String expr) {
+    public void genFind(ExecutableElement method, GeneratedClass target, String expr, boolean allowFallback) {
         // 1. Validate root parameter
         if (method.getParameters().isEmpty()) {
             _error(method, target, "@FindByPath method must have a root parameter");
             return;
         }
         if (method.getParameters().size() != 1) {
-            _error(method, target, "@FindByPath Phase 2 does not support path parameters");
+            _error(method, target, "@FindByPath does not support path parameters");
             return;
         }
 
@@ -65,11 +67,30 @@ public final class FindGenerator {
         }
         // Note: root-only "$" is allowed for find (unlike get/put which require length >= 2)
 
+        PathSegment[] segments = path.segments();
+        boolean hasFilter = false;
+        boolean hasDescendant = false;
+        for (int i = 1; i < segments.length; i++) {
+            if (segments[i] instanceof PathSegment.Filter) hasFilter = true;
+            else if (segments[i] instanceof PathSegment.Descendant) hasDescendant = true;
+        }
+        if (hasFilter && !allowFallback) {
+            _error(method, target, "@FindByPath path '" + expr + "' requires allowFallback=true because filter expressions use runtime evaluation");
+            return;
+        }
+        if (hasDescendant && !allowFallback) {
+            _error(method, target, "@FindByPath path '" + expr + "' requires allowFallback=true because descendant is not fully compiled");
+            return;
+        }
+
         // 4. Extract element type from List<T>
         TypeMirror elementType = GeneratorUtil.listValueType(ctx, returnType);
 
         VariableElement root = method.getParameters().get(0);
         if (tryEmitRootFind(method, target, path, returnType, elementType, root)) {
+            return;
+        }
+        if (hasDescendant && tryEmitDescendantFind(method, target, path, returnType, elementType, root)) {
             return;
         }
         if (tryEmitWildcardFind(method, target, path, returnType, elementType, root)) {
@@ -79,7 +100,7 @@ public final class FindGenerator {
             return;
         }
 
-        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, wildcard/slice, or one name/index union with static name/index segments is supported");
+        _error(method, target, "@FindByPath unsupported path '" + expr + "': only root, wildcard/slice/filter, or one name/index union with static name/index segments is supported");
     }
 
     private boolean tryEmitRootFind(ExecutableElement method, GeneratedClass target, JsonPath path,
@@ -106,7 +127,7 @@ public final class FindGenerator {
         boolean hasMulti = false;
         for (int i = 1; i < segments.length; i++) {
             PathSegment segment = segments[i];
-            if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice) {
+            if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice || segment instanceof PathSegment.Filter) {
                 hasMulti = true;
             } else if (!(segment instanceof PathSegment.Name || segment instanceof PathSegment.Index)) {
                 return false;
@@ -121,6 +142,11 @@ public final class FindGenerator {
                 current = current.getKind() == TypeKind.ARRAY
                         ? ((ArrayType) current).getComponentType()
                         : GeneratorUtil.listValueType(ctx, current);
+            } else if (segments[i] instanceof PathSegment.Filter) {
+                if (!isList(current) && current.getKind() != TypeKind.ARRAY && !isMap(current)) return false;
+                current = current.getKind() == TypeKind.ARRAY
+                        ? ((ArrayType) current).getComponentType()
+                        : isList(current) ? GeneratorUtil.listValueType(ctx, current) : GeneratorUtil.mapValueType(ctx, current);
             } else {
                 current = resolveDirectType(current, segments[i]);
                 if (current == null) return false;
@@ -128,22 +154,54 @@ public final class FindGenerator {
         }
         if (!canAddToResult(current, elementType)) return false;
 
+        String[] filterFields = addFilterFields(target, path.toString(), segments);
+
         target.addMethod(out -> {
             NameAllocator names = names(root);
             String outVar = names.local("out");
+            String rootVar = root.getSimpleName().toString();
             out.line("");
             out.line("@Override");
             out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
-                    "(" + GeneratorUtil.typeName(root.asType()) + " " + root.getSimpleName() + ") {");
+                    "(" + GeneratorUtil.typeName(root.asType()) + " " + rootVar + ") {");
             out.indent();
             out.line("java.util.ArrayList<" + GeneratorUtil.localTypeName(ctx, elementType) + "> " + outVar + " = new java.util.ArrayList<>();");
-            if (!root.asType().getKind().isPrimitive()) out.line(root.getSimpleName() + ".getClass();");
-            emitWildcardSegments(out, names, outVar, segments, 1, root.getSimpleName().toString(), root.asType(), true, true);
+            if (!root.asType().getKind().isPrimitive()) out.line(rootVar + ".getClass();");
+            emitWildcardSegments(out, names, outVar, filterFields, segments, 1, rootVar, rootVar, root.asType(), true, true);
             out.line("return " + outVar + ";");
             out.dedent();
             out.line("}");
         });
         return true;
+    }
+
+    private boolean tryEmitDescendantFind(ExecutableElement method, GeneratedClass target, JsonPath path,
+                                          TypeMirror returnType, TypeMirror elementType, VariableElement root) {
+        PathSegment[] segments = path.segments();
+        for (int i = 1; i < segments.length; i++) {
+            if (segments[i] instanceof PathSegment.Descendant) {
+                String fallbackField = "_sjf4j_find_fallback_" + fallbackSeq++;
+                String fallbackExpr = path.toString();
+                target.addField(out -> out.line("private static final org.sjf4j.path.JsonPath " + fallbackField +
+                        " = org.sjf4j.path.JsonPath.parse(\"" + GeneratorUtil.escape(fallbackExpr) + "\");"));
+
+                target.addMethod(out -> {
+                    String rootVar = root.getSimpleName().toString();
+                    out.line("");
+                    out.line("@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
+                    out.line("@Override");
+                    out.line("public " + GeneratorUtil.typeName(returnType) + " " + method.getSimpleName() +
+                            "(" + GeneratorUtil.typeName(root.asType()) + " " + rootVar + ") {");
+                    out.indent();
+                    if (!root.asType().getKind().isPrimitive()) out.line(rootVar + ".getClass();");
+                    out.line("return (" + GeneratorUtil.typeName(returnType) + ") (java.util.List) " + fallbackField + ".find(" + rootVar + ");");
+                    out.dedent();
+                    out.line("}");
+                });
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean tryEmitUnionFind(ExecutableElement method, GeneratedClass target, JsonPath path,
@@ -269,7 +327,8 @@ public final class FindGenerator {
     }
 
     private void emitWildcardSegments(SourceWriter out, NameAllocator names, String outVar,
-                                      PathSegment[] segments, int index, String expr,
+                                      String[] filterFields, PathSegment[] segments, int index,
+                                      String rootExpr, String expr,
                                       TypeMirror exprType, boolean topLevel, boolean exprKnownNonNull) {
         if (index == segments.length) {
             out.line(outVar + ".add(" + expr + ");");
@@ -277,30 +336,36 @@ public final class FindGenerator {
         }
 
         PathSegment segment = segments[index];
-        if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice) {
+        if (segment instanceof PathSegment.Wildcard || segment instanceof PathSegment.Slice || segment instanceof PathSegment.Filter) {
             if (!exprKnownNonNull && !exprType.getKind().isPrimitive()) {
                 out.line("if (" + expr + " == null) " + (topLevel ? "return " + outVar : "continue") + ";");
             }
+            boolean filterMap = segment instanceof PathSegment.Filter && isMap(exprType);
             TypeMirror itemType = exprType.getKind() == TypeKind.ARRAY
                     ? ((ArrayType) exprType).getComponentType()
-                    : GeneratorUtil.listValueType(ctx, exprType);
-            String indexVar = names.local("i");
+                    : filterMap ? GeneratorUtil.mapValueType(ctx, exprType) : GeneratorUtil.listValueType(ctx, exprType);
             String itemVar = names.local("item");
             String itemTypeName = GeneratorUtil.localTypeName(ctx, itemType);
             if (exprType.getKind() == TypeKind.ARRAY) {
+                String indexVar = names.local("i");
                 String sizeExpr = expr + ".length";
                 out.line("for (int " + indexVar + " = 0; " + indexVar + " < " + sizeExpr + "; " + indexVar + "++) {");
                 out.indent();
                 emitSliceCheck(out, segment, indexVar, sizeExpr);
                 out.line(itemTypeName + " " + itemVar + " = " + expr + "[" + indexVar + "];");
+            } else if (filterMap) {
+                out.line("for (" + itemTypeName + " " + itemVar + " : " + expr + ".values()) {");
+                out.indent();
             } else {
+                String indexVar = names.local("i");
                 String sizeVar = names.local("n");
                 out.line("for (int " + indexVar + " = 0, " + sizeVar + " = " + expr + ".size(); " + indexVar + " < " + sizeVar + "; " + indexVar + "++) {");
                 out.indent();
                 emitSliceCheck(out, segment, indexVar, sizeVar);
                 out.line(itemTypeName + " " + itemVar + " = " + expr + ".get(" + indexVar + ");");
             }
-            emitWildcardSegments(out, names, outVar, segments, index + 1, itemVar, itemType, false, false);
+            emitFilterCheck(out, filterFields, index, rootExpr, itemVar);
+            emitWildcardSegments(out, names, outVar, filterFields, segments, index + 1, rootExpr, itemVar, itemType, false, false);
             out.dedent();
             out.line("}");
             return;
@@ -315,7 +380,27 @@ public final class FindGenerator {
         String name = names.local("v");
         out.line(GeneratorUtil.localTypeName(ctx, access.type) + " " + name + " = " + access.expr + ";");
         if (!last) out.line("if (" + name + " == null) " + miss + ";");
-        emitWildcardSegments(out, names, outVar, segments, index + 1, name, access.type, topLevel, !last);
+        emitWildcardSegments(out, names, outVar, filterFields, segments, index + 1, rootExpr, name, access.type, topLevel, !last);
+    }
+
+    private String[] addFilterFields(GeneratedClass target, String rawExpr, PathSegment[] segments) {
+        String[] filterFields = new String[segments.length];
+        for (int i = 1; i < segments.length; i++) {
+            if (segments[i] instanceof PathSegment.Filter) {
+                String field = "_sjf4j_find_filter_" + filterSeq++;
+                int filterIndex = i;
+                filterFields[i] = field;
+                target.addField(out -> out.line("private static final org.sjf4j.path.FilterExpr " + field +
+                        " = ((org.sjf4j.path.PathSegment.Filter) org.sjf4j.path.JsonPath.parse(\"" +
+                        GeneratorUtil.escape(rawExpr) + "\").segments()[" + filterIndex + "]).filterExpr;"));
+            }
+        }
+        return filterFields;
+    }
+
+    private void emitFilterCheck(SourceWriter out, String[] filterFields, int index, String rootExpr, String itemVar) {
+        String field = filterFields[index];
+        if (field != null) out.line("if (!" + field + ".evalTruth(" + rootExpr + ", " + itemVar + ")) continue;");
     }
 
     private void emitSliceCheck(SourceWriter out, PathSegment segment, String indexVar, String sizeExpr) {
@@ -424,6 +509,10 @@ public final class FindGenerator {
 
     private boolean isList(TypeMirror type) {
         return GeneratorUtil.isAssignableErasure(ctx, type, ctx.listType);
+    }
+
+    private boolean isMap(TypeMirror type) {
+        return GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType);
     }
 
     private NameAllocator names(VariableElement root) {

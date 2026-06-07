@@ -382,26 +382,115 @@ public class FindProcessorTest {
                 src.resolve("DeepNode.java").toFile(),
                 src.resolve("FindComplex.java").toFile()
         ))).call();
-        assertFalse(ok, "descendant $..name should fail compilation");
+        assertFalse(ok, "descendant $..name should require allowFallback=true");
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(messages.contains("allowFallback=true"), "Expected fallback requirement error, got: " + messages);
     }
 
     @Test
-    public void rejectFilterPath() throws Exception {
-        Path dir = Files.createTempDirectory("sjf4j-find-reject-filter");
+    public void generateFindDescendantFallbackPath() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-descendant-fallback");
         Path src = dir.resolve("src/testcase");
         Path out = dir.resolve("classes");
+        Path gen = dir.resolve("generated");
         Files.createDirectories(src);
         Files.createDirectories(out);
+        Files.createDirectories(gen);
 
+        write(src.resolve("DeepNode.java"),
+                "package testcase;\n" +
+                "import java.util.List;\n" +
+                "public record DeepNode(String name, List<DeepNode> children) {}\n");
+        write(src.resolve("Root.java"),
+                "package testcase;\n" +
+                "public class Root {\n" +
+                "  private DeepNode child;\n" +
+                "  public DeepNode getChild() { return child; }\n" +
+                "  public void setChild(DeepNode child) { this.child = child; }\n" +
+                "}\n");
+        write(src.resolve("FindDeep.java"),
+                "package testcase;\n" +
+                "import java.util.List;\n" +
+                "import org.sjf4j.annotation.path.CompiledPath;\n" +
+                "import org.sjf4j.annotation.path.FindByPath;\n" +
+                "@CompiledPath\n" +
+                "public interface FindDeep {\n" +
+                "  @FindByPath(value=\"$.child..name\", allowFallback=true)\n" +
+                "  List<String> names(Root root);\n" +
+                "  @FindByPath(value=\"$..name\", allowFallback=true)\n" +
+                "  List<String> allNames(Root root);\n" +
+                "}\n");
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(gen.toFile()));
+
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("DeepNode.java").toFile(),
+                src.resolve("Root.java").toFile(),
+                src.resolve("FindDeep.java").toFile()
+        ))).call();
+        assertTrue(ok, "Compilation with descendant fallback should succeed: " + diagnosticsToString(diagnostics));
+
+        String source = Files.readString(gen.resolve("testcase/FindDeep_Impl.java"));
+        assertTrue(source.contains("JsonPath.parse(\"$.child..name\")"), source);
+        assertTrue(source.contains("JsonPath.parse(\"$..name\")"), source);
+        assertTrue(source.contains(".find("), source);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> nodeClass = Class.forName("testcase.DeepNode", true, loader);
+        Class<?> rootClass = Class.forName("testcase.Root", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.FindDeep_Impl", true, loader);
+
+        Object leaf = nodeClass.getConstructor(String.class, List.class).newInstance("leaf", List.of());
+        Object child = nodeClass.getConstructor(String.class, List.class).newInstance("child", List.of(leaf));
+        Object root = rootClass.getConstructor().newInstance();
+        rootClass.getMethod("setChild", nodeClass).invoke(root, child);
+
+        Object nodes = nodesClass.getConstructor().newInstance();
+        Method names = nodesClass.getMethod("names", rootClass);
+        Method allNames = nodesClass.getMethod("allNames", rootClass);
+        @SuppressWarnings("unchecked")
+        List<String> result = (List<String>) names.invoke(nodes, root);
+        assertEquals(Arrays.asList("child", "leaf"), result);
+        @SuppressWarnings("unchecked")
+        List<String> allResult = (List<String>) allNames.invoke(nodes, root);
+        assertEquals(Arrays.asList("child", "leaf"), allResult);
+    }
+
+    @Test
+    public void generateFindFilterPath() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-find-filter");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Path gen = dir.resolve("generated");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        Files.createDirectories(gen);
+
+        write(src.resolve("Item.java"),
+                "package testcase;\n" +
+                "public class Item {\n" +
+                "  private String name;\n" +
+                "  private int age;\n" +
+                "  public String getName() { return name; }\n" +
+                "  public void setName(String name) { this.name = name; }\n" +
+                "  public int getAge() { return age; }\n" +
+                "  public void setAge(int age) { this.age = age; }\n" +
+                "}\n");
         write(src.resolve("FilterRoot.java"),
                 "package testcase;\n" +
                 "import java.util.List;\n" +
                 "public class FilterRoot {\n" +
-                "  private List<Object> items;\n" +
-                "  public List<Object> getItems() { return items; }\n" +
-                "  public void setItems(List<Object> items) { this.items = items; }\n" +
+                "  private List<Item> items;\n" +
+                "  public List<Item> getItems() { return items; }\n" +
+                "  public void setItems(List<Item> items) { this.items = items; }\n" +
                 "}\n");
         write(src.resolve("FindFiltered.java"),
                 "package testcase;\n" +
@@ -410,7 +499,7 @@ public class FindProcessorTest {
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
                 "@CompiledPath\n" +
                 "public interface FindFiltered {\n" +
-                "  @FindByPath(\"$.items[?(@.age > 18)].name\")\n" +
+                "  @FindByPath(value=\"$.items[?(@.age > 18)].name\", allowFallback=true)\n" +
                 "  List<String> adultNames(FilterRoot root);\n" +
                 "}\n");
 
@@ -419,17 +508,53 @@ public class FindProcessorTest {
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        files.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(gen.toFile()));
 
         Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
                 "-classpath", System.getProperty("java.class.path"),
                 "-processor", Sjf4jProcessor.class.getName()
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(
+                src.resolve("Item.java").toFile(),
                 src.resolve("FilterRoot.java").toFile(),
                 src.resolve("FindFiltered.java").toFile()
         ))).call();
-        assertFalse(ok, "filter path should fail compilation");
-        String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(ok, "Compilation with filter should succeed: " + diagnosticsToString(diagnostics));
+
+        Path genSource = gen.resolve("testcase/FindFiltered_Impl.java");
+        assertTrue(Files.exists(genSource), "Generated source not found at " + genSource);
+        String source = Files.readString(genSource);
+        assertTrue(source.contains("private static final FilterExpr") ||
+                source.contains("private static final org.sjf4j.path.FilterExpr"), source);
+        assertTrue(source.contains(".evalTruth("), source);
+        assertFalse(source.contains(".find("), "Filter path should not fall back to .find(; source:\n" + source);
+
+        URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
+        Class<?> itemClass = Class.forName("testcase.Item", true, loader);
+        Class<?> rootClass = Class.forName("testcase.FilterRoot", true, loader);
+        Class<?> nodesClass = Class.forName("testcase.FindFiltered_Impl", true, loader);
+
+        Object child = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setName", String.class).invoke(child, "child");
+        itemClass.getMethod("setAge", int.class).invoke(child, 12);
+        Object adult1 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setName", String.class).invoke(adult1, "adult-a");
+        itemClass.getMethod("setAge", int.class).invoke(adult1, 19);
+        Object adult2 = itemClass.getConstructor().newInstance();
+        itemClass.getMethod("setName", String.class).invoke(adult2, "adult-b");
+        itemClass.getMethod("setAge", int.class).invoke(adult2, 30);
+
+        List<Object> items = new ArrayList<>();
+        items.add(child);
+        items.add(adult1);
+        items.add(adult2);
+        Object root = rootClass.getConstructor().newInstance();
+        rootClass.getMethod("setItems", List.class).invoke(root, items);
+
+        Object nodes = nodesClass.getConstructor().newInstance();
+        Method adultNames = nodesClass.getMethod("adultNames", rootClass);
+        @SuppressWarnings("unchecked")
+        List<String> result = (List<String>) adultNames.invoke(nodes, root);
+        assertEquals(Arrays.asList("adult-a", "adult-b"), result);
     }
 
     @Test

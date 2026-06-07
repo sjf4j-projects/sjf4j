@@ -139,7 +139,7 @@ public final class PathGenerator {
                     return;
                 } else {
                     generatedAnno = "@FindByPath";
-                    findGenerator.genFind(method, target, find.value());
+                    findGenerator.genFind(method, target, find.value(), find.allowFallback());
                 }
             }
 
@@ -286,9 +286,9 @@ public final class PathGenerator {
         TypeMirror current = root.asType();
         for (int i = 1, len = segments.length - 1; i < len; i++) {
             PathSegment segment = segments[i];
+            TypeMirror parent = current;
             if (segment instanceof PathSegment.Name) {
                 String name = ((PathSegment.Name) segment).name;
-                if (!_validateWritableNameIfPojo(current, name, method, target)) return;
                 current = _resolveNameType(current, name, method, target);
                 if (current == null) return;
             } else if (segment instanceof PathSegment.Index) {
@@ -302,7 +302,7 @@ public final class PathGenerator {
                 return;
             }
             if (current == null) return;
-            if (!current.getKind().isPrimitive() &&
+            if (!current.getKind().isPrimitive() && _canEnsurePutBack(parent, segment, pathParams) &&
                     _createContainerExpr(current, segments[i + 1], pathParams, method, target) == null) {
                 return;
             }
@@ -1059,8 +1059,12 @@ public final class PathGenerator {
                 if (!nextType.getKind().isPrimitive()) {
                     out.line("if (" + nextVar + " == null) {");
                     out.indent();
-                    _emitCreateContainer(out, nextVar, nextType, segments[i + 1], pathParams);
-                    _emitEnsurePutBack(out, currentType, segment, pathParams, scope, currentVar, nextVar, indexVar);
+                    if (_canEnsurePutBack(currentType, segment, pathParams)) {
+                        _emitCreateContainer(out, nextVar, nextType, segments[i + 1], pathParams);
+                        _emitEnsurePutBack(out, currentType, segment, pathParams, scope, currentVar, nextVar, indexVar);
+                    } else {
+                        _emitMissingReadonlyIntermediate(out, currentType, segment);
+                    }
                     out.dedent();
                     out.line("}");
                 }
@@ -1120,9 +1124,40 @@ public final class PathGenerator {
             } else {
                 _emitPutParamNameNoOld(out, parentType, scope.param(param), parentVar, valueVar);
             }
+        } else if (segment instanceof PathSegment.Name) {
+            String name = ((PathSegment.Name) segment).name;
+            if (_canWriteName(parentType, name)) {
+                _emitPutNameNoOld(out, parentType, name, parentVar, valueVar);
+            } else {
+                _emitMissingReadonlyIntermediate(out, parentType, segment);
+            }
         } else {
             _emitPutLastNoOld(out, parentType, segment, pathParams, scope, parentVar, valueVar, "return;");
         }
+    }
+
+    private boolean _canWriteName(TypeMirror parent, String name) {
+        if (GeneratorUtil.isObject(ctx, parent) || GeneratorUtil.isAssignableErasure(ctx, parent, ctx.jsonObjectType) ||
+                GeneratorUtil.isAssignableErasure(ctx, parent, ctx.mapType)) {
+            return true;
+        }
+        TypeElement type = GeneratorUtil.asTypeElement(parent);
+        if (type == null) return true;
+        ExecutableElement setter = GeneratorUtil.findWritable(ctx, type, parent, name);
+        if (setter != null) return true;
+        VariableElement field = GeneratorUtil.findWritableField(ctx, type, name);
+        return field != null && !field.getModifiers().contains(Modifier.FINAL);
+    }
+
+    private boolean _canEnsurePutBack(TypeMirror parent, PathSegment segment, Map<String, VariableElement> pathParams) {
+        if (segment instanceof PathSegment.Name) return _canWriteName(parent, ((PathSegment.Name) segment).name);
+        return true;
+    }
+
+    private void _emitMissingReadonlyIntermediate(SourceWriter out, TypeMirror parent, PathSegment segment) {
+        String name = segment instanceof PathSegment.Name ? ((PathSegment.Name) segment).name : _segmentHint(segment);
+        out.line("throw new org.sjf4j.exception.JsonException(\"Cannot create missing ensure intermediate read-only property '" +
+                GeneratorUtil.escape(name) + "' on " + GeneratorUtil.escape(parent.toString()) + "\");");
     }
 
     /**

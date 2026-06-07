@@ -29,6 +29,8 @@ public class FindByPathTest {
 
     record Container(List<Item> items, List<Family> families, Map<String, Object> metadata) {}
 
+    record Registry(Map<String, Item> items) {}
+
     // ---- Compiled interfaces -----------------------------------------------
 
     @CompiledPath
@@ -65,6 +67,18 @@ public class FindByPathTest {
 
         @FindByPath("$.items[:-1].name")
         List<String> allButLastItemNames(Container root);
+
+        @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+        List<String> adultItemNames(Container root);
+
+        @FindByPath(value = "$.items[?(@.name == \"Bob\")].age", allowFallback = true)
+        List<Integer> bobAges(Container root);
+
+        @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+        List<String> adultRegistryNames(Registry root);
+
+        @FindByPath(value = "$.families..name", allowFallback = true)
+        List<String> familyDescendantNames(Container root);
     }
 
     // ---- Tests -------------------------------------------------------------
@@ -142,6 +156,30 @@ public class FindByPathTest {
         assertEquals(List.of("Alice", "Charlie"), nodes.everyOtherItemName(root));
         assertEquals(List.of("Bob", "Charlie"), nodes.lastTwoItemNames(root));
         assertEquals(List.of("Alice", "Bob"), nodes.allButLastItemNames(root));
+    }
+
+    @Test
+    public void filterReturnsMatchingValuesInArrayOrder() {
+        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        Container root = container();
+
+        assertEquals(List.of("Bob", "Charlie"), nodes.adultItemNames(root));
+        assertEquals(List.of(25), nodes.bobAges(root));
+
+        Map<String, Item> registryItems = new LinkedHashMap<>();
+        registryItems.put("a", root.items().get(0));
+        registryItems.put("b", root.items().get(1));
+        registryItems.put("c", root.items().get(2));
+        assertEquals(List.of("Bob", "Charlie"), nodes.adultRegistryNames(new Registry(registryItems)));
+    }
+
+    @Test
+    public void descendantFallbackReturnsMatchingValuesInOrder() {
+        FindNodes nodes = CompiledNodes.of(FindNodes.class);
+        Container root = container();
+
+        assertEquals(List.of("one", "Alice", "Bob", "empty", "two", "Charlie"),
+                nodes.familyDescendantNames(root));
     }
 
     @Test

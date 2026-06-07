@@ -34,10 +34,10 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
-public class MapperBenchmark {
+public class CompiledMapperBenchmark {
 
     public static void main(String[] args) throws Exception {
-        org.openjdk.jmh.Main.main(new String[]{MapperBenchmark.class.getSimpleName()});
+        org.openjdk.jmh.Main.main(new String[]{CompiledMapperBenchmark.class.getSimpleName()});
     }
 
     @State(Scope.Thread)

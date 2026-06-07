@@ -16,7 +16,7 @@ import java.util.Set;
 @Target(ElementType.METHOD)
 public @interface MapperOptions {
     /** Null handling for mutable create targets and update targets. */
-    NullValuePolicy nulls() default NullValuePolicy.SET;
+    NullValuePolicy nulls() default NullValuePolicy.SET_TO_NULL;
 
     Class<? extends List> listType() default ArrayList.class;
     Class<? extends Set> setType() default LinkedHashSet.class;

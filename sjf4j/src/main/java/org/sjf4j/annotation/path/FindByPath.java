@@ -13,9 +13,12 @@ import java.lang.annotation.Target;
  * must be {@code List<T>} where {@code T} is the element type resolved from
  * the path expression.</p>
  *
- * <p>Currently supports root, simple wildcard ({@code [*]}), and union
- * ({@code [0,2]} / {@code ['a','b']}) path expressions that the annotation
- * processor can compile directly. Unsupported path shapes fail at compile time.</p>
+ * <p>Currently supports root, simple wildcard ({@code [*]}), slice, and
+ * union ({@code [0,2]} / {@code ['a','b']}) path expressions that the
+ * annotation processor can compile directly. Filter and descendant paths
+ * require {@link #allowFallback()} because they use precompiled runtime
+ * fallback for the non-direct part. Unsupported path shapes fail at compile
+ * time.</p>
  *
  * <pre>{@code
  * @CompiledPath
@@ -32,4 +35,10 @@ public @interface FindByPath {
      * JSONPath expression that may match multiple target locations.
      */
     String value();
+
+    /**
+     * Allows generated implementations to use precompiled runtime JSONPath or
+     * filter-expression fallback for path parts that are not fully compiled.
+     */
+    boolean allowFallback() default false;
 }

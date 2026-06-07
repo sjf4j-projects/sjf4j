@@ -53,10 +53,10 @@ import java.util.concurrent.TimeUnit;
 @Fork(2)
 @Threads(1)
 @State(Scope.Thread)
-public class ReadBenchmark {
+public class JsonReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-        Main.main(new String[]{ReadBenchmark.class.getName()});
+        Main.main(new String[]{JsonReadBenchmark.class.getName()});
     }
 
     private static final String JSON_DATA2 = "{\n"

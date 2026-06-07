@@ -109,7 +109,7 @@ public final class MapperGenerator {
         MapperModel.Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
-        NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
+        NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
         if (plan.ctor != null && nulls == NullValuePolicy.IGNORE) {
             _error(method, target, "NullValuePolicy.IGNORE is supported only for mutable no-args create targets and update targets");
             return;
@@ -340,7 +340,7 @@ public final class MapperGenerator {
         }
 
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
-        NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET : cfg.nulls();
+        NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
         ArrayPolicy defaultArrayPolicy = cfg == null ? ArrayPolicy.CLEAR_ADD : cfg.arrays();
         ObjectPolicy defaultObjectPolicy = cfg == null ? ObjectPolicy.PUT : cfg.objects();
         Map<MapperModel.TargetPathWrite, MapperModel.Expr> pathValues = _pathValues(iface, method, target, sources, multi, state, pathWrites, nestedMappers, params.get(0).asType(), true, nulls);
@@ -1247,7 +1247,7 @@ public final class MapperGenerator {
             MapperModel.Expr grouped = _tryGroupedReadExpr(sources, multi, state, path, targetName, targetType, nestedMapper);
             if (grouped != null) return grouped;
         }
-        if (nulls == NullValuePolicy.SET) {
+        if (nulls == NullValuePolicy.SET_TO_NULL) {
             MapperModel.Expr helper = _tryPathHelperExpr(method, target, sources, multi, path, targetName, targetType, nestedMapper);
             if (helper != null) return helper;
         }
@@ -2338,7 +2338,7 @@ public final class MapperGenerator {
         if (policy == ArrayPolicy.CLEAR_ADD) out.line(access + ".clear();");
         _emitContainerCopy(out, from, to, conv, access, source, state.names);
         out.dedent();
-        if (nulls == NullValuePolicy.SET) {
+        if (nulls == NullValuePolicy.SET_TO_NULL) {
             out.line("} else {");
             out.indent();
             out.line(w.setter != null
@@ -2373,7 +2373,7 @@ public final class MapperGenerator {
         }
         _emitContainerUpdate(out, iface, method, target, from, to, nestedMapper, access, source, arrayPolicy, policy, state.names);
         out.dedent();
-        if (nulls == NullValuePolicy.SET) {
+        if (nulls == NullValuePolicy.SET_TO_NULL) {
             out.line("} else {");
             out.indent();
             out.line(w.setter != null

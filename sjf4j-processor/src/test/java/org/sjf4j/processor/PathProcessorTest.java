@@ -938,7 +938,6 @@ public class PathProcessorTest {
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("@EnsurePutIfAbsentByPath return type mismatch: absent write returns null"), messages);
         assertTrue(messages.contains("@EnsurePutByPath return type mismatch: append returns null"), messages);
-        assertTrue(messages.contains("Cannot resolve writable property 'child'"), messages);
         assertTrue(messages.contains("Ensure intermediate container type testcase.Model.NoDefault must have an accessible no-arg constructor"), messages);
         assertTrue(messages.contains("Path operation annotations cannot be used together"), messages);
     }
