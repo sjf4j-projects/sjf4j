@@ -28,10 +28,15 @@
  * List&lt;Object&gt;/Set&lt;Object&gt;; other declared Collection source types are
  * rejected for array-like mapping; raw List/Set targets and other raw
  * collection/map targets are rejected. It deliberately does not provide full
- * NodeFacade.readNode/writeNode semantics: runtime converters, one-of dispatch,
- * private binding, deep OBNT materialization, JOJO update targets, JAJO and
- * Java array update targets, generic mapper
- * interfaces or methods, and map key conversion are not supported.</p>
+ * NodeFacade.readNode/writeNode semantics: runtime converters, private
+ * binding, deep OBNT materialization, JOJO update targets, JAJO and Java array
+ * update targets, generic mapper interfaces or methods, and map key conversion
+ * are not supported. Limited type-level {@code @OneOf} dispatch is supported
+ * only for create mappings with {@code scope=CURRENT} and empty {@code path}:
+ * discriminator-key dispatch uses {@code key}, while shape-based dispatch uses
+ * distinct subtype raw JSON types. Field/parameter-local {@code @OneOf},
+ * discriminator paths, non-current scopes, and root {@code @OneOf} update
+ * targets are unsupported.</p>
  *
  * <p>Automatic converter selection first keeps directly assignable values as-is,
  * then may use preferred method references declared by {@link

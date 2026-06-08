@@ -19,13 +19,19 @@ import java.util.function.Function;
  *
  * <p>The builder first deep-converts the source object into the target type,
  * then applies declared actions in registration order.
+ *
+ * @deprecated Use {@link org.sjf4j.annotation.mapper.CompiledMapper} instead.
  */
+@Deprecated
 public final class NodeMapperBuilder<S, T> {
 
     /**
      * Computes a target value from the source root object, the matched target
      * parent container, and the current target value.
+     *
+     * @deprecated Use {@link org.sjf4j.annotation.mapper.CompiledMapper} instead.
      */
+    @Deprecated
     @FunctionalInterface
     public interface ComputeFunction<S> {
         Object apply(S root, Object parent, Object current);

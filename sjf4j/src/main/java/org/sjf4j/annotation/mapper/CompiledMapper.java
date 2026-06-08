@@ -24,8 +24,11 @@ import java.lang.annotation.Target;
  *
  * <p>{@code CompiledMapper} is a MapStruct-like compiled structural mapper. It
  * is not a compile-time replacement for {@code NodeFacade.readNode}; runtime
- * converters, one-of dispatch, private binding, and facade context are outside
- * its scope.</p>
+ * converters, private binding, and facade context are outside its scope.
+ * Limited type-level {@code @OneOf} dispatch is supported for create mappings:
+ * discriminator-key dispatch when the target type declares {@code key}, and
+ * shape-based dispatch when it does not. Both modes require
+ * {@code scope=CURRENT} and an empty {@code path}.</p>
  *
  * <p>Generated mappers include SJF4J strict value conversion for mapper leaves:
  * numeric narrowing/widening through SJF4J number checks, string/character/enum

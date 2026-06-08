@@ -14,7 +14,10 @@ import org.sjf4j.path.JsonPath;
  *
  * <p>This class is intentionally package-private; users interact through
  * {@link NodeMapperBuilder#buildCompiled()}.
+ *
+ * @deprecated Use {@link org.sjf4j.annotation.mapper.CompiledMapper} instead.
  */
+@Deprecated
 final class CompiledAction<S, T> {
 
     static final int COPY = 0;

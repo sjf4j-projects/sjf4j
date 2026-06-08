@@ -32,7 +32,12 @@ import java.util.Set;
 
         "org.sjf4j.annotation.mapper.CompiledMapper",
         "org.sjf4j.annotation.mapper.Mapping",
-        "org.sjf4j.annotation.mapper.Mappings"
+        "org.sjf4j.annotation.mapper.Mappings",
+        "org.sjf4j.annotation.mapper.MapperOptions",
+        "org.sjf4j.annotation.mapper.MappingCreator",
+        "org.sjf4j.annotation.mapper.MappingCreators",
+        "org.sjf4j.annotation.mapper.MappingIfParentPresent",
+        "org.sjf4j.annotation.mapper.EnsureMapping"
 })
 public final class Sjf4jProcessor extends AbstractProcessor {
 
@@ -91,6 +96,13 @@ public final class Sjf4jProcessor extends AbstractProcessor {
             String annoName = anno.getQualifiedName().toString();
             if (ANNO_COMPILED_PATH.equals(annoName) || ANNO_COMPILED_MAPPER.equals(annoName)) continue;
             for (Element element : roundEnv.getElementsAnnotatedWith(anno)) {
+                if ("org.sjf4j.annotation.mapper.MappingCreator".equals(annoName)
+                        || "org.sjf4j.annotation.mapper.MappingCreators".equals(annoName)) {
+                    if (element.getKind() != ElementKind.INTERFACE) {
+                        context.error(element, "@" + anno.getSimpleName() + " can be applied only to interfaces");
+                    }
+                    continue;
+                }
                 if (element.getKind() != ElementKind.METHOD) {
                     context.error(element, "@" + anno.getSimpleName() + " can be applied only to methods");
                 } else {

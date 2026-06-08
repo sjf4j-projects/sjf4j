@@ -42,8 +42,8 @@ import java.lang.annotation.Target;
  *
  * <p>With a single source parameter, unqualified source names retain existing
  * semantics, including dotted map-key compatibility. With multiple source
- * parameters, unqualified names must resolve to a unique readable source
- * property, otherwise the parameter-qualified form is required.</p>
+ * parameters, unqualified names are resolved against the first source parameter.
+ * Use the parameter-qualified form to read from any later source parameter.</p>
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.METHOD)

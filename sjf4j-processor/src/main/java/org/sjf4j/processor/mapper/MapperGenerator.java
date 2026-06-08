@@ -9,6 +9,7 @@ import org.sjf4j.annotation.mapper.EnsureMapping;
 import org.sjf4j.annotation.mapper.ArrayPolicy;
 import org.sjf4j.annotation.mapper.NullValuePolicy;
 import org.sjf4j.annotation.mapper.ObjectPolicy;
+import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.GeneratedClass;
@@ -59,6 +60,7 @@ public final class MapperGenerator {
      */
     public void generate(TypeElement iface) {
         GeneratedClass target = new GeneratedClass(ctx, iface, GeneratorUtil.COMPILED_IMPL_POSTFIX);
+        if (!_validateMapperInterface(iface, target)) return;
         List<ImportedMapperRef> importedMappers = _importedMappers(iface, target);
         if (importedMappers == null) return;
         List<MappingCreatorRef> mappingCreators = _mappingCreators(iface, target);
@@ -75,6 +77,30 @@ public final class MapperGenerator {
         }
         target.emit();
         generation = null;
+    }
+
+    private boolean _validateMapperInterface(TypeElement iface, GeneratedClass target) {
+        if (!iface.getTypeParameters().isEmpty()) {
+            _error(iface, target, "@CompiledMapper interfaces must not declare type parameters");
+            return false;
+        }
+        for (Element member : iface.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (!method.getTypeParameters().isEmpty()) {
+                _error(method, target, "@CompiledMapper methods must not declare type parameters");
+                return false;
+            }
+        }
+        for (Element member : ctx.elements.getAllMembers(iface)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            if (!member.getModifiers().contains(Modifier.ABSTRACT)) continue;
+            Element owner = member.getEnclosingElement();
+            if (owner.equals(iface) || owner.toString().equals(Object.class.getName())) continue;
+            _error(member, target, "Inherited abstract mapper methods are not supported; declare methods directly or use @CompiledMapper.importing");
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -134,13 +160,26 @@ public final class MapperGenerator {
             sources.add(new MapperModel.SourceParam(source, dynamic ? Collections.<String, MapperModel.Read>emptyMap() : _reads(sourceType, source.asType()), dynamic));
         }
         boolean multi = sources.size() > 1;
+        if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return;
+
+        OneOfRef rootOneOf = _oneOfRef(method, target, method.getReturnType());
+        if (generation.failed) return;
+        if (rootOneOf != null) {
+            if (multi) {
+                _error(method, target, "Root @OneOf create methods support exactly one source parameter");
+                return;
+            }
+            MapperModel.Converter conv = _resolveConverter(iface, method, target, sources.get(0).element.asType(), method.getReturnType(), "");
+            if (conv == null) return;
+            target.addMethod(out -> _emitRootConverter(out, method, sources.get(0), conv));
+            return;
+        }
 
         Map<String, MapperModel.Write> writes = _writes(targetType, method.getReturnType());
         MapperModel.Plan plan = _creation(method, target, targetType, method.getReturnType(), writes);
         if (plan == null) return;
         MapperOptions cfg = method.getAnnotation(MapperOptions.class);
         NullValuePolicy nulls = cfg == null ? NullValuePolicy.SET_TO_NULL : cfg.nulls();
-        if (!_validateUsingRefs(method, target, _methodUsingRefs(method))) return;
         if (plan.ctor != null && nulls == NullValuePolicy.IGNORE) {
             _error(method, target, "NullValuePolicy.IGNORE is supported only for mutable no-args create targets and update targets");
             return;
@@ -283,6 +322,10 @@ public final class MapperGenerator {
         TypeElement targetType = GeneratorUtil.asTypeElement(params.get(0).asType());
         if (targetType == null) {
             _error(method, target, "@CompiledMapper supports only declared source and target types");
+            return;
+        }
+        if (_hasOneOfAnnotation(params.get(0).asType())) {
+            _error(method, target, "Root @OneOf update targets are unsupported");
             return;
         }
         if (_isRecord(targetType)) {
@@ -987,6 +1030,17 @@ public final class MapperGenerator {
             }
             out.line("return " + targetVar + ";");
         }
+        out.dedent();
+        out.line("}");
+    }
+
+    private void _emitRootConverter(SourceWriter out, ExecutableElement method, MapperModel.SourceParam source, MapperModel.Converter conv) {
+        out.line("");
+        out.line("@Override");
+        out.line("public " + method.getReturnType() + " " + method.getSimpleName() + "(" + source.element.asType() + " " + source.name + ") {");
+        out.indent();
+        out.line("if (" + source.name + " == null) return null;");
+        out.line("return " + _convertValue(conv, source.name) + ";");
         out.dedent();
         out.line("}");
     }
@@ -2548,6 +2602,9 @@ public final class MapperGenerator {
         MapperModel.Converter preferred = _preferredConverter(iface, method, target, from, to);
         if (preferred != null || generation.failed) return preferred;
 
+        MapperModel.Converter oneOf = _oneOfConverter(iface, method, target, from, to);
+        if (oneOf != null || generation.failed) return oneOf;
+
         MapperModel.Converter found = _autoLocalConverter(iface, method, target, from, to);
         if (found == null && generation.failed) return null;
         if (found == null) {
@@ -2573,6 +2630,276 @@ public final class MapperGenerator {
             return null;
         }
         return found;
+    }
+
+    private MapperModel.Converter _oneOfConverter(TypeElement iface, ExecutableElement method, GeneratedClass target, TypeMirror from, TypeMirror to) {
+        OneOfRef oneOf = _oneOfRef(method, target, to);
+        if (oneOf == null) return null;
+        String key = "oneof:" + from + "->" + to;
+        String existing = generation.helpers.get(key);
+        if (existing != null) return new MapperModel.Converter(existing, to);
+        if (generation.inProgress.contains(key)) {
+            _error(method, target, "Recursive @OneOf converter from " + from + " to " + to + " is unsupported; provide an explicit mapper");
+            generation.failed = true;
+            return null;
+        }
+
+        generation.inProgress.add(key);
+        List<OneOfBranchRef> branches = new ArrayList<OneOfBranchRef>();
+        String sourceRawJsonType = oneOf.shape ? _rawJsonTypeName(from) : null;
+        for (OneOfMappingRef mapping : oneOf.mappings) {
+            if (oneOf.shape && sourceRawJsonType != null
+                    && !org.sjf4j.JsonType.UNKNOWN.name().equals(sourceRawJsonType)
+                    && !sourceRawJsonType.equals(mapping.rawJsonType)) {
+                continue;
+            }
+            MapperModel.Converter conv = _resolveConverter(iface, method, target, from, mapping.type, "");
+            if (conv == null) {
+                generation.inProgress.remove(key);
+                return null;
+            }
+            branches.add(new OneOfBranchRef(mapping.when, mapping.rawJsonType, conv));
+        }
+        generation.inProgress.remove(key);
+
+        String helper = generation.helperName("OneOf");
+        generation.helpers.put(key, helper);
+        target.addHelper(out -> _emitOneOfHelper(out, helper, from, to, oneOf, branches));
+        return new MapperModel.Converter(helper, to);
+    }
+
+    private void _emitOneOfHelper(SourceWriter out, String helper, TypeMirror from, TypeMirror to, OneOfRef oneOf, List<OneOfBranchRef> branches) {
+        out.line("");
+        out.line("private " + to + " " + helper + "(" + from + " source) {");
+        out.indent();
+        out.line("if (source == null) return null;");
+        if (oneOf.shape) {
+            out.line("org.sjf4j.JsonType jsonType = org.sjf4j.JsonType.of(source);");
+            for (int i = 0; i < branches.size(); i++) {
+                OneOfBranchRef branch = branches.get(i);
+                out.line((i == 0 ? "if (" : "else if (") + "jsonType == org.sjf4j.JsonType." + branch.rawJsonType + ") return " + _convertValue(branch.converter, "source") + ";");
+            }
+            if (oneOf.failbackNull) {
+                out.line("return null;");
+            } else {
+                out.line("throw new org.sjf4j.exception.BindingException(\"Cannot resolve @OneOf target '" + GeneratorUtil.escape(to.toString()) + "' from runtime JsonType '\" + jsonType + \"'\");");
+            }
+            out.dedent();
+            out.line("}");
+            return;
+        }
+        out.line("Object discriminator = org.sjf4j.node.Nodes.getInObject(source, \"" + GeneratorUtil.escape(oneOf.key) + "\");");
+        out.line("if (discriminator != null) {");
+        out.indent();
+        out.line("String discriminatorValue = String.valueOf(discriminator);");
+        for (int i = 0; i < branches.size(); i++) {
+            OneOfBranchRef branch = branches.get(i);
+            StringBuilder cond = new StringBuilder();
+            for (int j = 0; j < branch.when.length; j++) {
+                if (j != 0) cond.append(" || ");
+                cond.append("\"").append(GeneratorUtil.escape(branch.when[j])).append("\".equals(discriminatorValue)");
+            }
+            out.line((i == 0 ? "if (" : "else if (") + cond + ") return " + _convertValue(branch.converter, "source") + ";");
+        }
+        out.dedent();
+        out.line("}");
+        if (oneOf.failbackNull) {
+            out.line("return null;");
+        } else {
+            out.line("throw new org.sjf4j.exception.BindingException(\"Cannot resolve @OneOf target '" + GeneratorUtil.escape(to.toString()) + "' from discriminator key '" + GeneratorUtil.escape(oneOf.key) + "' value '\" + discriminator + \"'\");");
+        }
+        out.dedent();
+        out.line("}");
+    }
+
+    private boolean _hasOneOfAnnotation(TypeMirror type) {
+        TypeElement element = GeneratorUtil.asTypeElement(type);
+        return element != null && _oneOfMirror(element) != null;
+    }
+
+    private OneOfRef _oneOfRef(ExecutableElement method, GeneratedClass target, TypeMirror to) {
+        TypeElement element = GeneratorUtil.asTypeElement(to);
+        if (element == null) return null;
+        AnnotationMirror mirror = _oneOfMirror(element);
+        if (mirror == null) return null;
+
+        String key = "";
+        String path = "";
+        String scope = OneOf.Scope.CURRENT.name();
+        String onNoMatch = OneOf.OnNoMatch.FAIL.name();
+        List<OneOfMappingRef> mappings = new ArrayList<OneOfMappingRef>();
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
+            String name = entry.getKey().getSimpleName().toString();
+            Object value = entry.getValue().getValue();
+            if ("key".equals(name)) {
+                key = (String) value;
+                continue;
+            }
+            if ("path".equals(name)) {
+                path = (String) value;
+                continue;
+            }
+            if ("scope".equals(name)) {
+                scope = String.valueOf(value);
+                continue;
+            }
+            if ("onNoMatch".equals(name)) {
+                onNoMatch = String.valueOf(value);
+                continue;
+            }
+            if (!"value".equals(name) || !(value instanceof List)) continue;
+            for (Object item : (List<?>) value) {
+                Object raw = ((AnnotationValue) item).getValue();
+                if (!(raw instanceof AnnotationMirror)) continue;
+                OneOfMappingRef mapping = _oneOfMappingRef(method, target, to, (AnnotationMirror) raw);
+                if (mapping == null) {
+                    generation.failed = true;
+                    return null;
+                }
+                mappings.add(mapping);
+            }
+        }
+
+        if (mappings.isEmpty()) {
+            _error(method, target, "CompiledMapper requires non-empty @OneOf mappings");
+            generation.failed = true;
+            return null;
+        }
+        if (path.length() != 0) {
+            _error(method, target, "CompiledMapper supports only @OneOf.path=\"\"; discriminator path dispatch is unsupported");
+            generation.failed = true;
+            return null;
+        }
+        if (!OneOf.Scope.CURRENT.name().equals(scope)) {
+            _error(method, target, "CompiledMapper supports only @OneOf.scope=CURRENT");
+            generation.failed = true;
+            return null;
+        }
+        boolean shape = key.length() == 0;
+        if (shape) {
+            Set<String> rawTypes = new HashSet<String>();
+            for (OneOfMappingRef mapping : mappings) {
+                if (!rawTypes.add(mapping.rawJsonType)) {
+                    _error(method, target, "CompiledMapper shape-based @OneOf has duplicate raw JsonType " + mapping.rawJsonType + " for target " + to);
+                    generation.failed = true;
+                    return null;
+                }
+            }
+        }
+        return new OneOfRef(shape, key, OneOf.OnNoMatch.FAILBACK_NULL.name().equals(onNoMatch), mappings);
+    }
+
+    private OneOfMappingRef _oneOfMappingRef(ExecutableElement method, GeneratedClass target, TypeMirror baseType, AnnotationMirror mirror) {
+        TypeMirror subtype = null;
+        List<String> when = new ArrayList<String>();
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
+            String name = entry.getKey().getSimpleName().toString();
+            Object value = entry.getValue().getValue();
+            if ("value".equals(name)) {
+                subtype = (TypeMirror) value;
+                continue;
+            }
+            if (!"when".equals(name) || !(value instanceof List)) continue;
+            for (Object item : (List<?>) value) {
+                when.add((String) ((AnnotationValue) item).getValue());
+            }
+        }
+        if (subtype == null) {
+            _error(method, target, "Invalid @OneOf mapping: missing subtype");
+            return null;
+        }
+        if (!ctx.types.isAssignable(subtype, baseType)) {
+            _error(method, target, "@OneOf mapping subtype " + subtype + " is not assignable to " + baseType);
+            return null;
+        }
+        boolean shape = _oneOfKey(_oneOfMirror(GeneratorUtil.asTypeElement(baseType))).length() == 0;
+        if (shape) {
+            if (!when.isEmpty()) {
+                _error(method, target, "CompiledMapper shape-based @OneOf requires empty @OneOf.Mapping.when values");
+                return null;
+            }
+            String rawJsonType = _rawJsonTypeName(subtype);
+            if (rawJsonType == null || org.sjf4j.JsonType.UNKNOWN.name().equals(rawJsonType)) {
+                _error(method, target, "CompiledMapper shape-based @OneOf requires known raw JsonType for subtype " + subtype);
+                return null;
+            }
+            return new OneOfMappingRef(subtype, new String[0], rawJsonType);
+        }
+        if (when.isEmpty()) {
+            _error(method, target, "CompiledMapper requires non-empty @OneOf.Mapping.when values for discriminator dispatch");
+            return null;
+        }
+        return new OneOfMappingRef(subtype, when.toArray(new String[0]), null);
+    }
+
+    private String _oneOfKey(AnnotationMirror mirror) {
+        if (mirror == null) return "";
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : ctx.elements.getElementValuesWithDefaults(mirror).entrySet()) {
+            if (entry.getKey().getSimpleName().contentEquals("key")) return String.valueOf(entry.getValue().getValue());
+        }
+        return "";
+    }
+
+    private String _rawJsonTypeName(TypeMirror type) {
+        if (type == null) return null;
+        if (type.getKind() == TypeKind.ARRAY) return org.sjf4j.JsonType.ARRAY.name();
+        if (type.getKind().isPrimitive()) {
+            if (type.getKind() == TypeKind.BOOLEAN) return org.sjf4j.JsonType.BOOLEAN.name();
+            if (type.getKind() == TypeKind.CHAR) return org.sjf4j.JsonType.STRING.name();
+            return type.getKind() == TypeKind.VOID ? org.sjf4j.JsonType.UNKNOWN.name() : org.sjf4j.JsonType.NUMBER.name();
+        }
+
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.mapType) || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonObjectType)) {
+            return org.sjf4j.JsonType.OBJECT.name();
+        }
+        if (GeneratorUtil.isAssignableErasure(ctx, type, ctx.listType)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.setType)
+                || GeneratorUtil.isAssignableErasure(ctx, type, ctx.jsonArrayType)
+                || ctx.types.isAssignable(ctx.types.erasure(type), ctx.types.erasure(ctx.elements.getTypeElement("java.util.Collection").asType()))) {
+            return org.sjf4j.JsonType.ARRAY.name();
+        }
+
+        TypeElement element = GeneratorUtil.asTypeElement(type);
+        if (element == null) return null;
+        if (element.getKind() == ElementKind.ENUM) return org.sjf4j.JsonType.STRING.name();
+        if (_oneOfMirror(element) != null) return org.sjf4j.JsonType.UNKNOWN.name();
+        if (_isNodeValue(type)) return _nodeValueRawJsonTypeName(type);
+
+        String qualifiedName = element.getQualifiedName().toString();
+        if (String.class.getName().equals(qualifiedName)
+                || Character.class.getName().equals(qualifiedName)
+                || CharSequence.class.getName().equals(qualifiedName)) return org.sjf4j.JsonType.STRING.name();
+        if (Boolean.class.getName().equals(qualifiedName)) return org.sjf4j.JsonType.BOOLEAN.name();
+        if (Number.class.getName().equals(qualifiedName)
+                || Byte.class.getName().equals(qualifiedName)
+                || Short.class.getName().equals(qualifiedName)
+                || Integer.class.getName().equals(qualifiedName)
+                || Long.class.getName().equals(qualifiedName)
+                || Float.class.getName().equals(qualifiedName)
+                || Double.class.getName().equals(qualifiedName)) return org.sjf4j.JsonType.NUMBER.name();
+        if (Void.class.getName().equals(qualifiedName)) return org.sjf4j.JsonType.NULL.name();
+        return org.sjf4j.JsonType.OBJECT.name();
+    }
+
+    private String _nodeValueRawJsonTypeName(TypeMirror type) {
+        TypeElement element = GeneratorUtil.asTypeElement(type);
+        if (element == null) return org.sjf4j.JsonType.UNKNOWN.name();
+        for (Element member : ctx.elements.getAllMembers(element)) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            if (member.getAnnotation(org.sjf4j.annotation.node.ValueToRaw.class) == null) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            if (method.getModifiers().contains(Modifier.STATIC)) continue;
+            if (!method.getParameters().isEmpty()) continue;
+            return _rawJsonTypeName(method.getReturnType());
+        }
+        return org.sjf4j.JsonType.UNKNOWN.name();
+    }
+
+    private AnnotationMirror _oneOfMirror(TypeElement element) {
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            if (mirror.getAnnotationType().toString().equals(OneOf.class.getName())) return mirror;
+        }
+        return null;
     }
 
     private MapperModel.Converter _preferredConverter(TypeElement iface, ExecutableElement method, GeneratedClass target,
@@ -4278,6 +4605,44 @@ public final class MapperGenerator {
         MappingCreatorMatch(TypeMirror type, String create) {
             this.type = type;
             this.create = create;
+        }
+    }
+
+    private static final class OneOfRef {
+        final boolean shape;
+        final String key;
+        final boolean failbackNull;
+        final List<OneOfMappingRef> mappings;
+
+        OneOfRef(boolean shape, String key, boolean failbackNull, List<OneOfMappingRef> mappings) {
+            this.shape = shape;
+            this.key = key;
+            this.failbackNull = failbackNull;
+            this.mappings = mappings;
+        }
+    }
+
+    private static final class OneOfMappingRef {
+        final TypeMirror type;
+        final String[] when;
+        final String rawJsonType;
+
+        OneOfMappingRef(TypeMirror type, String[] when, String rawJsonType) {
+            this.type = type;
+            this.when = when;
+            this.rawJsonType = rawJsonType;
+        }
+    }
+
+    private static final class OneOfBranchRef {
+        final String[] when;
+        final String rawJsonType;
+        final MapperModel.Converter converter;
+
+        OneOfBranchRef(String[] when, String rawJsonType, MapperModel.Converter converter) {
+            this.when = when;
+            this.rawJsonType = rawJsonType;
+            this.converter = converter;
         }
     }
 

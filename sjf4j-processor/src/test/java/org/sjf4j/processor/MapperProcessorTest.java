@@ -526,7 +526,8 @@ public class MapperProcessorTest {
         StandardJavaFileManager files = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
         files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
         Boolean ok = compiler.getTask(null, files, null, Arrays.asList(
-                "-classpath", System.getProperty("java.class.path")
+                "-classpath", System.getProperty("java.class.path"),
+                "-proc:none"
         ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("AnnotationUse.java").toFile()))).call();
         assertTrue(ok);
     }
@@ -714,6 +715,85 @@ public class MapperProcessorTest {
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("supports only property names and array/list indexes"), messages);
+    }
+
+    @Test
+    public void rejectUnsupportedCompiledMapperOneOfForms() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-oneof-unsupported-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadOneOfMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.node.OneOf;\n" +
+                        "class Source { public String type; public String name; }\n" +
+                        "@OneOf(key=\"type\", path=\"$.type\", value={@OneOf.Mapping(value=PathCat.class, when=\"cat\")}) abstract class PathAnimal {}\n" +
+                        "class PathCat extends PathAnimal { public String name; public PathCat() {} }\n" +
+                        "@OneOf(key=\"type\", scope=OneOf.Scope.PARENT, value={@OneOf.Mapping(value=ParentCat.class, when=\"cat\")}) abstract class ParentAnimal {}\n" +
+                        "class ParentCat extends ParentAnimal { public String name; public ParentCat() {} }\n" +
+                        "@OneOf(key=\"type\", scope=OneOf.Scope.ROOT, value={@OneOf.Mapping(value=RootCat.class, when=\"cat\")}) abstract class RootAnimal {}\n" +
+                        "class RootCat extends RootAnimal { public String name; public RootCat() {} }\n" +
+                        "@CompiledMapper interface BadOneOfMapper {\n" +
+                        "  PathAnimal path(Source s);\n" +
+                        "  ParentAnimal parent(Source s);\n" +
+                        "  RootAnimal root(Source s);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadOneOfMapper.java").toFile()))).call();
+        assertFalse(ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("CompiledMapper supports only @OneOf.path=\"\"; discriminator path dispatch is unsupported"), messages);
+        assertTrue(messages.contains("CompiledMapper supports only @OneOf.scope=CURRENT"), messages);
+    }
+
+    @Test
+    public void rejectInvalidCompiledMapperShapeOneOfForms() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-oneof-shape-bad-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadShapeOneOfMapper.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "import org.sjf4j.annotation.node.OneOf;\n" +
+                        "class Source { public String name; }\n" +
+                        "@OneOf({@OneOf.Mapping(value=ObjectCat.class), @OneOf.Mapping(value=ObjectDog.class)}) abstract class DuplicateShapeAnimal {}\n" +
+                        "class ObjectCat extends DuplicateShapeAnimal { public String name; public ObjectCat() {} }\n" +
+                        "class ObjectDog extends DuplicateShapeAnimal { public String name; public ObjectDog() {} }\n" +
+                        "@OneOf({@OneOf.Mapping(value=UnknownNestedShape.class)}) abstract class UnknownShapeAnimal {}\n" +
+                        "@OneOf({@OneOf.Mapping(value=UnknownLeaf.class)}) abstract class UnknownNestedShape extends UnknownShapeAnimal {}\n" +
+                        "class UnknownLeaf extends UnknownNestedShape { public String name; public UnknownLeaf() {} }\n" +
+                        "@OneOf({@OneOf.Mapping(value=WhenShapeCat.class, when=\"cat\")}) abstract class WhenShapeAnimal {}\n" +
+                        "class WhenShapeCat extends WhenShapeAnimal { public String name; public WhenShapeCat() {} }\n" +
+                        "@CompiledMapper interface BadShapeOneOfMapper {\n" +
+                        "  DuplicateShapeAnimal duplicate(Source s);\n" +
+                        "  UnknownShapeAnimal unknown(Source s);\n" +
+                        "  WhenShapeAnimal when(Source s);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadShapeOneOfMapper.java").toFile()))).call();
+        assertFalse(ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("CompiledMapper shape-based @OneOf has duplicate raw JsonType OBJECT"), messages);
+        assertTrue(messages.contains("CompiledMapper shape-based @OneOf requires known raw JsonType for subtype testcase.UnknownNestedShape"), messages);
+        assertTrue(messages.contains("CompiledMapper shape-based @OneOf requires empty @OneOf.Mapping.when values"), messages);
     }
 
     @Test
@@ -1052,6 +1132,70 @@ public class MapperProcessorTest {
         assertTrue(!ok);
         String messages = diagnosticsToString(diagnostics);
         assertTrue(messages.contains("Ambiguous @MappingCreator for target type testcase.View"), messages);
+    }
+
+    @Test
+    public void rejectGenericAndInheritedCompiledMapperContracts() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-contract-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("BadMapperContracts.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source { public String name; } class Target { public Target() {} public String name; }\n" +
+                        "interface ParentMapper { Target inherited(Source s); }\n" +
+                        "@CompiledMapper interface GenericMapper<T> { Target map(Source s); }\n" +
+                        "@CompiledMapper interface GenericMethodMapper { <X> Target map(Source s); }\n" +
+                        "@CompiledMapper interface ChildMapper extends ParentMapper { Target own(Source s); }\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("BadMapperContracts.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@CompiledMapper interfaces must not declare type parameters"), messages);
+        assertTrue(messages.contains("@CompiledMapper methods must not declare type parameters"), messages);
+        assertTrue(messages.contains("Inherited abstract mapper methods are not supported; declare methods directly or use @CompiledMapper.importing"), messages);
+    }
+
+    @Test
+    public void rejectMisplacedMapperAnnotations() throws Exception {
+        Path dir = Files.createTempDirectory("sjf4j-processor-mapper-annotation-contract-test");
+        Path src = dir.resolve("src/testcase");
+        Path out = dir.resolve("classes");
+        Files.createDirectories(src);
+        Files.createDirectories(out);
+        write(src.resolve("MisplacedMapperAnnotations.java"),
+                "package testcase;\n" +
+                        "import org.sjf4j.annotation.mapper.*;\n" +
+                        "class Source {} class Target {} class TargetImpl extends Target { public TargetImpl() {} }\n" +
+                        "@MappingCreator(targetType=Target.class, implementation=TargetImpl.class) class CreatorOnClass {}\n" +
+                        "interface Plain {\n" +
+                        "  @MapperOptions void options(Source s);\n" +
+                        "  @Mapping(target=\"name\") Target mapping(Source s);\n" +
+                        "  @MappingIfParentPresent(target=\"$.name\") void ifParent(Target t, Source s);\n" +
+                        "  @EnsureMapping(target=\"$.name\") void ensure(Target t, Source s);\n" +
+                        "}\n");
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertNotNull(compiler, "JDK compiler is required");
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager files = compiler.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8);
+        files.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(out.toFile()));
+        Boolean ok = compiler.getTask(null, files, diagnostics, Arrays.asList(
+                "-classpath", System.getProperty("java.class.path"),
+                "-processor", Sjf4jProcessor.class.getName()
+        ), null, files.getJavaFileObjectsFromFiles(Arrays.asList(src.resolve("MisplacedMapperAnnotations.java").toFile()))).call();
+        assertTrue(!ok);
+        String messages = diagnosticsToString(diagnostics);
+        assertTrue(messages.contains("@MappingCreator can be applied only to interfaces"), messages);
+        assertTrue(countOccurrences(messages, "method must be declared in an @CompiledMapper interface") >= 4, messages);
     }
 
     @Test
